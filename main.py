@@ -1,6 +1,36 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from app.core.config import settings
+from app.db.database import Base, engine
+from app.api.routes import auth, users, students, courses, assignments, google_classroom
+
+# Create database tables
+from app.models import User, Student, Teacher, Course, Assignment
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title=settings.app_name,
+    description="AI-powered education management platform",
+    version="0.1.0",
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(students.router, prefix="/api")
+app.include_router(courses.router, prefix="/api")
+app.include_router(assignments.router, prefix="/api")
+app.include_router(google_classroom.router, prefix="/api")
 
 
 def hello_world() -> str:
@@ -9,4 +39,9 @@ def hello_world() -> str:
 
 @app.get("/")
 def root():
-    return {"message": hello_world()}
+    return {"message": hello_world(), "app": settings.app_name}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
