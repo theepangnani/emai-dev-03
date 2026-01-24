@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
-    google_redirect_uri: str = "http://localhost:8000/api/auth/google/callback"
+    google_redirect_uri: str = "http://localhost:8000/api/google/callback"
+
+    # Frontend
+    frontend_url: str = "http://localhost:5173"
 
     class Config:
         env_file = ".env"

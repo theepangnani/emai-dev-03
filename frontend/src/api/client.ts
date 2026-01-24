@@ -88,8 +88,38 @@ export const googleApi = {
     return response.data;
   },
 
+  getConnectUrl: async () => {
+    const response = await api.get('/api/google/connect');
+    return response.data;
+  },
+
+  getStatus: async () => {
+    const response = await api.get('/api/google/status');
+    return response.data;
+  },
+
+  disconnect: async () => {
+    const response = await api.delete('/api/google/disconnect');
+    return response.data;
+  },
+
   getCourses: async () => {
     const response = await api.get('/api/google/courses');
+    return response.data;
+  },
+
+  syncCourses: async () => {
+    const response = await api.post('/api/google/courses/sync');
+    return response.data;
+  },
+
+  getAssignments: async (courseId: string) => {
+    const response = await api.get(`/api/google/courses/${courseId}/assignments`);
+    return response.data;
+  },
+
+  syncAssignments: async (courseId: string) => {
+    const response = await api.post(`/api/google/courses/${courseId}/assignments/sync`);
     return response.data;
   },
 };
