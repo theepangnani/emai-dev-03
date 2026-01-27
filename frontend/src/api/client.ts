@@ -164,6 +164,23 @@ export interface FlashcardSet {
   created_at: string;
 }
 
+export interface SupportedFormats {
+  documents: string[];
+  spreadsheets: string[];
+  presentations: string[];
+  images: string[];
+  archives: string[];
+  max_file_size_mb: number;
+  ocr_available: boolean;
+}
+
+export interface ExtractedText {
+  filename: string;
+  text: string;
+  character_count: number;
+  word_count: number;
+}
+
 export const studyApi = {
   generateGuide: async (params: { assignment_id?: number; course_id?: number; title?: string; content?: string }) => {
     const response = await api.post('/api/study/generate', params);
@@ -193,5 +210,41 @@ export const studyApi = {
 
   deleteGuide: async (id: number) => {
     await api.delete(`/api/study/guides/${id}`);
+  },
+
+  // File Upload Methods
+  getSupportedFormats: async () => {
+    const response = await api.get('/api/study/upload/formats');
+    return response.data as SupportedFormats;
+  },
+
+  generateFromFile: async (params: {
+    file: File;
+    title?: string;
+    guide_type: 'study_guide' | 'quiz' | 'flashcards';
+    num_questions?: number;
+    num_cards?: number;
+  }) => {
+    const formData = new FormData();
+    formData.append('file', params.file);
+    if (params.title) formData.append('title', params.title);
+    formData.append('guide_type', params.guide_type);
+    if (params.num_questions) formData.append('num_questions', params.num_questions.toString());
+    if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
+
+    const response = await api.post('/api/study/upload/generate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as StudyGuide;
+  },
+
+  extractTextFromFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post('/api/study/upload/extract-text', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as ExtractedText;
   },
 };

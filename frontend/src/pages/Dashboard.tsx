@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
-import type { StudyGuide } from '../api/client';
+import type { StudyGuide, SupportedFormats } from '../api/client';
 import { StudyToolsButton } from '../components/StudyToolsButton';
+import { logger } from '../utils/logger';
 import './Dashboard.css';
+
+const MAX_FILE_SIZE_MB = 100;
 
 interface Course {
   id: number;
@@ -23,6 +26,7 @@ interface Assignment {
 export function Dashboard() {
   const { user, logout } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [googleConnected, setGoogleConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -31,6 +35,20 @@ export function Dashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Custom study material modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customContent, setCustomContent] = useState('');
+  const [customType, setCustomType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // File upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<'text' | 'file'>('text');
+  const [isDragging, setIsDragging] = useState(false);
+  const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check Google connection status on mount and handle OAuth callback
   useEffect(() => {
@@ -67,8 +85,9 @@ export function Dashboard() {
     try {
       const data = await coursesApi.list();
       setCourses(data);
-    } catch {
-      // Courses not loaded, that's okay
+      logger.debug('Courses loaded', { count: data.length });
+    } catch (err) {
+      logger.logError(err, 'Failed to load courses', { component: 'Dashboard' });
     }
   };
 
@@ -132,6 +151,153 @@ export function Dashboard() {
       return () => clearTimeout(timer);
     }
   }, [statusMessage]);
+
+  // Load supported formats when modal opens
+  useEffect(() => {
+    if (showCreateModal && !supportedFormats) {
+      studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
+    }
+  }, [showCreateModal, supportedFormats]);
+
+  // File upload handlers
+  const handleFileSelect = (file: File) => {
+    const fileSizeMB = file.size / (1024 * 1024);
+    logger.info('File selected for upload', { filename: file.name, sizeMB: fileSizeMB.toFixed(2) });
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      logger.warn('File too large', { filename: file.name, sizeMB: fileSizeMB.toFixed(2), maxMB: MAX_FILE_SIZE_MB });
+      setStatusMessage({ type: 'error', text: `File size exceeds ${MAX_FILE_SIZE_MB} MB limit` });
+      return;
+    }
+    setSelectedFile(file);
+    setUploadMode('file');
+    // Auto-set title from filename if not already set
+    if (!customTitle) {
+      const baseName = file.name.replace(/\.[^/.]+$/, '');
+      setCustomTitle(baseName);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const clearFileSelection = () => {
+    setSelectedFile(null);
+    setUploadMode('text');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const resetModal = () => {
+    setShowCreateModal(false);
+    setCustomTitle('');
+    setCustomContent('');
+    setSelectedFile(null);
+    setUploadMode('text');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCreateCustom = async () => {
+    // Validate input based on mode
+    if (uploadMode === 'file') {
+      if (!selectedFile) {
+        setStatusMessage({ type: 'error', text: 'Please select a file to upload' });
+        return;
+      }
+    } else {
+      if (!customContent.trim()) {
+        setStatusMessage({ type: 'error', text: 'Please enter some content' });
+        return;
+      }
+    }
+
+    logger.info('Generating study material', {
+      mode: uploadMode,
+      type: customType,
+      filename: selectedFile?.name,
+      contentLength: customContent.length,
+    });
+
+    setIsGenerating(true);
+    try {
+      let result;
+
+      if (uploadMode === 'file' && selectedFile) {
+        // Use file upload API
+        result = await studyApi.generateFromFile({
+          file: selectedFile,
+          title: customTitle || undefined,
+          guide_type: customType,
+          num_questions: 5,
+          num_cards: 10,
+        });
+      } else {
+        // Use text content API
+        if (customType === 'quiz') {
+          result = await studyApi.generateQuiz({
+            topic: customTitle || 'Custom Quiz',
+            content: customContent,
+            num_questions: 5,
+          });
+        } else if (customType === 'flashcards') {
+          result = await studyApi.generateFlashcards({
+            topic: customTitle || 'Custom Flashcards',
+            content: customContent,
+            num_cards: 10,
+          });
+        } else {
+          result = await studyApi.generateGuide({
+            title: customTitle || 'Custom Study Guide',
+            content: customContent,
+          });
+        }
+      }
+
+      logger.info('Study material generated successfully', { id: result.id, type: customType });
+
+      // Navigate to the appropriate page
+      if (customType === 'quiz') {
+        navigate(`/study/quiz/${result.id}`);
+      } else if (customType === 'flashcards') {
+        navigate(`/study/flashcards/${result.id}`);
+      } else {
+        navigate(`/study/guide/${result.id}`);
+      }
+
+      resetModal();
+    } catch (err) {
+      logger.logError(err, 'Failed to generate study material', { mode: uploadMode, type: customType });
+      setStatusMessage({ type: 'error', text: 'Failed to generate study material' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -245,7 +411,12 @@ export function Dashboard() {
           </section>
 
           <section className="section">
-            <h3>Your Study Materials</h3>
+            <div className="section-header">
+              <h3>Your Study Materials</h3>
+              <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
+                + Create Custom
+              </button>
+            </div>
             {studyGuides.length > 0 ? (
               <ul className="study-guides-list">
                 {studyGuides.map((guide) => (
@@ -274,7 +445,7 @@ export function Dashboard() {
             ) : (
               <div className="empty-state">
                 <p>No study materials yet</p>
-                <small>Generate study guides, quizzes, or flashcards from your assignments</small>
+                <small>Click "Create Custom" to generate study guides from any content</small>
               </div>
             )}
           </section>
@@ -301,6 +472,136 @@ export function Dashboard() {
           </section>
         </div>
       </main>
+
+      {/* Create Custom Study Material Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={() => resetModal()}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <h2>Create Study Material</h2>
+
+            {/* Mode Toggle */}
+            <div className="mode-toggle">
+              <button
+                className={`mode-btn ${uploadMode === 'text' ? 'active' : ''}`}
+                onClick={() => setUploadMode('text')}
+                disabled={isGenerating}
+              >
+                Paste Text
+              </button>
+              <button
+                className={`mode-btn ${uploadMode === 'file' ? 'active' : ''}`}
+                onClick={() => setUploadMode('file')}
+                disabled={isGenerating}
+              >
+                Upload File
+              </button>
+            </div>
+
+            <div className="modal-form">
+              <label>
+                Title (optional)
+                <input
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="e.g., Chapter 5 Review"
+                  disabled={isGenerating}
+                />
+              </label>
+
+              {uploadMode === 'text' ? (
+                <label>
+                  Content to study
+                  <textarea
+                    value={customContent}
+                    onChange={(e) => setCustomContent(e.target.value)}
+                    placeholder="Paste your notes, textbook content, or any material you want to study..."
+                    rows={8}
+                    disabled={isGenerating}
+                  />
+                </label>
+              ) : (
+                <div className="file-upload-section">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileInputChange}
+                    accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip"
+                    style={{ display: 'none' }}
+                    disabled={isGenerating}
+                  />
+
+                  <div
+                    className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => !isGenerating && fileInputRef.current?.click()}
+                  >
+                    {selectedFile ? (
+                      <div className="selected-file">
+                        <span className="file-icon">📄</span>
+                        <div className="file-info">
+                          <span className="file-name">{selectedFile.name}</span>
+                          <span className="file-size">
+                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        </div>
+                        <button
+                          className="clear-file-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFileSelection();
+                          }}
+                          disabled={isGenerating}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="drop-zone-content">
+                        <span className="upload-icon">📁</span>
+                        <p>Drag & drop a file here, or click to browse</p>
+                        <small>
+                          Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP
+                          <br />
+                          Max size: {MAX_FILE_SIZE_MB} MB
+                        </small>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <label>
+                Generate as
+                <select
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value as 'study_guide' | 'quiz' | 'flashcards')}
+                  disabled={isGenerating}
+                >
+                  <option value="study_guide">Study Guide</option>
+                  <option value="quiz">Practice Quiz</option>
+                  <option value="flashcards">Flashcards</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => resetModal()} disabled={isGenerating}>
+                Cancel
+              </button>
+              <button
+                className="generate-btn"
+                onClick={handleCreateCustom}
+                disabled={isGenerating || (uploadMode === 'file' ? !selectedFile : !customContent.trim())}
+              >
+                {isGenerating ? 'Generating...' : 'Generate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

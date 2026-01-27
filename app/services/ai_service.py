@@ -1,13 +1,18 @@
 """
 AI Service for generating educational content using OpenAI.
 """
+import time
 from openai import OpenAI
 from app.core.config import settings
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_openai_client() -> OpenAI:
     """Get configured OpenAI client."""
     if not settings.openai_api_key:
+        logger.error("OpenAI API key not configured")
         raise ValueError("OPENAI_API_KEY not configured")
     return OpenAI(api_key=settings.openai_api_key)
 
@@ -30,19 +35,40 @@ async def generate_content(
     Returns:
         Generated text content
     """
-    client = get_openai_client()
+    start_time = time.time()
+    logger.info(f"Starting AI content generation | model={settings.openai_model} | max_tokens={max_tokens}")
+    logger.debug(f"Prompt length: {len(prompt)} chars")
 
-    response = client.chat.completions.create(
-        model=settings.openai_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
+    try:
+        client = get_openai_client()
 
-    return response.choices[0].message.content
+        response = client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+        duration_ms = (time.time() - start_time) * 1000
+        content = response.choices[0].message.content
+
+        # Log usage stats
+        usage = response.usage
+        logger.info(
+            f"AI generation completed | duration={duration_ms:.2f}ms | "
+            f"prompt_tokens={usage.prompt_tokens} | completion_tokens={usage.completion_tokens} | "
+            f"total_tokens={usage.total_tokens}"
+        )
+
+        return content
+
+    except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        logger.error(f"AI generation failed | duration={duration_ms:.2f}ms | error={str(e)}")
+        raise
 
 
 async def generate_study_guide(
@@ -63,6 +89,7 @@ async def generate_study_guide(
     Returns:
         Markdown-formatted study guide
     """
+    logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
     prompt = f"""Create a comprehensive study guide for the following assignment:
@@ -105,6 +132,7 @@ async def generate_quiz(
     Returns:
         JSON string with quiz questions
     """
+    logger.info(f"Generating quiz | topic={topic} | num_questions={num_questions}")
     prompt = f"""Create a {num_questions}-question multiple choice quiz about:
 
 **Topic:** {topic}
@@ -160,6 +188,7 @@ async def generate_flashcards(
     Returns:
         JSON string with flashcards
     """
+    logger.info(f"Generating flashcards | topic={topic} | num_cards={num_cards}")
     prompt = f"""Create {num_cards} flashcards for studying:
 
 **Topic:** {topic}

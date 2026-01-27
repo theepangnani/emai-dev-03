@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     # App
     app_name: str = "EMAI"
     debug: bool = False
+    environment: str = "development"  # development, production
+    log_level: str = ""  # DEBUG, INFO, WARNING, ERROR, CRITICAL (empty = auto based on environment)
+    log_to_file: bool = True  # Enable file logging
 
     # Database (SQLite for local dev, PostgreSQL for production)
     database_url: str = "sqlite:///./emai.db"

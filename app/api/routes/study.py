@@ -1,6 +1,7 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.db.database import get_db
 from app.models.study_guide import StudyGuide
@@ -19,6 +20,12 @@ from app.schemas.study import (
 )
 from app.api.deps import get_current_user
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+from app.services.file_processor import (
+    process_file,
+    get_supported_formats,
+    FileProcessingError,
+    MAX_FILE_SIZE,
+)
 
 router = APIRouter(prefix="/study", tags=["Study Tools"])
 
@@ -250,3 +257,173 @@ def delete_study_guide(
     db.delete(guide)
     db.commit()
     return None
+
+
+# ============================================
+# File Upload Endpoints
+# ============================================
+
+
+@router.get("/upload/formats")
+def get_upload_formats():
+    """Get information about supported file upload formats."""
+    return get_supported_formats()
+
+
+@router.post("/upload/generate", response_model=StudyGuideResponse)
+async def generate_from_file_upload(
+    file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
+    guide_type: str = Form("study_guide"),
+    num_questions: int = Form(5),
+    num_cards: int = Form(10),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate study material from an uploaded file.
+
+    Supports: PDF, DOCX, PPTX, XLSX, TXT, images (OCR), and ZIP archives.
+    Maximum file size: 100 MB.
+
+    Args:
+        file: The file to process
+        title: Optional title for the study material
+        guide_type: Type of material to generate (study_guide, quiz, flashcards)
+        num_questions: Number of quiz questions (if guide_type is quiz)
+        num_cards: Number of flashcards (if guide_type is flashcards)
+    """
+    # Validate guide_type
+    if guide_type not in ("study_guide", "quiz", "flashcards"):
+        raise HTTPException(
+            status_code=400,
+            detail="guide_type must be one of: study_guide, quiz, flashcards"
+        )
+
+    # Read file content
+    try:
+        file_content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+
+    # Validate file size
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024*1024)} MB"
+        )
+
+    # Extract text from file
+    try:
+        extracted_text = process_file(file_content, file.filename or "unknown")
+    except FileProcessingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not extracted_text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No text could be extracted from the uploaded file"
+        )
+
+    # Generate title from filename if not provided
+    if not title:
+        base_name = file.filename.rsplit('.', 1)[0] if file.filename else "Uploaded File"
+        title = base_name
+
+    # Generate the appropriate study material
+    try:
+        if guide_type == "quiz":
+            quiz_json = await generate_quiz(
+                topic=title,
+                content=extracted_text,
+                num_questions=num_questions,
+            )
+            questions_data = json.loads(quiz_json)
+            questions = [QuizQuestion(**q) for q in questions_data]
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Quiz: {title}",
+                content=quiz_json,
+                guide_type="quiz",
+            )
+
+        elif guide_type == "flashcards":
+            cards_json = await generate_flashcards(
+                topic=title,
+                content=extracted_text,
+                num_cards=num_cards,
+            )
+            cards_data = json.loads(cards_json)
+            cards = [Flashcard(**c) for c in cards_data]
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Flashcards: {title}",
+                content=cards_json,
+                guide_type="flashcards",
+            )
+
+        else:  # study_guide
+            content = await generate_study_guide(
+                assignment_title=title,
+                assignment_description=extracted_text,
+                course_name="Uploaded Content",
+            )
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Study Guide: {title}",
+                content=content,
+                guide_type="study_guide",
+            )
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse AI response")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Save to database
+    db.add(study_guide)
+    db.commit()
+    db.refresh(study_guide)
+
+    return study_guide
+
+
+@router.post("/upload/extract-text")
+async def extract_text_from_upload(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Extract text from an uploaded file without generating study material.
+    Useful for previewing content before generation.
+
+    Returns the extracted text content.
+    """
+    # Read file content
+    try:
+        file_content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+
+    # Validate file size
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024*1024)} MB"
+        )
+
+    # Extract text from file
+    try:
+        extracted_text = process_file(file_content, file.filename or "unknown")
+    except FileProcessingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "filename": file.filename,
+        "text": extracted_text,
+        "character_count": len(extracted_text),
+        "word_count": len(extracted_text.split()),
+    }
