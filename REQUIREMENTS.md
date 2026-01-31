@@ -185,7 +185,43 @@ When a parent/student syncs Google Classroom and the course teacher is not on EM
 - `Teacher` model: user_id, school_name, department, teacher_type, is_platform_user, invite_token, invite_token_expires
 - `teacher_google_accounts` table: teacher_id, google_email, google_id, access_token, refresh_token, account_label, is_primary, created_at
 
-### 6.12 AI Email Communication Agent (Phase 5)
+### 6.12 Task Manager & Calendar (Phase 1.5)
+
+A personal task/todo manager and visual calendar available to all EMAI users. Provides a unified view of what's due, with role-aware data sources and Google Calendar integration.
+
+#### Task/Todo Manager
+- Create, edit, complete, and delete personal tasks
+- Task fields: title, description, due date, reminder time, priority (low, medium, high), category
+- Quick-add from any dashboard
+- Filter by status (pending, completed), priority, date range
+- Tasks can optionally be linked to an assignment (for students)
+
+#### Visual Calendar (Outlook-style)
+- Day, week, and month views
+- Color-coded items by type (assignments, tasks, reminders)
+- Click to view/edit items
+- Drag-and-drop to reschedule tasks
+
+#### Role-Aware Calendar Data Sources
+| Role | Calendar Shows |
+|------|---------------|
+| **Student** | Assignment due dates + personal tasks/reminders |
+| **Parent** | Children's assignment due dates + personal tasks/reminders |
+| **Teacher** | Course assignment deadlines + personal tasks/reminders |
+| **Admin** | Personal tasks/reminders only |
+
+#### Google Calendar Integration (One-Way Push)
+- Push EMAI reminders and deadlines to the user's Google Calendar
+- Uses existing Google OAuth connection
+- User can toggle which items sync to Google Calendar (per-task or global setting)
+- `google_calendar_event_id` stored on tasks for update/delete sync
+
+#### Data Model
+- `tasks` table: user_id, title, description, due_date, reminder_at, is_completed, priority, category, linked_assignment_id (nullable), google_calendar_event_id (nullable), created_at, updated_at
+- Assignment due dates queried from existing `assignments` table (not duplicated)
+- Parent calendar aggregates children's assignments via `parent_students` + `student_courses` + `assignments`
+
+### 6.13 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -245,6 +281,12 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Teacher type distinction (school_teacher vs private_tutor)
 - [ ] Central document repository
 - [ ] Manual content upload with OCR (enhanced)
+
+### Phase 1.5 (Task Manager & Calendar)
+- [ ] Task/Todo CRUD API and model
+- [ ] Visual calendar component (day/week/month views)
+- [ ] Google Calendar push integration
+- [ ] Frontend Task Manager UI
 
 ### Phase 2
 - [ ] TeachAssist integration
@@ -322,6 +364,13 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 | `/api/teacher/google-accounts` | POST | Link a new Google account |
 | `/api/teacher/google-accounts/{id}` | DELETE | Unlink a Google account |
 | `/api/auth/accept-teacher-invite` | POST | School teacher accepts invite and sets password |
+| `/api/tasks/` | GET | List user's tasks (with filters) |
+| `/api/tasks/` | POST | Create a task |
+| `/api/tasks/{id}` | PUT | Update a task |
+| `/api/tasks/{id}` | DELETE | Delete a task |
+| `/api/tasks/{id}/complete` | POST | Mark task as completed |
+| `/api/calendar/events` | GET | Calendar events (role-aware: tasks + assignments) |
+| `/api/calendar/google-sync` | POST | Push task/reminder to Google Calendar |
 | `/api/admin/users` | GET | Paginated user list (admin only) |
 | `/api/admin/stats` | GET | Platform statistics (admin only) |
 
@@ -382,6 +431,12 @@ Current feature issues are tracked in GitHub:
 - Issue #43: Teacher type distinction (school_teacher vs private_tutor)
 - Issue #25: Manual Content Upload with OCR (enhanced)
 - Issue #28: Central Document Repository
+
+### Phase 1.5 - Task Manager & Calendar
+- Issue #44: Task/Todo CRUD API and model
+- Issue #45: Visual calendar component with role-aware data
+- Issue #46: Google Calendar push integration for tasks
+- Issue #47: Frontend Task Manager UI
 
 ### Phase 2
 - Issue #26: Performance Analytics Dashboard

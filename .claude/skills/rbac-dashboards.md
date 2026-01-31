@@ -91,6 +91,14 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 - Three onboarding paths: parent-created student, self-registered student, linked after the fact
 - `relationship_type` field: mother, father, guardian, other
 
+## Shared Features (All Roles)
+- **Task Manager & Calendar**: Personal tasks + role-aware calendar (see `.claude/skills/task-calendar.md`)
+  - `GET /api/tasks/` - List tasks
+  - `POST /api/tasks/` - Create task
+  - `GET /api/calendar/events` - Role-aware calendar events (tasks + assignments)
+  - `POST /api/calendar/google-sync` - Push to Google Calendar
+  - Calendar shows different data per role (students see assignments, parents see children's assignments, etc.)
+
 ## Adding a New Role-Specific Feature
 1. Add backend endpoint with `require_role(UserRole.ROLE_NAME)` dependency
 2. Add API client method in `client.ts`
