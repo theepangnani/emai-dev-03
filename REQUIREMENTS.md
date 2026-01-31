@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-01-31
 
 ---
 
@@ -73,7 +73,35 @@ Education ecosystems are fragmented:
 - Summarize teacher handouts
 - Identify strengths and weaknesses
 
-### 6.3 Manual Course Content Upload (Phase 1)
+### 6.3 Parent-Student Registration & Linking (Phase 1)
+
+ClassBridge supports three independent paths for student onboarding. Parent linking is entirely optional — students can use the platform independently.
+
+#### Path 1: Parent-Created Student
+- Parent registers their child from the Parent Dashboard (name, email, grade, school)
+- System creates a User (role=student) + Student record + `parent_students` join entry
+- Invite email sent to the student's email with a secure token
+- Student clicks the invite link and sets their own password
+- Student can then log in independently
+
+#### Path 2: Self-Registered Student
+- Student creates their own account at `/auth/register` with role=student
+- Student links to Google Classroom and manages their own courses
+- No parent required — the platform works fully for independent students
+- Student can optionally be linked to parent(s) later
+
+#### Path 3: Linked After the Fact
+- A parent links to an already-existing student account via email or Google Classroom discovery
+- Multiple parents can link to the same student (e.g., mother, father, guardian)
+- Creates entries in the `parent_students` join table with a `relationship_type`
+
+#### Data Model
+- **Many-to-many**: `parent_students` join table (parent_id, student_id, relationship_type, created_at)
+- A student can have zero, one, or many parents
+- A parent can have zero, one, or many students
+- `relationship_type`: "mother", "father", "guardian", "other"
+
+### 6.4 Manual Course Content Upload (Phase 1)
 - Upload or enter course content manually
 - Supported inputs: PDF, Word, text notes, images (OCR)
 - Tag content to specific class or subject
@@ -81,44 +109,44 @@ Education ecosystems are fragmented:
 - Content privacy controls
 - Version history
 
-### 6.4 Performance Analytics (Phase 2)
+### 6.5 Performance Analytics (Phase 2)
 - Subject-level insights
 - Trend analysis
 - Weekly progress reports
 
-### 6.5 Communication (Phase 1) - IMPLEMENTED
+### 6.6 Communication (Phase 1) - IMPLEMENTED
 - Secure Parent <-> Teacher messaging
 - Announcements
 - Message history
 - Notification system with in-app bell, email reminders, and preferences
 
-### 6.6 Student Organization (Phase 2)
+### 6.7 Student Organization (Phase 2)
 - Class schedules
 - Assignments calendar
 - Notes management
 - Project tracking
 
-### 6.7 Central Document Repository (Phase 1)
+### 6.8 Central Document Repository (Phase 1)
 - Store course materials
 - Teacher handouts
 - Student notes
 - Organized by course/subject
 
-### 6.8 Tutor Marketplace (Phase 4)
+### 6.9 Tutor Marketplace (Phase 4)
 - Tutor registration (teachers + private instructors)
 - Tutor profiles (skills, availability, ratings)
 - Parent/student tutor search
 - AI-powered tutor recommendations
 - Booking workflow
 
-### 6.9 Teacher Email Monitoring (Phase 1) - IMPLEMENTED
+### 6.10 Teacher Email Monitoring (Phase 1) - IMPLEMENTED
 - Monitor teacher emails via Gmail integration
 - Monitor Google Classroom announcements
 - AI-powered email summarization
 - Paginated communication list with type filter and search
 - Manual sync trigger and background sync job
 
-### 6.10 AI Email Communication Agent (Phase 5)
+### 6.11 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -132,16 +160,20 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 
 | Dashboard | Key Features | Status |
 |-----------|--------------|--------|
-| **Parent Dashboard** | Link children (by email or via Google Classroom), child progress, assignments, study materials, messages | Implemented |
+| **Parent Dashboard** | Register child, link children (by email or via Google Classroom), child progress, assignments, study materials, messages | Implemented |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, messages, teacher communications, Google Classroom status | Implemented |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination) | Implemented |
 | **Tutor Dashboard** | Bookings, availability, student assignments (Phase 4) | Planned |
 
-### Parent-Child Linking
-Parents can link children via two methods:
-- **By Email**: Enter the student's registered email address
+### Parent-Student Relationship
+Parents and students have a **many-to-many** relationship via the `parent_students` join table. A student can have multiple parents (mother, father, guardian), and parent linking is optional.
+
+**Registration & Linking Methods:**
+- **Parent Registers Child**: Create a student account from the Parent Dashboard; child receives an invite email to set their password
+- **Link by Email**: Enter an existing student's registered email address
 - **Via Google Classroom**: Connect Google account, auto-discover children enrolled in Google Classroom courses, select and bulk-link
+- **Self-Registered Student**: Students can register independently and use the platform without any parent
 
 ### Role-Based Access Control
 - Backend: `require_role()` dependency factory for endpoint-level role checking
@@ -163,6 +195,10 @@ Parents can link children via two methods:
 - [x] Parent-child linking (by email + Google Classroom discovery)
 - [x] File upload with content extraction
 - [x] Logging framework
+- [ ] Many-to-many parent-student relationship (migrate from single parent_id)
+- [ ] Parent registers child from Parent Dashboard
+- [ ] Student invite email flow (set password via invite link)
+- [ ] Update parent linking endpoints for many-to-many
 - [ ] Central document repository
 - [ ] Manual content upload with OCR (enhanced)
 
@@ -230,10 +266,12 @@ Parents can link children via two methods:
 | `/api/teacher-communications/` | GET | List teacher communications |
 | `/api/teacher-communications/sync` | POST | Trigger email sync |
 | `/api/parent/children` | GET | List linked children |
+| `/api/parent/children/register` | POST | Parent creates a student account |
 | `/api/parent/children/link` | POST | Link child by email |
 | `/api/parent/children/discover-google` | POST | Discover children via Google Classroom |
 | `/api/parent/children/link-bulk` | POST | Bulk link children |
 | `/api/parent/children/{id}/overview` | GET | Child overview |
+| `/api/auth/accept-invite` | POST | Student accepts invite and sets password |
 | `/api/admin/users` | GET | Paginated user list (admin only) |
 | `/api/admin/stats` | GET | Platform statistics (admin only) |
 
@@ -283,6 +321,10 @@ Current feature issues are tracked in GitHub:
 - Issue #33: ~~Teacher email monitoring~~ (CLOSED)
 
 ### Phase 1 - Open
+- Issue #35: Migrate parent-student to many-to-many relationship
+- Issue #36: Parent registers child from Parent Dashboard
+- Issue #37: Student invite email flow
+- Issue #38: Update parent linking endpoints for many-to-many
 - Issue #25: Manual Content Upload with OCR (enhanced)
 - Issue #28: Central Document Repository
 

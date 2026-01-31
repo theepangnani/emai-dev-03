@@ -46,7 +46,7 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 | `app/schemas/parent.py` | LinkChildRequest, ChildSummary, ChildOverview |
 | `app/schemas/admin.py` | AdminUserList, AdminStats |
 | `app/models/user.py` | UserRole enum (STUDENT, PARENT, TEACHER, ADMIN) |
-| `app/models/student.py` | Student model with parent_id FK for parent-child linking |
+| `app/models/student.py` | Student model + `parent_students` join table (many-to-many) |
 
 ### Frontend
 | File | Purpose |
@@ -54,7 +54,7 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 | `frontend/src/pages/Dashboard.tsx` | Role dispatcher (switch on user.role) |
 | `frontend/src/components/DashboardLayout.tsx` | Shared header, nav, welcome section |
 | `frontend/src/pages/StudentDashboard.tsx` | Student view with courses, assignments, study tools |
-| `frontend/src/pages/ParentDashboard.tsx` | Parent view with children, link child modal |
+| `frontend/src/pages/ParentDashboard.tsx` | Parent view with register child, link child, children list |
 | `frontend/src/pages/TeacherDashboard.tsx` | Teacher view with courses, communications |
 | `frontend/src/pages/AdminDashboard.tsx` | Admin view with stats, user management |
 | `frontend/src/components/ProtectedRoute.tsx` | Route guard with optional allowedRoles |
@@ -64,8 +64,12 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 
 ### Parent Endpoints (parent role only)
 - `GET /api/parent/children` - List linked children
-- `POST /api/parent/children/link` - Link child by email `{ student_email: string }`
+- `POST /api/parent/children/register` - Parent creates a student account
+- `POST /api/parent/children/link` - Link child by email
+- `POST /api/parent/children/discover-google` - Discover students via Google Classroom
+- `POST /api/parent/children/link-bulk` - Bulk link discovered students
 - `GET /api/parent/children/{student_id}/overview` - Child's courses, assignments, study guide count
+- See `.claude/skills/parent-student.md` for full parent-student relationship details
 
 ### Admin Endpoints (admin role only)
 - `GET /api/admin/users?role=&search=&skip=&limit=` - Paginated user list
@@ -74,11 +78,12 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 ### Teacher Endpoints (teacher role only)
 - `GET /api/courses/teaching` - Courses where current user is the teacher
 
-## Parent-Child Linking
-- `Student.parent_id` FK references `users.id`
-- Parents can link children via email through the ParentDashboard UI
-- Backend validates: student account exists, not already linked to another parent
-- Overview endpoint verifies parent owns the student before returning data
+## Parent-Student Relationship
+- **Many-to-many** via `parent_students` join table (see `.claude/skills/parent-student.md` for full details)
+- A student can have zero, one, or many parents; a parent can have many children
+- Parent linking is optional — students can use the platform independently
+- Three onboarding paths: parent-created student, self-registered student, linked after the fact
+- `relationship_type` field: mother, father, guardian, other
 
 ## Adding a New Role-Specific Feature
 1. Add backend endpoint with `require_role(UserRole.ROLE_NAME)` dependency
