@@ -54,7 +54,8 @@ Education ecosystems are fragmented:
 |------|-------------|
 | **Parent** | Visibility into progress, tools to help children study, access to tutoring (Phase 4) |
 | **Student** | Organization, personalized study support, motivation |
-| **Teacher** | Simple communication, upload/share materials, optional tutor role (Phase 4) |
+| **Teacher (School)** | School teacher — may be on EMAI (platform teacher) or only referenced via Google Classroom sync (shadow record) |
+| **Teacher (Private Tutor)** | Independent educator on EMAI — creates own courses, connects own Google Classroom, manages students directly |
 | **Tutor** | Register, manage availability, offer services (Phase 4) |
 | **Administrator** | User management, analytics, compliance |
 
@@ -146,7 +147,45 @@ ClassBridge supports three independent paths for student onboarding. Parent link
 - Paginated communication list with type filter and search
 - Manual sync trigger and background sync job
 
-### 6.11 AI Email Communication Agent (Phase 5)
+### 6.11 Teacher & Private Tutor Platform (Phase 1)
+
+ClassBridge supports two categories of teachers with distinct onboarding paths.
+
+#### Teacher Types
+- **School Teacher**: A teacher at a school whose courses appear via Google Classroom sync. May or may not be on EMAI.
+- **Private Tutor**: An independent educator who registers on EMAI to teach their own courses, potentially using their own Google Classroom.
+
+#### Platform Teachers (on EMAI)
+- Teacher registers on EMAI → `User` (role=teacher) + `Teacher` record created automatically
+- `Teacher` record stores: school_name, department, `teacher_type` (school_teacher, private_tutor), `is_platform_user=true`
+- Can create and manage courses manually (without Google Classroom)
+- Can connect multiple Google accounts (personal + school) to sync courses from different sources
+- Full access to Teacher Dashboard: messaging, communications, course management, student rosters
+
+#### Non-EMAI School Teachers (Shadow + Invite)
+When a parent/student syncs Google Classroom and the course teacher is not on EMAI:
+1. **Shadow record created**: `Teacher` record with `is_platform_user=false`, name/email from Google Classroom
+2. **Invite email sent**: Teacher receives an invite to join ClassBridge
+3. **If accepted**: Shadow record converts to full platform teacher (`is_platform_user=true`), teacher sets password and can log in
+4. **If not accepted**: Teacher remains a read-only reference — name shown on courses, parents can still contact them externally
+
+#### Multi-Google Account Support
+- `teacher_google_accounts` table (teacher_id, google_email, google_id, access_token, refresh_token, account_label, is_primary)
+- A platform teacher can link multiple Google accounts (e.g., personal Google for private tutoring + school Google for school courses)
+- Each account syncs its own courses independently
+- Replaces the current single `google_access_token`/`google_refresh_token` on `User` for teachers
+
+#### Manual Course Creation
+- Platform teachers can create courses without Google Classroom
+- Add students to courses by email
+- Create assignments manually
+- Supports private tutors who don't use Google at all
+
+#### Data Model
+- `Teacher` model: user_id, school_name, department, teacher_type, is_platform_user, invite_token, invite_token_expires
+- `teacher_google_accounts` table: teacher_id, google_email, google_id, access_token, refresh_token, account_label, is_primary, created_at
+
+### 6.12 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -162,7 +201,7 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 |-----------|--------------|--------|
 | **Parent Dashboard** | Register child, link children (by email or via Google Classroom), child progress, assignments, study materials, messages | Implemented |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
-| **Teacher Dashboard** | Courses teaching, messages, teacher communications, Google Classroom status | Implemented |
+| **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination) | Implemented |
 | **Tutor Dashboard** | Bookings, availability, student assignments (Phase 4) | Planned |
 
@@ -199,6 +238,11 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Parent registers child from Parent Dashboard
 - [ ] Student invite email flow (set password via invite link)
 - [ ] Update parent linking endpoints for many-to-many
+- [ ] Auto-create Teacher record at registration
+- [ ] Shadow + invite flow for non-EMAI school teachers
+- [ ] Multi-Google account support for teachers
+- [ ] Manual course creation for teachers
+- [ ] Teacher type distinction (school_teacher vs private_tutor)
 - [ ] Central document repository
 - [ ] Manual content upload with OCR (enhanced)
 
@@ -272,6 +316,12 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 | `/api/parent/children/link-bulk` | POST | Bulk link children |
 | `/api/parent/children/{id}/overview` | GET | Child overview |
 | `/api/auth/accept-invite` | POST | Student accepts invite and sets password |
+| `/api/teacher/courses` | POST | Teacher creates a course manually |
+| `/api/teacher/courses/{id}/students` | POST | Add student to course |
+| `/api/teacher/google-accounts` | GET | List linked Google accounts |
+| `/api/teacher/google-accounts` | POST | Link a new Google account |
+| `/api/teacher/google-accounts/{id}` | DELETE | Unlink a Google account |
+| `/api/auth/accept-teacher-invite` | POST | School teacher accepts invite and sets password |
 | `/api/admin/users` | GET | Paginated user list (admin only) |
 | `/api/admin/stats` | GET | Platform statistics (admin only) |
 
@@ -325,6 +375,11 @@ Current feature issues are tracked in GitHub:
 - Issue #36: Parent registers child from Parent Dashboard
 - Issue #37: Student invite email flow
 - Issue #38: Update parent linking endpoints for many-to-many
+- Issue #39: Auto-create Teacher record at registration
+- Issue #40: Shadow + invite flow for non-EMAI school teachers
+- Issue #41: Multi-Google account support for teachers
+- Issue #42: Manual course creation for teachers
+- Issue #43: Teacher type distinction (school_teacher vs private_tutor)
 - Issue #25: Manual Content Upload with OCR (enhanced)
 - Issue #28: Central Document Repository
 

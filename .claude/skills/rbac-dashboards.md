@@ -9,7 +9,7 @@ EMAI implements role-based access control (RBAC) with four roles: Student, Paren
 `Dashboard.tsx` is a thin dispatcher that routes to role-specific dashboard components based on `user.role`:
 - `StudentDashboard` (default) - courses, assignments, study tools, Google Classroom
 - `ParentDashboard` - linked children, child progress monitoring, link child by email
-- `TeacherDashboard` - courses teaching, messages, communications, Google Classroom
+- `TeacherDashboard` - courses teaching, manual course creation, multi-Google accounts, messages, communications
 - `AdminDashboard` - platform stats, user management table with search/filter/pagination
 
 ### Shared Layout
@@ -55,7 +55,7 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 | `frontend/src/components/DashboardLayout.tsx` | Shared header, nav, welcome section |
 | `frontend/src/pages/StudentDashboard.tsx` | Student view with courses, assignments, study tools |
 | `frontend/src/pages/ParentDashboard.tsx` | Parent view with register child, link child, children list |
-| `frontend/src/pages/TeacherDashboard.tsx` | Teacher view with courses, communications |
+| `frontend/src/pages/TeacherDashboard.tsx` | Teacher view with courses, manual creation, Google accounts, communications |
 | `frontend/src/pages/AdminDashboard.tsx` | Admin view with stats, user management |
 | `frontend/src/components/ProtectedRoute.tsx` | Route guard with optional allowedRoles |
 | `frontend/src/api/client.ts` | parentApi, adminApi, coursesApi.teachingList |
@@ -77,6 +77,12 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 
 ### Teacher Endpoints (teacher role only)
 - `GET /api/courses/teaching` - Courses where current user is the teacher
+- `POST /api/teacher/courses` - Create a course manually
+- `POST /api/teacher/courses/{id}/students` - Add student to course
+- `GET /api/teacher/google-accounts` - List linked Google accounts
+- `POST /api/teacher/google-accounts` - Link a new Google account
+- `DELETE /api/teacher/google-accounts/{id}` - Unlink a Google account
+- See `.claude/skills/teacher-platform.md` for full teacher platform details
 
 ## Parent-Student Relationship
 - **Many-to-many** via `parent_students` join table (see `.claude/skills/parent-student.md` for full details)
