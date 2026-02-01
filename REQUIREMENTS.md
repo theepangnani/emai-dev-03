@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-01-31
+**Last Updated:** 2026-02-01
 
 ---
 
@@ -55,8 +55,7 @@ Education ecosystems are fragmented:
 | **Parent** | Visibility into progress, tools to help children study, access to tutoring (Phase 4) |
 | **Student** | Organization, personalized study support, motivation |
 | **Teacher (School)** | School teacher — may be on EMAI (platform teacher) or only referenced via Google Classroom sync (shadow record) |
-| **Teacher (Private Tutor)** | Independent educator on EMAI — creates own courses, connects own Google Classroom, manages students directly |
-| **Tutor** | Register, manage availability, offer services (Phase 4) |
+| **Teacher (Private Tutor)** | Independent educator on EMAI — creates own courses, connects own Google Classroom, manages students directly. Phase 4 adds marketplace features (availability, profiles, booking) for teachers with `teacher_type=private_tutor` |
 | **Administrator** | User management, analytics, compliance |
 
 ---
@@ -102,6 +101,12 @@ ClassBridge supports three independent paths for student onboarding. Parent link
 - A parent can have zero, one, or many students
 - `relationship_type`: "mother", "father", "guardian", "other"
 
+### Unified Invite System
+Both student invites (from parent registration) and teacher invites (from shadow discovery) use a single `invites` table and endpoint:
+- `invites` table: id, email, invite_type (student, teacher), token, expires_at, invited_by_user_id, metadata (JSON), accepted_at, created_at
+- Single endpoint: `POST /api/auth/accept-invite` — resolves invite_type to create the appropriate User + role records
+- Invite tokens expire after 7 days (students) or 30 days (teachers)
+
 ### 6.4 Manual Course Content Upload (Phase 1)
 - Upload or enter course content manually
 - Supported inputs: PDF, Word, text notes, images (OCR)
@@ -121,11 +126,10 @@ ClassBridge supports three independent paths for student onboarding. Parent link
 - Message history
 - Notification system with in-app bell, email reminders, and preferences
 
-### 6.7 Student Organization (Phase 2)
-- Class schedules
-- Assignments calendar
-- Notes management
-- Project tracking
+### 6.7 Notes & Project Tracking (Phase 2)
+- Notes management (per-course note-taking, rich text editor)
+- Project tracking (group projects, milestones, task breakdown)
+- Study planner (weekly study schedules, goal setting)
 
 ### 6.8 Central Document Repository (Phase 1)
 - Store course materials
@@ -134,11 +138,12 @@ ClassBridge supports three independent paths for student onboarding. Parent link
 - Organized by course/subject
 
 ### 6.9 Tutor Marketplace (Phase 4)
-- Tutor registration (teachers + private instructors)
-- Tutor profiles (skills, availability, ratings)
-- Parent/student tutor search
-- AI-powered tutor recommendations
-- Booking workflow
+Extends the existing `teacher_type=private_tutor` — no new "Tutor" role. Private tutors gain marketplace features:
+- Tutor profiles (skills, subjects, availability, hourly rates, ratings)
+- Parent/student tutor search and discovery
+- AI-powered tutor recommendations based on student needs
+- Booking workflow (request, confirm, schedule)
+- Payment integration
 
 ### 6.10 Teacher Email Monitoring (Phase 1) - IMPLEMENTED
 - Monitor teacher emails via Gmail integration
@@ -239,7 +244,8 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination) | Implemented |
-| **Tutor Dashboard** | Bookings, availability, student assignments (Phase 4) | Planned |
+
+> **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
 
 ### Parent-Student Relationship
 Parents and students have a **many-to-many** relationship via the `parent_students` join table. A student can have multiple parents (mother, father, guardian), and parent linking is optional.
@@ -279,20 +285,24 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Multi-Google account support for teachers
 - [ ] Manual course creation for teachers
 - [ ] Teacher type distinction (school_teacher vs private_tutor)
-- [ ] Central document repository
-- [ ] Manual content upload with OCR (enhanced)
+- [ ] Unified invite system (shared invites table for student + teacher invites)
+- [ ] Manual assignment creation for teachers
+- [ ] Deprecate POST /api/courses/ endpoint
 
-### Phase 1.5 (Task Manager & Calendar)
+### Phase 1.5 (Task Manager, Calendar & Content)
 - [ ] Task/Todo CRUD API and model
 - [ ] Visual calendar component (day/week/month views)
 - [ ] Google Calendar push integration
 - [ ] Frontend Task Manager UI
+- [ ] Central document repository
+- [ ] Manual content upload with OCR (enhanced)
 
 ### Phase 2
 - [ ] TeachAssist integration
 - [ ] Performance analytics dashboard
 - [ ] Advanced notifications
-- [ ] Student organization tools
+- [ ] Notes & project tracking tools
+- [ ] Data privacy & user rights (account deletion, data export, consent)
 
 ### Phase 3
 - [ ] Mobile-first optimization
@@ -301,10 +311,12 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Admin analytics
 
 ### Phase 4 (Tutor Marketplace)
-- [ ] Tutor registration
+- [ ] Private tutor profiles (availability, rates, subjects)
+- [ ] Parent/student tutor search and discovery
 - [ ] AI tutor matching
 - [ ] Booking workflow
-- [ ] Ratings & profiles
+- [ ] Ratings & reviews
+- [ ] Payment integration
 
 ### Phase 5 (AI Email Agent)
 - [ ] AI email sending
@@ -324,6 +336,21 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - **Object Storage:** Google Cloud Storage
 - **Authentication:** OAuth2 + RBAC
 
+### Google OAuth Scopes
+| Scope | Purpose | Used By |
+|-------|---------|---------|
+| `classroom.courses.readonly` | Read Google Classroom courses | All roles (sync) |
+| `classroom.coursework.students.readonly` | Read assignments | Student, Parent |
+| `classroom.rosters.readonly` | Read course rosters (teacher info) | Parent (discover children) |
+| `gmail.readonly` | Read teacher emails for monitoring | Teacher |
+| `calendar.events` | Push tasks/reminders to Google Calendar | All roles (Phase 1.5) |
+| `userinfo.email`, `userinfo.profile` | Basic identity for OAuth | All roles |
+
+**Notes:**
+- Scopes are requested incrementally — only `userinfo` + `classroom` scopes at initial connect; `calendar.events` requested when user enables Google Calendar sync
+- Teachers with multi-Google accounts: each `teacher_google_accounts` entry stores its own tokens with the scopes relevant to that account
+- Scope expansion requires Google OAuth verification (Issue #14)
+
 ### API Endpoints
 
 | Endpoint | Method | Description |
@@ -337,6 +364,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 | `/api/google/disconnect` | DELETE | Disconnect Google |
 | `/api/google/courses/sync` | POST | Sync Google Classroom courses |
 | `/api/courses/` | GET | List user's courses |
+| ~~`/api/courses/`~~ | ~~POST~~ | ~~Create course~~ — **DEPRECATED**, use `POST /api/teacher/courses` |
 | `/api/courses/teaching` | GET | List courses teaching (teacher only) |
 | `/api/assignments/` | GET | List assignments |
 | `/api/study/generate` | POST | Generate study guide |
@@ -357,13 +385,14 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 | `/api/parent/children/discover-google` | POST | Discover children via Google Classroom |
 | `/api/parent/children/link-bulk` | POST | Bulk link children |
 | `/api/parent/children/{id}/overview` | GET | Child overview |
-| `/api/auth/accept-invite` | POST | Student accepts invite and sets password |
+| `/api/auth/accept-invite` | POST | Accept invite and set password (unified: student + teacher) |
 | `/api/teacher/courses` | POST | Teacher creates a course manually |
 | `/api/teacher/courses/{id}/students` | POST | Add student to course |
+| `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course (teacher only) |
 | `/api/teacher/google-accounts` | GET | List linked Google accounts |
 | `/api/teacher/google-accounts` | POST | Link a new Google account |
 | `/api/teacher/google-accounts/{id}` | DELETE | Unlink a Google account |
-| `/api/auth/accept-teacher-invite` | POST | School teacher accepts invite and sets password |
+| ~~`/api/auth/accept-teacher-invite`~~ | ~~POST~~ | ~~Teacher invite~~ — **MERGED** into unified `/api/auth/accept-invite` |
 | `/api/tasks/` | GET | List user's tasks (with filters) |
 | `/api/tasks/` | POST | Create a task |
 | `/api/tasks/{id}` | PUT | Update a task |
@@ -383,6 +412,17 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - **Scalability:** 100k+ users
 - **Security:** Encryption in transit and at rest
 - **Compliance:** FERPA, MFIPPA, PIPEDA, GDPR (if applicable)
+
+### 10.1 Data Privacy & User Rights
+
+ClassBridge handles student data subject to FERPA, PIPEDA, and MFIPPA. The following capabilities are required (implementation deferred to Phase 2+):
+
+- **Account Deletion**: Users can request full account deletion. System must cascade-delete or anonymize all related records (tasks, messages, parent-student links, study materials, Google tokens).
+- **Data Export**: Users can request a machine-readable export (JSON/CSV) of all personal data (GDPR Article 20, PIPEDA right of access).
+- **Consent Management**: Track and store user consent for data collection, Google OAuth scopes, and email communications. Allow users to withdraw consent.
+- **Data Retention**: Define retention periods for inactive accounts, expired invites, and completed tasks. Auto-purge after defined periods.
+- **Minor Data Protection**: Student accounts (especially those created by parents) require additional protections — no marketing emails, limited data sharing, parental consent for under-13 users.
+- **Audit Logging**: Log access to sensitive data (parent viewing child data, admin viewing user list) for compliance auditing.
 
 ---
 
@@ -429,19 +469,23 @@ Current feature issues are tracked in GitHub:
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers
 - Issue #43: Teacher type distinction (school_teacher vs private_tutor)
-- Issue #25: Manual Content Upload with OCR (enhanced)
-- Issue #28: Central Document Repository
+- Issue #48: Unified invite system (shared invites table)
+- Issue #49: Manual assignment creation for teachers
+- Issue #51: Deprecate POST /api/courses/ endpoint
 
-### Phase 1.5 - Task Manager & Calendar
+### Phase 1.5 - Task Manager, Calendar & Content
 - Issue #44: Task/Todo CRUD API and model
 - Issue #45: Visual calendar component with role-aware data
 - Issue #46: Google Calendar push integration for tasks
 - Issue #47: Frontend Task Manager UI
+- Issue #25: Manual Content Upload with OCR (enhanced)
+- Issue #28: Central Document Repository
 
 ### Phase 2
 - Issue #26: Performance Analytics Dashboard
-- Issue #27: Student Organization Tools
+- Issue #27: Notes & Project Tracking Tools
 - Issue #29: TeachAssist Integration
+- Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
 
 ### Phase 3+
 - Issue #30: Tutor Marketplace

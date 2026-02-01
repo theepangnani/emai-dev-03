@@ -62,10 +62,12 @@ CREATE TABLE parent_students (
 | `/api/parent/children/link-bulk` | POST | Bulk link discovered students |
 | `/api/parent/children/{student_id}/overview` | GET | Child's courses, assignments, study guides |
 
-### Auth Endpoints
+### Auth Endpoints (Unified Invite System)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/accept-invite` | POST | Student sets password via invite token |
+| `/api/auth/accept-invite` | POST | Accept invite and set password (unified for student + teacher invites) |
+
+**Note:** Uses the shared `invites` table with `invite_type='student'`. See REQUIREMENTS.md Section 6.3 for the unified invite system.
 
 ## Request/Response Schemas
 

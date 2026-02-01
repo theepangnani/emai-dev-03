@@ -80,7 +80,7 @@ CREATE TABLE teacher_google_accounts (
 3. If not found: create a shadow `Teacher` record (`is_platform_user=false`, `user_id=NULL`)
 4. Store `google_email` and `google_name` from Google Classroom data
 5. Send invite email to the teacher's Google email
-6. Teacher clicks invite link → `/accept-teacher-invite` page
+6. Teacher clicks invite link → `/accept-invite` page (unified invite flow)
 7. Teacher sets password → system creates `User` record, links to `Teacher`, sets `is_platform_user=true`
 8. Teacher now has full platform access
 
@@ -105,15 +105,18 @@ CREATE TABLE teacher_google_accounts (
 |----------|--------|-------------|
 | `/api/teacher/courses` | POST | Create a course manually |
 | `/api/teacher/courses/{id}/students` | POST | Add student to course by email |
+| `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course |
 | `/api/teacher/google-accounts` | GET | List linked Google accounts |
 | `/api/teacher/google-accounts` | POST | Link a new Google account (OAuth) |
 | `/api/teacher/google-accounts/{id}` | DELETE | Unlink a Google account |
 | `/api/courses/teaching` | GET | List all courses taught (existing) |
 
-### Auth Endpoints
+### Auth Endpoints (Unified Invite System)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/accept-teacher-invite` | POST | Shadow teacher accepts invite, sets password |
+| `/api/auth/accept-invite` | POST | Accept invite and set password (unified for student + teacher invites) |
+
+**Note:** Uses the shared `invites` table with `invite_type='teacher'`. The invite carries metadata (google_email, google_name) to link the shadow Teacher record on acceptance.
 
 ## Request/Response Schemas
 
@@ -141,14 +144,15 @@ class GoogleAccountResponse(BaseModel):
     created_at: datetime
 ```
 
-### AcceptTeacherInviteRequest
+### AcceptInviteRequest (unified)
 ```python
-class AcceptTeacherInviteRequest(BaseModel):
+class AcceptInviteRequest(BaseModel):
     token: str
     password: str
-    full_name: str
-    teacher_type: str = "school_teacher"  # school_teacher or private_tutor
+    full_name: Optional[str]              # required for teacher invites
+    teacher_type: Optional[str]           # only for teacher invites: school_teacher or private_tutor
 ```
+**Note:** The endpoint resolves `invite_type` from the `invites` table record. For teacher invites, `full_name` and `teacher_type` are required.
 
 ## Key Files
 
@@ -158,7 +162,7 @@ class AcceptTeacherInviteRequest(BaseModel):
 | `app/models/teacher.py` | Updated Teacher model with type, platform flag, invite fields |
 | `app/models/teacher_google_account.py` | TeacherGoogleAccount model (new) |
 | `app/api/routes/teacher.py` | Teacher endpoints (new): courses, Google accounts |
-| `app/api/routes/auth.py` | Accept teacher invite endpoint |
+| `app/api/routes/auth.py` | Unified accept-invite endpoint (handles both student + teacher) |
 | `app/schemas/teacher.py` | Teacher request/response schemas (new) |
 | `app/services/google_classroom.py` | Updated to support multi-account sync |
 
@@ -166,7 +170,7 @@ class AcceptTeacherInviteRequest(BaseModel):
 | File | Purpose |
 |------|---------|
 | `frontend/src/pages/TeacherDashboard.tsx` | Updated: course creation, Google account management |
-| `frontend/src/pages/AcceptTeacherInvite.tsx` | Invite acceptance page (new) |
+| `frontend/src/pages/AcceptInvite.tsx` | Unified invite acceptance page (handles student + teacher) |
 | `frontend/src/api/client.ts` | `teacherApi` methods (new) |
 
 ## Implementation Notes
