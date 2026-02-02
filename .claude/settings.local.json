@@ -21,7 +21,11 @@
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
       "Bash(gh issue edit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git push)",
+      "Bash(gh pr create:*)"
     ]
   }
 }
