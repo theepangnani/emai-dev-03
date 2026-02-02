@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AdminStats, AdminUserItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -9,7 +8,6 @@ import './AdminDashboard.css';
 const PAGE_SIZE = 10;
 
 export function AdminDashboard() {
-  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
