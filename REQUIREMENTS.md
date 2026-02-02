@@ -190,7 +190,74 @@ When a parent/student syncs Google Classroom and the course teacher is not on EM
 - `Teacher` model: user_id, school_name, department, teacher_type, is_platform_user, invite_token, invite_token_expires
 - `teacher_google_accounts` table: teacher_id, google_email, google_id, access_token, refresh_token, account_label, is_primary, created_at
 
-### 6.12 Task Manager & Calendar (Phase 1.5)
+### 6.12 Teacher Course Management & Google Classroom Sync (Phase 1)
+
+Teachers need to see and manage their courses. ClassBridge supports three course sources for teachers, enabling both school teachers and private tutors to manage all their courses in one place.
+
+#### Course Sources
+
+| Source | Description | Who Uses It |
+|--------|-------------|-------------|
+| **Google Classroom Sync** | Import courses from a connected Google Classroom account | School teachers, private tutors with Google Classroom |
+| **Manual Course Creation** | Create courses directly in EMAI without Google | Private tutors, teachers without Google Classroom |
+| **Multi-Account Sync** | Sync courses from multiple Google accounts (personal + school) | Private tutors who teach at a school AND independently |
+
+#### Google Classroom Sync for Teachers
+
+When a teacher syncs courses from Google Classroom:
+1. System fetches courses where the teacher is the **owner** (not just enrolled)
+2. Each synced course is linked to the teacher's `Teacher` record via `teacher_id`
+3. Assignments within those courses are also synced
+4. Courses already synced (matched by `google_classroom_id`) are updated, not duplicated
+5. Teacher can trigger a manual re-sync from their dashboard
+6. Background job periodically syncs new courses/assignments (Phase 1.5)
+
+#### Multi-Google Account Support (All Teachers)
+
+Any teacher may need multiple Google accounts:
+- **Private tutors**: Personal Google (e.g., `tutor@gmail.com`) for private tutoring courses + school Google (e.g., `tutor@school.edu`) for school courses
+- **School teachers**: School Google account + a second school account if they teach at multiple schools, or a personal account for side tutoring
+
+Each Google account may have different courses. ClassBridge supports linking multiple Google accounts:
+
+- `teacher_google_accounts` table stores credentials per Google account
+- Each account syncs its own courses independently
+- Courses from all accounts appear together on the Teacher Dashboard
+- Teacher can label accounts (e.g., "Personal", "Springfield High") for clarity
+- Each account has its own OAuth tokens (access + refresh)
+- One account is marked as primary (used for default operations)
+
+#### Teacher Dashboard Course View
+
+The Teacher Dashboard should show:
+- All courses where `teacher_id` matches the current teacher
+- Source badge: "Google Classroom" or "Manual" per course
+- "Sync Courses" button (syncs from connected Google account)
+- "Create Course" button (manual course creation)
+- Student count per course
+- Last synced timestamp
+
+#### Data Flow
+
+```
+Teacher connects Google → Clicks "Sync Courses"
+  → Backend fetches Google Classroom courses (teacherId filter)
+  → Creates/updates Course records with teacher_id set
+  → Returns synced course list
+  → Dashboard refreshes and shows courses
+```
+
+#### API Changes Required
+
+| Endpoint | Change |
+|----------|--------|
+| `POST /api/google/courses/sync` | Set `teacher_id` on synced courses when called by a teacher |
+| `POST /api/teacher/courses` | Manual course creation (already planned, sets `teacher_id`) |
+| `GET /api/courses/teaching` | Already works — queries by `teacher_id` |
+| `GET /api/teacher/google-accounts` | Future: list linked Google accounts |
+| `POST /api/teacher/google-accounts` | Future: link additional Google account |
+
+### 6.13 Task Manager & Calendar (Phase 1.5)
 
 A personal task/todo manager and visual calendar available to all EMAI users. Provides a unified view of what's due, with role-aware data sources and Google Calendar integration.
 
@@ -226,7 +293,7 @@ A personal task/todo manager and visual calendar available to all EMAI users. Pr
 - Assignment due dates queried from existing `assignments` table (not duplicated)
 - Parent calendar aggregates children's assignments via `parent_students` + `student_courses` + `assignments`
 
-### 6.13 AI Email Communication Agent (Phase 5)
+### 6.14 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -286,6 +353,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Manual course creation for teachers
 - [ ] Teacher type distinction (school_teacher vs private_tutor)
 - [ ] Unified invite system (shared invites table for student + teacher invites)
+- [ ] Teacher Google Classroom course sync (set teacher_id on synced courses)
 - [ ] Manual assignment creation for teachers
 - [ ] Deprecate POST /api/courses/ endpoint
 
@@ -296,6 +364,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Frontend Task Manager UI
 - [ ] Central document repository
 - [ ] Manual content upload with OCR (enhanced)
+- [ ] Background periodic Google Classroom course/assignment sync for teachers
 
 ### Phase 2
 - [ ] TeachAssist integration
@@ -472,6 +541,7 @@ Current feature issues are tracked in GitHub:
 - Issue #48: Unified invite system (shared invites table)
 - Issue #49: Manual assignment creation for teachers
 - Issue #51: Deprecate POST /api/courses/ endpoint
+- Issue #52: Teacher Google Classroom course sync (set teacher_id on synced courses)
 
 ### Phase 1.5 - Task Manager, Calendar & Content
 - Issue #44: Task/Todo CRUD API and model
@@ -480,6 +550,7 @@ Current feature issues are tracked in GitHub:
 - Issue #47: Frontend Task Manager UI
 - Issue #25: Manual Content Upload with OCR (enhanced)
 - Issue #28: Central Document Repository
+- Issue #53: Background periodic Google Classroom sync for teachers
 
 ### Phase 2
 - Issue #26: Performance Analytics Dashboard

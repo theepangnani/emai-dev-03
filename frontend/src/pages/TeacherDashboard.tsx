@@ -17,6 +17,7 @@ export function TeacherDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -46,6 +47,20 @@ export function TeacherDashboard() {
       window.location.href = authorization_url;
     } catch {
       // Failed to connect
+    }
+  };
+
+  const handleSyncCourses = async () => {
+    setSyncing(true);
+    try {
+      await googleApi.syncCourses();
+      // Reload courses after sync
+      const coursesData = await coursesApi.teachingList();
+      setCourses(coursesData);
+    } catch {
+      // Sync failed
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -85,9 +100,13 @@ export function TeacherDashboard() {
           <div className="card-icon">🔗</div>
           <h3>Google Classroom</h3>
           <p className="card-value">{googleConnected ? 'Connected' : 'Not Connected'}</p>
-          {!googleConnected && (
+          {!googleConnected ? (
             <button className="connect-button" onClick={handleConnectGoogle}>
               Connect
+            </button>
+          ) : (
+            <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
+              {syncing ? 'Syncing...' : 'Sync Courses'}
             </button>
           )}
         </div>
@@ -116,9 +135,14 @@ export function TeacherDashboard() {
               <p>No courses assigned yet</p>
               <small>
                 {googleConnected
-                  ? 'Courses will appear here once synced from Google Classroom'
+                  ? 'Click "Sync Courses" above to import your Google Classroom courses'
                   : 'Connect Google Classroom to sync your courses'}
               </small>
+              {googleConnected && (
+                <button className="connect-button" onClick={handleSyncCourses} disabled={syncing} style={{ marginTop: '12px' }}>
+                  {syncing ? 'Syncing...' : 'Sync Courses'}
+                </button>
+              )}
             </div>
           )}
         </section>

@@ -9,7 +9,7 @@ EMAI implements role-based access control (RBAC) with four roles: Student, Paren
 `Dashboard.tsx` is a thin dispatcher that routes to role-specific dashboard components based on `user.role`:
 - `StudentDashboard` (default) - courses, assignments, study tools, Google Classroom
 - `ParentDashboard` - linked children, child progress monitoring, link child by email
-- `TeacherDashboard` - courses teaching, manual course creation, multi-Google accounts, messages, communications
+- `TeacherDashboard` - courses teaching, Google Classroom sync button, manual course creation, multi-Google accounts, messages, communications
 - `AdminDashboard` - platform stats, user management table with search/filter/pagination
 
 ### Shared Layout
@@ -46,7 +46,9 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 | `app/schemas/parent.py` | LinkChildRequest, ChildSummary, ChildOverview |
 | `app/schemas/admin.py` | AdminUserList, AdminStats |
 | `app/models/user.py` | UserRole enum (STUDENT, PARENT, TEACHER, ADMIN) |
-| `app/models/student.py` | Student model + `parent_students` join table (many-to-many) |
+| `app/models/student.py` | Student model + `parent_students` join table + `RelationshipType` enum |
+| `app/models/invite.py` | Unified invite model for student + teacher invitations |
+| `app/models/teacher.py` | Teacher model with `TeacherType` enum |
 
 ### Frontend
 | File | Purpose |
@@ -58,7 +60,8 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 | `frontend/src/pages/TeacherDashboard.tsx` | Teacher view with courses, manual creation, Google accounts, communications |
 | `frontend/src/pages/AdminDashboard.tsx` | Admin view with stats, user management |
 | `frontend/src/components/ProtectedRoute.tsx` | Route guard with optional allowedRoles |
-| `frontend/src/api/client.ts` | parentApi, adminApi, coursesApi.teachingList |
+| `frontend/src/pages/AcceptInvite.tsx` | Unified invite acceptance page |
+| `frontend/src/api/client.ts` | parentApi, adminApi, invitesApi, coursesApi.teachingList |
 
 ## API Endpoints
 
@@ -69,7 +72,11 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 - `POST /api/parent/children/discover-google` - Discover students via Google Classroom
 - `POST /api/parent/children/link-bulk` - Bulk link discovered students
 - `GET /api/parent/children/{student_id}/overview` - Child's courses, assignments, study guide count
+- `POST /api/invites/` - Create student or teacher invite
+- `GET /api/invites/sent` - List invites sent by current user
+- `POST /api/auth/accept-invite` - Accept invite and create account (public)
 - See `.claude/skills/parent-student.md` for full parent-student relationship details
+- See `.claude/skills/unified-invites.md` for the unified invite system
 
 ### Admin Endpoints (admin role only)
 - `GET /api/admin/users?role=&search=&skip=&limit=` - Paginated user list
@@ -77,11 +84,13 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 
 ### Teacher Endpoints (teacher role only)
 - `GET /api/courses/teaching` - Courses where current user is the teacher
-- `POST /api/teacher/courses` - Create a course manually
-- `POST /api/teacher/courses/{id}/students` - Add student to course
-- `GET /api/teacher/google-accounts` - List linked Google accounts
-- `POST /api/teacher/google-accounts` - Link a new Google account
-- `DELETE /api/teacher/google-accounts/{id}` - Unlink a Google account
+- `POST /api/google/courses/sync` - Sync Google Classroom courses (sets `teacher_id`) (Issue #52)
+- `POST /api/teacher/courses` - Create a course manually (Issue #42, future)
+- `POST /api/teacher/courses/{id}/students` - Add student to course (future)
+- `POST /api/teacher/courses/{id}/assignments` - Create assignment (Issue #49, future)
+- `GET /api/teacher/google-accounts` - List linked Google accounts (Issue #41, future)
+- `POST /api/teacher/google-accounts` - Link a new Google account (future)
+- `DELETE /api/teacher/google-accounts/{id}` - Unlink a Google account (future)
 - See `.claude/skills/teacher-platform.md` for full teacher platform details
 
 ## Parent-Student Relationship

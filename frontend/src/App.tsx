@@ -10,6 +10,7 @@ import { QuizPage } from './pages/QuizPage';
 import { FlashcardsPage } from './pages/FlashcardsPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { TeacherCommsPage } from './pages/TeacherCommsPage';
+import { AcceptInvite } from './pages/AcceptInvite';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/accept-invite" element={<AcceptInvite />} />
             <Route
               path="/dashboard"
               element={

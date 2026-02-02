@@ -8,6 +8,7 @@ from app.schemas.assignment import AssignmentResponse
 
 class LinkChildRequest(BaseModel):
     student_email: str
+    relationship_type: str = "guardian"
 
 
 class ChildSummary(BaseModel):
@@ -16,6 +17,7 @@ class ChildSummary(BaseModel):
     full_name: str
     grade_level: Optional[int]
     school_name: Optional[str]
+    relationship_type: str | None = None
 
     class Config:
         from_attributes = True
@@ -37,6 +39,7 @@ class DiscoverChildrenResponse(BaseModel):
 
 class LinkChildrenBulkRequest(BaseModel):
     user_ids: list[int]
+    relationship_type: str = "guardian"
 
 
 class ChildOverview(BaseModel):

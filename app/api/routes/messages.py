@@ -6,7 +6,7 @@ from sqlalchemy import or_, and_, desc
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
-from app.models.student import Student
+from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
 from app.models.message import Conversation, Message
@@ -89,7 +89,10 @@ def get_valid_recipients(
     if current_user.role == UserRole.PARENT:
         # Parent can message teachers of their children's courses
         children = (
-            db.query(Student).filter(Student.parent_id == current_user.id).all()
+            db.query(Student)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
         )
 
         if not children:
@@ -151,38 +154,44 @@ def get_valid_recipients(
             logger.warning(f"No teacher profile for user {current_user.id}")
             return []
 
-        # Get students in teacher's courses who have parents
-        students = (
+        # Get students in teacher's courses who have parents linked via join table
+        students_in_courses = (
             db.query(Student)
             .join(student_courses, student_courses.c.student_id == Student.id)
             .join(Course, Course.id == student_courses.c.course_id)
             .filter(Course.teacher_id == teacher.id)
-            .filter(Student.parent_id.isnot(None))
             .distinct()
             .all()
         )
 
-        # Group students by parent
-        parent_students: dict[int, list[str]] = {}
-        for student in students:
+        # Group students by parent using parent_students join table
+        parent_student_map: dict[int, list[str]] = {}
+        for student in students_in_courses:
             student_user = db.query(User).filter(User.id == student.user_id).first()
             student_name = student_user.full_name if student_user else "Unknown"
 
-            if student.parent_id not in parent_students:
-                parent_students[student.parent_id] = []
-            parent_students[student.parent_id].append(student_name)
+            # Find all parents for this student
+            links = (
+                db.query(parent_students.c.parent_id)
+                .filter(parent_students.c.student_id == student.id)
+                .all()
+            )
+            for (pid,) in links:
+                if pid not in parent_student_map:
+                    parent_student_map[pid] = []
+                parent_student_map[pid].append(student_name)
 
         # Get parent users
-        parents = db.query(User).filter(User.id.in_(parent_students.keys())).all()
+        parents = db.query(User).filter(User.id.in_(parent_student_map.keys())).all()
 
         result = [
             RecipientOption(
-                user_id=parent.id,
-                full_name=parent.full_name,
-                role=parent.role.value,
-                student_names=parent_students[parent.id],
+                user_id=p.id,
+                full_name=p.full_name,
+                role=p.role.value,
+                student_names=parent_student_map[p.id],
             )
-            for parent in parents
+            for p in parents
         ]
 
         logger.info(f"Found {len(result)} valid recipients for teacher {current_user.id}")

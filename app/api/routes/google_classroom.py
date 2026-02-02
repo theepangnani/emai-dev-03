@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.course import Course
 from app.models.assignment import Assignment
+from app.models.teacher import Teacher
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.security import create_access_token
@@ -91,27 +92,23 @@ def google_callback(
             user.google_id = user_info["id"]
             user.google_access_token = tokens["access_token"]
             user.google_refresh_token = tokens.get("refresh_token")
+            db.commit()
+            db.refresh(user)
+
+            # Create access token for our app
+            access_token = create_access_token(data={"sub": str(user.id)})
+            params = urlencode({"token": access_token})
+            return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
         else:
-            # Create new user
-            user = User(
-                email=user_info["email"],
-                full_name=user_info.get("name", user_info["email"]),
-                role=UserRole.STUDENT,
-                google_id=user_info["id"],
-                google_access_token=tokens["access_token"],
-                google_refresh_token=tokens.get("refresh_token"),
-            )
-            db.add(user)
-
-        db.commit()
-        db.refresh(user)
-
-        # Create access token for our app
-        access_token = create_access_token(data={"sub": str(user.id)})
-
-        # Redirect to frontend with token
-        params = urlencode({"token": access_token})
-        return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
+            # No account yet — redirect to register with Google info pre-filled
+            params = urlencode({
+                "google_email": user_info["email"],
+                "google_name": user_info.get("name", ""),
+                "google_id": user_info["id"],
+                "google_access_token": tokens["access_token"],
+                "google_refresh_token": tokens.get("refresh_token", ""),
+            })
+            return RedirectResponse(url=f"{settings.frontend_url}/register?{params}")
 
     except Exception as e:
         params = urlencode({"error": str(e)})
@@ -184,6 +181,11 @@ def sync_google_courses(
     # Update tokens if refreshed
     update_user_tokens(current_user, credentials, db)
 
+    # If the user is a teacher, look up their Teacher record to link courses
+    teacher = None
+    if current_user.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+
     synced_courses = []
     for gc in google_courses:
         # Check if course already exists
@@ -195,6 +197,9 @@ def sync_google_courses(
             # Update existing course
             existing.name = gc.get("name", existing.name)
             existing.description = gc.get("description")
+            # Link to teacher if not already linked
+            if teacher and not existing.teacher_id:
+                existing.teacher_id = teacher.id
             synced_courses.append(existing)
         else:
             # Create new course
@@ -203,6 +208,7 @@ def sync_google_courses(
                 description=gc.get("description"),
                 subject=gc.get("section"),
                 google_classroom_id=gc["id"],
+                teacher_id=teacher.id if teacher else None,
             )
             db.add(course)
             synced_courses.append(course)

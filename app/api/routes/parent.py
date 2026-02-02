@@ -1,10 +1,11 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import insert
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
-from app.models.student import Student
+from app.models.student import Student, parent_students, RelationshipType
 from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
 from app.models.study_guide import StudyGuide
@@ -28,14 +29,15 @@ def list_children(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """List all children linked to the current parent."""
-    students = (
-        db.query(Student)
-        .filter(Student.parent_id == current_user.id)
+    rows = (
+        db.query(Student, parent_students.c.relationship_type)
+        .join(parent_students, parent_students.c.student_id == Student.id)
+        .filter(parent_students.c.parent_id == current_user.id)
         .all()
     )
 
     result = []
-    for student in students:
+    for student, rel_type in rows:
         user = student.user
         result.append(ChildSummary(
             student_id=student.id,
@@ -43,6 +45,7 @@ def list_children(
             full_name=user.full_name if user else "Unknown",
             grade_level=student.grade_level,
             school_name=student.school_name,
+            relationship_type=rel_type.value if rel_type else None,
         ))
 
     return result
@@ -72,16 +75,27 @@ def link_child(
         db.flush()
 
     # Check if already linked to this parent
-    if student.parent_id == current_user.id:
+    existing_link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student.id,
+        )
+        .first()
+    )
+    if existing_link:
         raise HTTPException(status_code=400, detail="This student is already linked to your account")
 
-    # Check if linked to another parent
-    if student.parent_id is not None:
-        raise HTTPException(status_code=400, detail="This student is already linked to another parent")
-
-    student.parent_id = current_user.id
+    # Insert into join table
+    rel_type = RelationshipType(request.relationship_type)
+    db.execute(
+        insert(parent_students).values(
+            parent_id=current_user.id,
+            student_id=student.id,
+            relationship_type=rel_type,
+        )
+    )
     db.commit()
-    db.refresh(student)
 
     return ChildSummary(
         student_id=student.id,
@@ -89,6 +103,7 @@ def link_child(
         full_name=student_user.full_name,
         grade_level=student.grade_level,
         school_name=student.school_name,
+        relationship_type=rel_type.value,
     )
 
 
@@ -153,8 +168,16 @@ def discover_children_google(
     for user in matched_users:
         student = db.query(Student).filter(Student.user_id == user.id).first()
         already_linked = False
-        if student and student.parent_id is not None:
-            already_linked = True
+        if student:
+            existing_link = (
+                db.query(parent_students)
+                .filter(
+                    parent_students.c.parent_id == current_user.id,
+                    parent_students.c.student_id == student.id,
+                )
+                .first()
+            )
+            already_linked = existing_link is not None
 
         discovered.append(DiscoveredChild(
             user_id=user.id,
@@ -178,6 +201,7 @@ def link_children_bulk(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Link multiple students to the current parent."""
+    rel_type = RelationshipType(request.relationship_type)
     linked = []
     for user_id in request.user_ids:
         student_user = (
@@ -194,10 +218,25 @@ def link_children_bulk(
             db.add(student)
             db.flush()
 
-        if student.parent_id is not None:
+        # Skip if already linked
+        existing_link = (
+            db.query(parent_students)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                parent_students.c.student_id == student.id,
+            )
+            .first()
+        )
+        if existing_link:
             continue
 
-        student.parent_id = current_user.id
+        db.execute(
+            insert(parent_students).values(
+                parent_id=current_user.id,
+                student_id=student.id,
+                relationship_type=rel_type,
+            )
+        )
         db.flush()
 
         linked.append(ChildSummary(
@@ -206,6 +245,7 @@ def link_children_bulk(
             full_name=student_user.full_name,
             grade_level=student.grade_level,
             school_name=student.school_name,
+            relationship_type=rel_type.value,
         ))
 
     db.commit()
@@ -219,13 +259,21 @@ def get_child_overview(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Get detailed overview of a linked child's courses, assignments, and study materials."""
-    student = (
-        db.query(Student)
-        .filter(Student.id == student_id, Student.parent_id == current_user.id)
+    # Verify parent-student link exists
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
         .first()
     )
-    if not student:
+    if not link:
         raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
 
     # Get child's courses via student_courses join table
     courses = (

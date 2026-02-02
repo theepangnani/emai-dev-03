@@ -2,17 +2,12 @@ from pydantic import BaseModel
 from datetime import datetime
 
 
-class StudentCreate(BaseModel):
-    user_id: int
-    grade_level: int | None = None
-    school_name: str | None = None
-
-
-class StudentResponse(BaseModel):
+class TeacherResponse(BaseModel):
     id: int
     user_id: int
-    grade_level: int | None
     school_name: str | None
+    department: str | None
+    teacher_type: str | None
     created_at: datetime
 
     class Config:

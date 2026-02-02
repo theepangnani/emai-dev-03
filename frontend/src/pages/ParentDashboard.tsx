@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { parentApi, googleApi } from '../api/client';
+import { parentApi, googleApi, invitesApi } from '../api/client';
 import type { ChildSummary, ChildOverview, DiscoveredChild } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import './ParentDashboard.css';
@@ -21,8 +21,17 @@ export function ParentDashboard() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkTab, setLinkTab] = useState<LinkTab>('email');
   const [linkEmail, setLinkEmail] = useState('');
+  const [linkRelationship, setLinkRelationship] = useState('guardian');
   const [linkError, setLinkError] = useState('');
   const [linkLoading, setLinkLoading] = useState(false);
+
+  // Invite student modal state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRelationship, setInviteRelationship] = useState('guardian');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState('');
 
   // Google discovery state
   const [discoveryState, setDiscoveryState] = useState<DiscoveryState>('idle');
@@ -100,7 +109,7 @@ export function ParentDashboard() {
     setLinkError('');
     setLinkLoading(true);
     try {
-      await parentApi.linkChild(linkEmail.trim());
+      await parentApi.linkChild(linkEmail.trim(), linkRelationship);
       closeLinkModal();
       await loadChildren();
     } catch (err: any) {
@@ -108,6 +117,34 @@ export function ParentDashboard() {
     } finally {
       setLinkLoading(false);
     }
+  };
+
+  const handleInviteStudent = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviteError('');
+    setInviteSuccess('');
+    setInviteLoading(true);
+    try {
+      await invitesApi.create({
+        email: inviteEmail.trim(),
+        invite_type: 'student',
+        metadata: { relationship_type: inviteRelationship },
+      });
+      setInviteSuccess(`Invite sent to ${inviteEmail.trim()}`);
+      setInviteEmail('');
+    } catch (err: any) {
+      setInviteError(err.response?.data?.detail || 'Failed to send invite');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const closeInviteModal = () => {
+    setShowInviteModal(false);
+    setInviteEmail('');
+    setInviteRelationship('guardian');
+    setInviteError('');
+    setInviteSuccess('');
   };
 
   const handleConnectGoogle = async () => {
@@ -178,6 +215,7 @@ export function ParentDashboard() {
     setShowLinkModal(false);
     setLinkTab('email');
     setLinkEmail('');
+    setLinkRelationship('guardian');
     setLinkError('');
     setDiscoveryState('idle');
     setDiscoveredChildren([]);
@@ -236,12 +274,18 @@ export function ParentDashboard() {
           <button className="link-child-btn" onClick={() => setShowLinkModal(true)}>
             + Link Child
           </button>
+          <button className="link-child-btn" onClick={() => setShowInviteModal(true)} style={{ marginTop: 8 }}>
+            + Invite Student
+          </button>
         </div>
       ) : (
         <>
           <div className="link-child-header">
             <button className="link-child-btn-small" onClick={() => setShowLinkModal(true)}>
               + Link Another Child
+            </button>
+            <button className="link-child-btn-small" onClick={() => setShowInviteModal(true)}>
+              + Invite Student
             </button>
           </div>
 
@@ -254,6 +298,9 @@ export function ParentDashboard() {
                   onClick={() => setSelectedChild(child.student_id)}
                 >
                   {child.full_name}
+                  {child.relationship_type && (
+                    <span className="relationship-badge">{child.relationship_type}</span>
+                  )}
                   {child.grade_level && <span className="grade-badge">Grade {child.grade_level}</span>}
                 </button>
               ))}
@@ -357,6 +404,19 @@ export function ParentDashboard() {
                       disabled={linkLoading}
                       onKeyDown={(e) => e.key === 'Enter' && handleLinkChild()}
                     />
+                  </label>
+                  <label>
+                    Relationship
+                    <select
+                      value={linkRelationship}
+                      onChange={(e) => setLinkRelationship(e.target.value)}
+                      disabled={linkLoading}
+                    >
+                      <option value="mother">Mother</option>
+                      <option value="father">Father</option>
+                      <option value="guardian">Guardian</option>
+                      <option value="other">Other</option>
+                    </select>
                   </label>
                   {linkError && <p className="link-error">{linkError}</p>}
                 </div>
@@ -470,6 +530,53 @@ export function ParentDashboard() {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+      {/* Invite Student Modal */}
+      {showInviteModal && (
+        <div className="modal-overlay" onClick={closeInviteModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Invite Student</h2>
+            <p className="modal-desc">
+              Send an email invite to create a new student account linked to yours.
+            </p>
+            <div className="modal-form">
+              <label>
+                Student Email
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => { setInviteEmail(e.target.value); setInviteError(''); setInviteSuccess(''); }}
+                  placeholder="child@example.com"
+                  disabled={inviteLoading}
+                  onKeyDown={(e) => e.key === 'Enter' && handleInviteStudent()}
+                />
+              </label>
+              <label>
+                Relationship
+                <select
+                  value={inviteRelationship}
+                  onChange={(e) => setInviteRelationship(e.target.value)}
+                  disabled={inviteLoading}
+                >
+                  <option value="mother">Mother</option>
+                  <option value="father">Father</option>
+                  <option value="guardian">Guardian</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              {inviteError && <p className="link-error">{inviteError}</p>}
+              {inviteSuccess && <p className="link-success">{inviteSuccess}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeInviteModal} disabled={inviteLoading}>
+                Close
+              </button>
+              <button className="generate-btn" onClick={handleInviteStudent} disabled={inviteLoading || !inviteEmail.trim()}>
+                {inviteLoading ? 'Sending...' : 'Send Invite'}
+              </button>
+            </div>
           </div>
         </div>
       )}

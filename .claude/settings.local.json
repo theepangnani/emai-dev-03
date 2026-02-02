@@ -6,7 +6,22 @@
       "Bash(npm run dev:*)",
       "Bash(timeout:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(gh issue create:*)",
+      "Bash(python3:*)",
+      "Bash(/c/Python314/python:*)",
+      "Bash(python:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(pip install:*)",
+      "Bash(__NEW_LINE_73b439834da4e3e9__ echo \"=== TEST 2: Register as student \\(auto-creates Student\\) ===\")",
+      "Bash(__NEW_LINE_73b439834da4e3e9__ echo \"=== TEST 3: Register as parent ===\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(git add:*)"
     ]
   }
 }

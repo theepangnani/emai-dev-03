@@ -23,8 +23,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Don't redirect on auth endpoints — let the login/register pages handle their own errors
+      const url = error.config?.url || '';
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/accept-invite');
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -43,7 +48,7 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (data: { email: string; password: string; full_name: string; role: string }) => {
+  register: async (data: { email: string; password: string; full_name: string; role: string; teacher_type?: string; google_id?: string; google_access_token?: string; google_refresh_token?: string }) => {
     const response = await api.post('/api/auth/register', data);
     return response.data;
   },
@@ -51,6 +56,11 @@ export const authApi = {
   getMe: async () => {
     const response = await api.get('/api/users/me');
     return response.data;
+  },
+
+  acceptInvite: async (token: string, password: string, full_name: string) => {
+    const response = await api.post('/api/auth/accept-invite', { token, password, full_name });
+    return response.data as { access_token: string; token_type: string };
   },
 };
 
@@ -475,6 +485,7 @@ export interface ChildSummary {
   full_name: string;
   grade_level: number | null;
   school_name: string | null;
+  relationship_type: string | null;
 }
 
 export interface ChildOverview {
@@ -513,8 +524,11 @@ export const parentApi = {
     return response.data as ChildOverview;
   },
 
-  linkChild: async (studentEmail: string) => {
-    const response = await api.post('/api/parent/children/link', { student_email: studentEmail });
+  linkChild: async (studentEmail: string, relationshipType: string = 'guardian') => {
+    const response = await api.post('/api/parent/children/link', {
+      student_email: studentEmail,
+      relationship_type: relationshipType,
+    });
     return response.data as ChildSummary;
   },
 
@@ -523,9 +537,38 @@ export const parentApi = {
     return response.data as DiscoverChildrenResponse;
   },
 
-  linkChildrenBulk: async (userIds: number[]) => {
-    const response = await api.post('/api/parent/children/link-bulk', { user_ids: userIds });
+  linkChildrenBulk: async (userIds: number[], relationshipType: string = 'guardian') => {
+    const response = await api.post('/api/parent/children/link-bulk', {
+      user_ids: userIds,
+      relationship_type: relationshipType,
+    });
     return response.data as ChildSummary[];
+  },
+};
+
+// Invite Types
+export interface InviteResponse {
+  id: number;
+  email: string;
+  invite_type: string;
+  token: string;
+  expires_at: string;
+  invited_by_user_id: number;
+  metadata_json: Record<string, any> | null;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+// Invites API
+export const invitesApi = {
+  create: async (data: { email: string; invite_type: string; metadata?: Record<string, any> }) => {
+    const response = await api.post('/api/invites/', data);
+    return response.data as InviteResponse;
+  },
+
+  listSent: async () => {
+    const response = await api.get('/api/invites/sent');
+    return response.data as InviteResponse[];
   },
 };
 

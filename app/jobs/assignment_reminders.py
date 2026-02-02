@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.assignment import Assignment
 from app.models.course import Course, student_courses
-from app.models.student import Student
+from app.models.student import Student, parent_students
 from app.models.user import User
 from app.models.notification import Notification, NotificationType
 from app.services.email_service import send_email
@@ -38,29 +38,31 @@ def _render_template(template: str, **kwargs) -> str:
 async def check_assignment_reminders():
     """Check for upcoming assignments and send reminders.
 
-    Runs daily. For each student-parent pair, checks if any assignments
-    are due in the user's configured reminder days (default: 1, 3 days).
-    Creates in-app notifications and sends emails if enabled.
+    Runs daily. For each student-parent pair (via parent_students join table),
+    checks if any assignments are due in the user's configured reminder days
+    (default: 1, 3 days). Creates in-app notifications and sends emails if enabled.
     """
     logger.info("Running assignment reminder check...")
 
     db: Session = SessionLocal()
     try:
-        # Get all students with parents
-        students_with_parents = (
-            db.query(Student)
-            .filter(Student.parent_id.isnot(None))
-            .all()
-        )
+        # Get all parent-student links
+        links = db.query(parent_students).all()
 
         template = _load_template("assignment_reminder.html")
         notifications_created = 0
         emails_sent = 0
 
-        for student in students_with_parents:
-            # Get parent and their preferences
-            parent = db.query(User).filter(User.id == student.parent_id).first()
+        for link in links:
+            parent_id = link.parent_id
+            student_id = link.student_id
+
+            parent = db.query(User).filter(User.id == parent_id).first()
             if not parent or not parent.is_active:
+                continue
+
+            student = db.query(Student).filter(Student.id == student_id).first()
+            if not student:
                 continue
 
             reminder_days_str = parent.assignment_reminder_days or "1,3"

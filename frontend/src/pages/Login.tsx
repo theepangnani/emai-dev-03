@@ -38,9 +38,14 @@ export function Login() {
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
-      setError(errorMessage);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      const showDetails = import.meta.env.VITE_SHOW_ERROR_DETAILS !== 'false';
+      if (detail && showDetails) {
+        setError(detail);
+      } else {
+        setError('Login failed. Please check your credentials.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,8 +1,15 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+import enum
+
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.database import Base
+
+
+class TeacherType(str, enum.Enum):
+    SCHOOL_TEACHER = "school_teacher"
+    PRIVATE_TUTOR = "private_tutor"
 
 
 class Teacher(Base):
@@ -12,6 +19,7 @@ class Teacher(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     school_name = Column(String(255), nullable=True)
     department = Column(String(255), nullable=True)
+    teacher_type = Column(Enum(TeacherType), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
