@@ -179,6 +179,29 @@ def list_course_students(
     return students, credentials
 
 
+def list_course_teachers(
+    access_token: str,
+    course_id: str,
+    refresh_token: str | None = None,
+) -> tuple[list[dict], Credentials]:
+    """List teachers for a Google Classroom course."""
+    service, credentials = get_classroom_service(access_token, refresh_token)
+    teachers = []
+    try:
+        page_token = None
+        while True:
+            response = service.courses().teachers().list(
+                courseId=course_id, pageToken=page_token
+            ).execute()
+            teachers.extend(response.get("teachers", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception:
+        pass
+    return teachers, credentials
+
+
 def get_student_submissions(
     access_token: str,
     course_id: str,

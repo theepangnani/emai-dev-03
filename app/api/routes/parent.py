@@ -17,6 +17,7 @@ from app.schemas.parent import (
 from app.schemas.course import CourseResponse
 from app.schemas.assignment import AssignmentResponse
 from app.services.google_classroom import list_courses, list_course_students
+from app.api.routes.google_classroom import _sync_courses_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -301,13 +302,76 @@ def get_child_overview(
         .count()
     )
 
+    # Build courses with teacher info
+    from app.models.teacher import Teacher as TeacherModel
+    courses_with_teachers = []
+    for course in courses:
+        teacher_name = None
+        teacher_email = None
+        if course.teacher_id:
+            teacher = db.query(TeacherModel).filter(TeacherModel.id == course.teacher_id).first()
+            if teacher:
+                if teacher.is_shadow:
+                    teacher_name = teacher.full_name
+                    teacher_email = teacher.google_email
+                elif teacher.user:
+                    teacher_name = teacher.user.full_name
+                    teacher_email = teacher.user.email
+        courses_with_teachers.append({
+            "id": course.id,
+            "name": course.name,
+            "description": course.description,
+            "subject": course.subject,
+            "google_classroom_id": course.google_classroom_id,
+            "teacher_id": course.teacher_id,
+            "created_at": course.created_at,
+            "teacher_name": teacher_name,
+            "teacher_email": teacher_email,
+        })
+
     user = student.user
+    google_connected = bool(user.google_access_token) if user else False
     return ChildOverview(
         student_id=student.id,
         user_id=student.user_id,
         full_name=user.full_name if user else "Unknown",
         grade_level=student.grade_level,
-        courses=courses,
+        google_connected=google_connected,
+        courses=courses_with_teachers,
         assignments=assignments,
         study_guides_count=study_guides_count,
     )
+
+
+@router.post("/children/{student_id}/sync-courses")
+def sync_child_courses(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Trigger course sync for a linked child using the child's Google tokens."""
+    # Verify parent-student link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    child_user = student.user
+    if not child_user or not child_user.google_access_token:
+        raise HTTPException(status_code=400, detail="Child has not connected Google Classroom yet")
+
+    synced = _sync_courses_for_user(child_user, db)
+    return {
+        "message": f"Synced {len(synced)} courses for {child_user.full_name}",
+        "courses": synced,
+    }

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -5,8 +7,9 @@ from urllib.parse import urlencode
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
-from app.models.course import Course
+from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
+from app.models.student import Student
 from app.models.teacher import Teacher
 from app.api.deps import get_current_user
 from app.core.config import settings
@@ -17,7 +20,10 @@ from app.services.google_classroom import (
     get_user_info,
     list_courses,
     get_course_work,
+    list_course_teachers,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/google", tags=["Google Classroom"])
 
@@ -160,6 +166,137 @@ def get_google_courses(
     return {"courses": courses}
 
 
+def _resolve_teacher_for_course(
+    google_course_id: str,
+    user: User,
+    db: Session,
+) -> Teacher | None:
+    """Fetch teachers from Google Classroom and resolve/create a Teacher record."""
+    try:
+        google_teachers, credentials = list_course_teachers(
+            user.google_access_token,
+            google_course_id,
+            user.google_refresh_token,
+        )
+        update_user_tokens(user, credentials, db)
+    except Exception as e:
+        logger.warning(f"Failed to list teachers for course {google_course_id}: {e}")
+        return None
+
+    if not google_teachers:
+        return None
+
+    # Use the first teacher (primary/owner)
+    gt = google_teachers[0]
+    profile = gt.get("profile", {})
+    name_obj = profile.get("name", {})
+    email = profile.get("emailAddress", "").lower()
+    full_name = name_obj.get("fullName", "")
+
+    if not email:
+        return None
+
+    # Try to match by google_email on Teacher
+    teacher = db.query(Teacher).filter(Teacher.google_email == email).first()
+    if teacher:
+        return teacher
+
+    # Try to match by email on User (registered teacher)
+    teacher_user = (
+        db.query(User)
+        .filter(User.email == email, User.role == UserRole.TEACHER)
+        .first()
+    )
+    if teacher_user:
+        teacher = db.query(Teacher).filter(Teacher.user_id == teacher_user.id).first()
+        if teacher:
+            teacher.google_email = email
+            return teacher
+
+    # Create shadow teacher
+    teacher = Teacher(
+        is_shadow=True,
+        user_id=None,
+        full_name=full_name,
+        google_email=email,
+    )
+    db.add(teacher)
+    db.flush()
+    return teacher
+
+
+def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
+    """Shared course sync logic. Returns list of synced course dicts."""
+    google_courses, credentials = list_courses(
+        user.google_access_token,
+        user.google_refresh_token,
+    )
+    update_user_tokens(user, credentials, db)
+
+    # Determine if this user is a teacher
+    teacher = None
+    if user.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+
+    # Determine if this user is a student
+    student = None
+    if user.role == UserRole.STUDENT:
+        student = db.query(Student).filter(Student.user_id == user.id).first()
+
+    synced_courses = []
+    for gc in google_courses:
+        existing = db.query(Course).filter(
+            Course.google_classroom_id == gc["id"]
+        ).first()
+
+        if existing:
+            existing.name = gc.get("name", existing.name)
+            existing.description = gc.get("description")
+            if teacher and not existing.teacher_id:
+                existing.teacher_id = teacher.id
+            course = existing
+        else:
+            course = Course(
+                name=gc.get("name", "Untitled Course"),
+                description=gc.get("description"),
+                subject=gc.get("section"),
+                google_classroom_id=gc["id"],
+                teacher_id=teacher.id if teacher else None,
+            )
+            db.add(course)
+            db.flush()
+
+        # Resolve teacher from Google if course has no teacher
+        if not course.teacher_id:
+            resolved_teacher = _resolve_teacher_for_course(gc["id"], user, db)
+            if resolved_teacher:
+                course.teacher_id = resolved_teacher.id
+
+        # Link student to course
+        if student:
+            existing_link = (
+                db.query(student_courses)
+                .filter(
+                    student_courses.c.student_id == student.id,
+                    student_courses.c.course_id == course.id,
+                )
+                .first()
+            )
+            if not existing_link:
+                db.execute(
+                    student_courses.insert().values(
+                        student_id=student.id,
+                        course_id=course.id,
+                    )
+                )
+
+        synced_courses.append(course)
+
+    db.commit()
+
+    return [{"id": c.id, "name": c.name, "google_id": c.google_classroom_id} for c in synced_courses]
+
+
 @router.post("/courses/sync")
 def sync_google_courses(
     current_user: User = Depends(get_current_user),
@@ -172,52 +309,11 @@ def sync_google_courses(
             detail="User not connected to Google Classroom",
         )
 
-    # Fetch courses from Google
-    google_courses, credentials = list_courses(
-        current_user.google_access_token,
-        current_user.google_refresh_token,
-    )
-
-    # Update tokens if refreshed
-    update_user_tokens(current_user, credentials, db)
-
-    # If the user is a teacher, look up their Teacher record to link courses
-    teacher = None
-    if current_user.role == UserRole.TEACHER:
-        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
-
-    synced_courses = []
-    for gc in google_courses:
-        # Check if course already exists
-        existing = db.query(Course).filter(
-            Course.google_classroom_id == gc["id"]
-        ).first()
-
-        if existing:
-            # Update existing course
-            existing.name = gc.get("name", existing.name)
-            existing.description = gc.get("description")
-            # Link to teacher if not already linked
-            if teacher and not existing.teacher_id:
-                existing.teacher_id = teacher.id
-            synced_courses.append(existing)
-        else:
-            # Create new course
-            course = Course(
-                name=gc.get("name", "Untitled Course"),
-                description=gc.get("description"),
-                subject=gc.get("section"),
-                google_classroom_id=gc["id"],
-                teacher_id=teacher.id if teacher else None,
-            )
-            db.add(course)
-            synced_courses.append(course)
-
-    db.commit()
+    synced = _sync_courses_for_user(current_user, db)
 
     return {
-        "message": f"Synced {len(synced_courses)} courses",
-        "courses": [{"id": c.id, "name": c.name, "google_id": c.google_classroom_id} for c in synced_courses],
+        "message": f"Synced {len(synced)} courses",
+        "courses": synced,
     }
 
 

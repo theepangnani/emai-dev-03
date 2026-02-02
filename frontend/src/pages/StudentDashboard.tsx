@@ -48,6 +48,8 @@ export function StudentDashboard() {
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const justRegistered = searchParams.get('just_registered') === 'true';
+
   useEffect(() => {
     const checkGoogleStatus = async () => {
       try {
@@ -64,7 +66,16 @@ export function StudentDashboard() {
     if (connected === 'true') {
       setGoogleConnected(true);
       setStatusMessage({ type: 'success', text: 'Google Classroom connected successfully!' });
-      setSearchParams({});
+      // Auto-sync courses after Google connection
+      googleApi.syncCourses().then((result) => {
+        setStatusMessage({ type: 'success', text: result.message || 'Courses synced!' });
+        loadCourses();
+        loadAssignments();
+      }).catch(() => {});
+      // Clear the param but keep just_registered if present
+      const newParams: Record<string, string> = {};
+      if (searchParams.get('just_registered')) newParams.just_registered = 'true';
+      setSearchParams(newParams);
     } else if (error) {
       setStatusMessage({ type: 'error', text: `Connection failed: ${error}` });
       setSearchParams({});
@@ -291,6 +302,39 @@ export function StudentDashboard() {
       {statusMessage && (
         <div className={`status-message status-${statusMessage.type}`}>
           {statusMessage.text}
+        </div>
+      )}
+
+      {!googleConnected && (
+        <div className="onboarding-banner" style={{
+          background: justRegistered ? '#eef2ff' : '#f0fdf4',
+          border: justRegistered ? '2px solid #6366f1' : '1px solid #bbf7d0',
+          borderRadius: 8,
+          padding: '16px 20px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+        }}>
+          <div style={{ fontSize: 28 }}>🔗</div>
+          <div style={{ flex: 1 }}>
+            <strong style={{ fontSize: 16 }}>
+              {justRegistered ? 'Welcome! Connect your Google Classroom' : 'Connect Google Classroom'}
+            </strong>
+            <p style={{ margin: '4px 0 0', color: '#555', fontSize: 14 }}>
+              {justRegistered
+                ? 'Your parent invited you to EMAI. Connect Google Classroom so they can see your courses and teachers.'
+                : 'Connect your Google Classroom so your parent can see your courses and track your progress.'}
+            </p>
+          </div>
+          <button
+            className="connect-button"
+            onClick={handleConnectGoogle}
+            disabled={isConnecting}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {isConnecting ? 'Connecting...' : 'Connect Now'}
+          </button>
         </div>
       )}
 

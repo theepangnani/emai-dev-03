@@ -7,6 +7,7 @@ interface User {
   full_name: string;
   role: string;
   is_active: boolean;
+  google_connected: boolean;
 }
 
 interface AuthContextType {

@@ -26,6 +26,7 @@ class UserResponse(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool
+    google_connected: bool = False
     created_at: datetime
 
     class Config:

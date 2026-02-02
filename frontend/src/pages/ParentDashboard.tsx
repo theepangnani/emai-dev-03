@@ -7,6 +7,7 @@ import './ParentDashboard.css';
 
 type LinkTab = 'email' | 'google';
 type DiscoveryState = 'idle' | 'discovering' | 'results' | 'no_results';
+type SyncState = 'idle' | 'syncing' | 'done' | 'error';
 
 export function ParentDashboard() {
   const navigate = useNavigate();
@@ -40,6 +41,10 @@ export function ParentDashboard() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [coursesSearched, setCoursesSearched] = useState(0);
   const [bulkLinking, setBulkLinking] = useState(false);
+
+  // Child sync state
+  const [syncState, setSyncState] = useState<SyncState>('idle');
+  const [syncMessage, setSyncMessage] = useState('');
 
   // Check for OAuth callback and pending action on mount
   useEffect(() => {
@@ -222,6 +227,23 @@ export function ParentDashboard() {
     setSelectedDiscovered(new Set());
   };
 
+  const handleSyncChildCourses = async () => {
+    if (!selectedChild) return;
+    setSyncState('syncing');
+    setSyncMessage('');
+    try {
+      const result = await parentApi.syncChildCourses(selectedChild);
+      setSyncMessage(result.message);
+      setSyncState('done');
+      loadChildOverview(selectedChild);
+      setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
+    } catch (err: any) {
+      setSyncMessage(err.response?.data?.detail || 'Failed to sync courses');
+      setSyncState('error');
+      setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
+    }
+  };
+
   const upcomingAssignments = childOverview?.assignments
     .filter(a => a.due_date && new Date(a.due_date) >= new Date())
     .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
@@ -336,12 +358,46 @@ export function ParentDashboard() {
               </section>
 
               <section className="section">
-                <h3>{childOverview.full_name}'s Courses</h3>
+                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3>{childOverview.full_name}'s Courses</h3>
+                  {childOverview.google_connected && (
+                    <button
+                      className="link-child-btn-small"
+                      onClick={handleSyncChildCourses}
+                      disabled={syncState === 'syncing'}
+                    >
+                      {syncState === 'syncing' ? 'Syncing...' : 'Sync Courses'}
+                    </button>
+                  )}
+                </div>
+                {syncMessage && (
+                  <div className={`status-message status-${syncState === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 8 }}>
+                    {syncMessage}
+                  </div>
+                )}
+                {!childOverview.google_connected && (
+                  <div style={{
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: 6,
+                    padding: '10px 14px',
+                    marginBottom: 12,
+                    fontSize: 14,
+                    color: '#92400e',
+                  }}>
+                    Your child hasn't connected Google Classroom yet. Ask them to sign in and connect it from their dashboard.
+                  </div>
+                )}
                 {childOverview.courses.length > 0 ? (
                   <ul className="courses-list">
                     {childOverview.courses.map((course) => (
                       <li key={course.id} className="course-item">
                         <span className="course-name">{course.name}</span>
+                        {course.teacher_name && (
+                          <span className="course-subject" style={{ marginLeft: 8 }}>
+                            Teacher: {course.teacher_name}
+                          </span>
+                        )}
                         {course.subject && (
                           <span className="course-subject">{course.subject}</span>
                         )}

@@ -42,11 +42,17 @@ class LinkChildrenBulkRequest(BaseModel):
     relationship_type: str = "guardian"
 
 
+class CourseWithTeacher(CourseResponse):
+    teacher_name: str | None = None
+    teacher_email: str | None = None
+
+
 class ChildOverview(BaseModel):
     student_id: int
     user_id: int
     full_name: str
     grade_level: Optional[int]
-    courses: list[CourseResponse]
+    google_connected: bool = False
+    courses: list[CourseWithTeacher]
     assignments: list[AssignmentResponse]
     study_guides_count: int

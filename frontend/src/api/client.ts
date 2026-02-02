@@ -493,7 +493,8 @@ export interface ChildOverview {
   user_id: number;
   full_name: string;
   grade_level: number | null;
-  courses: Array<{ id: number; name: string; description: string | null; subject: string | null; google_classroom_id: string | null; teacher_id: number | null; created_at: string }>;
+  google_connected: boolean;
+  courses: Array<{ id: number; name: string; description: string | null; subject: string | null; google_classroom_id: string | null; teacher_id: number | null; created_at: string; teacher_name: string | null; teacher_email: string | null }>;
   assignments: Array<{ id: number; title: string; description: string | null; course_id: number; google_classroom_id: string | null; due_date: string | null; max_points: number | null; created_at: string }>;
   study_guides_count: number;
 }
@@ -543,6 +544,11 @@ export const parentApi = {
       relationship_type: relationshipType,
     });
     return response.data as ChildSummary[];
+  },
+
+  syncChildCourses: async (studentId: number) => {
+    const response = await api.post(`/api/parent/children/${studentId}/sync-courses`);
+    return response.data as { message: string; courses: Array<{ id: number; name: string; google_id: string }> };
   },
 };
 

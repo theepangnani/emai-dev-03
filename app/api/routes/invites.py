@@ -89,7 +89,20 @@ def create_invite(
     invite_link = f"{frontend_url}/accept-invite?token={token}"
     role_label = "student" if invite_type == InviteType.STUDENT else "teacher"
 
-    html_content = f"""
+    if invite_type == InviteType.STUDENT:
+        html_content = f"""
+    <h2>You've been invited to EMAI</h2>
+    <p><strong>{current_user.full_name}</strong> has invited you to join EMAI as a student.</p>
+    <p>Getting started is easy &mdash; just two steps:</p>
+    <ol>
+      <li><strong>Create your account</strong> by clicking the link below</li>
+      <li><strong>Connect your Google Classroom</strong> from your dashboard so your parent can see your courses and teachers</li>
+    </ol>
+    <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
+    <p style="color:#666;font-size:14px;">This invite expires in {expiry_days} days. Your parent is waiting to see your progress!</p>
+    """
+    else:
+        html_content = f"""
     <h2>You've been invited to EMAI</h2>
     <p>{current_user.full_name} has invited you to join EMAI as a {role_label}.</p>
     <p>Click the link below to create your account:</p>

@@ -40,7 +40,7 @@ export function AcceptInvite() {
     try {
       const data = await authApi.acceptInvite(token, formData.password, formData.full_name);
       loginWithToken(data.access_token);
-      navigate('/dashboard');
+      navigate('/dashboard?just_registered=true');
     } catch (err: any) {
       const detail = err.response?.data?.detail;
       setError(detail || 'Failed to accept invite. Please try again.');

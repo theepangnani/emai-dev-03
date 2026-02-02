@@ -114,8 +114,21 @@ def accept_invite(data: AcceptInviteRequest, db: Session = Depends(get_db)):
         metadata = invite.metadata_json or {}
         if metadata.get("teacher_type"):
             teacher_type_value = TeacherType(metadata["teacher_type"])
-        teacher = Teacher(user_id=user.id, teacher_type=teacher_type_value)
-        db.add(teacher)
+
+        # Check if a shadow teacher exists with this email — claim it
+        shadow = db.query(Teacher).filter(
+            Teacher.google_email == invite.email,
+            Teacher.is_shadow == True,
+        ).first()
+        if shadow:
+            shadow.user_id = user.id
+            shadow.is_shadow = False
+            if teacher_type_value:
+                shadow.teacher_type = teacher_type_value
+            teacher = shadow
+        else:
+            teacher = Teacher(user_id=user.id, teacher_type=teacher_type_value)
+            db.add(teacher)
     elif role == UserRole.STUDENT:
         student = Student(user_id=user.id)
         db.add(student)
