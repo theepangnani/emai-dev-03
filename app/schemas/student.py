@@ -6,7 +6,6 @@ class StudentCreate(BaseModel):
     user_id: int
     grade_level: int | None = None
     school_name: str | None = None
-    parent_id: int | None = None
 
 
 class StudentResponse(BaseModel):
@@ -14,7 +13,6 @@ class StudentResponse(BaseModel):
     user_id: int
     grade_level: int | None
     school_name: str | None
-    parent_id: int | None
     created_at: datetime
 
     class Config:

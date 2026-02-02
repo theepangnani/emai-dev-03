@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    actor Parent
+    actor Child
+    participant EMAI as ClassBridge API
+    participant Auth as Auth/Invites
+    participant Google as Google OAuth
+    participant Sync as Sync Worker
+    participant DB as Postgres
+
+    Parent->>EMAI: Register/Sign in
+    Parent->>EMAI: Register child (name,email,school, start_sync?)
+    EMAI->>Auth: Create pending student + invite token
+    Auth-->>Parent: Registration success + invite sent
+    Auth-->>Child: Email invite link (token)
+
+    alt Parent initiates sync on behalf (optional)
+        Parent->>EMAI: Start child Google connect (delegated)
+        EMAI->>Google: OAuth consent (Classroom scopes)
+        Google-->>EMAI: OAuth callback + tokens (child context)
+        EMAI->>Sync: Enqueue sync job (child)
+        Sync->>Google: Fetch courses + coursework + rosters
+        Sync->>DB: Upsert Course records
+        Sync->>DB: Upsert shadow Teacher records per course
+        Sync-->>EMAI: Sync complete (last_sync_at)
+        EMAI-->>Parent: Dashboard shows child courses + teachers
+    end
+
+    Child->>Auth: Accept invite + set password
+    Auth-->>Child: Account activated
+
+    alt Post-login onboarding (recommended)
+        Child->>EMAI: Login
+        EMAI-->>Child: Onboarding wizard prompt: Connect Google Classroom
+        Child->>Google: OAuth consent
+        Google-->>EMAI: OAuth callback + tokens
+        EMAI->>Sync: Enqueue sync job (child)
+        Sync->>Google: Fetch courses + coursework + rosters
+        Sync->>DB: Upsert Course records
+        Sync->>DB: Upsert shadow Teacher records
+        Sync-->>EMAI: Sync complete
+        EMAI-->>Child: Courses ready
+        EMAI-->>Parent: Parent dashboard refreshes child view
+    else Skip
+        Child-->>EMAI: Skip for now
+        EMAI-->>Child: Banner reminder + manual features available
+    end

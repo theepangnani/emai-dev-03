@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     # App
     app_name: str = "EMAI"
     debug: bool = False
+    environment: str = "development"  # development, production
+    log_level: str = ""  # DEBUG, INFO, WARNING, ERROR, CRITICAL (empty = auto based on environment)
+    log_to_file: bool = True  # Enable file logging
 
     # Database (SQLite for local dev, PostgreSQL for production)
     database_url: str = "sqlite:///./emai.db"
@@ -21,6 +24,14 @@ class Settings(BaseSettings):
 
     # Frontend
     frontend_url: str = "http://localhost:5173"
+
+    # OpenAI
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+
+    # Email (SendGrid)
+    sendgrid_api_key: str = ""
+    from_email: str = "noreply@classbridge.app"
 
     class Config:
         env_file = ".env"

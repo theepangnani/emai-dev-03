@@ -9,6 +9,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/classroom.courses.readonly",
     "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
     "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
+    "https://www.googleapis.com/auth/classroom.announcements.readonly",
+    "https://www.googleapis.com/auth/classroom.rosters.readonly",
+    "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
     "openid",
@@ -103,6 +106,28 @@ def get_classroom_service(access_token: str, refresh_token: str | None = None):
     return build("classroom", "v1", credentials=credentials), credentials
 
 
+def get_gmail_service(access_token: str, refresh_token: str | None = None):
+    """Build Gmail API service with auto-refresh."""
+    credentials = get_credentials(access_token, refresh_token)
+
+    if credentials.expired and credentials.refresh_token:
+        credentials.refresh(Request())
+
+    return build("gmail", "v1", credentials=credentials), credentials
+
+
+def get_email_monitoring_auth_url(state: str | None = None) -> tuple[str, str]:
+    """Get OAuth URL for granting email monitoring permissions (re-consent)."""
+    flow = get_google_auth_flow()
+    authorization_url, returned_state = flow.authorization_url(
+        access_type="offline",
+        prompt="consent",
+        state=state,
+        include_granted_scopes="true",
+    )
+    return authorization_url, returned_state
+
+
 def get_user_info(access_token: str) -> dict:
     """Get user info from Google."""
     credentials = Credentials(token=access_token)
@@ -129,6 +154,52 @@ def get_course_work(
         return results.get("courseWork", []), credentials
     except Exception:
         return [], credentials
+
+
+def list_course_students(
+    access_token: str,
+    course_id: str,
+    refresh_token: str | None = None,
+) -> tuple[list[dict], Credentials]:
+    """List students enrolled in a Google Classroom course."""
+    service, credentials = get_classroom_service(access_token, refresh_token)
+    students = []
+    try:
+        page_token = None
+        while True:
+            response = service.courses().students().list(
+                courseId=course_id, pageToken=page_token
+            ).execute()
+            students.extend(response.get("students", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception:
+        pass
+    return students, credentials
+
+
+def list_course_teachers(
+    access_token: str,
+    course_id: str,
+    refresh_token: str | None = None,
+) -> tuple[list[dict], Credentials]:
+    """List teachers for a Google Classroom course."""
+    service, credentials = get_classroom_service(access_token, refresh_token)
+    teachers = []
+    try:
+        page_token = None
+        while True:
+            response = service.courses().teachers().list(
+                courseId=course_id, pageToken=page_token
+            ).execute()
+            teachers.extend(response.get("teachers", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception:
+        pass
+    return teachers, credentials
 
 
 def get_student_submissions(

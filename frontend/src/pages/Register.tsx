@@ -1,20 +1,53 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 export function Register() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     full_name: '',
     role: 'student',
+    teacher_type: '',
   });
+  const [googleData, setGoogleData] = useState<{
+    google_id: string;
+    google_access_token: string;
+    google_refresh_token: string;
+  } | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Handle Google OAuth redirect with pre-fill data
+  useEffect(() => {
+    const googleEmail = searchParams.get('google_email');
+    const googleName = searchParams.get('google_name');
+    const googleId = searchParams.get('google_id');
+    const googleAccessToken = searchParams.get('google_access_token');
+    const googleRefreshToken = searchParams.get('google_refresh_token');
+
+    if (googleEmail && googleId) {
+      setFormData((prev) => ({
+        ...prev,
+        email: googleEmail,
+        full_name: googleName || '',
+      }));
+      setGoogleData({
+        google_id: googleId,
+        google_access_token: googleAccessToken || '',
+        google_refresh_token: googleRefreshToken || '',
+      });
+      // Clear URL params
+      setSearchParams({});
+    }
+  }, []);
+
+  const isGoogleSignup = googleData !== null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -37,11 +70,20 @@ export function Register() {
         password: formData.password,
         full_name: formData.full_name,
         role: formData.role,
+        ...(formData.role === 'teacher' && formData.teacher_type
+          ? { teacher_type: formData.teacher_type }
+          : {}),
+        ...(googleData || {}),
       });
       navigate('/dashboard');
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
-      setError(errorMessage);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      const showDetails = import.meta.env.VITE_SHOW_ERROR_DETAILS !== 'false';
+      if (detail && showDetails) {
+        setError(detail);
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +93,9 @@ export function Register() {
     <div className="auth-container">
       <div className="auth-card">
         <h1 className="auth-title">Join EMAI</h1>
-        <p className="auth-subtitle">Create your account</p>
+        <p className="auth-subtitle">
+          {isGoogleSignup ? 'Complete your Google account setup' : 'Create your account'}
+        </p>
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -79,6 +123,7 @@ export function Register() {
               onChange={handleChange}
               placeholder="you@example.com"
               required
+              disabled={isGoogleSignup}
             />
           </div>
 
@@ -90,6 +135,22 @@ export function Register() {
               <option value="teacher">Teacher</option>
             </select>
           </div>
+
+          {formData.role === 'teacher' && (
+            <div className="form-group">
+              <label htmlFor="teacher_type">Teacher Type</label>
+              <select
+                id="teacher_type"
+                name="teacher_type"
+                value={formData.teacher_type}
+                onChange={handleChange}
+              >
+                <option value="">Select type...</option>
+                <option value="school_teacher">School Teacher</option>
+                <option value="private_tutor">Private Tutor</option>
+              </select>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="password">Password</label>

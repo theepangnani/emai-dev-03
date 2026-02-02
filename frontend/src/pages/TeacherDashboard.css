@@ -1,0 +1,60 @@
+.teacher-courses-section {
+  grid-column: 1 / -1;
+}
+
+.teacher-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.teacher-course-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  transition: box-shadow 0.2s;
+}
+
+.teacher-course-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.teacher-course-card h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.course-subject-tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea20, #764ba220);
+  color: #667eea;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.course-desc {
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.clickable:hover {
+  transform: translateY(-2px);
+}

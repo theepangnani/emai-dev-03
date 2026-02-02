@@ -1,0 +1,407 @@
+.teacher-comms-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+}
+
+.comms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.comms-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.comms-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.comms-header .back-button {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.comms-header .page-title {
+  font-size: 20px;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.comms-header .user-name {
+  color: #666;
+  font-size: 14px;
+}
+
+.comms-header .logout-button {
+  background: none;
+  border: 1px solid #e5e7eb;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #666;
+  font-size: 13px;
+}
+
+.comms-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.search-bar {
+  display: flex;
+  flex: 1;
+  max-width: 400px;
+  gap: 8px;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-bar button {
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.type-filter {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.sync-button {
+  padding: 8px 16px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.sync-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.connect-banner {
+  background: #fef3c7;
+  border-bottom: 1px solid #fcd34d;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.connect-banner p {
+  margin: 0;
+  color: #92400e;
+  font-size: 14px;
+}
+
+.connect-banner button {
+  padding: 6px 16px;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.comms-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.comms-list {
+  width: 400px;
+  min-width: 320px;
+  border-right: 1px solid #e5e7eb;
+  background: white;
+  overflow-y: auto;
+}
+
+.comm-item {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s;
+}
+
+.comm-item:hover {
+  background: #f8f9fa;
+}
+
+.comm-item.active {
+  background: #f0f4ff;
+  border-left: 3px solid #667eea;
+}
+
+.comm-item.unread {
+  background: #fafbff;
+}
+
+.comm-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.comm-type-icon {
+  font-size: 16px;
+}
+
+.comm-sender {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a2e;
+  flex: 1;
+}
+
+.comm-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.comm-subject {
+  margin: 0;
+  font-size: 13px;
+  color: #444;
+  line-height: 1.3;
+}
+
+.comm-ai-preview {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #667eea;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 18px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  background: #667eea;
+  border-radius: 50%;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.pagination button {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-size: 13px;
+  color: #666;
+}
+
+.comms-detail {
+  flex: 1;
+  overflow-y: auto;
+  background: #f5f7fa;
+}
+
+.detail-content {
+  padding: 24px;
+  max-width: 800px;
+}
+
+.detail-header {
+  margin-bottom: 20px;
+}
+
+.detail-header h2 {
+  margin: 0 0 12px 0;
+  font-size: 22px;
+  color: #1a1a2e;
+}
+
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-sender {
+  font-size: 14px;
+  color: #444;
+  font-weight: 500;
+}
+
+.detail-course {
+  font-size: 13px;
+  color: #667eea;
+}
+
+.detail-date {
+  font-size: 13px;
+  color: #999;
+}
+
+.detail-type {
+  font-size: 13px;
+  color: #666;
+  text-transform: capitalize;
+}
+
+.ai-summary-card {
+  background: linear-gradient(135deg, #667eea20, #764ba220);
+  border: 1px solid #667eea40;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.ai-summary-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.ai-summary-card p {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.detail-body {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+.detail-body h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.message-body {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #999;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 15px;
+}
+
+.empty-state small {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.no-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+}
+
+.no-selection-content {
+  text-align: center;
+  color: #999;
+}
+
+.no-selection-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.no-selection-content p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.no-selection-content small {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .comms-list {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .comms-container {
+    flex-direction: column;
+  }
+
+  .comms-toolbar {
+    flex-wrap: wrap;
+  }
+}

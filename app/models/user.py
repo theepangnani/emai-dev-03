@@ -27,5 +27,13 @@ class User(Base):
     google_access_token = Column(String(512), nullable=True)
     google_refresh_token = Column(String(512), nullable=True)
 
+    # Notification preferences
+    email_notifications = Column(Boolean, default=True)
+    assignment_reminder_days = Column(String(50), default="1,3")
+
+    # Teacher communication sync state
+    gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
+    classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

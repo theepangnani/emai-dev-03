@@ -1,0 +1,129 @@
+.study-guide-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.study-guide-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.back-link {
+  color: #1976D2;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.print-btn {
+  padding: 0.5rem 1rem;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.print-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.delete-btn {
+  padding: 0.5rem 1rem;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background-color: #d32f2f;
+}
+
+.study-guide-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.study-guide-content h1 {
+  color: #333;
+  border-bottom: 2px solid #4CAF50;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.guide-meta {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.guide-body {
+  line-height: 1.8;
+  color: #444;
+}
+
+.guide-body h1 {
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.guide-body h2 {
+  font-size: 1.3rem;
+  color: #1976D2;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.guide-body h3 {
+  font-size: 1.1rem;
+  color: #333;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.guide-body p {
+  margin-bottom: 0.75rem;
+}
+
+.guide-body li {
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.1rem;
+}
+
+.error {
+  color: #d32f2f;
+}
+
+@media print {
+  .study-guide-header {
+    display: none;
+  }
+
+  .study-guide-page {
+    padding: 0;
+  }
+
+  .study-guide-content {
+    box-shadow: none;
+  }
+}
