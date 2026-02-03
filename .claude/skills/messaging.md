@@ -96,7 +96,7 @@ class MessageResponse(BaseModel):
 
 
 class ConversationCreate(BaseModel):
-    participant_id: int
+    recipient_id: int
     student_id: Optional[int] = None
     subject: Optional[str] = None
     initial_message: str
@@ -182,7 +182,7 @@ curl -X POST http://localhost:8000/api/messages/conversations \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "participant_id": 5,
+    "recipient_id": 5,
     "student_id": 3,
     "subject": "Math homework question",
     "initial_message": "Hi, I have a question about the algebra assignment..."

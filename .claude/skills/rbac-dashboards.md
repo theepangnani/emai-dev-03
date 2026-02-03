@@ -67,12 +67,12 @@ def my_endpoint(current_user: User = Depends(require_role(UserRole.ADMIN))):
 
 ### Parent Endpoints (parent role only)
 - `GET /api/parent/children` - List linked children
-- `POST /api/parent/children/register` - Parent creates a student account
 - `POST /api/parent/children/link` - Link child by email
 - `POST /api/parent/children/discover-google` - Discover students via Google Classroom
 - `POST /api/parent/children/link-bulk` - Bulk link discovered students
 - `GET /api/parent/children/{student_id}/overview` - Child's courses, assignments, study guide count
-- `POST /api/invites/` - Create student or teacher invite
+- `POST /api/parent/children/{student_id}/sync-courses` - Trigger course sync for child
+- `POST /api/invites/` - Create student or teacher invite (parent→student, teacher/admin→teacher)
 - `GET /api/invites/sent` - List invites sent by current user
 - `POST /api/auth/accept-invite` - Accept invite and create account (public)
 - See `.claude/skills/parent-student.md` for full parent-student relationship details

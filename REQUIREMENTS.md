@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-02-01
+**Last Updated:** 2026-02-02
 
 ---
 
@@ -77,11 +77,11 @@ Education ecosystems are fragmented:
 
 ClassBridge supports three independent paths for student onboarding. Parent linking is entirely optional — students can use the platform independently.
 
-#### Path 1: Parent-Created Student
-- Parent registers their child from the Parent Dashboard (name, email, grade, school)
-- System creates a User (role=student) + Student record + `parent_students` join entry
-- Invite email sent to the student's email with a secure token
-- Student clicks the invite link and sets their own password
+#### Path 1: Parent-Created Student (via Unified Invite)
+- Parent creates a student invite from the Parent Dashboard via `POST /api/invites/` with `invite_type=student`
+- System creates an invite record with a secure token and sends an invite email
+- Student clicks the invite link and sets their own password via `POST /api/auth/accept-invite`
+- On acceptance: User (role=student) + Student record + `parent_students` join entry created automatically
 - Student can then log in independently
 
 #### Path 2: Self-Registered Student
@@ -343,19 +343,22 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] Parent-child linking (by email + Google Classroom discovery)
 - [x] File upload with content extraction
 - [x] Logging framework
-- [ ] Many-to-many parent-student relationship (migrate from single parent_id)
-- [ ] Parent registers child from Parent Dashboard
-- [ ] Student invite email flow (set password via invite link)
-- [ ] Update parent linking endpoints for many-to-many
-- [ ] Auto-create Teacher record at registration
-- [ ] Shadow + invite flow for non-EMAI school teachers
+- [x] Many-to-many parent-student relationship (migrate from single parent_id)
+- [x] Parent registers child from Parent Dashboard (via invite flow)
+- [x] Student invite email flow (set password via invite link)
+- [x] Update parent linking endpoints for many-to-many
+- [x] Auto-create Teacher record at registration
+- [x] Shadow + invite flow for non-EMAI school teachers
+- [x] Teacher type distinction (school_teacher vs private_tutor)
+- [x] Unified invite system (shared invites table for student + teacher invites)
+- [x] Teacher Google Classroom course sync (set teacher_id on synced courses)
+- [x] Parent-student-Google sync flow (onboarding banner, parent-triggered sync, teacher info)
 - [ ] Multi-Google account support for teachers
 - [ ] Manual course creation for teachers
-- [ ] Teacher type distinction (school_teacher vs private_tutor)
-- [ ] Unified invite system (shared invites table for student + teacher invites)
-- [ ] Teacher Google Classroom course sync (set teacher_id on synced courses)
 - [ ] Manual assignment creation for teachers
 - [ ] Deprecate POST /api/courses/ endpoint
+- [ ] Auto-send invite email to shadow teachers on creation
+- [ ] Teacher Dashboard course management view with source badges
 
 ### Phase 1.5 (Task Manager, Calendar & Content)
 - [ ] Task/Todo CRUD API and model
@@ -422,55 +425,84 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 
 ### API Endpoints
 
+> Full interactive API docs available at `/docs` (Swagger) and `/redoc` when running locally.
+
+#### Implemented Endpoints
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/register` | POST | User registration |
-| `/api/auth/login` | POST | User login |
+| `/api/auth/register` | POST | User registration (auto-creates Teacher record for role=teacher) |
+| `/api/auth/login` | POST | User login (returns JWT) |
+| `/api/auth/accept-invite` | POST | Accept invite and set password (unified: student + teacher) |
 | `/api/users/me` | GET | Current user info |
-| `/api/google/connect` | GET | Initiate Google OAuth |
+| `/api/users/{user_id}` | GET | Get user by ID |
+| `/api/google/connect` | GET | Get Google OAuth authorization URL |
 | `/api/google/callback` | GET | Handle OAuth callback |
 | `/api/google/status` | GET | Google connection status |
 | `/api/google/disconnect` | DELETE | Disconnect Google |
-| `/api/google/courses/sync` | POST | Sync Google Classroom courses |
+| `/api/google/courses` | GET | List Google Classroom courses (remote) |
+| `/api/google/courses/sync` | POST | Sync Google Classroom courses to local DB |
+| `/api/google/courses/{course_id}/assignments` | GET | Get assignments for a Google Classroom course |
+| `/api/google/courses/{course_id}/assignments/sync` | POST | Sync assignments from Google Classroom course |
 | `/api/courses/` | GET | List user's courses |
-| ~~`/api/courses/`~~ | ~~POST~~ | ~~Create course~~ — **DEPRECATED**, use `POST /api/teacher/courses` |
+| ~~`/api/courses/`~~ | ~~POST~~ | ~~Create course~~ — **DEPRECATED** (Issue #51), use planned `POST /api/teacher/courses` |
 | `/api/courses/teaching` | GET | List courses teaching (teacher only) |
 | `/api/assignments/` | GET | List assignments |
 | `/api/study/generate` | POST | Generate study guide |
 | `/api/study/quiz/generate` | POST | Generate quiz |
 | `/api/study/flashcards/generate` | POST | Generate flashcards |
 | `/api/study/guides` | GET | List study materials |
+| `/api/study/guides/{guide_id}` | GET | Get a specific study guide |
+| `/api/study/guides/{guide_id}` | DELETE | Delete a study guide |
 | `/api/study/upload/generate` | POST | Generate from uploaded file |
+| `/api/study/upload/extract-text` | POST | Extract text from uploaded file |
+| `/api/study/upload/formats` | GET | Supported upload formats |
+| `/api/messages/recipients` | GET | List valid message recipients |
 | `/api/messages/conversations` | GET | List message conversations |
 | `/api/messages/conversations` | POST | Create conversation |
+| `/api/messages/conversations/{id}` | GET | Get conversation with messages |
 | `/api/messages/conversations/{id}/messages` | POST | Send message |
+| `/api/messages/conversations/{id}/read` | PATCH | Mark conversation messages as read |
+| `/api/messages/unread-count` | GET | Unread message count |
 | `/api/notifications/` | GET | List notifications |
 | `/api/notifications/unread-count` | GET | Unread notification count |
-| `/api/teacher-communications/` | GET | List teacher communications |
+| `/api/notifications/{id}/read` | PUT | Mark notification as read |
+| `/api/notifications/read-all` | PUT | Mark all notifications as read |
+| `/api/notifications/{id}` | DELETE | Delete a notification |
+| `/api/notifications/settings` | GET/PUT | Get or update notification preferences |
+| `/api/teacher-communications/` | GET | List teacher communications (with search/filter) |
+| `/api/teacher-communications/{id}` | GET | Get single communication with details |
+| `/api/teacher-communications/{id}/read` | PUT | Mark communication as read |
+| `/api/teacher-communications/status` | GET | Email monitoring status and stats |
 | `/api/teacher-communications/sync` | POST | Trigger email sync |
 | `/api/parent/children` | GET | List linked children |
-| `/api/parent/children/register` | POST | Parent creates a student account |
-| `/api/parent/children/link` | POST | Link child by email |
+| `/api/parent/children/link` | POST | Link child by email (uses `student_email` field) |
 | `/api/parent/children/discover-google` | POST | Discover children via Google Classroom |
 | `/api/parent/children/link-bulk` | POST | Bulk link children |
-| `/api/parent/children/{id}/overview` | GET | Child overview |
-| `/api/auth/accept-invite` | POST | Accept invite and set password (unified: student + teacher) |
-| `/api/teacher/courses` | POST | Teacher creates a course manually |
-| `/api/teacher/courses/{id}/students` | POST | Add student to course |
-| `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course (teacher only) |
-| `/api/teacher/google-accounts` | GET | List linked Google accounts |
-| `/api/teacher/google-accounts` | POST | Link a new Google account |
-| `/api/teacher/google-accounts/{id}` | DELETE | Unlink a Google account |
-| ~~`/api/auth/accept-teacher-invite`~~ | ~~POST~~ | ~~Teacher invite~~ — **MERGED** into unified `/api/auth/accept-invite` |
-| `/api/tasks/` | GET | List user's tasks (with filters) |
-| `/api/tasks/` | POST | Create a task |
-| `/api/tasks/{id}` | PUT | Update a task |
-| `/api/tasks/{id}` | DELETE | Delete a task |
-| `/api/tasks/{id}/complete` | POST | Mark task as completed |
-| `/api/calendar/events` | GET | Calendar events (role-aware: tasks + assignments) |
-| `/api/calendar/google-sync` | POST | Push task/reminder to Google Calendar |
-| `/api/admin/users` | GET | Paginated user list (admin only) |
+| `/api/parent/children/{student_id}/overview` | GET | Child overview (courses, assignments, study materials) |
+| `/api/parent/children/{student_id}/sync-courses` | POST | Trigger course sync for a child |
+| `/api/invites/` | POST | Create an invite (parent→student, teacher/admin→teacher) |
+| `/api/invites/sent` | GET | List invites sent by current user |
+| `/api/admin/users` | GET | Paginated user list with search/filter (admin only) |
 | `/api/admin/stats` | GET | Platform statistics (admin only) |
+| `/api/logs/` | POST | Frontend log ingestion |
+| `/api/logs/batch` | POST | Frontend batch log ingestion |
+
+#### Planned Endpoints (Not Yet Implemented)
+
+| Endpoint | Method | Description | Issue |
+|----------|--------|-------------|-------|
+| `/api/teacher/courses` | POST | Teacher creates a course manually | #42 |
+| `/api/teacher/courses/{id}/students` | POST | Add student to course | #42 |
+| `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course | #49 |
+| `/api/teacher/google-accounts` | GET | List linked Google accounts | #41, #62 |
+| `/api/teacher/google-accounts` | POST | Link a new Google account | #41, #62 |
+| `/api/teacher/google-accounts/{id}` | DELETE | Unlink a Google account | #41, #62 |
+| `/api/tasks/` | GET/POST | Task CRUD (Phase 1.5) | #44 |
+| `/api/tasks/{id}` | PUT/DELETE | Update/delete task | #44 |
+| `/api/tasks/{id}/complete` | POST | Mark task completed | #44 |
+| `/api/calendar/events` | GET | Calendar events (role-aware) | #45 |
+| `/api/calendar/google-sync` | POST | Push to Google Calendar | #46 |
 
 ---
 
@@ -527,21 +559,29 @@ Current feature issues are tracked in GitHub:
 - Issue #23: ~~Notification UI~~ (CLOSED)
 - Issue #32: ~~Role-based dashboards~~ (CLOSED)
 - Issue #33: ~~Teacher email monitoring~~ (CLOSED)
+- Issue #34: ~~Parent-child linking via Google Classroom discovery~~ (CLOSED)
+- Issue #35: ~~Migrate parent-student to many-to-many relationship~~ (CLOSED)
+- Issue #36: ~~Parent registers child from Parent Dashboard~~ (CLOSED — via invite flow)
+- Issue #37: ~~Student invite email flow~~ (CLOSED)
+- Issue #38: ~~Update parent linking endpoints for many-to-many~~ (CLOSED)
+- Issue #39: ~~Auto-create Teacher record at registration~~ (CLOSED)
+- Issue #40: ~~Shadow + invite flow for non-EMAI school teachers~~ (CLOSED)
+- Issue #43: ~~Teacher type distinction (school_teacher vs private_tutor)~~ (CLOSED)
+- Issue #48: ~~Unified invite system (shared invites table)~~ (CLOSED)
+- Issue #52: ~~Teacher Google Classroom course sync (set teacher_id on synced courses)~~ (CLOSED)
+- Issue #56: ~~Parent-student-Google sync flow (onboarding, parent sync, teacher info)~~ (CLOSED)
 
 ### Phase 1 - Open
-- Issue #35: Migrate parent-student to many-to-many relationship
-- Issue #36: Parent registers child from Parent Dashboard
-- Issue #37: Student invite email flow
-- Issue #38: Update parent linking endpoints for many-to-many
-- Issue #39: Auto-create Teacher record at registration
-- Issue #40: Shadow + invite flow for non-EMAI school teachers
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers
-- Issue #43: Teacher type distinction (school_teacher vs private_tutor)
-- Issue #48: Unified invite system (shared invites table)
 - Issue #49: Manual assignment creation for teachers
 - Issue #51: Deprecate POST /api/courses/ endpoint
-- Issue #52: Teacher Google Classroom course sync (set teacher_id on synced courses)
+- Issue #57: Auto-send invite email to shadow teachers on creation
+- Issue #58: Add is_platform_user flag to Teacher model
+- Issue #59: Teacher Dashboard course management view with source badges
+- Issue #60: Parent registers child directly (name, email, grade, school)
+- Issue #61: Content privacy controls and version history for uploads
+- Issue #62: teacher_google_accounts table for multi-account OAuth
 
 ### Phase 1.5 - Task Manager, Calendar & Content
 - Issue #44: Task/Todo CRUD API and model
@@ -562,13 +602,37 @@ Current feature issues are tracked in GitHub:
 - Issue #30: Tutor Marketplace
 - Issue #31: AI Email Communication Agent
 
-### Infrastructure
+### Infrastructure & DevOps
 - Issue #10: Pytest unit tests
 - Issue #11: GitHub Actions CI/CD
 - Issue #12: PostgreSQL + Alembic migrations
 - Issue #13: Deploy to GCP
 - Issue #14: Google OAuth verification
 - Issue #24: Register classbridge.ca domain
+
+### Security & Hardening
+- Issue #63: Require SECRET_KEY and fail fast if missing
+- Issue #64: Fix CORS configuration for credentials
+- Issue #65: Protect frontend log ingestion endpoints
+- Issue #66: Introduce Alembic migrations and remove create_all on startup
+- Issue #67: Prevent duplicate APScheduler jobs in multi-worker deployments
+- Issue #68: Encrypt Google OAuth tokens at rest
+- Issue #69: Revisit JWT storage strategy to reduce XSS risk
+
+### Observability & Quality
+- Issue #70: Populate request.state.user_id for request logs
+- Issue #71: Add baseline test suite (auth, RBAC, core routes)
+- Issue #72: Roll out new design system across remaining pages
+- Issue #73: Add migration for new DB indexes
+- Issue #74: Add pagination for conversations/messages list
+- Issue #75: Introduce lightweight caching for read-heavy endpoints
+- Issue #76: Document local seed + load testing workflow
+- Issue #77: Design system + perf + local testing tools
+
+### Testing
+- Issue #78: Manual test scenarios: backend API
+- Issue #79: Manual test scenarios: frontend UX
+- Issue #80: Add E2E smoke tests (Playwright or Cypress)
 
 ---
 
