@@ -7,9 +7,9 @@
 
 .child-tab {
   padding: 10px 20px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -20,13 +20,13 @@
 }
 
 .child-tab:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
 }
 
 .child-tab.active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: var(--color-accent);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
   color: white;
 }
 
@@ -39,25 +39,25 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
 }
 
 .no-children-state {
   text-align: center;
   padding: 60px 20px;
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   margin-top: 24px;
 }
 
 .no-children-state h3 {
   margin-bottom: 12px;
-  color: #333;
+  color: var(--color-ink);
 }
 
 .no-children-state p {
-  color: #666;
+  color: var(--color-ink-muted);
   max-width: 500px;
   margin: 0 auto;
   line-height: 1.6;
@@ -66,7 +66,7 @@
 .loading-state {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--color-ink-muted);
 }
 
 .study-count-card {
@@ -74,19 +74,19 @@
   flex-direction: column;
   align-items: center;
   padding: 24px;
-  background: linear-gradient(135deg, #667eea15, #764ba215);
+  background: linear-gradient(135deg, var(--color-accent)15, var(--color-accent-warm)15);
   border-radius: 12px;
 }
 
 .study-count {
   font-size: 36px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--color-accent);
 }
 
 .study-label {
   font-size: 14px;
-  color: #666;
+  color: var(--color-ink-muted);
   margin-top: 4px;
 }
 
@@ -94,14 +94,28 @@
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: #e8eaf6;
-  color: #3f51b5;
+  background: rgba(21, 138, 135, 0.12);
+  color: var(--color-accent-strong);
+}
+
+.course-subject.teacher {
+  margin-left: 8px;
+}
+
+.google-warning {
+  background: rgba(243, 176, 76, 0.15);
+  border: 1px solid rgba(243, 176, 76, 0.6);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #8a5a12;
 }
 
 .link-child-btn {
   margin-top: 20px;
   padding: 12px 28px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
   color: white;
   border: none;
   border-radius: 8px;
@@ -123,7 +137,7 @@
 
 .link-child-btn-small {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
   color: white;
   border: none;
   border-radius: 8px;
@@ -138,13 +152,13 @@
 }
 
 .modal-desc {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 14px;
   margin-bottom: 16px;
 }
 
 .link-error {
-  color: #d32f2f;
+  color: var(--color-danger);
   font-size: 13px;
   margin-top: 8px;
 }
@@ -154,7 +168,7 @@
   display: flex;
   gap: 0;
   margin-bottom: 20px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-border);
 }
 
 .link-tab {
@@ -164,19 +178,19 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: #666;
+  color: var(--color-ink-muted);
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   transition: all 0.2s;
 }
 
 .link-tab:hover {
-  color: #667eea;
+  color: var(--color-accent);
 }
 
 .link-tab.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
 }
 
 /* Google Connect Prompt */
@@ -192,11 +206,11 @@
 
 .google-connect-prompt h3 {
   margin-bottom: 8px;
-  color: #333;
+  color: var(--color-ink);
 }
 
 .google-connect-prompt p {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 14px;
   line-height: 1.6;
   max-width: 400px;
@@ -205,7 +219,7 @@
 
 .google-connect-btn {
   padding: 12px 28px;
-  background: #4285f4;
+  background: var(--color-accent);
   color: white;
   border: none;
   border-radius: 8px;
@@ -216,7 +230,7 @@
 }
 
 .google-connect-btn:hover {
-  background: #3367d6;
+  background: var(--color-accent-strong);
 }
 
 /* Discovery Loading */
@@ -228,8 +242,8 @@
 .loading-spinner-large {
   width: 40px;
   height: 40px;
-  border: 3px solid #e0e0e0;
-  border-top-color: #667eea;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 16px;
@@ -240,7 +254,7 @@
 }
 
 .discovery-loading p {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 14px;
 }
 
@@ -259,14 +273,14 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .discovered-item:hover:not(.disabled) {
-  background: #f8f9ff;
+  background: var(--color-surface-alt);
 }
 
 .discovered-item.disabled {
@@ -278,7 +292,7 @@
   margin-top: 3px;
   width: 18px;
   height: 18px;
-  accent-color: #667eea;
+  accent-color: var(--color-accent);
 }
 
 .discovered-info {
@@ -291,17 +305,17 @@
 .discovered-name {
   font-weight: 600;
   font-size: 14px;
-  color: #333;
+  color: var(--color-ink);
 }
 
 .discovered-email {
   font-size: 13px;
-  color: #666;
+  color: var(--color-ink-muted);
 }
 
 .discovered-courses {
   font-size: 12px;
-  color: #888;
+  color: var(--color-ink-muted);
   font-style: italic;
 }
 
@@ -310,7 +324,7 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: #e8f5e9;
+  background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
   font-weight: 500;
   width: fit-content;
@@ -322,7 +336,7 @@
   display: inline-block;
   background: none;
   border: none;
-  color: #667eea;
+  color: var(--color-accent);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -331,7 +345,7 @@
 }
 
 .link-tab-switch:hover {
-  color: #764ba2;
+  color: var(--color-accent-warm);
 }
 
 .clickable {
@@ -342,3 +356,5 @@
 .clickable:hover {
   transform: translateY(-2px);
 }
+
+

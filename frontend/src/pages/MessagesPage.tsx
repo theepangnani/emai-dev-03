@@ -23,6 +23,12 @@ export function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversationLimit = 20;
+  const messageLimit = 30;
+  const [conversationOffset, setConversationOffset] = useState(0);
+  const [hasMoreConversations, setHasMoreConversations] = useState(true);
+  const [messageOffset, setMessageOffset] = useState(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
 
   // New conversation form state
   const [selectedRecipient, setSelectedRecipient] = useState<number | null>(null);
@@ -31,11 +37,11 @@ export function MessagesPage() {
   const [creatingConversation, setCreatingConversation] = useState(false);
 
   useEffect(() => {
-    loadConversations();
+    loadConversations(true);
     loadRecipients();
 
     // Poll for new messages every 30 seconds
-    const interval = setInterval(loadConversations, 30000);
+    const interval = setInterval(() => loadConversations(true), 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -53,12 +59,15 @@ export function MessagesPage() {
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [selectedConversation?.id]);
+  }, [selectedConversation?.id, messageOffset]);
 
-  const loadConversations = async () => {
+  const loadConversations = async (reset = false) => {
     try {
-      const data = await messagesApi.listConversations();
-      setConversations(data);
+      const offset = reset ? 0 : conversationOffset;
+      const data = await messagesApi.listConversations({ skip: offset, limit: conversationLimit });
+      setConversations((prev) => reset ? data : [...prev, ...data]);
+      setConversationOffset(offset + data.length);
+      setHasMoreConversations(data.length === conversationLimit);
       setLoading(false);
     } catch (err) {
       logger.error('Failed to load conversations', { error: err });
@@ -79,8 +88,12 @@ export function MessagesPage() {
   const refreshSelectedConversation = async () => {
     if (!selectedConversation) return;
     try {
-      const detail = await messagesApi.getConversation(selectedConversation.id);
-      setSelectedConversation(detail);
+      const detail = await messagesApi.getConversation(selectedConversation.id, { offset: 0, limit: messageLimit });
+      setSelectedConversation((prev) => {
+        if (!prev) return detail;
+        const merged = mergeMessages(detail.messages, prev.messages);
+        return { ...detail, messages: merged };
+      });
     } catch (err) {
       logger.error('Failed to refresh conversation', { error: err });
     }
@@ -88,14 +101,39 @@ export function MessagesPage() {
 
   const selectConversation = async (id: number) => {
     try {
-      const detail = await messagesApi.getConversation(id);
+      const detail = await messagesApi.getConversation(id, { offset: 0, limit: messageLimit });
       setSelectedConversation(detail);
+      setMessageOffset(detail.messages.length);
+      setHasMoreMessages(detail.messages.length < detail.messages_total);
       await messagesApi.markAsRead(id);
-      loadConversations(); // Refresh unread counts
+      loadConversations(true); // Refresh unread counts
     } catch (err) {
       logger.error('Failed to load conversation', { error: err });
       setError('Failed to load conversation');
     }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedConversation || !hasMoreMessages) return;
+    try {
+      const detail = await messagesApi.getConversation(selectedConversation.id, { offset: messageOffset, limit: messageLimit });
+      setSelectedConversation((prev) => {
+        if (!prev) return detail;
+        const merged = mergeMessages(detail.messages, prev.messages);
+        return { ...prev, messages: merged, messages_total: detail.messages_total };
+      });
+      const nextOffset = messageOffset + detail.messages.length;
+      setMessageOffset(nextOffset);
+      setHasMoreMessages(nextOffset < detail.messages_total);
+    } catch (err) {
+      logger.error('Failed to load older messages', { error: err });
+    }
+  };
+
+  const mergeMessages = (older: ConversationDetail['messages'], current: ConversationDetail['messages']) => {
+    const map = new Map<number, ConversationDetail['messages'][number]>();
+    [...older, ...current].forEach((msg) => map.set(msg.id, msg));
+    return Array.from(map.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   };
 
   const handleSendMessage = async () => {
@@ -106,7 +144,7 @@ export function MessagesPage() {
       await messagesApi.sendMessage(selectedConversation.id, newMessage.trim());
       setNewMessage('');
       await refreshSelectedConversation();
-      loadConversations();
+      loadConversations(true);
     } catch (err) {
       logger.error('Failed to send message', { error: err });
       setError('Failed to send message');
@@ -127,8 +165,10 @@ export function MessagesPage() {
       });
       setShowNewModal(false);
       resetNewConversationForm();
-      await loadConversations();
+      await loadConversations(true);
       setSelectedConversation(conv);
+      setMessageOffset(conv.messages.length);
+      setHasMoreMessages(conv.messages.length < conv.messages_total);
       logger.info('Created new conversation', { conversationId: conv.id });
     } catch (err) {
       logger.error('Failed to create conversation', { error: err });
@@ -253,6 +293,13 @@ export function MessagesPage() {
               ))}
             </div>
           )}
+          {hasMoreConversations && (
+            <div className="conversation-footer">
+              <button onClick={() => loadConversations()} className="load-more-btn">
+                Load more
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Message Thread */}
@@ -271,6 +318,13 @@ export function MessagesPage() {
                 )}
               </div>
               <div className="messages-list">
+                {hasMoreMessages && (
+                  <div className="load-older">
+                    <button className="load-more-btn" onClick={loadOlderMessages}>
+                      Load older messages
+                    </button>
+                  </div>
+                )}
                 {selectedConversation.messages.map((msg) => (
                   <div
                     key={msg.id}

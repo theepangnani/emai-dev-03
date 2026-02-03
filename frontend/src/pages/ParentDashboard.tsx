@@ -376,15 +376,7 @@ export function ParentDashboard() {
                   </div>
                 )}
                 {!childOverview.google_connected && (
-                  <div style={{
-                    background: '#fffbeb',
-                    border: '1px solid #fde68a',
-                    borderRadius: 6,
-                    padding: '10px 14px',
-                    marginBottom: 12,
-                    fontSize: 14,
-                    color: '#92400e',
-                  }}>
+                  <div className="google-warning">
                     Your child hasn't connected Google Classroom yet. Ask them to sign in and connect it from their dashboard.
                   </div>
                 )}
@@ -394,7 +386,7 @@ export function ParentDashboard() {
                       <li key={course.id} className="course-item">
                         <span className="course-name">{course.name}</span>
                         {course.teacher_name && (
-                          <span className="course-subject" style={{ marginLeft: 8 }}>
+                          <span className="course-subject teacher">
                             Teacher: {course.teacher_name}
                           </span>
                         )}

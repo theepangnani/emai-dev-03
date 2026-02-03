@@ -73,6 +73,9 @@ class ConversationDetail(BaseModel):
     student_name: Optional[str]
     subject: Optional[str]
     messages: list[MessageResponse]
+    messages_total: int
+    messages_offset: int
+    messages_limit: int
     created_at: datetime
 
     class Config:

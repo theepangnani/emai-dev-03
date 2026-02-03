@@ -301,6 +301,46 @@
   color: var(--color-ink-muted);
 }
 
+.onboarding-banner {
+  background: rgba(21, 138, 135, 0.08);
+  border: 1px solid rgba(21, 138, 135, 0.35);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.onboarding-banner.welcome {
+  background: rgba(21, 138, 135, 0.12);
+  border: 2px solid rgba(21, 138, 135, 0.45);
+}
+
+.onboarding-icon {
+  font-size: 28px;
+}
+
+.onboarding-text {
+  flex: 1;
+}
+
+.onboarding-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.onboarding-subtitle {
+  margin: 4px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
+.onboarding-action {
+  white-space: nowrap;
+}
+
 @media (max-width: 1100px) {
   .dashboard-body {
     grid-template-columns: 1fr;
