@@ -107,6 +107,29 @@ Both student invites (from parent registration) and teacher invites (from shadow
 - Single endpoint: `POST /api/auth/accept-invite` — resolves invite_type to create the appropriate User + role records
 - Invite tokens expire after 7 days (students) or 30 days (teachers)
 
+### 6.3.1 Student-Teacher Linking (Phase 1) - IMPLEMENTED
+
+Students link to teachers through **course enrollment**. This creates the relationship needed for parent-teacher messaging.
+
+#### How Student-Teacher Links Work:
+1. **Via Google Classroom** (automatic): Student syncs Google Classroom → courses import with teacher info → student auto-enrolled
+2. **Via Manual Enrollment** (without Google): Teacher creates course → student enrolls via `POST /api/courses/{id}/enroll`
+
+#### Relationship Model:
+```
+Parent ←→ Student (via parent_students join table)
+Student ←→ Course (via student_courses join table)
+Course ←→ Teacher (via course.teacher_id)
+Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
+```
+
+#### Manual Flow (No Google OAuth):
+1. Teacher registers and creates a course
+2. Student registers and browses available courses (`GET /api/courses/`)
+3. Student enrolls in course (`POST /api/courses/{id}/enroll`)
+4. Parent links to student (via email or invite)
+5. Parent can now message the teacher (verified through shared course enrollment)
+
 ### 6.4 Manual Course Content Upload (Phase 1)
 - Upload or enter course content manually
 - Supported inputs: PDF, Word, text notes, images (OCR)
@@ -444,9 +467,14 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 | `/api/google/courses/sync` | POST | Sync Google Classroom courses to local DB |
 | `/api/google/courses/{course_id}/assignments` | GET | Get assignments for a Google Classroom course |
 | `/api/google/courses/{course_id}/assignments/sync` | POST | Sync assignments from Google Classroom course |
-| `/api/courses/` | GET | List user's courses |
-| ~~`/api/courses/`~~ | ~~POST~~ | ~~Create course~~ — **DEPRECATED** (Issue #51), use planned `POST /api/teacher/courses` |
+| `/api/courses/` | GET | List all courses |
+| `/api/courses/` | POST | Create course (teacher only, auto-assigns teacher) |
 | `/api/courses/teaching` | GET | List courses teaching (teacher only) |
+| `/api/courses/enrolled/me` | GET | List courses student is enrolled in (student only) |
+| `/api/courses/{id}` | GET | Get course details |
+| `/api/courses/{id}/enroll` | POST | Enroll in course (student only) |
+| `/api/courses/{id}/enroll` | DELETE | Unenroll from course (student only) |
+| `/api/courses/{id}/students` | GET | List enrolled students (teacher only, owns course) |
 | `/api/assignments/` | GET | List assignments |
 | `/api/study/generate` | POST | Generate study guide |
 | `/api/study/quiz/generate` | POST | Generate quiz |
@@ -492,8 +520,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 
 | Endpoint | Method | Description | Issue |
 |----------|--------|-------------|-------|
-| `/api/teacher/courses` | POST | Teacher creates a course manually | #42 |
-| `/api/teacher/courses/{id}/students` | POST | Add student to course | #42 |
+| `/api/teacher/courses/{id}/students` | POST | Add student to course by teacher | #42 |
 | `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course | #49 |
 | `/api/teacher/google-accounts` | GET | List linked Google accounts | #41, #62 |
 | `/api/teacher/google-accounts` | POST | Link a new Google account | #41, #62 |
