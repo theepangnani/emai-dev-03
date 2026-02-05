@@ -2,11 +2,12 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install system dependencies (PostgreSQL client libs + Node.js for frontend build)
+# Install system dependencies (PostgreSQL client libs + Node.js for frontend build + Tesseract for OCR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
+    tesseract-ocr \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
