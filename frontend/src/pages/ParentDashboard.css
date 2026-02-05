@@ -357,4 +357,144 @@
   transform: translateY(-2px);
 }
 
+/* Mode Toggle for Study Tools */
+.mode-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
 
+.mode-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  transition: all 0.2s;
+}
+
+.mode-btn:first-child {
+  border-right: 1px solid var(--color-border);
+}
+
+.mode-btn:hover {
+  background: var(--color-surface-alt);
+}
+
+.mode-btn.active {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* File Upload */
+.file-upload-section {
+  margin-bottom: 16px;
+}
+
+.drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--color-surface);
+}
+
+.drop-zone:hover,
+.drop-zone.dragging {
+  border-color: var(--color-accent);
+  background: rgba(21, 138, 135, 0.05);
+}
+
+.drop-zone.has-file {
+  border-style: solid;
+  border-color: var(--color-accent);
+}
+
+.drop-zone-content {
+  color: var(--color-ink-muted);
+}
+
+.drop-zone-content .upload-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.drop-zone-content p {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.drop-zone-content small {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.selected-file .file-icon {
+  font-size: 32px;
+}
+
+.selected-file .file-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selected-file .file-name {
+  font-weight: 600;
+  color: var(--color-ink);
+  word-break: break-word;
+}
+
+.selected-file .file-size {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.clear-file-btn {
+  background: var(--color-surface-alt);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  transition: all 0.2s;
+}
+
+.clear-file-btn:hover {
+  background: var(--color-danger);
+  color: white;
+}
+
+.link-success {
+  color: var(--color-success, #2e7d32);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.relationship-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(21, 138, 135, 0.15);
+  color: var(--color-accent);
+  text-transform: capitalize;
+}
