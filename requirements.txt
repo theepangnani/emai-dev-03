@@ -19,7 +19,7 @@ google-auth-oauthlib>=1.2.1
 google-api-python-client>=2.154.0
 
 # AI
-openai>=1.50.0
+anthropic>=0.40.0
 
 # File Processing (OCR and document extraction)
 PyPDF2>=3.0.0

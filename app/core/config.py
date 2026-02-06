@@ -28,9 +28,9 @@ class Settings(BaseSettings):
     # CORS (comma-separated origins, empty = allow all in development)
     allowed_origins: str = ""
 
-    # OpenAI
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
+    # Anthropic Claude
+    anthropic_api_key: str = ""
+    claude_model: str = "claude-sonnet-4-5-20250929"
 
     # Email (SendGrid)
     sendgrid_api_key: str = ""

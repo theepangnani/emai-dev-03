@@ -1,20 +1,20 @@
 """
-AI Service for generating educational content using OpenAI.
+AI Service for generating educational content using Anthropic Claude.
 """
 import time
-from openai import OpenAI
+import anthropic
 from app.core.config import settings
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
-def get_openai_client() -> OpenAI:
-    """Get configured OpenAI client."""
-    if not settings.openai_api_key:
-        logger.error("OpenAI API key not configured")
-        raise ValueError("OPENAI_API_KEY not configured")
-    return OpenAI(api_key=settings.openai_api_key)
+def get_anthropic_client() -> anthropic.Anthropic:
+    """Get configured Anthropic client."""
+    if not settings.anthropic_api_key:
+        logger.error("Anthropic API key not configured")
+        raise ValueError("ANTHROPIC_API_KEY not configured")
+    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
 
 async def generate_content(
@@ -24,7 +24,7 @@ async def generate_content(
     temperature: float = 0.7,
 ) -> str:
     """
-    Generate content using OpenAI's chat completion API.
+    Generate content using Anthropic Claude API.
 
     Args:
         prompt: The user prompt/question
@@ -36,31 +36,29 @@ async def generate_content(
         Generated text content
     """
     start_time = time.time()
-    logger.info(f"Starting AI content generation | model={settings.openai_model} | max_tokens={max_tokens}")
+    logger.info(f"Starting AI content generation | model={settings.claude_model} | max_tokens={max_tokens}")
     logger.debug(f"Prompt length: {len(prompt)} chars")
 
     try:
-        client = get_openai_client()
+        client = get_anthropic_client()
 
-        response = client.chat.completions.create(
-            model=settings.openai_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
+        message = client.messages.create(
+            model=settings.claude_model,
             max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
             temperature=temperature,
         )
 
         duration_ms = (time.time() - start_time) * 1000
-        content = response.choices[0].message.content
+        content = message.content[0].text
 
         # Log usage stats
-        usage = response.usage
         logger.info(
             f"AI generation completed | duration={duration_ms:.2f}ms | "
-            f"prompt_tokens={usage.prompt_tokens} | completion_tokens={usage.completion_tokens} | "
-            f"total_tokens={usage.total_tokens}"
+            f"input_tokens={message.usage.input_tokens} | output_tokens={message.usage.output_tokens}"
         )
 
         return content
