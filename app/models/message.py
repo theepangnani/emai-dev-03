@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -24,6 +24,11 @@ class Conversation(Base):
         "Message", back_populates="conversation", order_by="Message.created_at"
     )
 
+    __table_args__ = (
+        Index("ix_conversations_participants", "participant_1_id", "participant_2_id"),
+        Index("ix_conversations_student", "student_id"),
+    )
+
 
 class Message(Base):
     __tablename__ = "messages"
@@ -39,3 +44,9 @@ class Message(Base):
 
     conversation = relationship("Conversation", back_populates="messages")
     sender = relationship("User")
+
+    __table_args__ = (
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+        Index("ix_messages_conversation_read", "conversation_id", "is_read"),
+        Index("ix_messages_sender_created", "sender_id", "created_at"),
+    )

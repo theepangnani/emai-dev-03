@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { teacherCommsApi } from '../api/client';
 import type { TeacherCommunication, EmailMonitoringStatus } from '../api/client';
 import { NotificationBell } from '../components/NotificationBell';
+import { useDebounce } from '../utils/useDebounce';
 import './TeacherCommsPage.css';
 
 export function TeacherCommsPage() {
@@ -19,6 +20,7 @@ export function TeacherCommsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const pageSize = 20;
+  const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
     loadStatus();
@@ -26,7 +28,7 @@ export function TeacherCommsPage() {
 
   useEffect(() => {
     loadCommunications();
-  }, [page, typeFilter]);
+  }, [page, typeFilter, debouncedSearch]);
 
   const loadStatus = async () => {
     try {
@@ -42,7 +44,7 @@ export function TeacherCommsPage() {
     try {
       const params: Record<string, unknown> = { page, page_size: pageSize };
       if (typeFilter) params.type = typeFilter;
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       const data = await teacherCommsApi.list(params as Parameters<typeof teacherCommsApi.list>[0]);
       setCommunications(data.items);
       setTotal(data.total);
@@ -55,7 +57,6 @@ export function TeacherCommsPage() {
 
   const handleSearch = () => {
     setPage(1);
-    loadCommunications();
   };
 
   const handleSync = async () => {

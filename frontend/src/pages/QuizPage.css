@@ -10,11 +10,11 @@
 
 .quiz-header h1 {
   margin: 1rem 0 0.5rem;
-  color: #333;
+  color: var(--color-ink);
 }
 
 .progress {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 0.9rem;
 }
 
@@ -28,7 +28,7 @@
 }
 
 .question-card {
-  background: white;
+  background: var(--color-surface);
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -36,7 +36,7 @@
 
 .question-text {
   font-size: 1.25rem;
-  color: #333;
+  color: var(--color-ink);
   margin-bottom: 1.5rem;
   line-height: 1.5;
 }
@@ -51,32 +51,32 @@
   display: flex;
   align-items: center;
   padding: 1rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
 }
 
 .option:hover:not(:disabled) {
-  border-color: #2196F3;
-  background: #f5f9ff;
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
 }
 
 .option.selected {
-  border-color: #2196F3;
-  background: #e3f2fd;
+  border-color: var(--color-accent);
+  background: rgba(21, 138, 135, 0.14);
 }
 
 .option.correct {
-  border-color: #4CAF50;
-  background: #e8f5e9;
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
 }
 
 .option.incorrect {
-  border-color: #f44336;
-  background: #ffebee;
+  border-color: var(--color-danger);
+  background: rgba(214, 69, 69, 0.12);
 }
 
 .option:disabled {
@@ -90,24 +90,24 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #f0f0f0;
+  background: var(--color-surface-alt);
   font-weight: bold;
   margin-right: 1rem;
   flex-shrink: 0;
 }
 
 .option.selected .option-letter {
-  background: #2196F3;
+  background: var(--color-accent);
   color: white;
 }
 
 .option.correct .option-letter {
-  background: #4CAF50;
+  background: #2e7d32;
   color: white;
 }
 
 .option.incorrect .option-letter {
-  background: #f44336;
+  background: var(--color-danger);
   color: white;
 }
 
@@ -122,13 +122,13 @@
 }
 
 .result.correct {
-  background: #e8f5e9;
-  border-left: 4px solid #4CAF50;
+  background: rgba(46, 125, 50, 0.12);
+  border-left: 4px solid #2e7d32;
 }
 
 .result.incorrect {
-  background: #ffebee;
-  border-left: 4px solid #f44336;
+  background: rgba(214, 69, 69, 0.12);
+  border-left: 4px solid var(--color-danger);
 }
 
 .result-status {
@@ -141,11 +141,11 @@
 }
 
 .result.incorrect .result-status {
-  color: #c62828;
+  color: var(--color-danger);
 }
 
 .explanation {
-  color: #555;
+  color: var(--color-ink-muted);
   line-height: 1.5;
 }
 
@@ -166,26 +166,26 @@
 }
 
 .submit-btn {
-  background: #2196F3;
+  background: var(--color-accent);
   color: white;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #1976D2;
+  background: var(--color-accent-strong);
 }
 
 .submit-btn:disabled {
-  background: #ccc;
+  background: var(--color-border);
   cursor: not-allowed;
 }
 
 .next-btn {
-  background: #4CAF50;
+  background: #2e7d32;
   color: white;
 }
 
 .next-btn:hover {
-  background: #45a049;
+  background: #246c2c;
 }
 
 /* Results */
@@ -197,7 +197,7 @@
 }
 
 .results-card {
-  background: white;
+  background: var(--color-surface);
   padding: 3rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -205,23 +205,23 @@
 }
 
 .results-card h2 {
-  color: #333;
+  color: var(--color-ink);
   margin-bottom: 1.5rem;
 }
 
 .score {
   font-size: 3rem;
   font-weight: bold;
-  color: #4CAF50;
+  color: #2e7d32;
 }
 
 .score-total {
-  color: #666;
+  color: var(--color-ink-muted);
 }
 
 .score-percent {
   font-size: 1.25rem;
-  color: #666;
+  color: var(--color-ink-muted);
   margin-top: 0.5rem;
   margin-bottom: 2rem;
 }
@@ -243,22 +243,22 @@
 }
 
 .retry-btn {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
 }
 
 .retry-btn:hover {
-  background: #e0e0e0;
+  background: var(--color-border);
 }
 
 .done-btn {
-  background: #4CAF50;
+  background: #2e7d32;
   color: white;
 }
 
 .done-btn:hover {
-  background: #45a049;
+  background: #246c2c;
 }
 
 .loading, .error {
@@ -268,5 +268,7 @@
 }
 
 .error {
-  color: #d32f2f;
+  color: var(--color-danger);
 }
+
+

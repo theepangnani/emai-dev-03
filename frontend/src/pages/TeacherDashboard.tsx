@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, messagesApi } from '../api/client';
+import { coursesApi, googleApi } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import './TeacherDashboard.css';
 

@@ -9,8 +9,8 @@
 }
 
 .teacher-course-card {
-  background: white;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
   transition: box-shadow 0.2s;
@@ -22,7 +22,7 @@
 
 .teacher-course-card h4 {
   margin: 0 0 8px 0;
-  color: #333;
+  color: var(--color-ink);
   font-size: 16px;
 }
 
@@ -31,15 +31,15 @@
   font-size: 12px;
   padding: 2px 10px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea20, #764ba220);
-  color: #667eea;
+  background: rgba(21, 138, 135, 0.16);
+  color: var(--color-accent-strong);
   font-weight: 500;
   margin-bottom: 8px;
 }
 
 .course-desc {
   font-size: 13px;
-  color: #666;
+  color: var(--color-ink-muted);
   margin: 8px 0;
   line-height: 1.4;
 }
@@ -47,7 +47,7 @@
 .loading-state {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--color-ink-muted);
 }
 
 .clickable {

@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Frontend
     frontend_url: str = "http://localhost:5173"
 
+    # CORS (comma-separated origins, empty = allow all in development)
+    allowed_origins: str = ""
+
     # OpenAI
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"

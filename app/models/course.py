@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Table, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -32,3 +32,7 @@ class Course(Base):
 
     teacher = relationship("Teacher")
     students = relationship("Student", secondary=student_courses, backref="courses")
+
+    __table_args__ = (
+        Index("ix_courses_teacher", "teacher_id"),
+    )

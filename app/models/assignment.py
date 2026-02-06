@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Float, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -25,6 +25,10 @@ class Assignment(Base):
 
     course = relationship("Course", backref="assignments")
 
+    __table_args__ = (
+        Index("ix_assignments_course_due", "course_id", "due_date"),
+    )
+
 
 class StudentAssignment(Base):
     __tablename__ = "student_assignments"
@@ -42,3 +46,8 @@ class StudentAssignment(Base):
 
     student = relationship("Student")
     assignment = relationship("Assignment")
+
+    __table_args__ = (
+        Index("ix_student_assignments_student", "student_id"),
+        Index("ix_student_assignments_assignment", "assignment_id"),
+    )

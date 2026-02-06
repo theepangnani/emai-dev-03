@@ -306,32 +306,22 @@ export function StudentDashboard() {
       )}
 
       {!googleConnected && (
-        <div className="onboarding-banner" style={{
-          background: justRegistered ? '#eef2ff' : '#f0fdf4',
-          border: justRegistered ? '2px solid #6366f1' : '1px solid #bbf7d0',
-          borderRadius: 8,
-          padding: '16px 20px',
-          marginBottom: 20,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-        }}>
-          <div style={{ fontSize: 28 }}>🔗</div>
-          <div style={{ flex: 1 }}>
-            <strong style={{ fontSize: 16 }}>
+        <div className={`onboarding-banner ${justRegistered ? 'welcome' : 'standard'}`}>
+          <div className="onboarding-icon">🔗</div>
+          <div className="onboarding-text">
+            <strong className="onboarding-title">
               {justRegistered ? 'Welcome! Connect your Google Classroom' : 'Connect Google Classroom'}
             </strong>
-            <p style={{ margin: '4px 0 0', color: '#555', fontSize: 14 }}>
+            <p className="onboarding-subtitle">
               {justRegistered
                 ? 'Your parent invited you to EMAI. Connect Google Classroom so they can see your courses and teachers.'
                 : 'Connect your Google Classroom so your parent can see your courses and track your progress.'}
             </p>
           </div>
           <button
-            className="connect-button"
+            className="connect-button onboarding-action"
             onClick={handleConnectGoogle}
             disabled={isConnecting}
-            style={{ whiteSpace: 'nowrap' }}
           >
             {isConnecting ? 'Connecting...' : 'Connect Now'}
           </button>

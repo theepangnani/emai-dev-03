@@ -68,6 +68,7 @@ See `.claude/skills/unified-invites.md` for full invite system details.
 | `/api/parent/children/discover-google` | POST | Discover students via Google Classroom |
 | `/api/parent/children/link-bulk` | POST | Bulk link discovered students |
 | `/api/parent/children/{student_id}/overview` | GET | Child's courses, assignments, study guides |
+| `/api/parent/children/{student_id}/sync-courses` | POST | Trigger course sync for a child |
 
 ### Invite Endpoints
 | Endpoint | Method | Description |

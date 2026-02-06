@@ -1,6 +1,10 @@
+import os
 import time
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger, RequestLogger
@@ -66,9 +70,14 @@ async def log_requests(request: Request, call_next):
 
 
 # CORS middleware
+cors_origins = (
+    [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+    if settings.allowed_origins
+    else ["*"]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -93,19 +102,28 @@ app.include_router(invites.router, prefix="/api")
 logger.info("All routers registered")
 
 
-def hello_world() -> str:
-    return "Hello World"
-
-
-@app.get("/")
-def root():
-    return {"message": hello_world(), "app": settings.app_name}
-
-
 @app.get("/health")
 def health_check():
     logger.debug("Health check requested")
     return {"status": "healthy"}
+
+
+# Serve frontend static files in production
+FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
+if FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve frontend SPA — returns index.html for all non-API routes."""
+        file_path = FRONTEND_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIR / "index.html")
+else:
+    @app.get("/")
+    def root():
+        return {"message": "ClassBridge API", "app": settings.app_name, "docs": "/docs"}
 
 
 @app.on_event("startup")

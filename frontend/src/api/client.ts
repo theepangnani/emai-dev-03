@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -299,6 +299,9 @@ export interface ConversationDetail {
   student_name: string | null;
   subject: string | null;
   messages: MessageResponse[];
+  messages_total: number;
+  messages_offset: number;
+  messages_limit: number;
   created_at: string;
 }
 
@@ -316,13 +319,13 @@ export const messagesApi = {
     return response.data as RecipientOption[];
   },
 
-  listConversations: async () => {
-    const response = await api.get('/api/messages/conversations');
+  listConversations: async (params?: { skip?: number; limit?: number }) => {
+    const response = await api.get('/api/messages/conversations', { params });
     return response.data as ConversationSummary[];
   },
 
-  getConversation: async (id: number) => {
-    const response = await api.get(`/api/messages/conversations/${id}`);
+  getConversation: async (id: number, params?: { offset?: number; limit?: number }) => {
+    const response = await api.get(`/api/messages/conversations/${id}`, { params });
     return response.data as ConversationDetail;
   },
 

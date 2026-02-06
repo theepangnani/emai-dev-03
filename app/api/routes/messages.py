@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, desc
 
@@ -49,7 +49,11 @@ def _build_message_response(msg: Message, db: Session) -> MessageResponse:
 
 
 def _build_conversation_detail(
-    db: Session, conv: Conversation, current_user: User
+    db: Session,
+    conv: Conversation,
+    current_user: User,
+    message_offset: int = 0,
+    message_limit: int = 50,
 ) -> ConversationDetail:
     """Build a ConversationDetail response."""
     participant_1 = db.query(User).filter(User.id == conv.participant_1_id).first()
@@ -62,7 +66,20 @@ def _build_conversation_detail(
             student_user = db.query(User).filter(User.id == student.user_id).first()
             student_name = student_user.full_name if student_user else None
 
-    messages = [_build_message_response(msg, db) for msg in conv.messages]
+    total_messages = (
+        db.query(Message)
+        .filter(Message.conversation_id == conv.id)
+        .count()
+    )
+    message_rows = (
+        db.query(Message)
+        .filter(Message.conversation_id == conv.id)
+        .order_by(desc(Message.created_at))
+        .offset(message_offset)
+        .limit(message_limit)
+        .all()
+    )
+    messages = [_build_message_response(msg, db) for msg in reversed(message_rows)]
 
     return ConversationDetail(
         id=conv.id,
@@ -74,6 +91,9 @@ def _build_conversation_detail(
         student_name=student_name,
         subject=conv.subject,
         messages=messages,
+        messages_total=total_messages,
+        messages_offset=message_offset,
+        messages_limit=message_limit,
         created_at=conv.created_at,
     )
 
@@ -296,6 +316,8 @@ def create_conversation(
 
 @router.get("/conversations", response_model=list[ConversationSummary])
 def list_conversations(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -360,12 +382,14 @@ def list_conversations(
 
     # Sort by last message time, most recent first
     result.sort(key=lambda x: x.last_message_at or x.created_at, reverse=True)
-    return result
+    return result[skip: skip + limit]
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
 def get_conversation(
     conversation_id: int,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -382,7 +406,13 @@ def get_conversation(
             detail="You are not a participant in this conversation",
         )
 
-    return _build_conversation_detail(db, conv, current_user)
+    return _build_conversation_detail(
+        db,
+        conv,
+        current_user,
+        message_offset=offset,
+        message_limit=limit,
+    )
 
 
 @router.post(

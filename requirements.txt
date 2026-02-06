@@ -5,7 +5,7 @@ python-multipart>=0.0.12
 
 # Database
 sqlalchemy>=2.0.36
-# psycopg2-binary>=2.9.9  # Uncomment for PostgreSQL
+psycopg2-binary>=2.9.9
 alembic>=1.14.0
 
 # Authentication
@@ -36,8 +36,11 @@ sendgrid>=6.10.0
 # Scheduling
 apscheduler>=3.10.0
 
+# Production server
+gunicorn>=22.0.0
+
 # Utilities
-pydantic>=2.10.0
+pydantic[email]>=2.10.0
 pydantic-settings>=2.6.0
 python-dotenv>=1.0.1
 httpx>=0.28.0

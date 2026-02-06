@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Table, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -38,3 +38,7 @@ class Student(Base):
 
     user = relationship("User", foreign_keys=[user_id])
     parents = relationship("User", secondary=parent_students, backref="linked_students")
+
+    __table_args__ = (
+        Index("ix_students_user", "user_id"),
+    )

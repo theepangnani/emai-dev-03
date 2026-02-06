@@ -24,34 +24,34 @@
 }
 
 .study-btn-guide {
-  background-color: #4CAF50;
+  background-color: var(--color-accent);
   color: white;
 }
 
 .study-btn-guide:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: var(--color-accent-strong);
 }
 
 .study-btn-quiz {
-  background-color: #2196F3;
+  background-color: #1f7a7a;
   color: white;
 }
 
 .study-btn-quiz:hover:not(:disabled) {
-  background-color: #1976D2;
+  background-color: #166061;
 }
 
 .study-btn-cards {
-  background-color: #FF9800;
+  background-color: var(--color-accent-warm);
   color: white;
 }
 
 .study-btn-cards:hover:not(:disabled) {
-  background-color: #F57C00;
+  background-color: #d97745;
 }
 
 .study-error {
-  color: #d32f2f;
+  color: var(--color-danger);
   font-size: 0.75rem;
   margin-top: 0.25rem;
   margin-bottom: 0;

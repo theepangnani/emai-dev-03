@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AdminStats, AdminUserItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useDebounce } from '../utils/useDebounce';
 import './AdminDashboard.css';
 
 const PAGE_SIZE = 10;
 
 export function AdminDashboard() {
-  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -16,6 +15,7 @@ export function AdminDashboard() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
     loadStats();
@@ -23,7 +23,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     loadUsers();
-  }, [roleFilter, search, page]);
+  }, [roleFilter, debouncedSearch, page]);
 
   const loadStats = async () => {
     try {
@@ -39,7 +39,7 @@ export function AdminDashboard() {
     try {
       const data = await adminApi.getUsers({
         role: roleFilter || undefined,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         skip: page * PAGE_SIZE,
         limit: PAGE_SIZE,
       });
