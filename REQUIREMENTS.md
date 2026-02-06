@@ -77,8 +77,8 @@ Education ecosystems are fragmented:
 
 Persistent storage, organization, and lifecycle management for AI-generated study guides.
 
-- **List & Browse**: Parents and students can list all their saved study guides with filtering and search
-- **Course Categorization**: Study guides are labeled under existing courses for organized browsing; guides can be filtered by course
+- **List & Browse**: Parents and students can view a full list of all their generated study guides, quizzes, and flashcards directly from their dashboards. Clicking any item opens the full study material for review. Students see their materials in the "Your Study Materials" section; parents see both "My Study Materials" and each linked child's study materials
+- **Course Categorization**: Study guides are labeled under existing courses for organized browsing; students can filter guides by course using a dropdown filter
 - **Configurable Storage Limits**: Maximum 100 study guides per student, 200 per parent. Limits are configurable via application settings (`STUDY_GUIDE_LIMIT_STUDENT`, `STUDY_GUIDE_LIMIT_PARENT`)
 - **Version Control**: Regenerating a study guide for the same topic/assignment creates a new version linked to the original via `parent_guide_id`, preserving full history. Users can browse all versions of a guide
 - **Duplicate Detection**: Before AI generation, the system checks for existing guides with matching content hash to avoid redundant API calls and save costs. Endpoint: `POST /api/study/check-duplicate`

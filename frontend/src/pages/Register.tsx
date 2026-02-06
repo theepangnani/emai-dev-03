@@ -92,7 +92,8 @@ export function Register() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1 className="auth-title">Join EMAI</h1>
+        <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
+        <h1 className="auth-title">Join ClassBridge</h1>
         <p className="auth-subtitle">
           {isGoogleSignup ? 'Complete your Google account setup' : 'Create your account'}
         </p>

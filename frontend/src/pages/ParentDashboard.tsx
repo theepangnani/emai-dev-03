@@ -463,7 +463,7 @@ export function ParentDashboard() {
           <button className="link-child-btn" onClick={() => setShowLinkModal(true)}>
             + Link Child
           </button>
-          <button className="link-child-btn" onClick={() => setShowInviteModal(true)} style={{ marginTop: 8 }}>
+          <button className="link-child-btn" onClick={() => setShowInviteModal(true)}>
             + Invite Student
           </button>
         </div>
@@ -525,7 +525,7 @@ export function ParentDashboard() {
               </section>
 
               <section className="section">
-                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="section-header">
                   <h3>{childOverview.full_name}'s Courses</h3>
                   {childOverview.google_connected && (
                     <button
@@ -538,7 +538,7 @@ export function ParentDashboard() {
                   )}
                 </div>
                 {syncMessage && (
-                  <div className={`status-message status-${syncState === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 8 }}>
+                  <div className={`status-message status-${syncState === 'error' ? 'error' : 'success'}`}>
                     {syncMessage}
                   </div>
                 )}
@@ -571,7 +571,7 @@ export function ParentDashboard() {
               </section>
 
               <section className="section">
-                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="section-header">
                   <h3>My Study Materials</h3>
                   <button className="link-child-btn-small" onClick={() => setShowStudyModal(true)}>
                     + Create New
@@ -590,18 +590,15 @@ export function ParentDashboard() {
                               ? `/study/flashcards/${guide.id}`
                               : `/study/guide/${guide.id}`
                           )}
-                          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}
                         >
                           <span className="guide-icon">
                             {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '🃏' : '📖'}
                           </span>
-                          <span className="guide-title" style={{ flex: 1 }}>{guide.title}</span>
+                          <span className="guide-title">{guide.title}</span>
                           {guide.version > 1 && (
-                            <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem' }}>
-                              v{guide.version}
-                            </span>
+                            <span className="version-badge">v{guide.version}</span>
                           )}
-                          <span className="guide-date" style={{ color: '#888', fontSize: '0.85rem' }}>
+                          <span className="guide-date">
                             {new Date(guide.created_at).toLocaleDateString()}
                           </span>
                         </div>
@@ -613,9 +610,8 @@ export function ParentDashboard() {
                             await studyApi.deleteGuide(guide.id);
                             setMyStudyGuides(prev => prev.filter(g => g.id !== guide.id));
                           }}
-                          style={{ background: 'none', border: 'none', color: '#c00', cursor: 'pointer', padding: '4px 8px', fontSize: '1rem' }}
                         >
-                          x
+                          ✕
                         </button>
                       </li>
                     ))}
@@ -643,18 +639,15 @@ export function ParentDashboard() {
                               ? `/study/flashcards/${guide.id}`
                               : `/study/guide/${guide.id}`
                           )}
-                          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}
                         >
                           <span className="guide-icon">
                             {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '🃏' : '📖'}
                           </span>
-                          <span className="guide-title" style={{ flex: 1 }}>{guide.title}</span>
+                          <span className="guide-title">{guide.title}</span>
                           {guide.version > 1 && (
-                            <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem' }}>
-                              v{guide.version}
-                            </span>
+                            <span className="version-badge">v{guide.version}</span>
                           )}
-                          <span className="guide-date" style={{ color: '#888', fontSize: '0.85rem' }}>
+                          <span className="guide-date">
                             {new Date(guide.created_at).toLocaleDateString()}
                           </span>
                         </div>
@@ -823,7 +816,7 @@ export function ParentDashboard() {
                     <button className="link-tab-switch" onClick={() => { setLinkTab('email'); setDiscoveryState('idle'); }}>
                       Try linking by email instead
                     </button>
-                    <div className="modal-actions" style={{ marginTop: 16 }}>
+                    <div className="modal-actions">
                       <button className="cancel-btn" onClick={closeLinkModal}>Close</button>
                       <button className="generate-btn" onClick={triggerDiscovery}>Search Again</button>
                     </div>
@@ -1016,9 +1009,9 @@ export function ParentDashboard() {
             </div>
 
             {duplicateCheck && duplicateCheck.exists && (
-              <div style={{ background: '#fff3e0', padding: '0.75rem', borderRadius: '6px', marginBottom: '0.75rem' }}>
-                <p style={{ margin: 0, fontWeight: 500 }}>{duplicateCheck.message}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div className="duplicate-warning">
+                <p>{duplicateCheck.message}</p>
+                <div className="duplicate-actions">
                   <button
                     className="generate-btn"
                     onClick={() => {

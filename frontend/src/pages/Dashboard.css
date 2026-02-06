@@ -22,6 +22,12 @@
   gap: 12px;
 }
 
+.header-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
 .logo {
   font-size: 24px;
   font-weight: 700;
@@ -357,6 +363,385 @@
     flex-direction: row;
     flex-wrap: wrap;
   }
+}
+
+/* Modal shared styles */
+.modal h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  padding: 24px 24px 0;
+}
+
+.modal.modal-lg {
+  max-width: 600px;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 24px;
+}
+
+.modal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.modal-form input,
+.modal-form textarea,
+.modal-form select {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-form input:focus,
+.modal-form textarea:focus,
+.modal-form select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(21, 138, 135, 0.12);
+}
+
+.modal-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.generate-btn {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.generate-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  padding: 10px 22px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  border-color: var(--color-ink-muted);
+  color: var(--color-ink);
+}
+
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Status messages */
+.status-message {
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.status-success {
+  background: rgba(46, 125, 50, 0.1);
+  color: #2e7d32;
+  border: 1px solid rgba(46, 125, 50, 0.3);
+}
+
+.status-error {
+  background: rgba(214, 69, 69, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(214, 69, 69, 0.3);
+}
+
+/* Section header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header h3 {
+  margin: 0;
+}
+
+/* Create / action button inside sections */
+.create-custom-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.create-custom-btn:hover {
+  opacity: 0.9;
+}
+
+/* Disconnect button */
+.disconnect-button {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+
+.disconnect-button:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.card-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.card-buttons .connect-button {
+  margin-top: 0;
+}
+
+/* Assignments list */
+.assignments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assignment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.assignment-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.assignment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assignment-title {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.assignment-due {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+/* Study guides list */
+.study-guides-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.study-guide-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.study-guide-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.study-guide-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.guide-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.guide-title {
+  flex: 1;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.guide-date {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+
+.version-badge {
+  background: rgba(21, 138, 135, 0.12);
+  color: var(--color-accent-strong);
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.delete-guide-btn {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 16px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.delete-guide-btn:hover {
+  color: var(--color-danger);
+  background: rgba(214, 69, 69, 0.1);
+}
+
+/* Courses list */
+.courses-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.course-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.course-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.course-name {
+  font-weight: 500;
+  color: var(--color-ink);
+  flex: 1;
+}
+
+.google-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(66, 133, 244, 0.12);
+  color: #4285f4;
+  font-weight: 600;
+}
+
+/* Course filter */
+.course-filter {
+  margin-bottom: 12px;
+}
+
+.course-filter select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.course-filter select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Duplicate check warning */
+.duplicate-warning {
+  background: rgba(243, 176, 76, 0.15);
+  border: 1px solid rgba(243, 176, 76, 0.5);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin: 0 24px 12px;
+}
+
+.duplicate-warning p {
+  margin: 0 0 8px 0;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.duplicate-warning .duplicate-actions {
+  display: flex;
+  gap: 8px;
 }
 
 @media (max-width: 720px) {

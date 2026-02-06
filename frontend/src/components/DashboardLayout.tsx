@@ -47,8 +47,8 @@ export function DashboardLayout({ children, welcomeSubtitle }: DashboardLayoutPr
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="header-left">
-          <h1 className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>EMAI</h1>
-          <span className="brand-tagline">ClassBridge</span>
+          <img src="/logo-icon.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
+          <h1 className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>ClassBridge</h1>
         </div>
         <div className="header-right">
           <button onClick={() => navigate('/messages')} className="messages-button">

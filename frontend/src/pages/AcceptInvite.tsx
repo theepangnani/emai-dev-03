@@ -53,6 +53,7 @@ export function AcceptInvite() {
     return (
       <div className="auth-container">
         <div className="auth-card">
+          <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
           <h1 className="auth-title">Invalid Invite</h1>
           <p className="auth-subtitle">No invite token found. Please use the link from your invite email.</p>
           <p className="auth-footer">
@@ -66,8 +67,9 @@ export function AcceptInvite() {
   return (
     <div className="auth-container">
       <div className="auth-card">
+        <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
         <h1 className="auth-title">Accept Invite</h1>
-        <p className="auth-subtitle">Create your EMAI account</p>
+        <p className="auth-subtitle">Create your ClassBridge account</p>
 
         {error && <div className="auth-error">{error}</div>}
 

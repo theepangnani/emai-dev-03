@@ -431,7 +431,7 @@ export function StudentDashboard() {
             </button>
           </div>
           {courses.length > 0 && (
-            <div style={{ marginBottom: '0.75rem' }}>
+            <div className="course-filter">
               <select
                 value={courseFilter}
                 onChange={(e) => {
@@ -439,7 +439,6 @@ export function StudentDashboard() {
                   setCourseFilter(val);
                   loadStudyGuides(val || undefined);
                 }}
-                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc', fontSize: '0.9rem' }}
               >
                 <option value="">All Courses</option>
                 {courses.map((c) => (
@@ -451,7 +450,7 @@ export function StudentDashboard() {
           {studyGuides.length > 0 ? (
             <ul className="study-guides-list">
               {studyGuides.map((guide) => (
-                <li key={guide.id} className="study-guide-item" style={{ display: 'flex', alignItems: 'center' }}>
+                <li key={guide.id} className="study-guide-item">
                   <Link
                     to={
                       guide.guide_type === 'quiz'
@@ -461,31 +460,28 @@ export function StudentDashboard() {
                         : `/study/guide/${guide.id}`
                     }
                     className="study-guide-link"
-                    style={{ flex: 1 }}
                   >
                     <span className="guide-icon">
                       {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '🃏' : '📖'}
                     </span>
                     <span className="guide-title">{guide.title}</span>
                     {guide.version > 1 && (
-                      <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
-                        v{guide.version}
-                      </span>
+                      <span className="version-badge">v{guide.version}</span>
                     )}
                     <span className="guide-date">
                       {new Date(guide.created_at).toLocaleDateString()}
                     </span>
                   </Link>
                   <button
+                    className="delete-guide-btn"
                     title="Delete"
                     onClick={async (e) => {
                       e.preventDefault();
                       await studyApi.deleteGuide(guide.id);
                       setStudyGuides(prev => prev.filter(g => g.id !== guide.id));
                     }}
-                    style={{ background: 'none', border: 'none', color: '#c00', cursor: 'pointer', padding: '4px 8px', fontSize: '1rem' }}
                   >
-                    x
+                    ✕
                   </button>
                 </li>
               ))}
@@ -634,9 +630,9 @@ export function StudentDashboard() {
             </div>
 
             {duplicateCheck && duplicateCheck.exists && (
-              <div style={{ background: '#fff3e0', padding: '0.75rem', borderRadius: '6px', marginBottom: '0.75rem' }}>
-                <p style={{ margin: 0, fontWeight: 500 }}>{duplicateCheck.message}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div className="duplicate-warning">
+                <p>{duplicateCheck.message}</p>
+                <div className="duplicate-actions">
                   <button
                     className="generate-btn"
                     onClick={() => {

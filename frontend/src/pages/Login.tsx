@@ -65,7 +65,8 @@ export function Login() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1 className="auth-title">Welcome to EMAI</h1>
+        <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
+        <h1 className="auth-title">Welcome to ClassBridge</h1>
         <p className="auth-subtitle">Sign in to your account</p>
 
         {error && <div className="auth-error">{error}</div>}

@@ -132,6 +132,7 @@
 .link-child-header {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 16px;
 }
 

@@ -18,6 +18,13 @@
   max-width: 420px;
 }
 
+.auth-logo {
+  display: block;
+  margin: 0 auto 16px;
+  max-width: 200px;
+  height: auto;
+}
+
 .auth-title {
   font-size: 28px;
   font-weight: 700;
