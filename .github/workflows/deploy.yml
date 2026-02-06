@@ -59,3 +59,4 @@ jobs:
         run: |
           URL=$(gcloud run services describe ${{ env.SERVICE }} --region ${{ env.REGION }} --format 'value(status.url)')
           echo "Deployed to: $URL"
+# Trigger rebuild Thu, Feb  5, 2026  8:16:31 PM
