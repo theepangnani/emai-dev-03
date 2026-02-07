@@ -53,7 +53,7 @@ with engine.connect() as conn:
             conn.execute(text("ALTER TABLE courses ADD COLUMN created_by_user_id INTEGER REFERENCES users(id)"))
             logger.info("Added 'created_by_user_id' column to courses")
         if "is_private" not in existing_cols:
-            conn.execute(text("ALTER TABLE courses ADD COLUMN is_private BOOLEAN NOT NULL DEFAULT 0"))
+            conn.execute(text("ALTER TABLE courses ADD COLUMN is_private BOOLEAN NOT NULL DEFAULT FALSE"))
             logger.info("Added 'is_private' column to courses")
         conn.commit()
 
