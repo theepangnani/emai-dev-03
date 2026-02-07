@@ -510,6 +510,7 @@ export interface ChildSummary {
   grade_level: number | null;
   school_name: string | null;
   relationship_type: string | null;
+  invite_link: string | null;
 }
 
 export interface ChildOverview {
@@ -549,10 +550,11 @@ export const parentApi = {
     return response.data as ChildOverview;
   },
 
-  linkChild: async (studentEmail: string, relationshipType: string = 'guardian') => {
+  linkChild: async (studentEmail: string, relationshipType: string = 'guardian', fullName?: string) => {
     const response = await api.post('/api/parent/children/link', {
       student_email: studentEmail,
       relationship_type: relationshipType,
+      ...(fullName ? { full_name: fullName } : {}),
     });
     return response.data as ChildSummary;
   },

@@ -1,4 +1,7 @@
 import logging
+import secrets
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
@@ -9,7 +12,9 @@ from app.models.student import Student, parent_students, RelationshipType
 from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
 from app.models.study_guide import StudyGuide
+from app.models.invite import Invite, InviteType
 from app.api.deps import require_role
+from app.core.config import settings
 from app.schemas.parent import (
     ChildSummary, ChildOverview, LinkChildRequest,
     DiscoveredChild, DiscoverChildrenResponse, LinkChildrenBulkRequest,
@@ -58,15 +63,46 @@ def link_child(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
-    """Link a student to the current parent by the student's email."""
-    # Find the student's user account
-    student_user = (
-        db.query(User)
-        .filter(User.email == request.student_email, User.role == UserRole.STUDENT)
-        .first()
-    )
-    if not student_user:
-        raise HTTPException(status_code=404, detail="No student account found with that email")
+    """Link a student to the current parent by email. Auto-creates student if not found."""
+    invite_link = None
+
+    # Look for existing user with this email
+    existing_user = db.query(User).filter(User.email == request.student_email).first()
+
+    if existing_user and existing_user.role != UserRole.STUDENT:
+        raise HTTPException(
+            status_code=400,
+            detail="This email belongs to a non-student account",
+        )
+
+    if existing_user:
+        student_user = existing_user
+    else:
+        # Auto-create student account (no password — child sets it via invite link)
+        full_name = request.full_name or request.student_email.split("@")[0]
+        student_user = User(
+            email=request.student_email,
+            hashed_password="",
+            full_name=full_name,
+            role=UserRole.STUDENT,
+        )
+        db.add(student_user)
+        db.flush()
+
+        # Create invite so child can set their password
+        token = secrets.token_urlsafe(32)
+        invite = Invite(
+            email=request.student_email,
+            invite_type=InviteType.STUDENT,
+            token=token,
+            expires_at=datetime.utcnow() + timedelta(days=30),
+            invited_by_user_id=current_user.id,
+            metadata_json={"relationship_type": request.relationship_type},
+        )
+        db.add(invite)
+        db.flush()
+        invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
+        logger.info(f"Auto-created student account for {request.student_email}, invite token generated")
 
     # Find or create the Student record
     student = db.query(Student).filter(Student.user_id == student_user.id).first()
@@ -105,6 +141,7 @@ def link_child(
         grade_level=student.grade_level,
         school_name=student.school_name,
         relationship_type=rel_type.value,
+        invite_link=invite_link,
     )
 
 

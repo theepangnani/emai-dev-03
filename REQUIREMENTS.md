@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-06
 
 ---
 
@@ -104,10 +104,15 @@ ClassBridge supports three independent paths for student onboarding. Parent link
 - No parent required — the platform works fully for independent students
 - Student can optionally be linked to parent(s) later
 
-#### Path 3: Linked After the Fact
-- A parent links to an already-existing student account via email or Google Classroom discovery
+#### Path 3: Linked After the Fact (with Auto-Create) - IMPLEMENTED
+- A parent links to a student by email from the Parent Dashboard via `POST /api/parent/children/link`
+- **If the student account exists:** Links immediately — creates entry in `parent_students` join table
+- **If no account exists for that email:** System auto-creates a User (role=student) + Student record, generates an invite via the Unified Invite System (30-day expiry), and returns the invite link to the parent. The child can later use the invite link to set their password and activate their account
+- **If the email belongs to a non-student account:** Returns an error (cannot link to parent/teacher/admin accounts)
+- Parent can optionally provide the child's full name; if omitted, the email prefix is used
 - Multiple parents can link to the same student (e.g., mother, father, guardian)
 - Creates entries in the `parent_students` join table with a `relationship_type`
+- Google Classroom discovery is also available but only finds students already enrolled in courses
 
 #### Data Model
 - **Many-to-many**: `parent_students` join table (parent_id, student_id, relationship_type, created_at)

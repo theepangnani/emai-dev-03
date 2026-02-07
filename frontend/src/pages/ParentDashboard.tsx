@@ -24,9 +24,11 @@ export function ParentDashboard() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkTab, setLinkTab] = useState<LinkTab>('email');
   const [linkEmail, setLinkEmail] = useState('');
+  const [linkName, setLinkName] = useState('');
   const [linkRelationship, setLinkRelationship] = useState('guardian');
   const [linkError, setLinkError] = useState('');
   const [linkLoading, setLinkLoading] = useState(false);
+  const [linkInviteLink, setLinkInviteLink] = useState('');
 
   // Invite student modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -144,10 +146,15 @@ export function ParentDashboard() {
   const handleLinkChild = async () => {
     if (!linkEmail.trim()) return;
     setLinkError('');
+    setLinkInviteLink('');
     setLinkLoading(true);
     try {
-      await parentApi.linkChild(linkEmail.trim(), linkRelationship);
-      closeLinkModal();
+      const result = await parentApi.linkChild(linkEmail.trim(), linkRelationship, linkName.trim() || undefined);
+      if (result.invite_link) {
+        setLinkInviteLink(result.invite_link);
+      } else {
+        closeLinkModal();
+      }
       await loadChildren();
     } catch (err: any) {
       setLinkError(err.response?.data?.detail || 'Failed to link child');
@@ -254,8 +261,10 @@ export function ParentDashboard() {
     setShowLinkModal(false);
     setLinkTab('email');
     setLinkEmail('');
+    setLinkName('');
     setLinkRelationship('guardian');
     setLinkError('');
+    setLinkInviteLink('');
     setDiscoveryState('idle');
     setDiscoveredChildren([]);
     setSelectedDiscovered(new Set());
@@ -686,41 +695,72 @@ export function ParentDashboard() {
             {/* Email Tab */}
             {linkTab === 'email' && (
               <>
-                <p className="modal-desc">Enter your child's student email address to link their account.</p>
-                <div className="modal-form">
-                  <label>
-                    Student Email
-                    <input
-                      type="email"
-                      value={linkEmail}
-                      onChange={(e) => { setLinkEmail(e.target.value); setLinkError(''); }}
-                      placeholder="child@school.edu"
-                      disabled={linkLoading}
-                      onKeyDown={(e) => e.key === 'Enter' && handleLinkChild()}
-                    />
-                  </label>
-                  <label>
-                    Relationship
-                    <select
-                      value={linkRelationship}
-                      onChange={(e) => setLinkRelationship(e.target.value)}
-                      disabled={linkLoading}
-                    >
-                      <option value="mother">Mother</option>
-                      <option value="father">Father</option>
-                      <option value="guardian">Guardian</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </label>
-                  {linkError && <p className="link-error">{linkError}</p>}
-                </div>
+                {linkInviteLink ? (
+                  <div className="modal-form">
+                    <div className="invite-success-box">
+                      <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child linked successfully!</p>
+                      <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                        A new student account was created. Share this link with your child so they can set their password and log in:
+                      </p>
+                      <div className="invite-link-container">
+                        <span className="invite-link">{linkInviteLink}</span>
+                        <button className="copy-link-btn" onClick={() => { navigator.clipboard.writeText(linkInviteLink); }}>
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="modal-desc">Enter your child's email to link or create their account.</p>
+                    <div className="modal-form">
+                      <label>
+                        Child's Name
+                        <input
+                          type="text"
+                          value={linkName}
+                          onChange={(e) => setLinkName(e.target.value)}
+                          placeholder="e.g. Alex Smith"
+                          disabled={linkLoading}
+                        />
+                      </label>
+                      <label>
+                        Student Email
+                        <input
+                          type="email"
+                          value={linkEmail}
+                          onChange={(e) => { setLinkEmail(e.target.value); setLinkError(''); }}
+                          placeholder="child@school.edu"
+                          disabled={linkLoading}
+                          onKeyDown={(e) => e.key === 'Enter' && handleLinkChild()}
+                        />
+                      </label>
+                      <label>
+                        Relationship
+                        <select
+                          value={linkRelationship}
+                          onChange={(e) => setLinkRelationship(e.target.value)}
+                          disabled={linkLoading}
+                        >
+                          <option value="mother">Mother</option>
+                          <option value="father">Father</option>
+                          <option value="guardian">Guardian</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      {linkError && <p className="link-error">{linkError}</p>}
+                    </div>
+                  </>
+                )}
                 <div className="modal-actions">
                   <button className="cancel-btn" onClick={closeLinkModal} disabled={linkLoading}>
-                    Cancel
+                    {linkInviteLink ? 'Close' : 'Cancel'}
                   </button>
-                  <button className="generate-btn" onClick={handleLinkChild} disabled={linkLoading || !linkEmail.trim()}>
-                    {linkLoading ? 'Linking...' : 'Link Child'}
-                  </button>
+                  {!linkInviteLink && (
+                    <button className="generate-btn" onClick={handleLinkChild} disabled={linkLoading || !linkEmail.trim()}>
+                      {linkLoading ? 'Linking...' : 'Link Child'}
+                    </button>
+                  )}
                 </div>
               </>
             )}
