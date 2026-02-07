@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-02-06
+**Last Updated:** 2026-02-07
 
 ---
 
@@ -89,36 +89,62 @@ Persistent storage, organization, and lifecycle management for AI-generated stud
 
 ### 6.3 Parent-Student Registration & Linking (Phase 1)
 
-ClassBridge supports three independent paths for student onboarding. Parent linking is entirely optional — students can use the platform independently.
+ClassBridge is designed as a **parent-first platform**. Parents can manage their children's education without requiring school board integration or Google Classroom access. Student email is **optional** — parents can create students with just a name.
 
-#### Path 1: Parent-Created Student (via Unified Invite)
-- Parent creates a student invite from the Parent Dashboard via `POST /api/invites/` with `invite_type=student`
-- System creates an invite record with a secure token and sends an invite email
-- Student clicks the invite link and sets their own password via `POST /api/auth/accept-invite`
-- On acceptance: User (role=student) + Student record + `parent_students` join entry created automatically
-- Student can then log in independently
+#### Design Principles
+- ClassBridge works **independently of school systems** — Google Classroom is an optional import source, not a requirement
+- Students don't need to be attached to a teacher — parent-created courses have no teacher
+- Student email is optional — students without email are fully managed by their parent
+- No data is synced from Google Classroom by default — all syncs are manual and on-demand
+- Parent-created courses are **private** to the parent's children only
 
-#### Path 2: Self-Registered Student
-- Student creates their own account at `/auth/register` with role=student
-- Student links to Google Classroom and manages their own courses
-- No parent required — the platform works fully for independent students
-- Student can optionally be linked to parent(s) later
+#### Path 1: Parent-Created Student (Name Only, No Email Required)
+- Parent creates a child from the Parent Dashboard with just a **full name**
+- Email is optional — if no email, the student cannot log in independently (parent manages their account)
+- If email is provided: system auto-creates an invite so the child can set their password and log in later
+- Creates User (role=student, email=nullable) + Student record + `parent_students` join entry
+- Endpoint: `POST /api/parent/children/create`
 
-#### Path 3: Linked After the Fact (with Auto-Create) - IMPLEMENTED
+#### Path 2: Parent Links Existing Student by Email (with Auto-Create) - IMPLEMENTED
 - A parent links to a student by email from the Parent Dashboard via `POST /api/parent/children/link`
 - **If the student account exists:** Links immediately — creates entry in `parent_students` join table
-- **If no account exists for that email:** System auto-creates a User (role=student) + Student record, generates an invite via the Unified Invite System (30-day expiry), and returns the invite link to the parent. The child can later use the invite link to set their password and activate their account
+- **If no account exists for that email:** System auto-creates a User (role=student) + Student record, generates an invite via the Unified Invite System (30-day expiry), and returns the invite link to the parent
 - **If the email belongs to a non-student account:** Returns an error (cannot link to parent/teacher/admin accounts)
 - Parent can optionally provide the child's full name; if omitted, the email prefix is used
 - Multiple parents can link to the same student (e.g., mother, father, guardian)
-- Creates entries in the `parent_students` join table with a `relationship_type`
-- Google Classroom discovery is also available but only finds students already enrolled in courses
+
+#### Path 3: Self-Registered Student
+- Student creates their own account at `/auth/register` with role=student
+- No parent required — the platform works fully for independent students
+- Student can optionally be linked to parent(s) later
+
+#### Path 4: Google Classroom Discovery (On-Demand Import)
+- Parent connects Google account and manually triggers "Search Google Classroom"
+- System discovers students from the parent's Google Classroom courses
+- Students not yet in ClassBridge are auto-created with their Google profile name
+- Parent selects which students to link — nothing is automatic
+- **Note:** This only works if the parent's Google account has Google Classroom courses (e.g., parent is also a teacher)
+
+#### Student Email Policy
+| Scenario | Email Required? | Student Can Log In? | Managed By |
+|----------|----------------|---------------------|------------|
+| Parent creates child with name only | No | No — parent manages | Parent |
+| Parent creates child with email | Yes | Yes — via invite link | Parent + Student |
+| Student self-registers | Yes | Yes — has password | Student |
+| Google Classroom discovery | Yes (from Google) | Yes — via invite link | Parent + Student |
+
+#### Email Identity Merging (MVP 1.5)
+- Students may have both a **personal email** (used in MVP-1) and a **school email** (available when school board approves ClassBridge)
+- When school board access becomes available, students can add their school email as a secondary identity
+- Both emails resolve to the same student account
+- Data model: `student_emails` table (student_id, email, email_type: personal/school, is_primary, verified_at)
 
 #### Data Model
 - **Many-to-many**: `parent_students` join table (parent_id, student_id, relationship_type, created_at)
 - A student can have zero, one, or many parents
 - A parent can have zero, one, or many students
 - `relationship_type`: "mother", "father", "guardian", "other"
+- `User.email` — **nullable for students only** (other roles still require email for login)
 
 ### Unified Invite System
 Both student invites (from parent registration) and teacher invites (from shadow discovery) use a single `invites` table and endpoint:
@@ -126,28 +152,52 @@ Both student invites (from parent registration) and teacher invites (from shadow
 - Single endpoint: `POST /api/auth/accept-invite` — resolves invite_type to create the appropriate User + role records
 - Invite tokens expire after 7 days (students) or 30 days (teachers)
 
-### 6.3.1 Student-Teacher Linking (Phase 1) - IMPLEMENTED
+### 6.3.1 Course Management (Phase 1)
 
-Students link to teachers through **course enrollment**. This creates the relationship needed for parent-teacher messaging.
+Courses in ClassBridge can be created by **parents, students, or teachers**. Courses do not require a teacher — parent-created courses exist for home learning. Google Classroom courses are imported on-demand only.
 
-#### How Student-Teacher Links Work:
-1. **Via Google Classroom** (automatic): Student syncs Google Classroom → courses import with teacher info → student auto-enrolled
-2. **Via Manual Enrollment** (without Google): Teacher creates course → student enrolls via `POST /api/courses/{id}/enroll`
+#### Who Can Create Courses
+| Role | Can Create? | Visibility | teacher_id |
+|------|------------|------------|------------|
+| **Parent** | Yes | Private to parent's linked children only | NULL |
+| **Student** | Yes | Visible to the student only | NULL |
+| **Teacher** | Yes | Visible to enrolled students | Set to teacher's ID |
+
+#### Course Assignment
+- Parents can **assign courses to their linked children** via `POST /api/parent/children/{student_id}/courses`
+- Students can **self-enroll** in courses via `POST /api/courses/{id}/enroll`
+- Teachers can add students to their courses
+
+#### Google Classroom Integration (On-Demand Only)
+- **No data is synced from Google Classroom by default**
+- Users must manually click "Import from Google Classroom" to pull courses
+- Users select which courses to import — system does not auto-import all
+- Synced courses are tagged with `google_classroom_id` for deduplication
+- Background sync jobs are **disabled by default** — sync is portal-only
+- Any data synced from Google Classroom or Gmail must be **manually selected and/or requested**
+
+#### Course Data Model Changes
+- `Course.teacher_id` — already nullable (no change needed)
+- `Course.created_by_user_id` — **new field**: tracks who created the course (parent, student, or teacher)
+- `Course.is_private` — **new field**: if true, only visible to creator's linked children (for parent-created courses)
+
+### 6.3.2 Student-Teacher Linking (Phase 1) - IMPLEMENTED
+
+Students link to teachers through **course enrollment**. This creates the relationship needed for parent-teacher messaging. Students don't need to be attached to a teacher — many courses have no teacher.
 
 #### Relationship Model:
 ```
 Parent ←→ Student (via parent_students join table)
 Student ←→ Course (via student_courses join table)
-Course ←→ Teacher (via course.teacher_id)
+Course ←→ Teacher (via course.teacher_id, OPTIONAL)
 Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 ```
 
 #### Manual Flow (No Google OAuth):
-1. Teacher registers and creates a course
-2. Student registers and browses available courses (`GET /api/courses/`)
-3. Student enrolls in course (`POST /api/courses/{id}/enroll`)
-4. Parent links to student (via email or invite)
-5. Parent can now message the teacher (verified through shared course enrollment)
+1. Parent registers and creates children (by name or email)
+2. Parent creates courses and assigns them to children
+3. Optionally: Teacher registers, creates course, student enrolls
+4. Parent can message the teacher (if child is in a teacher's course)
 
 ### 6.4 Manual Course Content Upload (Phase 1)
 - Upload or enter course content manually
@@ -375,7 +425,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 ## 8. Phased Roadmap
 
 ### Phase 1 (MVP) - CURRENT
-- [x] Google Classroom integration
+- [x] Google Classroom integration (on-demand only)
 - [x] Parent & Student dashboards
 - [x] AI study tools (guides, quizzes, flashcards)
 - [x] Secure parent-teacher messaging
@@ -400,21 +450,30 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] Course-labeled study guide categorization
 - [x] Role-based study guide visibility
 - [x] Study guide list/management UI for parents and students
-- [ ] Multi-Google account support for teachers
+- [ ] **Make student email optional** — parent can create child with name only (no email, no login)
+- [ ] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional
+- [ ] **Parent creates courses** — allow PARENT role to create courses (private to their children)
+- [ ] **Parent assigns courses to children** — `POST /api/parent/children/{student_id}/courses`
+- [ ] **Student creates courses** — allow STUDENT role to create courses (visible to self only)
+- [ ] **Add `created_by_user_id` and `is_private` to Course model**
+- [ ] **Disable auto-sync jobs by default** — all Google Classroom/Gmail sync is manual, on-demand only
+- [ ] **Parent Dashboard: course management UI** — create courses, assign to children, view child courses
 - [ ] Manual course creation for teachers
 - [ ] Manual assignment creation for teachers
-- [ ] Deprecate POST /api/courses/ endpoint
+- [ ] Multi-Google account support for teachers
 - [ ] Auto-send invite email to shadow teachers on creation
 - [ ] Teacher Dashboard course management view with source badges
 
-### Phase 1.5 (Task Manager, Calendar & Content)
+### Phase 1.5 (Task Manager, Calendar, Content & School Integration)
+- [ ] Student email identity merging (personal + school email on same account)
+- [ ] School board email integration (when DTAP approved)
 - [ ] Task/Todo CRUD API and model
 - [ ] Visual calendar component (day/week/month views)
 - [ ] Google Calendar push integration
 - [ ] Frontend Task Manager UI
 - [ ] Central document repository
 - [ ] Manual content upload with OCR (enhanced)
-- [ ] Background periodic Google Classroom course/assignment sync for teachers
+- [ ] Background periodic Google Classroom course/assignment sync for teachers (opt-in)
 
 ### Phase 2
 - [ ] TeachAssist integration
@@ -546,6 +605,10 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 
 | Endpoint | Method | Description | Issue |
 |----------|--------|-------------|-------|
+| `/api/parent/children/create` | POST | Create child with name (email optional) | #90 |
+| `/api/parent/children/{student_id}/courses` | POST | Assign course to child | #92 |
+| `/api/parent/children/{student_id}/courses/{course_id}` | DELETE | Remove course from child | #92 |
+| `/api/courses/` | POST | Create course (parent, student, or teacher) | #91 |
 | `/api/teacher/courses/{id}/students` | POST | Add student to course by teacher | #42 |
 | `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course | #49 |
 | `/api/teacher/google-accounts` | GET | List linked Google accounts | #41, #62 |
@@ -624,11 +687,16 @@ Current feature issues are tracked in GitHub:
 - Issue #52: ~~Teacher Google Classroom course sync (set teacher_id on synced courses)~~ (CLOSED)
 - Issue #56: ~~Parent-student-Google sync flow (onboarding, parent sync, teacher info)~~ (CLOSED)
 
-### Phase 1 - Open
-- Issue #41: Multi-Google account support for teachers
+### Phase 1 - Open (Parent-First Platform Revision)
+- Issue #90: Make student email optional — parent creates child with name only
+- Issue #91: Allow parents and students to create courses
+- Issue #92: Parent assigns courses to linked children
+- Issue #93: Add `created_by_user_id` and `is_private` fields to Course model
+- Issue #94: Disable auto-sync jobs — all Google/Gmail sync must be manual and on-demand
+- Issue #95: Parent Dashboard: course management UI (create, assign, view)
 - Issue #42: Manual course creation for teachers
 - Issue #49: Manual assignment creation for teachers
-- Issue #51: Deprecate POST /api/courses/ endpoint
+- Issue #41: Multi-Google account support for teachers
 - Issue #57: Auto-send invite email to shadow teachers on creation
 - Issue #58: Add is_platform_user flag to Teacher model
 - Issue #59: Teacher Dashboard course management view with source badges
@@ -642,8 +710,11 @@ Current feature issues are tracked in GitHub:
 - Issue #86: Role-based study guide visibility
 - Issue #87: Frontend study guide management UI
 - Issue #88: Update REQUIREMENTS.md with study guide management
+- Issue #89: Auto-create student account when parent links by email
+- Issue #51: ~~Deprecate POST /api/courses/ endpoint~~ (SUPERSEDED — endpoint now serves all roles)
 
-### Phase 1.5 - Task Manager, Calendar & Content
+### Phase 1.5 - Task Manager, Calendar, Content & School Integration
+- Issue #96: Student email identity merging (personal + school email)
 - Issue #44: Task/Todo CRUD API and model
 - Issue #45: Visual calendar component with role-aware data
 - Issue #46: Google Calendar push integration for tasks
