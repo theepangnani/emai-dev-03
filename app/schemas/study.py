@@ -90,6 +90,11 @@ class FlashcardSetResponse(BaseModel):
         from_attributes = True
 
 
+class StudyGuideUpdate(BaseModel):
+    """Request to update a study guide (e.g. assign to a course)."""
+    course_id: int | None = None
+
+
 class DuplicateCheckRequest(BaseModel):
     """Request to check for duplicate study guide before generation."""
     title: str | None = None

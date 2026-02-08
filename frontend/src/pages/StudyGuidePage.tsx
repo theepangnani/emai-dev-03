@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
+import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import './StudyGuidePage.css';
 
 export function StudyGuidePage() {
@@ -59,6 +60,11 @@ export function StudyGuidePage() {
       <div className="study-guide-header">
         <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
         <div className="header-actions">
+          <CourseAssignSelect
+            guideId={guide.id}
+            currentCourseId={guide.course_id}
+            onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
+          />
           <button className="print-btn" onClick={() => window.print()}>Print</button>
           <button
             className="print-btn"

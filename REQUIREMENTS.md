@@ -86,6 +86,7 @@ Persistent storage, organization, and lifecycle management for AI-generated stud
   - **Students** see their own study guides plus any course-labeled guides shared within their enrolled courses
   - **Parents** see their own study guides plus all study guides belonging to their linked children
 - **Deletion**: Users can delete their own study guides. Deleting a parent guide does not cascade to child versions
+- **Course Assignment**: Any user can assign/reassign their study guides to a course via `PATCH /api/study/guides/{guide_id}`. A reusable `CourseAssignSelect` dropdown component is available on study guide view pages (StudyGuidePage, QuizPage, FlashcardsPage) and inline in dashboard study material lists
 
 ### 6.3 Parent-Student Registration & Linking (Phase 1)
 
@@ -399,12 +400,51 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 
 | Dashboard | Key Features | Status |
 |-----------|--------------|--------|
-| **Parent Dashboard** | Register child, link children (by email or via Google Classroom), child progress, assignments, study materials, messages | Implemented |
+| **Parent Dashboard** | Calendar-centric layout: assignment calendar (Day/3-Day/Week/Month views), child filter tabs, action bar (Add Child, Add Course, Create Study Guide), collapsible sidebar (Courses, Study Materials, Messages, Undated Assignments), course color-coding, assignment popover with "Create Study Guide" | Implemented |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination) | Implemented |
 
 > **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
+
+### Parent Dashboard Layout (Calendar-Centric) - IMPLEMENTED
+
+The Parent Dashboard uses a **calendar-centric layout** where upcoming assignments are the primary focus.
+
+#### Layout Structure
+```
+[Action Bar: + Add Child | + Add Course | + Create Study Guide]
+[Child Filter Tabs: Child 1 | Child 2 | ... (when multiple children)]
+[Calendar (main ~75%)         | Sidebar (~25%)              ]
+[  Header: < Today > Title    |  Courses (collapsible)      ]
+[  View: Day|3-Day|Week|Month |  Study Materials (collaps.) ]
+[  Grid with assignments      |  Messages link              ]
+[                              |  Undated Assignments        ]
+```
+
+#### Calendar Views
+- **Month View**: 7-column grid with assignment chips (color-coded by course), click day to drill into Day view
+- **Week View**: 7-column layout with stacked assignment cards showing title, course, and time
+- **3-Day View**: 3-column layout identical to Week but showing only 3 days
+- **Day View**: Single-column list of all assignments for one day
+
+#### Key Features
+- **Course Color-Coding**: 10-color palette assigned to courses by index; consistent across calendar entries, sidebar, and popovers
+- **Assignment Popover**: Click any assignment to see title, course (with color dot), due date/time, description, and "Create Study Guide" button
+- **Child Filtering**: When parent has multiple children, tabs allow switching between children to view their assignments
+- **Undated Assignments**: Assignments without due dates appear in the sidebar's "Undated" section
+- **Responsive**: At < 1024px, layout stacks calendar above sidebar
+
+#### Calendar Components (Reusable)
+Located in `frontend/src/components/calendar/`:
+- `useCalendarNav` — Hook for date navigation, view mode, range computation
+- `CalendarView` — Orchestrator component (header + active grid + popover)
+- `CalendarHeader` — Nav buttons, title, view toggle
+- `CalendarMonthGrid` / `CalendarDayCell` — Month view grid
+- `CalendarWeekGrid` — Week/3-day column layout
+- `CalendarDayGrid` — Single-day list view
+- `CalendarEntry` — Assignment chip (month) or card (week/day)
+- `CalendarEntryPopover` — Assignment detail popover
 
 ### Parent-Student Relationship
 Parents and students have a **many-to-many** relationship via the `parent_students` join table. A student can have multiple parents (mother, father, guardian), and parent linking is optional.
@@ -450,6 +490,8 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] Course-labeled study guide categorization
 - [x] Role-based study guide visibility
 - [x] Study guide list/management UI for parents and students
+- [x] Study guide course assignment (PATCH endpoint + CourseAssignSelect component)
+- [x] **Parent Dashboard calendar-centric redesign** — calendar views (Day/3-Day/Week/Month), action bar, sidebar, course color-coding, assignment popover
 - [ ] **Make student email optional** — parent can create child with name only (no email, no login)
 - [ ] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional
 - [ ] **Parent creates courses** — allow PARENT role to create courses (private to their children)
@@ -564,6 +606,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 | `/api/study/flashcards/generate` | POST | Generate flashcards |
 | `/api/study/guides` | GET | List study materials |
 | `/api/study/guides/{guide_id}` | GET | Get a specific study guide |
+| `/api/study/guides/{guide_id}` | PATCH | Update a study guide (assign to course) |
 | `/api/study/guides/{guide_id}` | DELETE | Delete a study guide |
 | `/api/study/check-duplicate` | POST | Check for duplicate study guide before generation |
 | `/api/study/guides/{id}/versions` | GET | List all versions of a study guide |
@@ -694,6 +737,8 @@ Current feature issues are tracked in GitHub:
 - Issue #93: Add `created_by_user_id` and `is_private` fields to Course model
 - Issue #94: Disable auto-sync jobs — all Google/Gmail sync must be manual and on-demand
 - Issue #95: Parent Dashboard: course management UI (create, assign, view)
+- Issue #97: Parent Dashboard calendar-centric redesign (IMPLEMENTED)
+- Issue #98: Study guide course assignment — PATCH endpoint + CourseAssignSelect component (IMPLEMENTED)
 - Issue #42: Manual course creation for teachers
 - Issue #49: Manual assignment creation for teachers
 - Issue #41: Multi-Google account support for teachers
@@ -713,10 +758,10 @@ Current feature issues are tracked in GitHub:
 - Issue #89: Auto-create student account when parent links by email
 - Issue #51: ~~Deprecate POST /api/courses/ endpoint~~ (SUPERSEDED — endpoint now serves all roles)
 
-### Phase 1.5 - Task Manager, Calendar, Content & School Integration
+### Phase 1.5 - Task Manager, Calendar Extension, Content & School Integration
 - Issue #96: Student email identity merging (personal + school email)
 - Issue #44: Task/Todo CRUD API and model
-- Issue #45: Visual calendar component with role-aware data
+- Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
 - Issue #46: Google Calendar push integration for tasks
 - Issue #47: Frontend Task Manager UI
 - Issue #25: Manual Content Upload with OCR (enhanced)

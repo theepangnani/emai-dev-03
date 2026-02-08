@@ -547,3 +547,304 @@
 .copy-link-btn:hover {
   background: var(--color-accent-strong);
 }
+
+/* ============================================
+   Parent Layout Grid (Calendar-Centric)
+   ============================================ */
+
+.parent-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas:
+    "action-bar action-bar"
+    "child-filter child-filter"
+    "calendar sidebar";
+  gap: 0 20px;
+  min-height: 0;
+}
+
+.parent-action-bar-area {
+  grid-area: action-bar;
+}
+
+.parent-child-filter {
+  grid-area: child-filter;
+  margin-bottom: 16px;
+}
+
+.parent-calendar-area {
+  grid-area: calendar;
+  min-width: 0;
+  min-height: 0;
+}
+
+.parent-sidebar-area {
+  grid-area: sidebar;
+  min-width: 0;
+}
+
+/* ============================================
+   Action Bar
+   ============================================ */
+
+.parent-action-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.action-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition: all 0.2s;
+}
+
+.action-icon-btn:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+  color: var(--color-accent);
+}
+
+.action-icon-btn .action-icon {
+  font-size: 16px;
+}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+
+.parent-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sidebar-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-ink);
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.sidebar-section-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.sidebar-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-accent);
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.sidebar-chevron {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.sidebar-section-body {
+  padding: 0 14px 12px;
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.sidebar-action-btn {
+  padding: 5px 10px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition: all 0.15s;
+}
+
+.sidebar-action-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.sidebar-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidebar-sync-msg {
+  font-size: 12px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background: rgba(73, 184, 192, 0.1);
+  color: var(--color-accent-strong);
+}
+
+.sidebar-sync-msg.error {
+  background: rgba(239, 83, 80, 0.1);
+  color: var(--color-danger);
+}
+
+.sidebar-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-ink);
+  transition: background 0.15s;
+}
+
+.sidebar-list-item.clickable {
+  cursor: pointer;
+}
+
+.sidebar-list-item.clickable:hover {
+  background: var(--color-surface-alt);
+}
+
+.sidebar-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(73, 184, 192, 0.12);
+  color: var(--color-accent-strong);
+  white-space: nowrap;
+}
+
+.sidebar-sub-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-ink-muted);
+  margin: 10px 0 4px;
+  padding: 0 8px;
+}
+
+.sidebar-empty {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  padding: 8px;
+  margin: 0;
+}
+
+.sidebar-guide-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sidebar-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.sidebar-delete-btn:hover {
+  color: var(--color-danger);
+  background: rgba(239, 83, 80, 0.1);
+}
+
+.sidebar-link-arrow {
+  font-size: 16px;
+  color: var(--color-ink-muted);
+}
+
+/* ============================================
+   Responsive: stack calendar + sidebar
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .parent-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "action-bar"
+      "child-filter"
+      "calendar"
+      "sidebar";
+  }
+
+  .parent-sidebar-area {
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .parent-action-bar {
+    flex-wrap: wrap;
+  }
+
+  .action-icon-btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 100px;
+  }
+}

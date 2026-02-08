@@ -14,6 +14,7 @@ from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
 from app.schemas.study import (
     StudyGuideCreate,
+    StudyGuideUpdate,
     StudyGuideResponse,
     QuizGenerateRequest,
     QuizResponse,
@@ -513,6 +514,32 @@ def delete_study_guide(
     db.delete(guide)
     db.commit()
     return None
+
+
+@router.patch("/guides/{guide_id}", response_model=StudyGuideResponse)
+def update_study_guide(
+    guide_id: int,
+    update: StudyGuideUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a study guide (owner only). Currently supports assigning to a course."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == guide_id,
+        StudyGuide.user_id == current_user.id,
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    if update.course_id is not None:
+        course = db.query(Course).filter(Course.id == update.course_id).first()
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+    guide.course_id = update.course_id
+    db.commit()
+    db.refresh(guide)
+    return guide
 
 
 # ============================================

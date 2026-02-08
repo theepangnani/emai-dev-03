@@ -472,6 +472,27 @@ export function StudentDashboard() {
                       {new Date(guide.created_at).toLocaleDateString()}
                     </span>
                   </Link>
+                  {courses.length > 0 && (
+                    <select
+                      className="inline-course-select"
+                      title="Assign to course"
+                      value={guide.course_id ?? ''}
+                      onClick={(e) => e.preventDefault()}
+                      onChange={async (e) => {
+                        e.preventDefault();
+                        const newCourseId = e.target.value === '' ? null : parseInt(e.target.value);
+                        try {
+                          await studyApi.updateGuide(guide.id, { course_id: newCourseId });
+                          setStudyGuides(prev => prev.map(g => g.id === guide.id ? { ...g, course_id: newCourseId } : g));
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      <option value="">No course</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  )}
                   <button
                     className="delete-guide-btn"
                     title="Delete"

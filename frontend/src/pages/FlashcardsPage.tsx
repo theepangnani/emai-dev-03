@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
+import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import './FlashcardsPage.css';
 
 export function FlashcardsPage() {
@@ -98,6 +99,11 @@ export function FlashcardsPage() {
           {guide.title}
           {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>v{guide.version}</span>}
         </h1>
+        <CourseAssignSelect
+          guideId={guide.id}
+          currentCourseId={guide.course_id}
+          onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
+        />
         <div className="progress">
           Card {currentIndex + 1} of {cards.length}
         </div>
