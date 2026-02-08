@@ -17,6 +17,9 @@ export function CalendarEntry({ assignment, variant, onClick }: CalendarEntryPro
       >
         <span className="cal-entry-dot" style={{ background: assignment.courseColor }} />
         <span className="cal-entry-chip-title">{assignment.title}</span>
+        {assignment.childName && (
+          <span className="cal-entry-chip-child">{assignment.childName.split(' ')[0]}</span>
+        )}
       </div>
     );
   }

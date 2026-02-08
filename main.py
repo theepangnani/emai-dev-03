@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.db.database import Base, engine
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -26,7 +26,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task
 from app.models.student import parent_students  # noqa: F401 — ensure join table is created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
@@ -124,6 +124,7 @@ app.include_router(teacher_communications.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(invites.router, prefix="/api")
+app.include_router(tasks.router, prefix="/api")
 
 logger.info("All routers registered")
 

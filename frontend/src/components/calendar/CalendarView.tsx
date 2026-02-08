@@ -12,6 +12,7 @@ import './Calendar.css';
 interface CalendarViewProps {
   assignments: CalendarAssignment[];
   onCreateStudyGuide: (assignment: CalendarAssignment) => void;
+  onDayClick?: (date: Date) => void;
 }
 
 function addDays(d: Date, n: number): Date {
@@ -26,7 +27,7 @@ function getMonday(d: Date): Date {
   return addDays(new Date(d.getFullYear(), d.getMonth(), d.getDate()), diff);
 }
 
-export function CalendarView({ assignments, onCreateStudyGuide }: CalendarViewProps) {
+export function CalendarView({ assignments, onCreateStudyGuide, onDayClick: externalDayClick }: CalendarViewProps) {
   const nav = useCalendarNav('month');
   const [popover, setPopover] = useState<{ assignment: CalendarAssignment; rect: DOMRect } | null>(null);
 
@@ -35,8 +36,12 @@ export function CalendarView({ assignments, onCreateStudyGuide }: CalendarViewPr
   };
 
   const handleDayClick = (date: Date) => {
-    nav.goToDate(date);
-    nav.setViewMode('day');
+    if (externalDayClick) {
+      externalDayClick(date);
+    } else {
+      nav.goToDate(date);
+      nav.setViewMode('day');
+    }
   };
 
   // Filter assignments to visible range

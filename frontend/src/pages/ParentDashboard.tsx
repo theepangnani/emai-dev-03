@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { parentApi, googleApi, invitesApi, studyApi } from '../api/client';
-import type { ChildSummary, ChildOverview, DiscoveredChild, SupportedFormats, DuplicateCheckResponse } from '../api/client';
+import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
+import type { ChildSummary, ChildOverview, DiscoveredChild, SupportedFormats, DuplicateCheckResponse, TaskItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
-import { getCourseColor } from '../components/calendar/types';
+import { getCourseColor, dateKey } from '../components/calendar/types';
 import './ParentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -71,6 +71,13 @@ export function ParentDashboard() {
   const [editChildSchool, setEditChildSchool] = useState('');
   const [editChildLoading, setEditChildLoading] = useState(false);
   const [editChildError, setEditChildError] = useState('');
+
+  // Day detail modal state
+  const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
+  const [dayTasks, setDayTasks] = useState<TaskItem[]>([]);
+  const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskCreating, setNewTaskCreating] = useState(false);
 
   // Create child (name-only) state
   const [createChildName, setCreateChildName] = useState('');
@@ -469,6 +476,80 @@ export function ParentDashboard() {
   };
 
   // ============================================
+  // Tasks & Day Detail Modal
+  // ============================================
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const data = await tasksApi.list();
+      setAllTasks(data);
+    } catch {
+      // silently fail
+    }
+  };
+
+  const openDayModal = (date: Date) => {
+    setDayModalDate(date);
+    setNewTaskTitle('');
+    // Filter tasks for this day
+    const dk = dateKey(date);
+    const filtered = allTasks.filter(t => {
+      if (!t.due_date) return false;
+      return dateKey(new Date(t.due_date)) === dk;
+    });
+    setDayTasks(filtered);
+  };
+
+  const closeDayModal = () => {
+    setDayModalDate(null);
+    setDayTasks([]);
+    setNewTaskTitle('');
+  };
+
+  const handleCreateDayTask = async () => {
+    if (!newTaskTitle.trim() || !dayModalDate) return;
+    setNewTaskCreating(true);
+    try {
+      const task = await tasksApi.create({
+        title: newTaskTitle.trim(),
+        due_date: dayModalDate.toISOString(),
+        student_id: selectedChild || undefined,
+      });
+      setDayTasks(prev => [...prev, task]);
+      setAllTasks(prev => [...prev, task]);
+      setNewTaskTitle('');
+    } catch {
+      // silently fail
+    } finally {
+      setNewTaskCreating(false);
+    }
+  };
+
+  const handleToggleTask = async (task: TaskItem) => {
+    try {
+      const updated = await tasksApi.update(task.id, { is_completed: !task.is_completed });
+      setDayTasks(prev => prev.map(t => t.id === task.id ? updated : t));
+      setAllTasks(prev => prev.map(t => t.id === task.id ? updated : t));
+    } catch {
+      // silently fail
+    }
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      await tasksApi.delete(taskId);
+      setDayTasks(prev => prev.filter(t => t.id !== taskId));
+      setAllTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch {
+      // silently fail
+    }
+  };
+
+  // ============================================
   // Calendar Data Derivation
   // ============================================
 
@@ -595,6 +676,7 @@ export function ParentDashboard() {
               <CalendarView
                 assignments={calendarAssignments}
                 onCreateStudyGuide={handleCalendarCreateStudyGuide}
+                onDayClick={openDayModal}
               />
 
               {/* Undated Assignments */}
@@ -892,6 +974,77 @@ export function ParentDashboard() {
               <button className="generate-btn" onClick={handleEditChild} disabled={editChildLoading || !editChildName.trim()}>
                 {editChildLoading ? 'Saving...' : 'Save Changes'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Detail Modal */}
+      {dayModalDate && (
+        <div className="modal-overlay" onClick={closeDayModal}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <h2>{dayModalDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
+
+            {/* Assignments for this day */}
+            {(() => {
+              const dk = dateKey(dayModalDate);
+              const dayAssigns = calendarAssignments.filter(a => dateKey(a.dueDate) === dk);
+              return dayAssigns.length > 0 ? (
+                <div className="day-modal-section">
+                  <div className="day-modal-section-title">Assignments</div>
+                  <div className="day-modal-list">
+                    {dayAssigns.map(a => (
+                      <div key={a.id} className="day-modal-item">
+                        <span className="cal-entry-dot" style={{ background: a.courseColor }} />
+                        <div className="day-modal-item-info">
+                          <span className="day-modal-item-title">{a.title}</span>
+                          <span className="day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
+                        </div>
+                        <button className="day-modal-study-btn" onClick={() => { closeDayModal(); handleCalendarCreateStudyGuide(a); }}>Study</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
+            {/* Tasks for this day */}
+            <div className="day-modal-section">
+              <div className="day-modal-section-title">Tasks</div>
+              <div className="day-modal-list">
+                {dayTasks.length === 0 && (
+                  <div className="day-modal-empty">No tasks for this day</div>
+                )}
+                {dayTasks.map(task => (
+                  <div key={task.id} className={`day-modal-item task-item${task.is_completed ? ' completed' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={task.is_completed}
+                      onChange={() => handleToggleTask(task)}
+                      className="task-checkbox"
+                    />
+                    <span className={`day-modal-item-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
+                    <button className="task-delete-btn" onClick={() => handleDeleteTask(task.id)} title="Delete task">&times;</button>
+                  </div>
+                ))}
+              </div>
+              <div className="day-modal-add-task">
+                <input
+                  type="text"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="Add a task..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateDayTask()}
+                  disabled={newTaskCreating}
+                />
+                <button onClick={handleCreateDayTask} disabled={newTaskCreating || !newTaskTitle.trim()} className="generate-btn">
+                  {newTaskCreating ? '...' : 'Add'}
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeDayModal}>Close</button>
             </div>
           </div>
         </div>

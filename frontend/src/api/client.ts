@@ -679,3 +679,39 @@ export const adminApi = {
     return response.data as AdminUserList;
   },
 };
+
+// Task Types
+export interface TaskItem {
+  id: number;
+  parent_id: number;
+  student_id: number | null;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  is_completed: boolean;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+// Tasks API
+export const tasksApi = {
+  list: async (params?: { student_id?: number; is_completed?: boolean }) => {
+    const response = await api.get('/api/tasks/', { params });
+    return response.data as TaskItem[];
+  },
+
+  create: async (data: { title: string; description?: string; due_date?: string; student_id?: number }) => {
+    const response = await api.post('/api/tasks/', data);
+    return response.data as TaskItem;
+  },
+
+  update: async (taskId: number, data: { title?: string; description?: string; due_date?: string; student_id?: number; is_completed?: boolean }) => {
+    const response = await api.patch(`/api/tasks/${taskId}`, data);
+    return response.data as TaskItem;
+  },
+
+  delete: async (taskId: number) => {
+    await api.delete(`/api/tasks/${taskId}`);
+  },
+};
