@@ -389,16 +389,6 @@ export function ParentDashboard() {
     }
   };
 
-  const handleUnassignCourse = async (courseId: number) => {
-    if (!selectedChild) return;
-    try {
-      await parentApi.unassignCourseFromChild(selectedChild, courseId);
-      loadChildOverview(selectedChild);
-    } catch {
-      // silently fail
-    }
-  };
-
   const handleSyncChildCourses = async () => {
     if (!selectedChild) return;
     setSyncState('syncing');
