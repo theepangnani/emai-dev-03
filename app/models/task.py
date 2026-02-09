@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Enum, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -23,7 +23,8 @@ class Task(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    priority = Column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    # Stored as lowercase string values for compatibility with existing DB rows.
+    priority = Column(String(10), default=TaskPriority.MEDIUM.value)
     category = Column(String(50), nullable=True)
 
     is_completed = Column(Boolean, default=False)
