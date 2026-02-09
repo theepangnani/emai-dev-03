@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import type { ReactElement } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import type { Components } from 'react-markdown';
+import type { PluggableList } from 'unified';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
@@ -12,6 +13,49 @@ function normalizeGuideContent(content: string) {
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+type MarkdownRenderer = (props: {
+  children: string;
+  remarkPlugins?: PluggableList;
+  components?: Components;
+}) => ReactElement;
+
+function MarkdownGuideBody({ content }: { content: string }) {
+  const [Renderer, setRenderer] = useState<MarkdownRenderer | null>(null);
+  const [gfmPlugin, setGfmPlugin] = useState<PluggableList | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMarkdown = async () => {
+      const [{ default: ReactMarkdown }, { default: remarkGfm }] = await Promise.all([
+        import('react-markdown'),
+        import('remark-gfm'),
+      ]);
+
+      if (!isMounted) return;
+
+      setRenderer(() => ReactMarkdown as MarkdownRenderer);
+      setGfmPlugin([remarkGfm] as PluggableList);
+    };
+
+    loadMarkdown().catch((err) => {
+      console.error('Failed to load markdown renderer', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const normalized = normalizeGuideContent(content);
+
+  if (!Renderer || !gfmPlugin) {
+    return <div className="guide-render-loading">Formatting study guide...</div>;
+  }
+
+  return <Renderer remarkPlugins={gfmPlugin}>{normalized}</Renderer>;
 }
 
 export function StudyGuidePage() {
@@ -103,9 +147,7 @@ export function StudyGuidePage() {
           Created: {new Date(guide.created_at).toLocaleDateString()}
         </p>
         <div className="guide-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {normalizeGuideContent(guide.content)}
-          </ReactMarkdown>
+          <MarkdownGuideBody content={guide.content} />
         </div>
       </div>
     </div>

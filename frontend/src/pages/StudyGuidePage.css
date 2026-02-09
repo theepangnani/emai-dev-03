@@ -76,6 +76,11 @@
   color: var(--color-ink);
 }
 
+.guide-render-loading {
+  color: var(--color-ink-muted);
+  font-size: 0.95rem;
+}
+
 .guide-body > :first-child {
   margin-top: 0;
 }
