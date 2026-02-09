@@ -6,9 +6,11 @@ interface CalendarEntryPopoverProps {
   anchorRect: DOMRect;
   onClose: () => void;
   onCreateStudyGuide: (assignment: CalendarAssignment) => void;
+  onGoToCourse?: (courseId: number) => void;
+  onViewStudyGuides?: () => void;
 }
 
-export function CalendarEntryPopover({ assignment, anchorRect, onClose, onCreateStudyGuide }: CalendarEntryPopoverProps) {
+export function CalendarEntryPopover({ assignment, anchorRect, onClose, onCreateStudyGuide, onGoToCourse, onViewStudyGuides }: CalendarEntryPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,12 +60,30 @@ export function CalendarEntryPopover({ assignment, anchorRect, onClose, onCreate
       {assignment.childName && (
         <div className="cal-popover-child">Student: {assignment.childName}</div>
       )}
-      <button
-        className="cal-popover-action"
-        onClick={() => onCreateStudyGuide(assignment)}
-      >
-        Create Study Guide
-      </button>
+      <div className="cal-popover-actions">
+        <button
+          className="cal-popover-action"
+          onClick={() => onCreateStudyGuide(assignment)}
+        >
+          Create Study Guide
+        </button>
+        {assignment.courseId > 0 && onGoToCourse && (
+          <button
+            className="cal-popover-action secondary"
+            onClick={() => onGoToCourse(assignment.courseId)}
+          >
+            Go to Course
+          </button>
+        )}
+        {onViewStudyGuides && (
+          <button
+            className="cal-popover-action secondary"
+            onClick={() => onViewStudyGuides()}
+          >
+            View Study Guides
+          </button>
+        )}
+      </div>
     </div>
   );
 }

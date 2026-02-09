@@ -208,6 +208,16 @@ Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 - Content privacy controls
 - Version history
 
+### 6.4.1 Course Content Types with Reference Links (Phase 1) - IMPLEMENTED
+- Structured content items attached to courses (notes, syllabus, labs, assignments, readings, resources, other)
+- Each item has title, description, content type, reference URL, and optional Google Classroom URL
+- Expandable course cards on Courses page reveal content panels
+- Add/Edit Content modal for creating and updating items
+- Creator-only edit/delete authorization
+- Color-coded content type badges
+- Backend: `course_contents` table, CRUD API at `/api/course-contents/`
+- Frontend: Expandable cards on CoursesPage with content list and modal
+
 ### 6.5 Performance Analytics (Phase 2)
 - Subject-level insights
 - Trend analysis
@@ -904,7 +914,7 @@ Current feature issues are tracked in GitHub:
 - Issue #111: Student self-learn: create and manage personal courses
 - Issue #112: Task reminders: email notifications with opt-out
 - Issue #114: Course materials: file upload and storage (GCS)
-- Issue #116: Courses: Add structured course content types + reference/Google Classroom links
+- ~~Issue #116: Courses: Add structured course content types + reference/Google Classroom links~~ ✅
 - Issue #119: Recurring Tasks: Feasibility + implementation proposal
 - Issue #126: Calendar Task Actions: Add quick links beyond Create Study Guide
 

@@ -956,7 +956,14 @@
   color: var(--color-ink-muted);
 }
 
-.day-modal-study-btn {
+.day-modal-item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.day-modal-study-btn,
+.day-modal-action-btn {
   padding: 4px 12px;
   border: 1px solid var(--color-accent);
   background: transparent;
@@ -969,9 +976,19 @@
   transition: all 0.2s;
 }
 
+.day-modal-action-btn {
+  border-color: var(--color-border);
+  color: var(--color-ink-muted);
+}
+
 .day-modal-study-btn:hover {
   background: var(--color-accent);
   color: white;
+}
+
+.day-modal-action-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .day-modal-empty {

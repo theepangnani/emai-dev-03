@@ -661,6 +661,14 @@ export function ParentDashboard() {
     setShowStudyModal(true);
   };
 
+  const handleGoToCourse = (courseId: number) => {
+    navigate(`/courses?highlight=${courseId}`);
+  };
+
+  const handleViewStudyGuides = () => {
+    navigate('/study-guides');
+  };
+
   // ============================================
   // Render
   // ============================================
@@ -733,6 +741,8 @@ export function ParentDashboard() {
                 onCreateStudyGuide={handleCalendarCreateStudyGuide}
                 onDayClick={openDayModal}
                 onTaskDrop={handleTaskDrop}
+                onGoToCourse={handleGoToCourse}
+                onViewStudyGuides={handleViewStudyGuides}
               />
 
               {/* Undated Assignments */}
@@ -1056,7 +1066,10 @@ export function ParentDashboard() {
                           <span className="day-modal-item-title">{a.title}</span>
                           <span className="day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
                         </div>
-                        <button className="day-modal-study-btn" onClick={() => { closeDayModal(); handleCalendarCreateStudyGuide(a); }}>Study</button>
+                        <div className="day-modal-item-actions">
+                          {a.courseId > 0 && <button className="day-modal-action-btn" onClick={() => { closeDayModal(); handleGoToCourse(a.courseId); }}>Course</button>}
+                          <button className="day-modal-study-btn" onClick={() => { closeDayModal(); handleCalendarCreateStudyGuide(a); }}>Study</button>
+                        </div>
                       </div>
                     ))}
                   </div>

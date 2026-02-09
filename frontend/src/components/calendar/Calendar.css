@@ -420,6 +420,13 @@
   font-style: italic;
 }
 
+.cal-popover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 .cal-popover-action {
   display: inline-flex;
   align-items: center;
@@ -432,12 +439,25 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
-  margin-top: 4px;
+  transition: all 0.2s;
 }
 
 .cal-popover-action:hover {
   opacity: 0.9;
+}
+
+.cal-popover-action.secondary {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-ink-muted);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.cal-popover-action.secondary:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  opacity: 1;
 }
 
 /* ================================================
