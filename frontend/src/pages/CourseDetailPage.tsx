@@ -4,6 +4,7 @@ import { coursesApi, courseContentsApi, studyApi } from '../api/client';
 import type { CourseContentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -78,6 +79,14 @@ export function CourseDetailPage() {
   // Upload: optional study guide generation
   const [generateAfterUpload, setGenerateAfterUpload] = useState(false);
   const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
+
+  // Create task modal context
+  const [taskModalContext, setTaskModalContext] = useState<{
+    courseId?: number;
+    courseContentId?: number;
+    title: string;
+    label: string;
+  } | null>(null);
 
   // Guard refs to prevent double-submission
   const uploadingRef = useRef(false);
@@ -403,6 +412,11 @@ export function CourseDetailPage() {
           <div className="course-detail-action-btns">
             <button className="courses-btn secondary" onClick={openAddContentModal}>+ Add Content</button>
             <button className="courses-btn secondary" onClick={openUploadModal}>+ Upload Document</button>
+            <button className="courses-btn secondary" onClick={() => setTaskModalContext({
+              courseId: courseId,
+              title: `Task for ${course.name}`,
+              label: `Course: ${course.name}`,
+            })}>+ Create Task</button>
           </div>
         </div>
 
@@ -450,6 +464,17 @@ export function CourseDetailPage() {
                     disabled={generatingContentId === item.id}
                   >
                     {generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
+                  </button>
+                  <button
+                    className="content-action-btn"
+                    onClick={() => setTaskModalContext({
+                      courseId: courseId,
+                      courseContentId: item.id,
+                      title: `Review: ${item.title}`,
+                      label: `${item.title} (${course.name})`,
+                    })}
+                  >
+                    + Task
                   </button>
                   {item.created_by_user_id === user?.id && (
                     <>
@@ -615,6 +640,15 @@ export function CourseDetailPage() {
           </div>
         </div>
       )}
+
+      <CreateTaskModal
+        open={!!taskModalContext}
+        onClose={() => setTaskModalContext(null)}
+        prefillTitle={taskModalContext?.title ?? ''}
+        courseId={taskModalContext?.courseId}
+        courseContentId={taskModalContext?.courseContentId}
+        linkedEntityLabel={taskModalContext?.label}
+      />
     </DashboardLayout>
   );
 }

@@ -10,6 +10,9 @@ class TaskCreate(BaseModel):
     assigned_to_user_id: Optional[int] = None
     priority: str = "medium"
     category: Optional[str] = None
+    course_id: Optional[int] = None
+    course_content_id: Optional[int] = None
+    study_guide_id: Optional[int] = None
 
 
 class TaskUpdate(BaseModel):
@@ -20,6 +23,9 @@ class TaskUpdate(BaseModel):
     is_completed: Optional[bool] = None
     priority: Optional[str] = None
     category: Optional[str] = None
+    course_id: Optional[int] = None
+    course_content_id: Optional[int] = None
+    study_guide_id: Optional[int] = None
 
 
 class TaskResponse(BaseModel):
@@ -36,6 +42,12 @@ class TaskResponse(BaseModel):
     category: Optional[str]
     creator_name: str
     assignee_name: Optional[str]
+    course_id: Optional[int] = None
+    course_content_id: Optional[int] = None
+    study_guide_id: Optional[int] = None
+    course_name: Optional[str] = None
+    course_content_title: Optional[str] = None
+    study_guide_title: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
 

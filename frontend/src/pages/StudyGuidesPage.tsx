@@ -5,6 +5,7 @@ import type { StudyGuide, SupportedFormats, DuplicateCheckResponse, ChildSummary
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import './StudyGuidesPage.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -37,6 +38,9 @@ export function StudyGuidesPage() {
 
   // Convert guide to another type (e.g. study guide → quiz)
   const [convertingGuideId, setConvertingGuideId] = useState<number | null>(null);
+
+  // Create task from guide
+  const [taskModalGuide, setTaskModalGuide] = useState<StudyGuide | null>(null);
 
   useEffect(() => {
     loadData();
@@ -289,6 +293,13 @@ export function StudyGuidesPage() {
                         {convertingGuideId === guide.id ? '...' : '\uD83D\uDCD6'}
                       </button>
                     )}
+                    <button
+                      className="guide-convert-btn"
+                      title="Create task from this"
+                      onClick={() => setTaskModalGuide(guide)}
+                    >
+                      +Task
+                    </button>
                     <CourseAssignSelect
                       guideId={guide.id}
                       currentCourseId={guide.course_id}
@@ -406,6 +417,15 @@ export function StudyGuidesPage() {
           </div>
         </div>
       )}
+
+      <CreateTaskModal
+        open={!!taskModalGuide}
+        onClose={() => setTaskModalGuide(null)}
+        prefillTitle={taskModalGuide ? `Review: ${taskModalGuide.title}` : ''}
+        studyGuideId={taskModalGuide?.id}
+        courseId={taskModalGuide?.course_id ?? undefined}
+        linkedEntityLabel={taskModalGuide ? `Study Guide: ${taskModalGuide.title}` : undefined}
+      />
     </DashboardLayout>
   );
 }

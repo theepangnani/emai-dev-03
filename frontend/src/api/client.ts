@@ -755,6 +755,12 @@ export interface TaskItem {
   category: string | null;
   creator_name: string;
   assignee_name: string | null;
+  course_id: number | null;
+  course_content_id: number | null;
+  study_guide_id: number | null;
+  course_name: string | null;
+  course_content_title: string | null;
+  study_guide_title: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -767,12 +773,12 @@ export interface AssignableUser {
 
 // Tasks API
 export const tasksApi = {
-  list: async (params?: { assigned_to_user_id?: number; is_completed?: boolean; priority?: string; include_archived?: boolean }) => {
+  list: async (params?: { assigned_to_user_id?: number; is_completed?: boolean; priority?: string; include_archived?: boolean; course_id?: number }) => {
     const response = await api.get('/api/tasks/', { params });
     return response.data as TaskItem[];
   },
 
-  create: async (data: { title: string; description?: string; due_date?: string; assigned_to_user_id?: number; priority?: string; category?: string }) => {
+  create: async (data: { title: string; description?: string; due_date?: string; assigned_to_user_id?: number; priority?: string; category?: string; course_id?: number; course_content_id?: number; study_guide_id?: number }) => {
     const response = await api.post('/api/tasks/', data);
     return response.data as TaskItem;
   },

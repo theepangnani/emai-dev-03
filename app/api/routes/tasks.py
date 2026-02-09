@@ -11,6 +11,8 @@ from app.models.task import Task
 from app.models.student import Student, parent_students
 from app.models.course import Course, student_courses
 from app.models.teacher import Teacher
+from app.models.course_content import CourseContent
+from app.models.study_guide import StudyGuide
 from app.api.deps import get_current_user
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 
@@ -104,6 +106,23 @@ def _task_to_response(task: Task, db: Session) -> dict:
     if normalized_priority not in VALID_PRIORITIES:
         normalized_priority = "medium"
 
+    # Resolve linked entity names
+    course_name = None
+    if task.course_id:
+        c = db.query(Course).filter(Course.id == task.course_id).first()
+        if c:
+            course_name = c.name
+    course_content_title = None
+    if task.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == task.course_content_id).first()
+        if cc:
+            course_content_title = cc.title
+    study_guide_title = None
+    if task.study_guide_id:
+        sg = db.query(StudyGuide).filter(StudyGuide.id == task.study_guide_id).first()
+        if sg:
+            study_guide_title = sg.title
+
     return {
         "id": task.id,
         "created_by_user_id": task.created_by_user_id,
@@ -118,6 +137,12 @@ def _task_to_response(task: Task, db: Session) -> dict:
         "category": task.category,
         "creator_name": creator.full_name if creator else "Unknown",
         "assignee_name": assignee.full_name if assignee else None,
+        "course_id": task.course_id,
+        "course_content_id": task.course_content_id,
+        "study_guide_id": task.study_guide_id,
+        "course_name": course_name,
+        "course_content_title": course_content_title,
+        "study_guide_title": study_guide_title,
         "created_at": task.created_at,
         "updated_at": task.updated_at,
     }
@@ -179,6 +204,7 @@ def list_tasks(
     is_completed: Optional[bool] = Query(None),
     priority: Optional[str] = Query(None),
     include_archived: bool = Query(False),
+    course_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -200,6 +226,8 @@ def list_tasks(
         query = query.filter(Task.is_completed == is_completed)
     if priority is not None:
         query = query.filter(Task.priority == _normalize_priority(priority))
+    if course_id is not None:
+        query = query.filter(Task.course_id == course_id)
 
     # Portable NULL handling across DB backends: non-null due dates first, nulls last.
     tasks = query.order_by(
@@ -237,6 +265,9 @@ def create_task(
         due_date=request.due_date,
         priority=_normalize_priority(request.priority) or "medium",
         category=request.category,
+        course_id=request.course_id,
+        course_content_id=request.course_content_id,
+        study_guide_id=request.study_guide_id,
     )
     db.add(task)
     db.commit()
@@ -298,6 +329,12 @@ def update_task(
         task.priority = _normalize_priority(request.priority)
     if request.category is not None:
         task.category = request.category
+    if request.course_id is not None:
+        task.course_id = request.course_id if request.course_id != 0 else None
+    if request.course_content_id is not None:
+        task.course_content_id = request.course_content_id if request.course_content_id != 0 else None
+    if request.study_guide_id is not None:
+        task.study_guide_id = request.study_guide_id if request.study_guide_id != 0 else None
 
     db.commit()
     db.refresh(task)

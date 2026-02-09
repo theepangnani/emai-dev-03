@@ -79,6 +79,16 @@ with engine.connect() as conn:
             col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
             conn.execute(text(f"ALTER TABLE tasks ADD COLUMN archived_at {col_type}"))
             logger.info("Added 'archived_at' column to tasks")
+        # Linked entity FK columns
+        if "course_id" not in existing_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN course_id INTEGER REFERENCES courses(id)"))
+            logger.info("Added 'course_id' column to tasks")
+        if "course_content_id" not in existing_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN course_content_id INTEGER REFERENCES course_contents(id)"))
+            logger.info("Added 'course_content_id' column to tasks")
+        if "study_guide_id" not in existing_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN study_guide_id INTEGER REFERENCES study_guides(id)"))
+            logger.info("Added 'study_guide_id' column to tasks")
         # Make parent_id nullable (was NOT NULL in original schema) — PostgreSQL only
         if "sqlite" not in settings.database_url:
             try:

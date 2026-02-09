@@ -31,6 +31,11 @@ class Task(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     archived_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Linked entities (optional)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
+    course_content_id = Column(Integer, ForeignKey("course_contents.id"), nullable=True)
+    study_guide_id = Column(Integer, ForeignKey("study_guides.id"), nullable=True)
+
     # Legacy columns kept for backwards compat (SQLite can't DROP COLUMN easily)
     parent_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
@@ -41,6 +46,9 @@ class Task(Base):
     # Relationships
     creator = relationship("User", foreign_keys=[created_by_user_id], backref="created_tasks")
     assignee = relationship("User", foreign_keys=[assigned_to_user_id], backref="assigned_tasks")
+    course = relationship("Course", foreign_keys=[course_id])
+    course_content = relationship("CourseContent", foreign_keys=[course_content_id])
+    study_guide = relationship("StudyGuide", foreign_keys=[study_guide_id])
 
     __table_args__ = (
         Index("ix_tasks_creator_completed", "created_by_user_id", "is_completed"),

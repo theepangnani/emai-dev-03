@@ -256,6 +256,15 @@ export function TasksPage() {
                         {isCreator(task) ? `→ ${task.assignee_name}` : `← ${task.creator_name}`}
                       </span>
                     )}
+                    {(task.study_guide_title || task.course_content_title || task.course_name) && (
+                      <span className="task-row-link">
+                        {task.study_guide_title
+                          ? `Study Guide: ${task.study_guide_title}`
+                          : task.course_content_title
+                            ? `Content: ${task.course_content_title}`
+                            : `Course: ${task.course_name}`}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {isCreator(task) && task.archived_at ? (
