@@ -131,10 +131,29 @@ export function StudyGuidesPage() {
 
   const handleConvert = async (guide: StudyGuide, targetType: 'study_guide' | 'quiz' | 'flashcards') => {
     if (convertingGuideId) return;
+    const baseTitle = guide.title.replace(/^(Study Guide|Quiz|Flashcards):\s*/i, '');
+
+    // Check if target type already exists for this content
+    try {
+      const dupResult = await studyApi.checkDuplicate({ title: baseTitle, guide_type: targetType });
+      if (dupResult.exists && dupResult.existing_guide) {
+        const existing = dupResult.existing_guide;
+        const typeName = targetType.replace('_', ' ');
+        const goToExisting = window.confirm(
+          `A ${typeName} already exists: "${existing.title}" (v${existing.version}).\n\nClick OK to view the existing ${typeName}, or Cancel to stay.`
+        );
+        if (goToExisting) {
+          navigate(targetType === 'quiz' ? `/study/quiz/${existing.id}` : targetType === 'flashcards' ? `/study/flashcards/${existing.id}` : `/study/guide/${existing.id}`);
+        }
+        return;
+      }
+    } catch { /* continue if check fails */ }
+
+    const typeName = targetType.replace('_', ' ');
+    if (!window.confirm(`Generate a ${typeName} from "${guide.title}"? This will use AI credits.`)) return;
+
     setConvertingGuideId(guide.id);
     try {
-      // Strip prefix like "Study Guide: " or "Quiz: " from title for cleaner output
-      const baseTitle = guide.title.replace(/^(Study Guide|Quiz|Flashcards):\s*/i, '');
       let result;
       if (targetType === 'quiz') {
         result = await studyApi.generateQuiz({
@@ -166,6 +185,8 @@ export function StudyGuidesPage() {
     if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
     if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
     if (generatingRef.current) return;
+
+    if (!duplicateCheck && !window.confirm(`Generate ${studyType.replace('_', ' ')}? This will use AI credits.`)) return;
 
     if (studyMode === 'text' && !duplicateCheck) {
       try {

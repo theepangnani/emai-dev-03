@@ -435,6 +435,8 @@ export function ParentDashboard() {
     if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
     if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
 
+    if (!duplicateCheck && !window.confirm(`Generate ${studyType.replace('_', ' ')}? This will use AI credits.`)) return;
+
     if (studyMode === 'text' && !duplicateCheck) {
       try {
         const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });

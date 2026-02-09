@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy import or_, and_, func as sa_func
@@ -115,6 +116,13 @@ def get_linked_children_user_ids(db: Session, parent_id: int) -> list[int]:
         return []
     students = db.query(Student.user_id).filter(Student.id.in_(student_ids)).all()
     return [s[0] for s in students]
+
+
+def strip_json_fences(text: str) -> str:
+    """Strip markdown code fences (```json ... ```) from AI responses."""
+    stripped = re.sub(r"^```(?:json)?\s*\n?", "", text.strip())
+    stripped = re.sub(r"\n?```\s*$", "", stripped)
+    return stripped.strip()
 
 
 def find_recent_duplicate(
@@ -297,6 +305,7 @@ async def generate_quiz_endpoint(
             content=content,
             num_questions=request.num_questions,
         )
+        quiz_json = strip_json_fences(quiz_json)
         questions_data = json.loads(quiz_json)
         questions = [QuizQuestion(**q) for q in questions_data]
     except json.JSONDecodeError:
@@ -379,6 +388,7 @@ async def generate_flashcards_endpoint(
             content=content,
             num_cards=request.num_cards,
         )
+        cards_json = strip_json_fences(cards_json)
         cards_data = json.loads(cards_json)
         cards = [Flashcard(**c) for c in cards_data]
     except json.JSONDecodeError:
@@ -652,6 +662,7 @@ async def generate_from_file_upload(
                 content=extracted_text,
                 num_questions=num_questions,
             )
+            quiz_json = strip_json_fences(quiz_json)
             questions_data = json.loads(quiz_json)
             questions = [QuizQuestion(**q) for q in questions_data]
 
@@ -669,6 +680,7 @@ async def generate_from_file_upload(
                 content=extracted_text,
                 num_cards=num_cards,
             )
+            cards_json = strip_json_fences(cards_json)
             cards_data = json.loads(cards_json)
             cards = [Flashcard(**c) for c in cards_data]
 

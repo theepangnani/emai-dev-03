@@ -292,8 +292,8 @@ export function CourseDetailPage() {
       setShowUploadModal(false);
       await loadContents();
 
-      // If user opted to generate study material, do it now
-      if (generateAfterUpload && extractedText) {
+      // If user opted to generate study material, confirm and do it now
+      if (generateAfterUpload && extractedText && window.confirm(`Generate ${studyGuideType.replace('_', ' ')} from uploaded content? This will use AI credits.`)) {
         setGeneratingContentId(-1); // generic loading indicator
         try {
           let result;
@@ -343,6 +343,22 @@ export function CourseDetailPage() {
       return;
     }
     if (generatingRef.current) return;
+
+    // Check for existing study guide
+    try {
+      const dupResult = await studyApi.checkDuplicate({ title: item.title, guide_type: 'study_guide' });
+      if (dupResult.exists && dupResult.existing_guide) {
+        const existing = dupResult.existing_guide;
+        const goToExisting = window.confirm(
+          `A study guide already exists: "${existing.title}" (v${existing.version}).\n\nClick OK to view it, or Cancel to stay.`
+        );
+        if (goToExisting) navigate(`/study/guide/${existing.id}`);
+        return;
+      }
+    } catch { /* continue */ }
+
+    if (!window.confirm(`Generate a study guide from "${item.title}"? This will use AI credits.`)) return;
+
     generatingRef.current = true;
     setGeneratingContentId(item.id);
     try {

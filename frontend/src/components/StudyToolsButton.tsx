@@ -14,6 +14,7 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerateGuide = async () => {
+    if (!window.confirm('Generate a study guide? This will use AI credits.')) return;
     setIsLoading('guide');
     setError(null);
     try {
@@ -28,6 +29,7 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
   };
 
   const handleGenerateQuiz = async () => {
+    if (!window.confirm('Generate a practice quiz? This will use AI credits.')) return;
     setIsLoading('quiz');
     setError(null);
     try {
@@ -42,6 +44,7 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
   };
 
   const handleGenerateFlashcards = async () => {
+    if (!window.confirm('Generate flashcards? This will use AI credits.')) return;
     setIsLoading('flashcards');
     setError(null);
     try {

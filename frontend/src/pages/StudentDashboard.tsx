@@ -242,6 +242,8 @@ export function StudentDashboard() {
       }
     }
 
+    if (!duplicateCheck && !window.confirm(`Generate ${customType.replace('_', ' ')}? This will use AI credits.`)) return;
+
     logger.info('Generating study material', {
       mode: uploadMode,
       type: customType,
