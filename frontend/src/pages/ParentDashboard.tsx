@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, dateKey, TASK_PRIORITY_COLORS } from '../components/calendar/types';
+import { useConfirm } from '../components/ConfirmModal';
 import './ParentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -17,6 +18,7 @@ type DiscoveryState = 'idle' | 'discovering' | 'results' | 'no_results';
 export function ParentDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { confirm, confirmModal } = useConfirm();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const [childOverview, setChildOverview] = useState<ChildOverview | null>(null);
@@ -436,7 +438,7 @@ export function ParentDashboard() {
     if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
     if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
 
-    if (!duplicateCheck && !window.confirm(`Generate ${studyType.replace('_', ' ')}? This will use AI credits.`)) return;
+    if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
 
     if (studyMode === 'text' && !duplicateCheck) {
       try {
@@ -1209,6 +1211,7 @@ export function ParentDashboard() {
           </div>
         </div>
       )}
+      {confirmModal}
     </DashboardLayout>
   );
 }

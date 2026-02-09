@@ -4,6 +4,7 @@ import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
 import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../api/client';
 import { StudyToolsButton } from '../components/StudyToolsButton';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useConfirm } from '../components/ConfirmModal';
 import { logger } from '../utils/logger';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -49,6 +50,7 @@ export function StudentDashboard() {
   const [courseFilter, setCourseFilter] = useState<number | ''>('');
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { confirm, confirmModal } = useConfirm();
 
   const justRegistered = searchParams.get('just_registered') === 'true';
 
@@ -242,7 +244,14 @@ export function StudentDashboard() {
       }
     }
 
-    if (!duplicateCheck && !window.confirm(`Generate ${customType.replace('_', ' ')}? This will use AI credits.`)) return;
+    if (!duplicateCheck) {
+      const ok = await confirm({
+        title: 'Generate Study Material',
+        message: `Generate ${customType.replace('_', ' ')}? This will use AI credits.`,
+        confirmLabel: 'Generate',
+      });
+      if (!ok) return;
+    }
 
     logger.info('Generating study material', {
       mode: uploadMode,
@@ -695,6 +704,7 @@ export function StudentDashboard() {
           </div>
         </div>
       )}
+      {confirmModal}
     </DashboardLayout>
   );
 }

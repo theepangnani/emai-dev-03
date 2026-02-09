@@ -5,6 +5,7 @@ import type { CourseContentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { useConfirm } from '../components/ConfirmModal';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -91,6 +92,8 @@ export function CourseDetailPage() {
   // Guard refs to prevent double-submission
   const uploadingRef = useRef(false);
   const generatingRef = useRef(false);
+
+  const { confirm, confirmModal } = useConfirm();
 
   useEffect(() => {
     if (courseId) loadCourse();
@@ -224,7 +227,13 @@ export function CourseDetailPage() {
   };
 
   const handleDeleteContent = async (contentId: number) => {
-    if (!window.confirm('Delete this content item?')) return;
+    const ok = await confirm({
+      title: 'Delete Content',
+      message: 'Are you sure you want to delete this content item?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await courseContentsApi.delete(contentId);
       loadContents();
@@ -293,7 +302,12 @@ export function CourseDetailPage() {
       await loadContents();
 
       // If user opted to generate study material, confirm and do it now
-      if (generateAfterUpload && extractedText && window.confirm(`Generate ${studyGuideType.replace('_', ' ')} from uploaded content? This will use AI credits.`)) {
+      const shouldGenerate = generateAfterUpload && extractedText && await confirm({
+        title: 'Generate Study Material',
+        message: `Generate ${studyGuideType.replace('_', ' ')} from uploaded content? This will use AI credits.`,
+        confirmLabel: 'Generate',
+      });
+      if (shouldGenerate) {
         setGeneratingContentId(-1); // generic loading indicator
         try {
           let result;
@@ -349,15 +363,23 @@ export function CourseDetailPage() {
       const dupResult = await studyApi.checkDuplicate({ title: item.title, guide_type: 'study_guide' });
       if (dupResult.exists && dupResult.existing_guide) {
         const existing = dupResult.existing_guide;
-        const goToExisting = window.confirm(
-          `A study guide already exists: "${existing.title}" (v${existing.version}).\n\nClick OK to view it, or Cancel to stay.`
-        );
+        const goToExisting = await confirm({
+          title: 'Study Guide Exists',
+          message: `A study guide already exists: "${existing.title}" (v${existing.version}). Would you like to view it?`,
+          confirmLabel: 'View Existing',
+          cancelLabel: 'Stay Here',
+        });
         if (goToExisting) navigate(`/study/guide/${existing.id}`);
         return;
       }
     } catch { /* continue */ }
 
-    if (!window.confirm(`Generate a study guide from "${item.title}"? This will use AI credits.`)) return;
+    const ok = await confirm({
+      title: 'Generate Study Guide',
+      message: `Generate a study guide from "${item.title}"? This will use AI credits.`,
+      confirmLabel: 'Generate',
+    });
+    if (!ok) return;
 
     generatingRef.current = true;
     setGeneratingContentId(item.id);
@@ -665,6 +687,7 @@ export function CourseDetailPage() {
         courseContentId={taskModalContext?.courseContentId}
         linkedEntityLabel={taskModalContext?.label}
       />
+      {confirmModal}
     </DashboardLayout>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { studyApi } from '../api/client';
+import { useConfirm } from './ConfirmModal';
 import './StudyToolsButton.css';
 
 interface StudyToolsButtonProps {
@@ -12,9 +13,15 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, confirmModal } = useConfirm();
 
   const handleGenerateGuide = async () => {
-    if (!window.confirm('Generate a study guide? This will use AI credits.')) return;
+    const ok = await confirm({
+      title: 'Generate Study Guide',
+      message: 'Generate a study guide from this assignment? This will use AI credits.',
+      confirmLabel: 'Generate',
+    });
+    if (!ok) return;
     setIsLoading('guide');
     setError(null);
     try {
@@ -29,7 +36,12 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
   };
 
   const handleGenerateQuiz = async () => {
-    if (!window.confirm('Generate a practice quiz? This will use AI credits.')) return;
+    const ok = await confirm({
+      title: 'Generate Practice Quiz',
+      message: 'Generate a practice quiz from this assignment? This will use AI credits.',
+      confirmLabel: 'Generate',
+    });
+    if (!ok) return;
     setIsLoading('quiz');
     setError(null);
     try {
@@ -44,7 +56,12 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
   };
 
   const handleGenerateFlashcards = async () => {
-    if (!window.confirm('Generate flashcards? This will use AI credits.')) return;
+    const ok = await confirm({
+      title: 'Generate Flashcards',
+      message: 'Generate flashcards from this assignment? This will use AI credits.',
+      confirmLabel: 'Generate',
+    });
+    if (!ok) return;
     setIsLoading('flashcards');
     setError(null);
     try {
@@ -87,6 +104,7 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
         </button>
       </div>
       {error && <p className="study-error">{error}</p>}
+      {confirmModal}
     </div>
   );
 }

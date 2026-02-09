@@ -4,6 +4,7 @@ import { tasksApi } from '../api/client';
 import type { TaskItem, AssignableUser } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useConfirm } from '../components/ConfirmModal';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -36,6 +37,7 @@ export function TasksPage() {
   const [editPriority, setEditPriority] = useState('medium');
   const [editAssignee, setEditAssignee] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
+  const { confirm, confirmModal } = useConfirm();
 
   useEffect(() => {
     loadTasks();
@@ -131,7 +133,13 @@ export function TasksPage() {
   };
 
   const handlePermanentDelete = async (taskId: number) => {
-    if (!window.confirm('Permanently delete this task? This cannot be undone.')) return;
+    const ok = await confirm({
+      title: 'Permanently Delete Task',
+      message: 'This task will be permanently deleted. This action cannot be undone.',
+      confirmLabel: 'Delete Forever',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await tasksApi.permanentDelete(taskId);
       loadTasks();
@@ -420,6 +428,7 @@ export function TasksPage() {
           </div>
         )}
       </div>
+      {confirmModal}
     </DashboardLayout>
   );
 }

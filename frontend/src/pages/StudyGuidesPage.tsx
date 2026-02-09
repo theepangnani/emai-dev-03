@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { useConfirm } from '../components/ConfirmModal';
 import './StudyGuidesPage.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -39,6 +40,7 @@ export function StudyGuidesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isParent = user?.role === 'parent';
+  const { confirm, confirmModal } = useConfirm();
 
   const [myGuides, setMyGuides] = useState<StudyGuide[]>([]);
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
@@ -173,9 +175,12 @@ export function StudyGuidesPage() {
       if (dupResult.exists && dupResult.existing_guide) {
         const existing = dupResult.existing_guide;
         const typeName = targetType.replace('_', ' ');
-        const goToExisting = window.confirm(
-          `A ${typeName} already exists: "${existing.title}" (v${existing.version}).\n\nClick OK to view the existing ${typeName}, or Cancel to stay.`
-        );
+        const goToExisting = await confirm({
+          title: 'Already Exists',
+          message: `A ${typeName} already exists: "${existing.title}" (v${existing.version}). Would you like to view it?`,
+          confirmLabel: 'View Existing',
+          cancelLabel: 'Stay Here',
+        });
         if (goToExisting) {
           navigate(targetType === 'quiz' ? `/study/quiz/${existing.id}` : targetType === 'flashcards' ? `/study/flashcards/${existing.id}` : `/study/guide/${existing.id}`);
         }
@@ -184,7 +189,7 @@ export function StudyGuidesPage() {
     } catch { /* continue if check fails */ }
 
     const typeName = targetType.replace('_', ' ');
-    if (!window.confirm(`Generate a ${typeName} from "${guide.title}"? This will use AI credits.`)) return;
+    if (!await confirm({ title: 'Generate ' + typeName, message: `Generate a ${typeName} from "${guide.title}"? This will use AI credits.`, confirmLabel: 'Generate' })) return;
 
     setConvertingGuideId(guide.id);
     try {
@@ -254,7 +259,7 @@ export function StudyGuidesPage() {
     if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
     if (generatingRef.current) return;
 
-    if (!duplicateCheck && !window.confirm(`Generate ${studyType.replace('_', ' ')}? This will use AI credits.`)) return;
+    if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
 
     if (studyMode === 'text' && !duplicateCheck) {
       try {
@@ -522,6 +527,7 @@ export function StudyGuidesPage() {
         courseId={taskModalGuide?.course_id ?? undefined}
         linkedEntityLabel={taskModalGuide ? `Study Guide: ${taskModalGuide.title}` : undefined}
       />
+      {confirmModal}
     </DashboardLayout>
   );
 }

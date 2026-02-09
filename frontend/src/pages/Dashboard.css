@@ -580,6 +580,52 @@
   cursor: not-allowed;
 }
 
+/* Confirm modal */
+.confirm-modal {
+  max-width: 420px;
+  text-align: center;
+}
+
+.confirm-modal h2 {
+  padding: 0 24px;
+}
+
+.confirm-modal-icon {
+  font-size: 36px;
+  padding: 24px 24px 12px;
+  line-height: 1;
+}
+
+.confirm-modal-message {
+  padding: 0 24px 8px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirm-modal .modal-actions {
+  justify-content: center;
+}
+
+.danger-btn {
+  padding: 10px 22px;
+  background: var(--color-danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.danger-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+  opacity: 0.9;
+}
+
 /* Status messages */
 .status-message {
   padding: 12px 16px;
