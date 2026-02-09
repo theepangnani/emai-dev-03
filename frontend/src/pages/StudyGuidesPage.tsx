@@ -184,17 +184,20 @@ export function StudyGuidesPage() {
       ]}
     >
       <div className="guides-page">
-        {/* Filter */}
-        <div className="guides-filter">
-          {['all', 'study_guide', 'quiz', 'flashcards'].map(type => (
-            <button
-              key={type}
-              className={`guides-filter-btn ${filterType === type ? 'active' : ''}`}
-              onClick={() => setFilterType(type)}
-            >
-              {type === 'all' ? 'All' : guideTypeLabel(type)}
-            </button>
-          ))}
+        {/* Header with filter + create button */}
+        <div className="guides-header">
+          <div className="guides-filter">
+            {['all', 'study_guide', 'quiz', 'flashcards'].map(type => (
+              <button
+                key={type}
+                className={`guides-filter-btn ${filterType === type ? 'active' : ''}`}
+                onClick={() => setFilterType(type)}
+              >
+                {type === 'all' ? 'All' : guideTypeLabel(type)}
+              </button>
+            ))}
+          </div>
+          <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create Study Guide</button>
         </div>
 
         {/* My guides */}
