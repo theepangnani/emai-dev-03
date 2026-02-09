@@ -200,23 +200,33 @@ Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 3. Optionally: Teacher registers, creates course, student enrolls
 4. Parent can message the teacher (if child is in a teacher's course)
 
-### 6.4 Manual Course Content Upload (Phase 1)
-- Upload or enter course content manually
-- Supported inputs: PDF, Word, text notes, images (OCR)
-- Tag content to specific class or subject
-- AI generates study materials from user-provided content
-- Content privacy controls
-- Version history
+### 6.4 Manual Course Content Upload (Phase 1) - PARTIALLY IMPLEMENTED
+- Upload or enter course content manually - IMPLEMENTED
+- Supported inputs: PDF, Word, PPTX, text notes - IMPLEMENTED (images/OCR pending)
+- Tag content to specific class or subject - IMPLEMENTED
+- AI generates study materials from user-provided content - IMPLEMENTED
+- Content privacy controls - pending
+- Version history - pending
+- GCS file storage - pending (#114)
 
 ### 6.4.1 Course Content Types with Reference Links (Phase 1) - IMPLEMENTED
 - Structured content items attached to courses (notes, syllabus, labs, assignments, readings, resources, other)
 - Each item has title, description, content type, reference URL, and optional Google Classroom URL
-- Expandable course cards on Courses page reveal content panels
-- Add/Edit Content modal for creating and updating items
 - Creator-only edit/delete authorization
 - Color-coded content type badges
-- Backend: `course_contents` table, CRUD API at `/api/course-contents/`
-- Frontend: Expandable cards on CoursesPage with content list and modal
+- Backend: `course_contents` table with `text_content` column for extracted document text, CRUD API at `/api/course-contents/`
+
+### 6.4.2 Course Detail Page (Phase 1) - IMPLEMENTED
+Dedicated page for viewing and managing a single course and its content:
+- **Route:** `/courses/:id` — accessible to all authenticated roles
+- **Course header** — Name, subject, description, privacy badge, Google Classroom badge, created date
+- **Edit Course** — Creator/admin can edit name, subject, description via modal (`PATCH /api/courses/{id}`)
+- **Course Content list** — Full CRUD (add, edit, delete) for content items
+- **Upload Document** — Drag-and-drop or file picker, extracts text via `/api/study/upload/extract-text`, stores as course content with `text_content` field
+- **Optional study material generation** — Checkbox + dropdown (study guide, quiz, or flashcards) when uploading a document
+- **Generate Study Guide** — Button on each content item to generate study guide from its `text_content` or `description`
+- **Navigation** — Courses page cards now navigate to detail page instead of inline expand
+- **All roles** — Courses and Study Guides navigation visible to parent, student, teacher, and admin
 
 ### 6.5 Performance Analytics (Phase 2)
 - Subject-level insights
@@ -512,12 +522,13 @@ Clicking a **date** on the calendar opens a modal showing all items for that day
 - Reminders trigger in-app notifications
 
 #### 8. Courses View (Left Nav → `/courses`)
-Dedicated page for course management:
-- **List all courses** — parent-created + child-enrolled courses, with CRUD actions
-- **Create new course** — name, subject, description
-- **Assign to children** — during creation or after, supports assigning one course to multiple children
-- **Create Study Guide** — generate study material from course content
-- Course cards show: name, subject, assigned children, assignment count
+Dedicated page for course management (accessible to all roles):
+- **List all courses** — parent-created + child-enrolled courses (parent view); all visible courses (student/teacher view)
+- **Click course card** → navigates to Course Detail Page (`/courses/:id`) for full content management
+- **Create new course** — name, subject, description (all roles)
+- **Assign to children** — parent only, supports assigning one course to multiple children
+- **Course Detail Page** — edit course, CRUD content, upload documents, generate study materials (see §6.4.2)
+- Course cards show: name, subject, teacher name, Google badge
 
 #### 9. Study Guides View (Left Nav → `/study-guides`)
 Dedicated page for study guide management:
@@ -770,10 +781,12 @@ src/domains/{context}/
 | `/api/google/courses/{course_id}/assignments` | GET | Get assignments for a Google Classroom course |
 | `/api/google/courses/{course_id}/assignments/sync` | POST | Sync assignments from Google Classroom course |
 | `/api/courses/` | GET | List all courses |
-| `/api/courses/` | POST | Create course (teacher only, auto-assigns teacher) |
+| `/api/courses/` | POST | Create course (all roles — auto-assigns teacher for teacher role) |
 | `/api/courses/teaching` | GET | List courses teaching (teacher only) |
+| `/api/courses/created/me` | GET | List courses created by current user |
 | `/api/courses/enrolled/me` | GET | List courses student is enrolled in (student only) |
 | `/api/courses/{id}` | GET | Get course details |
+| `/api/courses/{id}` | PATCH | Update course (creator or admin only) |
 | `/api/courses/{id}/enroll` | POST | Enroll in course (student only) |
 | `/api/courses/{id}/enroll` | DELETE | Unenroll from course (student only) |
 | `/api/courses/{id}/students` | GET | List enrolled students (teacher only, owns course) |
@@ -835,7 +848,7 @@ src/domains/{context}/
 | `/api/parent/children/create` | POST | Create child with name (email optional) | #90 |
 | `/api/parent/children/{student_id}/courses` | POST | Assign course to child | #92 |
 | `/api/parent/children/{student_id}/courses/{course_id}` | DELETE | Remove course from child | #92 |
-| `/api/courses/` | POST | Create course (parent, student, or teacher) | #91 |
+| ~~`/api/courses/`~~ | ~~POST~~ | ~~Create course (parent, student, or teacher)~~ | ~~#91~~ (IMPLEMENTED) |
 | `/api/teacher/courses/{id}/students` | POST | Add student to course by teacher | #42 |
 | `/api/teacher/courses/{id}/assignments` | POST | Create assignment for a course | #49 |
 | `/api/teacher/google-accounts` | GET | List linked Google accounts | #41, #62 |
@@ -967,9 +980,9 @@ Current feature issues are tracked in GitHub:
 - Issue #89: Auto-create student account when parent links by email
 - Issue #109: AI explanation of assignments
 - Issue #110: Add assignment/test to task (link tasks to assignments)
-- Issue #111: Student self-learn: create and manage personal courses
+- ~~Issue #111: Student self-learn: create and manage personal courses~~ ✅
 - Issue #112: Task reminders: email notifications with opt-out
-- Issue #114: Course materials: file upload and storage (GCS)
+- Issue #114: Course materials: file upload and storage (GCS) — upload + text extraction done, GCS pending
 - ~~Issue #116: Courses: Add structured course content types + reference/Google Classroom links~~ ✅
 - Issue #119: Recurring Tasks: Feasibility + implementation proposal
 - ~~Issue #126: Calendar Task Actions: Add quick links beyond Create Study Guide~~ ✅
@@ -978,7 +991,7 @@ Current feature issues are tracked in GitHub:
 - Issue #96: Student email identity merging (personal + school email)
 - Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
 - Issue #46: Google Calendar push integration for tasks
-- Issue #25: Manual Content Upload with OCR (enhanced)
+- Issue #25: Manual Content Upload with OCR (enhanced) — document upload + text extraction done; image OCR pending
 - Issue #28: Central Document Repository
 - Issue #53: Background periodic Google Classroom sync for teachers
 - Issue #113: School & School Board model
@@ -1022,7 +1035,7 @@ Current feature issues are tracked in GitHub:
 
 ### Observability & Quality
 - Issue #70: Populate request.state.user_id for request logs
-- Issue #71: Add baseline test suite (auth, RBAC, core routes)
+- ~~Issue #71: Add baseline test suite (auth, RBAC, core routes)~~ ✅
 - Issue #72: Roll out new design system across remaining pages
 - Issue #73: Add migration for new DB indexes
 - Issue #74: Add pagination for conversations/messages list
