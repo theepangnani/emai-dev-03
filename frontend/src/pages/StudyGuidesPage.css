@@ -164,6 +164,33 @@
   cursor: not-allowed;
 }
 
+/* Generating placeholder rows */
+.guide-row-generating {
+  border-color: var(--color-accent);
+  background: rgba(73, 184, 192, 0.04);
+}
+
+.generating-text {
+  color: var(--color-accent);
+  font-weight: 500;
+  animation: generating-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes generating-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.guide-row-error {
+  border-color: var(--color-danger);
+  background: rgba(239, 83, 80, 0.04);
+}
+
+.error-text {
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
 .guides-empty {
   text-align: center;
   padding: 40px 20px;

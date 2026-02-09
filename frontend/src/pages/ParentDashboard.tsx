@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
+import { queueStudyGeneration } from './StudyGuidesPage';
 import type { ChildSummary, ChildOverview, DiscoveredChild, SupportedFormats, DuplicateCheckResponse, TaskItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CalendarView } from '../components/calendar/CalendarView';
@@ -56,7 +57,7 @@ export function ParentDashboard() {
   const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
   const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating] = useState(false);
   const [studyError, setStudyError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
@@ -443,39 +444,18 @@ export function ParentDashboard() {
         if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
       } catch { /* Continue */ }
     }
+    // Queue generation and navigate to study guides page (non-blocking)
+    queueStudyGeneration({
+      title: studyTitle || `New ${studyType.replace('_', ' ')}`,
+      content: studyContent,
+      type: studyType,
+      mode: studyMode,
+      file: selectedFile ?? undefined,
+      regenerateId: duplicateCheck?.existing_guide?.id,
+    });
     setDuplicateCheck(null);
-    setIsGenerating(true);
-    setStudyError('');
-
-    try {
-      let result;
-      const regenerateId = duplicateCheck?.existing_guide?.id;
-      if (studyMode === 'file' && selectedFile) {
-        result = await studyApi.generateFromFile({
-          file: selectedFile,
-          title: studyTitle || undefined,
-          guide_type: studyType,
-          num_questions: studyType === 'quiz' ? 10 : undefined,
-          num_cards: studyType === 'flashcards' ? 15 : undefined,
-        });
-      } else {
-        if (studyType === 'study_guide') {
-          result = await studyApi.generateGuide({ title: studyTitle, content: studyContent, regenerate_from_id: regenerateId });
-        } else if (studyType === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: studyTitle, content: studyContent, num_questions: 10, regenerate_from_id: regenerateId });
-        } else {
-          result = await studyApi.generateFlashcards({ topic: studyTitle, content: studyContent, num_cards: 15, regenerate_from_id: regenerateId });
-        }
-      }
-      resetStudyModal();
-      if (studyType === 'study_guide') navigate(`/study/guide/${result.id}`);
-      else if (studyType === 'quiz') navigate(`/study/quiz/${result.id}`);
-      else navigate(`/study/flashcards/${result.id}`);
-    } catch (err: any) {
-      setStudyError(err.response?.data?.detail || 'Failed to generate study material');
-    } finally {
-      setIsGenerating(false);
-    }
+    resetStudyModal();
+    navigate('/study-guides');
   };
 
   // ============================================

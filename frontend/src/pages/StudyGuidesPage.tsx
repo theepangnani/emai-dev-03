@@ -10,6 +10,31 @@ import './StudyGuidesPage.css';
 
 const MAX_FILE_SIZE_MB = 100;
 
+// Cross-page generation queue (ParentDashboard → StudyGuidesPage)
+interface PendingGeneration {
+  title: string;
+  content: string;
+  type: 'study_guide' | 'quiz' | 'flashcards';
+  mode: 'text' | 'file';
+  file?: File;
+  regenerateId?: number;
+}
+
+let _pendingGeneration: PendingGeneration | null = null;
+
+export function queueStudyGeneration(params: PendingGeneration) {
+  _pendingGeneration = params;
+}
+
+// In-progress generation placeholder
+interface GeneratingItem {
+  tempId: string;
+  title: string;
+  guideType: string;
+  status: 'generating' | 'error';
+  error?: string;
+}
+
 export function StudyGuidesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -28,13 +53,16 @@ export function StudyGuidesPage() {
   const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
   const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating] = useState(false);
   const [studyError, setStudyError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generatingRef = useRef(false);
+
+  // In-progress generation placeholders
+  const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
 
   // Convert guide to another type (e.g. study guide → quiz)
   const [convertingGuideId, setConvertingGuideId] = useState<number | null>(null);
@@ -44,6 +72,12 @@ export function StudyGuidesPage() {
 
   useEffect(() => {
     loadData();
+    // Pick up pending generation queued from ParentDashboard navigation
+    if (_pendingGeneration) {
+      const params = _pendingGeneration;
+      _pendingGeneration = null;
+      startGeneration(params);
+    }
   }, []);
 
   useEffect(() => {
@@ -181,6 +215,40 @@ export function StudyGuidesPage() {
     }
   };
 
+  const startGeneration = (params: PendingGeneration) => {
+    const tempId = `gen-${Date.now()}`;
+    const displayTitle = params.title || `New ${params.type.replace('_', ' ')}`;
+    setGeneratingItems(prev => [...prev, { tempId, title: displayTitle, guideType: params.type, status: 'generating' }]);
+
+    (async () => {
+      try {
+        if (params.mode === 'file' && params.file) {
+          await studyApi.generateFromFile({
+            file: params.file, title: params.title || undefined, guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+          });
+        } else if (params.type === 'study_guide') {
+          await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId });
+        } else if (params.type === 'quiz') {
+          await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId });
+        } else {
+          await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId });
+        }
+        // Success: remove placeholder, refresh list from API
+        setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
+        loadData();
+      } catch (err: any) {
+        // Error: update placeholder to show error
+        setGeneratingItems(prev => prev.map(g =>
+          g.tempId === tempId
+            ? { ...g, status: 'error' as const, error: err.response?.data?.detail || 'Generation failed' }
+            : g
+        ));
+      }
+    })();
+  };
+
   const handleGenerate = async () => {
     if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
     if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
@@ -194,40 +262,21 @@ export function StudyGuidesPage() {
         if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
       } catch { /* continue */ }
     }
-    setDuplicateCheck(null);
-    generatingRef.current = true;
-    setIsGenerating(true);
-    setStudyError('');
 
-    try {
-      let result;
-      const regenerateId = duplicateCheck?.existing_guide?.id;
-      if (studyMode === 'file' && selectedFile) {
-        result = await studyApi.generateFromFile({
-          file: selectedFile, title: studyTitle || undefined, guide_type: studyType,
-          num_questions: studyType === 'quiz' ? 10 : undefined,
-          num_cards: studyType === 'flashcards' ? 15 : undefined,
-        });
-      } else {
-        if (studyType === 'study_guide') {
-          result = await studyApi.generateGuide({ title: studyTitle, content: studyContent, regenerate_from_id: regenerateId });
-        } else if (studyType === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: studyTitle, content: studyContent, num_questions: 10, regenerate_from_id: regenerateId });
-        } else {
-          result = await studyApi.generateFlashcards({ topic: studyTitle, content: studyContent, num_cards: 15, regenerate_from_id: regenerateId });
-        }
-      }
-      resetModal();
-      loadData();
-      if (studyType === 'study_guide') navigate(`/study/guide/${result.id}`);
-      else if (studyType === 'quiz') navigate(`/study/quiz/${result.id}`);
-      else navigate(`/study/flashcards/${result.id}`);
-    } catch (err: any) {
-      setStudyError(err.response?.data?.detail || 'Failed to generate study material');
-    } finally {
-      setIsGenerating(false);
-      generatingRef.current = false;
-    }
+    // Capture form state before closing modal
+    const params: PendingGeneration = {
+      title: studyTitle || `New ${studyType.replace('_', ' ')}`,
+      content: studyContent,
+      type: studyType,
+      mode: studyMode,
+      file: selectedFile ?? undefined,
+      regenerateId: duplicateCheck?.existing_guide?.id,
+    };
+
+    // Close modal immediately and start background generation
+    setDuplicateCheck(null);
+    resetModal();
+    startGeneration(params);
   };
 
   const filteredMyGuides = filterType === 'all' ? myGuides : myGuides.filter(g => g.guide_type === filterType);
@@ -267,9 +316,35 @@ export function StudyGuidesPage() {
 
         {/* My guides */}
         <div className="guides-section">
-          <h3>My Study Materials ({filteredMyGuides.length})</h3>
-          {filteredMyGuides.length > 0 ? (
+          <h3>My Study Materials ({filteredMyGuides.length + generatingItems.length})</h3>
+          {filteredMyGuides.length > 0 || generatingItems.length > 0 ? (
             <div className="guides-list">
+              {/* In-progress generation placeholders */}
+              {generatingItems.map(item => (
+                <div key={item.tempId} className={`guide-row ${item.status === 'generating' ? 'guide-row-generating' : 'guide-row-error'}`}>
+                  <div className="guide-row-main">
+                    <span className="guide-row-icon">
+                      {item.status === 'generating' ? '\u23F3' : '\u26A0\uFE0F'}
+                    </span>
+                    <div className="guide-row-info">
+                      <span className="guide-row-title">{item.title}</span>
+                      <span className="guide-row-meta">
+                        {item.status === 'generating'
+                          ? <span className="generating-text">Generating {guideTypeLabel(item.guideType)}...</span>
+                          : <span className="error-text">{item.error}</span>
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  {item.status === 'error' && (
+                    <div className="guide-row-actions">
+                      <button className="guide-delete-btn" onClick={() => setGeneratingItems(prev => prev.filter(g => g.tempId !== item.tempId))}>
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
               {filteredMyGuides.map(guide => (
                 <div key={guide.id} className="guide-row">
                   <div className="guide-row-main" onClick={() => navigateToGuide(guide)}>
