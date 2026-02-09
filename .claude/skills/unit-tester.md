@@ -8,7 +8,7 @@ Write and run unit/integration tests for the ClassBridge platform.
 - **Runner:** `python -m pytest` from project root
 - **Config:** `tests/conftest.py` — session-scoped SQLite test DB, FastAPI TestClient
 - **Location:** `tests/test_*.py`
-- **Current coverage:** auth, admin, messages, notifications, tasks (44 tests)
+- **Current coverage:** auth, admin, messages, notifications, tasks, courses, assignments, course contents, parent, study guides, invites (159 tests)
 
 ### Frontend (Vitest — not yet set up)
 - **Runner:** Would be `npm test` from `frontend/`
@@ -146,21 +146,24 @@ python -m pytest --tb=short -q
 
 ## Test Coverage Gaps
 
-### Currently Tested
-- Auth (register, login, token validation)
-- Admin (stats endpoint, role enforcement)
-- Messages (conversations, send, unread count)
-- Notifications (list, mark read)
-- Tasks (full CRUD, permissions, archival, filters)
+### Currently Tested (159 tests across 10 files)
+- **Auth** (10 tests) — register, login, token validation, accept-invite
+- **Admin** (7 tests) — stats, user listing, search, filter, pagination, RBAC
+- **Messages** — conversations, send, unread count
+- **Notifications** — list, mark read
+- **Tasks** (44 tests) — full CRUD, permissions, archival, filters
+- **Courses** (24 tests) — CRUD, enrollment/unenroll, visibility, teaching, enrolled/me
+- **Assignments** (9 tests) — CRUD, filter by course, permissions
+- **Course Contents** (18 tests) — CRUD, creator-only edit/delete, type validation
+- **Parent** (21 tests) — children CRUD, link, overview, update, assign/unassign courses
+- **Study Guides** (17 tests) — list/get/update/delete, visibility, duplicate check, versions
+- **Invites** (12 tests) — create, RBAC, duplicate/existing checks, list sent
 
 ### Needs Tests (Priority Order)
-1. **Courses** — CRUD, enrollment, parent visibility, Google sync
-2. **Course Contents** — CRUD, creator-only edit/delete (#116)
-3. **Study Guides** — Generation, versioning, duplicate detection, file upload
-4. **Assignments** — List by course, student assignments
-5. **Invites** — Create, accept, expiry
-6. **Parent routes** — Children, link/unlink, overview
-7. **Domain services** (when extracted) — Unit tests with mocked DB
+1. **AI generation endpoints** — Require OpenAI mocking
+2. **Google Classroom/OAuth** — Require Google API mocking
+3. **File upload/extract** — Integration tests with file fixtures
+4. **Domain services** (when extracted) — Unit tests with mocked DB
 
 ### Related Issues
 - #10: Add pytest unit tests for API endpoints
