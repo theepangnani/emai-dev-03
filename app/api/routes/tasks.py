@@ -15,6 +15,17 @@ from app.api.deps import get_current_user
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+VALID_PRIORITIES = {"low", "medium", "high"}
+
+
+def _normalize_priority(priority: Optional[str]) -> Optional[str]:
+    """Normalize and validate task priority values."""
+    if priority is None:
+        return None
+    normalized = priority.strip().lower()
+    if normalized not in VALID_PRIORITIES:
+        raise HTTPException(status_code=400, detail="Invalid priority. Use: low, medium, high")
+    return normalized
 
 
 def _verify_assignment_relationship(db: Session, creator: User, assigned_to_user_id: int):
@@ -86,6 +97,13 @@ def _task_to_response(task: Task, db: Session) -> dict:
     if task.assigned_to_user_id:
         assignee = db.query(User).filter(User.id == task.assigned_to_user_id).first()
 
+    raw_priority = task.priority
+    if hasattr(raw_priority, "value"):  # Backwards compat if ORM returns enum-like values
+        raw_priority = raw_priority.value
+    normalized_priority = str(raw_priority).lower() if raw_priority else "medium"
+    if normalized_priority not in VALID_PRIORITIES:
+        normalized_priority = "medium"
+
     return {
         "id": task.id,
         "created_by_user_id": task.created_by_user_id,
@@ -96,7 +114,7 @@ def _task_to_response(task: Task, db: Session) -> dict:
         "is_completed": task.is_completed,
         "completed_at": task.completed_at,
         "archived_at": task.archived_at,
-        "priority": task.priority.value if task.priority else "medium",
+        "priority": normalized_priority,
         "category": task.category,
         "creator_name": creator.full_name if creator else "Unknown",
         "assignee_name": assignee.full_name if assignee else None,
@@ -181,9 +199,14 @@ def list_tasks(
     if is_completed is not None:
         query = query.filter(Task.is_completed == is_completed)
     if priority is not None:
-        query = query.filter(Task.priority == priority)
+        query = query.filter(Task.priority == _normalize_priority(priority))
 
-    tasks = query.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc()).all()
+    # Portable NULL handling across DB backends: non-null due dates first, nulls last.
+    tasks = query.order_by(
+        Task.due_date.is_(None).asc(),
+        Task.due_date.asc(),
+        Task.created_at.desc(),
+    ).all()
     return [_task_to_response(t, db) for t in tasks]
 
 
@@ -212,7 +235,7 @@ def create_task(
         title=request.title,
         description=request.description,
         due_date=request.due_date,
-        priority=request.priority,
+        priority=_normalize_priority(request.priority) or "medium",
         category=request.category,
     )
     db.add(task)
@@ -272,7 +295,7 @@ def update_task(
         # Auto-archive on completion, un-archive on un-completion
         task.archived_at = datetime.utcnow() if request.is_completed else None
     if request.priority is not None:
-        task.priority = request.priority
+        task.priority = _normalize_priority(request.priority)
     if request.category is not None:
         task.category = request.category
 
