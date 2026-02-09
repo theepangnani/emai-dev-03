@@ -40,6 +40,10 @@ class CourseContent(Base):
     course = relationship("Course", backref="contents")
     created_by = relationship("User", foreign_keys=[created_by_user_id])
 
+    @property
+    def course_name(self) -> str | None:
+        return self.course.name if self.course else None
+
     __table_args__ = (
         Index("ix_course_contents_course", "course_id"),
         Index("ix_course_contents_type", "course_id", "content_type"),

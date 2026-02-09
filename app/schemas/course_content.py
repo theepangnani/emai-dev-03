@@ -45,6 +45,7 @@ class CourseContentUpdate(BaseModel):
 class CourseContentResponse(BaseModel):
     id: int
     course_id: int
+    course_name: Optional[str] = None
     title: str
     description: Optional[str]
     text_content: Optional[str] = None

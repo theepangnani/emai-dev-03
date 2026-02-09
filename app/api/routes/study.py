@@ -12,6 +12,7 @@ from app.db.database import get_db
 from app.models.study_guide import StudyGuide
 from app.models.assignment import Assignment
 from app.models.course import Course
+from app.models.course_content import CourseContent
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
 from app.schemas.study import (
@@ -123,6 +124,46 @@ def strip_json_fences(text: str) -> str:
     stripped = re.sub(r"^```(?:json)?\s*\n?", "", text.strip())
     stripped = re.sub(r"\n?```\s*$", "", stripped)
     return stripped.strip()
+
+
+def ensure_course_and_content(
+    db: Session, user: User, title: str, text_content: str | None,
+    course_id: int | None, course_content_id: int | None,
+) -> tuple[int, int]:
+    """Ensure a course + course_content exist for a study guide.
+
+    Returns (course_id, course_content_id).  If course_content_id is already
+    provided it is returned as-is.  If course_id is missing the user's default
+    'My Materials' course is created/fetched.  A new CourseContent row is
+    always created when course_content_id is None.
+    """
+    from app.api.routes.courses import get_or_create_default_course
+
+    # Resolve existing course_content
+    if course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == course_content_id).first()
+        if cc:
+            return cc.course_id, cc.id
+
+    # Resolve course
+    if course_id:
+        course = db.query(Course).filter(Course.id == course_id).first()
+        if not course:
+            course = get_or_create_default_course(db, user)
+    else:
+        course = get_or_create_default_course(db, user)
+
+    # Create CourseContent
+    cc = CourseContent(
+        course_id=course.id,
+        title=title,
+        text_content=text_content,
+        content_type="other",
+        created_by_user_id=user.id,
+    )
+    db.add(cc)
+    db.flush()  # get cc.id without committing
+    return course.id, cc.id
 
 
 def find_recent_duplicate(
@@ -249,12 +290,20 @@ async def generate_study_guide_endpoint(
     if existing:
         return existing
 
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, title, description,
+        course_id=request.course_id or (course.id if course else None),
+        course_content_id=request.course_content_id,
+    )
+
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
     study_guide = StudyGuide(
         user_id=current_user.id,
         assignment_id=request.assignment_id,
-        course_id=request.course_id or (course.id if course else None),
+        course_id=resolved_course_id,
+        course_content_id=resolved_cc_id,
         title=title,
         content=content,
         guide_type="study_guide",
@@ -324,12 +373,20 @@ async def generate_quiz_endpoint(
             parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
         )
 
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, f"Quiz: {topic}", content,
+        course_id=request.course_id,
+        course_content_id=request.course_content_id,
+    )
+
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
     study_guide = StudyGuide(
         user_id=current_user.id,
         assignment_id=request.assignment_id,
-        course_id=request.course_id,
+        course_id=resolved_course_id,
+        course_content_id=resolved_cc_id,
         title=f"Quiz: {topic}",
         content=quiz_json,
         guide_type="quiz",
@@ -407,12 +464,20 @@ async def generate_flashcards_endpoint(
             parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
         )
 
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, f"Flashcards: {topic}", content,
+        course_id=request.course_id,
+        course_content_id=request.course_content_id,
+    )
+
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
     study_guide = StudyGuide(
         user_id=current_user.id,
         assignment_id=request.assignment_id,
-        course_id=request.course_id,
+        course_id=resolved_course_id,
+        course_content_id=resolved_cc_id,
         title=f"Flashcards: {topic}",
         content=cards_json,
         guide_type="flashcards",
@@ -444,6 +509,7 @@ async def generate_flashcards_endpoint(
 def list_study_guides(
     guide_type: str | None = None,
     course_id: int | None = None,
+    course_content_id: int | None = None,
     include_children: bool = False,
     student_user_id: int | None = None,
     db: Session = Depends(get_db),
@@ -483,6 +549,8 @@ def list_study_guides(
         query = query.filter(StudyGuide.guide_type == guide_type)
     if course_id:
         query = query.filter(StudyGuide.course_id == course_id)
+    if course_content_id:
+        query = query.filter(StudyGuide.course_content_id == course_content_id)
 
     return query.order_by(StudyGuide.created_at.desc()).all()
 
@@ -613,6 +681,8 @@ async def generate_from_file_upload(
     guide_type: str = Form("study_guide"),
     num_questions: int = Form(5),
     num_cards: int = Form(10),
+    course_id: Optional[int] = Form(None),
+    course_content_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -717,6 +787,15 @@ async def generate_from_file_upload(
         existing = find_recent_duplicate(db, current_user.id, study_guide.content_hash)
         if existing:
             return existing
+
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, title, extracted_text,
+        course_id=course_id,
+        course_content_id=course_content_id,
+    )
+    study_guide.course_id = resolved_course_id
+    study_guide.course_content_id = resolved_cc_id
 
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
