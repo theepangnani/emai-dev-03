@@ -629,6 +629,16 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Auto-send invite email to shadow teachers on creation
 - [ ] Teacher Dashboard course management view with source badges
 
+#### Architecture Foundation (Tier 0)
+- [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
+- [ ] **Extract backend services** — Move business logic from route handlers to domain service layer (#128)
+- [ ] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129)
+- [ ] **Split ParentDashboard** — Break 1222-LOC component into composable sub-components (#130)
+- [ ] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131)
+- [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
+- [ ] **Frontend DDD modules** — Reorganize into domain directories (#133)
+- [ ] **Domain events** — Add event system for cross-context communication (#134)
+
 ### Phase 1.5 (Calendar Extension, Content & School Integration)
 - [ ] Student email identity merging (personal + school email on same account)
 - [ ] School board email integration (when DTAP approved)
@@ -676,6 +686,52 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - **Database:** PostgreSQL (production), SQLite (development)
 - **Object Storage:** Google Cloud Storage
 - **Authentication:** OAuth2 + RBAC
+
+### Architecture Direction: Domain-Driven Design (DDD)
+
+ClassBridge is migrating from a transaction-script pattern to a modular Domain-Driven Design (DDD) architecture. Current maturity grade: **C-**. This migration is tracked across issues #127–#134 and will be implemented incrementally alongside feature work.
+
+#### Current Architecture Issues
+- **Backend**: Business logic lives in route handlers, no repository layer, cross-domain coupling (tasks imports 3+ domain models), anemic models, no domain events
+- **Frontend**: `ParentDashboard.tsx` is 1222 LOC with 33+ useState hooks, `api/client.ts` is 794 LOC monolith, TanStack Query installed but unused, no custom hooks
+
+#### Bounded Contexts
+
+| Context | Backend Domain | Frontend Module | Models |
+|---------|---------------|-----------------|--------|
+| **Auth & Identity** | `app/domains/auth/` | `src/domains/auth/` | User, Student, Teacher, Invite |
+| **Education** | `app/domains/education/` | `src/domains/education/` | Course, Assignment, CourseContent, Enrollment |
+| **Study Tools** | `app/domains/study/` | `src/domains/study/` | StudyGuide (guide, quiz, flashcards) |
+| **Tasks & Planning** | `app/domains/tasks/` | `src/domains/tasks/` | Task, RecurringTaskTemplate (future) |
+| **Communication** | `app/domains/communication/` | `src/domains/communication/` | Conversation, Message, TeacherCommunication |
+| **Notifications** | `app/domains/notifications/` | `src/domains/notifications/` | Notification, NotificationPreference |
+
+#### Target Backend Structure (per domain)
+```
+app/domains/{context}/
+  models.py        # SQLAlchemy models (aggregate roots)
+  schemas.py       # Pydantic request/response models
+  repository.py    # Data access layer (abstracts DB queries)
+  service.py       # Business logic (orchestrates repos + rules)
+  routes.py        # FastAPI router (thin, delegates to service)
+  events.py        # Domain events (future, #134)
+```
+
+#### Target Frontend Structure (per domain)
+```
+src/domains/{context}/
+  api.ts           # Axios calls for this domain only
+  hooks.ts         # TanStack Query hooks (useQuery, useMutation)
+  types.ts         # TypeScript interfaces
+  components/      # Domain-specific UI components
+  pages/           # Route-level pages
+```
+
+#### Migration Phases
+1. **Phase A (Foundation)**: Split `api/client.ts` (#127), extract backend services (#128), introduce repository pattern (#129)
+2. **Phase B (Frontend)**: Split `ParentDashboard` (#130), activate TanStack Query (#131)
+3. **Phase C (Full DDD)**: Reorganize backend into domain modules (#132), reorganize frontend into domain modules (#133)
+4. **Phase D (Events)**: Add domain events for cross-context communication (#134)
 
 ### Google OAuth Scopes
 | Scope | Purpose | Used By |
@@ -916,7 +972,7 @@ Current feature issues are tracked in GitHub:
 - Issue #114: Course materials: file upload and storage (GCS)
 - ~~Issue #116: Courses: Add structured course content types + reference/Google Classroom links~~ ✅
 - Issue #119: Recurring Tasks: Feasibility + implementation proposal
-- Issue #126: Calendar Task Actions: Add quick links beyond Create Study Guide
+- ~~Issue #126: Calendar Task Actions: Add quick links beyond Create Study Guide~~ ✅
 
 ### Phase 1.5 - Calendar Extension, Content & School Integration
 - Issue #96: Student email identity merging (personal + school email)
@@ -936,6 +992,16 @@ Current feature issues are tracked in GitHub:
 ### Phase 3+
 - Issue #30: Tutor Marketplace
 - Issue #31: AI Email Communication Agent
+
+### Architecture & DDD Migration
+- Issue #127: Split api/client.ts into domain-specific API modules
+- Issue #128: Extract backend domain services from route handlers
+- Issue #129: Introduce repository pattern for data access
+- Issue #130: Split ParentDashboard into sub-components
+- Issue #131: Activate TanStack Query for server state management
+- Issue #132: Reorganize backend into domain modules (DDD bounded contexts)
+- Issue #133: Reorganize frontend into domain modules
+- Issue #134: Add domain events for cross-context communication
 
 ### Infrastructure & DevOps
 - Issue #10: Pytest unit tests
