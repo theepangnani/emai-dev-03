@@ -39,6 +39,7 @@ const CoursesPage = lazyRetry(() => import('./pages/CoursesPage').then((m) => ({
 const CourseDetailPage = lazyRetry(() => import('./pages/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })));
 const StudyGuidesListPage = lazyRetry(() => import('./pages/StudyGuidesPage').then((m) => ({ default: m.StudyGuidesPage })));
 const TasksPage = lazyRetry(() => import('./pages/TasksPage').then((m) => ({ default: m.TasksPage })));
+const CourseMaterialDetailPage = lazyRetry(() => import('./pages/CourseMaterialDetailPage').then((m) => ({ default: m.CourseMaterialDetailPage })));
 const AcceptInvite = lazyRetry(() => import('./pages/AcceptInvite').then((m) => ({ default: m.AcceptInvite })));
 
 // Clear the chunk reload flag on successful app boot
@@ -119,6 +120,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <StudyGuidesListPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-guides/:id"
+                element={
+                  <ProtectedRoute>
+                    <CourseMaterialDetailPage />
                   </ProtectedRoute>
                 }
               />

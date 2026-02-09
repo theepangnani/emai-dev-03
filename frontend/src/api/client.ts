@@ -97,12 +97,18 @@ export const coursesApi = {
     const response = await api.get('/api/courses/created/me');
     return response.data;
   },
+
+  getDefault: async () => {
+    const response = await api.get('/api/courses/default');
+    return response.data;
+  },
 };
 
 // Course Content API
 export interface CourseContentItem {
   id: number;
   course_id: number;
+  course_name: string | null;
   title: string;
   description: string | null;
   text_content: string | null;
@@ -120,6 +126,16 @@ export const courseContentsApi = {
     if (contentType) params.content_type = contentType;
     const response = await api.get('/api/course-contents/', { params });
     return response.data as CourseContentItem[];
+  },
+
+  listAll: async (params?: { student_user_id?: number; content_type?: string }) => {
+    const response = await api.get('/api/course-contents/', { params: params || {} });
+    return response.data as CourseContentItem[];
+  },
+
+  get: async (id: number) => {
+    const response = await api.get(`/api/course-contents/${id}`);
+    return response.data as CourseContentItem;
   },
 
   create: async (data: {
@@ -215,6 +231,7 @@ export interface StudyGuide {
   user_id: number;
   assignment_id: number | null;
   course_id: number | null;
+  course_content_id: number | null;
   title: string;
   content: string;
   guide_type: string;
@@ -279,17 +296,17 @@ export interface ExtractedText {
 }
 
 export const studyApi = {
-  generateGuide: async (params: { assignment_id?: number; course_id?: number; title?: string; content?: string; regenerate_from_id?: number }) => {
+  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number }) => {
     const response = await api.post('/api/study/generate', params);
     return response.data as StudyGuide;
   },
 
-  generateQuiz: async (params: { assignment_id?: number; course_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number }) => {
+  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number }) => {
     const response = await api.post('/api/study/quiz/generate', params);
     return response.data as Quiz;
   },
 
-  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number }) => {
+  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number }) => {
     const response = await api.post('/api/study/flashcards/generate', params);
     return response.data as FlashcardSet;
   },
@@ -299,7 +316,7 @@ export const studyApi = {
     return response.data as DuplicateCheckResponse;
   },
 
-  listGuides: async (params?: { guide_type?: string; course_id?: number; include_children?: boolean; student_user_id?: number }) => {
+  listGuides: async (params?: { guide_type?: string; course_id?: number; course_content_id?: number; include_children?: boolean; student_user_id?: number }) => {
     const response = await api.get('/api/study/guides', { params: params || {} });
     return response.data as StudyGuide[];
   },
