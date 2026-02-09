@@ -74,6 +74,7 @@ Education ecosystems are fragmented:
 - Identify strengths and weaknesses
 - **Confirmation dialogs**: All AI generation actions (study guide, quiz, flashcard) require explicit user confirmation before calling the API, preventing accidental credit usage
 - **Robust JSON parsing**: AI responses wrapped in markdown code fences (` ```json ... ``` `) are automatically stripped before parsing, preventing "Failed to parse" errors
+- **Non-blocking generation**: AI study material generation is fully non-blocking. Modal closes immediately after submission, a pulsing "Generating..." placeholder row appears in the study materials list, and the user can continue working. On success the placeholder is replaced with the real guide; on failure it shows an error with a dismiss button. Works from both Study Guides page and Parent Dashboard (queues generation and navigates to Study Guides page)
 
 #### 6.2.1 Study Guide Storage & Management (Phase 1) - IMPLEMENTED
 
@@ -470,7 +471,7 @@ The Parent Dashboard uses a **three-panel layout**: left navigation, calendar-ce
 [  Messages      |   Grid with assignments + tasks           ]
 [  + Add Child   |                                           ]
 [  + Add Course  |                                           ]
-[  + Study Guide |                                           ]
+[  + Study Guide |   [+ Create Study Guide] [View Guides]    ]
 [  + Add Task    |                                           ]
 ```
 
@@ -636,6 +637,9 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **AI generation confirmations** — All AI generation actions require user confirmation dialog before API call (IMPLEMENTED)
 - [x] **Robust AI response parsing** — Strip markdown code fences from AI JSON responses to prevent parse failures (IMPLEMENTED)
 - [x] **Clickable entity badges** — Task linked entity badges navigate to study guide/quiz/flashcards/course detail page on click (IMPLEMENTED)
+- [x] **Non-blocking AI generation** — Study material generation closes modal immediately, shows pulsing placeholder in list, generates in background; works from Study Guides page and Parent Dashboard (IMPLEMENTED)
+- [x] **Calendar quick-action buttons** — "+ Create Study Guide" and "View Study Guides" buttons above calendar on Parent Dashboard (IMPLEMENTED)
+- [x] **Fix users.email nullable in PostgreSQL** — Startup migration to DROP NOT NULL on users.email for parent-created child accounts without email (IMPLEMENTED)
 - [ ] **Make student email optional** — parent can create child with name only (no email, no login)
 - [ ] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional
 - [ ] **Parent creates courses** — allow PARENT role to create courses (private to their children)
@@ -1008,6 +1012,9 @@ Current feature issues are tracked in GitHub:
 - Issue #136: ~~Study guide conversion and duplicate prevention~~ (CLOSED)
 - Issue #137: ~~Fix AI response JSON parsing (strip markdown code fences) + confirmation dialogs~~ (CLOSED)
 - Issue #138: ~~Clickable entity badges on Tasks page~~ (CLOSED)
+- Issue #157: ~~Non-blocking AI study material generation with progress placeholder~~ (CLOSED)
+- Issue #158: ~~Add calendar quick-action buttons on Parent Dashboard~~ (CLOSED)
+- Issue #159: ~~Fix: make users.email nullable in PostgreSQL for parent-created students~~ (CLOSED)
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
