@@ -75,7 +75,8 @@ with engine.connect() as conn:
             conn.execute(text("ALTER TABLE tasks ADD COLUMN category VARCHAR(50)"))
             logger.info("Added 'category' column to tasks")
         if "archived_at" not in existing_cols:
-            conn.execute(text("ALTER TABLE tasks ADD COLUMN archived_at DATETIME"))
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            conn.execute(text(f"ALTER TABLE tasks ADD COLUMN archived_at {col_type}"))
             logger.info("Added 'archived_at' column to tasks")
         # Make parent_id nullable (was NOT NULL in original schema) — PostgreSQL only
         if "sqlite" not in settings.database_url:
