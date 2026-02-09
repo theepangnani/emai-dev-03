@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session
@@ -116,6 +117,23 @@ def get_linked_children_user_ids(db: Session, parent_id: int) -> list[int]:
     return [s[0] for s in students]
 
 
+def find_recent_duplicate(
+    db: Session, user_id: int, content_hash: str, seconds: int = 60
+) -> StudyGuide | None:
+    """Return an existing study guide if one with the same hash was created recently."""
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
+    return (
+        db.query(StudyGuide)
+        .filter(
+            StudyGuide.user_id == user_id,
+            StudyGuide.content_hash == content_hash,
+            StudyGuide.created_at >= cutoff,
+        )
+        .order_by(StudyGuide.created_at.desc())
+        .first()
+    )
+
+
 # ============================================
 # Duplicate Detection
 # ============================================
@@ -217,9 +235,14 @@ async def generate_study_guide_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Deduplicate: return existing if same hash was created recently
+    content_hash = compute_content_hash(title, "study_guide", request.assignment_id)
+    existing = find_recent_duplicate(db, current_user.id, content_hash)
+    if existing:
+        return existing
+
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
-    content_hash = compute_content_hash(title, "study_guide", request.assignment_id)
     study_guide = StudyGuide(
         user_id=current_user.id,
         assignment_id=request.assignment_id,
@@ -281,9 +304,19 @@ async def generate_quiz_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Deduplicate: return existing if same hash was created recently
+    content_hash = compute_content_hash(f"Quiz: {topic}", "quiz", request.assignment_id)
+    existing = find_recent_duplicate(db, current_user.id, content_hash)
+    if existing:
+        existing_questions = [QuizQuestion(**q) for q in json.loads(existing.content)]
+        return QuizResponse(
+            id=existing.id, title=existing.title, questions=existing_questions,
+            guide_type="quiz", version=existing.version,
+            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
+        )
+
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
-    content_hash = compute_content_hash(f"Quiz: {topic}", "quiz", request.assignment_id)
     study_guide = StudyGuide(
         user_id=current_user.id,
         assignment_id=request.assignment_id,
@@ -353,9 +386,19 @@ async def generate_flashcards_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Deduplicate: return existing if same hash was created recently
+    content_hash = compute_content_hash(f"Flashcards: {topic}", "flashcards", request.assignment_id)
+    existing = find_recent_duplicate(db, current_user.id, content_hash)
+    if existing:
+        existing_cards = [Flashcard(**c) for c in json.loads(existing.content)]
+        return FlashcardSetResponse(
+            id=existing.id, title=existing.title, cards=existing_cards,
+            guide_type="flashcards", version=existing.version,
+            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
+        )
+
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
-    content_hash = compute_content_hash(f"Flashcards: {topic}", "flashcards", request.assignment_id)
     study_guide = StudyGuide(
         user_id=current_user.id,
         assignment_id=request.assignment_id,
@@ -656,6 +699,12 @@ async def generate_from_file_upload(
         raise HTTPException(status_code=500, detail="Failed to parse AI response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Deduplicate: return existing if same hash was created recently
+    if study_guide.content_hash:
+        existing = find_recent_duplicate(db, current_user.id, study_guide.content_hash)
+        if existing:
+            return existing
 
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)

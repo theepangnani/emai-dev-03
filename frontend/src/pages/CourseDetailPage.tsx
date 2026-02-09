@@ -79,6 +79,10 @@ export function CourseDetailPage() {
   const [generateAfterUpload, setGenerateAfterUpload] = useState(false);
   const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
 
+  // Guard refs to prevent double-submission
+  const uploadingRef = useRef(false);
+  const generatingRef = useRef(false);
+
   useEffect(() => {
     if (courseId) loadCourse();
   }, [courseId]);
@@ -264,6 +268,8 @@ export function CourseDetailPage() {
 
   const handleUploadDocument = async () => {
     if (!selectedFile || !uploadTitle.trim()) return;
+    if (uploadingRef.current) return;
+    uploadingRef.current = true;
     setUploading(true);
     setUploadError('');
     try {
@@ -316,6 +322,7 @@ export function CourseDetailPage() {
       setUploadError(err.response?.data?.detail || 'Failed to upload document');
     } finally {
       setUploading(false);
+      uploadingRef.current = false;
     }
   };
 
@@ -326,6 +333,8 @@ export function CourseDetailPage() {
       alert('No content available to generate a study guide from. Add a description or upload a document first.');
       return;
     }
+    if (generatingRef.current) return;
+    generatingRef.current = true;
     setGeneratingContentId(item.id);
     try {
       const result = await studyApi.generateGuide({
@@ -338,6 +347,7 @@ export function CourseDetailPage() {
       alert(err.response?.data?.detail || 'Failed to generate study guide');
     } finally {
       setGeneratingContentId(null);
+      generatingRef.current = false;
     }
   };
 

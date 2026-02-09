@@ -33,6 +33,10 @@ export function StudyGuidesPage() {
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const generatingRef = useRef(false);
+
+  // Convert guide to another type (e.g. study guide → quiz)
+  const [convertingGuideId, setConvertingGuideId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -121,9 +125,43 @@ export function StudyGuidesPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleConvert = async (guide: StudyGuide, targetType: 'study_guide' | 'quiz' | 'flashcards') => {
+    if (convertingGuideId) return;
+    setConvertingGuideId(guide.id);
+    try {
+      // Strip prefix like "Study Guide: " or "Quiz: " from title for cleaner output
+      const baseTitle = guide.title.replace(/^(Study Guide|Quiz|Flashcards):\s*/i, '');
+      let result;
+      if (targetType === 'quiz') {
+        result = await studyApi.generateQuiz({
+          topic: baseTitle, content: guide.content,
+          course_id: guide.course_id ?? undefined, num_questions: 10,
+        });
+        navigate(`/study/quiz/${result.id}`);
+      } else if (targetType === 'flashcards') {
+        result = await studyApi.generateFlashcards({
+          topic: baseTitle, content: guide.content,
+          course_id: guide.course_id ?? undefined, num_cards: 15,
+        });
+        navigate(`/study/flashcards/${result.id}`);
+      } else {
+        result = await studyApi.generateGuide({
+          title: baseTitle, content: guide.content,
+          course_id: guide.course_id ?? undefined,
+        });
+        navigate(`/study/guide/${result.id}`);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.detail || `Failed to generate ${targetType.replace('_', ' ')}`);
+    } finally {
+      setConvertingGuideId(null);
+    }
+  };
+
   const handleGenerate = async () => {
     if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
     if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
+    if (generatingRef.current) return;
 
     if (studyMode === 'text' && !duplicateCheck) {
       try {
@@ -132,6 +170,7 @@ export function StudyGuidesPage() {
       } catch { /* continue */ }
     }
     setDuplicateCheck(null);
+    generatingRef.current = true;
     setIsGenerating(true);
     setStudyError('');
 
@@ -162,6 +201,7 @@ export function StudyGuidesPage() {
       setStudyError(err.response?.data?.detail || 'Failed to generate study material');
     } finally {
       setIsGenerating(false);
+      generatingRef.current = false;
     }
   };
 
@@ -219,6 +259,36 @@ export function StudyGuidesPage() {
                     </div>
                   </div>
                   <div className="guide-row-actions">
+                    {guide.guide_type !== 'quiz' && (
+                      <button
+                        className="guide-convert-btn"
+                        title="Generate Quiz from this"
+                        disabled={convertingGuideId === guide.id}
+                        onClick={() => handleConvert(guide, 'quiz')}
+                      >
+                        {convertingGuideId === guide.id ? '...' : '?'}
+                      </button>
+                    )}
+                    {guide.guide_type !== 'flashcards' && (
+                      <button
+                        className="guide-convert-btn"
+                        title="Generate Flashcards from this"
+                        disabled={convertingGuideId === guide.id}
+                        onClick={() => handleConvert(guide, 'flashcards')}
+                      >
+                        {convertingGuideId === guide.id ? '...' : '\uD83C\uDCCF'}
+                      </button>
+                    )}
+                    {guide.guide_type !== 'study_guide' && (
+                      <button
+                        className="guide-convert-btn"
+                        title="Generate Study Guide from this"
+                        disabled={convertingGuideId === guide.id}
+                        onClick={() => handleConvert(guide, 'study_guide')}
+                      >
+                        {convertingGuideId === guide.id ? '...' : '\uD83D\uDCD6'}
+                      </button>
+                    )}
                     <CourseAssignSelect
                       guideId={guide.id}
                       currentCourseId={guide.course_id}
