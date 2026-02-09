@@ -1,10 +1,11 @@
 import os
 import time
+import traceback
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger, RequestLogger
@@ -92,6 +93,17 @@ app = FastAPI(
     description="AI-powered education management platform",
     version="0.1.0",
 )
+
+
+# Global exception handler — logs full tracebacks for 500 errors
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Catch all unhandled exceptions, log full traceback, return 500."""
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}\n"
+        f"{traceback.format_exc()}"
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 # Request logging middleware
