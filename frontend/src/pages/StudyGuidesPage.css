@@ -204,6 +204,39 @@
   margin: 0;
 }
 
+/* Filter select dropdowns */
+.guides-filters-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.guides-filter-select {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 13px;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+/* Course badge in row meta */
+.guide-course-badge {
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.guide-type-label {
+  text-transform: capitalize;
+}
+
 @media (max-width: 600px) {
   .guides-filter {
     width: 100%;

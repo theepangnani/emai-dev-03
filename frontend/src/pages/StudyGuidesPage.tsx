@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { studyApi, parentApi } from '../api/client';
-import type { StudyGuide, SupportedFormats, DuplicateCheckResponse, ChildSummary } from '../api/client';
+import { studyApi, parentApi, courseContentsApi, coursesApi } from '../api/client';
+import type { StudyGuide, SupportedFormats, DuplicateCheckResponse, ChildSummary, CourseContentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import './StudyGuidesPage.css';
 
 const MAX_FILE_SIZE_MB = 100;
 
-// Cross-page generation queue (ParentDashboard → StudyGuidesPage)
+// Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
 interface PendingGeneration {
   title: string;
   content: string;
@@ -36,17 +35,28 @@ interface GeneratingItem {
   error?: string;
 }
 
+interface CourseOption {
+  id: number;
+  name: string;
+}
+
 export function StudyGuidesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isParent = user?.role === 'parent';
   const { confirm, confirmModal } = useConfirm();
 
-  const [myGuides, setMyGuides] = useState<StudyGuide[]>([]);
-  const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
-  const [children, setChildren] = useState<ChildSummary[]>([]);
+  // Course content items (primary list)
+  const [contentItems, setContentItems] = useState<CourseContentItem[]>([]);
+  // Legacy study guides without course_content_id
+  const [legacyGuides, setLegacyGuides] = useState<StudyGuide[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<string>('all');
+
+  // Filters
+  const [filterChild, setFilterChild] = useState<number | ''>('');
+  const [filterCourse, setFilterCourse] = useState<number | ''>('');
+  const [children, setChildren] = useState<ChildSummary[]>([]);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
 
   // Study tools modal
   const [showModal, setShowModal] = useState(false);
@@ -66,15 +76,11 @@ export function StudyGuidesPage() {
   // In-progress generation placeholders
   const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
 
-  // Convert guide to another type (e.g. study guide → quiz)
-  const [convertingGuideId, setConvertingGuideId] = useState<number | null>(null);
-
   // Create task from guide
   const [taskModalGuide, setTaskModalGuide] = useState<StudyGuide | null>(null);
 
   useEffect(() => {
     loadData();
-    // Pick up pending generation queued from ParentDashboard navigation
     if (_pendingGeneration) {
       const params = _pendingGeneration;
       _pendingGeneration = null;
@@ -88,41 +94,69 @@ export function StudyGuidesPage() {
     }
   }, [showModal, supportedFormats]);
 
+  // Reload content when filters change
+  useEffect(() => {
+    loadContentItems();
+  }, [filterChild, filterCourse]);
+
   const loadData = async () => {
     try {
-      const guides = await studyApi.listGuides();
-      setMyGuides(guides);
+      const [contents, allGuides, courseList] = await Promise.all([
+        courseContentsApi.listAll(),
+        studyApi.listGuides(),
+        coursesApi.list(),
+      ]);
+      setContentItems(contents);
+      setCourses(courseList.map((c: any) => ({ id: c.id, name: c.name })));
+
+      // Legacy guides: those without course_content_id
+      setLegacyGuides(allGuides.filter((g: StudyGuide) => !g.course_content_id));
 
       if (isParent) {
         const childrenData = await parentApi.getChildren();
         setChildren(childrenData);
-        if (childrenData.length > 0) {
-          const allChildGuides = await studyApi.listGuides({ include_children: true });
-          setChildGuides(allChildGuides.filter(g => g.user_id !== user?.id));
-        }
       }
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteGuide = async (id: number) => {
+  const loadContentItems = async () => {
     try {
-      await studyApi.deleteGuide(id);
-      setMyGuides(prev => prev.filter(g => g.id !== id));
+      const params: Record<string, any> = {};
+      if (filterChild) params.student_user_id = filterChild;
+      const items = await courseContentsApi.listAll(params);
+      setContentItems(items);
     } catch { /* ignore */ }
   };
 
-  const navigateToGuide = (guide: StudyGuide) => {
+  const navigateToContent = (item: CourseContentItem) => {
+    navigate(`/study-guides/${item.id}`);
+  };
+
+  const navigateToLegacyGuide = (guide: StudyGuide) => {
     if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
     else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
     else navigate(`/study/guide/${guide.id}`);
   };
 
-  const guideIcon = (type: string) => {
-    if (type === 'quiz') return '?';
-    if (type === 'flashcards') return '\uD83C\uDCCF';
-    return '\uD83D\uDCD6';
+  const handleDeleteLegacyGuide = async (id: number) => {
+    try {
+      await studyApi.deleteGuide(id);
+      setLegacyGuides(prev => prev.filter(g => g.id !== id));
+    } catch { /* ignore */ }
+  };
+
+  const contentTypeIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      notes: '\uD83D\uDCDD',
+      syllabus: '\uD83D\uDCCB',
+      labs: '\uD83E\uDDEA',
+      assignments: '\uD83D\uDCDA',
+      readings: '\uD83D\uDCD6',
+      resources: '\uD83D\uDCE6',
+    };
+    return icons[type] || '\uD83D\uDCC4';
   };
 
   const guideTypeLabel = (type: string) => {
@@ -165,61 +199,6 @@ export function StudyGuidesPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleConvert = async (guide: StudyGuide, targetType: 'study_guide' | 'quiz' | 'flashcards') => {
-    if (convertingGuideId) return;
-    const baseTitle = guide.title.replace(/^(Study Guide|Quiz|Flashcards):\s*/i, '');
-
-    // Check if target type already exists for this content
-    try {
-      const dupResult = await studyApi.checkDuplicate({ title: baseTitle, guide_type: targetType });
-      if (dupResult.exists && dupResult.existing_guide) {
-        const existing = dupResult.existing_guide;
-        const typeName = targetType.replace('_', ' ');
-        const goToExisting = await confirm({
-          title: 'Already Exists',
-          message: `A ${typeName} already exists: "${existing.title}" (v${existing.version}). Would you like to view it?`,
-          confirmLabel: 'View Existing',
-          cancelLabel: 'Stay Here',
-        });
-        if (goToExisting) {
-          navigate(targetType === 'quiz' ? `/study/quiz/${existing.id}` : targetType === 'flashcards' ? `/study/flashcards/${existing.id}` : `/study/guide/${existing.id}`);
-        }
-        return;
-      }
-    } catch { /* continue if check fails */ }
-
-    const typeName = targetType.replace('_', ' ');
-    if (!await confirm({ title: 'Generate ' + typeName, message: `Generate a ${typeName} from "${guide.title}"? This will use AI credits.`, confirmLabel: 'Generate' })) return;
-
-    setConvertingGuideId(guide.id);
-    try {
-      let result;
-      if (targetType === 'quiz') {
-        result = await studyApi.generateQuiz({
-          topic: baseTitle, content: guide.content,
-          course_id: guide.course_id ?? undefined, num_questions: 10,
-        });
-        navigate(`/study/quiz/${result.id}`);
-      } else if (targetType === 'flashcards') {
-        result = await studyApi.generateFlashcards({
-          topic: baseTitle, content: guide.content,
-          course_id: guide.course_id ?? undefined, num_cards: 15,
-        });
-        navigate(`/study/flashcards/${result.id}`);
-      } else {
-        result = await studyApi.generateGuide({
-          title: baseTitle, content: guide.content,
-          course_id: guide.course_id ?? undefined,
-        });
-        navigate(`/study/guide/${result.id}`);
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.detail || `Failed to generate ${targetType.replace('_', ' ')}`);
-    } finally {
-      setConvertingGuideId(null);
-    }
-  };
-
   const startGeneration = (params: PendingGeneration) => {
     const tempId = `gen-${Date.now()}`;
     const displayTitle = params.title || `New ${params.type.replace('_', ' ')}`;
@@ -240,11 +219,9 @@ export function StudyGuidesPage() {
         } else {
           await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId });
         }
-        // Success: remove placeholder, refresh list from API
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
       } catch (err: any) {
-        // Error: update placeholder to show error
         setGeneratingItems(prev => prev.map(g =>
           g.tempId === tempId
             ? { ...g, status: 'error' as const, error: err.response?.data?.detail || 'Generation failed' }
@@ -268,7 +245,6 @@ export function StudyGuidesPage() {
       } catch { /* continue */ }
     }
 
-    // Capture form state before closing modal
     const params: PendingGeneration = {
       title: studyTitle || `New ${studyType.replace('_', ' ')}`,
       content: studyContent,
@@ -278,14 +254,15 @@ export function StudyGuidesPage() {
       regenerateId: duplicateCheck?.existing_guide?.id,
     };
 
-    // Close modal immediately and start background generation
     setDuplicateCheck(null);
     resetModal();
     startGeneration(params);
   };
 
-  const filteredMyGuides = filterType === 'all' ? myGuides : myGuides.filter(g => g.guide_type === filterType);
-  const filteredChildGuides = filterType === 'all' ? childGuides : childGuides.filter(g => g.guide_type === filterType);
+  // Apply course filter
+  const filteredContent = filterCourse
+    ? contentItems.filter(c => c.course_id === filterCourse)
+    : contentItems;
 
   if (loading) {
     return (
@@ -299,30 +276,45 @@ export function StudyGuidesPage() {
     <DashboardLayout
       welcomeSubtitle="Manage study materials"
       sidebarActions={[
-        { label: '+ Create Study Guide', onClick: () => setShowModal(true) },
+        { label: '+ Create Study Material', onClick: () => setShowModal(true) },
       ]}
     >
       <div className="guides-page">
-        {/* Header with filter + create button */}
+        {/* Header with filters + create button */}
         <div className="guides-header">
-          <div className="guides-filter">
-            {['all', 'study_guide', 'quiz', 'flashcards'].map(type => (
-              <button
-                key={type}
-                className={`guides-filter-btn ${filterType === type ? 'active' : ''}`}
-                onClick={() => setFilterType(type)}
+          <div className="guides-filters-row">
+            {isParent && children.length > 0 && (
+              <select
+                className="guides-filter-select"
+                value={filterChild}
+                onChange={e => setFilterChild(e.target.value ? Number(e.target.value) : '')}
               >
-                {type === 'all' ? 'All' : guideTypeLabel(type)}
-              </button>
-            ))}
+                <option value="">All Family</option>
+                {children.map(child => (
+                  <option key={child.user_id} value={child.user_id}>{child.full_name}</option>
+                ))}
+              </select>
+            )}
+            {courses.length > 0 && (
+              <select
+                className="guides-filter-select"
+                value={filterCourse}
+                onChange={e => setFilterCourse(e.target.value ? Number(e.target.value) : '')}
+              >
+                <option value="">All Courses</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
-          <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create Study Guide</button>
+          <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
         </div>
 
-        {/* My guides */}
+        {/* Course content items */}
         <div className="guides-section">
-          <h3>My Study Materials ({filteredMyGuides.length + generatingItems.length})</h3>
-          {filteredMyGuides.length > 0 || generatingItems.length > 0 ? (
+          <h3>Course Materials ({filteredContent.length + generatingItems.length})</h3>
+          {filteredContent.length > 0 || generatingItems.length > 0 ? (
             <div className="guides-list">
               {/* In-progress generation placeholders */}
               {generatingItems.map(item => (
@@ -344,16 +336,48 @@ export function StudyGuidesPage() {
                   {item.status === 'error' && (
                     <div className="guide-row-actions">
                       <button className="guide-delete-btn" onClick={() => setGeneratingItems(prev => prev.filter(g => g.tempId !== item.tempId))}>
-                        ✕
+                        &times;
                       </button>
                     </div>
                   )}
                 </div>
               ))}
-              {filteredMyGuides.map(guide => (
+              {filteredContent.map(item => (
+                <div key={item.id} className="guide-row">
+                  <div className="guide-row-main" onClick={() => navigateToContent(item)}>
+                    <span className="guide-row-icon">{contentTypeIcon(item.content_type)}</span>
+                    <div className="guide-row-info">
+                      <span className="guide-row-title">{item.title}</span>
+                      <span className="guide-row-meta">
+                        {item.course_name && (
+                          <span className="guide-course-badge">{item.course_name}</span>
+                        )}
+                        <span className="guide-type-label">{item.content_type}</span>
+                        <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="guides-empty">
+              <p>No course materials yet. Click "+ Create" to generate study materials from your content.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Legacy study guides (no course_content_id) */}
+        {legacyGuides.length > 0 && (
+          <div className="guides-section">
+            <h3>Ungrouped Study Guides ({legacyGuides.length})</h3>
+            <div className="guides-list">
+              {legacyGuides.map(guide => (
                 <div key={guide.id} className="guide-row">
-                  <div className="guide-row-main" onClick={() => navigateToGuide(guide)}>
-                    <span className="guide-row-icon">{guideIcon(guide.guide_type)}</span>
+                  <div className="guide-row-main" onClick={() => navigateToLegacyGuide(guide)}>
+                    <span className="guide-row-icon">
+                      {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '\uD83C\uDCCF' : '\uD83D\uDCD6'}
+                    </span>
                     <div className="guide-row-info">
                       <span className="guide-row-title">{guide.title}</span>
                       <span className="guide-row-meta">
@@ -364,36 +388,6 @@ export function StudyGuidesPage() {
                     </div>
                   </div>
                   <div className="guide-row-actions">
-                    {guide.guide_type !== 'quiz' && (
-                      <button
-                        className="guide-convert-btn"
-                        title="Generate Quiz from this"
-                        disabled={convertingGuideId === guide.id}
-                        onClick={() => handleConvert(guide, 'quiz')}
-                      >
-                        {convertingGuideId === guide.id ? '...' : '?'}
-                      </button>
-                    )}
-                    {guide.guide_type !== 'flashcards' && (
-                      <button
-                        className="guide-convert-btn"
-                        title="Generate Flashcards from this"
-                        disabled={convertingGuideId === guide.id}
-                        onClick={() => handleConvert(guide, 'flashcards')}
-                      >
-                        {convertingGuideId === guide.id ? '...' : '\uD83C\uDCCF'}
-                      </button>
-                    )}
-                    {guide.guide_type !== 'study_guide' && (
-                      <button
-                        className="guide-convert-btn"
-                        title="Generate Study Guide from this"
-                        disabled={convertingGuideId === guide.id}
-                        onClick={() => handleConvert(guide, 'study_guide')}
-                      >
-                        {convertingGuideId === guide.id ? '...' : '\uD83D\uDCD6'}
-                      </button>
-                    )}
                     <button
                       className="guide-convert-btn"
                       title="Create task from this"
@@ -401,43 +395,9 @@ export function StudyGuidesPage() {
                     >
                       +Task
                     </button>
-                    <CourseAssignSelect
-                      guideId={guide.id}
-                      currentCourseId={guide.course_id}
-                      onCourseChanged={(courseId) => setMyGuides(prev =>
-                        prev.map(g => g.id === guide.id ? { ...g, course_id: courseId } : g)
-                      )}
-                    />
-                    <button className="guide-delete-btn" onClick={() => handleDeleteGuide(guide.id)}>
-                      ✕
+                    <button className="guide-delete-btn" onClick={() => handleDeleteLegacyGuide(guide.id)}>
+                      &times;
                     </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="guides-empty">
-              <p>No study materials yet. Create one to get started!</p>
-            </div>
-          )}
-        </div>
-
-        {/* Children's guides */}
-        {isParent && children.length > 0 && filteredChildGuides.length > 0 && (
-          <div className="guides-section">
-            <h3>Children's Materials ({filteredChildGuides.length})</h3>
-            <div className="guides-list">
-              {filteredChildGuides.map(guide => (
-                <div key={guide.id} className="guide-row">
-                  <div className="guide-row-main" onClick={() => navigateToGuide(guide)}>
-                    <span className="guide-row-icon">{guideIcon(guide.guide_type)}</span>
-                    <div className="guide-row-info">
-                      <span className="guide-row-title">{guide.title}</span>
-                      <span className="guide-row-meta">
-                        {guideTypeLabel(guide.guide_type)}
-                        <span className="guide-row-date">{new Date(guide.created_at).toLocaleDateString()}</span>
-                      </span>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -480,16 +440,16 @@ export function StudyGuidesPage() {
                   <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
                     {selectedFile ? (
                       <div className="selected-file">
-                        <span className="file-icon">📄</span>
+                        <span className="file-icon">&#128196;</span>
                         <div className="file-info">
                           <span className="file-name">{selectedFile.name}</span>
                           <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
-                        <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>✕</button>
+                        <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>&times;</button>
                       </div>
                     ) : (
                       <div className="drop-zone-content">
-                        <span className="upload-icon">📁</span>
+                        <span className="upload-icon">&#128193;</span>
                         <p>Drag & drop a file here, or click to browse</p>
                         <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
                       </div>
@@ -503,7 +463,7 @@ export function StudyGuidesPage() {
               <div className="duplicate-warning">
                 <p>{duplicateCheck.message}</p>
                 <div className="duplicate-actions">
-                  <button className="generate-btn" onClick={() => { const guide = duplicateCheck.existing_guide!; resetModal(); navigateToGuide(guide); }}>View Existing</button>
+                  <button className="generate-btn" onClick={() => { const guide = duplicateCheck.existing_guide!; resetModal(); navigateToLegacyGuide(guide); }}>View Existing</button>
                   <button className="generate-btn" onClick={handleGenerate}>Regenerate (New Version)</button>
                   <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
                 </div>
