@@ -43,7 +43,21 @@ export function TasksPage() {
   const loadTasks = async () => {
     try {
       setError(null);
-      const data = await tasksApi.list({ include_archived: filterStatus === 'archived' });
+      const params: { include_archived?: boolean; is_completed?: boolean } = {};
+
+      if (filterStatus === 'pending') {
+        params.is_completed = false;
+      } else if (filterStatus === 'completed') {
+        // Completed tasks are archived by backend when marked complete.
+        params.include_archived = true;
+        params.is_completed = true;
+      } else if (filterStatus === 'archived') {
+        params.include_archived = true;
+      } else {
+        params.include_archived = false;
+      }
+
+      const data = await tasksApi.list(params);
       setTasks(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load tasks';
@@ -155,8 +169,8 @@ export function TasksPage() {
 
   const filteredTasks = tasks.filter(t => {
     if (filterStatus === 'archived') return !!t.archived_at;
-    if (filterStatus === 'pending' && t.is_completed) return false;
-    if (filterStatus === 'completed' && !t.is_completed) return false;
+    if (filterStatus === 'pending') return !t.is_completed && !t.archived_at;
+    if (filterStatus === 'completed') return t.is_completed;
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
     return true;
   });
@@ -174,56 +188,10 @@ export function TasksPage() {
         {/* Header */}
         <div className="tasks-header">
           <h3>Tasks</h3>
-          <button className="generate-btn" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? 'Cancel' : '+ New Task'}
+          <button className="generate-btn" onClick={() => setShowCreate(true)}>
+            + New Task
           </button>
         </div>
-
-        {/* Create form */}
-        {showCreate && (
-          <div className="tasks-create-form">
-            <input
-              type="text"
-              placeholder="Task title"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              className="form-input"
-              autoFocus
-            />
-            <textarea
-              placeholder="Description (optional)"
-              value={newDescription}
-              onChange={e => setNewDescription(e.target.value)}
-              className="form-input"
-              rows={2}
-            />
-            <div className="tasks-create-row">
-              <input
-                type="datetime-local"
-                value={newDueDate}
-                onChange={e => setNewDueDate(e.target.value)}
-                className="form-input"
-              />
-              <select value={newPriority} onChange={e => setNewPriority(e.target.value)} className="form-input">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-              {assignableUsers.length > 0 && (
-                <select value={newAssignee} onChange={e => setNewAssignee(e.target.value ? Number(e.target.value) : '')} className="form-input">
-                  <option value="">Assign to (optional)</option>
-                  {assignableUsers.map(u => (
-                    <option key={u.user_id} value={u.user_id}>{u.name}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <button onClick={handleCreate} disabled={creating || !newTitle.trim()} className="generate-btn">
-              {creating ? 'Creating...' : 'Create Task'}
-            </button>
-          </div>
-        )}
 
         {/* Filters */}
         <div className="tasks-filters">
@@ -306,6 +274,68 @@ export function TasksPage() {
           </div>
         )}
 
+        {/* Create modal */}
+        {showCreate && (
+          <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Create Task</h2>
+                <button className="modal-close" onClick={() => setShowCreate(false)}>&times;</button>
+              </div>
+              <div className="modal-body">
+                <label className="form-label">Title</label>
+                <input
+                  type="text"
+                  placeholder="Task title"
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  className="form-input"
+                  autoFocus
+                />
+                <label className="form-label">Description</label>
+                <textarea
+                  placeholder="Description (optional)"
+                  value={newDescription}
+                  onChange={e => setNewDescription(e.target.value)}
+                  className="form-input"
+                  rows={3}
+                />
+                <label className="form-label">Due Date</label>
+                <input
+                  type="datetime-local"
+                  value={newDueDate}
+                  onChange={e => setNewDueDate(e.target.value)}
+                  className="form-input"
+                />
+                <label className="form-label">Priority</label>
+                <select value={newPriority} onChange={e => setNewPriority(e.target.value)} className="form-input">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+                {assignableUsers.length > 0 && (
+                  <>
+                    <label className="form-label">Assign To</label>
+                    <select value={newAssignee} onChange={e => setNewAssignee(e.target.value ? Number(e.target.value) : '')} className="form-input">
+                      <option value="">Unassigned (personal)</option>
+                      {assignableUsers.map(u => (
+                        <option key={u.user_id} value={u.user_id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
+              <div className="modal-actions">
+                <button className="modal-cancel" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</button>
+                <button className="generate-btn" onClick={handleCreate} disabled={creating || !newTitle.trim()}>
+                  {creating ? 'Creating...' : 'Create Task'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Edit modal */}
         {editTask && (
           <div className="modal-overlay" onClick={() => setEditTask(null)}>
@@ -367,3 +397,4 @@ export function TasksPage() {
     </DashboardLayout>
   );
 }
+

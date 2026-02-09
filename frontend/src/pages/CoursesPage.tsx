@@ -179,6 +179,9 @@ export function CoursesPage() {
           <div className="courses-section-header">
             <h3>{childName ? `${childName}'s Courses` : 'Courses'}</h3>
             <div className="courses-header-actions">
+              <button className="courses-btn primary" onClick={() => setShowCreateModal(true)}>
+                Create Course
+              </button>
               {parentCourses.length > 0 && selectedChild && (
                 <button className="courses-btn secondary" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
                   Assign Course

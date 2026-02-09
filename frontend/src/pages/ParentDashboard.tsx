@@ -480,13 +480,20 @@ export function ParentDashboard() {
   // Tasks & Day Detail Modal
   // ============================================
 
+  const selectedChildUserId = useMemo(() => {
+    if (!selectedChild) return null;
+    return children.find(c => c.student_id === selectedChild)?.user_id ?? null;
+  }, [selectedChild, children]);
+
   useEffect(() => {
     loadTasks();
-  }, []);
+  }, [selectedChildUserId]);
 
   const loadTasks = async () => {
     try {
-      const data = await tasksApi.list();
+      const data = await tasksApi.list(
+        selectedChildUserId ? { assigned_to_user_id: selectedChildUserId } : undefined
+      );
       setAllTasks(data);
     } catch {
       // silently fail
