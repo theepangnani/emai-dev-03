@@ -72,6 +72,8 @@ Education ecosystems are fragmented:
 - Generate flashcards
 - Summarize teacher handouts
 - Identify strengths and weaknesses
+- **Confirmation dialogs**: All AI generation actions (study guide, quiz, flashcard) require explicit user confirmation before calling the API, preventing accidental credit usage
+- **Robust JSON parsing**: AI responses wrapped in markdown code fences (` ```json ... ``` `) are automatically stripped before parsing, preventing "Failed to parse" errors
 
 #### 6.2.1 Study Guide Storage & Management (Phase 1) - IMPLEMENTED
 
@@ -378,7 +380,7 @@ A cross-role task/todo manager integrated into the calendar, available to all EM
 - Create, edit, complete, and delete tasks (personal or assigned to others)
 - Task fields: title, description, due date, reminder date+time (time optional), priority (low, medium, high), category
 - Tasks can optionally be assigned to another user (`assigned_to_user_id`) or linked to an assignment
-- **Entity linking**: Tasks can be linked to a course (`course_id`), course content item (`course_content_id`), or study guide (`study_guide_id`). Create tasks directly from Study Guides page, Course Detail page, or per-content-item — link is pre-filled automatically. Linked entity name displayed as badge on Tasks page
+- **Entity linking**: Tasks can be linked to a course (`course_id`), course content item (`course_content_id`), or study guide (`study_guide_id`). Create tasks directly from Study Guides page, Course Detail page, or per-content-item — link is pre-filled automatically. Linked entity name displayed as clickable badge on Tasks page — clicking navigates to the linked study guide, quiz, flashcards, or course detail page
 - Quick-add from calendar date click, Day Detail Modal, dedicated Tasks page, Study Guides page (+Task button per guide), or Course Detail page (+Task button per content item)
 - Filter by status (pending, completed), priority, date range, assignee, course
 - Dedicated `/tasks` page for full task management (all roles)
@@ -631,6 +633,9 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Task entity linking** — Link tasks to courses, course content, and study guides; +Task buttons on Study Guides and Course Detail pages; reusable CreateTaskModal; linked entity badges on Tasks page (IMPLEMENTED)
 - [x] **Study guide conversion** — Convert existing study guides to quizzes or flashcards from Study Guides list page (IMPLEMENTED)
 - [x] **Duplicate study guide prevention** — useRef guards on frontend + 60-second backend dedup via content_hash (IMPLEMENTED)
+- [x] **AI generation confirmations** — All AI generation actions require user confirmation dialog before API call (IMPLEMENTED)
+- [x] **Robust AI response parsing** — Strip markdown code fences from AI JSON responses to prevent parse failures (IMPLEMENTED)
+- [x] **Clickable entity badges** — Task linked entity badges navigate to study guide/quiz/flashcards/course detail page on click (IMPLEMENTED)
 - [ ] **Make student email optional** — parent can create child with name only (no email, no login)
 - [ ] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional
 - [ ] **Parent creates courses** — allow PARENT role to create courses (private to their children)
@@ -973,6 +978,8 @@ Current feature issues are tracked in GitHub:
 - Issue #51: ~~Deprecate POST /api/courses/ endpoint~~ (SUPERSEDED — endpoint now serves all roles)
 - Issue #135: ~~Task entity linking: link tasks to courses, content, and study guides~~ (CLOSED)
 - Issue #136: ~~Study guide conversion and duplicate prevention~~ (CLOSED)
+- Issue #137: ~~Fix AI response JSON parsing (strip markdown code fences) + confirmation dialogs~~ (CLOSED)
+- Issue #138: ~~Clickable entity badges on Tasks page~~ (CLOSED)
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
