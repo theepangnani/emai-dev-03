@@ -352,6 +352,8 @@ export const studyApi = {
     guide_type: 'study_guide' | 'quiz' | 'flashcards';
     num_questions?: number;
     num_cards?: number;
+    course_id?: number;
+    course_content_id?: number;
   }) => {
     const formData = new FormData();
     formData.append('file', params.file);
@@ -359,6 +361,8 @@ export const studyApi = {
     formData.append('guide_type', params.guide_type);
     if (params.num_questions) formData.append('num_questions', params.num_questions.toString());
     if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
+    if (params.course_id) formData.append('course_id', params.course_id.toString());
+    if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
 
     const response = await api.post('/api/study/upload/generate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

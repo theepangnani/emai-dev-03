@@ -13,7 +13,7 @@ router = APIRouter(prefix="/courses", tags=["Courses"])
 
 
 def get_or_create_default_course(db: Session, user: User) -> Course:
-    """Get or create the default 'My Materials' course for a user."""
+    """Get or create the default 'Main Course' for a user."""
     course = db.query(Course).filter(
         Course.created_by_user_id == user.id,
         Course.is_default == True,  # noqa: E712
@@ -21,7 +21,7 @@ def get_or_create_default_course(db: Session, user: User) -> Course:
     if course:
         return course
     course = Course(
-        name="My Materials",
+        name="Main Course",
         description="Default course for materials not assigned to a specific course",
         created_by_user_id=user.id,
         is_private=True,

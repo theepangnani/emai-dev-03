@@ -18,6 +18,8 @@ interface PendingGeneration {
   mode: 'text' | 'file';
   file?: File;
   regenerateId?: number;
+  courseId?: number;
+  courseContentId?: number;
 }
 
 let _pendingGeneration: PendingGeneration | null = null;
@@ -65,6 +67,9 @@ export function StudyGuidesPage() {
   const [studyContent, setStudyContent] = useState('');
   const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
   const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
+  const [modalCourseId, setModalCourseId] = useState<number | ''>('');
+  const [modalMaterials, setModalMaterials] = useState<CourseContentItem[]>([]);
+  const [modalMaterialId, setModalMaterialId] = useState<number | ''>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isGenerating] = useState(false);
   const [studyError, setStudyError] = useState('');
@@ -99,6 +104,16 @@ export function StudyGuidesPage() {
   useEffect(() => {
     loadContentItems();
   }, [filterChild, filterCourse]);
+
+  // Load materials for modal course selection
+  useEffect(() => {
+    if (modalCourseId) {
+      courseContentsApi.list(modalCourseId as number).then(setModalMaterials).catch(() => setModalMaterials([]));
+    } else {
+      setModalMaterials([]);
+    }
+    setModalMaterialId('');
+  }, [modalCourseId]);
 
   const loadData = async () => {
     try {
@@ -206,6 +221,7 @@ export function StudyGuidesPage() {
     setShowModal(false); setStudyTitle(''); setStudyContent('');
     setStudyType('study_guide'); setStudyMode('text'); setSelectedFile(null);
     setStudyError(''); setDuplicateCheck(null);
+    setModalCourseId(''); setModalMaterialId(''); setModalMaterials([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -221,13 +237,14 @@ export function StudyGuidesPage() {
             file: params.file, title: params.title || undefined, guide_type: params.type,
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
+            course_id: params.courseId, course_content_id: params.courseContentId,
           });
         } else if (params.type === 'study_guide') {
-          await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId });
+          await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
         } else if (params.type === 'quiz') {
-          await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId });
+          await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
         } else {
-          await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId });
+          await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
@@ -262,6 +279,8 @@ export function StudyGuidesPage() {
       mode: studyMode,
       file: selectedFile ?? undefined,
       regenerateId: duplicateCheck?.existing_guide?.id,
+      courseId: modalCourseId ? (modalCourseId as number) : undefined,
+      courseContentId: modalMaterialId ? (modalMaterialId as number) : undefined,
     };
 
     setDuplicateCheck(null);
@@ -473,6 +492,26 @@ export function StudyGuidesPage() {
                 Title (optional)
                 <input type="text" value={studyTitle} onChange={(e) => setStudyTitle(e.target.value)} placeholder="e.g., Chapter 5 Review" disabled={isGenerating} />
               </label>
+              <label>
+                Course (optional)
+                <select value={modalCourseId} onChange={(e) => setModalCourseId(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
+                  <option value="">Main Course (default)</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              {modalCourseId && modalMaterials.length > 0 && (
+                <label>
+                  Existing material (optional)
+                  <select value={modalMaterialId} onChange={(e) => setModalMaterialId(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
+                    <option value="">Create new material</option>
+                    {modalMaterials.map(m => (
+                      <option key={m.id} value={m.id}>{m.title}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="mode-toggle">
                 <button className={`mode-btn ${studyMode === 'text' ? 'active' : ''}`} onClick={() => setStudyMode('text')} disabled={isGenerating}>Paste Text</button>
                 <button className={`mode-btn ${studyMode === 'file' ? 'active' : ''}`} onClick={() => setStudyMode('file')} disabled={isGenerating}>Upload File</button>
