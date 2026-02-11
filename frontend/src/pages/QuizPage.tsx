@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, QuizQuestion } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import './QuizPage.css';
 
 export function QuizPage() {
@@ -16,6 +17,7 @@ export function QuizPage() {
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -93,6 +95,7 @@ export function QuizPage() {
           currentCourseId={guide.course_id}
           onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
         />
+        <button className="submit-btn" onClick={() => setShowTaskModal(true)} title="Create task" style={{ padding: '6px 12px', fontSize: '13px' }}>&#128203; + Task</button>
         <div className="progress">
           Question {currentQuestion + 1} of {questions.length}
         </div>
@@ -182,6 +185,14 @@ export function QuizPage() {
           </div>
         </div>
       )}
+      <CreateTaskModal
+        open={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        prefillTitle={`Review: ${guide.title}`}
+        studyGuideId={guide.id}
+        courseId={guide.course_id ?? undefined}
+        linkedEntityLabel={`Quiz: ${guide.title}`}
+      />
     </div>
   );
 }

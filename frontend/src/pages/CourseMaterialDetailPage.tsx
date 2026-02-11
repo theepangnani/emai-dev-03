@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import './CourseMaterialDetailPage.css';
 
@@ -40,6 +41,9 @@ export function CourseMaterialDetailPage() {
   // Flashcard state
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+
+  // Create task modal
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   const contentId = parseInt(id || '0');
 
@@ -198,6 +202,7 @@ export function CourseMaterialDetailPage() {
           <div className="cm-detail-meta">
             <span className="cm-type-badge">{content.content_type}</span>
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
+            <button className="cm-action-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
           </div>
         </div>
 
@@ -424,6 +429,14 @@ export function CourseMaterialDetailPage() {
           </div>
         )}
       </div>
+      <CreateTaskModal
+        open={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        prefillTitle={`Review: ${content.title}`}
+        courseId={content.course_id}
+        courseContentId={content.id}
+        linkedEntityLabel={`${content.title}${content.course_name ? ` (${content.course_name})` : ''}`}
+      />
       {confirmModal}
     </DashboardLayout>
   );

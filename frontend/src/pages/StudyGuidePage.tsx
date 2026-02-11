@@ -6,6 +6,7 @@ import type { PluggableList } from 'unified';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import './StudyGuidePage.css';
 
 function normalizeGuideContent(content: string) {
@@ -64,6 +65,7 @@ export function StudyGuidePage() {
   const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   useEffect(() => {
     const fetchGuide = async () => {
@@ -137,6 +139,7 @@ export function StudyGuidePage() {
             Regenerate
           </button>
           <button className="delete-btn" onClick={handleDelete}>Delete</button>
+          <button className="print-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
         </div>
       </div>
 
@@ -150,6 +153,14 @@ export function StudyGuidePage() {
           <MarkdownGuideBody content={guide.content} />
         </div>
       </div>
+      <CreateTaskModal
+        open={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        prefillTitle={`Review: ${guide.title}`}
+        studyGuideId={guide.id}
+        courseId={guide.course_id ?? undefined}
+        linkedEntityLabel={`Study Guide: ${guide.title}`}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import './FlashcardsPage.css';
 
 export function FlashcardsPage() {
@@ -13,6 +14,7 @@ export function FlashcardsPage() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   useEffect(() => {
     const fetchFlashcards = async () => {
@@ -104,6 +106,7 @@ export function FlashcardsPage() {
           currentCourseId={guide.course_id}
           onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
         />
+        <button className="control-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
         <div className="progress">
           Card {currentIndex + 1} of {cards.length}
         </div>
@@ -151,6 +154,14 @@ export function FlashcardsPage() {
         <span>Space/Enter: Flip</span>
         <span>Arrow Keys: Navigate</span>
       </div>
+      <CreateTaskModal
+        open={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        prefillTitle={`Review: ${guide.title}`}
+        studyGuideId={guide.id}
+        courseId={guide.course_id ?? undefined}
+        linkedEntityLabel={`Flashcards: ${guide.title}`}
+      />
     </div>
   );
 }
