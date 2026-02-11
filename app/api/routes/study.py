@@ -875,14 +875,16 @@ async def generate_from_file_upload(
         title = base_name
 
     # Generate the appropriate study material
+    critical_dates = []
     try:
         if guide_type == "quiz":
-            quiz_json = await generate_quiz(
+            raw_quiz = await generate_quiz(
                 topic=title,
                 content=extracted_text,
                 num_questions=num_questions,
             )
-            quiz_json = strip_json_fences(quiz_json)
+            raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
+            quiz_json = strip_json_fences(raw_quiz)
             questions_data = json.loads(quiz_json)
             questions = [QuizQuestion(**q) for q in questions_data]
 
@@ -895,12 +897,13 @@ async def generate_from_file_upload(
             )
 
         elif guide_type == "flashcards":
-            cards_json = await generate_flashcards(
+            raw_cards = await generate_flashcards(
                 topic=title,
                 content=extracted_text,
                 num_cards=num_cards,
             )
-            cards_json = strip_json_fences(cards_json)
+            raw_cards, critical_dates = parse_critical_dates(raw_cards)
+            cards_json = strip_json_fences(raw_cards)
             cards_data = json.loads(cards_json)
             cards = [Flashcard(**c) for c in cards_data]
 
@@ -913,11 +916,12 @@ async def generate_from_file_upload(
             )
 
         else:  # study_guide
-            content = await generate_study_guide(
+            raw_content = await generate_study_guide(
                 assignment_title=title,
                 assignment_description=extracted_text,
                 course_name="Uploaded Content",
             )
+            content, critical_dates = parse_critical_dates(raw_content)
 
             study_guide = StudyGuide(
                 user_id=current_user.id,
@@ -950,10 +954,24 @@ async def generate_from_file_upload(
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)
     db.add(study_guide)
+    db.flush()
+
+    # Auto-create tasks from critical dates (or fallback review task)
+    if not critical_dates:
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        resolved_course_id, resolved_cc_id,
+    )
+
     db.commit()
     db.refresh(study_guide)
 
-    return study_guide
+    resp = StudyGuideResponse.model_validate(study_guide)
+    resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
+    return resp
 
 
 @router.post("/upload/extract-text")
