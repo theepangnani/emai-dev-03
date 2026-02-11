@@ -428,7 +428,7 @@ A cross-role task/todo manager integrated into the calendar, available to all EM
 - **Entity linking**: Tasks can be linked to a course (`course_id`), course content item (`course_content_id`), or study guide (`study_guide_id`). Create tasks directly from Study Guides page, Course Detail page, or per-content-item — link is pre-filled automatically. Linked entity name displayed as clickable badge on Tasks page — clicking navigates to the linked study guide, quiz, flashcards, or course detail page
 - Quick-add from calendar date click, Day Detail Modal, dedicated Tasks page, Study Guides page (+Task button per guide), or Course Detail page (+Task button per content item)
 - Filter by status (pending, completed), priority, date range, assignee, course
-- Dedicated `/tasks` page for full task management (all roles)
+- Dedicated `/tasks` page for full task management (all roles). Clicking a task row navigates to the Task Detail Page (`/tasks/:id`); title highlights on hover to indicate clickability
 - **Task Detail Page** (`/tasks/:id`): Dedicated page showing task info card (title, description, due date, priority, status, assignee, creator), toggle complete / delete actions, and linked resources section (study guide, course material, course links) with link/unlink UI — icon buttons to add new links, searchable modal with tabbed resource types, unlink (×) button on each resource card. `GET /api/tasks/{task_id}` endpoint with creator/assignee/parent authorization. `PATCH /api/tasks/{task_id}` supports linking via `course_id`, `course_content_id`, `study_guide_id` (send 0 to unlink) - IMPLEMENTED
 - **Calendar task popover**: Clicking a task on the calendar shows a popover with a "See Task Details" button that navigates to the Task Detail Page
 

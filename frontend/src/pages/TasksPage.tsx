@@ -261,7 +261,7 @@ export function TasksPage() {
                   className="task-row-checkbox"
                   disabled={!!task.archived_at}
                 />
-                <div className="task-row-body">
+                <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
                   <div className="task-row-title">{task.title}</div>
                   <div className="task-row-meta">
                     {task.priority && (

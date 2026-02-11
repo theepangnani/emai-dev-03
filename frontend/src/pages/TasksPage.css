@@ -114,12 +114,18 @@
 .task-row-body {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
+}
+
+.task-row-body:hover .task-row-title {
+  color: var(--color-accent);
 }
 
 .task-row-title {
   font-size: 14px;
   font-weight: 500;
   color: var(--color-ink);
+  transition: color 0.15s;
 }
 
 .task-row-meta {
