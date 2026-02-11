@@ -52,6 +52,8 @@ export function StudyGuidesPage() {
   const [contentItems, setContentItems] = useState<CourseContentItem[]>([]);
   // Legacy study guides without course_content_id
   const [legacyGuides, setLegacyGuides] = useState<StudyGuide[]>([]);
+  // Map of course_content_id -> guide_types for filtering
+  const [contentGuideMap, setContentGuideMap] = useState<Record<number, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -139,6 +141,18 @@ export function StudyGuidesPage() {
       // Legacy guides: those without course_content_id
       setLegacyGuides(allGuides.filter((g: StudyGuide) => !g.course_content_id));
 
+      // Build guide type map for content filtering
+      const guideMap: Record<number, string[]> = {};
+      allGuides.forEach((g: StudyGuide) => {
+        if (g.course_content_id) {
+          if (!guideMap[g.course_content_id]) guideMap[g.course_content_id] = [];
+          if (!guideMap[g.course_content_id].includes(g.guide_type)) {
+            guideMap[g.course_content_id].push(g.guide_type);
+          }
+        }
+      });
+      setContentGuideMap(guideMap);
+
       if (isParent) {
         const childrenData = await parentApi.getChildren();
         setChildren(childrenData);
@@ -219,7 +233,14 @@ export function StudyGuidesPage() {
     });
   };
 
-  const contentTypeIcon = (type: string) => {
+  const contentTypeIcon = (type: string, itemId?: number) => {
+    // Check guide type first for better icons on quiz/flashcard items
+    if (itemId && contentGuideMap[itemId]) {
+      const guideTypes = contentGuideMap[itemId];
+      if (guideTypes.includes('quiz')) return '\u2753';
+      if (guideTypes.includes('flashcards')) return '\uD83C\uDCCF';
+      if (guideTypes.includes('study_guide')) return '\uD83D\uDCD6';
+    }
     const icons: Record<string, string> = {
       notes: '\uD83D\uDCDD',
       syllabus: '\uD83D\uDCCB',
@@ -361,10 +382,12 @@ export function StudyGuidesPage() {
     setDatePromptValues({});
   };
 
-  // Apply course filter
-  const filteredContent = filterCourse
-    ? contentItems.filter(c => c.course_id === filterCourse)
-    : contentItems;
+  // Apply course + type filters
+  const filteredContent = contentItems.filter(c => {
+    if (filterCourse && c.course_id !== filterCourse) return false;
+    if (filterType !== 'all' && !contentGuideMap[c.id]?.includes(filterType)) return false;
+    return true;
+  });
 
   // Apply guide type filter to legacy guides
   const filteredLegacy = filterType === 'all'
@@ -470,14 +493,18 @@ export function StudyGuidesPage() {
               {filteredContent.map(item => (
                 <div key={item.id} className="guide-row">
                   <div className="guide-row-main" onClick={() => navigateToContent(item)}>
-                    <span className="guide-row-icon">{contentTypeIcon(item.content_type)}</span>
+                    <span className="guide-row-icon">{contentTypeIcon(item.content_type, item.id)}</span>
                     <div className="guide-row-info">
                       <span className="guide-row-title">{item.title}</span>
                       <span className="guide-row-meta">
                         {item.course_name && (
                           <span className="guide-course-badge">{item.course_name}</span>
                         )}
-                        <span className="guide-type-label">{item.content_type}</span>
+                        <span className="guide-type-label">
+                          {contentGuideMap[item.id]
+                            ? contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')
+                            : item.content_type}
+                        </span>
                         <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
                       </span>
                     </div>

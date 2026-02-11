@@ -228,9 +228,55 @@ export function CourseMaterialDetailPage() {
             <div className="cm-document-tab">
               {content.text_content ? (
                 <div className="cm-document-text">
-                  <Suspense fallback={<div className="cm-render-loading">Rendering...</div>}>
-                    <MarkdownGuideBody content={content.text_content} />
-                  </Suspense>
+                  {(() => {
+                    // Detect JSON quiz/flashcard data and format readably
+                    const trimmed = content.text_content!.trim();
+                    if (trimmed.startsWith('[')) {
+                      try {
+                        const parsed = JSON.parse(trimmed);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                          if (parsed[0].question && parsed[0].options) {
+                            // Quiz JSON — render as Q&A
+                            return (
+                              <div className="cm-formatted-quiz">
+                                {parsed.map((q: any, i: number) => (
+                                  <div key={i} className="cm-fq-item">
+                                    <p className="cm-fq-question"><strong>Q{i + 1}:</strong> {q.question}</p>
+                                    <ul className="cm-fq-options">
+                                      {Object.entries(q.options || {}).map(([k, v]) => (
+                                        <li key={k} className={k === q.correct_answer ? 'cm-fq-correct' : ''}>
+                                          <strong>{k}.</strong> {v as string}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    {q.explanation && <p className="cm-fq-explanation"><em>{q.explanation}</em></p>}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          if (parsed[0].front && parsed[0].back) {
+                            // Flashcard JSON — render as term/definition
+                            return (
+                              <div className="cm-formatted-cards">
+                                {parsed.map((c: any, i: number) => (
+                                  <div key={i} className="cm-fc-item">
+                                    <strong>{c.front}</strong>
+                                    <span> — {c.back}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                        }
+                      } catch { /* not JSON, fall through to markdown */ }
+                    }
+                    return (
+                      <Suspense fallback={<div className="cm-render-loading">Rendering...</div>}>
+                        <MarkdownGuideBody content={content.text_content!} />
+                      </Suspense>
+                    );
+                  })()}
                 </div>
               ) : content.description ? (
                 <p className="cm-document-desc">{content.description}</p>
