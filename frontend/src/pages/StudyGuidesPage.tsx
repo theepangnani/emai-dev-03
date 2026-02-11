@@ -88,6 +88,9 @@ export function StudyGuidesPage() {
   // Categorize ungrouped guide
   const [categorizeGuide, setCategorizeGuide] = useState<StudyGuide | null>(null);
   const [categorizeCourseId, setCategorizeCourseId] = useState<number | ''>('');
+  const [categorizeSearch, setCategorizeSearch] = useState('');
+  const [categorizeNewName, setCategorizeNewName] = useState('');
+  const [categorizeCreating, setCategorizeCreating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -167,14 +170,28 @@ export function StudyGuidesPage() {
     } catch { /* ignore */ }
   };
 
-  const handleCategorize = async () => {
-    if (!categorizeGuide || !categorizeCourseId) return;
+  const handleCategorize = async (courseId?: number) => {
+    if (!categorizeGuide) return;
+    const targetCourseId = courseId ?? (categorizeCourseId ? Number(categorizeCourseId) : null);
+    if (!targetCourseId) return;
     try {
-      await studyApi.updateGuide(categorizeGuide.id, { course_id: Number(categorizeCourseId) });
+      await studyApi.updateGuide(categorizeGuide.id, { course_id: targetCourseId });
       setCategorizeGuide(null);
       setCategorizeCourseId('');
+      setCategorizeSearch('');
+      setCategorizeNewName('');
       loadData();
     } catch { /* ignore */ }
+  };
+
+  const handleCreateAndCategorize = async () => {
+    if (!categorizeGuide || !categorizeNewName.trim()) return;
+    setCategorizeCreating(true);
+    try {
+      const newCourse = await coursesApi.create({ name: categorizeNewName.trim() });
+      await handleCategorize(newCourse.id);
+    } catch { /* ignore */ }
+    setCategorizeCreating(false);
   };
 
   const handleConvertGuide = (guide: StudyGuide, targetType: 'study_guide' | 'quiz' | 'flashcards') => {
@@ -614,19 +631,48 @@ export function StudyGuidesPage() {
             <h2>Move to Course</h2>
             <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a course.</p>
             <div className="modal-form">
-              <select
-                value={categorizeCourseId}
-                onChange={(e) => setCategorizeCourseId(e.target.value ? Number(e.target.value) : '')}
-              >
-                <option value="">Select a course...</option>
-                {courses.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <input
+                type="text"
+                placeholder="Search courses or type a new name..."
+                value={categorizeSearch}
+                onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
+                autoFocus
+              />
+              <div className="categorize-list">
+                {courses
+                  .filter(c => !categorizeSearch || c.name.toLowerCase().includes(categorizeSearch.toLowerCase()))
+                  .map(c => (
+                    <div
+                      key={c.id}
+                      className={`categorize-item${categorizeCourseId === c.id ? ' selected' : ''}`}
+                      onClick={() => { setCategorizeCourseId(c.id); setCategorizeNewName(''); }}
+                    >
+                      &#127891; {c.name}
+                    </div>
+                  ))
+                }
+                {categorizeSearch.trim() && !courses.some(c => c.name.toLowerCase() === categorizeSearch.trim().toLowerCase()) && (
+                  <div
+                    className={`categorize-item create-new${categorizeNewName ? ' selected' : ''}`}
+                    onClick={() => { setCategorizeNewName(categorizeSearch.trim()); setCategorizeCourseId(''); }}
+                  >
+                    &#10133; Create &ldquo;{categorizeSearch.trim()}&rdquo;
+                  </div>
+                )}
+                {categorizeSearch && courses.filter(c => c.name.toLowerCase().includes(categorizeSearch.toLowerCase())).length === 0 && !categorizeSearch.trim() && (
+                  <div className="categorize-empty">No courses found</div>
+                )}
+              </div>
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setCategorizeGuide(null)}>Cancel</button>
-              <button className="generate-btn" disabled={!categorizeCourseId} onClick={handleCategorize}>Move</button>
+              {categorizeNewName ? (
+                <button className="generate-btn" disabled={categorizeCreating} onClick={handleCreateAndCategorize}>
+                  {categorizeCreating ? 'Creating...' : 'Create & Move'}
+                </button>
+              ) : (
+                <button className="generate-btn" disabled={!categorizeCourseId} onClick={() => handleCategorize()}>Move</button>
+              )}
             </div>
           </div>
         </div>

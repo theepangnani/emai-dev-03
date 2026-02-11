@@ -90,7 +90,7 @@ Persistent storage, organization, and lifecycle management for AI-generated stud
   - **Parents** see their own study guides plus all study guides belonging to their linked children
 - **Deletion**: Users can delete their own study guides. Deleting a parent guide does not cascade to child versions
 - **Course Assignment**: Any user can assign/reassign their study guides to a course via `PATCH /api/study/guides/{guide_id}`. A reusable `CourseAssignSelect` dropdown component is available on study guide view pages (StudyGuidePage, QuizPage, FlashcardsPage) and inline in dashboard study material lists
-- **Ungrouped Guide Categorization**: Study guides without a `course_content_id` appear under "Ungrouped Study Guides" on the Study Guides page. Each ungrouped guide has a folder icon button ("Move to course") that opens a modal to select a course. On move, the backend auto-creates a `CourseContent` entry via `ensure_course_and_content()` and assigns the guide, moving it into the grouped section
+- **Ungrouped Guide Categorization**: Study guides without a `course_content_id` appear under "Ungrouped Study Guides" on the Study Guides page. Each ungrouped guide has a folder icon button ("Move to course") that opens a modal with a searchable course list. Users can type to filter courses or create a new course inline ("+Create" option appears when search text doesn't match any existing course). On move, the backend auto-creates a `CourseContent` entry via `ensure_course_and_content()` and assigns the guide, moving it into the grouped section
 
 #### 6.2.2 Course Materials Restructure (Phase 1) - IMPLEMENTED
 
@@ -769,7 +769,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Audit logging** — `audit_logs` table with admin API and UI; logs login, register, task CRUD, study guide CRUD, course CRUD, message send, parent child access, Google sync; configurable retention (IMPLEMENTED)
 - [x] **Task Detail Page** — Dedicated `/tasks/:id` page with info card, actions, linked resources; `GET /api/tasks/{task_id}` endpoint; clickable task titles in calendar popover (IMPLEMENTED)
 - [x] **Calendar task popover: See Task Details button** — Icon buttons in popover (clipboard=task details, book=create study guide, graduation cap=go to course, books=view study guides) with title tooltips; fixed task ID offset bug where navigation used calendar-internal offset ID instead of real task ID (IMPLEMENTED)
-- [x] **Ungrouped study guide categorization** — Folder icon button on ungrouped guides opens "Move to Course" modal; backend PATCH auto-creates CourseContent via ensure_course_and_content() (IMPLEMENTED)
+- [x] **Ungrouped study guide categorization** — Folder icon button on ungrouped guides opens "Move to Course" modal with searchable course list and inline "Create new course" option; backend PATCH auto-creates CourseContent via ensure_course_and_content() (IMPLEMENTED)
 - [ ] **Color theme system: Hardcoded color cleanup** — Convert ~56 hardcoded hex/rgba values to CSS variables (priority: CourseMaterialDetailPage.css)
 - [ ] **Color theme system: Dark mode** — Define dark palette in `[data-theme="dark"]`, ThemeContext, ThemeToggle in header
 - [ ] **Color theme system: Focus mode** — Define focus palette in `[data-theme="focus"]`, muted warm tones for study sessions
@@ -1178,6 +1178,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #167: Task Detail Page with full task info and actions~~ ✅
 - ~~Issue #168: Calendar task popover: icon buttons + task detail navigation fix~~ ✅
 - ~~Issue #172: Fix ungrouped study guide categorization (Move to Course)~~ ✅
+- ~~Issue #173: Move to Course: searchable dropdown + create new course~~ ✅
 - Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)
 - Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)
 - Issue #171: Color theme: Focus mode (muted warm tones for study sessions)
