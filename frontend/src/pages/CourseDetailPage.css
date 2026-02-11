@@ -130,7 +130,7 @@
   cursor: not-allowed;
 }
 
-/* Content action buttons */
+/* Content action buttons (text - legacy) */
 .content-action-btn {
   font-size: 12px;
   padding: 4px 10px;
@@ -153,6 +153,33 @@
   border-color: var(--color-danger);
   color: var(--color-danger);
   background: rgba(214, 69, 69, 0.04);
+}
+
+/* Content icon buttons */
+.content-icon-btn {
+  font-size: 16px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.content-icon-btn:hover {
+  border-color: var(--color-accent);
+  background: rgba(73, 184, 192, 0.08);
+}
+
+.content-icon-btn.danger:hover {
+  border-color: var(--color-danger);
+  background: rgba(214, 69, 69, 0.06);
+}
+
+.content-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Content reference links */
@@ -281,16 +308,6 @@
   flex-shrink: 0;
 }
 
-.cd-generate-btn {
-  font-size: 12px !important;
-  padding: 6px 12px !important;
-  white-space: nowrap;
-}
-
-.cd-generate-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 /* Upload drop zone */
 .upload-drop-zone {

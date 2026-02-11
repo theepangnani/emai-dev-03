@@ -497,14 +497,16 @@ export function CourseDetailPage() {
                 </div>
                 <div className="cd-content-item-actions">
                   <button
-                    className="courses-btn secondary cd-generate-btn"
+                    className="content-icon-btn"
+                    title={generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
                     onClick={() => handleGenerateStudyGuide(item)}
                     disabled={generatingContentId === item.id}
                   >
-                    {generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
+                    {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
                   </button>
                   <button
-                    className="content-action-btn"
+                    className="content-icon-btn"
+                    title="Create task"
                     onClick={() => setTaskModalContext({
                       courseId: courseId,
                       courseContentId: item.id,
@@ -512,12 +514,12 @@ export function CourseDetailPage() {
                       label: `${item.title} (${course.name})`,
                     })}
                   >
-                    + Task
+                    &#128203;
                   </button>
                   {item.created_by_user_id === user?.id && (
                     <>
-                      <button className="content-action-btn" onClick={() => openEditContentModal(item)}>Edit</button>
-                      <button className="content-action-btn danger" onClick={() => handleDeleteContent(item.id)}>Delete</button>
+                      <button className="content-icon-btn" title="Edit" onClick={() => openEditContentModal(item)}>&#9998;</button>
+                      <button className="content-icon-btn danger" title="Delete" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
                     </>
                   )}
                 </div>
