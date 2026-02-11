@@ -559,7 +559,44 @@ Existing 12 variables + new additions:
 6. Integrate toggle into `DashboardLayout` header
 7. Visual QA on all pages for each theme
 
-### 6.16 AI Email Communication Agent (Phase 5)
+### 6.16 Global Search (Phase 1.5)
+
+A unified search field in the DashboardLayout header that searches across the entire ClassBridge platform. Available to all roles (parent, student, teacher, admin).
+
+**Searchable Entities:**
+
+| Entity | Searchable Fields | Result Navigation |
+|--------|-------------------|-------------------|
+| Courses | name, description | `/courses/{id}` |
+| Study Guides | title | `/study/guide/{id}`, `/study/quiz/{id}`, `/study/flashcards/{id}` |
+| Tasks | title, description | `/tasks/{id}` |
+| Course Content | title, description | `/study-guides/{id}` |
+
+**Backend:**
+- `GET /api/search?q=<query>&types=<csv>&limit=<n>` — unified search endpoint
+- Case-insensitive `ilike()` matching (same pattern as admin user search)
+- Results respect role-based access (parents see children's data, students see own, etc.)
+- Returns results grouped by entity type with count per type
+- Default: 5 results per type, minimum query length: 2 characters
+
+**Data Model:** No new tables — queries existing Course, StudyGuide, Task, CourseContent tables.
+
+**Frontend:**
+- `GlobalSearch` component in DashboardLayout header (all roles)
+- Debounced input (300ms), dropdown overlay with grouped results
+- Type icons per category: courses (🎓), study guides (📖), tasks (📋), content (📄)
+- Keyboard: Escape closes, Ctrl+K / Cmd+K to focus search
+- Click result → navigate to detail page, click outside → close
+
+**Implementation Steps:**
+1. Create `app/schemas/search.py` (SearchResultItem, SearchResponse)
+2. Create `app/api/routes/search.py` (GET /api/search)
+3. Register router in `main.py`
+4. Add `searchApi` to `frontend/src/api/client.ts`
+5. Create `frontend/src/components/GlobalSearch.tsx` + `.css`
+6. Integrate into `DashboardLayout.tsx` header
+
+### 6.17 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -1183,7 +1220,9 @@ Current feature issues are tracked in GitHub:
 - Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)
 - Issue #171: Color theme: Focus mode (muted warm tones for study sessions)
 
-### Phase 1.5 - Calendar Extension, Content & School Integration
+### Phase 1.5 - Calendar Extension, Content, Search & School Integration
+- Issue #174: Global search: backend unified search endpoint
+- Issue #175: Global search: frontend search component in DashboardLayout
 - Issue #96: Student email identity merging (personal + school email)
 - Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
 - Issue #46: Google Calendar push integration for tasks
