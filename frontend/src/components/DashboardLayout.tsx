@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api/client';
 import { NotificationBell } from './NotificationBell';
+import { GlobalSearch } from './GlobalSearch';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -95,6 +96,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
           <img src="/logo-icon.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
           <h1 className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>{dashboardTitle}</h1>
         </div>
+        <GlobalSearch />
         <div className="header-right">
           <NotificationBell />
           <div className="user-chip">
