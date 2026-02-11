@@ -85,6 +85,10 @@ export function StudyGuidesPage() {
   // Create task from guide
   const [taskModalGuide, setTaskModalGuide] = useState<StudyGuide | null>(null);
 
+  // Categorize ungrouped guide
+  const [categorizeGuide, setCategorizeGuide] = useState<StudyGuide | null>(null);
+  const [categorizeCourseId, setCategorizeCourseId] = useState<number | ''>('');
+
   useEffect(() => {
     loadData();
     if (_pendingGeneration) {
@@ -160,6 +164,16 @@ export function StudyGuidesPage() {
     try {
       await studyApi.deleteGuide(id);
       setLegacyGuides(prev => prev.filter(g => g.id !== id));
+    } catch { /* ignore */ }
+  };
+
+  const handleCategorize = async () => {
+    if (!categorizeGuide || !categorizeCourseId) return;
+    try {
+      await studyApi.updateGuide(categorizeGuide.id, { course_id: Number(categorizeCourseId) });
+      setCategorizeGuide(null);
+      setCategorizeCourseId('');
+      loadData();
     } catch { /* ignore */ }
   };
 
@@ -474,6 +488,13 @@ export function StudyGuidesPage() {
                     >
                       &#128203;
                     </button>
+                    <button
+                      className="guide-convert-btn"
+                      title="Move to course"
+                      onClick={() => { setCategorizeGuide(guide); setCategorizeCourseId(''); }}
+                    >
+                      &#128194;
+                    </button>
                     <button className="guide-delete-btn" title="Delete" onClick={() => handleDeleteLegacyGuide(guide.id)}>
                       &#128465;
                     </button>
@@ -586,6 +607,30 @@ export function StudyGuidesPage() {
         courseId={taskModalGuide?.course_id ?? undefined}
         linkedEntityLabel={taskModalGuide ? `Study Guide: ${taskModalGuide.title}` : undefined}
       />
+      {/* Categorize modal */}
+      {categorizeGuide && (
+        <div className="modal-overlay" onClick={() => setCategorizeGuide(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Move to Course</h2>
+            <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a course.</p>
+            <div className="modal-form">
+              <select
+                value={categorizeCourseId}
+                onChange={(e) => setCategorizeCourseId(e.target.value ? Number(e.target.value) : '')}
+              >
+                <option value="">Select a course...</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setCategorizeGuide(null)}>Cancel</button>
+              <button className="generate-btn" disabled={!categorizeCourseId} onClick={handleCategorize}>Move</button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmModal}
     </DashboardLayout>
   );

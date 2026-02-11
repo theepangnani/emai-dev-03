@@ -95,8 +95,9 @@ class FlashcardSetResponse(BaseModel):
 
 
 class StudyGuideUpdate(BaseModel):
-    """Request to update a study guide (e.g. assign to a course)."""
+    """Request to update a study guide (e.g. assign/categorize to a course)."""
     course_id: int | None = None
+    course_content_id: int | None = None
 
 
 class DuplicateCheckRequest(BaseModel):

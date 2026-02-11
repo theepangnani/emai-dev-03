@@ -648,7 +648,7 @@ def update_study_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a study guide (owner only). Currently supports assigning to a course."""
+    """Update a study guide (owner only). Supports assigning/categorizing to a course."""
     guide = db.query(StudyGuide).filter(
         StudyGuide.id == guide_id,
         StudyGuide.user_id == current_user.id,
@@ -656,12 +656,15 @@ def update_study_guide(
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
-    if update.course_id is not None:
-        course = db.query(Course).filter(Course.id == update.course_id).first()
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
+    if update.course_id is not None or update.course_content_id is not None:
+        resolved_course_id, resolved_cc_id = ensure_course_and_content(
+            db, current_user, guide.title, guide.content,
+            course_id=update.course_id or guide.course_id,
+            course_content_id=update.course_content_id,
+        )
+        guide.course_id = resolved_course_id
+        guide.course_content_id = resolved_cc_id
 
-    guide.course_id = update.course_id
     db.commit()
     db.refresh(guide)
     return guide
