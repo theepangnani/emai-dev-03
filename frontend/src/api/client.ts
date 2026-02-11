@@ -833,7 +833,7 @@ export const tasksApi = {
     return response.data as TaskItem;
   },
 
-  update: async (taskId: number, data: { title?: string; description?: string; due_date?: string; assigned_to_user_id?: number; is_completed?: boolean; priority?: string; category?: string }) => {
+  update: async (taskId: number, data: { title?: string; description?: string; due_date?: string; assigned_to_user_id?: number; is_completed?: boolean; priority?: string; category?: string; course_id?: number; course_content_id?: number; study_guide_id?: number }) => {
     const response = await api.patch(`/api/tasks/${taskId}`, data);
     return response.data as TaskItem;
   },

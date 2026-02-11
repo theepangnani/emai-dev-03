@@ -429,7 +429,7 @@ A cross-role task/todo manager integrated into the calendar, available to all EM
 - Quick-add from calendar date click, Day Detail Modal, dedicated Tasks page, Study Guides page (+Task button per guide), or Course Detail page (+Task button per content item)
 - Filter by status (pending, completed), priority, date range, assignee, course
 - Dedicated `/tasks` page for full task management (all roles)
-- **Task Detail Page** (`/tasks/:id`): Dedicated page showing task info card (title, description, due date, priority, status, assignee, creator), toggle complete / delete actions, and linked resources section (study guide, course material, course links). `GET /api/tasks/{task_id}` endpoint with creator/assignee/parent authorization
+- **Task Detail Page** (`/tasks/:id`): Dedicated page showing task info card (title, description, due date, priority, status, assignee, creator), toggle complete / delete actions, and linked resources section (study guide, course material, course links) with link/unlink UI — icon buttons to add new links, searchable modal with tabbed resource types, unlink (×) button on each resource card. `GET /api/tasks/{task_id}` endpoint with creator/assignee/parent authorization. `PATCH /api/tasks/{task_id}` supports linking via `course_id`, `course_content_id`, `study_guide_id` (send 0 to unlink) - IMPLEMENTED
 - **Calendar task popover**: Clicking a task on the calendar shows a popover with a "See Task Details" button that navigates to the Task Detail Page
 
 #### Cross-Role Task Assignment
@@ -805,6 +805,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Course materials restructure** — Refactor Study Guides page to list course materials (course_contents) with tabbed detail view (Original Document / Study Guide / Quiz / Flashcards); add `course_content_id` FK to study_guides; parent child+course filters; default "My Materials" course per user (IMPLEMENTED)
 - [x] **Audit logging** — `audit_logs` table with admin API and UI; logs login, register, task CRUD, study guide CRUD, course CRUD, message send, parent child access, Google sync; configurable retention (IMPLEMENTED)
 - [x] **Task Detail Page** — Dedicated `/tasks/:id` page with info card, actions, linked resources; `GET /api/tasks/{task_id}` endpoint; clickable task titles in calendar popover (IMPLEMENTED)
+- [x] **Task Detail Page: Link/unlink resources** — Icon buttons to link course, material, or study guide; searchable tabbed modal; unlink (×) button on each resource card; fixed `tasksApi.update()` type signature (IMPLEMENTED)
 - [x] **Calendar task popover: See Task Details button** — Icon buttons in popover (clipboard=task details, book=create study guide, graduation cap=go to course, books=view study guides) with title tooltips; fixed task ID offset bug where navigation used calendar-internal offset ID instead of real task ID (IMPLEMENTED)
 - [x] **Ungrouped study guide categorization** — Folder icon button on ungrouped guides opens "Move to Course" modal with searchable course list and inline "Create new course" option; backend PATCH auto-creates CourseContent via ensure_course_and_content() (IMPLEMENTED)
 - [ ] **Color theme system: Hardcoded color cleanup** — Convert ~56 hardcoded hex/rgba values to CSS variables (priority: CourseMaterialDetailPage.css)
@@ -1216,6 +1217,9 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #168: Calendar task popover: icon buttons + task detail navigation fix~~ ✅
 - ~~Issue #172: Fix ungrouped study guide categorization (Move to Course)~~ ✅
 - ~~Issue #173: Move to Course: searchable dropdown + create new course~~ ✅
+- ~~Issue #174: Global search: backend unified search endpoint~~ ✅
+- ~~Issue #175: Global search: frontend search component in DashboardLayout~~ ✅
+- ~~Issue #183: Task Detail Page: link/unlink resources (courses, materials, study guides)~~ ✅
 - Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)
 - Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)
 - Issue #171: Color theme: Focus mode (muted warm tones for study sessions)
