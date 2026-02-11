@@ -596,7 +596,48 @@ A unified search field in the DashboardLayout header that searches across the en
 5. Create `frontend/src/components/GlobalSearch.tsx` + `.css`
 6. Integrate into `DashboardLayout.tsx` header
 
-### 6.17 AI Email Communication Agent (Phase 5)
+### 6.17 Mobile Support (Phase 1.5 + Phase 2+)
+
+ClassBridge must be accessible and usable on all devices — phones, tablets, and desktops.
+
+#### Phase 1.5: Mobile-Responsive Web (Current)
+Make the existing web application fully responsive and touch-friendly.
+
+**Status:** IN PROGRESS — 15 of 20 CSS files already have `@media` breakpoints (primary: `max-width: 600px`). Five files need breakpoints added: Auth.css, QuizPage.css, NotificationBell.css, TeacherDashboard.css, App.css.
+
+**Requirements:**
+- [ ] All pages render correctly at 320px–1440px viewport widths
+- [ ] Collapsible sidebar navigation on mobile (hamburger menu)
+- [ ] Full-screen modals on small screens
+- [ ] Minimum 44px touch targets on all interactive elements
+- [ ] Horizontal scroll for wide tables (admin user list, etc.)
+- [ ] Touch-friendly calendar interactions (tap instead of drag-drop)
+- [ ] Swipe gestures for flashcards
+- [ ] No horizontal page overflow at any screen size
+- [ ] Viewport meta tag configured correctly
+
+**Implementation Notes:**
+- Use existing CSS custom properties and `max-width: 600px` breakpoint pattern
+- CSS-only solutions preferred over JavaScript for responsiveness
+- Test with Chrome DevTools device emulation (iPhone SE, iPad, Galaxy S21)
+
+**GitHub Issues:** #152 (mobile responsive web)
+
+#### Phase 2+: Native Mobile Apps (Future)
+Dedicated Android and iOS applications for enhanced mobile experience.
+
+**Recommended Approach:** PWA first (Phase 2), then React Native (Phase 3) if needed.
+
+**Future capabilities:**
+- Native push notifications
+- Offline access to study guides and flashcards
+- Camera integration for scanning assignments/documents
+- App store presence for discoverability
+- Home screen install via PWA
+
+**GitHub Issues:** #192 (native mobile apps)
+
+### 6.18 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -862,7 +903,8 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] **Missing route tests** — No tests for: google_classroom, study, messages, notifications, teacher_communications, admin, invites, course_contents routes (#155)
 - [ ] **PostgreSQL test coverage** — Tests run on SQLite only; misses NOT NULL, Enum, and type divergences (e.g., users.email bug) (#156)
 
-### Phase 1.5 (Calendar Extension, Content & School Integration)
+### Phase 1.5 (Calendar Extension, Content, Mobile & School Integration)
+- [ ] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support)
 - [ ] Student email identity merging (personal + school email on same account)
 - [ ] School board email integration (when DTAP approved)
 - [ ] Extend calendar to Student and Teacher dashboards with role-aware data
@@ -878,8 +920,10 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Notes & project tracking tools
 - [ ] Data privacy & user rights (account deletion, data export, consent)
 
+### Phase 2+
+- [ ] Native mobile apps (PWA first, then React Native)
+
 ### Phase 3
-- [ ] Mobile-first optimization
 - [ ] Multi-language support
 - [ ] Advanced AI personalization
 - [ ] Admin analytics
@@ -1224,9 +1268,10 @@ Current feature issues are tracked in GitHub:
 - Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)
 - Issue #171: Color theme: Focus mode (muted warm tones for study sessions)
 
-### Phase 1.5 - Calendar Extension, Content, Search & School Integration
-- Issue #174: Global search: backend unified search endpoint
-- Issue #175: Global search: frontend search component in DashboardLayout
+### Phase 1.5 - Calendar Extension, Content, Search, Mobile & School Integration
+- ~~Issue #174: Global search: backend unified search endpoint~~ ✅
+- ~~Issue #175: Global search: frontend search component in DashboardLayout~~ ✅
+- Issue #152: Mobile responsive web: fix CSS gaps, breakpoints, and touch support
 - Issue #96: Student email identity merging (personal + school email)
 - Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
 - Issue #46: Google Calendar push integration for tasks
@@ -1240,6 +1285,9 @@ Current feature issues are tracked in GitHub:
 - Issue #27: Notes & Project Tracking Tools
 - Issue #29: TeachAssist Integration
 - Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
+
+### Phase 2+
+- Issue #192: Native mobile apps (PWA first, then React Native)
 
 ### Phase 3+
 - Issue #30: Tutor Marketplace
@@ -1259,11 +1307,28 @@ Current feature issues are tracked in GitHub:
 - Issue #149: Implement JWT token refresh mechanism
 - Issue #150: Add loading skeletons to replace text loading states
 - Issue #151: Accessibility audit: aria labels, keyboard nav, skip-to-content
-- Issue #152: Mobile responsiveness: calendar, tables, modals, touch support
+- Issue #152: Mobile responsive web: fix CSS gaps, breakpoints, and touch support
 - Issue #153: Fix FlashcardsPage stale closure bug in keyboard handler
 - Issue #154: Add frontend unit tests (vitest)
 - Issue #155: Add backend route tests for google, study, messages, notifications, admin, invites
 - Issue #156: Add PostgreSQL test environment to CI for cross-DB coverage
+
+### Risk Audit (Full Application Review — Feb 2026)
+- Issue #176: CRITICAL: Fix admin self-registration and password validation
+- Issue #177: CRITICAL: Fix CORS wildcard and secure authentication tokens
+- Issue #178: CRITICAL: Secure Google OAuth flow
+- Issue #179: CRITICAL: Fix hardcoded JWT secret key
+- Issue #180: HIGH: Add JWT token revocation and rate limiting
+- Issue #181: HIGH: Fix RBAC gaps on students, assignments, courses, users, and content routes
+- Issue #182: HIGH: Secure logging endpoint and parent-created student passwords
+- Issue #184: MEDIUM: Fix LIKE pattern injection in search and study guide routes
+- Issue #185: MEDIUM: Add database migration tooling (Alembic)
+- Issue #186: MEDIUM: Fix N+1 queries in messages, tasks, and parent routes
+- Issue #187: MEDIUM: Add cascading deletes and unique constraints
+- Issue #188: LOW: Replace deprecated dependencies (python-jose, PyPDF2, datetime.utcnow)
+- Issue #189: LOW: Add deployment pipeline tests and database backup strategy
+- Issue #190: LOW: Improve health check endpoint to verify database connectivity
+- Issue #191: LOW: Fix audit log silent failure and invite token reuse
 
 ### Architecture & DDD Migration
 - Issue #127: Split api/client.ts into domain-specific API modules
