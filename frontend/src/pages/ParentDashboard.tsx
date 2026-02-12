@@ -30,6 +30,22 @@ export function ParentDashboard() {
   // Dashboard summary data (from single API call)
   const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
 
+  // Collapsible calendar (default collapsed on mobile if no saved preference)
+  const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_collapsed');
+      if (saved !== null) return saved === '1';
+      return window.innerWidth < 768;
+    } catch { return false; }
+  });
+  const toggleCalendar = () => {
+    setCalendarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('calendar_collapsed', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   // Link child modal state
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkTab, setLinkTab] = useState<LinkTab>('create');
@@ -832,39 +848,54 @@ export function ParentDashboard() {
             </button>
           </div>
 
-          {/* Calendar */}
-          {overviewLoading ? (
-            <PageSkeleton />
-          ) : (
-            <>
-              <CalendarView
-                assignments={calendarAssignments}
-                onCreateStudyGuide={handleOneClickStudy}
-                onDayClick={openDayModal}
-                onTaskDrop={handleTaskDrop}
-                onGoToCourse={handleGoToCourse}
-                onViewStudyGuides={handleViewStudyGuides}
-                generatingStudyId={generatingStudyId}
-              />
+          {/* Collapsible Calendar Section */}
+          <div className="calendar-collapse-section">
+            <button className="calendar-collapse-toggle" onClick={toggleCalendar}>
+              <span className={`calendar-collapse-chevron${calendarCollapsed ? '' : ' expanded'}`}>&#9654;</span>
+              <span className="calendar-collapse-label">
+                {calendarCollapsed
+                  ? `Calendar (${calendarAssignments.length} items)`
+                  : 'Calendar'}
+              </span>
+            </button>
+          </div>
 
-              {/* Undated Assignments */}
-              {undatedAssignments.length > 0 && (
-                <div className="undated-section">
-                  <h4>Undated Assignments ({undatedAssignments.length})</h4>
-                  <div className="undated-list">
-                    {undatedAssignments.map(a => (
-                      <div
-                        key={a.id}
-                        className="undated-item"
-                        onClick={() => handleOneClickStudy(a)}
-                      >
-                        <span className="cal-entry-dot" style={{ background: a.courseColor }} />
-                        <span className="undated-title">{a.title}</span>
-                        <span className="undated-course">{a.courseName}</span>
+          {!calendarCollapsed && (
+            <>
+              {overviewLoading ? (
+                <PageSkeleton />
+              ) : (
+                <>
+                  <CalendarView
+                    assignments={calendarAssignments}
+                    onCreateStudyGuide={handleOneClickStudy}
+                    onDayClick={openDayModal}
+                    onTaskDrop={handleTaskDrop}
+                    onGoToCourse={handleGoToCourse}
+                    onViewStudyGuides={handleViewStudyGuides}
+                    generatingStudyId={generatingStudyId}
+                  />
+
+                  {/* Undated Assignments */}
+                  {undatedAssignments.length > 0 && (
+                    <div className="undated-section">
+                      <h4>Undated Assignments ({undatedAssignments.length})</h4>
+                      <div className="undated-list">
+                        {undatedAssignments.map(a => (
+                          <div
+                            key={a.id}
+                            className="undated-item"
+                            onClick={() => handleOneClickStudy(a)}
+                          >
+                            <span className="cal-entry-dot" style={{ background: a.courseColor }} />
+                            <span className="undated-title">{a.title}</span>
+                            <span className="undated-course">{a.courseName}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
