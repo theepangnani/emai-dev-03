@@ -11,8 +11,6 @@ class UserCreate(BaseModel):
     role: UserRole
     teacher_type: str | None = None  # only relevant when role=teacher
     google_id: str | None = None
-    google_access_token: str | None = None
-    google_refresh_token: str | None = None
 
 
 class UserLogin(BaseModel):

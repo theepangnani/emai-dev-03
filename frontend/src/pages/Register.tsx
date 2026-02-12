@@ -15,8 +15,6 @@ export function Register() {
   });
   const [googleData, setGoogleData] = useState<{
     google_id: string;
-    google_access_token: string;
-    google_refresh_token: string;
   } | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,8 +26,6 @@ export function Register() {
     const googleEmail = searchParams.get('google_email');
     const googleName = searchParams.get('google_name');
     const googleId = searchParams.get('google_id');
-    const googleAccessToken = searchParams.get('google_access_token');
-    const googleRefreshToken = searchParams.get('google_refresh_token');
 
     if (googleEmail && googleId) {
       setFormData((prev) => ({
@@ -37,11 +33,7 @@ export function Register() {
         email: googleEmail,
         full_name: googleName || '',
       }));
-      setGoogleData({
-        google_id: googleId,
-        google_access_token: googleAccessToken || '',
-        google_refresh_token: googleRefreshToken || '',
-      });
+      setGoogleData({ google_id: googleId });
       // Clear URL params
       setSearchParams({});
     }
@@ -163,7 +155,7 @@ export function Register() {
               onChange={handleChange}
               placeholder="••••••••"
               required
-              minLength={6}
+              minLength={8}
             />
           </div>
 

@@ -1,9 +1,25 @@
+import re
 from datetime import datetime, timedelta
 
 import bcrypt
 from jose import jwt
 
 from app.core.config import settings
+
+# Minimum 8 chars, at least one uppercase, one lowercase, one digit, one special char
+_PASSWORD_MIN_LENGTH = 8
+_PASSWORD_PATTERN = re.compile(
+    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};\':\"\\|,.<>\/?`~]).+$'
+)
+
+
+def validate_password_strength(password: str) -> str | None:
+    """Return an error message if the password is too weak, or None if OK."""
+    if len(password) < _PASSWORD_MIN_LENGTH:
+        return f"Password must be at least {_PASSWORD_MIN_LENGTH} characters"
+    if not _PASSWORD_PATTERN.match(password):
+        return "Password must include uppercase, lowercase, digit, and special character"
+    return None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

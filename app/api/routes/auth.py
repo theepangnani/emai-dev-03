@@ -12,14 +12,29 @@ from app.models.student import Student, parent_students, RelationshipType
 from app.models.invite import Invite, InviteType
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.schemas.invite import AcceptInviteRequest
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength
 from app.services.audit_service import log_action
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+_ALLOWED_REGISTRATION_ROLES = {UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER}
+
+
 @router.post("/register", response_model=UserResponse)
 def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
+    # Block admin self-registration
+    if user_data.role not in _ALLOWED_REGISTRATION_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This role cannot be self-registered",
+        )
+
+    # Validate password strength
+    pw_error = validate_password_strength(user_data.password)
+    if pw_error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=pw_error)
+
     # Check if user exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -28,6 +43,17 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             detail="Email already registered",
         )
 
+    # Resolve Google tokens from server-side store (not from client)
+    google_access_token = None
+    google_refresh_token = None
+    if user_data.google_id:
+        from app.api.routes.google_classroom import _pending_google_tokens, _PENDING_TTL
+        import time as _time
+        pending = _pending_google_tokens.pop(user_data.google_id, None)
+        if pending and (_time.time() - pending["created_at"]) < _PENDING_TTL:
+            google_access_token = pending["access_token"]
+            google_refresh_token = pending.get("refresh_token")
+
     # Create new user
     user = User(
         email=user_data.email,
@@ -35,8 +61,8 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         full_name=user_data.full_name,
         role=user_data.role,
         google_id=user_data.google_id,
-        google_access_token=user_data.google_access_token,
-        google_refresh_token=user_data.google_refresh_token,
+        google_access_token=google_access_token,
+        google_refresh_token=google_refresh_token,
     )
     db.add(user)
     db.flush()
@@ -99,6 +125,11 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
 
     if invite.expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="This invite has expired")
+
+    # Validate password strength
+    pw_error = validate_password_strength(data.password)
+    if pw_error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=pw_error)
 
     # Check if email already registered
     existing_user = db.query(User).filter(User.email == invite.email).first()

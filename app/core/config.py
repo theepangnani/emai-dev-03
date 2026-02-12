@@ -1,4 +1,11 @@
+import secrets
+
 from pydantic_settings import BaseSettings
+
+
+def _generate_dev_secret() -> str:
+    """Generate a random secret for local development only."""
+    return secrets.token_hex(32)
 
 
 class Settings(BaseSettings):
@@ -12,8 +19,9 @@ class Settings(BaseSettings):
     # Database (SQLite for local dev, PostgreSQL for production)
     database_url: str = "sqlite:///./emai.db"
 
-    # JWT
-    secret_key: str = "your-secret-key-change-in-production"
+    # JWT — no default; must be set via SECRET_KEY env var in production.
+    # In development, a random key is generated per-process if not set.
+    secret_key: str = ""
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -51,3 +59,15 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Validate secret key
+_KNOWN_WEAK_KEYS = {"your-secret-key-change-in-production", "changeme", "secret", ""}
+
+if settings.secret_key in _KNOWN_WEAK_KEYS:
+    if settings.environment == "production":
+        raise RuntimeError(
+            "SECRET_KEY is not set or uses a known weak default. "
+            "Set a strong SECRET_KEY env var (e.g. `openssl rand -hex 32`)."
+        )
+    # Development: generate a random key so the app can start
+    settings.secret_key = _generate_dev_secret()

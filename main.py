@@ -175,18 +175,26 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# CORS middleware
-cors_origins = (
-    [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
-    if settings.allowed_origins
-    else ["*"]
-)
+# CORS middleware — restrict origins (never use wildcard with credentials)
+if settings.allowed_origins:
+    cors_origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+else:
+    # Safe defaults: local dev + deployed frontend
+    cors_origins = [
+        "http://localhost:5173",
+        "http://localhost:8000",
+        settings.frontend_url,
+    ]
+    if settings.environment == "production":
+        # In production, only allow the configured frontend URL
+        cors_origins = [settings.frontend_url]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Include routers

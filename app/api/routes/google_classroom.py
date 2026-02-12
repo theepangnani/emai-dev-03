@@ -1,4 +1,6 @@
 import logging
+import secrets
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
@@ -28,6 +30,40 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/google", tags=["Google Classroom"])
 
+# In-memory OAuth state store (nonce → {purpose, user_id, created_at})
+# Entries expire after 10 minutes.
+_oauth_states: dict[str, dict] = {}
+_STATE_TTL = 600  # seconds
+
+# Temporary store for Google tokens during registration flow
+# (google_id → {access_token, refresh_token, created_at})
+# Tokens are consumed when the user completes registration.
+_pending_google_tokens: dict[str, dict] = {}
+_PENDING_TTL = 600  # seconds
+
+
+def _create_oauth_state(purpose: str, user_id: int | None = None) -> str:
+    """Generate a cryptographic state token and store its context."""
+    # Clean expired entries
+    now = time.time()
+    expired = [k for k, v in _oauth_states.items() if now - v["created_at"] > _STATE_TTL]
+    for k in expired:
+        _oauth_states.pop(k, None)
+
+    nonce = secrets.token_urlsafe(32)
+    _oauth_states[nonce] = {"purpose": purpose, "user_id": user_id, "created_at": now}
+    return nonce
+
+
+def _consume_oauth_state(nonce: str) -> dict | None:
+    """Validate and consume a state token. Returns context or None."""
+    entry = _oauth_states.pop(nonce, None)
+    if not entry:
+        return None
+    if time.time() - entry["created_at"] > _STATE_TTL:
+        return None
+    return entry
+
 
 def update_user_tokens(user: User, credentials, db: Session):
     """Update user's Google tokens if they were refreshed."""
@@ -45,15 +81,15 @@ def google_auth(user_id: int | None = None):
     If user_id is provided, it will be included in the state to link
     the Google account to an existing user after callback.
     """
-    state = str(user_id) if user_id else None
-    authorization_url, returned_state = get_authorization_url(state)
-    return {"authorization_url": authorization_url, "state": returned_state}
+    state = _create_oauth_state(purpose="auth", user_id=user_id)
+    authorization_url, _ = get_authorization_url(state)
+    return {"authorization_url": authorization_url, "state": state}
 
 
 @router.get("/connect")
 def google_connect(current_user: User = Depends(get_current_user)):
     """Get authorization URL for connecting Google to existing account."""
-    state = f"connect:{current_user.id}"
+    state = _create_oauth_state(purpose="connect", user_id=current_user.id)
     authorization_url, _ = get_authorization_url(state)
     return {"authorization_url": authorization_url}
 
@@ -71,21 +107,30 @@ def google_callback(
         params = urlencode({"error": error})
         return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
 
+    # Validate state parameter (CSRF protection)
+    if not state:
+        params = urlencode({"error": "Missing OAuth state parameter"})
+        return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
+
+    state_data = _consume_oauth_state(state)
+    if not state_data:
+        params = urlencode({"error": "Invalid or expired OAuth state"})
+        return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
+
     try:
         tokens = exchange_code_for_tokens(code)
         user_info = get_user_info(tokens["access_token"])
 
         # Check if this is a connect request for existing user
-        if state and state.startswith("connect:"):
-            user_id = int(state.split(":")[1])
-            user = db.query(User).filter(User.id == user_id).first()
+        if state_data["purpose"] == "connect" and state_data.get("user_id"):
+            user = db.query(User).filter(User.id == state_data["user_id"]).first()
             if user:
                 user.google_id = user_info["id"]
                 user.google_access_token = tokens["access_token"]
                 user.google_refresh_token = tokens.get("refresh_token")
                 db.commit()
 
-                # Redirect to dashboard with success
+                # Redirect to dashboard with success (no tokens in URL)
                 params = urlencode({"google_connected": "true"})
                 return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
 
@@ -102,23 +147,34 @@ def google_callback(
             db.commit()
             db.refresh(user)
 
-            # Create access token for our app
+            # Create access token for our app (passed via URL — acceptable for
+            # server-to-browser redirect; token is short-lived)
             access_token = create_access_token(data={"sub": str(user.id)})
             params = urlencode({"token": access_token})
             return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
         else:
-            # No account yet — redirect to register with Google info pre-filled
+            # No account yet — store Google tokens server-side and redirect
+            # with only safe identifiers (no tokens in URL)
+            google_id = user_info["id"]
+            now = time.time()
+            expired = [k for k, v in _pending_google_tokens.items() if now - v["created_at"] > _PENDING_TTL]
+            for k in expired:
+                _pending_google_tokens.pop(k, None)
+            _pending_google_tokens[google_id] = {
+                "access_token": tokens["access_token"],
+                "refresh_token": tokens.get("refresh_token"),
+                "created_at": now,
+            }
             params = urlencode({
                 "google_email": user_info["email"],
                 "google_name": user_info.get("name", ""),
-                "google_id": user_info["id"],
-                "google_access_token": tokens["access_token"],
-                "google_refresh_token": tokens.get("refresh_token", ""),
+                "google_id": google_id,
             })
             return RedirectResponse(url=f"{settings.frontend_url}/register?{params}")
 
     except Exception as e:
-        params = urlencode({"error": str(e)})
+        logger.error(f"Google OAuth callback error: {e}")
+        params = urlencode({"error": "Authentication failed. Please try again."})
         return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
 
 
