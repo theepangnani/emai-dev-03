@@ -146,3 +146,61 @@
   border-color: var(--color-accent);
   background: var(--color-surface-alt);
 }
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .admin-filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .admin-filters input {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .admin-filters select {
+    width: 100%;
+  }
+
+  .admin-users-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  .admin-users-table th {
+    padding: 8px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .admin-users-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .role-badge-small {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .admin-pagination {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .admin-pagination button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .admin-audit-link {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}

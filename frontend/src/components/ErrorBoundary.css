@@ -88,3 +88,22 @@
   color: var(--color-ink);
   border: 1px solid var(--color-border);
 }
+
+@media (max-width: 480px) {
+  .error-boundary {
+    padding: 12px;
+  }
+
+  .error-boundary-card {
+    padding: 24px 16px;
+    max-width: 100%;
+  }
+
+  .error-boundary-actions {
+    flex-direction: column;
+  }
+
+  .error-boundary-btn {
+    width: 100%;
+  }
+}

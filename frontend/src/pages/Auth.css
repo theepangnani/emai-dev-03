@@ -172,3 +172,76 @@
 .google-icon {
   flex-shrink: 0;
 }
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .auth-container {
+    padding: 12px;
+  }
+
+  .auth-card {
+    padding: 20px;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .auth-logo {
+    max-width: 160px;
+    margin-bottom: 12px;
+  }
+
+  .auth-title {
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  .auth-subtitle {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .auth-form {
+    gap: 12px;
+  }
+
+  .form-group {
+    gap: 4px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 10px 12px;
+    font-size: 15px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .auth-button {
+    padding: 12px 16px;
+    font-size: 15px;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .auth-error {
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .auth-footer {
+    margin-top: 16px;
+    font-size: 14px;
+  }
+
+  .auth-divider {
+    margin: 14px 0;
+  }
+
+  .google-button {
+    padding: 10px 16px;
+    font-size: 15px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
