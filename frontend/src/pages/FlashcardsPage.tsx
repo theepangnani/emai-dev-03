@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
@@ -34,23 +34,29 @@ export function FlashcardsPage() {
     fetchFlashcards();
   }, [id]);
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
+  const handleFlip = useCallback(() => {
+    setIsFlipped(prev => !prev);
+  }, []);
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setIsFlipped(false);
-    }
-  };
+  const handlePrev = useCallback(() => {
+    setCurrentIndex(prev => {
+      if (prev > 0) {
+        setIsFlipped(false);
+        return prev - 1;
+      }
+      return prev;
+    });
+  }, []);
 
-  const handleNext = () => {
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsFlipped(false);
-    }
-  };
+  const handleNext = useCallback(() => {
+    setCurrentIndex(prev => {
+      if (prev < cards.length - 1) {
+        setIsFlipped(false);
+        return prev + 1;
+      }
+      return prev;
+    });
+  }, [cards.length]);
 
   const handleShuffle = () => {
     const shuffled = [...cards].sort(() => Math.random() - 0.5);
@@ -59,20 +65,20 @@ export function FlashcardsPage() {
     setIsFlipped(false);
   };
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === ' ' || e.key === 'Enter') {
-      handleFlip();
-    } else if (e.key === 'ArrowLeft') {
-      handlePrev();
-    } else if (e.key === 'ArrowRight') {
-      handleNext();
-    }
-  };
-
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        handleFlip();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      } else if (e.key === 'ArrowRight') {
+        handleNext();
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, isFlipped, cards]);
+  }, [handleFlip, handlePrev, handleNext]);
 
   if (loading) {
     return (
