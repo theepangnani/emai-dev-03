@@ -720,19 +720,18 @@ Frontend UX improvements for reliability, feedback, and loading experience.
 - Parent Dashboard status cards (Overdue, Due Today) now navigate to `/tasks?due=overdue` and `/tasks?due=today`
 - Filter state syncs with URL for shareable/bookmarkable links
 
-### 6.21 Collapsible Calendar (Phase 1.5) — PLANNED
+### 6.21 Collapsible Calendar (Phase 1) - IMPLEMENTED
 
 Allow parents to collapse/expand the calendar section on the Parent Dashboard for more control over their view.
 
 **GitHub Issue:** #207
 
-**Requirements:**
+**Implementation:**
 - Calendar section has a collapse/expand toggle button (chevron icon)
-- When collapsed, shows a compact bar with current date and expand button
-- When expanded, shows the full calendar (current behavior)
-- Collapse state persists via localStorage
-- Smooth CSS transition for expand/collapse
-- Mobile: defaults to collapsed on narrow screens
+- When collapsed, shows a compact bar with item count and expand button
+- When expanded, shows the full calendar (default state)
+- Collapse state persists via localStorage across sessions
+- Calendar defaults to **expanded** on all screen sizes
 
 ### 6.22 Parent UX Simplification (Phase 1.5) — IMPLEMENTED
 

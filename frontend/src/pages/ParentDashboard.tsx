@@ -30,12 +30,11 @@ export function ParentDashboard() {
   // Dashboard summary data (from single API call)
   const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
 
-  // Collapsible calendar (default collapsed on mobile if no saved preference)
+  // Collapsible calendar (default expanded; user can collapse and preference is saved)
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('calendar_collapsed');
-      if (saved !== null) return saved === '1';
-      return window.innerWidth < 768;
+      return saved === '1';
     } catch { return false; }
   });
   const toggleCalendar = () => {
