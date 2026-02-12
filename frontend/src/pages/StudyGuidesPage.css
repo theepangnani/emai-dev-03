@@ -44,6 +44,25 @@
   color: white;
 }
 
+.filter-count {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  margin-left: 6px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+.guides-filter-btn.active .filter-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
 .guides-section {
   margin-bottom: 32px;
 }

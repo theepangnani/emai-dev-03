@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
 import type { StudyGuide, SupportedFormats, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
@@ -112,6 +112,11 @@ export function StudyGuidesPage() {
       studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
     }
   }, [showModal, supportedFormats]);
+
+  // Reset course filter when child changes (filter cascade fix)
+  useEffect(() => {
+    setFilterCourse('');
+  }, [filterChild]);
 
   // Reload content when filters change
   useEffect(() => {
@@ -382,6 +387,12 @@ export function StudyGuidesPage() {
     setDatePromptValues({});
   };
 
+  // Scope course dropdown to courses visible in current content items
+  const visibleCourses = useMemo(() => {
+    const courseIdsInContent = new Set(contentItems.map(c => c.course_id));
+    return courses.filter(c => courseIdsInContent.has(c.id));
+  }, [courses, contentItems]);
+
   // Apply course + type filters
   const filteredContent = contentItems.filter(c => {
     if (filterCourse && c.course_id !== filterCourse) return false;
@@ -393,6 +404,23 @@ export function StudyGuidesPage() {
   const filteredLegacy = filterType === 'all'
     ? legacyGuides
     : legacyGuides.filter(g => g.guide_type === filterType);
+
+  // Count per type for filter tab badges
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: contentItems.length, study_guide: 0, quiz: 0, flashcards: 0 };
+    for (const item of contentItems) {
+      const types = contentGuideMap[item.id] || [];
+      for (const t of types) {
+        if (counts[t] !== undefined) counts[t]++;
+      }
+    }
+    // Add legacy guides
+    counts.all += legacyGuides.length;
+    for (const g of legacyGuides) {
+      if (counts[g.guide_type] !== undefined) counts[g.guide_type]++;
+    }
+    return counts;
+  }, [contentItems, contentGuideMap, legacyGuides]);
 
   if (loading) {
     return (
@@ -425,14 +453,14 @@ export function StudyGuidesPage() {
                 ))}
               </select>
             )}
-            {courses.length > 0 && (
+            {visibleCourses.length > 0 && (
               <select
                 className="guides-filter-select"
                 value={filterCourse}
                 onChange={e => setFilterCourse(e.target.value ? Number(e.target.value) : '')}
               >
                 <option value="">All Courses</option>
-                {courses.map(c => (
+                {visibleCourses.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
@@ -441,7 +469,7 @@ export function StudyGuidesPage() {
           <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
         </div>
 
-        {/* Guide type filter tabs */}
+        {/* Guide type filter tabs with counts */}
         <div className="guides-filter">
           {[
             { key: 'all', label: 'All' },
@@ -455,6 +483,7 @@ export function StudyGuidesPage() {
               onClick={() => setFilterType(tab.key)}
             >
               {tab.label}
+              {typeCounts[tab.key] > 0 && <span className="filter-count">{typeCounts[tab.key]}</span>}
             </button>
           ))}
         </div>

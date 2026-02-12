@@ -689,6 +689,42 @@ Dedicated Android and iOS applications for enhanced mobile experience.
 - AI-powered reply suggestions
 - Searchable email archive
 
+### 6.20 Parent UX Simplification (Phase 1.5) — IN PROGRESS
+
+Simplify the parent experience based on prototype user feedback. The core problem: ClassBridge is organized by feature (Courses, Materials, Tasks) rather than by parent workflow ("What's going on with my kid?").
+
+GitHub Issues: #201, #202, #203, #204, #205, #206
+
+#### 6.20.1 Single Dashboard API Endpoint (#201)
+Replace 5+ waterfall API calls with one `GET /api/parent/dashboard` that returns children, overdue counts, due-today items, unread messages, and per-child highlights.
+
+**Status:** PLANNED
+
+#### 6.20.2 Status-First Dashboard (#202)
+Replace calendar-dominated dashboard with status summary cards (overdue count, due today, unread messages) and per-child status cards above the calendar.
+
+**Status:** PLANNED
+
+#### 6.20.3 One-Click Study Generation (#203)
+Smart "Study" button that checks for existing material, generates with defaults if needed, and navigates directly — no modal required for the common case.
+
+**Status:** PLANNED
+
+#### 6.20.4 Filter Cascade Fix (#204)
+Fix course materials page filter behavior: reset course filter when child changes, scope course dropdown to selected child, show result counts.
+
+**Status:** PLANNED
+
+#### 6.20.5 Modal Nesting Reduction (#205)
+Eliminate modal-in-modal patterns. Study generation from day detail should navigate to a page instead of stacking modals.
+
+**Status:** PLANNED (Phase 2)
+
+#### 6.20.6 Simplified Parent Navigation (#206)
+Consolidate parent nav from 5 items to 3: Home (status + calendar), My Kids (merged course/task/material view per child), Messages.
+
+**Status:** PLANNED (Phase 2)
+
 ---
 
 ## 7. Role-Based Dashboards - IMPLEMENTED
@@ -959,6 +995,14 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Central document repository
 - [ ] Manual content upload with OCR (enhanced)
 - [ ] Background periodic Google Classroom course/assignment sync for teachers (opt-in)
+
+#### Parent UX Simplification (Phase 1.5)
+- [ ] Issue #201: Parent UX: Single dashboard API endpoint
+- [ ] Issue #202: Parent UX: Status-first dashboard
+- [ ] Issue #203: Parent UX: One-click study material generation
+- [ ] Issue #204: Parent UX: Fix filter cascade on Course Materials page
+- [ ] Issue #205: Parent UX: Reduce modal nesting (Phase 2)
+- [ ] Issue #206: Parent UX: Consolidated 3-item navigation (Phase 2)
 
 ### Phase 2
 - [ ] TeachAssist integration

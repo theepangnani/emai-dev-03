@@ -1,3 +1,193 @@
+/* ============================================
+   Status Summary Cards
+   ============================================ */
+
+.status-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.status-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.status-card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.status-card.urgent {
+  border-color: var(--priority-high);
+  background: var(--priority-high-light);
+}
+
+.status-card.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.status-card.notify {
+  border-color: var(--color-accent-warm);
+  background: var(--color-warning-light);
+}
+
+.status-card-count {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+.status-card.urgent .status-card-count {
+  color: var(--priority-high);
+}
+
+.status-card.active .status-card-count {
+  color: var(--color-accent);
+}
+
+.status-card.notify .status-card-count {
+  color: var(--color-accent-warm);
+}
+
+.status-card-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* ============================================
+   Per-Child Highlight Cards
+   ============================================ */
+
+.child-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.child-highlight-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.child-highlight-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-soft);
+}
+
+.child-highlight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.child-highlight-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-ink);
+}
+
+.child-highlight-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.child-stat {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.child-stat.overdue {
+  background: var(--priority-high-light);
+  color: var(--priority-high);
+}
+
+.child-stat.due-today {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.child-stat.all-clear {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.child-stat.courses {
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+.child-highlight-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.child-highlight-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.child-highlight-item.overdue {
+  background: var(--priority-high-light);
+}
+
+.child-highlight-item-title {
+  font-weight: 500;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.child-highlight-item-course {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.child-highlight-more {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  padding-left: 8px;
+}
+
+/* ============================================
+   Child Selector
+   ============================================ */
+
 .child-selector {
   display: flex;
   gap: 8px;

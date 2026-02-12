@@ -1,10 +1,10 @@
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import insert
+from sqlalchemy import insert, or_, and_, func as sa_func
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -13,6 +13,8 @@ from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
 from pydantic import BaseModel as PydanticBaseModel
 from app.models.study_guide import StudyGuide
+from app.models.task import Task
+from app.models.message import Conversation, Message
 from app.models.invite import Invite, InviteType
 from app.api.deps import require_role
 from app.services.audit_service import log_action
@@ -20,7 +22,7 @@ from app.core.config import settings
 from app.schemas.parent import (
     ChildSummary, ChildOverview, LinkChildRequest, CreateChildRequest,
     ChildUpdateRequest, DiscoveredChild, DiscoverChildrenResponse,
-    LinkChildrenBulkRequest,
+    LinkChildrenBulkRequest, ChildHighlight, ParentDashboardResponse,
 )
 from app.schemas.course import CourseResponse
 from app.schemas.assignment import AssignmentResponse
@@ -60,6 +62,201 @@ def list_children(
     log_action(db, user_id=current_user.id, action="read", resource_type="children", details={"count": len(result)})
     db.commit()
     return result
+
+
+@router.get("/dashboard", response_model=ParentDashboardResponse)
+def get_parent_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Aggregated parent dashboard: children, overdue/due-today counts, unread messages, tasks."""
+    from app.models.teacher import Teacher as TeacherModel
+
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    today_end = today_start + timedelta(days=1)
+
+    # 1. Load children
+    child_rows = (
+        db.query(Student, parent_students.c.relationship_type)
+        .join(parent_students, parent_students.c.student_id == Student.id)
+        .filter(parent_students.c.parent_id == current_user.id)
+        .all()
+    )
+
+    children = []
+    child_highlights = []
+    all_assignments = []
+    all_course_ids = set()
+
+    for student, rel_type in child_rows:
+        user = student.user
+        children.append(ChildSummary(
+            student_id=student.id,
+            user_id=student.user_id,
+            full_name=user.full_name if user else "Unknown",
+            grade_level=student.grade_level,
+            school_name=student.school_name,
+            relationship_type=rel_type.value if rel_type else None,
+        ))
+
+        # Get child's courses
+        courses = (
+            db.query(Course)
+            .join(student_courses, student_courses.c.course_id == Course.id)
+            .filter(student_courses.c.student_id == student.id)
+            .all()
+        )
+        course_ids = [c.id for c in courses]
+        all_course_ids.update(course_ids)
+
+        # Build courses with teacher info
+        courses_with_teachers = []
+        for course in courses:
+            teacher_name = None
+            teacher_email = None
+            if course.teacher_id:
+                teacher = db.query(TeacherModel).filter(TeacherModel.id == course.teacher_id).first()
+                if teacher:
+                    if teacher.is_shadow:
+                        teacher_name = teacher.full_name
+                        teacher_email = teacher.google_email
+                    elif teacher.user:
+                        teacher_name = teacher.user.full_name
+                        teacher_email = teacher.user.email
+            courses_with_teachers.append({
+                "id": course.id, "name": course.name,
+                "description": course.description, "subject": course.subject,
+                "google_classroom_id": course.google_classroom_id,
+                "teacher_id": course.teacher_id, "created_at": course.created_at,
+                "teacher_name": teacher_name, "teacher_email": teacher_email,
+            })
+
+        # Get assignments for this child's courses
+        child_assignments = []
+        if course_ids:
+            child_assignments = (
+                db.query(Assignment)
+                .filter(Assignment.course_id.in_(course_ids))
+                .order_by(Assignment.due_date.desc())
+                .all()
+            )
+            all_assignments.extend(child_assignments)
+
+        # Count overdue/due-today assignments
+        overdue_items = []
+        due_today_items = []
+        for a in child_assignments:
+            if not a.due_date:
+                continue
+            course = next((c for c in courses if c.id == a.course_id), None)
+            item = {"title": a.title, "type": "assignment", "course_name": course.name if course else "", "due_date": str(a.due_date)}
+            if a.due_date < today_start:
+                overdue_items.append(item)
+            elif today_start <= a.due_date < today_end:
+                due_today_items.append(item)
+
+        child_highlights.append(ChildHighlight(
+            student_id=student.id,
+            user_id=student.user_id,
+            full_name=user.full_name if user else "Unknown",
+            grade_level=student.grade_level,
+            overdue_count=len(overdue_items),
+            due_today_count=len(due_today_items),
+            courses=courses_with_teachers,
+            overdue_items=overdue_items,
+            due_today_items=due_today_items,
+        ))
+
+    # 2. Get tasks (created by or assigned to parent, plus assigned to children)
+    child_user_ids = [c.user_id for c in children]
+    task_filters = [
+        Task.created_by_user_id == current_user.id,
+        Task.assigned_to_user_id == current_user.id,
+    ]
+    if child_user_ids:
+        task_filters.append(Task.assigned_to_user_id.in_(child_user_ids))
+
+    tasks = (
+        db.query(Task)
+        .filter(or_(*task_filters), Task.archived_at.is_(None))
+        .all()
+    )
+
+    # Count overdue tasks and add to highlights
+    total_overdue = sum(h.overdue_count for h in child_highlights)
+    total_due_today = sum(h.due_today_count for h in child_highlights)
+    for t in tasks:
+        if t.is_completed:
+            continue
+        if t.due_date and t.due_date < today_start:
+            total_overdue += 1
+        elif t.due_date and today_start <= t.due_date < today_end:
+            total_due_today += 1
+
+    # Build task response dicts (reuse _task_to_response pattern)
+    task_dicts = []
+    for t in tasks:
+        creator = db.query(User).filter(User.id == t.created_by_user_id).first()
+        assignee = db.query(User).filter(User.id == t.assigned_to_user_id).first() if t.assigned_to_user_id else None
+        raw_priority = t.priority
+        if hasattr(raw_priority, "value"):
+            raw_priority = raw_priority.value
+        normalized = str(raw_priority).lower() if raw_priority else "medium"
+        if normalized not in {"low", "medium", "high"}:
+            normalized = "medium"
+        task_dicts.append({
+            "id": t.id, "title": t.title, "description": t.description,
+            "due_date": str(t.due_date) if t.due_date else None,
+            "is_completed": t.is_completed, "completed_at": str(t.completed_at) if t.completed_at else None,
+            "archived_at": str(t.archived_at) if t.archived_at else None,
+            "priority": normalized, "category": t.category,
+            "created_by_user_id": t.created_by_user_id,
+            "assigned_to_user_id": t.assigned_to_user_id,
+            "creator_name": creator.full_name if creator else "Unknown",
+            "assignee_name": assignee.full_name if assignee else None,
+            "course_id": t.course_id, "course_content_id": t.course_content_id,
+            "study_guide_id": t.study_guide_id,
+            "created_at": str(t.created_at) if t.created_at else None,
+            "updated_at": str(t.updated_at) if t.updated_at else None,
+        })
+
+    # 3. Unread messages
+    conversations = (
+        db.query(Conversation)
+        .filter(or_(
+            Conversation.participant_1_id == current_user.id,
+            Conversation.participant_2_id == current_user.id,
+        ))
+        .all()
+    )
+    conv_ids = [c.id for c in conversations]
+    unread_messages = 0
+    if conv_ids:
+        unread_messages = (
+            db.query(Message)
+            .filter(
+                Message.conversation_id.in_(conv_ids),
+                Message.sender_id != current_user.id,
+                Message.is_read == False,
+            )
+            .count()
+        )
+
+    # 4. Google status
+    google_connected = bool(current_user.google_access_token)
+
+    return ParentDashboardResponse(
+        children=children,
+        google_connected=google_connected,
+        unread_messages=unread_messages,
+        total_overdue=total_overdue,
+        total_due_today=total_due_today,
+        total_tasks=len(tasks),
+        child_highlights=child_highlights,
+        all_assignments=all_assignments,
+        all_tasks=task_dicts,
+    )
 
 
 @router.post("/children/create", response_model=ChildSummary)

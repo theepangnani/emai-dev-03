@@ -70,3 +70,31 @@ class ChildOverview(BaseModel):
     courses: list[CourseWithTeacher]
     assignments: list[AssignmentResponse]
     study_guides_count: int
+
+
+class ChildHighlight(BaseModel):
+    """Per-child summary for the parent dashboard status view."""
+    student_id: int
+    user_id: int
+    full_name: str
+    grade_level: Optional[int] = None
+    overdue_count: int = 0
+    due_today_count: int = 0
+    upcoming_count: int = 0
+    completed_today_count: int = 0
+    courses: list[CourseWithTeacher] = []
+    overdue_items: list[dict] = []
+    due_today_items: list[dict] = []
+
+
+class ParentDashboardResponse(BaseModel):
+    """Aggregated dashboard data returned in a single API call."""
+    children: list[ChildSummary]
+    google_connected: bool = False
+    unread_messages: int = 0
+    total_overdue: int = 0
+    total_due_today: int = 0
+    total_tasks: int = 0
+    child_highlights: list[ChildHighlight] = []
+    all_assignments: list[AssignmentResponse] = []
+    all_tasks: list[dict] = []

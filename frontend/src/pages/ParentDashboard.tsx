@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
 import { queueStudyGeneration } from './StudyGuidesPage';
-import type { ChildSummary, ChildOverview, DiscoveredChild, SupportedFormats, DuplicateCheckResponse, TaskItem } from '../api/client';
+import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, SupportedFormats, DuplicateCheckResponse, TaskItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
@@ -25,6 +25,9 @@ export function ParentDashboard() {
   const [allOverviews, setAllOverviews] = useState<ChildOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // Dashboard summary data (from single API call)
+  const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
 
   // Link child modal state
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -95,6 +98,28 @@ export function ParentDashboard() {
   // Data Loading
   // ============================================
 
+  // Load dashboard data in a single API call
+  const loadDashboard = async () => {
+    try {
+      const data = await parentApi.getDashboard();
+      setDashboardData(data);
+      setChildren(data.children);
+      setGoogleConnected(data.google_connected);
+      // Build task items from dashboard data
+      setAllTasks(data.all_tasks as unknown as TaskItem[]);
+      if (data.children.length === 1) {
+        setSelectedChild(data.children[0].student_id);
+      } else {
+        setSelectedChild(null);
+      }
+    } catch {
+      // Failed to load dashboard
+    } finally {
+      setLoading(false);
+      setOverviewLoading(false);
+    }
+  };
+
   useEffect(() => {
     const connected = searchParams.get('google_connected');
     const pendingAction = localStorage.getItem('pendingAction');
@@ -111,43 +136,30 @@ export function ParentDashboard() {
       setGoogleConnected(true);
     }
 
-    loadChildren();
-    checkGoogleStatus();
+    loadDashboard();
   }, []);
 
+  // When child selection changes, load individual overview for filtering
   useEffect(() => {
     if (selectedChild) {
       loadChildOverview(selectedChild);
-    } else if (children.length > 0) {
-      loadAllOverviews();
+    } else if (children.length > 0 && dashboardData) {
+      // Build all overviews from dashboard data
+      const overviews = dashboardData.child_highlights.map(h => ({
+        student_id: h.student_id,
+        user_id: h.user_id,
+        full_name: h.full_name,
+        grade_level: h.grade_level,
+        google_connected: false,
+        courses: h.courses,
+        assignments: dashboardData.all_assignments.filter(a =>
+          h.courses.some(c => c.id === a.course_id)
+        ),
+        study_guides_count: 0,
+      }));
+      setAllOverviews(overviews);
     }
-  }, [selectedChild, children]);
-
-  const checkGoogleStatus = async () => {
-    try {
-      const status = await googleApi.getStatus();
-      setGoogleConnected(status.connected);
-    } catch {
-      // ignore
-    }
-  };
-
-  const loadChildren = async () => {
-    try {
-      const data = await parentApi.getChildren();
-      setChildren(data);
-      if (data.length > 0 && data.length === 1) {
-        setSelectedChild(data[0].student_id);
-      } else if (data.length > 1) {
-        // Show all children by default
-        setSelectedChild(null);
-      }
-    } catch {
-      // Failed to load children
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [selectedChild, children, dashboardData]);
 
   const loadChildOverview = async (studentId: number) => {
     setOverviewLoading(true);
@@ -156,20 +168,6 @@ export function ParentDashboard() {
       setChildOverview(data);
     } catch {
       setChildOverview(null);
-    } finally {
-      setOverviewLoading(false);
-    }
-  };
-
-  const loadAllOverviews = async () => {
-    setOverviewLoading(true);
-    try {
-      const overviews = await Promise.all(
-        children.map(c => parentApi.getChildOverview(c.student_id))
-      );
-      setAllOverviews(overviews);
-    } catch {
-      setAllOverviews([]);
     } finally {
       setOverviewLoading(false);
     }
@@ -195,7 +193,7 @@ export function ParentDashboard() {
       } else {
         closeLinkModal();
       }
-      await loadChildren();
+      await loadDashboard();
     } catch (err: any) {
       setCreateChildError(err.response?.data?.detail || 'Failed to create child');
     } finally {
@@ -215,7 +213,7 @@ export function ParentDashboard() {
       } else {
         closeLinkModal();
       }
-      await loadChildren();
+      await loadDashboard();
     } catch (err: any) {
       setLinkError(err.response?.data?.detail || 'Failed to link child');
     } finally {
@@ -295,7 +293,7 @@ export function ParentDashboard() {
     try {
       await parentApi.linkChildrenBulk(Array.from(selectedDiscovered));
       closeLinkModal();
-      await loadChildren();
+      await loadDashboard();
     } catch (err: any) {
       setLinkError(err.response?.data?.detail || 'Failed to link selected children');
     } finally {
@@ -363,10 +361,7 @@ export function ParentDashboard() {
         school_name: editChildSchool.trim() || undefined,
       });
       closeEditChildModal();
-      await loadChildren();
-      if (selectedChild === editChild.student_id) {
-        await loadChildOverview(editChild.student_id);
-      }
+      await loadDashboard();
     } catch (err: any) {
       setEditChildError(err.response?.data?.detail || 'Failed to update child');
     } finally {
@@ -469,20 +464,15 @@ export function ParentDashboard() {
     return children.find(c => c.student_id === selectedChild)?.user_id ?? null;
   }, [selectedChild, children]);
 
-  useEffect(() => {
-    loadTasks();
-  }, [selectedChildUserId]);
-
-  const loadTasks = async () => {
-    try {
-      const data = await tasksApi.list(
-        selectedChildUserId ? { assigned_to_user_id: selectedChildUserId } : undefined
-      );
-      setAllTasks(data);
-    } catch {
-      // silently fail
-    }
-  };
+  // Tasks are loaded from the dashboard API call.
+  // When a specific child is selected, filter tasks client-side.
+  const filteredTasks = useMemo(() => {
+    if (!selectedChildUserId) return allTasks;
+    return allTasks.filter(t =>
+      t.assigned_to_user_id === selectedChildUserId ||
+      t.created_by_user_id === selectedChildUserId
+    );
+  }, [allTasks, selectedChildUserId]);
 
   const openDayModal = (date: Date) => {
     setDayModalDate(date);
@@ -601,7 +591,7 @@ export function ParentDashboard() {
     );
 
     // Merge tasks with due dates into calendar
-    const taskItems: CalendarAssignment[] = allTasks
+    const taskItems: CalendarAssignment[] = filteredTasks
       .filter(t => t.due_date)
       .map(t => ({
         id: t.id + 1_000_000, // offset to avoid ID collisions with assignments
@@ -620,7 +610,7 @@ export function ParentDashboard() {
       }));
 
     return [...assignments, ...taskItems];
-  }, [activeOverviews, courseIds, children.length, allTasks]);
+  }, [activeOverviews, courseIds, children.length, filteredTasks]);
 
   const undatedAssignments: CalendarAssignment[] = useMemo(() => {
     return activeOverviews.flatMap(overview =>
@@ -715,6 +705,82 @@ export function ParentDashboard() {
               </div>
             ))}
           </div>
+
+          {/* Status Summary Cards */}
+          {dashboardData && (
+            <div className="status-summary">
+              <div
+                className={`status-card${dashboardData.total_overdue > 0 ? ' urgent' : ''}`}
+                onClick={() => navigate('/tasks')}
+              >
+                <span className="status-card-count">{dashboardData.total_overdue}</span>
+                <span className="status-card-label">Overdue</span>
+              </div>
+              <div
+                className={`status-card${dashboardData.total_due_today > 0 ? ' active' : ''}`}
+                onClick={() => navigate('/tasks')}
+              >
+                <span className="status-card-count">{dashboardData.total_due_today}</span>
+                <span className="status-card-label">Due Today</span>
+              </div>
+              <div
+                className={`status-card${dashboardData.unread_messages > 0 ? ' notify' : ''}`}
+                onClick={() => navigate('/messages')}
+              >
+                <span className="status-card-count">{dashboardData.unread_messages}</span>
+                <span className="status-card-label">Messages</span>
+              </div>
+              <div className="status-card" onClick={() => navigate('/tasks')}>
+                <span className="status-card-count">{dashboardData.total_tasks}</span>
+                <span className="status-card-label">Total Tasks</span>
+              </div>
+            </div>
+          )}
+
+          {/* Per-Child Highlights */}
+          {dashboardData && dashboardData.child_highlights.length > 1 && (
+            <div className="child-highlights">
+              {dashboardData.child_highlights.map(h => (
+                <div
+                  key={h.student_id}
+                  className="child-highlight-card"
+                  onClick={() => {
+                    setSelectedChild(prev => prev === h.student_id ? null : h.student_id);
+                  }}
+                >
+                  <div className="child-highlight-header">
+                    <span className="child-highlight-name">{h.full_name}</span>
+                    {h.grade_level != null && <span className="grade-badge">Grade {h.grade_level}</span>}
+                  </div>
+                  <div className="child-highlight-stats">
+                    {h.overdue_count > 0 && (
+                      <span className="child-stat overdue">{h.overdue_count} overdue</span>
+                    )}
+                    {h.due_today_count > 0 && (
+                      <span className="child-stat due-today">{h.due_today_count} due today</span>
+                    )}
+                    {h.overdue_count === 0 && h.due_today_count === 0 && (
+                      <span className="child-stat all-clear">All caught up</span>
+                    )}
+                    <span className="child-stat courses">{h.courses.length} course{h.courses.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {h.overdue_items.length > 0 && (
+                    <div className="child-highlight-items">
+                      {h.overdue_items.slice(0, 3).map((item, i) => (
+                        <div key={i} className="child-highlight-item overdue">
+                          <span className="child-highlight-item-title">{item.title}</span>
+                          <span className="child-highlight-item-course">{item.course_name}</span>
+                        </div>
+                      ))}
+                      {h.overdue_items.length > 3 && (
+                        <span className="child-highlight-more">+{h.overdue_items.length - 3} more</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Quick Actions Above Calendar */}
           <div className="calendar-actions-bar">
