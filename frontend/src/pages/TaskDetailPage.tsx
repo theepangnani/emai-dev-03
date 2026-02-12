@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { tasksApi, coursesApi, studyApi, courseContentsApi, type TaskItem, type StudyGuide, type CourseContentItem } from '../api/client';
+import { tasksApi, coursesApi, studyApi, courseContentsApi, type TaskItem, type StudyGuide, type CourseContentItem, type AssignableUser } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton, ListSkeleton } from '../components/Skeleton';
@@ -19,6 +19,16 @@ export function TaskDetailPage() {
   const [task, setTask] = useState<TaskItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Edit mode state
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editPriority, setEditPriority] = useState('medium');
+  const [editAssignee, setEditAssignee] = useState<string>('');
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [saving, setSaving] = useState(false);
 
   // Link modal state
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -66,6 +76,46 @@ export function TaskDetailPage() {
       await tasksApi.delete(task.id);
       navigate('/tasks');
     } catch { /* ignore */ }
+  };
+
+  const startEditing = () => {
+    if (!task) return;
+    setEditTitle(task.title);
+    setEditDescription(task.description || '');
+    // Format due_date for datetime-local input
+    if (task.due_date) {
+      const d = new Date(task.due_date);
+      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+      setEditDueDate(local.toISOString().slice(0, 16));
+    } else {
+      setEditDueDate('');
+    }
+    setEditPriority(task.priority || 'medium');
+    setEditAssignee(task.assigned_to_user_id ? String(task.assigned_to_user_id) : '');
+    setEditing(true);
+    // Load assignable users
+    tasksApi.getAssignableUsers().then(setAssignableUsers).catch(() => {});
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!task || !editTitle.trim()) return;
+    setSaving(true);
+    try {
+      const updated = await tasksApi.update(task.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        due_date: editDueDate ? new Date(editDueDate).toISOString() : undefined,
+        priority: editPriority,
+        assigned_to_user_id: editAssignee ? Number(editAssignee) : 0,
+      });
+      setTask(updated);
+      setEditing(false);
+    } catch { /* ignore */ }
+    setSaving(false);
   };
 
   const handleUnlink = async (type: LinkType) => {
@@ -180,74 +230,150 @@ export function TaskDetailPage() {
 
         {/* Task Info Card */}
         <div className="td-card">
-          <div className="td-title-row">
-            <button
-              className={`td-check${task.is_completed ? ' checked' : ''}`}
-              onClick={handleToggleComplete}
-              title={task.is_completed ? 'Mark incomplete' : 'Mark complete'}
-            >
-              {task.is_completed ? '\u2705' : '\u2B1C'}
-            </button>
-            <h2 className={task.is_completed ? 'td-completed' : ''}>{task.title}</h2>
-          </div>
+          {editing ? (
+            /* ---- Edit Mode ---- */
+            <div className="td-edit-form">
+              <div className="td-edit-group">
+                <label className="td-edit-label">Title</label>
+                <input
+                  type="text"
+                  className="td-edit-input"
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="td-edit-group">
+                <label className="td-edit-label">Description</label>
+                <textarea
+                  className="td-edit-textarea"
+                  value={editDescription}
+                  onChange={e => setEditDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Optional description..."
+                />
+              </div>
+              <div className="td-edit-row">
+                <div className="td-edit-group">
+                  <label className="td-edit-label">Due Date</label>
+                  <input
+                    type="datetime-local"
+                    className="td-edit-input"
+                    value={editDueDate}
+                    onChange={e => setEditDueDate(e.target.value)}
+                  />
+                </div>
+                <div className="td-edit-group">
+                  <label className="td-edit-label">Priority</label>
+                  <select
+                    className="td-edit-input"
+                    value={editPriority}
+                    onChange={e => setEditPriority(e.target.value)}
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="td-edit-group">
+                  <label className="td-edit-label">Assignee</label>
+                  <select
+                    className="td-edit-input"
+                    value={editAssignee}
+                    onChange={e => setEditAssignee(e.target.value)}
+                  >
+                    <option value="">Unassigned</option>
+                    {assignableUsers.map(u => (
+                      <option key={u.user_id} value={u.user_id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="td-actions">
+                <button className="td-action-btn primary" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button className="td-action-btn" onClick={cancelEditing} disabled={saving}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ---- View Mode ---- */
+            <>
+              <div className="td-title-row">
+                <button
+                  className={`td-check${task.is_completed ? ' checked' : ''}`}
+                  onClick={handleToggleComplete}
+                  title={task.is_completed ? 'Mark incomplete' : 'Mark complete'}
+                >
+                  {task.is_completed ? '\u2705' : '\u2B1C'}
+                </button>
+                <h2 className={task.is_completed ? 'td-completed' : ''}>{task.title}</h2>
+              </div>
 
-          {task.description && (
-            <p className="td-description">{task.description}</p>
+              {task.description && (
+                <p className="td-description">{task.description}</p>
+              )}
+
+              <div className="td-meta">
+                {task.due_date && (
+                  <div className="td-meta-item">
+                    <span className="td-meta-label">Due</span>
+                    <span className="td-meta-value">
+                      {new Date(task.due_date).toLocaleDateString(undefined, {
+                        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+                      })}
+                      {' at '}
+                      {new Date(task.due_date).toLocaleTimeString(undefined, {
+                        hour: 'numeric', minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="td-meta-item">
+                  <span className="td-meta-label">Priority</span>
+                  <span className={`td-priority-badge ${task.priority || 'medium'}`}>
+                    {priorityLabel(task.priority)}
+                  </span>
+                </div>
+                <div className="td-meta-item">
+                  <span className="td-meta-label">Status</span>
+                  <span className={`td-status-badge ${task.is_completed ? 'done' : 'pending'}`}>
+                    {task.is_completed ? 'Completed' : 'Pending'}
+                  </span>
+                </div>
+                {task.assignee_name && (
+                  <div className="td-meta-item">
+                    <span className="td-meta-label">Assigned to</span>
+                    <span className="td-meta-value">{task.assignee_name}</span>
+                  </div>
+                )}
+                <div className="td-meta-item">
+                  <span className="td-meta-label">Created by</span>
+                  <span className="td-meta-value">{task.creator_name}</span>
+                </div>
+                <div className="td-meta-item">
+                  <span className="td-meta-label">Created</span>
+                  <span className="td-meta-value">
+                    {new Date(task.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="td-actions">
+                <button className="td-action-btn primary" onClick={startEditing}>
+                  Edit
+                </button>
+                <button className="td-action-btn" onClick={handleToggleComplete}>
+                  {task.is_completed ? 'Mark Incomplete' : 'Mark Complete'}
+                </button>
+                <button className="td-action-btn danger" onClick={handleDelete}>
+                  Delete
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="td-meta">
-            {task.due_date && (
-              <div className="td-meta-item">
-                <span className="td-meta-label">Due</span>
-                <span className="td-meta-value">
-                  {new Date(task.due_date).toLocaleDateString(undefined, {
-                    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-                  })}
-                  {' at '}
-                  {new Date(task.due_date).toLocaleTimeString(undefined, {
-                    hour: 'numeric', minute: '2-digit',
-                  })}
-                </span>
-              </div>
-            )}
-            <div className="td-meta-item">
-              <span className="td-meta-label">Priority</span>
-              <span className={`td-priority-badge ${task.priority || 'medium'}`}>
-                {priorityLabel(task.priority)}
-              </span>
-            </div>
-            <div className="td-meta-item">
-              <span className="td-meta-label">Status</span>
-              <span className={`td-status-badge ${task.is_completed ? 'done' : 'pending'}`}>
-                {task.is_completed ? 'Completed' : 'Pending'}
-              </span>
-            </div>
-            {task.assignee_name && (
-              <div className="td-meta-item">
-                <span className="td-meta-label">Assigned to</span>
-                <span className="td-meta-value">{task.assignee_name}</span>
-              </div>
-            )}
-            <div className="td-meta-item">
-              <span className="td-meta-label">Created by</span>
-              <span className="td-meta-value">{task.creator_name}</span>
-            </div>
-            <div className="td-meta-item">
-              <span className="td-meta-label">Created</span>
-              <span className="td-meta-value">
-                {new Date(task.created_at).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-
-          <div className="td-actions">
-            <button className="td-action-btn" onClick={handleToggleComplete}>
-              {task.is_completed ? 'Mark Incomplete' : 'Mark Complete'}
-            </button>
-            <button className="td-action-btn danger" onClick={handleDelete}>
-              Delete
-            </button>
-          </div>
         </div>
 
         {/* Linked Resources */}

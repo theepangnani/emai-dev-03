@@ -177,6 +177,77 @@
   color: var(--color-danger);
 }
 
+.td-action-btn.primary {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+.td-action-btn.primary:hover {
+  opacity: 0.9;
+}
+
+.td-action-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Edit form */
+.td-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.td-edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.td-edit-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.td-edit-input,
+.td-edit-textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  font-family: inherit;
+}
+
+.td-edit-input:focus,
+.td-edit-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb, 139, 92, 246), 0.15);
+}
+
+.td-edit-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.td-edit-row {
+  display: flex;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .td-edit-row {
+    flex-direction: column;
+  }
+}
+
 /* Linked Resources section */
 .td-section {
   margin-bottom: 24px;
