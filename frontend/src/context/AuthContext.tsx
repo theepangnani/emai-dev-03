@@ -46,13 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const data = await authApi.login(email, password);
     localStorage.setItem('token', data.access_token);
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
     setToken(data.access_token);
     const userData = await authApi.getMe();
     setUser(userData);
   };
 
-  const loginWithToken = (newToken: string) => {
+  const loginWithToken = (newToken: string, refreshToken?: string) => {
     localStorage.setItem('token', newToken);
+    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
     setToken(newToken);
   };
 
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     setToken(null);
     setUser(null);
   };

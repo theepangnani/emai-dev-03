@@ -39,7 +39,7 @@ export function AcceptInvite() {
     setIsLoading(true);
     try {
       const data = await authApi.acceptInvite(token, formData.password, formData.full_name);
-      loginWithToken(data.access_token);
+      loginWithToken(data.access_token, data.refresh_token);
       navigate('/dashboard?just_registered=true');
     } catch (err: any) {
       const detail = err.response?.data?.detail;

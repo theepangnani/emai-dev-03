@@ -12,7 +12,7 @@ from app.models.student import Student, parent_students, RelationshipType
 from app.models.invite import Invite, InviteType
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.schemas.invite import AcceptInviteRequest
-from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token
 from app.services.audit_service import log_action
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -82,7 +82,8 @@ def login(
                resource_id=user.id, ip_address=ip)
     db.commit()
     access_token = create_access_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token)
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    return Token(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/accept-invite", response_model=Token)
@@ -169,4 +170,28 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
 
     # Return JWT so the user is logged in immediately
     access_token = create_access_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token)
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    return Token(access_token=access_token, refresh_token=refresh_token)
+
+
+from pydantic import BaseModel as _BaseModel
+
+
+class _RefreshRequest(_BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_access_token(body: _RefreshRequest, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for a new access token."""
+    payload = decode_refresh_token(body.refresh_token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    user_id = int(payload["sub"])
+    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    new_access_token = create_access_token(data={"sub": str(user.id)})
+    return Token(access_token=new_access_token)
