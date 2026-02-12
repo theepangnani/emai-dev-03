@@ -26,6 +26,7 @@ export function TasksPage() {
     const due = searchParams.get('due');
     return (due === 'overdue' || due === 'today' || due === 'week') ? due : 'all';
   });
+  const [filterAssignee, setFilterAssignee] = useState<number | 'all'>('all');
 
   // Create task form
   const [showCreate, setShowCreate] = useState(false);
@@ -189,6 +190,7 @@ export function TasksPage() {
     if (filterStatus === 'pending') return !t.is_completed && !t.archived_at;
     if (filterStatus === 'completed') return t.is_completed;
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
+    if (filterAssignee !== 'all' && t.assigned_to_user_id !== filterAssignee) return false;
     if (filterDue !== 'all' && t.due_date) {
       const due = new Date(t.due_date);
       const now = new Date();
@@ -266,6 +268,17 @@ export function TasksPage() {
               <option value="week">This Week</option>
             </select>
           </div>
+          {assignableUsers.length > 0 && (
+            <div className="tasks-filter-group">
+              <label>Assignee:</label>
+              <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="form-input">
+                <option value="all">All</option>
+                {assignableUsers.map(u => (
+                  <option key={u.user_id} value={u.user_id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
         </div>
 
