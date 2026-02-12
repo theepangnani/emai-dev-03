@@ -4,6 +4,7 @@ import { parentApi, coursesApi, googleApi } from '../api/client';
 import type { ChildSummary, ChildOverview } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useConfirm } from '../components/ConfirmModal';
 import { getCourseColor } from '../components/calendar/types';
 import './CoursesPage.css';
 
@@ -24,6 +25,7 @@ type SyncState = 'idle' | 'syncing' | 'done' | 'error';
 export function CoursesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { confirm, confirmModal } = useConfirm();
   const isParent = user?.role === 'parent';
 
   // Parent-specific state
@@ -164,6 +166,28 @@ export function CoursesPage() {
     }
   };
 
+  const handleUnassignCourse = async (courseId: number, courseName: string) => {
+    if (!selectedChild) return;
+    const ok = await confirm({
+      title: 'Unassign Course',
+      message: `Remove "${courseName}" from ${childName}?`,
+      confirmLabel: 'Unassign',
+    });
+    if (!ok) return;
+    try {
+      await parentApi.unassignCourseFromChild(selectedChild, courseId);
+      loadChildOverview(selectedChild);
+    } catch { /* ignore */ }
+  };
+
+  const handleQuickAssign = async (courseId: number) => {
+    if (!selectedChild) return;
+    try {
+      await parentApi.assignCoursesToChild(selectedChild, [courseId]);
+      loadChildOverview(selectedChild);
+    } catch { /* ignore */ }
+  };
+
   const childName = childOverview?.full_name || children.find(c => c.student_id === selectedChild)?.full_name || '';
   const courseIds = (childOverview?.courses || []).map(c => c.id);
 
@@ -240,13 +264,15 @@ export function CoursesPage() {
                         {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
                         {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
                       </div>
-                      <button
-                        className="course-card-edit"
-                        title="View course details"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                      >
-                        &#9998;
-                      </button>
+                      <div className="course-card-actions">
+                        <button
+                          className="course-card-action-btn unassign"
+                          title={`Unassign from ${childName}`}
+                          onClick={(e) => { e.stopPropagation(); handleUnassignCourse(course.id, course.name); }}
+                        >
+                          &#10005;
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -284,13 +310,29 @@ export function CoursesPage() {
                       {course.subject && <span className="course-card-subject">{course.subject}</span>}
                       {course.description && <p className="course-card-desc">{course.description}</p>}
                     </div>
-                    <button
-                      className="course-card-edit"
-                      title="Edit course"
-                      onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                    >
-                      &#9998;
-                    </button>
+                    <div className="course-card-actions">
+                      {isParent && selectedChild && (() => {
+                        const alreadyAssigned = childOverview?.courses.some(c => c.id === course.id) ?? false;
+                        return !alreadyAssigned ? (
+                          <button
+                            className="course-card-action-btn assign"
+                            title={`Assign to ${childName}`}
+                            onClick={(e) => { e.stopPropagation(); handleQuickAssign(course.id); }}
+                          >
+                            &#10003;
+                          </button>
+                        ) : (
+                          <span className="course-card-assigned-badge" title={`Assigned to ${childName}`}>&#10003;</span>
+                        );
+                      })()}
+                      <button
+                        className="course-card-action-btn edit"
+                        title="Edit course"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
+                      >
+                        &#9998;
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -373,6 +415,7 @@ export function CoursesPage() {
           </div>
         </div>
       )}
+      {confirmModal}
     </DashboardLayout>
   );
 }
