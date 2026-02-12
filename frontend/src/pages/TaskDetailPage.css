@@ -114,18 +114,18 @@
 }
 
 .td-priority-badge.high {
-  background: #fce4ec;
-  color: #c62828;
+  background: var(--priority-high-light);
+  color: var(--priority-high);
 }
 
 .td-priority-badge.medium {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
 }
 
 .td-priority-badge.low {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--priority-low-light);
+  color: var(--color-success);
 }
 
 /* Status badge */
@@ -138,13 +138,13 @@
 }
 
 .td-status-badge.done {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .td-status-badge.pending {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
 }
 
 /* Actions */
@@ -314,9 +314,9 @@
 }
 
 .td-unlink-btn:hover {
-  background: #fce4ec;
-  border-color: #ef9a9a;
-  color: #c62828;
+  background: var(--color-danger-light);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .td-empty-resources {
@@ -402,7 +402,7 @@
 
 .td-link-search:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(73, 184, 192, 0.12);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .td-link-list {

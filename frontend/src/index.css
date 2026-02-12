@@ -4,29 +4,101 @@
   box-sizing: border-box;
 }
 
-:root {
+:root, [data-theme="light"] {
   --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
 
+  /* Core palette */
   --color-ink: #1b1e2b;
   --color-ink-muted: #5b6274;
   --color-surface: #ffffff;
   --color-surface-alt: #f5f6f9;
+  --color-surface-bg: #eef1f5;
+  --color-surface-header: rgba(255, 255, 255, 0.9);
   --color-border: #e3e6ee;
+
+  /* Accent */
   --color-accent: #49b8c0;
   --color-accent-strong: #3a9aa1;
   --color-accent-warm: #f4801f;
+  --color-accent-light: rgba(73, 184, 192, 0.12);
+  --color-accent-subtle: rgba(73, 184, 192, 0.08);
+  --color-focus-ring: rgba(73, 184, 192, 0.12);
+
+  /* Purple accent (quiz/detail pages) */
+  --color-purple: #7c3aed;
+  --color-purple-strong: #6d28d9;
+  --color-purple-light: #f5f3ff;
+  --color-purple-bg: #ede9fe;
+
+  /* Semantic */
   --color-blue: #0d65b3;
   --color-blue-dark: #074b92;
   --color-danger: #d64545;
+  --color-danger-light: rgba(214, 69, 69, 0.1);
   --color-warning: #f3b04c;
+  --color-warning-light: rgba(243, 176, 76, 0.15);
+  --color-warning-text: #8a5a12;
+  --color-success: #2e7d32;
+  --color-success-light: rgba(46, 125, 50, 0.12);
 
+  /* Priority */
+  --priority-high: #ef5350;
+  --priority-high-light: rgba(239, 83, 80, 0.12);
+  --priority-medium: #ff9800;
+  --priority-medium-light: rgba(255, 152, 0, 0.12);
+  --priority-low: #66bb6a;
+  --priority-low-light: rgba(102, 187, 106, 0.12);
+
+  /* Brand */
+  --brand-google: #4285f4;
+  --brand-google-light: rgba(66, 133, 244, 0.12);
+
+  /* Content type badge colors */
+  --badge-syllabus: #9c27b0;
+  --badge-labs: #f57c00;
+  --badge-readings: #1976d2;
+  --badge-resources: #388e3c;
+  --badge-assignments: #d32f2f;
+
+  /* Role badges */
+  --role-parent: #b1571e;
+  --role-teacher: #2e7d32;
+  --role-admin: #a85f13;
+
+  /* Extra accent shades */
+  --color-accent-dark: #1f7a7a;
+  --color-accent-warm-strong: #d97745;
+  --color-success-dark: #246c2c;
+  --color-inactive: #c1c6d1;
+  --flashcard-gradient-start: #11998e;
+  --flashcard-gradient-end: #38ef7d;
+
+  /* Overlays */
+  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-overlay-light: rgba(0, 0, 0, 0.3);
+
+  /* Muted grays */
+  --color-muted: #888;
+  --color-muted-light: #aaa;
+  --color-muted-border: #d1d5db;
+
+  /* Shadows */
   --shadow-soft: 0 8px 24px rgba(19, 27, 46, 0.08);
   --shadow-lift: 0 12px 30px rgba(19, 27, 46, 0.12);
 
+  /* Radii */
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-sm: 8px;
+
+  /* Background gradients */
+  --bg-gradient-1: rgba(13, 101, 179, 0.10);
+  --bg-gradient-2: rgba(244, 128, 31, 0.12);
+  --bg-dot-color: rgba(12, 18, 34, 0.05);
+  --bg-dot-opacity: 0.35;
+  --skeleton-from: rgba(230, 233, 240, 0.9);
+  --skeleton-mid: rgba(245, 247, 251, 0.9);
 
   font-family: var(--font-sans);
   line-height: 1.5;
@@ -36,16 +108,174 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--color-ink);
-  background-color: #eef1f5;
+  background-color: var(--color-surface-bg);
+}
+
+/* ========================================
+   Dark Theme (turbo.ai-inspired)
+   ======================================== */
+[data-theme="dark"] {
+  --color-ink: #e8eaf0;
+  --color-ink-muted: #9ca0b0;
+  --color-surface: #1a1d2e;
+  --color-surface-alt: #252836;
+  --color-surface-bg: #0d0f1a;
+  --color-surface-header: rgba(26, 29, 46, 0.92);
+  --color-border: #2a2d3e;
+
+  --color-accent: #8b5cf6;
+  --color-accent-strong: #7c3aed;
+  --color-accent-warm: #22d3ee;
+  --color-accent-light: rgba(139, 92, 246, 0.15);
+  --color-accent-subtle: rgba(139, 92, 246, 0.08);
+  --color-focus-ring: rgba(139, 92, 246, 0.2);
+
+  --color-purple: #a78bfa;
+  --color-purple-strong: #8b5cf6;
+  --color-purple-light: rgba(139, 92, 246, 0.12);
+  --color-purple-bg: rgba(139, 92, 246, 0.18);
+
+  --color-blue: #60a5fa;
+  --color-blue-dark: #3b82f6;
+  --color-danger: #f87171;
+  --color-danger-light: rgba(248, 113, 113, 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-light: rgba(251, 191, 36, 0.12);
+  --color-warning-text: #fcd34d;
+  --color-success: #34d399;
+  --color-success-light: rgba(52, 211, 153, 0.12);
+
+  --priority-high: #f87171;
+  --priority-high-light: rgba(248, 113, 113, 0.12);
+  --priority-medium: #fbbf24;
+  --priority-medium-light: rgba(251, 191, 36, 0.12);
+  --priority-low: #34d399;
+  --priority-low-light: rgba(52, 211, 153, 0.12);
+
+  --brand-google: #60a5fa;
+  --brand-google-light: rgba(96, 165, 250, 0.12);
+
+  --badge-syllabus: #c084fc;
+  --badge-labs: #fb923c;
+  --badge-readings: #60a5fa;
+  --badge-resources: #4ade80;
+  --badge-assignments: #fb7185;
+
+  --role-parent: #fb923c;
+  --role-teacher: #34d399;
+  --role-admin: #fbbf24;
+
+  --color-accent-dark: #6d28d9;
+  --color-accent-warm-strong: #0ea5e9;
+  --color-success-dark: #059669;
+  --color-inactive: #4a4d5e;
+  --flashcard-gradient-start: #8b5cf6;
+  --flashcard-gradient-end: #22d3ee;
+
+  --color-overlay: rgba(0, 0, 0, 0.7);
+  --color-overlay-light: rgba(0, 0, 0, 0.5);
+
+  --color-muted: #9ca0b0;
+  --color-muted-light: #6b7085;
+  --color-muted-border: #3a3d4e;
+
+  --shadow-soft: 0 0 20px rgba(139, 92, 246, 0.12);
+  --shadow-lift: 0 0 30px rgba(139, 92, 246, 0.18);
+
+  --bg-gradient-1: rgba(139, 92, 246, 0.08);
+  --bg-gradient-2: rgba(34, 211, 238, 0.06);
+  --bg-dot-color: rgba(139, 92, 246, 0.08);
+  --bg-dot-opacity: 0.25;
+  --skeleton-from: rgba(42, 45, 62, 0.9);
+  --skeleton-mid: rgba(55, 58, 75, 0.9);
+}
+
+/* ========================================
+   Focus Theme (warm muted tones)
+   ======================================== */
+[data-theme="focus"] {
+  --color-ink: #2c2a26;
+  --color-ink-muted: #6b6560;
+  --color-surface: #fefdfb;
+  --color-surface-alt: #f5f0ea;
+  --color-surface-bg: #faf8f5;
+  --color-surface-header: rgba(250, 248, 245, 0.92);
+  --color-border: #ddd6cc;
+
+  --color-accent: #5a9e8f;
+  --color-accent-strong: #4a8a7c;
+  --color-accent-warm: #c47f3b;
+  --color-accent-light: rgba(90, 158, 143, 0.12);
+  --color-accent-subtle: rgba(90, 158, 143, 0.08);
+  --color-focus-ring: rgba(90, 158, 143, 0.15);
+
+  --color-purple: #7b6b8a;
+  --color-purple-strong: #6b5b7a;
+  --color-purple-light: #f3eff7;
+  --color-purple-bg: #ebe5f0;
+
+  --color-blue: #4a7c9e;
+  --color-blue-dark: #3a6c8e;
+  --color-danger: #c45a5a;
+  --color-danger-light: rgba(196, 90, 90, 0.1);
+  --color-warning: #c9943a;
+  --color-warning-light: rgba(201, 148, 58, 0.12);
+  --color-warning-text: #7a6030;
+  --color-success: #4a8a4a;
+  --color-success-light: rgba(74, 138, 74, 0.12);
+
+  --priority-high: #c45a5a;
+  --priority-high-light: rgba(196, 90, 90, 0.1);
+  --priority-medium: #c9943a;
+  --priority-medium-light: rgba(201, 148, 58, 0.1);
+  --priority-low: #5a9e6a;
+  --priority-low-light: rgba(90, 158, 106, 0.1);
+
+  --brand-google: #5a8ab0;
+  --brand-google-light: rgba(90, 138, 176, 0.12);
+
+  --badge-syllabus: #8a6a9e;
+  --badge-labs: #c47f3b;
+  --badge-readings: #4a7c9e;
+  --badge-resources: #5a8a5a;
+  --badge-assignments: #b05a5a;
+
+  --role-parent: #a87a3a;
+  --role-teacher: #4a8a4a;
+  --role-admin: #8a6a30;
+
+  --color-accent-dark: #4a8a7c;
+  --color-accent-warm-strong: #a86830;
+  --color-success-dark: #3a7a3a;
+  --color-inactive: #c5beb5;
+  --flashcard-gradient-start: #5a9e8f;
+  --flashcard-gradient-end: #7ab88a;
+
+  --color-overlay: rgba(44, 42, 38, 0.5);
+  --color-overlay-light: rgba(44, 42, 38, 0.3);
+
+  --color-muted: #8a8480;
+  --color-muted-light: #a09a95;
+  --color-muted-border: #ccc5bb;
+
+  --shadow-soft: 0 8px 24px rgba(44, 42, 38, 0.06);
+  --shadow-lift: 0 12px 30px rgba(44, 42, 38, 0.10);
+
+  --bg-gradient-1: rgba(90, 158, 143, 0.08);
+  --bg-gradient-2: rgba(196, 127, 59, 0.06);
+  --bg-dot-color: rgba(44, 42, 38, 0.04);
+  --bg-dot-opacity: 0.25;
+  --skeleton-from: rgba(221, 214, 204, 0.6);
+  --skeleton-mid: rgba(240, 236, 230, 0.6);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   color: var(--color-ink);
-  background: radial-gradient(circle at top left, rgba(13, 101, 179, 0.10), transparent 45%),
-    radial-gradient(circle at 15% 80%, rgba(244, 128, 31, 0.12), transparent 55%),
-    #eef1f5;
+  background: radial-gradient(circle at top left, var(--bg-gradient-1), transparent 45%),
+    radial-gradient(circle at 15% 80%, var(--bg-gradient-2), transparent 55%),
+    var(--color-surface-bg);
   min-height: 100vh;
 }
 
@@ -53,9 +283,9 @@ body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(rgba(12, 18, 34, 0.05) 1px, transparent 1px);
+  background-image: radial-gradient(var(--bg-dot-color) 1px, transparent 1px);
   background-size: 28px 28px;
-  opacity: 0.35;
+  opacity: var(--bg-dot-opacity);
   pointer-events: none;
   z-index: -1;
 }
@@ -77,7 +307,7 @@ textarea {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, rgba(230, 233, 240, 0.9), rgba(245, 247, 251, 0.9), rgba(230, 233, 240, 0.9));
+  background: linear-gradient(90deg, var(--skeleton-from), var(--skeleton-mid), var(--skeleton-from));
   background-size: 200% 100%;
   animation: shimmer 1.4s ease infinite;
   border-radius: var(--radius-sm);

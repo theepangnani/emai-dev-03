@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { GlobalSearch } from './GlobalSearch';
+import { ThemeToggle } from './ThemeToggle';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -98,6 +99,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
         </div>
         <GlobalSearch />
         <div className="header-right">
+          <ThemeToggle />
           <NotificationBell />
           <div className="user-chip">
             <span className="user-name">{user?.full_name}</span>

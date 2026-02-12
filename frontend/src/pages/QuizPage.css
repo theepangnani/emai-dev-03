@@ -31,7 +31,7 @@
   background: var(--color-surface);
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-soft);
 }
 
 .question-text {
@@ -66,17 +66,17 @@
 
 .option.selected {
   border-color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.14);
+  background: var(--color-accent-light);
 }
 
 .option.correct {
-  border-color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
+  border-color: var(--color-success);
+  background: var(--color-success-light);
 }
 
 .option.incorrect {
   border-color: var(--color-danger);
-  background: rgba(214, 69, 69, 0.12);
+  background: var(--color-danger-light);
 }
 
 .option:disabled {
@@ -102,7 +102,7 @@
 }
 
 .option.correct .option-letter {
-  background: #2e7d32;
+  background: var(--color-success);
   color: white;
 }
 
@@ -122,12 +122,12 @@
 }
 
 .result.correct {
-  background: rgba(46, 125, 50, 0.12);
-  border-left: 4px solid #2e7d32;
+  background: var(--color-success-light);
+  border-left: 4px solid var(--color-success);
 }
 
 .result.incorrect {
-  background: rgba(214, 69, 69, 0.12);
+  background: var(--color-danger-light);
   border-left: 4px solid var(--color-danger);
 }
 
@@ -137,7 +137,7 @@
 }
 
 .result.correct .result-status {
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 .result.incorrect .result-status {
@@ -180,12 +180,12 @@
 }
 
 .next-btn {
-  background: #2e7d32;
+  background: var(--color-success);
   color: white;
 }
 
 .next-btn:hover {
-  background: #246c2c;
+  background: var(--color-success-dark);
 }
 
 /* Results */
@@ -200,7 +200,7 @@
   background: var(--color-surface);
   padding: 3rem;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-soft);
   text-align: center;
 }
 
@@ -212,7 +212,7 @@
 .score {
   font-size: 3rem;
   font-weight: bold;
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 .score-total {
@@ -253,12 +253,12 @@
 }
 
 .done-btn {
-  background: #2e7d32;
+  background: var(--color-success);
   color: white;
 }
 
 .done-btn:hover {
-  background: #246c2c;
+  background: var(--color-success-dark);
 }
 
 .loading, .error {

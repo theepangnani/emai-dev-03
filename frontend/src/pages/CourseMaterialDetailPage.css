@@ -7,7 +7,7 @@
 .cm-error {
   text-align: center;
   padding: 3rem 1rem;
-  color: #888;
+  color: var(--color-muted);
 }
 
 .cm-error p {
@@ -16,7 +16,7 @@
 
 /* Header */
 .cm-back-link {
-  color: #7c3aed;
+  color: var(--color-purple);
   text-decoration: none;
   font-size: 0.9rem;
 }
@@ -40,8 +40,8 @@
 }
 
 .cm-course-badge {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--color-purple-bg);
+  color: var(--color-purple-strong);
   padding: 0.2rem 0.6rem;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -55,12 +55,12 @@
   gap: 0.75rem;
   margin-top: 0.4rem;
   font-size: 0.8rem;
-  color: #888;
+  color: var(--color-muted);
 }
 
 .cm-type-badge {
-  background: #f3f4f6;
-  color: #555;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
   padding: 0.15rem 0.5rem;
   border-radius: 8px;
   font-size: 0.75rem;
@@ -70,7 +70,7 @@
 /* Tabs */
 .cm-tabs {
   display: flex;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--color-border);
   gap: 0;
   margin-bottom: 1.5rem;
   overflow-x: auto;
@@ -84,7 +84,7 @@
   margin-bottom: -2px;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-ink-muted);
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -92,20 +92,20 @@
   transition: color 0.15s, border-color 0.15s;
 }
 .cm-tab:hover {
-  color: #7c3aed;
+  color: var(--color-purple);
 }
 .cm-tab.active {
-  color: #7c3aed;
-  border-bottom-color: #7c3aed;
+  color: var(--color-purple);
+  border-bottom-color: var(--color-purple);
   font-weight: 600;
 }
 .cm-tab.empty {
-  color: #bbb;
+  color: var(--color-muted-border);
 }
 .cm-tab-empty-dot {
   width: 6px;
   height: 6px;
-  background: #d1d5db;
+  background: var(--color-muted-border);
   border-radius: 50%;
   display: inline-block;
 }
@@ -118,20 +118,20 @@
 .cm-empty-tab {
   text-align: center;
   padding: 3rem 1rem;
-  color: #888;
+  color: var(--color-muted);
 }
 .cm-empty-tab p {
   margin-bottom: 1rem;
 }
 
 .cm-empty-message {
-  color: #888;
+  color: var(--color-muted);
   padding: 2rem;
   text-align: center;
 }
 
 .cm-hint {
-  color: #aaa;
+  color: var(--color-muted-light);
   font-size: 0.8rem;
   margin-top: 0.5rem;
 }
@@ -152,22 +152,22 @@
 .cm-formatted-quiz .cm-fq-item {
   margin-bottom: 1.2rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
 }
 .cm-fq-question { margin-bottom: 0.4rem; }
 .cm-fq-options { list-style: none; padding-left: 0.5rem; margin: 0.3rem 0; }
 .cm-fq-options li { padding: 0.2rem 0.4rem; margin: 0.15rem 0; border-radius: 4px; }
-.cm-fq-options li.cm-fq-correct { background: #d1fae5; }
-.cm-fq-explanation { color: #666; font-size: 0.9rem; margin-top: 0.3rem; }
+.cm-fq-options li.cm-fq-correct { background: var(--color-success-light); }
+.cm-fq-explanation { color: var(--color-ink-muted); font-size: 0.9rem; margin-top: 0.3rem; }
 .cm-formatted-cards .cm-fc-item {
   padding: 0.6rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-border);
   line-height: 1.5;
 }
 .cm-ref-link {
   display: inline-block;
   margin-top: 1rem;
-  color: #7c3aed;
+  color: var(--color-purple);
   text-decoration: none;
   font-size: 0.9rem;
 }
@@ -178,7 +178,7 @@
 .cm-render-loading {
   text-align: center;
   padding: 2rem;
-  color: #aaa;
+  color: var(--color-muted-light);
 }
 
 /* Guide tab */
@@ -191,27 +191,27 @@
 
 .cm-action-btn {
   padding: 0.35rem 0.8rem;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--color-muted-border);
+  background: var(--color-surface);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.8rem;
-  color: #555;
+  color: var(--color-ink-muted);
   transition: background 0.15s, color 0.15s;
 }
 .cm-action-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-alt);
 }
 .cm-action-btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
 .cm-action-btn.danger {
-  color: #dc2626;
-  border-color: #fecaca;
+  color: var(--color-danger);
+  border-color: var(--color-danger-light);
 }
 .cm-action-btn.danger:hover {
-  background: #fef2f2;
+  background: var(--color-danger-light);
 }
 
 .cm-guide-body {
@@ -241,18 +241,18 @@
 .cm-quiz-score {
   font-size: 2rem;
   font-weight: 700;
-  color: #7c3aed;
+  color: var(--color-purple);
   margin: 1rem 0;
 }
 .cm-quiz-pct {
   font-size: 1rem;
-  color: #888;
+  color: var(--color-muted);
   margin-left: 0.5rem;
 }
 
 .cm-quiz-progress {
   font-size: 0.8rem;
-  color: #888;
+  color: var(--color-muted);
   margin-bottom: 0.5rem;
 }
 
@@ -273,28 +273,28 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
   text-align: left;
   font-size: 0.9rem;
   transition: border-color 0.15s, background 0.15s;
 }
 .cm-quiz-option:hover:not(:disabled) {
-  border-color: #7c3aed;
+  border-color: var(--color-purple);
 }
 .cm-quiz-option.selected {
-  border-color: #7c3aed;
-  background: #f5f3ff;
+  border-color: var(--color-purple);
+  background: var(--color-purple-light);
 }
 .cm-quiz-option.correct {
-  border-color: #16a34a;
-  background: #f0fdf4;
+  border-color: var(--color-success);
+  background: var(--color-success-light);
 }
 .cm-quiz-option.incorrect {
-  border-color: #dc2626;
-  background: #fef2f2;
+  border-color: var(--color-danger);
+  background: var(--color-danger-light);
 }
 .cm-quiz-option:disabled {
   cursor: default;
@@ -302,12 +302,12 @@
 
 .cm-option-key {
   font-weight: 700;
-  color: #7c3aed;
+  color: var(--color-purple);
   min-width: 1.2rem;
 }
 
 .cm-quiz-explanation {
-  background: #f5f3ff;
+  background: var(--color-purple-light);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   font-size: 0.85rem;
@@ -323,7 +323,7 @@
 .cm-flashcard-progress {
   text-align: center;
   font-size: 0.8rem;
-  color: #888;
+  color: var(--color-muted);
   margin-bottom: 1rem;
 }
 
@@ -358,12 +358,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .cm-flashcard-front {
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
 }
 .cm-flashcard-back {
-  background: #f5f3ff;
-  border: 2px solid #7c3aed;
+  background: var(--color-purple-light);
+  border: 2px solid var(--color-purple);
   transform: rotateY(180deg);
 }
 
@@ -378,7 +378,7 @@
 .cm-generating-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-overlay);
   display: flex;
   flex-direction: column;
   align-items: center;

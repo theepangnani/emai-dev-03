@@ -33,12 +33,12 @@
 }
 
 .study-btn-quiz {
-  background-color: #1f7a7a;
+  background-color: var(--color-accent-dark);
   color: white;
 }
 
 .study-btn-quiz:hover:not(:disabled) {
-  background-color: #166061;
+  background-color: var(--color-accent-dark);
 }
 
 .study-btn-cards {
@@ -47,7 +47,7 @@
 }
 
 .study-btn-cards:hover:not(:disabled) {
-  background-color: #d97745;
+  background-color: var(--color-accent-warm-strong);
 }
 
 .study-error {

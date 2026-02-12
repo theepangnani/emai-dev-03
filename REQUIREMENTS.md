@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-11
 
 ---
 
@@ -560,48 +560,52 @@ Persistent audit log tracking sensitive actions for FERPA/PIPEDA compliance and 
 - Non-blocking: `log_action()` silently fails on error, never blocks requests
 - Uses `String(20)` for action column (not Enum) for SQLite/PostgreSQL compatibility
 
-### 6.15 Color Theme System (Phase 1)
+### 6.15 Theme System & UI Appearance (Phase 1) - IMPLEMENTED
 
-Three site-wide color themes with user preference persistence.
+The platform supports three visual themes that users can switch between via a toggle button in the header.
 
 #### Themes
 
-| Theme | Surface | Ink | Accent | Description |
-|-------|---------|-----|--------|-------------|
-| **Light** (default) | `#ffffff` / `#f5f6f9` | `#1b1e2b` / `#5b6274` | `#49b8c0` / `#f4801f` | Current palette, bright and clean |
-| **Dark** | `#1a1d2e` / `#252836` | `#e8eaf0` / `#9ca0b0` | `#5ccfd6` / `#f6923a` | Dark surfaces, lighter text, boosted accents for contrast |
-| **Focus** | `#faf8f5` / `#f0ece6` | `#2c2a26` / `#6b6560` | `#5a9e8f` / `#c47f3b` | Muted warm tones, reduced saturation for extended study sessions |
+| Theme | Description | Primary Accent | Status |
+|-------|-------------|----------------|--------|
+| Light (default) | Clean, bright UI | Teal (#49b8c0) | IMPLEMENTED |
+| Dark (turbo.ai-inspired) | Deep dark with purple glow | Purple (#8b5cf6) / Cyan (#22d3ee) | IMPLEMENTED |
+| Focus | Warm muted tones for study sessions | Sage (#5a9e8f) / Amber (#c47f3b) | IMPLEMENTED |
 
 #### Architecture
-- **CSS approach**: `data-theme` attribute on `<html>` element; CSS variable overrides per theme
-- **ThemeContext**: React context provider (`frontend/src/context/ThemeContext.tsx`) manages active theme, persists to `localStorage` key `classbridge-theme`
-- **Auto-detect**: First visit defaults to OS preference via `prefers-color-scheme` media query (light/dark); "Focus" is user-explicit only
-- **ThemeToggle component**: 3-way toggle (icon-based: sun / moon / leaf) placed in DashboardLayout header
-- **Variable scope**: All color tokens in `:root` / `[data-theme="light"]`, overridden in `[data-theme="dark"]` and `[data-theme="focus"]`
+- CSS custom properties (50+ variables) in `index.css` with per-theme overrides via `[data-theme]` attribute
+- `ThemeContext.tsx` provides `useTheme()` hook with `theme`, `setTheme()`, `cycleTheme()`
+- `ThemeToggle` component in header cycles through themes
+- OS preference auto-detection via `prefers-color-scheme`
+- Persisted to `localStorage` under `classbridge-theme`
 
-#### Prerequisites
-- Convert all hardcoded hex/rgba colors to CSS variables (especially `CourseMaterialDetailPage.css` which has zero variable usage)
-- Add missing semantic variables: `--color-success`, `--color-accent-bg`, `--color-surface-raised`
-- Add RGB companion variables for `rgba()` patterns: `--color-accent-rgb`, `--color-blue-rgb`
+#### Variable Categories
+- Core palette (ink, surface, border)
+- Accent colors (primary, warm, dark variants)
+- Semantic colors (success, danger, warning, purple)
+- Priority badges (high, medium, low)
+- Content type badges (syllabus, labs, readings, resources, assignments)
+- Role badges (parent, teacher, admin)
+- Brand colors (Google)
+- Shadows, radii, overlays, gradients
 
-#### Variables Required
-Existing 12 variables + new additions:
-- `--color-success` — green for positive states
-- `--color-accent-bg` — light accent tint for hover/active backgrounds
-- `--color-surface-raised` — elevated card/modal backgrounds
-- `--color-ink-rgb`, `--color-accent-rgb`, `--color-blue-rgb` — RGB triplets for `rgba()` usage
-- `--color-shadow` — shadow base color (opaque in light, transparent in dark)
+### 6.16 Layout Redesign (turbo.ai-inspired) — PLANNED
 
-#### Implementation Steps
-1. Hardcoded color cleanup — refactor ~56 hardcoded color values across ~5 CSS files to use variables
-2. Add new semantic variables to `:root` in `index.css`
-3. Define Dark and Focus theme palettes as `[data-theme="dark"]` and `[data-theme="focus"]` blocks
-4. Create `ThemeContext.tsx` with `useTheme()` hook
-5. Create `ThemeToggle` component (3-way toggle)
-6. Integrate toggle into `DashboardLayout` header
-7. Visual QA on all pages for each theme
+A layout overhaul inspired by modern SaaS dashboards (turbo.ai), addressing prototype user feedback.
 
-### 6.16 Global Search (Phase 1.5)
+GitHub Issues: #198, #199, #200
+
+#### Planned Changes
+- Persistent collapsible sidebar navigation (replacing hamburger slide-out)
+- Glassmorphism card design with gradient borders
+- Improved information density and visual hierarchy
+- Simplified header (logo + search + notifications + avatar)
+- Generous spacing and modern typography
+- Mobile: sidebar converts to bottom nav or full-screen overlay
+
+#### Status: Phase 1.5 — Not yet implemented
+
+### 6.17 Global Search (Phase 1.5)
 
 A unified search field in the DashboardLayout header that searches across the entire ClassBridge platform. Available to all roles (parent, student, teacher, admin).
 
@@ -638,7 +642,7 @@ A unified search field in the DashboardLayout header that searches across the en
 5. Create `frontend/src/components/GlobalSearch.tsx` + `.css`
 6. Integrate into `DashboardLayout.tsx` header
 
-### 6.17 Mobile Support (Phase 1.5 + Phase 2+)
+### 6.18 Mobile Support (Phase 1.5 + Phase 2+)
 
 ClassBridge must be accessible and usable on all devices — phones, tablets, and desktops.
 
@@ -679,7 +683,7 @@ Dedicated Android and iOS applications for enhanced mobile experience.
 
 **GitHub Issues:** #192 (native mobile apps)
 
-### 6.18 AI Email Communication Agent (Phase 5)
+### 6.19 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
 - AI formats and sends email to teacher
 - AI-powered reply suggestions
@@ -891,9 +895,10 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Task Detail Page: Link/unlink resources** — Icon buttons to link course, material, or study guide; searchable tabbed modal; unlink (×) button on each resource card; fixed `tasksApi.update()` type signature (IMPLEMENTED)
 - [x] **Calendar task popover: See Task Details button** — Icon buttons in popover (clipboard=task details, book=create study guide, graduation cap=go to course, books=view study guides) with title tooltips; fixed task ID offset bug where navigation used calendar-internal offset ID instead of real task ID (IMPLEMENTED)
 - [x] **Ungrouped study guide categorization** — Folder icon button on ungrouped guides opens "Move to Course" modal with searchable course list and inline "Create new course" option; backend PATCH auto-creates CourseContent via ensure_course_and_content() (IMPLEMENTED)
-- [ ] **Color theme system: Hardcoded color cleanup** — Convert ~56 hardcoded hex/rgba values to CSS variables (priority: CourseMaterialDetailPage.css)
-- [ ] **Color theme system: Dark mode** — Define dark palette in `[data-theme="dark"]`, ThemeContext, ThemeToggle in header
-- [ ] **Color theme system: Focus mode** — Define focus palette in `[data-theme="focus"]`, muted warm tones for study sessions
+- [x] **Theme system with Light/Dark/Focus modes** — 50+ CSS custom properties, ThemeContext with useTheme() hook, ThemeToggle in header, OS preference auto-detection, localStorage persistence (IMPLEMENTED)
+- [x] **Color theme system: Hardcoded color cleanup** — Converted hardcoded hex/rgba values to CSS variables across all CSS files (IMPLEMENTED)
+- [x] **Color theme system: Dark mode** — Deep dark palette with purple glow in `[data-theme="dark"]`, ThemeContext, ThemeToggle in header (IMPLEMENTED)
+- [x] **Color theme system: Focus mode** — Warm muted tones in `[data-theme="focus"]` for study sessions (IMPLEMENTED)
 - [ ] **Make student email optional** — parent can create child with name only (no email, no login)
 - [ ] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional
 - [ ] **Parent creates courses** — allow PARENT role to create courses (private to their children)
@@ -1308,9 +1313,9 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #183: Task Detail Page: link/unlink resources (courses, materials, study guides)~~ ✅
 - Issue #193: ~~Task list: click task row to navigate to task detail page~~ ✅
 - Issue #194: Rename 'Study Guide' to 'Course Material' across UI and navigation
-- Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)
-- Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)
-- Issue #171: Color theme: Focus mode (muted warm tones for study sessions)
+- ~~Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)~~ ✅
+- ~~Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)~~ ✅
+- ~~Issue #171: Color theme: Focus mode (muted warm tones for study sessions)~~ ✅
 
 ### Phase 1.5 - Calendar Extension, Content, Search, Mobile & School Integration
 - ~~Issue #174: Global search: backend unified search endpoint~~ ✅

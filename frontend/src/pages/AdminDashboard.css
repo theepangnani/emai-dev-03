@@ -54,7 +54,7 @@
 }
 
 .admin-users-table tr:hover td {
-  background: rgba(73, 184, 192, 0.06);
+  background: var(--color-accent-subtle);
 }
 
 .role-badge-small {
@@ -67,23 +67,23 @@
 }
 
 .role-badge-small.student {
-  background: rgba(73, 184, 192, 0.15);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
 }
 
 .role-badge-small.parent {
   background: rgba(244, 128, 31, 0.18);
-  color: #b1571e;
+  color: var(--role-parent);
 }
 
 .role-badge-small.teacher {
-  background: rgba(46, 125, 50, 0.12);
-  color: #2e7d32;
+  background: var(--color-success-light);
+  color: var(--role-teacher);
 }
 
 .role-badge-small.admin {
-  background: rgba(243, 176, 76, 0.2);
-  color: #a85f13;
+  background: var(--color-warning-light);
+  color: var(--role-admin);
 }
 
 .status-dot {
@@ -95,11 +95,11 @@
 }
 
 .status-dot.active {
-  background: #2e7d32;
+  background: var(--color-success);
 }
 
 .status-dot.inactive {
-  background: #c1c6d1;
+  background: var(--color-inactive);
 }
 
 .admin-pagination {

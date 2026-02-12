@@ -17,7 +17,7 @@
 
 .global-search-input-wrap:focus-within {
   border-color: var(--color-accent, #49b8c0);
-  box-shadow: 0 0 0 3px rgba(73, 184, 192, 0.12);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .global-search-icon {
@@ -67,7 +67,7 @@
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #e0e0e0);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-lift);
   max-height: 420px;
   overflow-y: auto;
   z-index: 1000;

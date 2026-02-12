@@ -4,7 +4,7 @@
 }
 
 .dashboard-header {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-surface-header);
   padding: 8px 24px;
   display: flex;
   justify-content: space-between;
@@ -68,7 +68,7 @@
 }
 
 .user-role {
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   padding: 4px 10px;
   border-radius: 999px;
@@ -95,7 +95,7 @@
 .messages-button.secondary {
   background: var(--color-surface);
   color: var(--color-accent);
-  border: 1px solid rgba(73, 184, 192, 0.3);
+  border: 1px solid var(--color-accent-light);
 }
 
 .messages-button:hover {
@@ -174,7 +174,7 @@
 .menu-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--color-overlay-light);
   z-index: 20;
 }
 
@@ -223,7 +223,7 @@
 }
 
 .sidebar-link {
-  background: rgba(73, 184, 192, 0.08);
+  background: var(--color-accent-subtle);
   border: 1px solid transparent;
   color: var(--color-accent-strong);
   padding: 10px 14px;
@@ -235,8 +235,8 @@
 }
 
 .sidebar-link:hover {
-  border-color: rgba(73, 184, 192, 0.35);
-  background: rgba(73, 184, 192, 0.14);
+  border-color: var(--color-accent-light);
+  background: var(--color-accent-light);
 }
 
 .sidebar-link.active {
@@ -281,7 +281,7 @@
 
 .sidebar-action:hover {
   border-color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.08);
+  background: var(--color-accent-subtle);
   border-style: solid;
 }
 
@@ -401,8 +401,8 @@
 }
 
 .onboarding-banner {
-  background: rgba(73, 184, 192, 0.08);
-  border: 1px solid rgba(73, 184, 192, 0.35);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-light);
   border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 20px;
@@ -412,8 +412,8 @@
 }
 
 .onboarding-banner.welcome {
-  background: rgba(73, 184, 192, 0.12);
-  border: 2px solid rgba(73, 184, 192, 0.45);
+  background: var(--color-accent-light);
+  border: 2px solid var(--color-accent-light);
 }
 
 .onboarding-icon {
@@ -453,7 +453,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -515,7 +515,7 @@
 .modal-form select:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(73, 184, 192, 0.12);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .modal-form textarea {
@@ -636,15 +636,15 @@
 }
 
 .status-success {
-  background: rgba(46, 125, 50, 0.1);
-  color: #2e7d32;
-  border: 1px solid rgba(46, 125, 50, 0.3);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-light);
 }
 
 .status-error {
-  background: rgba(214, 69, 69, 0.1);
+  background: var(--color-danger-light);
   color: var(--color-danger);
-  border: 1px solid rgba(214, 69, 69, 0.3);
+  border: 1px solid var(--color-danger-light);
 }
 
 /* Section header */
@@ -796,7 +796,7 @@
 }
 
 .version-badge {
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   padding: 1px 8px;
   border-radius: 8px;
@@ -818,7 +818,7 @@
 
 .delete-guide-btn:hover {
   color: var(--color-danger);
-  background: rgba(214, 69, 69, 0.1);
+  background: var(--color-danger-light);
 }
 
 .inline-course-select {
@@ -867,8 +867,8 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(66, 133, 244, 0.12);
-  color: #4285f4;
+  background: var(--brand-google-light);
+  color: var(--brand-google);
   font-weight: 600;
 }
 
@@ -894,8 +894,8 @@
 
 /* Duplicate check warning */
 .duplicate-warning {
-  background: rgba(243, 176, 76, 0.15);
-  border: 1px solid rgba(243, 176, 76, 0.5);
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning-light);
   padding: 12px 16px;
   border-radius: var(--radius-sm);
   margin: 0 24px 12px;

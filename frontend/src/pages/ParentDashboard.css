@@ -56,7 +56,7 @@
 .child-edit-btn:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.08);
+  background: var(--color-accent-subtle);
 }
 
 .grade-badge {
@@ -87,8 +87,8 @@
 }
 
 .btn-accent-outline:hover {
-  background: rgba(73, 184, 192, 0.08);
-  box-shadow: 0 0 0 2px rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-subtle);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .no-children-state {
@@ -142,7 +142,7 @@
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
 }
 
@@ -151,13 +151,13 @@
 }
 
 .google-warning {
-  background: rgba(243, 176, 76, 0.15);
-  border: 1px solid rgba(243, 176, 76, 0.6);
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning);
   border-radius: 6px;
   padding: 10px 14px;
   margin-bottom: 12px;
   font-size: 14px;
-  color: #8a5a12;
+  color: var(--color-warning-text);
 }
 
 .link-child-btn {
@@ -375,8 +375,8 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(46, 125, 50, 0.12);
-  color: #2e7d32;
+  background: var(--color-success-light);
+  color: var(--color-success);
   font-weight: 500;
   width: fit-content;
   margin-top: 2px;
@@ -545,15 +545,15 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: rgba(73, 184, 192, 0.15);
+  background: var(--color-accent-light);
   color: var(--color-accent);
   text-transform: capitalize;
 }
 
 /* Invite Success Box */
 .invite-success-box {
-  background: rgba(46, 125, 50, 0.08);
-  border: 1px solid rgba(46, 125, 50, 0.3);
+  background: var(--color-success-light);
+  border: 1px solid var(--color-success-light);
   border-radius: 8px;
   padding: 12px;
   margin-top: 12px;
@@ -758,12 +758,12 @@
   padding: 6px 10px;
   margin-bottom: 8px;
   border-radius: 4px;
-  background: rgba(73, 184, 192, 0.1);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
 }
 
 .sidebar-sync-msg.error {
-  background: rgba(239, 83, 80, 0.1);
+  background: var(--color-danger-light);
   color: var(--color-danger);
 }
 
@@ -810,7 +810,7 @@
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   white-space: nowrap;
 }
@@ -858,7 +858,7 @@
 
 .sidebar-delete-btn:hover {
   color: var(--color-danger);
-  background: rgba(239, 83, 80, 0.1);
+  background: var(--color-danger-light);
 }
 
 .sidebar-link-arrow {
@@ -1048,7 +1048,7 @@
 
 .task-delete-btn:hover {
   color: var(--color-danger);
-  background: rgba(214, 69, 69, 0.1);
+  background: var(--color-danger-light);
 }
 
 .task-priority-badge {
@@ -1061,18 +1061,18 @@
 }
 
 .task-priority-badge.high {
-  background: rgba(239, 83, 80, 0.12);
-  color: #ef5350;
+  background: var(--priority-high-light);
+  color: var(--priority-high);
 }
 
 .task-priority-badge.medium {
-  background: rgba(255, 152, 0, 0.12);
-  color: #ff9800;
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
 }
 
 .task-priority-badge.low {
-  background: rgba(102, 187, 106, 0.12);
-  color: #66bb6a;
+  background: var(--priority-low-light);
+  color: var(--priority-low);
 }
 
 /* ============================================
@@ -1097,18 +1097,18 @@
 }
 
 .task-sticky-note.high {
-  border-color: #ef5350;
-  background: rgba(239, 83, 80, 0.05);
+  border-color: var(--priority-high);
+  background: var(--priority-high-light);
 }
 
 .task-sticky-note.medium {
-  border-color: #ff9800;
-  background: rgba(255, 152, 0, 0.05);
+  border-color: var(--priority-medium);
+  background: var(--priority-medium-light);
 }
 
 .task-sticky-note.low {
-  border-color: #66bb6a;
-  background: rgba(102, 187, 106, 0.05);
+  border-color: var(--priority-low);
+  background: var(--priority-low-light);
 }
 
 .task-sticky-header {
@@ -1195,7 +1195,7 @@
 .day-modal-add-task input:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(73, 184, 192, 0.12);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .day-modal-add-task .generate-btn {

@@ -61,7 +61,7 @@
   align-items: center;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-soft);
   text-align: center;
 }
 
@@ -71,7 +71,7 @@
 }
 
 .flashcard-back {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  background: linear-gradient(135deg, var(--flashcard-gradient-start) 0%, var(--flashcard-gradient-end) 100%);
   color: white;
   transform: rotateY(180deg);
 }
@@ -130,7 +130,7 @@
 }
 
 .shuffle-btn:hover {
-  background: #d97745;
+  background: var(--color-accent-warm-strong);
 }
 
 .keyboard-hints {

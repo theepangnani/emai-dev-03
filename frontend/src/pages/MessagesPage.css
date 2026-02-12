@@ -6,7 +6,7 @@
 }
 
 .messages-header {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-surface-header);
   padding: 16px 32px;
   display: flex;
   justify-content: space-between;
@@ -88,7 +88,7 @@
 }
 
 .error-banner {
-  background: rgba(214, 69, 69, 0.1);
+  background: var(--color-danger-light);
   color: var(--color-danger);
   padding: 12px 32px;
   display: flex;
@@ -189,20 +189,20 @@
 }
 
 .conversation-item:hover {
-  background: rgba(73, 184, 192, 0.06);
+  background: var(--color-accent-subtle);
 }
 
 .conversation-item.active {
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   border-left: 3px solid var(--color-accent);
 }
 
 .conversation-item.unread {
-  background: rgba(243, 176, 76, 0.18);
+  background: var(--color-warning-light);
 }
 
 .conversation-item.unread.active {
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
 }
 
 .conv-header {
@@ -450,7 +450,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   display: flex;
   justify-content: center;
   align-items: center;

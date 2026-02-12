@@ -56,7 +56,7 @@
   font-size: 13px;
   padding: 3px 12px;
   border-radius: 6px;
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   font-weight: 500;
 }
@@ -70,13 +70,13 @@
 }
 
 .course-detail-badge.google {
-  background: rgba(66, 133, 244, 0.12);
-  color: #4285f4;
+  background: var(--brand-google-light);
+  color: var(--brand-google);
 }
 
 .course-detail-badge.private {
-  background: rgba(255, 152, 0, 0.12);
-  color: #f57c00;
+  background: var(--priority-medium-light);
+  color: var(--badge-labs);
 }
 
 .course-detail-desc {
@@ -258,7 +258,7 @@
 
 .cd-content-item:hover {
   box-shadow: var(--shadow-soft);
-  border-color: rgba(73, 184, 192, 0.25);
+  border-color: var(--color-accent-light);
 }
 
 .cd-content-item-info {
@@ -398,11 +398,11 @@
   text-transform: capitalize;
 }
 
-.content-type-badge.syllabus { background: rgba(156, 39, 176, 0.12); color: #9c27b0; }
-.content-type-badge.labs { background: rgba(255, 152, 0, 0.12); color: #f57c00; }
-.content-type-badge.readings { background: rgba(33, 150, 243, 0.12); color: #1976d2; }
-.content-type-badge.resources { background: rgba(76, 175, 80, 0.12); color: #388e3c; }
-.content-type-badge.assignments { background: rgba(244, 67, 54, 0.12); color: #d32f2f; }
+.content-type-badge.syllabus { background: rgba(156, 39, 176, 0.12); color: var(--badge-syllabus); }
+.content-type-badge.labs { background: rgba(255, 152, 0, 0.12); color: var(--badge-labs); }
+.content-type-badge.readings { background: rgba(33, 150, 243, 0.12); color: var(--badge-readings); }
+.content-type-badge.resources { background: rgba(76, 175, 80, 0.12); color: var(--badge-resources); }
+.content-type-badge.assignments { background: rgba(244, 67, 54, 0.12); color: var(--badge-assignments); }
 
 @media (max-width: 600px) {
   .course-detail-header {
