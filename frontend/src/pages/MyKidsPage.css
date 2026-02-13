@@ -1,0 +1,190 @@
+/* ── My Kids Page ──────────────────────────── */
+
+.mykids-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+.mykids-empty h3 {
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+.mykids-btn {
+  margin-top: 16px;
+  padding: 10px 24px;
+  background: var(--accent-gradient, linear-gradient(135deg, #2a7d5f, #c8912e));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* All-children overview grid */
+.mykids-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.mykids-child-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.mykids-child-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+.mykids-child-card-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mykids-child-card-school {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.mykids-child-card-action {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--accent, #2a7d5f);
+  font-weight: 500;
+}
+
+/* Sections */
+.mykids-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.mykids-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mykids-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.mykids-section-header:hover {
+  background: var(--hover-bg, rgba(0, 0, 0, 0.03));
+}
+
+.section-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+  color: var(--text-secondary);
+}
+.section-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+/* Card grid for courses / materials */
+.mykids-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 0 18px 16px;
+}
+.mykids-item-card {
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mykids-item-card:hover {
+  background: var(--hover-bg, rgba(0, 0, 0, 0.03));
+}
+.mykids-item-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.mykids-item-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.mykids-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--badge-bg, #e8f5e9);
+  color: var(--accent, #2a7d5f);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+.mykids-empty-hint {
+  padding: 0 18px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Task list */
+.mykids-task-list {
+  padding: 0 18px 16px;
+}
+.mykids-task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mykids-task-row:last-child {
+  border-bottom: none;
+}
+.mykids-task-row:hover {
+  background: var(--hover-bg, rgba(0, 0, 0, 0.03));
+  border-radius: 6px;
+}
+.mykids-task-priority {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mykids-task-priority.high { background: #e53935; }
+.mykids-task-priority.medium { background: #fb8c00; }
+.mykids-task-priority.low { background: #43a047; }
+.mykids-task-title {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.mykids-task-due {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.mykids-completed-count {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
