@@ -66,7 +66,20 @@ export function QuizPage() {
   if (loading) {
     return (
       <div className="quiz-page">
-        <div className="loading">Loading quiz...</div>
+        <div className="quiz-header">
+          <div className="skeleton" style={{ width: 120, height: 16 }} />
+          <div className="skeleton" style={{ width: '50%', height: 28, marginTop: 8 }} />
+          <div className="skeleton" style={{ width: 140, height: 14, marginTop: 8 }} />
+        </div>
+        <div className="quiz-content">
+          <div className="question-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="skeleton" style={{ width: '80%', height: 22 }} />
+            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+          </div>
+        </div>
       </div>
     );
   }

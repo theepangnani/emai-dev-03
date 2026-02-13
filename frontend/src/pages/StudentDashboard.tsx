@@ -4,6 +4,7 @@ import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
 import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../api/client';
 import { StudyToolsButton } from '../components/StudyToolsButton';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { PageSkeleton } from '../components/Skeleton';
 import { useConfirm } from '../components/ConfirmModal';
 import { logger } from '../utils/logger';
 
@@ -27,6 +28,7 @@ export function StudentDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  const [initialLoading, setInitialLoading] = useState(true);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -85,10 +87,8 @@ export function StudentDashboard() {
       setSearchParams({});
     }
 
-    checkGoogleStatus();
-    loadCourses();
-    loadAssignments();
-    loadStudyGuides();
+    Promise.all([checkGoogleStatus(), loadCourses(), loadAssignments(), loadStudyGuides()])
+      .finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
   const loadCourses = async () => {
@@ -332,6 +332,14 @@ export function StudentDashboard() {
       setIsGenerating(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <DashboardLayout welcomeSubtitle="Here's your learning overview">
+        <PageSkeleton />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout welcomeSubtitle="Here's your learning overview">

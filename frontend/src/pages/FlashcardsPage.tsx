@@ -83,7 +83,19 @@ export function FlashcardsPage() {
   if (loading) {
     return (
       <div className="flashcards-page">
-        <div className="loading">Loading flashcards...</div>
+        <div className="flashcards-header">
+          <div className="skeleton" style={{ width: 120, height: 16 }} />
+          <div className="skeleton" style={{ width: '50%', height: 28, marginTop: 8 }} />
+          <div className="skeleton" style={{ width: 140, height: 14, marginTop: 8 }} />
+        </div>
+        <div className="flashcard-container">
+          <div className="skeleton" style={{ width: '100%', maxWidth: 500, height: 300, borderRadius: 16, margin: '0 auto' }} />
+        </div>
+        <div className="flashcard-controls" style={{ justifyContent: 'center' }}>
+          <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 80, height: 36, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 8 }} />
+        </div>
       </div>
     );
   }

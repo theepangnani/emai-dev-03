@@ -712,7 +712,7 @@ Frontend UX improvements for reliability, feedback, and loading experience.
 #### Loading Skeletons
 - Reusable `Skeleton`, `PageSkeleton`, `CardSkeleton`, `ListSkeleton`, `DetailSkeleton` components
 - Uses CSS shimmer animation (global `.skeleton` class in `index.css`)
-- Replaces "Loading..." text across 12 pages: CoursesPage, TeacherDashboard, CourseDetailPage, AdminDashboard, StudyGuidesPage, CourseMaterialDetailPage, TaskDetailPage, ParentDashboard, TeacherCommsPage, AdminAuditLog, TasksPage
+- Replaces "Loading..." text across 16 pages: CoursesPage, TeacherDashboard, CourseDetailPage, AdminDashboard, StudyGuidesPage, CourseMaterialDetailPage, TaskDetailPage, ParentDashboard, TeacherCommsPage, AdminAuditLog, TasksPage, StudentDashboard, MessagesPage (conversation selection), QuizPage, FlashcardsPage, MyKidsPage
 
 #### Task Due Date Filters
 - Tasks page (`/tasks`) supports `?due=overdue|today|week` URL parameter

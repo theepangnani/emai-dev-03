@@ -21,6 +21,7 @@ export function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [loadingConversation, setLoadingConversation] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationLimit = 20;
@@ -100,6 +101,7 @@ export function MessagesPage() {
   };
 
   const selectConversation = async (id: number) => {
+    setLoadingConversation(true);
     try {
       const detail = await messagesApi.getConversation(id, { offset: 0, limit: messageLimit });
       setSelectedConversation(detail);
@@ -110,6 +112,8 @@ export function MessagesPage() {
     } catch (err) {
       logger.error('Failed to load conversation', { error: err });
       setError('Failed to load conversation');
+    } finally {
+      setLoadingConversation(false);
     }
   };
 
@@ -304,7 +308,15 @@ export function MessagesPage() {
 
         {/* Message Thread */}
         <main className="message-thread">
-          {selectedConversation ? (
+          {loadingConversation ? (
+            <div className="no-selection">
+              <div className="no-selection-content">
+                <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
+                <div className="skeleton" style={{ width: '60%', height: 14, margin: '0 auto 8px' }} />
+                <div className="skeleton" style={{ width: '40%', height: 12, margin: '0 auto' }} />
+              </div>
+            </div>
+          ) : selectedConversation ? (
             <>
               <div className="thread-header">
                 <h2>{getOtherParticipantName(selectedConversation)}</h2>
