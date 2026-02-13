@@ -164,6 +164,20 @@ with engine.connect() as conn:
                 conn.execute(text("ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(50)"))
                 logger.info("Widened audit_logs.action to VARCHAR(50)")
 
+        # ── users migrations (task_reminder_days) ─────────────────────
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "task_reminder_days" not in existing_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN task_reminder_days VARCHAR(50) DEFAULT '1,3'"))
+            logger.info("Added 'task_reminder_days' column to users")
+
+        # ── notifications enum migration (TASK_DUE) ──────────────────
+        if "sqlite" not in settings.database_url:
+            try:
+                conn.execute(text("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'TASK_DUE'"))
+                logger.info("Added TASK_DUE to notificationtype enum")
+            except Exception:
+                pass  # Value may already exist
+
         conn.commit()
 
 app = FastAPI(
@@ -298,11 +312,18 @@ async def startup_event():
     from apscheduler.triggers.cron import CronTrigger
     from app.services.scheduler import scheduler, start_scheduler
     from app.jobs.assignment_reminders import check_assignment_reminders
+    from app.jobs.task_reminders import check_task_reminders
 
     scheduler.add_job(
         check_assignment_reminders,
         CronTrigger(hour=8, minute=0),
         id="assignment_reminders",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        check_task_reminders,
+        CronTrigger(hour=8, minute=15),
+        id="task_reminders",
         replace_existing=True,
     )
     # Teacher comm sync disabled — all syncs are manual/on-demand per parent-first platform design

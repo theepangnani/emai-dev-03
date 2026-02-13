@@ -130,6 +130,7 @@ def get_notification_settings(
         if current_user.email_notifications is not None
         else True,
         assignment_reminder_days=current_user.assignment_reminder_days or "1,3",
+        task_reminder_days=current_user.task_reminder_days or "1,3",
     )
 
 
@@ -142,12 +143,14 @@ def update_notification_settings(
     """Update notification preferences."""
     current_user.email_notifications = prefs.email_notifications
     current_user.assignment_reminder_days = prefs.assignment_reminder_days
+    current_user.task_reminder_days = prefs.task_reminder_days
     db.commit()
     db.refresh(current_user)
 
     logger.info(
         f"Updated notification settings for user {current_user.id} | "
-        f"email={prefs.email_notifications} | days={prefs.assignment_reminder_days}"
+        f"email={prefs.email_notifications} | assignment_days={prefs.assignment_reminder_days} | "
+        f"task_days={prefs.task_reminder_days}"
     )
 
     return prefs

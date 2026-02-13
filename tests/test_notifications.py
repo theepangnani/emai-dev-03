@@ -153,19 +153,23 @@ class TestNotificationSettings:
         data = resp.json()
         assert "email_notifications" in data
         assert "assignment_reminder_days" in data
+        assert "task_reminder_days" in data
 
     def test_update_settings(self, client, notif_user):
         headers = _auth(client, notif_user.email)
         resp = client.put("/api/notifications/settings", json={
             "email_notifications": False,
             "assignment_reminder_days": "1,7",
+            "task_reminder_days": "1,2,5",
         }, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["email_notifications"] is False
         assert data["assignment_reminder_days"] == "1,7"
+        assert data["task_reminder_days"] == "1,2,5"
 
         # Verify persistence
         get_resp = client.get("/api/notifications/settings", headers=headers)
         assert get_resp.json()["email_notifications"] is False
         assert get_resp.json()["assignment_reminder_days"] == "1,7"
+        assert get_resp.json()["task_reminder_days"] == "1,2,5"

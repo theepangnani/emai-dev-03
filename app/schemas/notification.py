@@ -30,6 +30,7 @@ class NotificationResponse(BaseModel):
 class NotificationPreferences(BaseModel):
     email_notifications: bool
     assignment_reminder_days: str
+    task_reminder_days: str = "1,3"
 
 
 class UnreadCountResponse(BaseModel):

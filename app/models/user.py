@@ -31,6 +31,7 @@ class User(Base):
     # Notification preferences
     email_notifications = Column(Boolean, default=True)
     assignment_reminder_days = Column(String(50), default="1,3")
+    task_reminder_days = Column(String(50), default="1,3")
 
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)

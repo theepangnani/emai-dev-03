@@ -12,6 +12,7 @@ class NotificationType(str, enum.Enum):
     GRADE_POSTED = "grade_posted"
     MESSAGE = "message"
     SYSTEM = "system"
+    TASK_DUE = "task_due"
 
 
 class Notification(Base):
