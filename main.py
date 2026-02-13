@@ -155,6 +155,15 @@ with engine.connect() as conn:
             col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
             conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN archived_at {col_type}"))
             logger.info("Added 'archived_at' column to study_guides")
+
+        # ── audit_logs migrations ────────────────────────────────────
+        existing_cols = {c["name"] for c in inspector.get_columns("audit_logs")}
+        if "action" in existing_cols:
+            # Widen action column from VARCHAR(20) to VARCHAR(50)
+            if "sqlite" not in settings.database_url:
+                conn.execute(text("ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(50)"))
+                logger.info("Widened audit_logs.action to VARCHAR(50)")
+
         conn.commit()
 
 app = FastAPI(

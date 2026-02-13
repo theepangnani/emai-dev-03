@@ -22,7 +22,7 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null for failed logins
-    action = Column(String(20), nullable=False)
+    action = Column(String(50), nullable=False)
     resource_type = Column(String(50), nullable=False)
     resource_id = Column(Integer, nullable=True)
     details = Column(Text, nullable=True)  # JSON string with extra context

@@ -292,9 +292,12 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
                 )
         except RuntimeError:
             pass  # No event loop available (e.g. in tests); email skipped
-        log_action(db, user_id=user.id, action="password_reset_request", resource_type="user",
-                   resource_id=user.id, ip_address=request.client.host if request.client else None)
-        db.commit()
+        try:
+            log_action(db, user_id=user.id, action="pwd_reset_req", resource_type="user",
+                       resource_id=user.id, ip_address=request.client.host if request.client else None)
+            db.commit()
+        except Exception:
+            db.rollback()  # Ensure session is clean even if audit logging fails
 
     return {"message": "If an account with that email exists, a reset link has been sent."}
 
@@ -320,4 +323,4 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
                resource_id=user.id, ip_address=request.client.host if request.client else None)
     db.commit()
 
-    return {"message": "Password has been reset successfully. You can now log in."}
+    return {"message": "Password reset successfully. You can now sign in."}
