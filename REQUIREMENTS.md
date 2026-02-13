@@ -819,6 +819,35 @@ Critical security vulnerabilities identified in the Feb 2026 risk audit and fixe
 - Parent-created student accounts use `UNUSABLE_PASSWORD_HASH` sentinel (`!INVITE_PENDING`) instead of empty string
 - `verify_password()` explicitly rejects empty and sentinel hashes — no login possible without setting a real password via invite link
 
+### 6.24 Multi-Role Support (Phase 1) - PLANNED
+
+Users should be able to hold multiple roles simultaneously (e.g., a parent who is also a teacher, or a parent who is also a student). Currently, each user has a single `role` enum value.
+
+#### Requirements
+1. **Multi-role registration**: During registration, users can select one or more roles (student, parent, teacher) via checkboxes instead of a single dropdown
+2. **Role-based dashboard switching**: When logged in, users with multiple roles see a role switcher in the header and can select which dashboard to view (parent dashboard, teacher dashboard, student dashboard)
+3. **Unified authorization**: Backend RBAC checks grant access based on ALL assigned roles, not just the active role — a parent+teacher user can always access both parent and teacher endpoints regardless of which dashboard they're viewing
+4. **Profile records**: Appropriate profile records (Student, Teacher) are created for each selected role at registration
+
+#### Technical Approach — "Active Role" Pattern
+- Add `roles` column (`String(100)`, comma-separated like `"parent,teacher"`) to store all assigned roles
+- Keep existing `role` column as the "active role" that controls which dashboard is displayed
+- Add `has_role()` / `get_roles_list()` helper methods on the User model
+- Update `require_role()` dependency to check against all roles (not just active)
+- Convert `if/elif` role dispatch chains to independent `if` blocks using `has_role()`
+- Frontend: checkbox role selector on Register, role switcher dropdown in DashboardLayout header
+- New endpoint: `POST /api/users/me/switch-role` to change active dashboard role
+- Migration backfills `roles` from existing `role` for all current users (backward compatible)
+
+#### Scope
+- **In scope**: Multi-role registration, role switching, RBAC updates, profile record creation, frontend UI changes
+- **Out of scope**: Adding roles to existing accounts post-registration, role-specific invite flows, admin role assignment UI
+
+#### Files Affected (estimated 25+ files)
+- **Backend**: `user.py` (model), `deps.py` (require_role, can_access_course), `auth.py` (registration), `users.py` (switch-role endpoint), `schemas/user.py`, all route files with role checks (~15 files)
+- **Frontend**: `AuthContext.tsx`, `Register.tsx`, `DashboardLayout.tsx`, `ProtectedRoute.tsx`, `Dashboard.tsx`, `client.ts`, various pages with role checks
+- **Database**: Migration to add `roles` column and backfill
+
 ---
 
 ## 7. Role-Based Dashboards - IMPLEMENTED
