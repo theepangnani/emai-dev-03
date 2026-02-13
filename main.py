@@ -140,6 +140,21 @@ with engine.connect() as conn:
         if "text_content" not in existing_cols:
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN text_content TEXT"))
             logger.info("Added 'text_content' column to course_contents")
+        if "archived_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            conn.execute(text(f"ALTER TABLE course_contents ADD COLUMN archived_at {col_type}"))
+            logger.info("Added 'archived_at' column to course_contents")
+        if "last_viewed_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            conn.execute(text(f"ALTER TABLE course_contents ADD COLUMN last_viewed_at {col_type}"))
+            logger.info("Added 'last_viewed_at' column to course_contents")
+        conn.commit()
+    if "study_guides" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
+        if "archived_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN archived_at {col_type}"))
+            logger.info("Added 'archived_at' column to study_guides")
         conn.commit()
 
 app = FastAPI(

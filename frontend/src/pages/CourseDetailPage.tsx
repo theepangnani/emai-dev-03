@@ -229,10 +229,9 @@ export function CourseDetailPage() {
 
   const handleDeleteContent = async (contentId: number) => {
     const ok = await confirm({
-      title: 'Delete Content',
-      message: 'Are you sure you want to delete this content item?',
-      confirmLabel: 'Delete',
-      variant: 'danger',
+      title: 'Archive Content',
+      message: 'This will archive the content item. You can restore it later from Course Materials.',
+      confirmLabel: 'Archive',
     });
     if (!ok) return;
     try {
@@ -520,7 +519,7 @@ export function CourseDetailPage() {
                   {item.created_by_user_id === user?.id && (
                     <>
                       <button className="content-icon-btn" title="Edit" onClick={() => openEditContentModal(item)}>&#9998;</button>
-                      <button className="content-icon-btn danger" title="Delete" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
+                      <button className="content-icon-btn danger" title="Archive" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
                     </>
                   )}
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide } from '../api/client';
+import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
@@ -45,6 +45,15 @@ export function CourseMaterialDetailPage() {
 
   // Create task modal
   const [showTaskModal, setShowTaskModal] = useState(false);
+
+  // Document editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTextContent, setEditTextContent] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Toast + regeneration prompt
+  const [toast, setToast] = useState<string | null>(null);
+  const [showRegenPrompt, setShowRegenPrompt] = useState(false);
 
   const contentId = parseInt(id || '0');
 
@@ -125,18 +134,55 @@ export function CourseMaterialDetailPage() {
 
   const handleDeleteGuide = async (guide: StudyGuide) => {
     const ok = await confirm({
-      title: 'Delete Study Material',
-      message: `Delete "${guide.title}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      variant: 'danger',
+      title: 'Archive Study Material',
+      message: `Archive "${guide.title}"? You can restore it later from the archive.`,
+      confirmLabel: 'Archive',
     });
     if (!ok) return;
     try {
       await studyApi.deleteGuide(guide.id);
       await loadData();
     } catch {
-      setError('Failed to delete');
+      setError('Failed to archive');
     }
+  };
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleStartEdit = () => {
+    setEditTextContent(content?.text_content || '');
+    setIsEditing(true);
+  };
+
+  const handleSaveTextContent = async () => {
+    if (!content) return;
+    setEditSaving(true);
+    try {
+      const result: CourseContentUpdateResponse = await courseContentsApi.update(content.id, {
+        text_content: editTextContent,
+      });
+      setContent(result);
+      setIsEditing(false);
+      if (result.archived_guides_count > 0) {
+        showToast(`Content updated. ${result.archived_guides_count} linked study material(s) archived.`);
+        setShowRegenPrompt(true);
+        await loadData(); // refresh guides list
+      } else {
+        showToast('Content saved');
+      }
+    } catch {
+      setError('Failed to save content');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleRegenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
+    setShowRegenPrompt(false);
+    await handleGenerate(type);
   };
 
   // Quiz handlers
@@ -227,7 +273,27 @@ export function CourseMaterialDetailPage() {
         <div className="cm-tab-content">
           {activeTab === 'document' && (
             <div className="cm-document-tab">
-              {content.text_content ? (
+              <div className="cm-guide-actions">
+                {!isEditing ? (
+                  <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
+                ) : (
+                  <>
+                    <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
+                      {editSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
+                  </>
+                )}
+              </div>
+              {isEditing ? (
+                <textarea
+                  className="cm-edit-textarea"
+                  value={editTextContent}
+                  onChange={(e) => setEditTextContent(e.target.value)}
+                  rows={20}
+                  disabled={editSaving}
+                />
+              ) : content.text_content ? (
                 <div className="cm-document-text">
                   {(() => {
                     // Detect JSON quiz/flashcard data and format readably
@@ -237,7 +303,6 @@ export function CourseMaterialDetailPage() {
                         const parsed = JSON.parse(trimmed);
                         if (Array.isArray(parsed) && parsed.length > 0) {
                           if (parsed[0].question && parsed[0].options) {
-                            // Quiz JSON — render as Q&A
                             return (
                               <div className="cm-formatted-quiz">
                                 {parsed.map((q: any, i: number) => (
@@ -257,7 +322,6 @@ export function CourseMaterialDetailPage() {
                             );
                           }
                           if (parsed[0].front && parsed[0].back) {
-                            // Flashcard JSON — render as term/definition
                             return (
                               <div className="cm-formatted-cards">
                                 {parsed.map((c: any, i: number) => (
@@ -485,6 +549,18 @@ export function CourseMaterialDetailPage() {
         linkedEntityLabel={`${content.title}${content.course_name ? ` (${content.course_name})` : ''}`}
       />
       {confirmModal}
+      {toast && <div className="toast-notification">{toast}</div>}
+      {showRegenPrompt && (
+        <div className="cm-regen-prompt">
+          <p>Source content was modified. Regenerate study materials?</p>
+          <div className="cm-regen-buttons">
+            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>Study Guide</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>Quiz</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>Flashcards</button>
+            <button className="cm-action-btn" onClick={() => setShowRegenPrompt(false)}>Dismiss</button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

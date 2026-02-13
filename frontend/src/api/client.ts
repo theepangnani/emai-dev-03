@@ -176,6 +176,12 @@ export interface CourseContentItem {
   created_by_user_id: number;
   created_at: string;
   updated_at: string | null;
+  archived_at: string | null;
+  last_viewed_at: string | null;
+}
+
+export interface CourseContentUpdateResponse extends CourseContentItem {
+  archived_guides_count: number;
 }
 
 export const courseContentsApi = {
@@ -186,7 +192,7 @@ export const courseContentsApi = {
     return response.data as CourseContentItem[];
   },
 
-  listAll: async (params?: { student_user_id?: number; content_type?: string }) => {
+  listAll: async (params?: { student_user_id?: number; content_type?: string; include_archived?: boolean }) => {
     const response = await api.get('/api/course-contents/', { params: params || {} });
     return response.data as CourseContentItem[];
   },
@@ -218,11 +224,20 @@ export const courseContentsApi = {
     google_classroom_url?: string;
   }) => {
     const response = await api.patch(`/api/course-contents/${id}`, data);
-    return response.data as CourseContentItem;
+    return response.data as CourseContentUpdateResponse;
   },
 
   delete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}`);
+  },
+
+  restore: async (id: number) => {
+    const response = await api.patch(`/api/course-contents/${id}/restore`);
+    return response.data as CourseContentItem;
+  },
+
+  permanentDelete: async (id: number) => {
+    await api.delete(`/api/course-contents/${id}/permanent`);
   },
 };
 
@@ -303,6 +318,7 @@ export interface StudyGuide {
   version: number;
   parent_guide_id: number | null;
   created_at: string;
+  archived_at: string | null;
   auto_created_tasks?: AutoCreatedTask[];
 }
 
@@ -384,7 +400,7 @@ export const studyApi = {
     return response.data as DuplicateCheckResponse;
   },
 
-  listGuides: async (params?: { guide_type?: string; course_id?: number; course_content_id?: number; include_children?: boolean; student_user_id?: number }) => {
+  listGuides: async (params?: { guide_type?: string; course_id?: number; course_content_id?: number; include_children?: boolean; include_archived?: boolean; student_user_id?: number }) => {
     const response = await api.get('/api/study/guides', { params: params || {} });
     return response.data as StudyGuide[];
   },
@@ -401,6 +417,15 @@ export const studyApi = {
 
   deleteGuide: async (id: number) => {
     await api.delete(`/api/study/guides/${id}`);
+  },
+
+  restoreGuide: async (id: number) => {
+    const response = await api.patch(`/api/study/guides/${id}/restore`);
+    return response.data as StudyGuide;
+  },
+
+  permanentDeleteGuide: async (id: number) => {
+    await api.delete(`/api/study/guides/${id}/permanent`);
   },
 
   updateGuide: async (id: number, data: { course_id?: number | null; course_content_id?: number | null }) => {

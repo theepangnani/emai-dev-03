@@ -92,6 +92,14 @@ export function StudyGuidesPage() {
   const [datePromptTasks, setDatePromptTasks] = useState<AutoCreatedTask[]>([]);
   const [datePromptValues, setDatePromptValues] = useState<Record<number, string>>({});
 
+  // Archive section
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedContents, setArchivedContents] = useState<CourseContentItem[]>([]);
+  const [archivedGuides, setArchivedGuides] = useState<StudyGuide[]>([]);
+
+  // Toast notification
+  const [toast, setToast] = useState<string | null>(null);
+
   // Categorize ungrouped guide
   const [categorizeGuide, setCategorizeGuide] = useState<StudyGuide | null>(null);
   const [categorizeCourseId, setCategorizeCourseId] = useState<number | ''>('');
@@ -174,6 +182,75 @@ export function StudyGuidesPage() {
       if (filterChild) params.student_user_id = filterChild;
       const items = await courseContentsApi.listAll(params);
       setContentItems(items);
+    } catch { /* ignore */ }
+  };
+
+  const loadArchived = async () => {
+    try {
+      const [allContents, allGuides] = await Promise.all([
+        courseContentsApi.listAll({ include_archived: true }),
+        studyApi.listGuides({ include_archived: true }),
+      ]);
+      setArchivedContents(allContents.filter(c => c.archived_at));
+      setArchivedGuides(allGuides.filter(g => g.archived_at));
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (showArchived) loadArchived();
+  }, [showArchived]);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleArchiveContent = async (id: number) => {
+    const ok = await confirm({ title: 'Archive Material', message: 'This will archive the course material. You can restore it later from the archive.', confirmLabel: 'Archive' });
+    if (!ok) return;
+    try {
+      await courseContentsApi.delete(id);
+      setContentItems(prev => prev.filter(c => c.id !== id));
+      showToast('Material archived');
+      if (showArchived) loadArchived();
+    } catch { /* ignore */ }
+  };
+
+  const handleRestoreContent = async (id: number) => {
+    try {
+      await courseContentsApi.restore(id);
+      showToast('Material restored');
+      loadData();
+      loadArchived();
+    } catch { /* ignore */ }
+  };
+
+  const handlePermanentDeleteContent = async (id: number) => {
+    const ok = await confirm({ title: 'Permanently Delete', message: 'This will permanently delete this material and all linked study guides. This cannot be undone.', confirmLabel: 'Delete Forever', variant: 'danger' });
+    if (!ok) return;
+    try {
+      await courseContentsApi.permanentDelete(id);
+      showToast('Material permanently deleted');
+      loadArchived();
+    } catch { /* ignore */ }
+  };
+
+  const handleRestoreGuide = async (id: number) => {
+    try {
+      await studyApi.restoreGuide(id);
+      showToast('Study guide restored');
+      loadData();
+      loadArchived();
+    } catch { /* ignore */ }
+  };
+
+  const handlePermanentDeleteGuide = async (id: number) => {
+    const ok = await confirm({ title: 'Permanently Delete', message: 'This will permanently delete this study guide. This cannot be undone.', confirmLabel: 'Delete Forever', variant: 'danger' });
+    if (!ok) return;
+    try {
+      await studyApi.permanentDeleteGuide(id);
+      showToast('Study guide permanently deleted');
+      loadArchived();
     } catch { /* ignore */ }
   };
 
@@ -539,6 +616,10 @@ export function StudyGuidesPage() {
                       </span>
                     </div>
                   </div>
+                  <div className="guide-row-actions">
+                    <button className="guide-convert-btn" title="Edit" onClick={() => navigateToContent(item)}>&#9998;</button>
+                    <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -548,6 +629,66 @@ export function StudyGuidesPage() {
             </div>
           )}
         </div>
+
+        {/* Archive toggle */}
+        <div className="archive-toggle-row">
+          <button
+            className={`archive-toggle-btn${showArchived ? ' active' : ''}`}
+            onClick={() => setShowArchived(!showArchived)}
+          >
+            {showArchived ? 'Hide Archive' : 'Show Archive'}
+            {showArchived && (archivedContents.length + archivedGuides.length > 0) && (
+              <span className="filter-count">{archivedContents.length + archivedGuides.length}</span>
+            )}
+          </button>
+        </div>
+
+        {/* Archived items */}
+        {showArchived && (archivedContents.length > 0 || archivedGuides.length > 0) && (
+          <div className="guides-section archived-section">
+            <h3>Archived ({archivedContents.length + archivedGuides.length})</h3>
+            <div className="guides-list">
+              {archivedContents.map(item => (
+                <div key={`ac-${item.id}`} className="guide-row guide-row-archived">
+                  <div className="guide-row-main">
+                    <span className="guide-row-icon">{contentTypeIcon(item.content_type)}</span>
+                    <div className="guide-row-info">
+                      <span className="guide-row-title">{item.title}</span>
+                      <span className="guide-row-meta">
+                        {item.course_name && <span className="guide-course-badge">{item.course_name}</span>}
+                        <span className="guide-row-date">Archived {new Date(item.archived_at!).toLocaleDateString()}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="guide-row-actions">
+                    <button className="guide-convert-btn" title="Restore" onClick={() => handleRestoreContent(item.id)}>&#8634;</button>
+                    <button className="guide-delete-btn" title="Delete permanently" onClick={() => handlePermanentDeleteContent(item.id)}>&#128465;</button>
+                  </div>
+                </div>
+              ))}
+              {archivedGuides.map(guide => (
+                <div key={`ag-${guide.id}`} className="guide-row guide-row-archived">
+                  <div className="guide-row-main">
+                    <span className="guide-row-icon">
+                      {guide.guide_type === 'quiz' ? '\u2753' : guide.guide_type === 'flashcards' ? '\uD83C\uDCCF' : '\uD83D\uDCD6'}
+                    </span>
+                    <div className="guide-row-info">
+                      <span className="guide-row-title">{guide.title}</span>
+                      <span className="guide-row-meta">
+                        <span className="guide-type-label">{guideTypeLabel(guide.guide_type)}</span>
+                        <span className="guide-row-date">Archived {new Date(guide.archived_at!).toLocaleDateString()}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="guide-row-actions">
+                    <button className="guide-convert-btn" title="Restore" onClick={() => handleRestoreGuide(guide.id)}>&#8634;</button>
+                    <button className="guide-delete-btn" title="Delete permanently" onClick={() => handlePermanentDeleteGuide(guide.id)}>&#128465;</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Legacy study guides (no course_content_id) */}
         {filteredLegacy.length > 0 && (
@@ -794,6 +935,7 @@ export function StudyGuidesPage() {
         </div>
       )}
       {confirmModal}
+      {toast && <div className="toast-notification">{toast}</div>}
     </DashboardLayout>
   );
 }

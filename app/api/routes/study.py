@@ -673,6 +673,7 @@ def list_study_guides(
     course_id: int | None = None,
     course_content_id: int | None = None,
     include_children: bool = False,
+    include_archived: bool = False,
     student_user_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -707,6 +708,8 @@ def list_study_guides(
         # Default: own guides only
         query = db.query(StudyGuide).filter(StudyGuide.user_id == current_user.id)
 
+    if not include_archived:
+        query = query.filter(StudyGuide.archived_at.is_(None))
     if guide_type:
         query = query.filter(StudyGuide.guide_type == guide_type)
     if course_id:
@@ -787,13 +790,55 @@ def delete_study_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a study guide (owner only)."""
+    """Soft-delete (archive) a study guide (owner only)."""
     guide = db.query(StudyGuide).filter(
         StudyGuide.id == guide_id,
         StudyGuide.user_id == current_user.id,
     ).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
+    guide.archived_at = datetime.now(timezone.utc)
+    log_action(db, user_id=current_user.id, action="archive", resource_type="study_guide", resource_id=guide_id)
+    db.commit()
+    return None
+
+
+@router.patch("/guides/{guide_id}/restore", response_model=StudyGuideResponse)
+def restore_study_guide(
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Restore an archived study guide (owner only)."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == guide_id,
+        StudyGuide.user_id == current_user.id,
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+    if guide.archived_at is None:
+        raise HTTPException(status_code=400, detail="Study guide is not archived")
+    guide.archived_at = None
+    db.commit()
+    db.refresh(guide)
+    return guide
+
+
+@router.delete("/guides/{guide_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def permanent_delete_study_guide(
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permanently delete an archived study guide (owner only)."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == guide_id,
+        StudyGuide.user_id == current_user.id,
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+    if guide.archived_at is None:
+        raise HTTPException(status_code=400, detail="Study guide must be archived before permanent deletion")
     db.delete(guide)
     log_action(db, user_id=current_user.id, action="delete", resource_type="study_guide", resource_id=guide_id)
     db.commit()

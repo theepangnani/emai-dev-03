@@ -27,6 +27,7 @@ class StudyGuide(Base):
     content_hash = Column(String(64), nullable=True)  # SHA-256 for duplicate detection
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    archived_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user = relationship("User", backref="study_guides")

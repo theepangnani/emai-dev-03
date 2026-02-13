@@ -36,6 +36,8 @@ class CourseContent(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    archived_at = Column(DateTime(timezone=True), nullable=True)
+    last_viewed_at = Column(DateTime(timezone=True), nullable=True)
 
     course = relationship("Course", backref="contents")
     created_by = relationship("User", foreign_keys=[created_by_user_id])

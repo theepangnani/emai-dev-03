@@ -55,6 +55,13 @@ class CourseContentResponse(BaseModel):
     created_by_user_id: int
     created_at: datetime
     updated_at: Optional[datetime]
+    archived_at: Optional[datetime] = None
+    last_viewed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class CourseContentUpdateResponse(CourseContentResponse):
+    """Extended response returned from PATCH that includes side-effect counts."""
+    archived_guides_count: int = 0
