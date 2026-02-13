@@ -803,6 +803,22 @@ Critical security vulnerabilities identified in the Feb 2026 risk audit and fixe
 - Google tokens stored server-side in temporary store during registration flow, resolved on user creation
 - Error messages no longer leak internal exception details to the frontend
 
+#### 6.23.5 RBAC Authorization Gaps (#181, #139)
+- **Students route**: `list_students` restricted to ADMIN/TEACHER; teachers see only students in their courses; `get_student` scoped to admin/own/parent-child/teacher-course; `create_student` restricted to admin
+- **Users route**: `get_user` restricted to own profile, admin, parent (linked children), teacher (course students)
+- **Assignments route**: added `can_access_course()` checks on all CRUD; `create_assignment` restricted to course owner/teacher/admin; `list_assignments` scoped to accessible courses
+- **Courses route**: `get_course` checks course access (enrollment/ownership/admin); `list_course_students` allows admin in addition to teacher
+- **Course contents route**: `create`, `get`, and `list` (with course_id) verify course enrollment; update/delete allow admin in addition to creator
+- **Study routes**: generation endpoints (study guide, quiz, flashcards) verify assignment course access before generating content
+- Shared `can_access_course()` helper in `deps.py` checks admin/owner/public/teacher/enrolled/parent-child-enrolled
+
+#### 6.23.6 Logging & Student Password Security (#182)
+- Logging endpoint (`/api/logs/`) now requires authentication (Bearer token)
+- Added input validation: max message length (2000 chars), max batch size (50 entries), valid level enum
+- Frontend logger already sends auth token via Axios interceptor; unauthenticated errors silently skip server logging
+- Parent-created student accounts use `UNUSABLE_PASSWORD_HASH` sentinel (`!INVITE_PENDING`) instead of empty string
+- `verify_password()` explicitly rejects empty and sentinel hashes — no login possible without setting a real password via invite link
+
 ---
 
 ## 7. Role-Based Dashboards - IMPLEMENTED
