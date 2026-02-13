@@ -49,9 +49,14 @@ class Settings(BaseSettings):
     audit_log_enabled: bool = True
     audit_log_retention_days: int = 90
 
-    # Email (SendGrid)
+    # Email
     sendgrid_api_key: str = ""
     from_email: str = "noreply@classbridge.app"
+    # Gmail SMTP (used when SendGrid is not configured)
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""  # Gmail App Password
 
     class Config:
         env_file = ".env"
