@@ -10,25 +10,30 @@ export function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const { login, loginWithToken } = useAuth();
+  const { user, login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Handle OAuth callback
+  // Redirect to dashboard once user is loaded (after OAuth or if already logged in)
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Handle OAuth callback — set the token, then let the user-loaded effect navigate
   useEffect(() => {
     const token = searchParams.get('token');
     const oauthError = searchParams.get('error');
 
     if (token) {
-      // Google OAuth returned a token - log in with it
       loginWithToken(token);
-      setSearchParams({});
-      navigate('/dashboard');
+      setSearchParams({}, { replace: true });
     } else if (oauthError) {
       setError(`Google sign-in failed: ${oauthError}`);
-      setSearchParams({});
+      setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams, loginWithToken, navigate]);
+  }, [searchParams, setSearchParams, loginWithToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

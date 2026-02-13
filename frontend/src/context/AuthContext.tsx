@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setIsLoading(true);
     const loadUser = async () => {
       if (token) {
         try {
@@ -39,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('token');
           setToken(null);
         }
+      } else {
+        setUser(null);
       }
       setIsLoading(false);
     };
