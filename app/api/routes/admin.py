@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 
 from app.core.config import settings
 from app.core.utils import escape_like
@@ -18,6 +18,7 @@ from app.models.course import Course
 from app.models.assignment import Assignment
 from app.models.audit_log import AuditLog
 from app.models.broadcast import Broadcast
+from app.models.message import Conversation, Message
 from app.models.notification import Notification, NotificationType
 from app.api.deps import require_role
 from app.schemas.admin import (
@@ -240,6 +241,37 @@ def remove_role_from_user(
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent / "templates"
 
 
+def _get_or_create_conversation(
+    db: Session, admin_id: int, user_id: int, subject: str | None = None
+) -> Conversation:
+    """Find existing conversation between admin and user, or create one."""
+    conv = (
+        db.query(Conversation)
+        .filter(
+            or_(
+                and_(
+                    Conversation.participant_1_id == admin_id,
+                    Conversation.participant_2_id == user_id,
+                ),
+                and_(
+                    Conversation.participant_1_id == user_id,
+                    Conversation.participant_2_id == admin_id,
+                ),
+            )
+        )
+        .first()
+    )
+    if not conv:
+        conv = Conversation(
+            participant_1_id=admin_id,
+            participant_2_id=user_id,
+            subject=subject,
+        )
+        db.add(conv)
+        db.flush()
+    return conv
+
+
 def _render_broadcast_email(subject: str, body: str, recipient_name: str) -> str:
     template_path = TEMPLATE_DIR / "admin_broadcast.html"
     html = template_path.read_text()
@@ -272,7 +304,8 @@ def send_broadcast(
     db.add(broadcast)
     db.flush()
 
-    # Create in-app notifications for all active users
+    # Create in-app notifications + conversation messages for all active users
+    message_content = f"[Broadcast] {data.subject}\n\n{data.body}"
     for user in active_users:
         db.add(Notification(
             user_id=user.id,
@@ -280,6 +313,14 @@ def send_broadcast(
             title=data.subject,
             content=data.body,
         ))
+        # Also create a conversation message so it appears in Messages page
+        if user.id != current_user.id:
+            conv = _get_or_create_conversation(db, current_user.id, user.id, subject=data.subject)
+            db.add(Message(
+                conversation_id=conv.id,
+                sender_id=current_user.id,
+                content=message_content,
+            ))
 
     log_action(
         db,
@@ -356,6 +397,15 @@ def send_admin_message(
         type=NotificationType.SYSTEM,
         title=data.subject,
         content=data.body,
+    ))
+
+    # Create conversation message so it appears in Messages page
+    conv = _get_or_create_conversation(db, current_user.id, user.id, subject=data.subject)
+    message_content = f"[Admin Message] {data.subject}\n\n{data.body}"
+    db.add(Message(
+        conversation_id=conv.id,
+        sender_id=current_user.id,
+        content=message_content,
     ))
 
     log_action(
