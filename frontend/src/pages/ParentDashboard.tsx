@@ -423,19 +423,26 @@ export function ParentDashboard() {
     setEditChildLoading(true);
     setEditChildError('');
     try {
-      await parentApi.updateChild(editChild.student_id, {
-        full_name: editChildName.trim(),
-        email: editChildEmail.trim() || undefined,
-        grade_level: editChildGrade ? parseInt(editChildGrade, 10) : undefined,
-        school_name: editChildSchool.trim() || undefined,
-        date_of_birth: editChildDob || undefined,
-        phone: editChildPhone.trim() || undefined,
-        address: editChildAddress.trim() || undefined,
-        city: editChildCity.trim() || undefined,
-        province: editChildProvince.trim() || undefined,
-        postal_code: editChildPostal.trim() || undefined,
-        notes: editChildNotes.trim() || undefined,
-      });
+      // Only send fields that actually changed to prevent accidental overwrites
+      const payload: Record<string, unknown> = {};
+      if (editChildName.trim() !== editChild.full_name) payload.full_name = editChildName.trim();
+      if (editChildEmail.trim() !== (editChild.email || '')) payload.email = editChildEmail.trim();
+      const newGrade = editChildGrade ? parseInt(editChildGrade, 10) : null;
+      if (newGrade !== editChild.grade_level) payload.grade_level = newGrade ?? undefined;
+      if (editChildSchool.trim() !== (editChild.school_name || '')) payload.school_name = editChildSchool.trim() || undefined;
+      if (editChildDob !== (editChild.date_of_birth || '')) payload.date_of_birth = editChildDob || undefined;
+      if (editChildPhone.trim() !== (editChild.phone || '')) payload.phone = editChildPhone.trim() || undefined;
+      if (editChildAddress.trim() !== (editChild.address || '')) payload.address = editChildAddress.trim() || undefined;
+      if (editChildCity.trim() !== (editChild.city || '')) payload.city = editChildCity.trim() || undefined;
+      if (editChildProvince.trim() !== (editChild.province || '')) payload.province = editChildProvince.trim() || undefined;
+      if (editChildPostal.trim() !== (editChild.postal_code || '')) payload.postal_code = editChildPostal.trim() || undefined;
+      if (editChildNotes.trim() !== (editChild.notes || '')) payload.notes = editChildNotes.trim() || undefined;
+
+      if (Object.keys(payload).length === 0) {
+        closeEditChildModal();
+        return;
+      }
+      await parentApi.updateChild(editChild.student_id, payload as any);
       closeEditChildModal();
       await loadDashboard();
     } catch (err: any) {
