@@ -29,6 +29,10 @@
   flex-shrink: 0;
 }
 
+[data-theme="dark"] .header-logo {
+  content: url('/logo-icon-dark.png');
+}
+
 .logo {
   font-size: 22px;
   font-weight: 700;
