@@ -292,18 +292,24 @@ with engine.connect() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN task_reminder_days VARCHAR(50) DEFAULT '1,3'"))
             logger.info("Added 'task_reminder_days' column to users")
 
+        conn.commit()
+
         # ── notifications enum migration (TASK_DUE) ──────────────────
+        # NOTE: ALTER TYPE ADD VALUE in PostgreSQL can leave connection in
+        # aborted state on failure; commit before and after to isolate.
         if "sqlite" not in settings.database_url:
             try:
                 conn.execute(text("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'TASK_DUE'"))
+                conn.commit()
                 logger.info("Added TASK_DUE to notificationtype enum")
             except Exception:
-                pass  # Value may already exist
+                conn.rollback()  # Required: clear aborted transaction state
             try:
                 conn.execute(text("ALTER TYPE invitetype ADD VALUE IF NOT EXISTS 'PARENT'"))
+                conn.commit()
                 logger.info("Added PARENT to invitetype enum")
             except Exception:
-                pass  # Value may already exist
+                conn.rollback()  # Required: clear aborted transaction state
 
         # ── student_teachers: make teacher_user_id nullable ──────────
         if "student_teachers" in inspector.get_table_names():
@@ -312,7 +318,7 @@ with engine.connect() as conn:
                     conn.execute(text("ALTER TABLE student_teachers ALTER COLUMN teacher_user_id DROP NOT NULL"))
                     logger.info("Made 'teacher_user_id' nullable on student_teachers table")
                 except Exception:
-                    pass  # Already nullable
+                    conn.rollback()  # Required: clear aborted transaction state
 
         # ── students: add profile detail columns (#267) ──────────────
         if "students" in inspector.get_table_names():
@@ -333,6 +339,7 @@ with engine.connect() as conn:
                 if col_name not in existing_cols:
                     conn.execute(text(f"ALTER TABLE students ADD COLUMN {col_name} {col_type}"))
                     logger.info(f"Added '{col_name}' column to students")
+            conn.commit()
 
         # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
         _apply_cascade_and_unique_migration(conn, inspector)
