@@ -926,7 +926,9 @@ def link_teacher_to_child(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Link a teacher to a child by email so the parent can message them directly."""
+    import os
     from app.models.teacher import Teacher
+    from app.models.notification import Notification, NotificationType
 
     # Verify parent-student link
     link = (
@@ -943,6 +945,10 @@ def link_teacher_to_child(
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+
+    # Get child's display name
+    child_user = db.query(User).filter(User.id == student.user_id).first()
+    child_name = child_user.full_name if child_user else "your child"
 
     # Find teacher user by email
     teacher_user = db.query(User).filter(User.email == request.teacher_email).first()
@@ -970,7 +976,7 @@ def link_teacher_to_child(
         raise HTTPException(status_code=400, detail="This teacher is already linked to this child")
 
     # Insert the link
-    result = db.execute(
+    db.execute(
         insert(student_teachers).values(
             student_id=student_id,
             teacher_user_id=teacher_user_id,
@@ -994,6 +1000,88 @@ def link_teacher_to_child(
     log_action(db, user_id=current_user.id, action="create", resource_type="student_teacher_link",
                details={"student_id": student_id, "teacher_email": request.teacher_email})
     db.commit()
+
+    # ── Email handling ─────────────────────────────────────────
+    template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates")
+
+    if teacher_user:
+        # Teacher exists → send notification email + in-app notification
+        try:
+            tpl_path = os.path.join(template_dir, "teacher_linked_notification.html")
+            with open(tpl_path, "r") as f:
+                html = f.read()
+            html = (html
+                .replace("{{teacher_name}}", teacher_user.full_name)
+                .replace("{{parent_name}}", current_user.full_name)
+                .replace("{{child_name}}", child_name)
+                .replace("{{app_url}}", settings.frontend_url))
+            send_email_sync(
+                to_email=teacher_user.email,
+                subject=f"{current_user.full_name} connected with you on ClassBridge",
+                html_content=html,
+            )
+            logger.info(f"Teacher linked notification email sent to {teacher_user.email}")
+        except Exception as e:
+            logger.warning(f"Failed to send teacher linked notification: {e}")
+
+        # In-app notification
+        try:
+            db.add(Notification(
+                user_id=teacher_user.id,
+                type=NotificationType.SYSTEM,
+                title="New Parent Connection",
+                content=f"{current_user.full_name} linked you as a teacher for {child_name}",
+                link="/messages",
+            ))
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to create teacher notification: {e}")
+    else:
+        # Teacher not in system → create invite + send invitation email
+        try:
+            # Check for existing pending invite
+            existing_invite = (
+                db.query(Invite)
+                .filter(
+                    Invite.email == request.teacher_email,
+                    Invite.invite_type == InviteType.TEACHER,
+                    Invite.accepted_at.is_(None),
+                    Invite.expires_at > datetime.utcnow(),
+                )
+                .first()
+            )
+            if not existing_invite:
+                token = secrets.token_urlsafe(32)
+                invite = Invite(
+                    email=request.teacher_email,
+                    invite_type=InviteType.TEACHER,
+                    token=token,
+                    expires_at=datetime.utcnow() + timedelta(days=30),
+                    invited_by_user_id=current_user.id,
+                    metadata_json={"student_id": student_id, "child_name": child_name},
+                )
+                db.add(invite)
+                db.commit()
+
+                invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
+            else:
+                invite_link = f"{settings.frontend_url}/accept-invite?token={existing_invite.token}"
+
+            tpl_path = os.path.join(template_dir, "teacher_invite.html")
+            with open(tpl_path, "r") as f:
+                html = f.read()
+            html = (html
+                .replace("{{parent_name}}", current_user.full_name)
+                .replace("{{child_name}}", child_name)
+                .replace("{{invite_link}}", invite_link))
+            send_email_sync(
+                to_email=request.teacher_email,
+                subject=f"{current_user.full_name} invited you to ClassBridge",
+                html_content=html,
+            )
+            logger.info(f"Teacher invite email sent to {request.teacher_email}")
+        except Exception as e:
+            logger.warning(f"Failed to send teacher invite email: {e}")
 
     return LinkedTeacher(
         id=row.id,

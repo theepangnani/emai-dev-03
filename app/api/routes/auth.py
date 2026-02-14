@@ -210,6 +210,20 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
 
     # Mark invite as accepted
     invite.accepted_at = datetime.utcnow()
+
+    # Backfill teacher_user_id on student_teachers rows for this teacher email
+    if role == UserRole.TEACHER:
+        from app.models.student import student_teachers
+        from sqlalchemy import update
+        db.execute(
+            update(student_teachers)
+            .where(
+                student_teachers.c.teacher_email == invite.email,
+                student_teachers.c.teacher_user_id.is_(None),
+            )
+            .values(teacher_user_id=user.id)
+        )
+
     log_action(db, user_id=user.id, action="create", resource_type="user", resource_id=user.id,
                details={"via": "invite", "invite_type": invite.invite_type.value, "email": invite.email},
                ip_address=request.client.host if request.client else None)

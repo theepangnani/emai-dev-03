@@ -423,3 +423,140 @@ class TestLinkTeacher:
             headers=headers,
         )
         assert resp.status_code == 404
+
+    def test_link_sends_notification_to_existing_teacher(self, client, users, db_session, monkeypatch):
+        """When a registered teacher is linked, a notification email is sent."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.teacher import Teacher
+
+        # Create a fresh teacher to avoid conflicts with other tests
+        email = "par_notif_teacher@test.com"
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name="Notif Teacher", role=UserRole.TEACHER,
+                     hashed_password=get_password_hash(PASSWORD))
+            db_session.add(u)
+            db_session.flush()
+            db_session.add(Teacher(user_id=u.id))
+            db_session.commit()
+
+        emails_sent = []
+
+        def mock_send(**kwargs):
+            emails_sent.append(kwargs)
+            return True
+
+        monkeypatch.setattr("app.api.routes.parent.send_email_sync", mock_send)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": email},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["teacher_user_id"] == u.id
+
+        # Notification email should have been sent to the teacher
+        assert len(emails_sent) == 1
+        assert emails_sent[0]["to_email"] == email
+        assert "connected" in emails_sent[0]["subject"].lower() or "classbridge" in emails_sent[0]["subject"].lower()
+
+        # In-app notification should exist
+        from app.models.notification import Notification
+        notif = db_session.query(Notification).filter(
+            Notification.user_id == u.id,
+            Notification.title == "New Parent Connection",
+        ).first()
+        assert notif is not None
+
+    def test_link_sends_invite_to_unknown_teacher(self, client, users, db_session, monkeypatch):
+        """When a teacher email is not in the system, an invite is created and email sent."""
+        emails_sent = []
+
+        def mock_send(**kwargs):
+            emails_sent.append(kwargs)
+            return True
+
+        monkeypatch.setattr("app.api.routes.parent.send_email_sync", mock_send)
+
+        unknown_email = "par_unknown_teacher@test.com"
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": unknown_email, "teacher_name": "Unknown Teacher"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["teacher_user_id"] is None
+        assert data["teacher_name"] == "Unknown Teacher"
+
+        # Invite email should have been sent
+        assert len(emails_sent) == 1
+        assert emails_sent[0]["to_email"] == unknown_email
+        assert "invited" in emails_sent[0]["subject"].lower()
+
+        # Invite record should exist in the database
+        from app.models.invite import Invite, InviteType
+        invite = db_session.query(Invite).filter(
+            Invite.email == unknown_email,
+            Invite.invite_type == InviteType.TEACHER,
+        ).first()
+        assert invite is not None
+        assert invite.accepted_at is None
+
+    def test_accept_invite_backfills_teacher_user_id(self, client, users, db_session, monkeypatch):
+        """When an invited teacher accepts, student_teachers.teacher_user_id is backfilled."""
+        emails_sent = []
+
+        def mock_send(**kwargs):
+            emails_sent.append(kwargs)
+            return True
+
+        monkeypatch.setattr("app.api.routes.parent.send_email_sync", mock_send)
+
+        invite_email = "par_backfill_teacher@test.com"
+        headers = _auth(client, users["parent"].email)
+
+        # Link teacher who doesn't exist
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": invite_email, "teacher_name": "Backfill Teacher"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["teacher_user_id"] is None
+
+        # Find the invite token
+        from app.models.invite import Invite, InviteType
+        invite = db_session.query(Invite).filter(
+            Invite.email == invite_email,
+            Invite.invite_type == InviteType.TEACHER,
+        ).first()
+        assert invite is not None
+
+        # Accept the invite — this creates the teacher user
+        resp = client.post("/api/auth/accept-invite", json={
+            "token": invite.token,
+            "full_name": "Backfill Teacher",
+            "password": PASSWORD,
+        })
+        assert resp.status_code == 200
+
+        # Verify token returned (teacher is logged in)
+        assert "access_token" in resp.json()
+
+        # Check that student_teachers.teacher_user_id was backfilled
+        from app.models.student import student_teachers
+        from app.models.user import User
+        new_user = db_session.query(User).filter(User.email == invite_email).first()
+        assert new_user is not None
+
+        db_session.expire_all()
+        row = db_session.query(student_teachers).filter(
+            student_teachers.c.teacher_email == invite_email,
+        ).first()
+        assert row is not None
+        assert row.teacher_user_id == new_user.id

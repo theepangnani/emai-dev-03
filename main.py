@@ -178,6 +178,15 @@ with engine.connect() as conn:
             except Exception:
                 pass  # Value may already exist
 
+        # ── student_teachers: make teacher_user_id nullable ──────────
+        if "student_teachers" in inspector.get_table_names():
+            if "sqlite" not in settings.database_url:
+                try:
+                    conn.execute(text("ALTER TABLE student_teachers ALTER COLUMN teacher_user_id DROP NOT NULL"))
+                    logger.info("Made 'teacher_user_id' nullable on student_teachers table")
+                except Exception:
+                    pass  # Already nullable
+
         conn.commit()
 
 app = FastAPI(

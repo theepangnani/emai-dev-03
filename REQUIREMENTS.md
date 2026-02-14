@@ -957,7 +957,7 @@ New:      Parent → Child → Teacher (direct via student_teachers)
 - `app/api/routes/messages.py` — updated `get_valid_recipients()`
 - `frontend/src/pages/MyKidsPage.tsx` — Teachers section + Add Teacher modal
 
-### 6.28.1 Teacher Linking Email Notifications (Phase 1) - PLANNED
+### 6.28.1 Teacher Linking Email Notifications (Phase 1) - IMPLEMENTED
 
 Enhance the "Add Teacher" flow to send emails when a parent links a teacher to their child.
 
@@ -972,10 +972,10 @@ Enhance the "Add Teacher" flow to send emails when a parent links a teacher to t
    - In-app notification of type SYSTEM for the teacher
 
 **Sub-tasks:**
-- [ ] Backend: Invitation email for unregistered teachers (#234)
-- [ ] Backend: Notification email for registered teachers (#235)
-- [ ] Email templates: `teacher_invite.html`, `teacher_linked_notification.html`
-- [ ] Backfill `teacher_user_id` on invite acceptance
+- [x] Backend: Invitation email for unregistered teachers (#234)
+- [x] Backend: Notification email for registered teachers (#235)
+- [x] Email templates: `teacher_invite.html`, `teacher_linked_notification.html`
+- [x] Backfill `teacher_user_id` on invite acceptance
 
 ### 6.29 Teacher Course Roster Management & Teacher Assignment (Phase 1) - PLANNED
 
