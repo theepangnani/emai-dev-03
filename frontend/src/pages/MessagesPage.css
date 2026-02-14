@@ -199,6 +199,11 @@
 
 .conversation-item.unread {
   background: var(--color-warning-light);
+  border-left: 3px solid var(--color-accent);
+}
+
+.conversation-item.unread .conv-name {
+  font-weight: 700;
 }
 
 .conversation-item.unread.active {

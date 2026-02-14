@@ -173,6 +173,11 @@
 
 .comm-item.unread {
   background: var(--color-warning-light);
+  border-left: 3px solid var(--color-accent);
+}
+
+.comm-item.unread .comm-sender {
+  font-weight: 700;
 }
 
 .comm-item-header {

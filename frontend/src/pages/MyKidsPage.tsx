@@ -210,7 +210,7 @@ export function MyKidsPage() {
                   <>
                     {activeTasks.map(t => (
                       <div key={t.id} className="mykids-task-row" onClick={() => navigate(`/tasks/${t.id}`)}>
-                        <span className={`task-priority-badge ${t.priority || 'medium'}`}>{t.priority || 'medium'}</span>
+                        <span className={`task-priority-badge ${t.priority || 'medium'}`}>{(t.priority || 'medium') === 'high' ? '\u25B2 ' : (t.priority || 'medium') === 'low' ? '\u25BC ' : '\u25CF '}{t.priority || 'medium'}</span>
                         <span className="mykids-task-title">{t.title}</span>
                         {t.due_date && (
                           <span className="mykids-task-due">

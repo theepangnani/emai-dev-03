@@ -78,7 +78,7 @@ export function ParentDashboard() {
   const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
   const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [studyError, setStudyError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
@@ -518,24 +518,29 @@ export function ParentDashboard() {
 
     if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
 
-    if (studyMode === 'text' && !duplicateCheck) {
-      try {
-        const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
-        if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
-      } catch { /* Continue */ }
+    setIsGenerating(true);
+    try {
+      if (studyMode === 'text' && !duplicateCheck) {
+        try {
+          const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
+          if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
+        } catch { /* Continue */ }
+      }
+      // Queue generation and navigate to study guides page (non-blocking)
+      queueStudyGeneration({
+        title: studyTitle || `New ${studyType.replace('_', ' ')}`,
+        content: studyContent,
+        type: studyType,
+        mode: studyMode,
+        file: selectedFile ?? undefined,
+        regenerateId: duplicateCheck?.existing_guide?.id,
+      });
+      setDuplicateCheck(null);
+      resetStudyModal();
+      navigate('/course-materials');
+    } finally {
+      setIsGenerating(false);
     }
-    // Queue generation and navigate to study guides page (non-blocking)
-    queueStudyGeneration({
-      title: studyTitle || `New ${studyType.replace('_', ' ')}`,
-      content: studyContent,
-      type: studyType,
-      mode: studyMode,
-      file: selectedFile ?? undefined,
-      regenerateId: duplicateCheck?.existing_guide?.id,
-    });
-    setDuplicateCheck(null);
-    resetStudyModal();
-    navigate('/course-materials');
   };
 
   // ============================================
@@ -853,25 +858,25 @@ export function ParentDashboard() {
                 onClick={() => navigate('/tasks?due=overdue')}
               >
                 <span className="status-card-count">{taskOverdueCount}</span>
-                <span className="status-card-label">Overdue</span>
+                <span className="status-card-label">{'\u26A0'} Overdue</span>
               </div>
               <div
                 className={`status-card${taskDueTodayCount > 0 ? ' active' : ''}`}
                 onClick={() => navigate('/tasks?due=today')}
               >
                 <span className="status-card-count">{taskDueTodayCount}</span>
-                <span className="status-card-label">Due Today</span>
+                <span className="status-card-label">{'\u{1F4C5}'} Due Today</span>
               </div>
               <div
                 className={`status-card${dashboardData.unread_messages > 0 ? ' notify' : ''}`}
                 onClick={() => navigate('/messages')}
               >
                 <span className="status-card-count">{dashboardData.unread_messages}</span>
-                <span className="status-card-label">Messages</span>
+                <span className="status-card-label">{'\u{1F4AC}'} Messages</span>
               </div>
               <div className="status-card" onClick={() => navigate('/tasks')}>
                 <span className="status-card-count">{dashboardData.total_tasks}</span>
-                <span className="status-card-label">Total Tasks</span>
+                <span className="status-card-label">{'\u{1F4CB}'} Total Tasks</span>
               </div>
             </div>
           )}
@@ -1385,7 +1390,7 @@ export function ParentDashboard() {
                         <div className="task-sticky-body">
                           <span className={`task-sticky-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
                           <span className="task-sticky-meta">
-                            <span className={`task-priority-badge ${priorityClass}`}>{priorityClass}</span>
+                            <span className={`task-priority-badge ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
                             {task.assignee_name && <span className="task-sticky-assignee">&rarr; {task.assignee_name}</span>}
                           </span>
                         </div>

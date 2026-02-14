@@ -74,7 +74,7 @@ export function StudyGuidesPage() {
   const [modalMaterials, setModalMaterials] = useState<CourseContentItem[]>([]);
   const [modalMaterialId, setModalMaterialId] = useState<number | ''>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [studyError, setStudyError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
@@ -426,27 +426,32 @@ export function StudyGuidesPage() {
 
     if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
 
-    if (studyMode === 'text' && !duplicateCheck) {
-      try {
-        const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
-        if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
-      } catch { /* continue */ }
+    setIsGenerating(true);
+    try {
+      if (studyMode === 'text' && !duplicateCheck) {
+        try {
+          const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
+          if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
+        } catch { /* continue */ }
+      }
+
+      const params: PendingGeneration = {
+        title: studyTitle || `New ${studyType.replace('_', ' ')}`,
+        content: studyContent,
+        type: studyType,
+        mode: studyMode,
+        file: selectedFile ?? undefined,
+        regenerateId: duplicateCheck?.existing_guide?.id,
+        courseId: modalCourseId ? (modalCourseId as number) : undefined,
+        courseContentId: modalMaterialId ? (modalMaterialId as number) : undefined,
+      };
+
+      setDuplicateCheck(null);
+      resetModal();
+      startGeneration(params);
+    } finally {
+      setIsGenerating(false);
     }
-
-    const params: PendingGeneration = {
-      title: studyTitle || `New ${studyType.replace('_', ' ')}`,
-      content: studyContent,
-      type: studyType,
-      mode: studyMode,
-      file: selectedFile ?? undefined,
-      regenerateId: duplicateCheck?.existing_guide?.id,
-      courseId: modalCourseId ? (modalCourseId as number) : undefined,
-      courseContentId: modalMaterialId ? (modalMaterialId as number) : undefined,
-    };
-
-    setDuplicateCheck(null);
-    resetModal();
-    startGeneration(params);
   };
 
   const handleDatePromptSave = async () => {

@@ -388,10 +388,10 @@ export function StudentDashboard() {
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">📊</div>
-          <h3>Average Grade</h3>
-          <p className="card-value">--</p>
-          <p className="card-label">Overall performance</p>
+          <div className="card-icon">📖</div>
+          <h3>Study Materials</h3>
+          <p className="card-value">{studyGuides.length || '--'}</p>
+          <p className="card-label">Guides, quizzes & flashcards</p>
         </div>
 
         <div className="dashboard-card">

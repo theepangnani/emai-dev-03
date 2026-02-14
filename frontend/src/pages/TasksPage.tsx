@@ -313,7 +313,7 @@ export function TasksPage() {
                   <div className="task-row-meta">
                     {task.priority && (
                       <span className={`task-priority-badge ${task.priority}`}>
-                        {task.priority}
+                        {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
                       </span>
                     )}
                     {task.due_date && (
