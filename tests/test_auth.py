@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from jose import jwt
@@ -113,7 +113,7 @@ class TestTokenValidation:
         from app.core.config import settings
 
         expired_token = jwt.encode(
-            {"sub": "999", "exp": datetime.utcnow() - timedelta(minutes=5)},
+            {"sub": "999", "exp": datetime.now(timezone.utc) - timedelta(minutes=5)},
             settings.secret_key,
             algorithm=settings.algorithm,
         )
@@ -128,7 +128,7 @@ class TestTokenValidation:
         from app.core.config import settings
 
         token = jwt.encode(
-            {"sub": "999999", "exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"sub": "999999", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             settings.secret_key,
             algorithm=settings.algorithm,
         )
@@ -166,7 +166,7 @@ class TestAcceptInvite:
             email="auth_invited_student@test.com",
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=7),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
             invited_by_user_id=parent_user.id,
         )
         db_session.add(invite)
@@ -207,7 +207,7 @@ class TestAcceptInvite:
             email="auth_expired_invite@test.com",
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() - timedelta(days=1),
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
             invited_by_user_id=parent_user.id,
         )
         db_session.add(invite)
@@ -286,7 +286,7 @@ class TestPasswordReset:
         from app.core.config import settings
 
         expired_token = jwt.encode(
-            {"sub": reset_user.email, "exp": datetime.utcnow() - timedelta(hours=1), "type": "password_reset"},
+            {"sub": reset_user.email, "exp": datetime.now(timezone.utc) - timedelta(hours=1), "type": "password_reset"},
             settings.secret_key, algorithm=settings.algorithm,
         )
         resp = client.post("/api/auth/reset-password", json={

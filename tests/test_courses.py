@@ -433,7 +433,7 @@ class TestInviteAcceptWithCourse:
     def test_student_invite_with_course_auto_enrolls(self, client, db_session):
         """Student who accepts invite with course_id metadata gets auto-enrolled."""
         import secrets
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from app.core.security import get_password_hash
         from app.models.user import User, UserRole
         from app.models.course import Course, student_courses
@@ -455,7 +455,7 @@ class TestInviteAcceptWithCourse:
             email=f"invite_student_{secrets.token_hex(4)}@test.com",
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=creator.id,
             metadata_json={"course_id": course.id},
         )
@@ -485,7 +485,7 @@ class TestInviteAcceptWithCourse:
     def test_teacher_invite_with_course_auto_assigns(self, client, db_session):
         """Teacher who accepts invite with course_id metadata gets auto-assigned."""
         import secrets
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from app.core.security import get_password_hash
         from app.models.user import User, UserRole
         from app.models.course import Course
@@ -508,7 +508,7 @@ class TestInviteAcceptWithCourse:
             email=f"invite_teacher_{secrets.token_hex(4)}@test.com",
             invite_type=InviteType.TEACHER,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=creator.id,
             metadata_json={"course_id": course.id},
         )

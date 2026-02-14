@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -88,7 +88,7 @@ async def check_assignment_reminders():
                 continue
 
             # Check assignments due in reminder_days
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             for days in reminder_days:
                 target_start = now + timedelta(days=days)

@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import or_, and_, desc, func as sa_func
@@ -60,7 +60,7 @@ def _notify_message_recipient(
     conversation created within the last 5 minutes (avoids spam on rapid messages).
     """
     # Dedup check: recent unread notification for this conversation
-    cutoff = datetime.utcnow() - timedelta(minutes=5)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
     existing = (
         db.query(Notification)
         .filter(
@@ -790,7 +790,7 @@ def mark_conversation_read(
             Message.sender_id != current_user.id,
             Message.is_read == False,
         )
-        .update({"is_read": True, "read_at": datetime.utcnow()})
+        .update({"is_read": True, "read_at": datetime.now(timezone.utc)})
     )
     db.commit()
 

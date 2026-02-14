@@ -382,7 +382,7 @@ def create_child(
             email=request.email,
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
             metadata_json={"relationship_type": request.relationship_type},
         )
@@ -473,7 +473,7 @@ def link_child(
             email=request.student_email,
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
             metadata_json={"relationship_type": request.relationship_type},
         )
@@ -634,7 +634,7 @@ def discover_children_google(
             email=email,
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
             metadata_json={"relationship_type": "guardian"},
         )
@@ -1145,7 +1145,7 @@ def link_teacher_to_child(
                     Invite.email == request.teacher_email,
                     Invite.invite_type == InviteType.TEACHER,
                     Invite.accepted_at.is_(None),
-                    Invite.expires_at > datetime.utcnow(),
+                    Invite.expires_at > datetime.now(timezone.utc),
                 )
                 .first()
             )
@@ -1155,7 +1155,7 @@ def link_teacher_to_child(
                     email=request.teacher_email,
                     invite_type=InviteType.TEACHER,
                     token=token,
-                    expires_at=datetime.utcnow() + timedelta(days=30),
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),
                     invited_by_user_id=current_user.id,
                     metadata_json={"student_id": student_id, "child_name": child_name},
                 )

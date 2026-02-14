@@ -1,7 +1,7 @@
 import os
 import secrets
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -71,7 +71,7 @@ def _resolve_teacher_by_email(db: Session, email: str, inviter: User, course: Co
             email=email,
             invite_type=InviteType.TEACHER,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=inviter.id,
             metadata_json={"course_id": course.id},
         )
@@ -505,7 +505,7 @@ def add_student_to_course(
             email=email,
             invite_type=InviteType.STUDENT,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
             metadata_json={"course_id": course.id},
         )

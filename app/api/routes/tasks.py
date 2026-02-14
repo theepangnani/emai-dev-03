@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -320,8 +320,8 @@ def update_task(
     if not is_creator:
         if request.is_completed is not None:
             task.is_completed = request.is_completed
-            task.completed_at = datetime.utcnow() if request.is_completed else None
-            task.archived_at = datetime.utcnow() if request.is_completed else None
+            task.completed_at = datetime.now(timezone.utc) if request.is_completed else None
+            task.archived_at = datetime.now(timezone.utc) if request.is_completed else None
             db.commit()
             db.refresh(task)
             return _task_to_response(task)
@@ -345,9 +345,9 @@ def update_task(
         task.due_date = request.due_date
     if request.is_completed is not None:
         task.is_completed = request.is_completed
-        task.completed_at = datetime.utcnow() if request.is_completed else None
+        task.completed_at = datetime.now(timezone.utc) if request.is_completed else None
         # Auto-archive on completion, un-archive on un-completion
-        task.archived_at = datetime.utcnow() if request.is_completed else None
+        task.archived_at = datetime.now(timezone.utc) if request.is_completed else None
     if request.priority is not None:
         task.priority = _normalize_priority(request.priority)
     if request.category is not None:
@@ -378,7 +378,7 @@ def delete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    task.archived_at = datetime.utcnow()
+    task.archived_at = datetime.now(timezone.utc)
     log_action(db, user_id=current_user.id, action="delete", resource_type="task", resource_id=task.id,
                details={"title": task.title})
     db.commit()

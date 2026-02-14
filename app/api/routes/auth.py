@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -144,7 +144,7 @@ def logout(
         jti = payload.get("jti")
         exp = payload.get("exp")
         if jti and exp:
-            expires_at = datetime.utcfromtimestamp(exp)
+            expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
             blacklist_entry = TokenBlacklist(
                 jti=jti,
                 user_id=current_user.id,
@@ -172,7 +172,8 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     if invite.accepted_at is not None:
         raise HTTPException(status_code=400, detail="This invite has already been accepted")
 
-    if invite.expires_at < datetime.utcnow():
+    # Compare as naive UTC — SQLite returns naive, PostgreSQL returns aware
+    if invite.expires_at.replace(tzinfo=None) < datetime.now(timezone.utc).replace(tzinfo=None):
         raise HTTPException(status_code=400, detail="This invite has expired")
 
     # Validate password strength
@@ -276,7 +277,7 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
                     _course.teacher_id = teacher.id
 
     # Mark invite as accepted
-    invite.accepted_at = datetime.utcnow()
+    invite.accepted_at = datetime.now(timezone.utc)
 
     # Backfill teacher_user_id on student_teachers rows for this teacher email
     if role == UserRole.TEACHER:

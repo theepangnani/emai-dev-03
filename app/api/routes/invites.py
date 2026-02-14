@@ -1,7 +1,7 @@
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel as PydanticBaseModel
@@ -162,7 +162,7 @@ def create_invite(
             Invite.email == data.email,
             Invite.invite_type == invite_type,
             Invite.accepted_at.is_(None),
-            Invite.expires_at > datetime.utcnow(),
+            Invite.expires_at > datetime.now(timezone.utc),
         )
         .first()
     )
@@ -179,7 +179,7 @@ def create_invite(
         email=data.email,
         invite_type=invite_type,
         token=token,
-        expires_at=datetime.utcnow() + timedelta(days=expiry_days),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=expiry_days),
         invited_by_user_id=current_user.id,
         metadata_json=data.metadata,
     )
@@ -261,7 +261,7 @@ def resend_invite(
     # Refresh token and expiry
     invite.token = secrets.token_urlsafe(32)
     expiry_days = EXPIRY_DAYS.get(invite.invite_type, 30)
-    invite.expires_at = datetime.utcnow() + timedelta(days=expiry_days)
+    invite.expires_at = datetime.now(timezone.utc) + timedelta(days=expiry_days)
     db.commit()
     db.refresh(invite)
 
@@ -325,7 +325,7 @@ def invite_parent(
             Invite.email == data.parent_email,
             Invite.invite_type == InviteType.PARENT,
             Invite.accepted_at.is_(None),
-            Invite.expires_at > datetime.utcnow(),
+            Invite.expires_at > datetime.now(timezone.utc),
         )
         .first()
     )
@@ -340,7 +340,7 @@ def invite_parent(
         email=data.parent_email,
         invite_type=InviteType.PARENT,
         token=token,
-        expires_at=datetime.utcnow() + timedelta(days=30),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
         invited_by_user_id=current_user.id,
     )
     db.add(invite)

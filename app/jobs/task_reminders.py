@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -46,7 +46,7 @@ async def check_task_reminders():
         template = _load_template("task_reminder.html")
         notifications_created = 0
         emails_sent = 0
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Get all active users who might have tasks
