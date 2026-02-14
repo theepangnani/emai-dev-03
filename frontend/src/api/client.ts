@@ -934,7 +934,7 @@ export const invitesApi = {
 // Admin Types
 export interface AdminUserItem {
   id: number;
-  email: string;
+  email: string | null;
   full_name: string;
   role: string;
   roles: string[];

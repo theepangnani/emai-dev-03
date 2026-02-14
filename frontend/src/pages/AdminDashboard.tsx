@@ -171,7 +171,7 @@ export function AdminDashboard() {
                   {users.map((user) => (
                     <tr key={user.id}>
                       <td>{user.full_name}</td>
-                      <td>{user.email}</td>
+                      <td>{user.email ?? '—'}</td>
                       <td>
                         <div className="admin-roles-cell">
                           {(user.roles?.length ? user.roles : [user.role]).map(r => (
@@ -231,7 +231,7 @@ export function AdminDashboard() {
             <h2>Manage Roles</h2>
             <div className="admin-role-user-info">
               <span className="admin-role-user-name">{selectedUser.full_name}</span>
-              <span className="admin-role-user-email">{selectedUser.email}</span>
+              <span className="admin-role-user-email">{selectedUser.email ?? 'No email'}</span>
             </div>
 
             <div className="admin-role-list">

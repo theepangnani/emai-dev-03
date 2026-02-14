@@ -20,7 +20,7 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    email: str
+    email: str | None = None
     full_name: str
     role: UserRole
     roles: list[str] = []
