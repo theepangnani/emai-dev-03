@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { messagesApi } from '../api/client';
+import { messagesApi, inspirationApi } from '../api/client';
+import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
@@ -26,6 +27,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
+  const [inspiration, setInspiration] = useState<InspirationMessage | null>(null);
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
@@ -76,6 +78,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     loadUnreadCount();
     const interval = setInterval(loadUnreadCount, 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Load inspirational message once per session
+  useEffect(() => {
+    inspirationApi.getRandom().then(setInspiration).catch(() => {});
   }, []);
 
   // Close menu when route changes
@@ -212,8 +219,19 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
 
       <main className="dashboard-main-full">
         <div className="welcome-section">
-          <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
-          <p>{welcomeSubtitle || "Here's your overview"}</p>
+          {inspiration ? (
+            <>
+              <h2 className="inspiration-text">"{inspiration.text}"</h2>
+              {inspiration.author && (
+                <p className="inspiration-author">— {inspiration.author}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
+              <p>{welcomeSubtitle || "Here's your overview"}</p>
+            </>
+          )}
         </div>
 
         {children}

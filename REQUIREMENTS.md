@@ -983,46 +983,30 @@ Teachers need to manage their course rosters (add/remove students), and courses 
 - [ ] Frontend: Course roster UI for teachers
 - [ ] Frontend: Teacher field in course creation form
 
-### 6.30 Role-Based Inspirational Messages (Phase 2) - PLANNED
+### 6.30 Role-Based Inspirational Messages (Phase 2) - IMPLEMENTED
 
 Replace the static "Welcome back" dashboard greeting with role-specific inspirational messages that rotate on each visit. Messages are maintained in JSON seed files and imported into the database. Admins can manage messages via the admin dashboard.
 
-**Architecture:**
-- **File-based source:** JSON files at `data/inspiration/{role}.json` — user provides messages in files
-- **Database storage:** `inspiration_messages` table (id, role, message, author, is_active, created_at)
-- **Import service:** reads JSON files → upserts into DB (dedup by message text + role). Auto-imports on first startup if table is empty.
-- **API service:** `get_random_message(db, role)` returns a random active message
-- **Admin CRUD:** full management via admin dashboard + manual re-import trigger
-
-**Requirements:**
-1. **Model and service** (#230)
-   - `InspirationMessage` model with role, message, author (optional), is_active
-   - `app/services/inspiration_service.py` — random message retrieval + file import
-   - `GET /api/inspiration` — returns random message for current user's role
-2. **Seed data files** (#231)
-   - `data/inspiration/parent.json` — 10+ parenting/education messages
-   - `data/inspiration/teacher.json` — 10+ teaching/impact messages
-   - `data/inspiration/student.json` — 10+ education, respecting parents/teachers messages
-   - Auto-import on startup if DB table is empty
-3. **Frontend integration** (#232)
-   - Replace "Welcome back" in DashboardLayout with fetched message
-   - Show author attribution when available
-   - Graceful fallback if no messages
-4. **Admin management** (#233)
-   - CRUD endpoints: `GET/POST/PATCH/DELETE /api/admin/inspiration`
-   - `POST /api/admin/inspiration/import` — re-import from seed files
-   - Admin dashboard UI: table with role filter, inline active toggle, add/edit/delete
-
-**Message themes by role:**
-- **Parents:** Supporting children's education, parenting encouragement
-- **Teachers:** Impact of teaching, inspiring students, noble profession
-- **Students:** Importance of education, respecting parents, respecting teachers, growth mindset
+**Implementation:**
+- **Model:** `InspirationMessage` (id, role, text, author, is_active, created_at, updated_at) in `app/models/inspiration_message.py`
+- **Seed files:** `data/inspiration/{parent,teacher,student}.json` — 20 messages per role
+- **Service:** `app/services/inspiration_service.py` — `seed_messages()` (auto-imports on startup if table empty), `get_random_message(db, role)`
+- **API routes:** `app/api/routes/inspiration.py` under `/api/inspiration`
+  - `GET /random` — random active message for current user's role (any authenticated user)
+  - `GET /messages` — list all messages with role/is_active filters (admin only)
+  - `POST /messages` — create new message (admin only)
+  - `PATCH /messages/{id}` — update text/author/is_active (admin only)
+  - `DELETE /messages/{id}` — delete message (admin only)
+  - `POST /seed` — re-import from seed files (admin only, skips if non-empty)
+- **Frontend:** `DashboardLayout.tsx` fetches random message on mount, replaces "Welcome back" with italicized quote and author attribution. Falls back to "Welcome back" if no messages.
+- **Admin page:** `/admin/inspiration` — full CRUD management with role filter, inline active/inactive toggle, add/edit/delete. Linked from Admin Dashboard.
+- **Tests:** 16 tests in `tests/test_inspiration.py` covering random retrieval by role, inactive filtering, admin CRUD, role validation, access control.
 
 **Sub-tasks:**
-- [ ] Backend: Inspiration model, service, API (#230)
-- [ ] Data: Seed JSON files per role (#231)
-- [ ] Frontend: Dashboard greeting integration (#232)
-- [ ] Backend + Frontend: Admin CRUD + re-import (#233)
+- [x] Backend: Inspiration model, service, API (#230)
+- [x] Data: Seed JSON files per role (#231)
+- [x] Frontend: Dashboard greeting integration (#232)
+- [x] Backend + Frontend: Admin CRUD + re-import (#233)
 
 ---
 

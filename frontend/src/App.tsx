@@ -45,6 +45,7 @@ const TasksPage = lazyRetry(() => import('./pages/TasksPage').then((m) => ({ def
 const TaskDetailPage = lazyRetry(() => import('./pages/TaskDetailPage').then((m) => ({ default: m.TaskDetailPage })));
 const CourseMaterialDetailPage = lazyRetry(() => import('./pages/CourseMaterialDetailPage').then((m) => ({ default: m.CourseMaterialDetailPage })));
 const AdminAuditLog = lazyRetry(() => import('./pages/AdminAuditLog').then((m) => ({ default: m.AdminAuditLog })));
+const AdminInspirationPage = lazyRetry(() => import('./pages/AdminInspirationPage').then((m) => ({ default: m.AdminInspirationPage })));
 const AcceptInvite = lazyRetry(() => import('./pages/AcceptInvite').then((m) => ({ default: m.AcceptInvite })));
 const MyKidsPage = lazyRetry(() => import('./pages/MyKidsPage').then((m) => ({ default: m.MyKidsPage })));
 const ForgotPasswordPage = lazyRetry(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -176,6 +177,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminAuditLog />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/inspiration"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminInspirationPage />
                   </ProtectedRoute>
                 }
               />

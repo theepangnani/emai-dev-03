@@ -1,0 +1,185 @@
+/* ── Admin Inspiration Management ──────────── */
+
+.admin-insp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-insp-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+.admin-insp-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.admin-insp-actions select {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary);
+}
+.admin-insp-add-btn {
+  padding: 6px 14px;
+  background: var(--accent, #2a7d5f);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.admin-insp-add-btn:hover { opacity: 0.9; }
+
+/* Form */
+.admin-insp-form {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.admin-insp-form h4 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+.admin-insp-error {
+  color: #c00;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.admin-insp-form-row {
+  margin-bottom: 12px;
+}
+.admin-insp-form-row label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.admin-insp-form-row select,
+.admin-insp-form-row input,
+.admin-insp-form-row textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.admin-insp-form-row textarea {
+  resize: vertical;
+}
+.admin-insp-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.admin-insp-form-actions button {
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+}
+.admin-insp-save-btn {
+  background: var(--accent, #2a7d5f) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+/* Message list */
+.admin-insp-group {
+  margin-bottom: 20px;
+}
+.admin-insp-group-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--text-primary);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+.admin-insp-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: var(--card-bg);
+}
+.admin-insp-row.inactive {
+  opacity: 0.5;
+}
+.admin-insp-content {
+  flex: 1;
+  min-width: 0;
+}
+.admin-insp-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-style: italic;
+}
+.admin-insp-author {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.admin-insp-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+.admin-insp-row-actions button {
+  padding: 3px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.admin-insp-toggle.active {
+  background: #e8f5e9;
+  color: #2a7d5f;
+  border-color: #2a7d5f;
+}
+.admin-insp-edit:hover {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-color: #1565c0;
+}
+.admin-insp-delete:hover {
+  background: #fee;
+  color: #c00;
+  border-color: #c00;
+}
+.admin-insp-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.admin-insp-footer {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}

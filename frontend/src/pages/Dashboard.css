@@ -348,6 +348,20 @@
   margin: 0;
 }
 
+.welcome-section .inspiration-text {
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+
+.welcome-section .inspiration-author {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin-top: 4px;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));

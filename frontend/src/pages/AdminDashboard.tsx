@@ -89,9 +89,12 @@ export function AdminDashboard() {
       </div>
 
       <div className="dashboard-sections">
-        <section className="section" style={{ marginBottom: '16px' }}>
+        <section className="section" style={{ marginBottom: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           <Link to="/admin/audit-log" className="admin-audit-link">
             View Audit Log &rarr;
+          </Link>
+          <Link to="/admin/inspiration" className="admin-audit-link">
+            Manage Inspirational Messages &rarr;
           </Link>
         </section>
 

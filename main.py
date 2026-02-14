@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
-from app.db.database import Base, engine
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search
+from app.db.database import Base, engine, SessionLocal
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -32,7 +32,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
@@ -276,6 +276,7 @@ app.include_router(invites.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(course_contents.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
+app.include_router(inspiration.router, prefix="/api")
 
 logger.info("All routers registered")
 
@@ -313,6 +314,14 @@ async def startup_event():
     from app.services.scheduler import scheduler, start_scheduler
     from app.jobs.assignment_reminders import check_assignment_reminders
     from app.jobs.task_reminders import check_task_reminders
+    from app.services.inspiration_service import seed_messages
+
+    # Seed inspiration messages if table is empty
+    db = SessionLocal()
+    try:
+        seed_messages(db)
+    finally:
+        db.close()
 
     scheduler.add_job(
         check_assignment_reminders,
