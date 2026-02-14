@@ -32,9 +32,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 "script-src 'self'; "
-                "style-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "img-src 'self' data: https:; "
-                "font-src 'self' data:; "
+                "font-src 'self' data: https://fonts.gstatic.com; "
                 "connect-src 'self'; "
                 "frame-ancestors 'none'"
             )
@@ -42,8 +42,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self' http://localhost:*; "
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; "
-                "style-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "img-src 'self' data: https: http://localhost:*; "
+                "font-src 'self' data: https://fonts.gstatic.com; "
                 "connect-src 'self' http://localhost:* ws://localhost:*; "
                 "frame-ancestors 'none'"
             )
