@@ -6,10 +6,13 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.invite import Invite, InviteType
+from app.models.message import Conversation, Message
+from app.models.notification import Notification, NotificationType
 from app.api.deps import get_current_user, require_role
 from app.schemas.invite import InviteCreate, InviteResponse
 from app.services.email_service import send_email_sync
@@ -28,7 +31,90 @@ EXPIRY_DAYS = {
 }
 
 
-@router.post("/", response_model=InviteResponse)
+def _send_message_to_existing_user(
+    db: Session,
+    sender: User,
+    recipient: User,
+    message_content: str,
+) -> dict:
+    """Send a message + notification to an existing user instead of creating an invite.
+
+    Creates or reuses a conversation, adds the message, creates an in-app
+    notification, and sends an email notification.
+    Returns a dict summarising the action.
+    """
+    # Find or create conversation
+    conv = (
+        db.query(Conversation)
+        .filter(
+            or_(
+                and_(
+                    Conversation.participant_1_id == sender.id,
+                    Conversation.participant_2_id == recipient.id,
+                ),
+                and_(
+                    Conversation.participant_1_id == recipient.id,
+                    Conversation.participant_2_id == sender.id,
+                ),
+            )
+        )
+        .first()
+    )
+    if not conv:
+        conv = Conversation(
+            participant_1_id=sender.id,
+            participant_2_id=recipient.id,
+        )
+        db.add(conv)
+        db.flush()
+
+    msg = Message(
+        conversation_id=conv.id,
+        sender_id=sender.id,
+        content=message_content,
+    )
+    db.add(msg)
+
+    # In-app notification
+    preview = message_content[:100] + ("..." if len(message_content) > 100 else "")
+    db.add(Notification(
+        user_id=recipient.id,
+        type=NotificationType.MESSAGE,
+        title=f"New message from {sender.full_name}",
+        content=preview,
+        link="/messages",
+    ))
+
+    db.commit()
+
+    # Email notification
+    if recipient.email and recipient.email_notifications:
+        try:
+            tpl_path = os.path.join(_TEMPLATE_DIR, "message_notification.html")
+            with open(tpl_path, "r") as f:
+                html = f.read()
+            html = (html
+                .replace("{{recipient_name}}", recipient.full_name)
+                .replace("{{sender_name}}", sender.full_name)
+                .replace("{{message_preview}}", preview)
+                .replace("{{app_url}}", settings.frontend_url))
+            send_email_sync(
+                to_email=recipient.email,
+                subject=f"New message from {sender.full_name} — ClassBridge",
+                html_content=html,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send message notification email to {recipient.email}: {e}")
+
+    logger.info(f"Message sent to existing user {recipient.id} ({recipient.email}) by {sender.id}")
+    return {
+        "action": "message_sent",
+        "recipient_name": recipient.full_name,
+        "message": f"Message sent to {recipient.full_name} (already on ClassBridge)",
+    }
+
+
+@router.post("/")
 def create_invite(
     data: InviteCreate,
     db: Session = Depends(get_db),
@@ -54,12 +140,18 @@ def create_invite(
             detail="Only teachers and admins can invite parents",
         )
 
-    # Check if email already registered
+    # If email is already registered, send a message instead of creating an invite
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists",
+        role_label = invite_type.value
+        return _send_message_to_existing_user(
+            db,
+            sender=current_user,
+            recipient=existing_user,
+            message_content=(
+                f"Hi {existing_user.full_name}! {current_user.full_name} "
+                f"would like to connect with you on ClassBridge."
+            ),
         )
 
     # Check for existing pending invite
@@ -153,19 +245,29 @@ class _InviteParentRequest(PydanticBaseModel):
     parent_email: str
 
 
-@router.post("/invite-parent", response_model=InviteResponse)
+@router.post("/invite-parent")
 def invite_parent(
     data: _InviteParentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
-    """Teacher invites a parent to ClassBridge."""
+    """Teacher invites a parent to ClassBridge.
+
+    If the parent already has an account, sends them a welcome message instead
+    (which also triggers an email notification).
+    """
     # Check if parent email already registered
     existing_user = db.query(User).filter(User.email == data.parent_email).first()
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists. They can log in directly.",
+        return _send_message_to_existing_user(
+            db,
+            sender=current_user,
+            recipient=existing_user,
+            message_content=(
+                f"Hi {existing_user.full_name}! I'm {current_user.full_name}, "
+                f"a teacher on ClassBridge. I'd like to connect with you "
+                f"regarding your child's education. Feel free to message me anytime!"
+            ),
         )
 
     # Check for existing pending parent invite

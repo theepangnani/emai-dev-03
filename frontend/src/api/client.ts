@@ -333,8 +333,8 @@ export const googleApi = {
     return response.data;
   },
 
-  getConnectUrl: async () => {
-    const response = await api.get('/api/google/connect');
+  getConnectUrl: async (addAccount = false) => {
+    const response = await api.get('/api/google/connect', { params: addAccount ? { add_account: true } : {} });
     return response.data;
   },
 
@@ -367,7 +367,36 @@ export const googleApi = {
     const response = await api.post(`/api/google/courses/${courseId}/assignments/sync`);
     return response.data;
   },
+
+  // Teacher multi-account management
+  getTeacherAccounts: async () => {
+    const response = await api.get('/api/google/teacher/accounts');
+    return response.data as GoogleAccount[];
+  },
+
+  updateTeacherAccount: async (accountId: number, label?: string, setPrimary?: boolean) => {
+    const params: Record<string, string | boolean> = {};
+    if (label !== undefined) params.label = label;
+    if (setPrimary) params.set_primary = true;
+    const response = await api.patch(`/api/google/teacher/accounts/${accountId}`, null, { params });
+    return response.data;
+  },
+
+  removeTeacherAccount: async (accountId: number) => {
+    const response = await api.delete(`/api/google/teacher/accounts/${accountId}`);
+    return response.data;
+  },
 };
+
+export interface GoogleAccount {
+  id: number;
+  google_email: string;
+  display_name: string | null;
+  account_label: string | null;
+  is_primary: boolean;
+  connected_at: string | null;
+  last_sync_at: string | null;
+}
 
 // Study Tools API
 export interface AutoCreatedTask {
@@ -950,7 +979,7 @@ export const invitesApi = {
     const response = await api.post('/api/invites/invite-parent', {
       parent_email: parentEmail,
     });
-    return response.data as InviteResponse;
+    return response.data;
   },
 
   listSent: async () => {

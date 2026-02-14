@@ -26,6 +26,13 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
+# PDF-to-image conversion (optional - requires poppler-utils)
+try:
+    from pdf2image import convert_from_bytes
+    PDF2IMAGE_AVAILABLE = True
+except ImportError:
+    PDF2IMAGE_AVAILABLE = False
+
 # Constants
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
 SUPPORTED_EXTENSIONS = {
@@ -66,16 +73,36 @@ def validate_file(file_content: bytes, filename: str) -> None:
 
 
 def extract_text_from_pdf(file_content: bytes) -> str:
-    """Extract text from PDF file."""
+    """Extract text from PDF file. Falls back to OCR for scanned/image PDFs."""
     try:
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
         text_parts = []
+        empty_pages = 0
         page_count = len(pdf_reader.pages)
         logger.debug(f"Processing PDF with {page_count} pages")
         for page in pdf_reader.pages:
             text = page.extract_text()
-            if text:
+            if text and text.strip():
                 text_parts.append(text)
+            else:
+                empty_pages += 1
+
+        # If most pages had no text, try OCR fallback for scanned PDFs
+        if empty_pages > len(text_parts) and OCR_AVAILABLE and PDF2IMAGE_AVAILABLE:
+            logger.info(f"PDF has {empty_pages} empty pages, attempting OCR fallback")
+            try:
+                images = convert_from_bytes(file_content, dpi=200)
+                ocr_parts = []
+                for i, img in enumerate(images):
+                    ocr_text = pytesseract.image_to_string(img)
+                    if ocr_text.strip():
+                        ocr_parts.append(ocr_text.strip())
+                if ocr_parts:
+                    logger.info(f"OCR extracted text from {len(ocr_parts)}/{len(images)} pages")
+                    return "\n\n".join(ocr_parts)
+            except Exception as ocr_err:
+                logger.warning(f"PDF OCR fallback failed: {ocr_err}")
+
         logger.debug(f"Extracted text from {len(text_parts)} pages")
         return "\n\n".join(text_parts)
     except Exception as e:
@@ -319,4 +346,5 @@ def get_supported_formats() -> dict:
         "archives": [".zip"],
         "max_file_size_mb": MAX_FILE_SIZE // (1024 * 1024),
         "ocr_available": OCR_AVAILABLE,
+        "scanned_pdf_ocr": OCR_AVAILABLE and PDF2IMAGE_AVAILABLE,
     }

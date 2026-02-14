@@ -13,6 +13,7 @@ from app.models.course_content import CourseContent, ContentType
 from app.models.audit_log import AuditLog, AuditAction
 from app.models.inspiration_message import InspirationMessage
 from app.models.broadcast import Broadcast
+from app.models.teacher_google_account import TeacherGoogleAccount
 
 __all__ = [
     "User",
@@ -38,4 +39,5 @@ __all__ = [
     "AuditAction",
     "InspirationMessage",
     "Broadcast",
+    "TeacherGoogleAccount",
 ]

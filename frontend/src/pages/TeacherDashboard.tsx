@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { coursesApi, googleApi, invitesApi } from '../api/client';
+import type { GoogleAccount } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import './TeacherDashboard.css';
@@ -35,24 +36,30 @@ export function TeacherDashboard() {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
+  // Google accounts state
+  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
+  const [removingAccountId, setRemovingAccountId] = useState<number | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const [coursesData, googleStatus] = await Promise.allSettled([
+      const [coursesData, googleStatus, accountsData] = await Promise.allSettled([
         coursesApi.teachingList(),
         googleApi.getStatus(),
+        googleApi.getTeacherAccounts(),
       ]);
 
-      let loadedCourses: Course[] = [];
       if (coursesData.status === 'fulfilled') {
-        loadedCourses = coursesData.value;
-        setCourses(loadedCourses);
+        setCourses(coursesData.value);
       }
       if (googleStatus.status === 'fulfilled') {
         setGoogleConnected(googleStatus.value.connected);
+      }
+      if (accountsData.status === 'fulfilled') {
+        setGoogleAccounts(accountsData.value);
       }
     } finally {
       setLoading(false);
@@ -110,6 +117,36 @@ export function TeacherDashboard() {
     }
   };
 
+  const handleAddGoogleAccount = async () => {
+    try {
+      const { authorization_url } = await googleApi.getConnectUrl(true);
+      window.location.href = authorization_url;
+    } catch {
+      // Failed to start add-account flow
+    }
+  };
+
+  const handleRemoveAccount = async (accountId: number) => {
+    setRemovingAccountId(accountId);
+    try {
+      await googleApi.removeTeacherAccount(accountId);
+      setGoogleAccounts(prev => prev.filter(a => a.id !== accountId));
+    } catch {
+      // Failed to remove
+    } finally {
+      setRemovingAccountId(null);
+    }
+  };
+
+  const handleSetPrimary = async (accountId: number) => {
+    try {
+      await googleApi.updateTeacherAccount(accountId, undefined, true);
+      setGoogleAccounts(prev => prev.map(a => ({ ...a, is_primary: a.id === accountId })));
+    } catch {
+      // Failed to set primary
+    }
+  };
+
   const closeInviteParentModal = () => {
     setShowInviteParentModal(false);
     setInviteParentEmail('');
@@ -123,8 +160,12 @@ export function TeacherDashboard() {
     setInviteError('');
     setInviteSuccess('');
     try {
-      await invitesApi.inviteParent(inviteParentEmail.trim());
-      setInviteSuccess(`Invitation sent to ${inviteParentEmail.trim()}`);
+      const result = await invitesApi.inviteParent(inviteParentEmail.trim());
+      if (result.action === 'message_sent') {
+        setInviteSuccess(result.message || `Message sent to ${result.recipient_name}`);
+      } else {
+        setInviteSuccess(`Invitation sent to ${inviteParentEmail.trim()}`);
+      }
       setInviteParentEmail('');
     } catch (err: any) {
       setInviteError(err.response?.data?.detail || 'Failed to send invitation');
@@ -232,7 +273,69 @@ export function TeacherDashboard() {
             </div>
           )}
         </section>
+
+        {/* Google Accounts Section */}
+        {googleConnected && (
+          <section className="section teacher-google-accounts-section">
+            <div className="section-header">
+              <h3>Google Accounts</h3>
+              <button className="create-custom-btn" onClick={handleAddGoogleAccount}>
+                + Add Account
+              </button>
+            </div>
+            {googleAccounts.length > 0 ? (
+              <div className="google-accounts-list">
+                {googleAccounts.map((account) => (
+                  <div key={account.id} className="google-account-row">
+                    <div className="google-account-info">
+                      <span className="google-account-email">{account.google_email}</span>
+                      {account.display_name && (
+                        <span className="google-account-name">{account.display_name}</span>
+                      )}
+                      {account.account_label && (
+                        <span className="google-account-label">{account.account_label}</span>
+                      )}
+                      {account.is_primary && (
+                        <span className="google-account-primary-badge">Primary</span>
+                      )}
+                      {account.last_sync_at && (
+                        <span className="google-account-sync">
+                          Last synced: {new Date(account.last_sync_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="google-account-actions">
+                      {!account.is_primary && (
+                        <button
+                          className="text-btn"
+                          onClick={() => handleSetPrimary(account.id)}
+                          title="Set as primary"
+                        >
+                          Set Primary
+                        </button>
+                      )}
+                      <button
+                        className="text-btn danger"
+                        onClick={() => handleRemoveAccount(account.id)}
+                        disabled={removingAccountId === account.id}
+                        title="Remove account"
+                      >
+                        {removingAccountId === account.id ? 'Removing...' : 'Remove'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <p>No Google accounts linked yet</p>
+                <small>Connect your Google account to sync courses from Google Classroom</small>
+              </div>
+            )}
+          </section>
+        )}
       </div>
+
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>

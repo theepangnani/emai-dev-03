@@ -13,7 +13,8 @@ from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
 from app.models.student import Student
 from app.models.teacher import Teacher
-from app.api.deps import get_current_user
+from app.models.teacher_google_account import TeacherGoogleAccount
+from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
 from app.core.config import settings
 from app.core.security import create_access_token
@@ -87,9 +88,13 @@ def google_auth(user_id: int | None = None):
 
 
 @router.get("/connect")
-def google_connect(current_user: User = Depends(get_current_user)):
+def google_connect(
+    current_user: User = Depends(get_current_user),
+    add_account: bool = Query(False, description="If true, adds as additional teacher Google account"),
+):
     """Get authorization URL for connecting Google to existing account."""
-    state = _create_oauth_state(purpose="connect", user_id=current_user.id)
+    purpose = "add_account" if add_account and current_user.has_role(UserRole.TEACHER) else "connect"
+    state = _create_oauth_state(purpose=purpose, user_id=current_user.id)
     authorization_url, _ = get_authorization_url(state)
     return {"authorization_url": authorization_url}
 
@@ -121,8 +126,49 @@ def google_callback(
         tokens = exchange_code_for_tokens(code)
         user_info = get_user_info(tokens["access_token"])
 
+        # Check if this is an add-account request for a teacher
+        if state_data["purpose"] == "add_account" and state_data.get("user_id"):
+            user = db.query(User).filter(User.id == state_data["user_id"]).first()
+            if user and user.has_role(UserRole.TEACHER):
+                teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+                if teacher:
+                    google_email = user_info.get("email", "").lower()
+                    # Check for duplicate
+                    existing_acct = (
+                        db.query(TeacherGoogleAccount)
+                        .filter(TeacherGoogleAccount.teacher_id == teacher.id,
+                                TeacherGoogleAccount.google_email == google_email)
+                        .first()
+                    )
+                    if existing_acct:
+                        existing_acct.access_token = tokens["access_token"]
+                        if tokens.get("refresh_token"):
+                            existing_acct.refresh_token = tokens["refresh_token"]
+                    else:
+                        is_first = db.query(TeacherGoogleAccount).filter(
+                            TeacherGoogleAccount.teacher_id == teacher.id
+                        ).count() == 0
+                        new_acct = TeacherGoogleAccount(
+                            teacher_id=teacher.id,
+                            google_id=user_info["id"],
+                            google_email=google_email,
+                            display_name=user_info.get("name", ""),
+                            access_token=tokens["access_token"],
+                            refresh_token=tokens.get("refresh_token"),
+                            is_primary=is_first,
+                        )
+                        db.add(new_acct)
+                    # Also update User-level tokens for backward compat
+                    user.google_id = user_info["id"]
+                    user.google_access_token = tokens["access_token"]
+                    if tokens.get("refresh_token"):
+                        user.google_refresh_token = tokens["refresh_token"]
+                    db.commit()
+                    params = urlencode({"google_connected": "true", "account_added": "true"})
+                    return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
+
         # Check if this is a connect request for existing user
-        if state_data["purpose"] == "connect" and state_data.get("user_id"):
+        if state_data["purpose"] in ("connect", "add_account") and state_data.get("user_id"):
             user = db.query(User).filter(User.id == state_data["user_id"]).first()
             if user:
                 user.google_id = user_info["id"]
@@ -474,3 +520,87 @@ def sync_google_assignments(
         "message": f"Synced {len(synced_assignments)} assignments",
         "assignments": [{"id": a.id, "title": a.title} for a in synced_assignments],
     }
+
+
+# ── Teacher Google Accounts ──────────────────────────────────────────
+
+@router.get("/teacher/accounts")
+def list_teacher_google_accounts(
+    current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """List all Google accounts linked to the current teacher."""
+    teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+    if not teacher:
+        return []
+    accounts = (
+        db.query(TeacherGoogleAccount)
+        .filter(TeacherGoogleAccount.teacher_id == teacher.id)
+        .order_by(TeacherGoogleAccount.is_primary.desc(), TeacherGoogleAccount.connected_at)
+        .all()
+    )
+    return [
+        {
+            "id": a.id,
+            "google_email": a.google_email,
+            "display_name": a.display_name,
+            "account_label": a.account_label,
+            "is_primary": a.is_primary,
+            "connected_at": a.connected_at.isoformat() if a.connected_at else None,
+            "last_sync_at": a.last_sync_at.isoformat() if a.last_sync_at else None,
+        }
+        for a in accounts
+    ]
+
+
+@router.patch("/teacher/accounts/{account_id}")
+def update_teacher_google_account(
+    account_id: int,
+    label: str | None = Query(None),
+    set_primary: bool = Query(False),
+    current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Update label or primary status for a teacher Google account."""
+    teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher profile not found")
+    account = (
+        db.query(TeacherGoogleAccount)
+        .filter(TeacherGoogleAccount.id == account_id, TeacherGoogleAccount.teacher_id == teacher.id)
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Google account not found")
+    if label is not None:
+        account.account_label = label
+    if set_primary:
+        # Unset all others
+        db.query(TeacherGoogleAccount).filter(
+            TeacherGoogleAccount.teacher_id == teacher.id
+        ).update({"is_primary": False})
+        account.is_primary = True
+    db.commit()
+    return {"status": "ok"}
+
+
+@router.delete("/teacher/accounts/{account_id}")
+def remove_teacher_google_account(
+    account_id: int,
+    current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Remove a linked Google account from teacher."""
+    teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher profile not found")
+    account = (
+        db.query(TeacherGoogleAccount)
+        .filter(TeacherGoogleAccount.id == account_id, TeacherGoogleAccount.teacher_id == teacher.id)
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Google account not found")
+    db.delete(account)
+    db.commit()
+    return {"status": "ok"}

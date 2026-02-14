@@ -80,13 +80,16 @@ class TestCreateInvite:
         }, headers=headers)
         assert resp.status_code == 403
 
-    def test_existing_email_rejected(self, client, users):
+    def test_existing_email_sends_message_instead(self, client, users):
+        """When inviting an existing user, a message is sent instead of creating an invite."""
         headers = _auth(client, users["parent"].email)
         resp = client.post("/api/invites/", json={
             "email": users["student"].email, "invite_type": "student",
         }, headers=headers)
-        assert resp.status_code == 400
-        assert "already exists" in resp.json()["detail"].lower()
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["action"] == "message_sent"
+        assert "already on ClassBridge" in data["message"]
 
     def test_duplicate_pending_rejected(self, client, users):
         headers = _auth(client, users["parent"].email)
