@@ -1241,11 +1241,39 @@ Admin users can send messages to all platform users (broadcast) or to individual
 - Success/error toast notifications after send.
 
 **Sub-tasks:**
-- [ ] Backend: Broadcast endpoint with email delivery (#258)
-- [ ] Backend: Individual admin-to-user message endpoint (#259)
-- [ ] Backend: Broadcast history endpoint (#258)
-- [ ] Frontend: Broadcast modal on Admin Dashboard (#258)
-- [ ] Frontend: Individual message modal in user table (#259)
+- [x] Backend: Broadcast endpoint with email delivery (#258)
+- [x] Backend: Individual admin-to-user message endpoint (#259)
+- [x] Backend: Broadcast history endpoint (#258)
+- [x] Frontend: Broadcast modal on Admin Dashboard (#258)
+- [x] Frontend: Individual message modal in user table (#259)
+
+### 6.41 Inspirational Messages in Emails (Phase 1)
+
+All outgoing emails from ClassBridge should include a role-based inspirational message (from the existing `InspirationMessage` system) as a footer/tagline. The message is selected based on the **recipient's role** and rotated randomly.
+
+**Backend:**
+- Update `send_email_sync()` (or individual callers) to accept an optional `recipient_role` parameter.
+- When `recipient_role` is provided, query a random active `InspirationMessage` for that role using the existing `get_random_message(db, role)` service.
+- Inject the inspirational quote into the email HTML as a styled footer block (italic quote with optional author attribution).
+- Applies to **all** email types: message notifications, broadcast, individual admin messages, password reset, assignment reminders, task reminders, invite emails, teacher linked notifications, and student enrollment notifications.
+- If no inspirational message is found for the role, omit the section gracefully.
+
+**Email template update:**
+- Add a shared inspirational footer block to all email templates (or inject programmatically before the closing `</body>` tag):
+  ```html
+  <tr>
+    <td style="padding: 16px 32px; text-align: center;">
+      <p style="color: #999; font-size: 13px; font-style: italic; margin: 0;">
+        "{{inspiration_text}}"
+        {{#if inspiration_author}} — {{inspiration_author}}{{/if}}
+      </p>
+    </td>
+  </tr>
+  ```
+
+**Sub-tasks:**
+- [ ] Backend: Add inspiration message injection to email service (#260)
+- [ ] Templates: Update all 8+ email templates with inspiration footer (#260)
 
 ### 6.30 Role-Based Inspirational Messages (Phase 2) - IMPLEMENTED
 
@@ -1512,8 +1540,9 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Multi-Google account support for teachers
 - [ ] Auto-send invite email to shadow teachers on creation
 - [ ] Teacher Dashboard course management view with source badges
-- [ ] **Admin broadcast messaging** — Send message + email to all users (#258)
-- [ ] **Admin individual messaging** — Send message + email to specific user (#259)
+- [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
+- [x] **Admin individual messaging** — Send message + email to specific user (#259) (IMPLEMENTED)
+- [ ] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260)
 
 #### Architecture Foundation (Tier 0)
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
@@ -1934,8 +1963,9 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #209: Add assignee filter to TasksPage for filtering by student~~ ✅
 - ~~Issue #210: Task Detail Page: Inline edit mode with all fields~~ ✅
 - ~~Issue #255-#257: Multi-role support Phase B requirements and issues created~~ (PLANNED)
-- Issue #258: Admin broadcast messaging: send message + email to all users (PLANNED)
-- Issue #259: Admin individual messaging: send message + email to a specific user (PLANNED)
+- ~~Issue #258: Admin broadcast messaging: send message + email to all users~~ ✅
+- ~~Issue #259: Admin individual messaging: send message + email to a specific user~~ ✅
+- Issue #260: Inspirational messages in emails: add role-based quotes to all outgoing emails (PLANNED)
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
