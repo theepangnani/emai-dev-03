@@ -311,6 +311,18 @@ with engine.connect() as conn:
         # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
         _apply_cascade_and_unique_migration(conn, inspector)
 
+        # ── One-time: promote theepang@gmail.com to admin + teacher ──
+        try:
+            result = conn.execute(text(
+                "UPDATE users SET role = 'ADMIN', roles = 'admin,teacher' "
+                "WHERE email = 'theepang@gmail.com' "
+                "AND (roles IS NULL OR roles NOT LIKE '%admin%')"
+            ))
+            if result.rowcount:
+                logger.info("Promoted theepang@gmail.com to admin+teacher")
+        except Exception:
+            pass  # User may not exist yet in this environment
+
         conn.commit()
 
 
