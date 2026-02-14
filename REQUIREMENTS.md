@@ -819,34 +819,28 @@ Critical security vulnerabilities identified in the Feb 2026 risk audit and fixe
 - Parent-created student accounts use `UNUSABLE_PASSWORD_HASH` sentinel (`!INVITE_PENDING`) instead of empty string
 - `verify_password()` explicitly rejects empty and sentinel hashes — no login possible without setting a real password via invite link
 
-### 6.24 Multi-Role Support (Phase 1) - PLANNED
+### 6.24 Multi-Role Support (Phase 1) - PARTIAL
 
-Users should be able to hold multiple roles simultaneously (e.g., a parent who is also a teacher, or a parent who is also a student). Currently, each user has a single `role` enum value.
+Users can hold multiple roles simultaneously (e.g., a parent who is also a teacher, or an admin who is also a parent and student). The system uses an "Active Role" pattern where `role` is the current dashboard context and `roles` stores all held roles as a comma-separated string.
 
-#### Requirements
-1. **Multi-role registration**: During registration, users can select one or more roles (student, parent, teacher) via checkboxes instead of a single dropdown
-2. **Role-based dashboard switching**: When logged in, users with multiple roles see a role switcher in the header and can select which dashboard to view (parent dashboard, teacher dashboard, student dashboard)
-3. **Unified authorization**: Backend RBAC checks grant access based on ALL assigned roles, not just the active role — a parent+teacher user can always access both parent and teacher endpoints regardless of which dashboard they're viewing
-4. **Profile records**: Appropriate profile records (Student, Teacher) are created for each selected role at registration
+#### Phase A — IMPLEMENTED (#211)
+- [x] **Backend: `roles` column** — `String(50)` comma-separated on User model with `has_role()`, `get_roles_list()`, `set_roles()` helpers
+- [x] **Backend: Authorization** — `require_role()` and `can_access_course()` check ALL roles, not just active role
+- [x] **Backend: Inline auth checks** — Updated 12 permission gates across 6 route files to use `has_role()`
+- [x] **Backend: Registration** — New users get `roles` set to their registration role
+- [x] **Backend: DB migration** — Auto-adds `roles` column and backfills from existing `role` at startup
+- [x] **Backend: Switch-role endpoint** — `POST /api/users/me/switch-role` to change active dashboard
+- [x] **Backend: UserResponse** — Includes `roles: list[str]` with field_validator for ORM compatibility
+- [x] **Frontend: AuthContext** — `roles: string[]` on User, `switchRole()` function
+- [x] **Frontend: ProtectedRoute** — Checks all roles for route access, not just active role
+- [x] **Frontend: Role switcher** — Dropdown in DashboardLayout header (visible only with 2+ roles)
 
-#### Technical Approach — "Active Role" Pattern
-- Add `roles` column (`String(100)`, comma-separated like `"parent,teacher"`) to store all assigned roles
-- Keep existing `role` column as the "active role" that controls which dashboard is displayed
-- Add `has_role()` / `get_roles_list()` helper methods on the User model
-- Update `require_role()` dependency to check against all roles (not just active)
-- Convert `if/elif` role dispatch chains to independent `if` blocks using `has_role()`
-- Frontend: checkbox role selector on Register, role switcher dropdown in DashboardLayout header
-- New endpoint: `POST /api/users/me/switch-role` to change active dashboard role
-- Migration backfills `roles` from existing `role` for all current users (backward compatible)
-
-#### Scope
-- **In scope**: Multi-role registration, role switching, RBAC updates, profile record creation, frontend UI changes
-- **Out of scope**: Adding roles to existing accounts post-registration, role-specific invite flows, admin role assignment UI
-
-#### Files Affected (estimated 25+ files)
-- **Backend**: `user.py` (model), `deps.py` (require_role, can_access_course), `auth.py` (registration), `users.py` (switch-role endpoint), `schemas/user.py`, all route files with role checks (~15 files)
-- **Frontend**: `AuthContext.tsx`, `Register.tsx`, `DashboardLayout.tsx`, `ProtectedRoute.tsx`, `Dashboard.tsx`, `client.ts`, various pages with role checks
-- **Database**: Migration to add `roles` column and backfill
+#### Phase B — PLANNED
+- [ ] **Admin role management UI** (#255) — Admin can add/remove roles for any user from the admin portal, with checkbox modal and auto-creation of profile records
+- [ ] **Auto-create profile records** (#256) — When adding teacher/student roles, auto-create Teacher/Student records if missing; preserve data on role removal
+- [ ] **Multi-role registration** (#257) — Checkbox role selection during signup instead of single dropdown
+- [ ] **Admin as multi-role** — Admin users can simultaneously hold parent, teacher, and/or student roles, accessing all corresponding dashboards and features via the role switcher
+- [ ] Merged data views (combined parent+teacher data on single dashboard)
 
 ### 6.25 Course Materials Lifecycle Management (Phase 1) - IMPLEMENTED
 
