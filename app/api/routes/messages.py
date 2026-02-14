@@ -7,7 +7,7 @@ from sqlalchemy import or_, and_, desc
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
-from app.models.student import Student, parent_students
+from app.models.student import Student, parent_students, student_teachers
 from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
 from app.models.message import Conversation, Message
@@ -225,6 +225,7 @@ def get_valid_recipients(
         teachers = teacher_query.all()
 
         result = []
+        seen_user_ids = set()
         for user, teacher in teachers:
             # Find which children this teacher teaches
             taught_children = []
@@ -243,6 +244,7 @@ def get_valid_recipients(
                     if child_user:
                         taught_children.append(child_user.full_name)
 
+            seen_user_ids.add(user.id)
             result.append(
                 RecipientOption(
                     user_id=user.id,
@@ -251,6 +253,33 @@ def get_valid_recipients(
                     student_names=taught_children,
                 )
             )
+
+        # Also include directly-linked teachers (from student_teachers table)
+        direct_links = (
+            db.query(student_teachers)
+            .filter(student_teachers.c.student_id.in_(child_ids))
+            .all()
+        )
+        for link in direct_links:
+            if link.teacher_user_id and link.teacher_user_id not in seen_user_ids:
+                teacher_user = db.query(User).filter(User.id == link.teacher_user_id).first()
+                if teacher_user:
+                    # Find child name for this link
+                    child = next((c for c in children if c.id == link.student_id), None)
+                    child_name = None
+                    if child:
+                        child_user = db.query(User).filter(User.id == child.user_id).first()
+                        child_name = child_user.full_name if child_user else None
+
+                    seen_user_ids.add(teacher_user.id)
+                    result.append(
+                        RecipientOption(
+                            user_id=teacher_user.id,
+                            full_name=teacher_user.full_name,
+                            role=teacher_user.role.value,
+                            student_names=[child_name] if child_name else [],
+                        )
+                    )
 
         logger.info(f"Found {len(result)} valid recipients for parent {current_user.id}")
         return result
@@ -304,6 +333,40 @@ def get_valid_recipients(
             )
             for p in parents
         ]
+
+        # Also include parents who directly linked this teacher via student_teachers
+        seen_parent_ids = set(parent_student_map.keys())
+        direct_links = (
+            db.query(student_teachers)
+            .filter(student_teachers.c.teacher_user_id == current_user.id)
+            .all()
+        )
+        for link in direct_links:
+            student = db.query(Student).filter(Student.id == link.student_id).first()
+            if not student:
+                continue
+            student_user = db.query(User).filter(User.id == student.user_id).first()
+            student_name = student_user.full_name if student_user else "Unknown"
+
+            # Find the parent who added this link
+            parent_id = link.added_by_user_id
+            if parent_id not in seen_parent_ids:
+                parent_user = db.query(User).filter(User.id == parent_id).first()
+                if parent_user:
+                    seen_parent_ids.add(parent_id)
+                    result.append(
+                        RecipientOption(
+                            user_id=parent_user.id,
+                            full_name=parent_user.full_name,
+                            role=parent_user.role.value,
+                            student_names=[student_name],
+                        )
+                    )
+            else:
+                # Add the student name to existing entry if not already there
+                for r in result:
+                    if r.user_id == parent_id and student_name not in r.student_names:
+                        r.student_names.append(student_name)
 
         logger.info(f"Found {len(result)} valid recipients for teacher {current_user.id}")
         return result

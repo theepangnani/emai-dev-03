@@ -317,3 +317,109 @@ class TestAssignCourses:
             headers=headers,
         )
         assert resp.status_code == 404
+
+
+# ── Link / unlink teachers ───────────────────────────────────
+
+class TestLinkTeacher:
+    def test_link_teacher_by_email(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": users["teacher"].email},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["teacher_email"] == users["teacher"].email
+        assert data["teacher_user_id"] == users["teacher"].id
+        assert data["teacher_name"] == "Par Teacher"
+
+    def test_link_teacher_with_custom_name(self, client, users, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.teacher import Teacher
+
+        email = "par_custom_teacher@test.com"
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name="Custom Teacher", role=UserRole.TEACHER,
+                     hashed_password=get_password_hash(PASSWORD))
+            db_session.add(u)
+            db_session.flush()
+            db_session.add(Teacher(user_id=u.id))
+            db_session.commit()
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": email, "teacher_name": "My Custom Name"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["teacher_name"] == "My Custom Name"
+
+    def test_duplicate_link_rejected(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        # Ensure teacher is already linked (from test_link_teacher_by_email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": users["teacher"].email},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "already linked" in resp.json()["detail"].lower()
+
+    def test_non_teacher_rejected(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": users["outsider"].email},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "not a teacher" in resp.json()["detail"].lower()
+
+    def test_list_linked_teachers(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.get(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        teachers = resp.json()
+        assert isinstance(teachers, list)
+        assert any(t["teacher_email"] == users["teacher"].email for t in teachers)
+
+    def test_unlink_teacher(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        # Get the link ID
+        resp = client.get(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            headers=headers,
+        )
+        teachers = resp.json()
+        link = next(t for t in teachers if t["teacher_email"] == users["teacher"].email)
+
+        resp = client.delete(
+            f"/api/parent/children/{users['student_rec'].id}/teachers/{link['id']}",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+
+    def test_unlink_nonexistent_returns_404(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.delete(
+            f"/api/parent/children/{users['student_rec'].id}/teachers/999999",
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_outsider_cannot_link(self, client, users):
+        headers = _auth(client, users["outsider"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": users["teacher"].email},
+            headers=headers,
+        )
+        assert resp.status_code == 404

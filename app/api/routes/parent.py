@@ -8,7 +8,7 @@ from sqlalchemy import insert, or_, and_, func as sa_func
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
-from app.models.student import Student, parent_students, RelationshipType
+from app.models.student import Student, parent_students, student_teachers, RelationshipType
 from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
 from pydantic import BaseModel as PydanticBaseModel
@@ -25,6 +25,7 @@ from app.schemas.parent import (
     ChildSummary, ChildOverview, LinkChildRequest, CreateChildRequest,
     ChildUpdateRequest, DiscoveredChild, DiscoverChildrenResponse,
     LinkChildrenBulkRequest, ChildHighlight, ParentDashboardResponse,
+    LinkTeacherRequest, LinkedTeacher,
 )
 from app.schemas.course import CourseResponse
 from app.schemas.assignment import AssignmentResponse
@@ -912,3 +913,173 @@ def unassign_course_from_child(
         raise HTTPException(status_code=404, detail="Course not assigned to this student")
 
     return {"message": "Course removed from student"}
+
+
+# ── Teacher Linking ─────────────────────────────────────────────
+
+
+@router.post("/children/{student_id}/teachers", response_model=LinkedTeacher)
+def link_teacher_to_child(
+    student_id: int,
+    request: LinkTeacherRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Link a teacher to a child by email so the parent can message them directly."""
+    from app.models.teacher import Teacher
+
+    # Verify parent-student link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Find teacher user by email
+    teacher_user = db.query(User).filter(User.email == request.teacher_email).first()
+    teacher_user_id = teacher_user.id if teacher_user else None
+    teacher_name = request.teacher_name
+
+    if teacher_user:
+        # If the user exists, use their name unless overridden
+        if not teacher_name:
+            teacher_name = teacher_user.full_name
+        # Must be a teacher role
+        if not teacher_user.has_role(UserRole.TEACHER):
+            raise HTTPException(status_code=400, detail="This user is not a teacher")
+
+    # Check if already linked
+    existing = (
+        db.query(student_teachers)
+        .filter(
+            student_teachers.c.student_id == student_id,
+            student_teachers.c.teacher_email == request.teacher_email,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="This teacher is already linked to this child")
+
+    # Insert the link
+    result = db.execute(
+        insert(student_teachers).values(
+            student_id=student_id,
+            teacher_user_id=teacher_user_id,
+            teacher_name=teacher_name or request.teacher_email.split("@")[0],
+            teacher_email=request.teacher_email,
+            added_by_user_id=current_user.id,
+        )
+    )
+    db.commit()
+
+    # Get the inserted row
+    row = (
+        db.query(student_teachers)
+        .filter(
+            student_teachers.c.student_id == student_id,
+            student_teachers.c.teacher_email == request.teacher_email,
+        )
+        .first()
+    )
+
+    log_action(db, user_id=current_user.id, action="create", resource_type="student_teacher_link",
+               details={"student_id": student_id, "teacher_email": request.teacher_email})
+    db.commit()
+
+    return LinkedTeacher(
+        id=row.id,
+        student_id=row.student_id,
+        teacher_user_id=row.teacher_user_id,
+        teacher_name=row.teacher_name,
+        teacher_email=row.teacher_email,
+        added_by_user_id=row.added_by_user_id,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/children/{student_id}/teachers", response_model=list[LinkedTeacher])
+def list_linked_teachers(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """List all teachers manually linked to a child."""
+    # Verify parent-student link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    rows = (
+        db.query(student_teachers)
+        .filter(student_teachers.c.student_id == student_id)
+        .all()
+    )
+
+    return [
+        LinkedTeacher(
+            id=r.id,
+            student_id=r.student_id,
+            teacher_user_id=r.teacher_user_id,
+            teacher_name=r.teacher_name,
+            teacher_email=r.teacher_email,
+            added_by_user_id=r.added_by_user_id,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@router.delete("/children/{student_id}/teachers/{link_id}")
+def unlink_teacher_from_child(
+    student_id: int,
+    link_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Remove a manually linked teacher from a child."""
+    from sqlalchemy import delete
+
+    # Verify parent-student link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    result = db.execute(
+        delete(student_teachers).where(
+            student_teachers.c.id == link_id,
+            student_teachers.c.student_id == student_id,
+        )
+    )
+    db.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Teacher link not found")
+
+    log_action(db, user_id=current_user.id, action="delete", resource_type="student_teacher_link",
+               details={"student_id": student_id, "link_id": link_id})
+    db.commit()
+
+    return {"message": "Teacher unlinked from student"}

@@ -87,6 +87,24 @@ class ChildHighlight(BaseModel):
     due_today_items: list[dict] = []
 
 
+class LinkTeacherRequest(BaseModel):
+    teacher_email: str
+    teacher_name: str | None = None
+
+
+class LinkedTeacher(BaseModel):
+    id: int
+    student_id: int
+    teacher_user_id: int | None = None
+    teacher_name: str | None = None
+    teacher_email: str | None = None
+    added_by_user_id: int
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class ParentDashboardResponse(BaseModel):
     """Aggregated dashboard data returned in a single API call."""
     children: list[ChildSummary]

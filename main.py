@@ -33,7 +33,7 @@ logger.info("Starting EMAI application...")
 
 # Create database tables
 from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog
-from app.models.student import parent_students  # noqa: F401 — ensure join table is created
+from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

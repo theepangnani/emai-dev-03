@@ -763,6 +763,16 @@ export interface DiscoverChildrenResponse {
   courses_searched: number;
 }
 
+export interface LinkedTeacher {
+  id: number;
+  student_id: number;
+  teacher_user_id: number | null;
+  teacher_name: string | null;
+  teacher_email: string | null;
+  added_by_user_id: number;
+  created_at: string | null;
+}
+
 // Parent API
 export const parentApi = {
   getDashboard: async () => {
@@ -830,6 +840,24 @@ export const parentApi = {
 
   unassignCourseFromChild: async (studentId: number, courseId: number) => {
     const response = await api.delete(`/api/parent/children/${studentId}/courses/${courseId}`);
+    return response.data;
+  },
+
+  linkTeacher: async (studentId: number, teacherEmail: string, teacherName?: string) => {
+    const response = await api.post(`/api/parent/children/${studentId}/teachers`, {
+      teacher_email: teacherEmail,
+      ...(teacherName ? { teacher_name: teacherName } : {}),
+    });
+    return response.data as LinkedTeacher;
+  },
+
+  getLinkedTeachers: async (studentId: number) => {
+    const response = await api.get(`/api/parent/children/${studentId}/teachers`);
+    return response.data as LinkedTeacher[];
+  },
+
+  unlinkTeacher: async (studentId: number, linkId: number) => {
+    const response = await api.delete(`/api/parent/children/${studentId}/teachers/${linkId}`);
     return response.data;
   },
 };

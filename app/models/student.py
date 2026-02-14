@@ -25,6 +25,19 @@ parent_students = Table(
 )
 
 
+student_teachers = Table(
+    "student_teachers",
+    Base.metadata,
+    Column("id", Integer, primary_key=True, index=True),
+    Column("student_id", Integer, ForeignKey("students.id"), nullable=False),
+    Column("teacher_user_id", Integer, ForeignKey("users.id"), nullable=False),
+    Column("teacher_name", String(255), nullable=True),
+    Column("teacher_email", String(255), nullable=True),
+    Column("added_by_user_id", Integer, ForeignKey("users.id"), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+)
+
+
 class Student(Base):
     __tablename__ = "students"
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { parentApi, courseContentsApi, tasksApi } from '../api/client';
-import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem } from '../api/client';
+import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import './MyKidsPage.css';
@@ -13,6 +13,7 @@ export function MyKidsPage() {
   const [overview, setOverview] = useState<ChildOverview | null>(null);
   const [materials, setMaterials] = useState<CourseContentItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [linkedTeachers, setLinkedTeachers] = useState<LinkedTeacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [sectionLoading, setSectionLoading] = useState(false);
 
@@ -20,6 +21,14 @@ export function MyKidsPage() {
   const [showCourses, setShowCourses] = useState(true);
   const [showMaterials, setShowMaterials] = useState(true);
   const [showTasks, setShowTasks] = useState(true);
+  const [showTeachers, setShowTeachers] = useState(true);
+
+  // Add teacher modal
+  const [showAddTeacher, setShowAddTeacher] = useState(false);
+  const [teacherEmail, setTeacherEmail] = useState('');
+  const [teacherName, setTeacherName] = useState('');
+  const [addTeacherError, setAddTeacherError] = useState('');
+  const [addTeacherLoading, setAddTeacherLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -40,6 +49,7 @@ export function MyKidsPage() {
       setOverview(null);
       setMaterials([]);
       setTasks([]);
+      setLinkedTeachers([]);
       return;
     }
     const child = children.find(c => c.student_id === selectedChild);
@@ -50,14 +60,17 @@ export function MyKidsPage() {
       parentApi.getChildOverview(selectedChild),
       courseContentsApi.listAll({ student_user_id: child.user_id }),
       tasksApi.list({ assigned_to_user_id: child.user_id }),
-    ]).then(([ov, mats, tks]) => {
+      parentApi.getLinkedTeachers(selectedChild),
+    ]).then(([ov, mats, tks, teachers]) => {
       setOverview(ov);
       setMaterials(mats.filter(m => !m.archived_at));
       setTasks(tks.filter(t => !t.archived_at));
+      setLinkedTeachers(teachers);
     }).catch(() => {
       setOverview(null);
       setMaterials([]);
       setTasks([]);
+      setLinkedTeachers([]);
     }).finally(() => setSectionLoading(false));
   }, [selectedChild, children]);
 
@@ -208,6 +221,109 @@ export function MyKidsPage() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* ── Linked Teachers ────────────────────── */}
+          <div className="mykids-section">
+            <div className="mykids-section-header-row">
+              <button className="mykids-section-toggle" onClick={() => setShowTeachers(p => !p)}>
+                <span className={`section-chevron${showTeachers ? ' expanded' : ''}`}>&#9654;</span>
+                Teachers ({(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length})
+              </button>
+              <button
+                className="mykids-add-teacher-btn"
+                onClick={() => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
+              >
+                + Add Teacher
+              </button>
+            </div>
+            {showTeachers && (
+              <div className="mykids-task-list">
+                {/* Teachers from courses */}
+                {overview?.courses.filter(c => c.teacher_name).map(c => (
+                  <div key={`course-${c.id}`} className="mykids-teacher-row">
+                    <div className="mykids-teacher-info">
+                      <span className="mykids-teacher-name">{c.teacher_name}</span>
+                      <span className="mykids-teacher-email">{c.teacher_email || c.name} (via course)</span>
+                    </div>
+                  </div>
+                ))}
+                {/* Directly linked teachers */}
+                {linkedTeachers.map(t => (
+                  <div key={`link-${t.id}`} className="mykids-teacher-row">
+                    <div className="mykids-teacher-info">
+                      <span className="mykids-teacher-name">{t.teacher_name || 'Unknown'}</span>
+                      <span className="mykids-teacher-email">{t.teacher_email}</span>
+                    </div>
+                    <button
+                      className="mykids-remove-btn"
+                      onClick={async () => {
+                        if (!selectedChild) return;
+                        await parentApi.unlinkTeacher(selectedChild, t.id);
+                        setLinkedTeachers(prev => prev.filter(lt => lt.id !== t.id));
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                {(overview?.courses.filter(c => c.teacher_name).length ?? 0) === 0 && linkedTeachers.length === 0 && (
+                  <p className="mykids-empty-hint">No teachers linked yet. Add a teacher by email to start messaging.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Add Teacher Modal */}
+      {showAddTeacher && selectedChild && (
+        <div className="mykids-modal-overlay" onClick={() => setShowAddTeacher(false)}>
+          <div className="mykids-modal" onClick={e => e.stopPropagation()}>
+            <h3>Add Teacher</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Link a teacher by email so you can send them messages directly.
+            </p>
+            {addTeacherError && <div className="mykids-modal-error">{addTeacherError}</div>}
+            <label>Teacher Email *</label>
+            <input
+              type="email"
+              placeholder="teacher@school.edu"
+              value={teacherEmail}
+              onChange={e => setTeacherEmail(e.target.value)}
+            />
+            <label>Teacher Name (optional)</label>
+            <input
+              type="text"
+              placeholder="Ms. Smith"
+              value={teacherName}
+              onChange={e => setTeacherName(e.target.value)}
+            />
+            <div className="mykids-modal-actions">
+              <button onClick={() => setShowAddTeacher(false)}>Cancel</button>
+              <button
+                className="mykids-modal-submit"
+                disabled={addTeacherLoading || !teacherEmail.trim()}
+                onClick={async () => {
+                  setAddTeacherLoading(true);
+                  setAddTeacherError('');
+                  try {
+                    const linked = await parentApi.linkTeacher(
+                      selectedChild,
+                      teacherEmail.trim(),
+                      teacherName.trim() || undefined,
+                    );
+                    setLinkedTeachers(prev => [...prev, linked]);
+                    setShowAddTeacher(false);
+                  } catch (err: any) {
+                    setAddTeacherError(err?.response?.data?.detail || 'Failed to link teacher');
+                  } finally {
+                    setAddTeacherLoading(false);
+                  }
+                }}
+              >
+                {addTeacherLoading ? 'Adding...' : 'Add Teacher'}
+              </button>
+            </div>
           </div>
         </div>
       )}
