@@ -1222,6 +1222,31 @@ Defect fixes and ad-hoc improvements made during this development sprint:
 | Inspiration messages Docker | `data/` directory not included in Docker image; added COPY directive and handled admin role in inspiration API | `a5b2f5d` |
 | TypeScript build fix | Added `refresh_token` to `acceptInvite` return type and `loginWithToken` signature | `95a9618` |
 
+### 6.40 Admin Messaging: Broadcast & Individual (Phase 1)
+
+Admin users can send messages to all platform users (broadcast) or to individual users. All recipients with a valid email address will also receive the message via email.
+
+**Backend:**
+- **Broadcast endpoint:** `POST /api/admin/broadcast` — Admin-only. Accepts `subject` and `body` (HTML-safe). Creates an in-app notification for every active user and sends an email to all users with a non-null email address. Returns count of notifications created and emails sent.
+- **Individual message endpoint:** `POST /api/admin/users/{user_id}/message` — Admin-only. Accepts `subject` and `body`. Creates an in-app notification for the target user and sends an email if the user has an email address.
+- **Broadcast history:** `GET /api/admin/broadcasts` — List past broadcasts with timestamp, subject, recipient count.
+- Email is sent asynchronously (background) to avoid request timeout for large user bases.
+- Uses existing `send_email_sync` from `email_service.py` with the configured `FROM_EMAIL` (clazzbridge@gmail.com).
+- Audit log entries created for both broadcast and individual messages.
+
+**Frontend (AdminDashboard):**
+- **"Send Broadcast" button** on Admin Dashboard — opens a modal with subject + rich-text body fields, preview, and "Send to All Users" confirmation.
+- **"Send Message" action** per user row in the user management table — opens a modal to compose a message to that specific user.
+- **Broadcast history section** — collapsible section showing past broadcasts with date, subject, and recipient count.
+- Success/error toast notifications after send.
+
+**Sub-tasks:**
+- [ ] Backend: Broadcast endpoint with email delivery (#258)
+- [ ] Backend: Individual admin-to-user message endpoint (#259)
+- [ ] Backend: Broadcast history endpoint (#258)
+- [ ] Frontend: Broadcast modal on Admin Dashboard (#258)
+- [ ] Frontend: Individual message modal in user table (#259)
+
 ### 6.30 Role-Based Inspirational Messages (Phase 2) - IMPLEMENTED
 
 Replace the static "Welcome back" dashboard greeting with role-specific inspirational messages that rotate on each visit. Messages are maintained in JSON seed files and imported into the database. Admins can manage messages via the admin dashboard.
@@ -1258,7 +1283,7 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 | **Parent Dashboard** | Left nav (Courses, Study Guides, Messages), calendar-centric main area (Day/3-Day/Week/Month views), child filter tabs with edit child modal, day detail modal (CRUD tasks/assignments), task management with reminders, course color-coding | Implemented (v2 in progress) |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
-| **Admin Dashboard** | Platform stats, user management table (search, filter, pagination) | Implemented |
+| **Admin Dashboard** | Platform stats, user management table (search, filter, pagination), role management, broadcast messaging, individual user messaging | Implemented (messaging planned) |
 
 > **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
 
@@ -1487,6 +1512,8 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Multi-Google account support for teachers
 - [ ] Auto-send invite email to shadow teachers on creation
 - [ ] Teacher Dashboard course management view with source badges
+- [ ] **Admin broadcast messaging** — Send message + email to all users (#258)
+- [ ] **Admin individual messaging** — Send message + email to specific user (#259)
 
 #### Architecture Foundation (Tier 0)
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
@@ -1750,6 +1777,9 @@ src/domains/{context}/
 | ~~`/api/tasks/{id}`~~ | ~~DELETE~~ | ~~Soft-delete (archive) task~~ | ~~#100~~ (IMPLEMENTED) |
 | ~~`/api/tasks/{id}/restore`~~ | ~~PATCH~~ | ~~Restore archived task~~ | ~~#107~~ (IMPLEMENTED) |
 | ~~`/api/tasks/{id}/permanent`~~ | ~~DELETE~~ | ~~Permanently delete archived task~~ | ~~#107~~ (IMPLEMENTED) |
+| `/api/admin/broadcast` | POST | Send broadcast message + email to all users | #258 |
+| `/api/admin/broadcasts` | GET | List past broadcasts with stats | #258 |
+| `/api/admin/users/{user_id}/message` | POST | Send individual message + email to a user | #259 |
 | `/api/calendar/events` | GET | Calendar events (role-aware, assignments + tasks) | #45 |
 | `/api/calendar/google-sync` | POST | Push to Google Calendar (Phase 1.5) | #46 |
 
@@ -1904,6 +1934,8 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #209: Add assignee filter to TasksPage for filtering by student~~ ✅
 - ~~Issue #210: Task Detail Page: Inline edit mode with all fields~~ ✅
 - ~~Issue #255-#257: Multi-role support Phase B requirements and issues created~~ (PLANNED)
+- Issue #258: Admin broadcast messaging: send message + email to all users (PLANNED)
+- Issue #259: Admin individual messaging: send message + email to a specific user (PLANNED)
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
