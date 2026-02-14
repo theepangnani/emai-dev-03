@@ -10,11 +10,19 @@ class AssignmentCreate(BaseModel):
     max_points: float | None = None
 
 
+class AssignmentUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    due_date: datetime | None = None
+    max_points: float | None = None
+
+
 class AssignmentResponse(BaseModel):
     id: int
     title: str
     description: str | None
     course_id: int
+    course_name: str | None = None
     google_classroom_id: str | None
     due_date: datetime | None
     max_points: float | None

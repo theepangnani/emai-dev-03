@@ -498,6 +498,100 @@
   margin: 4px 0;
 }
 
+/* Assignments */
+.course-assignments-section {
+  margin-top: 28px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 20px 24px;
+}
+
+.course-assignments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.course-assignments-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--color-ink);
+}
+
+.course-assignments-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.course-assignment-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.course-assignment-row:last-child {
+  border-bottom: none;
+}
+
+.course-assignment-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.course-assignment-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+.course-assignment-desc {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-assignment-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.course-assignment-due {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.course-assignment-due.overdue {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.course-assignment-points {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.course-assignment-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 600px) {
   .course-detail-header {
     flex-direction: column;

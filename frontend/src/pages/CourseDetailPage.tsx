@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { coursesApi, courseContentsApi, studyApi } from '../api/client';
-import type { CourseContentItem } from '../api/client';
+import { coursesApi, courseContentsApi, studyApi, assignmentsApi } from '../api/client';
+import type { CourseContentItem, AssignmentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -61,6 +61,17 @@ export function CourseDetailPage() {
   const [addStudentLoading, setAddStudentLoading] = useState(false);
   const [addStudentError, setAddStudentError] = useState('');
   const [addStudentSuccess, setAddStudentSuccess] = useState('');
+
+  // Assignments
+  const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentItem | null>(null);
+  const [assignTitle, setAssignTitle] = useState('');
+  const [assignDesc, setAssignDesc] = useState('');
+  const [assignDueDate, setAssignDueDate] = useState('');
+  const [assignMaxPoints, setAssignMaxPoints] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignError, setAssignError] = useState('');
 
   // Edit course modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -129,6 +140,12 @@ export function CourseDetailPage() {
         setContents(contentsData);
       } catch {
         setContents([]);
+      }
+      try {
+        const assignData = await assignmentsApi.list(courseId);
+        setAssignments(assignData);
+      } catch {
+        setAssignments([]);
       }
       try {
         const roster = await coursesApi.listStudents(courseId);
@@ -457,6 +474,67 @@ export function CourseDetailPage() {
     }
   };
 
+  // Assignment handlers
+  const openAddAssignment = () => {
+    setEditingAssignment(null);
+    setAssignTitle('');
+    setAssignDesc('');
+    setAssignDueDate('');
+    setAssignMaxPoints('');
+    setAssignError('');
+    setShowAssignmentModal(true);
+  };
+
+  const openEditAssignment = (a: AssignmentItem) => {
+    setEditingAssignment(a);
+    setAssignTitle(a.title);
+    setAssignDesc(a.description || '');
+    setAssignDueDate(a.due_date ? a.due_date.slice(0, 16) : '');
+    setAssignMaxPoints(a.max_points != null ? String(a.max_points) : '');
+    setAssignError('');
+    setShowAssignmentModal(true);
+  };
+
+  const handleSaveAssignment = async () => {
+    if (!assignTitle.trim()) return;
+    setAssignSaving(true);
+    setAssignError('');
+    try {
+      if (editingAssignment) {
+        const updated = await assignmentsApi.update(editingAssignment.id, {
+          title: assignTitle.trim(),
+          description: assignDesc.trim() || undefined,
+          due_date: assignDueDate || null,
+          max_points: assignMaxPoints ? Number(assignMaxPoints) : null,
+        });
+        setAssignments(prev => prev.map(a => a.id === updated.id ? updated : a));
+      } else {
+        const created = await assignmentsApi.create({
+          course_id: courseId,
+          title: assignTitle.trim(),
+          description: assignDesc.trim() || undefined,
+          due_date: assignDueDate || undefined,
+          max_points: assignMaxPoints ? Number(assignMaxPoints) : undefined,
+        });
+        setAssignments(prev => [...prev, created]);
+      }
+      setShowAssignmentModal(false);
+    } catch (err: any) {
+      setAssignError(err.response?.data?.detail || 'Failed to save assignment');
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
+  const handleDeleteAssignment = async (a: AssignmentItem) => {
+    const ok = await confirm({ title: 'Delete Assignment', message: `Delete "${a.title}"? This cannot be undone.`, variant: 'danger' });
+    if (!ok) return;
+    try {
+      await assignmentsApi.delete(a.id);
+      setAssignments(prev => prev.filter(x => x.id !== a.id));
+    } catch { /* ignore */ }
+  };
+
   if (loading) {
     return (
       <DashboardLayout welcomeSubtitle="Course details">
@@ -587,6 +665,45 @@ export function CourseDetailPage() {
                     </>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Assignments */}
+      <div className="course-assignments-section">
+        <div className="course-assignments-header">
+          <h3>Assignments ({assignments.length})</h3>
+          {canManageRoster && (
+            <button className="courses-btn secondary" onClick={openAddAssignment}>+ Add Assignment</button>
+          )}
+        </div>
+        {assignments.length === 0 ? (
+          <p className="course-roster-empty">No assignments yet.</p>
+        ) : (
+          <div className="course-assignments-list">
+            {assignments.map(a => (
+              <div key={a.id} className="course-assignment-row">
+                <div className="course-assignment-info">
+                  <span className="course-assignment-title">{a.title}</span>
+                  {a.description && <span className="course-assignment-desc">{a.description}</span>}
+                </div>
+                <div className="course-assignment-meta">
+                  {a.due_date && (
+                    <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
+                      Due {new Date(a.due_date).toLocaleDateString()}
+                    </span>
+                  )}
+                  {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
+                  {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
+                </div>
+                {canManageRoster && !a.google_classroom_id && (
+                  <div className="course-assignment-actions">
+                    <button className="content-icon-btn" title="Edit" onClick={() => openEditAssignment(a)}>&#9998;</button>
+                    <button className="content-icon-btn danger" title="Delete" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -802,6 +919,40 @@ export function CourseDetailPage() {
               <button className="cancel-btn" onClick={() => setShowUploadModal(false)} disabled={uploading}>Cancel</button>
               <button className="generate-btn" onClick={handleUploadDocument} disabled={uploading || !selectedFile || !uploadTitle.trim() || extracting}>
                 {uploading ? (generateAfterUpload ? 'Saving & Generating...' : 'Saving...') : (generateAfterUpload ? 'Save & Generate' : 'Save to Course')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assignment Modal */}
+      {showAssignmentModal && (
+        <div className="modal-overlay" onClick={() => setShowAssignmentModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingAssignment ? 'Edit Assignment' : 'Create Assignment'}</h2>
+            <div className="modal-form">
+              <label>
+                Title *
+                <input type="text" value={assignTitle} onChange={(e) => setAssignTitle(e.target.value)} placeholder="e.g. Chapter 5 Homework" disabled={assignSaving} onKeyDown={(e) => e.key === 'Enter' && handleSaveAssignment()} />
+              </label>
+              <label>
+                Description (optional)
+                <textarea value={assignDesc} onChange={(e) => setAssignDesc(e.target.value)} placeholder="Assignment details..." rows={3} disabled={assignSaving} />
+              </label>
+              <label>
+                Due Date (optional)
+                <input type="datetime-local" value={assignDueDate} onChange={(e) => setAssignDueDate(e.target.value)} disabled={assignSaving} />
+              </label>
+              <label>
+                Max Points (optional)
+                <input type="number" min="0" step="1" value={assignMaxPoints} onChange={(e) => setAssignMaxPoints(e.target.value)} placeholder="e.g. 100" disabled={assignSaving} />
+              </label>
+              {assignError && <p className="link-error">{assignError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowAssignmentModal(false)} disabled={assignSaving}>Cancel</button>
+              <button className="generate-btn" onClick={handleSaveAssignment} disabled={assignSaving || !assignTitle.trim()}>
+                {assignSaving ? 'Saving...' : editingAssignment ? 'Save Changes' : 'Create Assignment'}
               </button>
             </div>
           </div>

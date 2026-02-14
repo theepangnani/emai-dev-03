@@ -267,16 +267,42 @@ export const courseContentsApi = {
 };
 
 // Assignments API
+export interface AssignmentItem {
+  id: number;
+  title: string;
+  description: string | null;
+  course_id: number;
+  course_name: string | null;
+  google_classroom_id: string | null;
+  due_date: string | null;
+  max_points: number | null;
+  created_at: string;
+}
+
 export const assignmentsApi = {
-  list: async (courseId?: number) => {
+  list: async (courseId?: number): Promise<AssignmentItem[]> => {
     const params = courseId ? { course_id: courseId } : {};
     const response = await api.get('/api/assignments/', { params });
     return response.data;
   },
 
-  get: async (id: number) => {
+  get: async (id: number): Promise<AssignmentItem> => {
     const response = await api.get(`/api/assignments/${id}`);
     return response.data;
+  },
+
+  create: async (data: { course_id: number; title: string; description?: string; due_date?: string; max_points?: number }): Promise<AssignmentItem> => {
+    const response = await api.post('/api/assignments/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: { title?: string; description?: string; due_date?: string | null; max_points?: number | null }): Promise<AssignmentItem> => {
+    const response = await api.put(`/api/assignments/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/api/assignments/${id}`);
   },
 };
 

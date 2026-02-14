@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.assignment import Assignment
 from app.models.course import Course, student_courses
+from app.models.notification import Notification, NotificationType
 from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
 from app.models.user import User, UserRole
-from app.schemas.assignment import AssignmentCreate, AssignmentResponse
+from app.schemas.assignment import AssignmentCreate, AssignmentUpdate, AssignmentResponse
 from app.api.deps import get_current_user, can_access_course
 
 router = APIRouter(prefix="/assignments", tags=["Assignments"])
@@ -54,6 +55,62 @@ def _get_accessible_course_ids(db: Session, user: User) -> list[int] | None:
     return list(ids)
 
 
+def _require_course_write(db: Session, user: User, course_id: int) -> Course:
+    """Verify the user can write assignments to the course. Returns the course."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if user.has_role(UserRole.ADMIN):
+        return course
+
+    if course.created_by_user_id == user.id:
+        return course
+
+    if user.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+        if teacher and course.teacher_id == teacher.id:
+            return course
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Only the course teacher or creator can manage assignments",
+    )
+
+
+def _notify_enrolled_students(db: Session, course: Course, assignment: Assignment, actor_name: str):
+    """Send in-app notification to all enrolled students."""
+    enrolled_user_ids = (
+        db.query(Student.user_id)
+        .join(student_courses, Student.id == student_courses.c.student_id)
+        .filter(student_courses.c.course_id == course.id)
+        .all()
+    )
+    for (uid,) in enrolled_user_ids:
+        db.add(Notification(
+            user_id=uid,
+            type=NotificationType.ASSIGNMENT_DUE,
+            title=f"New assignment in {course.name}",
+            content=f"{actor_name} posted \"{assignment.title}\"",
+            link=f"/courses/{course.id}",
+        ))
+
+
+def _to_response(assignment: Assignment) -> dict:
+    """Convert assignment to response dict with course_name."""
+    return {
+        "id": assignment.id,
+        "title": assignment.title,
+        "description": assignment.description,
+        "course_id": assignment.course_id,
+        "course_name": assignment.course.name if assignment.course else None,
+        "google_classroom_id": assignment.google_classroom_id,
+        "due_date": assignment.due_date,
+        "max_points": assignment.max_points,
+        "created_at": assignment.created_at,
+    }
+
+
 @router.post("/", response_model=AssignmentResponse)
 def create_assignment(
     assignment_data: AssignmentCreate,
@@ -61,31 +118,57 @@ def create_assignment(
     current_user: User = Depends(get_current_user),
 ):
     """Create an assignment. Must have write access to the course."""
-    if not can_access_course(db, current_user, assignment_data.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
-
-    # Only teacher of the course, course creator, or admin can create assignments
-    if not current_user.has_role(UserRole.ADMIN):
-        course = db.query(Course).filter(Course.id == assignment_data.course_id).first()
-        if course and course.created_by_user_id != current_user.id:
-            if current_user.role == UserRole.TEACHER:
-                teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
-                if not teacher or course.teacher_id != teacher.id:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Only the course teacher or creator can add assignments",
-                    )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only the course teacher or creator can add assignments",
-                )
+    course = _require_course_write(db, current_user, assignment_data.course_id)
 
     assignment = Assignment(**assignment_data.model_dump())
     db.add(assignment)
+    db.flush()
+
+    _notify_enrolled_students(db, course, assignment, current_user.full_name)
     db.commit()
     db.refresh(assignment)
-    return assignment
+    return _to_response(assignment)
+
+
+@router.put("/{assignment_id}", response_model=AssignmentResponse)
+def update_assignment(
+    assignment_id: int,
+    data: AssignmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update an assignment."""
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    _require_course_write(db, current_user, assignment.course_id)
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(assignment, key, value)
+
+    db.commit()
+    db.refresh(assignment)
+    return _to_response(assignment)
+
+
+@router.delete("/{assignment_id}", status_code=status.HTTP_200_OK)
+def delete_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete an assignment."""
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    _require_course_write(db, current_user, assignment.course_id)
+
+    db.delete(assignment)
+    db.commit()
+    return {"detail": "Assignment deleted"}
 
 
 @router.get("/", response_model=list[AssignmentResponse])
@@ -106,7 +189,8 @@ def list_assignments(
         if accessible is not None:  # None means admin (all access)
             query = query.filter(Assignment.course_id.in_(accessible))
 
-    return query.all()
+    assignments = query.order_by(Assignment.due_date.asc().nullslast(), Assignment.created_at.desc()).all()
+    return [_to_response(a) for a in assignments]
 
 
 @router.get("/{assignment_id}", response_model=AssignmentResponse)
@@ -123,4 +207,4 @@ def get_assignment(
     if not can_access_course(db, current_user, assignment.course_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
 
-    return assignment
+    return _to_response(assignment)
