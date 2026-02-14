@@ -1075,6 +1075,36 @@ Documents the end-to-end flow for parent-teacher-course visibility.
 - No parent notification when a teacher adds their child to a course (#238)
 - No real-time dashboard refresh (requires page reload)
 
+### 6.34 Course Enrollment (All Roles) (Phase 1) - PARTIAL
+
+Complete enrollment/unenrollment matrix for all roles.
+
+**Enrollment Matrix:**
+
+| Action | Backend | Frontend | Status |
+|--------|---------|----------|--------|
+| Teacher enrolls student by email | ✅ `POST /courses/{id}/students` | ✅ CourseDetailPage roster | IMPLEMENTED (#225) |
+| Teacher removes student | ✅ `DELETE /courses/{id}/students/{sid}` | ✅ CourseDetailPage roster | IMPLEMENTED (#225) |
+| Parent assigns course to child | ✅ `POST /parent/children/{sid}/courses` | ✅ CoursesPage assign modal | IMPLEMENTED |
+| Parent unassigns course from child | ✅ `DELETE /parent/children/{sid}/courses/{cid}` | ✅ CoursesPage unassign button | IMPLEMENTED |
+| Student self-enrolls | ✅ `POST /courses/{id}/enroll` | ❌ No UI | PLANNED (#250) |
+| Student unenrolls self | ✅ `DELETE /courses/{id}/enroll` | ❌ No UI | PLANNED (#250) |
+
+**Known gaps:**
+- Student self-enrollment has no frontend UI (#250)
+- Student self-enrollment endpoint lacks visibility check — can enroll in private courses (#251)
+- No parent notification when teacher enrolls their child (#238)
+
+**Sub-tasks:**
+- [x] Backend: Teacher add/remove students (#225)
+- [x] Frontend: Teacher roster management UI (#225)
+- [x] Backend: Parent assign/unassign courses
+- [x] Frontend: Parent course assignment UI
+- [x] Backend: Student self-enroll/unenroll endpoints
+- [ ] Frontend: Student browse/enroll/unenroll UI (#250)
+- [ ] Backend: Add visibility check to self-enroll endpoint (#251)
+- [ ] Backend: Notify parent when teacher enrolls child (#238)
+
 ### 6.30 Role-Based Inspirational Messages (Phase 2) - IMPLEMENTED
 
 Replace the static "Welcome back" dashboard greeting with role-specific inspirational messages that rotate on each visit. Messages are maintained in JSON seed files and imported into the database. Admins can manage messages via the admin dashboard.
