@@ -927,7 +927,7 @@ export const parentApi = {
     return response.data as ChildSummary;
   },
 
-  updateChild: async (studentId: number, data: { full_name?: string; grade_level?: number; school_name?: string; date_of_birth?: string; phone?: string; address?: string; city?: string; province?: string; postal_code?: string; notes?: string }) => {
+  updateChild: async (studentId: number, data: { full_name?: string; email?: string; grade_level?: number; school_name?: string; date_of_birth?: string; phone?: string; address?: string; city?: string; province?: string; postal_code?: string; notes?: string }) => {
     const response = await api.patch(`/api/parent/children/${studentId}`, data);
     return response.data as ChildSummary;
   },

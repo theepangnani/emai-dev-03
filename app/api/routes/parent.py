@@ -865,6 +865,12 @@ def update_child(
 
     if request.full_name is not None and user:
         user.full_name = request.full_name
+    if request.email is not None and user:
+        # Check email uniqueness
+        existing = db.query(User).filter(User.email == request.email, User.id != user.id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use by another account")
+        user.email = request.email
     if request.grade_level is not None:
         student.grade_level = request.grade_level
     if request.school_name is not None:

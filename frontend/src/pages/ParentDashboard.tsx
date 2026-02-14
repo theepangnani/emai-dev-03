@@ -92,6 +92,7 @@ export function ParentDashboard() {
   const [showEditChildModal, setShowEditChildModal] = useState(false);
   const [editChild, setEditChild] = useState<ChildSummary | null>(null);
   const [editChildName, setEditChildName] = useState('');
+  const [editChildEmail, setEditChildEmail] = useState('');
   const [editChildGrade, setEditChildGrade] = useState('');
   const [editChildSchool, setEditChildSchool] = useState('');
   const [editChildDob, setEditChildDob] = useState('');
@@ -103,6 +104,7 @@ export function ParentDashboard() {
   const [editChildNotes, setEditChildNotes] = useState('');
   const [editChildLoading, setEditChildLoading] = useState(false);
   const [editChildError, setEditChildError] = useState('');
+  const [editChildOptionalOpen, setEditChildOptionalOpen] = useState(false);
 
   // Day detail modal state
   const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
@@ -381,6 +383,7 @@ export function ParentDashboard() {
   const openEditChild = (child: ChildSummary) => {
     setEditChild(child);
     setEditChildName(child.full_name);
+    setEditChildEmail(child.email || '');
     setEditChildGrade(child.grade_level != null ? String(child.grade_level) : '');
     setEditChildSchool(child.school_name || '');
     setEditChildDob(child.date_of_birth || '');
@@ -391,6 +394,9 @@ export function ParentDashboard() {
     setEditChildPostal(child.postal_code || '');
     setEditChildNotes(child.notes || '');
     setEditChildError('');
+    // Auto-expand optional section if any optional field has data
+    const hasOptionalData = !!(child.date_of_birth || child.phone || child.address || child.city || child.province || child.postal_code || child.notes);
+    setEditChildOptionalOpen(hasOptionalData);
     setShowEditChildModal(true);
   };
 
@@ -398,6 +404,7 @@ export function ParentDashboard() {
     setShowEditChildModal(false);
     setEditChild(null);
     setEditChildName('');
+    setEditChildEmail('');
     setEditChildGrade('');
     setEditChildSchool('');
     setEditChildDob('');
@@ -408,6 +415,7 @@ export function ParentDashboard() {
     setEditChildPostal('');
     setEditChildNotes('');
     setEditChildError('');
+    setEditChildOptionalOpen(false);
   };
 
   const handleEditChild = async () => {
@@ -417,6 +425,7 @@ export function ParentDashboard() {
     try {
       await parentApi.updateChild(editChild.student_id, {
         full_name: editChildName.trim(),
+        email: editChildEmail.trim() || undefined,
         grade_level: editChildGrade ? parseInt(editChildGrade, 10) : undefined,
         school_name: editChildSchool.trim() || undefined,
         date_of_birth: editChildDob || undefined,
@@ -1241,6 +1250,10 @@ export function ParentDashboard() {
                 <input type="text" value={editChildName} onChange={(e) => setEditChildName(e.target.value)} placeholder="Child's name" disabled={editChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleEditChild()} />
               </label>
               <label>
+                Email
+                <input type="email" value={editChildEmail} onChange={(e) => setEditChildEmail(e.target.value)} placeholder="child@example.com" disabled={editChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleEditChild()} />
+              </label>
+              <label>
                 Grade Level
                 <select value={editChildGrade} onChange={(e) => setEditChildGrade(e.target.value)} disabled={editChildLoading}>
                   <option value="">Not set</option>
@@ -1253,36 +1266,48 @@ export function ParentDashboard() {
                 School
                 <input type="text" value={editChildSchool} onChange={(e) => setEditChildSchool(e.target.value)} placeholder="e.g., Lincoln Elementary" disabled={editChildLoading} />
               </label>
-              <label>
-                Date of Birth
-                <input type="date" value={editChildDob} onChange={(e) => setEditChildDob(e.target.value)} disabled={editChildLoading} />
-              </label>
-              <label>
-                Phone
-                <input type="tel" value={editChildPhone} onChange={(e) => setEditChildPhone(e.target.value)} placeholder="e.g., 555-123-4567" disabled={editChildLoading} />
-              </label>
-              <label>
-                Address
-                <input type="text" value={editChildAddress} onChange={(e) => setEditChildAddress(e.target.value)} placeholder="Street address" disabled={editChildLoading} />
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <label>
-                  City
-                  <input type="text" value={editChildCity} onChange={(e) => setEditChildCity(e.target.value)} placeholder="City" disabled={editChildLoading} />
-                </label>
-                <label>
-                  Province
-                  <input type="text" value={editChildProvince} onChange={(e) => setEditChildProvince(e.target.value)} placeholder="Province" disabled={editChildLoading} />
-                </label>
+
+              {/* Collapsible optional fields */}
+              <div className="collapsible-section">
+                <button type="button" className="collapsible-toggle" onClick={() => setEditChildOptionalOpen(!editChildOptionalOpen)}>
+                  <span className={`collapsible-arrow ${editChildOptionalOpen ? 'open' : ''}`}>&#9656;</span>
+                  Additional Details
+                </button>
+                {editChildOptionalOpen && (
+                  <div className="collapsible-content">
+                    <label>
+                      Date of Birth
+                      <input type="date" value={editChildDob} onChange={(e) => setEditChildDob(e.target.value)} disabled={editChildLoading} />
+                    </label>
+                    <label>
+                      Phone
+                      <input type="tel" value={editChildPhone} onChange={(e) => setEditChildPhone(e.target.value)} placeholder="e.g., 555-123-4567" disabled={editChildLoading} />
+                    </label>
+                    <label>
+                      Address
+                      <input type="text" value={editChildAddress} onChange={(e) => setEditChildAddress(e.target.value)} placeholder="Street address" disabled={editChildLoading} />
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <label>
+                        City
+                        <input type="text" value={editChildCity} onChange={(e) => setEditChildCity(e.target.value)} placeholder="City" disabled={editChildLoading} />
+                      </label>
+                      <label>
+                        Province
+                        <input type="text" value={editChildProvince} onChange={(e) => setEditChildProvince(e.target.value)} placeholder="Province" disabled={editChildLoading} />
+                      </label>
+                    </div>
+                    <label>
+                      Postal Code
+                      <input type="text" value={editChildPostal} onChange={(e) => setEditChildPostal(e.target.value)} placeholder="e.g., A1B 2C3" disabled={editChildLoading} />
+                    </label>
+                    <label>
+                      Notes
+                      <textarea value={editChildNotes} onChange={(e) => setEditChildNotes(e.target.value)} placeholder="Any additional notes about your child..." disabled={editChildLoading} rows={3} />
+                    </label>
+                  </div>
+                )}
               </div>
-              <label>
-                Postal Code
-                <input type="text" value={editChildPostal} onChange={(e) => setEditChildPostal(e.target.value)} placeholder="e.g., A1B 2C3" disabled={editChildLoading} />
-              </label>
-              <label>
-                Notes
-                <textarea value={editChildNotes} onChange={(e) => setEditChildNotes(e.target.value)} placeholder="Any additional notes about your child..." disabled={editChildLoading} rows={3} />
-              </label>
               {editChildError && <p className="link-error">{editChildError}</p>}
             </div>
             <div className="modal-actions">

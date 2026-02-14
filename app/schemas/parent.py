@@ -67,6 +67,7 @@ class CourseWithTeacher(CourseResponse):
 
 class ChildUpdateRequest(BaseModel):
     full_name: Optional[str] = None
+    email: Optional[str] = None
     grade_level: Optional[int] = None
     school_name: Optional[str] = None
     date_of_birth: Optional[date] = None
