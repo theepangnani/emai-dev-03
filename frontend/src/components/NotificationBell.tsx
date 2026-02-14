@@ -68,15 +68,13 @@ export function NotificationBell() {
       try {
         await notificationsApi.markAsRead(notification.id);
         setUnreadCount((prev) => Math.max(0, prev - 1));
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
-        );
       } catch {
         // Silently fail
       }
     }
 
-    // Open notification in a popup modal
+    // Remove from panel and open detail modal
+    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
     setIsOpen(false);
     setModalNotification(notification);
   };
@@ -85,7 +83,7 @@ export function NotificationBell() {
     try {
       await notificationsApi.markAllAsRead();
       setUnreadCount(0);
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications([]);
     } catch {
       // Silently fail
     }
