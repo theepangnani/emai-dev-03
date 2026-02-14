@@ -277,91 +277,105 @@ with engine.connect() as conn:
             col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
             conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN archived_at {col_type}"))
             logger.info("Added 'archived_at' column to study_guides")
+        conn.commit()
 
-        # ── audit_logs migrations ────────────────────────────────────
+    # ── audit_logs migrations ────────────────────────────────────
+    if "audit_logs" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("audit_logs")}
         if "action" in existing_cols:
             # Widen action column from VARCHAR(20) to VARCHAR(50)
             if "sqlite" not in settings.database_url:
-                conn.execute(text("ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(50)"))
-                logger.info("Widened audit_logs.action to VARCHAR(50)")
+                try:
+                    conn.execute(text("ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(50)"))
+                    logger.info("Widened audit_logs.action to VARCHAR(50)")
+                except Exception:
+                    conn.rollback()
+        conn.commit()
 
-        # ── users migrations (task_reminder_days) ─────────────────────
+    # ── users migrations (task_reminder_days) ─────────────────────
+    if "users" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("users")}
         if "task_reminder_days" not in existing_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN task_reminder_days VARCHAR(50) DEFAULT '1,3'"))
             logger.info("Added 'task_reminder_days' column to users")
-
         conn.commit()
 
-        # ── notifications enum migration (TASK_DUE) ──────────────────
-        # NOTE: ALTER TYPE ADD VALUE in PostgreSQL can leave connection in
-        # aborted state on failure; commit before and after to isolate.
+    # ── notifications enum migration (TASK_DUE) ──────────────────
+    # NOTE: ALTER TYPE ADD VALUE in PostgreSQL can leave connection in
+    # aborted state on failure; commit before and after to isolate.
+    if "sqlite" not in settings.database_url:
+        try:
+            conn.execute(text("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'TASK_DUE'"))
+            conn.commit()
+            logger.info("Added TASK_DUE to notificationtype enum")
+        except Exception:
+            conn.rollback()  # Required: clear aborted transaction state
+        try:
+            conn.execute(text("ALTER TYPE invitetype ADD VALUE IF NOT EXISTS 'PARENT'"))
+            conn.commit()
+            logger.info("Added PARENT to invitetype enum")
+        except Exception:
+            conn.rollback()  # Required: clear aborted transaction state
+
+    # ── student_teachers: make teacher_user_id nullable ──────────
+    if "student_teachers" in inspector.get_table_names():
         if "sqlite" not in settings.database_url:
             try:
-                conn.execute(text("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'TASK_DUE'"))
-                conn.commit()
-                logger.info("Added TASK_DUE to notificationtype enum")
+                conn.execute(text("ALTER TABLE student_teachers ALTER COLUMN teacher_user_id DROP NOT NULL"))
+                logger.info("Made 'teacher_user_id' nullable on student_teachers table")
             except Exception:
                 conn.rollback()  # Required: clear aborted transaction state
-            try:
-                conn.execute(text("ALTER TYPE invitetype ADD VALUE IF NOT EXISTS 'PARENT'"))
-                conn.commit()
-                logger.info("Added PARENT to invitetype enum")
-            except Exception:
-                conn.rollback()  # Required: clear aborted transaction state
-
-        # ── student_teachers: make teacher_user_id nullable ──────────
-        if "student_teachers" in inspector.get_table_names():
-            if "sqlite" not in settings.database_url:
-                try:
-                    conn.execute(text("ALTER TABLE student_teachers ALTER COLUMN teacher_user_id DROP NOT NULL"))
-                    logger.info("Made 'teacher_user_id' nullable on student_teachers table")
-                except Exception:
-                    conn.rollback()  # Required: clear aborted transaction state
-
-        # ── students: add profile detail columns (#267) ──────────────
-        if "students" in inspector.get_table_names():
-            existing_cols = {c["name"] for c in inspector.get_columns("students")}
-            col_type_date = "DATE"
-            col_type_ts = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
-            new_student_cols = [
-                ("date_of_birth", col_type_date),
-                ("phone", "VARCHAR(30)"),
-                ("address", "VARCHAR(255)"),
-                ("city", "VARCHAR(100)"),
-                ("province", "VARCHAR(100)"),
-                ("postal_code", "VARCHAR(20)"),
-                ("notes", "TEXT"),
-                ("updated_at", col_type_ts),
-            ]
-            for col_name, col_type in new_student_cols:
-                if col_name not in existing_cols:
-                    conn.execute(text(f"ALTER TABLE students ADD COLUMN {col_name} {col_type}"))
-                    logger.info(f"Added '{col_name}' column to students")
-            conn.commit()
-
-        # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
-        _apply_cascade_and_unique_migration(conn, inspector)
-
-        # ── One-time: promote users to admin ──
-        for admin_email in ["theepang@gmail.com", "clazzbridge@gmail.com"]:
-            try:
-                row = conn.execute(text(
-                    "SELECT id, roles FROM users WHERE email = :email "
-                    "AND (roles IS NULL OR roles NOT LIKE '%admin%')"
-                ), {"email": admin_email}).first()
-                if row:
-                    existing = row[1] or ""
-                    new_roles = "admin," + existing if existing else "admin"
-                    conn.execute(text(
-                        "UPDATE users SET role = 'ADMIN', roles = :roles WHERE id = :id"
-                    ), {"roles": new_roles, "id": row[0]})
-                    logger.info("Promoted %s to admin", admin_email)
-            except Exception:
-                pass  # User may not exist yet in this environment
-
         conn.commit()
+
+    # ── students: add profile detail columns (#267, #303) ────────
+    is_pg = "sqlite" not in settings.database_url
+    if "students" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        col_type_date = "DATE"
+        col_type_ts = "TIMESTAMPTZ" if is_pg else "DATETIME"
+        new_student_cols = [
+            ("date_of_birth", col_type_date),
+            ("phone", "VARCHAR(30)"),
+            ("address", "VARCHAR(255)"),
+            ("city", "VARCHAR(100)"),
+            ("province", "VARCHAR(100)"),
+            ("postal_code", "VARCHAR(20)"),
+            ("notes", "TEXT"),
+            ("updated_at", col_type_ts),
+        ]
+        for col_name, col_type in new_student_cols:
+            if col_name not in existing_cols:
+                try:
+                    if is_pg:
+                        conn.execute(text(f"ALTER TABLE students ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                    else:
+                        conn.execute(text(f"ALTER TABLE students ADD COLUMN {col_name} {col_type}"))
+                    logger.info(f"Added '{col_name}' column to students")
+                except Exception:
+                    conn.rollback()  # Column may already exist from concurrent instance
+        conn.commit()
+
+    # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
+    _apply_cascade_and_unique_migration(conn, inspector)
+
+    # ── One-time: promote users to admin ──
+    for admin_email in ["theepang@gmail.com", "clazzbridge@gmail.com"]:
+        try:
+            row = conn.execute(text(
+                "SELECT id, roles FROM users WHERE email = :email "
+                "AND (roles IS NULL OR roles NOT LIKE '%admin%')"
+            ), {"email": admin_email}).first()
+            if row:
+                existing = row[1] or ""
+                new_roles = "admin," + existing if existing else "admin"
+                conn.execute(text(
+                    "UPDATE users SET role = 'ADMIN', roles = :roles WHERE id = :id"
+                ), {"roles": new_roles, "id": row[0]})
+                logger.info("Promoted %s to admin", admin_email)
+        except Exception:
+            pass  # User may not exist yet in this environment
+
+    conn.commit()
 
 
 app = FastAPI(
