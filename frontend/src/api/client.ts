@@ -998,7 +998,40 @@ export const adminApi = {
     const response = await api.post(`/api/admin/users/${userId}/remove-role`, { role });
     return response.data as AdminUserItem;
   },
+
+  sendBroadcast: async (subject: string, body: string) => {
+    const response = await api.post('/api/admin/broadcast', { subject, body });
+    return response.data as BroadcastResponse;
+  },
+
+  getBroadcasts: async (skip = 0, limit = 20) => {
+    const response = await api.get('/api/admin/broadcasts', { params: { skip, limit } });
+    return response.data as BroadcastItem[];
+  },
+
+  sendMessage: async (userId: number, subject: string, body: string) => {
+    const response = await api.post(`/api/admin/users/${userId}/message`, { subject, body });
+    return response.data as { success: boolean; email_sent: boolean };
+  },
 };
+
+// Broadcast Types
+export interface BroadcastResponse {
+  id: number;
+  subject: string;
+  body: string;
+  recipient_count: number;
+  email_count: number;
+  created_at: string;
+}
+
+export interface BroadcastItem {
+  id: number;
+  subject: string;
+  recipient_count: number;
+  email_count: number;
+  created_at: string;
+}
 
 // Task Types
 export interface TaskItem {

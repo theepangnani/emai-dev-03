@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
-import type { AdminStats, AdminUserItem } from '../api/client';
+import type { AdminStats, AdminUserItem, BroadcastItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useDebounce } from '../utils/useDebounce';
 import { ListSkeleton } from '../components/Skeleton';
@@ -24,6 +24,22 @@ export function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
   const [roleLoading, setRoleLoading] = useState<Record<string, boolean>>({});
   const [roleError, setRoleError] = useState('');
+
+  // Broadcast state
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastSubject, setBroadcastSubject] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState('');
+  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
+  const [showBroadcastHistory, setShowBroadcastHistory] = useState(false);
+
+  // Individual message state
+  const [messageUser, setMessageUser] = useState<AdminUserItem | null>(null);
+  const [msgSubject, setMsgSubject] = useState('');
+  const [msgBody, setMsgBody] = useState('');
+  const [msgSending, setMsgSending] = useState(false);
+  const [msgResult, setMsgResult] = useState('');
 
   useEffect(() => {
     loadStats();
@@ -86,6 +102,62 @@ export function AdminDashboard() {
     }
   };
 
+  const handleSendBroadcast = async () => {
+    if (!broadcastSubject.trim() || !broadcastBody.trim()) return;
+    setBroadcastSending(true);
+    setBroadcastResult('');
+    try {
+      const result = await adminApi.sendBroadcast(broadcastSubject, broadcastBody);
+      setBroadcastResult(`Broadcast sent to ${result.recipient_count} users. Emails sending in background.`);
+      setBroadcastSubject('');
+      setBroadcastBody('');
+      // Refresh broadcast history if visible
+      if (showBroadcastHistory) {
+        loadBroadcasts();
+      }
+    } catch (err: any) {
+      setBroadcastResult(err.response?.data?.detail || 'Failed to send broadcast');
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
+
+  const loadBroadcasts = async () => {
+    try {
+      const data = await adminApi.getBroadcasts();
+      setBroadcasts(data);
+    } catch {
+      // Failed to load broadcasts
+    }
+  };
+
+  const handleToggleBroadcastHistory = () => {
+    if (!showBroadcastHistory) {
+      loadBroadcasts();
+    }
+    setShowBroadcastHistory(!showBroadcastHistory);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageUser || !msgSubject.trim() || !msgBody.trim()) return;
+    setMsgSending(true);
+    setMsgResult('');
+    try {
+      const result = await adminApi.sendMessage(messageUser.id, msgSubject, msgBody);
+      setMsgResult(
+        result.email_sent
+          ? 'Message sent and email delivered.'
+          : 'Message sent (no email — user has no email address).'
+      );
+      setMsgSubject('');
+      setMsgBody('');
+    } catch (err: any) {
+      setMsgResult(err.response?.data?.detail || 'Failed to send message');
+    } finally {
+      setMsgSending(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalUsers / PAGE_SIZE);
 
   return (
@@ -128,6 +200,51 @@ export function AdminDashboard() {
           <Link to="/admin/inspiration" className="admin-audit-link">
             Manage Inspirational Messages &rarr;
           </Link>
+          <button
+            className="admin-audit-link"
+            onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}
+            style={{ cursor: 'pointer', background: 'none' }}
+          >
+            Send Broadcast &rarr;
+          </button>
+        </section>
+
+        {/* Broadcast History */}
+        <section className="section" style={{ marginBottom: '16px' }}>
+          <button
+            className="admin-toggle-history"
+            onClick={handleToggleBroadcastHistory}
+          >
+            {showBroadcastHistory ? 'Hide' : 'Show'} Broadcast History
+          </button>
+          {showBroadcastHistory && (
+            <div className="admin-broadcast-history">
+              {broadcasts.length === 0 ? (
+                <p style={{ color: '#999', padding: '12px 0' }}>No broadcasts sent yet.</p>
+              ) : (
+                <table className="admin-users-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Subject</th>
+                      <th>Recipients</th>
+                      <th>Emails Sent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {broadcasts.map(b => (
+                      <tr key={b.id}>
+                        <td>{new Date(b.created_at).toLocaleString()}</td>
+                        <td>{b.subject}</td>
+                        <td>{b.recipient_count}</td>
+                        <td>{b.email_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="section admin-users-section">
@@ -185,12 +302,20 @@ export function AdminDashboard() {
                       </td>
                       <td>{new Date(user.created_at).toLocaleDateString()}</td>
                       <td>
-                        <button
-                          className="admin-manage-btn"
-                          onClick={() => { setSelectedUser(user); setRoleError(''); }}
-                        >
-                          Manage Roles
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            className="admin-manage-btn"
+                            onClick={() => { setSelectedUser(user); setRoleError(''); }}
+                          >
+                            Roles
+                          </button>
+                          <button
+                            className="admin-manage-btn admin-msg-btn"
+                            onClick={() => { setMessageUser(user); setMsgResult(''); setMsgSubject(''); setMsgBody(''); }}
+                          >
+                            Message
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -263,6 +388,93 @@ export function AdminDashboard() {
 
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setSelectedUser(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast Modal */}
+      {showBroadcastModal && (
+        <div className="modal-overlay" onClick={() => setShowBroadcastModal(false)}>
+          <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Send Broadcast</h2>
+            <p className="admin-msg-subtitle">
+              This message will be sent to all {stats?.total_users ?? 0} active users as an in-app notification and email.
+            </p>
+            <div className="admin-msg-form">
+              <input
+                type="text"
+                placeholder="Subject"
+                value={broadcastSubject}
+                onChange={(e) => setBroadcastSubject(e.target.value)}
+                className="admin-msg-input"
+              />
+              <textarea
+                placeholder="Message body..."
+                value={broadcastBody}
+                onChange={(e) => setBroadcastBody(e.target.value)}
+                className="admin-msg-textarea"
+                rows={6}
+              />
+            </div>
+            {broadcastResult && (
+              <p className={`admin-msg-result ${broadcastResult.startsWith('Failed') ? 'error' : 'success'}`}>
+                {broadcastResult}
+              </p>
+            )}
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowBroadcastModal(false)}>Cancel</button>
+              <button
+                className="submit-btn"
+                disabled={broadcastSending || !broadcastSubject.trim() || !broadcastBody.trim()}
+                onClick={handleSendBroadcast}
+              >
+                {broadcastSending ? 'Sending...' : 'Send to All Users'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Individual Message Modal */}
+      {messageUser && (
+        <div className="modal-overlay" onClick={() => setMessageUser(null)}>
+          <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Send Message</h2>
+            <div className="admin-role-user-info">
+              <span className="admin-role-user-name">{messageUser.full_name}</span>
+              <span className="admin-role-user-email">{messageUser.email ?? 'No email'}</span>
+            </div>
+            <div className="admin-msg-form">
+              <input
+                type="text"
+                placeholder="Subject"
+                value={msgSubject}
+                onChange={(e) => setMsgSubject(e.target.value)}
+                className="admin-msg-input"
+              />
+              <textarea
+                placeholder="Message body..."
+                value={msgBody}
+                onChange={(e) => setMsgBody(e.target.value)}
+                className="admin-msg-textarea"
+                rows={6}
+              />
+            </div>
+            {msgResult && (
+              <p className={`admin-msg-result ${msgResult.startsWith('Failed') ? 'error' : 'success'}`}>
+                {msgResult}
+              </p>
+            )}
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setMessageUser(null)}>Cancel</button>
+              <button
+                className="submit-btn"
+                disabled={msgSending || !msgSubject.trim() || !msgBody.trim()}
+                onClick={handleSendMessage}
+              >
+                {msgSending ? 'Sending...' : 'Send Message'}
+              </button>
             </div>
           </div>
         </div>

@@ -261,6 +261,106 @@
   border-radius: 6px;
 }
 
+/* Message button variant */
+.admin-msg-btn {
+  color: var(--color-ink-muted);
+}
+
+.admin-msg-btn:hover {
+  color: var(--color-accent);
+}
+
+/* Admin message modal */
+.admin-message-modal {
+  width: 90%;
+  max-width: 520px;
+}
+
+.admin-msg-subtitle {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 0 0 20px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-msg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-msg-input {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.admin-msg-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.admin-msg-textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.admin-msg-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.admin-msg-result {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-msg-result.success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.admin-msg-result.error {
+  background: #fee;
+  color: #c00;
+}
+
+/* Broadcast history toggle */
+.admin-toggle-history {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-toggle-history:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.admin-broadcast-history {
+  margin-top: 12px;
+}
+
 /* Mobile responsive */
 @media (max-width: 600px) {
   .admin-filters {

@@ -172,3 +172,79 @@ class TestAdminRoleManagement:
             headers=headers,
         )
         assert resp.status_code == 403
+
+
+# ── Admin broadcast messaging ─────────────────────────────────
+
+class TestAdminBroadcast:
+    def test_send_broadcast(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        resp = client.post(
+            "/api/admin/broadcast",
+            json={"subject": "Test Broadcast", "body": "Hello everyone!"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["subject"] == "Test Broadcast"
+        assert data["recipient_count"] >= 3
+
+    def test_list_broadcasts(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        # Send one first
+        client.post(
+            "/api/admin/broadcast",
+            json={"subject": "History Test", "body": "Body"},
+            headers=headers,
+        )
+        resp = client.get("/api/admin/broadcasts", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        assert "subject" in data[0]
+        assert "recipient_count" in data[0]
+
+    def test_non_admin_cannot_broadcast(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            "/api/admin/broadcast",
+            json={"subject": "Hack", "body": "Should fail"},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+
+# ── Admin individual messaging ────────────────────────────────
+
+class TestAdminMessage:
+    def test_send_message_to_user(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        student = users["student"]
+        resp = client.post(
+            f"/api/admin/users/{student.id}/message",
+            json={"subject": "Hello Student", "body": "Please check your grades."},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+
+    def test_message_nonexistent_user(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        resp = client.post(
+            "/api/admin/users/99999/message",
+            json={"subject": "Test", "body": "Body"},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_non_admin_cannot_send_message(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        student = users["student"]
+        resp = client.post(
+            f"/api/admin/users/{student.id}/message",
+            json={"subject": "Hack", "body": "Should fail"},
+            headers=headers,
+        )
+        assert resp.status_code == 403

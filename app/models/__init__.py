@@ -12,6 +12,7 @@ from app.models.task import Task, TaskPriority
 from app.models.course_content import CourseContent, ContentType
 from app.models.audit_log import AuditLog, AuditAction
 from app.models.inspiration_message import InspirationMessage
+from app.models.broadcast import Broadcast
 
 __all__ = [
     "User",
@@ -36,4 +37,5 @@ __all__ = [
     "AuditLog",
     "AuditAction",
     "InspirationMessage",
+    "Broadcast",
 ]
