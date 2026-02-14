@@ -983,6 +983,31 @@ Teachers need to manage their course rosters (add/remove students), and courses 
 - [ ] Frontend: Course roster UI for teachers
 - [ ] Frontend: Teacher field in course creation form
 
+### 6.30 Role-Based Inspirational Messages (Phase 2) - PLANNED
+
+Replace the static "Welcome back" dashboard greeting with role-specific inspirational messages that rotate on each visit. Admins can manage messages via the admin dashboard.
+
+**Requirements:**
+1. **Inspirational messages display** (#228)
+   - New `inspiration_messages` table: id, role, message, is_active, created_at
+   - `GET /api/inspiration?role={role}` — returns a random active message
+   - Frontend: replace "Welcome back" with fetched inspirational message, fallback gracefully
+   - Seed database with 10+ messages per role
+2. **Admin management** (#229)
+   - CRUD endpoints: `GET/POST/PATCH/DELETE /api/admin/inspiration`
+   - Admin dashboard UI: table with role filter, inline active toggle, add/edit/delete
+
+**Message themes by role:**
+- **Parents:** Inspirational messages about parenting and supporting children's education
+- **Teachers:** Messages about the impact of teaching and inspiring students
+- **Students:** Messages about the importance of education, respecting parents, and respecting teachers
+
+**Sub-tasks:**
+- [ ] Backend: Inspiration model, API, seed data (#228)
+- [ ] Backend: Admin CRUD endpoints (#229)
+- [ ] Frontend: Dashboard greeting integration
+- [ ] Frontend: Admin inspiration management UI
+
 ---
 
 ## 7. Role-Based Dashboards - IMPLEMENTED
