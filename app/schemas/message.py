@@ -51,6 +51,7 @@ class ConversationSummary(BaseModel):
     id: int
     other_participant_id: int
     other_participant_name: str
+    other_participant_role: Optional[str] = None
     student_id: Optional[int]
     student_name: Optional[str]
     subject: Optional[str]

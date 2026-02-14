@@ -279,7 +279,12 @@ export function MessagesPage() {
                   onClick={() => selectConversation(conv.id)}
                 >
                   <div className="conv-header">
-                    <span className="conv-name">{conv.other_participant_name}</span>
+                    <span className="conv-name">
+                      {conv.other_participant_name}
+                      {conv.other_participant_role === 'admin' && (
+                        <span className="conv-role-badge admin">Admin</span>
+                      )}
+                    </span>
                     {conv.unread_count > 0 && (
                       <span className="unread-badge">{conv.unread_count}</span>
                     )}
@@ -404,9 +409,7 @@ export function MessagesPage() {
                 <div className="no-recipients">
                   <p>No recipients available</p>
                   <small>
-                    {user?.role === 'parent'
-                      ? 'You can message teachers of your children\'s courses.'
-                      : 'You can message parents of students in your courses.'}
+                    You can message teachers, parents, or admins linked to your account.
                   </small>
                 </div>
               ) : (

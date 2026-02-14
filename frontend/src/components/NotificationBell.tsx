@@ -10,7 +10,7 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [modalNotification, setModalNotification] = useState<NotificationResponse | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Poll unread count every 60 seconds
@@ -75,13 +75,9 @@ export function NotificationBell() {
       }
     }
 
-    if (notification.link) {
-      setIsOpen(false);
-      navigate(notification.link);
-    } else {
-      // Toggle expand for notifications without a link (e.g. system/broadcast)
-      setExpandedId(prev => prev === notification.id ? null : notification.id);
-    }
+    // Open notification in a popup modal
+    setIsOpen(false);
+    setModalNotification(notification);
   };
 
   const handleMarkAllRead = async () => {
@@ -120,6 +116,7 @@ export function NotificationBell() {
   };
 
   return (
+    <>
     <div className="notification-bell" ref={dropdownRef}>
       <button className="bell-button" onClick={toggleDropdown} aria-label="Notifications">
         <svg
@@ -160,16 +157,14 @@ export function NotificationBell() {
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`notification-item ${!n.read ? 'unread' : ''}${expandedId === n.id ? ' expanded' : ''}`}
+                  className={`notification-item ${!n.read ? 'unread' : ''}`}
                   onClick={() => handleNotificationClick(n)}
                 >
                   <span className="notification-icon">{getTypeIcon(n.type)}</span>
                   <div className="notification-content">
                     <p className="notification-title">{n.title}</p>
                     {n.content && (
-                      <p className={`notification-text${expandedId === n.id ? ' expanded' : ''}`}>
-                        {n.content}
-                      </p>
+                      <p className="notification-text">{n.content}</p>
                     )}
                     <span className="notification-time">{formatTime(n.created_at)}</span>
                   </div>
@@ -180,5 +175,40 @@ export function NotificationBell() {
         </div>
       )}
     </div>
+
+    {/* Notification Detail Modal */}
+    {modalNotification && (
+      <div className="modal-overlay" onClick={() => setModalNotification(null)}>
+        <div className="notif-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="notif-modal-header">
+            <span className="notif-modal-icon">{getTypeIcon(modalNotification.type)}</span>
+            <h3>{modalNotification.title}</h3>
+            <button className="modal-close" onClick={() => setModalNotification(null)}>
+              &times;
+            </button>
+          </div>
+          <div className="notif-modal-body">
+            {modalNotification.content && (
+              <p className="notif-modal-content">{modalNotification.content}</p>
+            )}
+            <span className="notif-modal-time">{formatTime(modalNotification.created_at)}</span>
+          </div>
+          {modalNotification.link && (
+            <div className="notif-modal-footer">
+              <button
+                className="notif-modal-action"
+                onClick={() => {
+                  setModalNotification(null);
+                  navigate(modalNotification.link!);
+                }}
+              >
+                Go to {modalNotification.link.replace('/', '')} &rarr;
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -395,87 +395,117 @@ export function AdminDashboard() {
 
       {/* Broadcast Modal */}
       {showBroadcastModal && (
-        <div className="modal-overlay" onClick={() => setShowBroadcastModal(false)}>
+        <div className="modal-overlay" onClick={() => { if (!broadcastSending) { setShowBroadcastModal(false); setBroadcastResult(''); } }}>
           <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Send Broadcast</h2>
-            <p className="admin-msg-subtitle">
-              This message will be sent to all {stats?.total_users ?? 0} active users as an in-app notification and email.
-            </p>
-            <div className="admin-msg-form">
-              <input
-                type="text"
-                placeholder="Subject"
-                value={broadcastSubject}
-                onChange={(e) => setBroadcastSubject(e.target.value)}
-                className="admin-msg-input"
-              />
-              <textarea
-                placeholder="Message body..."
-                value={broadcastBody}
-                onChange={(e) => setBroadcastBody(e.target.value)}
-                className="admin-msg-textarea"
-                rows={6}
-              />
-            </div>
-            {broadcastResult && (
-              <p className={`admin-msg-result ${broadcastResult.startsWith('Failed') ? 'error' : 'success'}`}>
-                {broadcastResult}
-              </p>
+            {broadcastResult && !broadcastResult.startsWith('Failed') ? (
+              <>
+                <div className="admin-msg-sent-confirmation">
+                  <span className="admin-msg-sent-icon">&#10003;</span>
+                  <h3>Broadcast Sent</h3>
+                  <p>{broadcastResult}</p>
+                </div>
+                <div className="modal-actions" style={{ justifyContent: 'center' }}>
+                  <button className="submit-btn" onClick={() => { setShowBroadcastModal(false); setBroadcastResult(''); }}>
+                    OK
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Send Broadcast</h2>
+                <p className="admin-msg-subtitle">
+                  This message will be sent to all {stats?.total_users ?? 0} active users as an in-app notification and email.
+                </p>
+                <div className="admin-msg-form">
+                  <input
+                    type="text"
+                    placeholder="Subject"
+                    value={broadcastSubject}
+                    onChange={(e) => setBroadcastSubject(e.target.value)}
+                    className="admin-msg-input"
+                  />
+                  <textarea
+                    placeholder="Message body..."
+                    value={broadcastBody}
+                    onChange={(e) => setBroadcastBody(e.target.value)}
+                    className="admin-msg-textarea"
+                    rows={6}
+                  />
+                </div>
+                {broadcastResult && (
+                  <p className="admin-msg-result error">{broadcastResult}</p>
+                )}
+                <div className="modal-actions">
+                  <button className="cancel-btn" onClick={() => { setShowBroadcastModal(false); setBroadcastResult(''); }}>Cancel</button>
+                  <button
+                    className="submit-btn"
+                    disabled={broadcastSending || !broadcastSubject.trim() || !broadcastBody.trim()}
+                    onClick={handleSendBroadcast}
+                  >
+                    {broadcastSending ? 'Sending...' : 'Send to All Users'}
+                  </button>
+                </div>
+              </>
             )}
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => setShowBroadcastModal(false)}>Cancel</button>
-              <button
-                className="submit-btn"
-                disabled={broadcastSending || !broadcastSubject.trim() || !broadcastBody.trim()}
-                onClick={handleSendBroadcast}
-              >
-                {broadcastSending ? 'Sending...' : 'Send to All Users'}
-              </button>
-            </div>
           </div>
         </div>
       )}
 
       {/* Individual Message Modal */}
       {messageUser && (
-        <div className="modal-overlay" onClick={() => setMessageUser(null)}>
+        <div className="modal-overlay" onClick={() => { if (!msgSending) { setMessageUser(null); setMsgResult(''); } }}>
           <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Send Message</h2>
-            <div className="admin-role-user-info">
-              <span className="admin-role-user-name">{messageUser.full_name}</span>
-              <span className="admin-role-user-email">{messageUser.email ?? 'No email'}</span>
-            </div>
-            <div className="admin-msg-form">
-              <input
-                type="text"
-                placeholder="Subject"
-                value={msgSubject}
-                onChange={(e) => setMsgSubject(e.target.value)}
-                className="admin-msg-input"
-              />
-              <textarea
-                placeholder="Message body..."
-                value={msgBody}
-                onChange={(e) => setMsgBody(e.target.value)}
-                className="admin-msg-textarea"
-                rows={6}
-              />
-            </div>
-            {msgResult && (
-              <p className={`admin-msg-result ${msgResult.startsWith('Failed') ? 'error' : 'success'}`}>
-                {msgResult}
-              </p>
+            {msgResult && !msgResult.startsWith('Failed') ? (
+              <>
+                <div className="admin-msg-sent-confirmation">
+                  <span className="admin-msg-sent-icon">&#10003;</span>
+                  <h3>Message Sent</h3>
+                  <p>{msgResult}</p>
+                </div>
+                <div className="modal-actions" style={{ justifyContent: 'center' }}>
+                  <button className="submit-btn" onClick={() => { setMessageUser(null); setMsgResult(''); }}>
+                    OK
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Send Message</h2>
+                <div className="admin-role-user-info">
+                  <span className="admin-role-user-name">{messageUser.full_name}</span>
+                  <span className="admin-role-user-email">{messageUser.email ?? 'No email'}</span>
+                </div>
+                <div className="admin-msg-form">
+                  <input
+                    type="text"
+                    placeholder="Subject"
+                    value={msgSubject}
+                    onChange={(e) => setMsgSubject(e.target.value)}
+                    className="admin-msg-input"
+                  />
+                  <textarea
+                    placeholder="Message body..."
+                    value={msgBody}
+                    onChange={(e) => setMsgBody(e.target.value)}
+                    className="admin-msg-textarea"
+                    rows={6}
+                  />
+                </div>
+                {msgResult && (
+                  <p className="admin-msg-result error">{msgResult}</p>
+                )}
+                <div className="modal-actions">
+                  <button className="cancel-btn" onClick={() => { setMessageUser(null); setMsgResult(''); }}>Cancel</button>
+                  <button
+                    className="submit-btn"
+                    disabled={msgSending || !msgSubject.trim() || !msgBody.trim()}
+                    onClick={handleSendMessage}
+                  >
+                    {msgSending ? 'Sending...' : 'Send Message'}
+                  </button>
+                </div>
+              </>
             )}
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => setMessageUser(null)}>Cancel</button>
-              <button
-                className="submit-btn"
-                disabled={msgSending || !msgSubject.trim() || !msgBody.trim()}
-                onClick={handleSendMessage}
-              >
-                {msgSending ? 'Sending...' : 'Send Message'}
-              </button>
-            </div>
           </div>
         </div>
       )}

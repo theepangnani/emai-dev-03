@@ -215,6 +215,24 @@
 .conv-name {
   font-weight: 600;
   color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conv-role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.conv-role-badge.admin {
+  background: var(--color-warning-light);
+  color: var(--role-admin);
 }
 
 .unread-badge {

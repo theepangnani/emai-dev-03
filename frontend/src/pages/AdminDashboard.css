@@ -177,6 +177,7 @@
 .admin-role-modal {
   width: 90%;
   max-width: 400px;
+  padding: 28px 32px;
 }
 
 .admin-role-user-info {
@@ -274,6 +275,7 @@
 .admin-message-modal {
   width: 90%;
   max-width: 520px;
+  padding: 28px 32px;
 }
 
 .admin-message-modal h2 {
@@ -372,6 +374,39 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Sent confirmation */
+.admin-msg-sent-confirmation {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.admin-msg-sent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-success-light);
+  color: var(--color-success);
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.admin-msg-sent-confirmation h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--color-ink);
+}
+
+.admin-msg-sent-confirmation p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
 }
 
 /* Broadcast history toggle */

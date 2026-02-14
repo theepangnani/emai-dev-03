@@ -146,12 +146,6 @@
   white-space: nowrap;
 }
 
-.notification-text.expanded {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
-}
-
 .notification-time {
   font-size: 12px;
   color: var(--color-ink-muted);
@@ -159,9 +153,107 @@
   display: block;
 }
 
+/* Notification Detail Modal */
+.notif-modal {
+  background: var(--color-surface);
+  border-radius: 16px;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notif-modal-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.notif-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+  flex: 1;
+  line-height: 1.3;
+}
+
+.notif-modal-header .modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.notif-modal-header .modal-close:hover {
+  color: var(--color-ink);
+}
+
+.notif-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notif-modal-content {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-ink);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.notif-modal-time {
+  display: block;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.notif-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notif-modal-action {
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.notif-modal-action:hover {
+  opacity: 0.9;
+}
+
 @media (max-width: 768px) {
   .notification-dropdown {
     width: 300px;
     right: -10px;
+  }
+
+  .notif-modal {
+    width: 95vw;
   }
 }

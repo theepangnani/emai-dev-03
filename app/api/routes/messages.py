@@ -23,7 +23,7 @@ from app.schemas.message import (
 )
 from app.api.deps import get_current_user
 from app.services.audit_service import log_action
-from app.services.email_service import send_email_sync
+from app.services.email_service import send_email_sync, send_emails_batch
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -117,6 +117,77 @@ def _notify_message_recipient(
 router = APIRouter(prefix="/messages", tags=["Messages"])
 
 
+def _get_all_admins(db: Session, exclude_ids: set[int] | None = None) -> list[User]:
+    """Get all active admin users, optionally excluding some IDs."""
+    admins = (
+        db.query(User)
+        .filter(
+            User.is_active == True,  # noqa: E712
+            or_(
+                User.roles.contains("admin"),
+                User.role == UserRole.ADMIN,
+            ),
+        )
+        .all()
+    )
+    if exclude_ids:
+        admins = [a for a in admins if a.id not in exclude_ids]
+    return admins
+
+
+def _fan_out_to_admins(
+    db: Session,
+    sender: User,
+    message_content: str,
+    primary_admin_id: int,
+    subject: str | None = None,
+    student_id: int | None = None,
+):
+    """When a user messages an admin, fan out to ALL other admin users.
+
+    Creates/reuses conversations and adds the message for each admin.
+    Sends email notifications to all admins (including the primary recipient).
+    """
+    other_admins = _get_all_admins(db, exclude_ids={sender.id, primary_admin_id})
+    if not other_admins:
+        return
+
+    for admin in other_admins:
+        # Find or create conversation between sender and this admin
+        conv = (
+            db.query(Conversation)
+            .filter(
+                or_(
+                    and_(
+                        Conversation.participant_1_id == sender.id,
+                        Conversation.participant_2_id == admin.id,
+                    ),
+                    and_(
+                        Conversation.participant_1_id == admin.id,
+                        Conversation.participant_2_id == sender.id,
+                    ),
+                )
+            )
+            .first()
+        )
+        if not conv:
+            conv = Conversation(
+                participant_1_id=sender.id,
+                participant_2_id=admin.id,
+                student_id=student_id,
+                subject=subject,
+            )
+            db.add(conv)
+            db.flush()
+
+        db.add(Message(
+            conversation_id=conv.id,
+            sender_id=sender.id,
+            content=message_content,
+        ))
+        _notify_message_recipient(db, admin, sender, message_content, conv.id)
+
+
 def _get_other_participant(conv: Conversation, current_user_id: int) -> int:
     """Get the ID of the other participant in a conversation."""
     if conv.participant_1_id == current_user_id:
@@ -194,10 +265,17 @@ def get_valid_recipients(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get list of users this person can message based on student-teacher relationships."""
+    """Get list of users this person can message based on student-teacher relationships.
+
+    All users can always message admin users. Parents can message teachers,
+    teachers can message parents, and admins can message everyone.
+    """
     logger.info(f"Getting recipients for user {current_user.id} ({current_user.role})")
 
-    if current_user.role == UserRole.PARENT:
+    result: list[RecipientOption] = []
+    seen_user_ids: set[int] = set()
+
+    if current_user.has_role(UserRole.PARENT):
         # Parent can message teachers of their children's courses
         children = (
             db.query(Student)
@@ -206,175 +284,177 @@ def get_valid_recipients(
             .all()
         )
 
-        if not children:
-            logger.debug(f"Parent {current_user.id} has no linked children")
-            return []
+        if children:
+            child_ids = [child.id for child in children]
 
-        child_ids = [child.id for child in children]
-
-        # Get teachers of courses these children are enrolled in
-        teacher_query = (
-            db.query(User, Teacher)
-            .join(Teacher, Teacher.user_id == User.id)
-            .join(Course, Course.teacher_id == Teacher.id)
-            .join(student_courses, student_courses.c.course_id == Course.id)
-            .filter(student_courses.c.student_id.in_(child_ids))
-            .distinct()
-        )
-
-        teachers = teacher_query.all()
-
-        result = []
-        seen_user_ids = set()
-        for user, teacher in teachers:
-            # Find which children this teacher teaches
-            taught_children = []
-            for child in children:
-                child_courses = (
-                    db.query(Course)
-                    .join(student_courses, student_courses.c.course_id == Course.id)
-                    .filter(student_courses.c.student_id == child.id)
-                    .filter(Course.teacher_id == teacher.id)
-                    .first()
-                )
-                if child_courses:
-                    child_user = (
-                        db.query(User).filter(User.id == child.user_id).first()
-                    )
-                    if child_user:
-                        taught_children.append(child_user.full_name)
-
-            seen_user_ids.add(user.id)
-            result.append(
-                RecipientOption(
-                    user_id=user.id,
-                    full_name=user.full_name,
-                    role=user.role.value,
-                    student_names=taught_children,
-                )
+            # Get teachers of courses these children are enrolled in
+            teacher_query = (
+                db.query(User, Teacher)
+                .join(Teacher, Teacher.user_id == User.id)
+                .join(Course, Course.teacher_id == Teacher.id)
+                .join(student_courses, student_courses.c.course_id == Course.id)
+                .filter(student_courses.c.student_id.in_(child_ids))
+                .distinct()
             )
 
-        # Also include directly-linked teachers (from student_teachers table)
-        direct_links = (
-            db.query(student_teachers)
-            .filter(student_teachers.c.student_id.in_(child_ids))
-            .all()
-        )
-        for link in direct_links:
-            if link.teacher_user_id and link.teacher_user_id not in seen_user_ids:
-                teacher_user = db.query(User).filter(User.id == link.teacher_user_id).first()
-                if teacher_user:
-                    # Find child name for this link
-                    child = next((c for c in children if c.id == link.student_id), None)
-                    child_name = None
-                    if child:
-                        child_user = db.query(User).filter(User.id == child.user_id).first()
-                        child_name = child_user.full_name if child_user else None
+            teachers = teacher_query.all()
 
-                    seen_user_ids.add(teacher_user.id)
-                    result.append(
-                        RecipientOption(
-                            user_id=teacher_user.id,
-                            full_name=teacher_user.full_name,
-                            role=teacher_user.role.value,
-                            student_names=[child_name] if child_name else [],
-                        )
+            for user, teacher in teachers:
+                # Find which children this teacher teaches
+                taught_children = []
+                for child in children:
+                    child_courses = (
+                        db.query(Course)
+                        .join(student_courses, student_courses.c.course_id == Course.id)
+                        .filter(student_courses.c.student_id == child.id)
+                        .filter(Course.teacher_id == teacher.id)
+                        .first()
                     )
+                    if child_courses:
+                        child_user = (
+                            db.query(User).filter(User.id == child.user_id).first()
+                        )
+                        if child_user:
+                            taught_children.append(child_user.full_name)
 
-        logger.info(f"Found {len(result)} valid recipients for parent {current_user.id}")
-        return result
+                seen_user_ids.add(user.id)
+                result.append(
+                    RecipientOption(
+                        user_id=user.id,
+                        full_name=user.full_name,
+                        role=user.role.value,
+                        student_names=taught_children,
+                    )
+                )
 
-    elif current_user.role == UserRole.TEACHER:
+            # Also include directly-linked teachers (from student_teachers table)
+            direct_links = (
+                db.query(student_teachers)
+                .filter(student_teachers.c.student_id.in_(child_ids))
+                .all()
+            )
+            for link in direct_links:
+                if link.teacher_user_id and link.teacher_user_id not in seen_user_ids:
+                    teacher_user = db.query(User).filter(User.id == link.teacher_user_id).first()
+                    if teacher_user:
+                        child = next((c for c in children if c.id == link.student_id), None)
+                        child_name = None
+                        if child:
+                            child_user = db.query(User).filter(User.id == child.user_id).first()
+                            child_name = child_user.full_name if child_user else None
+
+                        seen_user_ids.add(teacher_user.id)
+                        result.append(
+                            RecipientOption(
+                                user_id=teacher_user.id,
+                                full_name=teacher_user.full_name,
+                                role=teacher_user.role.value,
+                                student_names=[child_name] if child_name else [],
+                            )
+                        )
+
+    if current_user.has_role(UserRole.TEACHER):
         # Teacher can message parents of students in their courses
         teacher = (
             db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
         )
 
-        if not teacher:
-            logger.warning(f"No teacher profile for user {current_user.id}")
-            return []
-
-        # Get students in teacher's courses who have parents linked via join table
-        students_in_courses = (
-            db.query(Student)
-            .join(student_courses, student_courses.c.student_id == Student.id)
-            .join(Course, Course.id == student_courses.c.course_id)
-            .filter(Course.teacher_id == teacher.id)
-            .distinct()
-            .all()
-        )
-
-        # Group students by parent using parent_students join table
-        parent_student_map: dict[int, list[str]] = {}
-        for student in students_in_courses:
-            student_user = db.query(User).filter(User.id == student.user_id).first()
-            student_name = student_user.full_name if student_user else "Unknown"
-
-            # Find all parents for this student
-            links = (
-                db.query(parent_students.c.parent_id)
-                .filter(parent_students.c.student_id == student.id)
+        if teacher:
+            students_in_courses = (
+                db.query(Student)
+                .join(student_courses, student_courses.c.student_id == Student.id)
+                .join(Course, Course.id == student_courses.c.course_id)
+                .filter(Course.teacher_id == teacher.id)
+                .distinct()
                 .all()
             )
-            for (pid,) in links:
-                if pid not in parent_student_map:
-                    parent_student_map[pid] = []
-                parent_student_map[pid].append(student_name)
 
-        # Get parent users
-        parents = db.query(User).filter(User.id.in_(parent_student_map.keys())).all()
+            parent_student_map: dict[int, list[str]] = {}
+            for student in students_in_courses:
+                student_user = db.query(User).filter(User.id == student.user_id).first()
+                student_name = student_user.full_name if student_user else "Unknown"
 
-        result = [
-            RecipientOption(
-                user_id=p.id,
-                full_name=p.full_name,
-                role=p.role.value,
-                student_names=parent_student_map[p.id],
-            )
-            for p in parents
-        ]
+                links = (
+                    db.query(parent_students.c.parent_id)
+                    .filter(parent_students.c.student_id == student.id)
+                    .all()
+                )
+                for (pid,) in links:
+                    if pid not in parent_student_map:
+                        parent_student_map[pid] = []
+                    parent_student_map[pid].append(student_name)
 
-        # Also include parents who directly linked this teacher via student_teachers
-        seen_parent_ids = set(parent_student_map.keys())
-        direct_links = (
-            db.query(student_teachers)
-            .filter(student_teachers.c.teacher_user_id == current_user.id)
-            .all()
-        )
-        for link in direct_links:
-            student = db.query(Student).filter(Student.id == link.student_id).first()
-            if not student:
-                continue
-            student_user = db.query(User).filter(User.id == student.user_id).first()
-            student_name = student_user.full_name if student_user else "Unknown"
+            parents = db.query(User).filter(User.id.in_(parent_student_map.keys())).all()
 
-            # Find the parent who added this link
-            parent_id = link.added_by_user_id
-            if parent_id not in seen_parent_ids:
-                parent_user = db.query(User).filter(User.id == parent_id).first()
-                if parent_user:
-                    seen_parent_ids.add(parent_id)
+            for p in parents:
+                if p.id not in seen_user_ids:
+                    seen_user_ids.add(p.id)
                     result.append(
                         RecipientOption(
-                            user_id=parent_user.id,
-                            full_name=parent_user.full_name,
-                            role=parent_user.role.value,
-                            student_names=[student_name],
+                            user_id=p.id,
+                            full_name=p.full_name,
+                            role=p.role.value,
+                            student_names=parent_student_map[p.id],
                         )
                     )
-            else:
-                # Add the student name to existing entry if not already there
-                for r in result:
-                    if r.user_id == parent_id and student_name not in r.student_names:
-                        r.student_names.append(student_name)
 
-        logger.info(f"Found {len(result)} valid recipients for teacher {current_user.id}")
-        return result
+            # Also include parents who directly linked this teacher via student_teachers
+            direct_links = (
+                db.query(student_teachers)
+                .filter(student_teachers.c.teacher_user_id == current_user.id)
+                .all()
+            )
+            for link in direct_links:
+                student = db.query(Student).filter(Student.id == link.student_id).first()
+                if not student:
+                    continue
+                student_user = db.query(User).filter(User.id == student.user_id).first()
+                student_name = student_user.full_name if student_user else "Unknown"
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Only parents and teachers can use messaging",
+                parent_id = link.added_by_user_id
+                if parent_id not in seen_user_ids:
+                    parent_user = db.query(User).filter(User.id == parent_id).first()
+                    if parent_user:
+                        seen_user_ids.add(parent_id)
+                        result.append(
+                            RecipientOption(
+                                user_id=parent_user.id,
+                                full_name=parent_user.full_name,
+                                role=parent_user.role.value,
+                                student_names=[student_name],
+                            )
+                        )
+                else:
+                    for r in result:
+                        if r.user_id == parent_id and student_name not in r.student_names:
+                            r.student_names.append(student_name)
+
+    # ── Always include admin users as valid recipients for everyone ──
+    admin_users = (
+        db.query(User)
+        .filter(
+            User.is_active == True,  # noqa: E712
+            or_(
+                User.roles.contains("admin"),
+                User.role == UserRole.ADMIN,
+            ),
+        )
+        .all()
     )
+    for admin in admin_users:
+        if admin.id != current_user.id and admin.id not in seen_user_ids:
+            seen_user_ids.add(admin.id)
+            result.append(
+                RecipientOption(
+                    user_id=admin.id,
+                    full_name=admin.full_name,
+                    role="admin",
+                    student_names=[],
+                )
+            )
+
+    logger.info(f"Found {len(result)} valid recipients for user {current_user.id}")
+    return result
 
 
 @router.post("/conversations", response_model=ConversationDetail)
@@ -387,13 +467,6 @@ def create_conversation(
     logger.info(
         f"User {current_user.id} creating conversation with recipient {data.recipient_id}"
     )
-
-    # Validate sender is parent or teacher
-    if not (current_user.has_role(UserRole.PARENT) or current_user.has_role(UserRole.TEACHER)):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only parents and teachers can start conversations",
-        )
 
     # Validate recipient exists
     recipient = db.query(User).filter(User.id == data.recipient_id).first()
@@ -410,7 +483,7 @@ def create_conversation(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only message teachers of your children or parents of your students",
+            detail="You cannot message this user",
         )
 
     # Check if conversation already exists between these two
@@ -441,6 +514,16 @@ def create_conversation(
         )
         db.add(message)
         _notify_message_recipient(db, recipient, current_user, data.initial_message, existing.id)
+
+        # Fan out to all admins if recipient is an admin
+        if recipient.has_role(UserRole.ADMIN):
+            _fan_out_to_admins(
+                db, current_user, data.initial_message,
+                primary_admin_id=recipient.id,
+                subject=data.subject,
+                student_id=data.student_id,
+            )
+
         db.commit()
         db.refresh(existing)
         return _build_conversation_detail(db, existing, current_user)
@@ -463,6 +546,16 @@ def create_conversation(
     )
     db.add(message)
     _notify_message_recipient(db, recipient, current_user, data.initial_message, conversation.id)
+
+    # Fan out to all admins if recipient is an admin
+    if recipient.has_role(UserRole.ADMIN):
+        _fan_out_to_admins(
+            db, current_user, data.initial_message,
+            primary_admin_id=recipient.id,
+            subject=data.subject,
+            student_id=data.student_id,
+        )
+
     db.commit()
     db.refresh(conversation)
 
@@ -526,6 +619,7 @@ def list_conversations(
                 id=conv.id,
                 other_participant_id=other_id,
                 other_participant_name=other_user.full_name if other_user else "Unknown",
+                other_participant_role=other_user.role.value if other_user else None,
                 student_id=conv.student_id,
                 student_name=student_name,
                 subject=conv.subject,
@@ -607,6 +701,14 @@ def send_message(
     recipient = db.query(User).filter(User.id == recipient_id).first()
     if recipient:
         _notify_message_recipient(db, recipient, current_user, data.content, conversation_id)
+
+        # Fan out to all admins if recipient is an admin
+        if recipient.has_role(UserRole.ADMIN):
+            _fan_out_to_admins(
+                db, current_user, data.content,
+                primary_admin_id=recipient.id,
+                subject=conv.subject,
+            )
 
     db.commit()
     db.refresh(message)

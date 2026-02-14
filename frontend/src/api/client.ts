@@ -541,6 +541,7 @@ export interface ConversationSummary {
   id: number;
   other_participant_id: number;
   other_participant_name: string;
+  other_participant_role: string | null;
   student_id: number | null;
   student_name: string | null;
   subject: string | null;
