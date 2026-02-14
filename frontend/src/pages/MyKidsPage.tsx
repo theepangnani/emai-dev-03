@@ -93,29 +93,7 @@ export function MyKidsPage() {
     }).finally(() => setSectionLoading(false));
   }, [selectedChild, children]);
 
-  if (loading) {
-    return (
-      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
-        <PageSkeleton />
-      </DashboardLayout>
-    );
-  }
-
-  if (children.length === 0) {
-    return (
-      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
-        <div className="mykids-empty">
-          <h3>No children linked yet</h3>
-          <p>Add a child from your Dashboard to get started.</p>
-          <button className="mykids-btn" onClick={() => navigate('/dashboard')}>
-            Go to Dashboard
-          </button>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // Per-child task stats for the selected child
+  // Per-child task stats for the selected child (must be before early returns to follow Rules of Hooks)
   const selectedTaskStats = useMemo(() => {
     if (!selectedChild || tasks.length === 0) return null;
     const now = new Date();
@@ -145,6 +123,28 @@ export function MyKidsPage() {
 
   const activeTasks = tasks.filter(t => !t.is_completed);
   const completedTasks = tasks.filter(t => t.is_completed);
+
+  if (loading) {
+    return (
+      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
+        <PageSkeleton />
+      </DashboardLayout>
+    );
+  }
+
+  if (children.length === 0) {
+    return (
+      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
+        <div className="mykids-empty">
+          <h3>No children linked yet</h3>
+          <p>Add a child from your Dashboard to get started.</p>
+          <button className="mykids-btn" onClick={() => navigate('/dashboard')}>
+            Go to Dashboard
+          </button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
