@@ -44,6 +44,9 @@ export function TeacherDashboard() {
   const [pendingInvites, setPendingInvites] = useState<InviteResponse[]>([]);
   const [resendingId, setResendingId] = useState<number | null>(null);
 
+  // Course search
+  const [courseSearch, setCourseSearch] = useState('');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -254,9 +257,23 @@ export function TeacherDashboard() {
               + Create Course
             </button>
           </div>
+          {courses.length > 3 && (
+            <input
+              type="text"
+              className="courses-search-input"
+              placeholder="Search courses by name or subject..."
+              value={courseSearch}
+              onChange={(e) => setCourseSearch(e.target.value)}
+              style={{ marginBottom: 16 }}
+            />
+          )}
           {courses.length > 0 ? (
             <div className="teacher-courses-grid">
-              {courses.map((course) => (
+              {courses.filter(c =>
+                !courseSearch ||
+                c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
+                (c.subject && c.subject.toLowerCase().includes(courseSearch.toLowerCase()))
+              ).map((course) => (
                 <div key={course.id} className="teacher-course-card">
                   <h4>{course.name}</h4>
                   {course.subject && <span className="course-subject-tag">{course.subject}</span>}

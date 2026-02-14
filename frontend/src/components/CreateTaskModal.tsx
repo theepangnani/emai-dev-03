@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { tasksApi } from '../api/client';
 import type { AssignableUser } from '../api/client';
+import { useFocusTrap } from '../utils/useFocusTrap';
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -41,6 +42,8 @@ export function CreateTaskModal({
     }
   }, [open, prefillTitle, prefillDescription]);
 
+  const trapRef = useFocusTrap(open, onClose);
+
   if (!open) return null;
 
   const handleCreate = async () => {
@@ -69,8 +72,8 @@ export function CreateTaskModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>Create Task</h2>
+      <div ref={trapRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title" onClick={e => e.stopPropagation()}>
+        <h2 id="create-task-title">Create Task</h2>
         {linkedEntityLabel && (
           <div className="task-linked-context">
             Linked to: <strong>{linkedEntityLabel}</strong>

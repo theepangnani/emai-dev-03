@@ -6,6 +6,7 @@ import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -28,6 +29,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
   const [inspiration, setInspiration] = useState<InspirationMessage | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
@@ -103,6 +105,20 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [roleSwitcherOpen]);
+
+  // Keyboard shortcuts: ? key opens legend
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
 
   const handleNavClick = useCallback((path: string) => {
     navigate(path);
@@ -237,6 +253,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
 
         {children}
       </main>
+
+      <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

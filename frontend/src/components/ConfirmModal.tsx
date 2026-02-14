@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { useFocusTrap } from '../utils/useFocusTrap';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -21,16 +22,26 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const trapRef = useFocusTrap(open, onCancel);
+
   if (!open) return null;
 
   return (
     <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="modal confirm-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-message"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="confirm-modal-icon">
           {variant === 'danger' ? '\u26A0\uFE0F' : '\u2728'}
         </div>
-        <h2>{title}</h2>
-        <p className="confirm-modal-message">{message}</p>
+        <h2 id="confirm-title">{title}</h2>
+        <p id="confirm-message" className="confirm-modal-message">{message}</p>
         <div className="modal-actions">
           <button className="cancel-btn" onClick={onCancel}>{cancelLabel}</button>
           <button
