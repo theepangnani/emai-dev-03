@@ -157,7 +157,7 @@ class TestAutoCreateTasksFromDates:
         ]
         created = auto_create_tasks_from_dates(
             db_session, dates, parent,
-            study_guide_id=1, course_id=None, course_content_id=None,
+            study_guide_id=None, course_id=None, course_content_id=None,
         )
         db_session.commit()
 
@@ -180,7 +180,7 @@ class TestAutoCreateTasksFromDates:
         ]
         created = auto_create_tasks_from_dates(
             db_session, dates, parent,
-            study_guide_id=1, course_id=None, course_content_id=None,
+            study_guide_id=None, course_id=None, course_content_id=None,
         )
         db_session.commit()
 
@@ -197,7 +197,7 @@ class TestAutoCreateTasksFromDates:
         ]
         created = auto_create_tasks_from_dates(
             db_session, dates, parent,
-            study_guide_id=1, course_id=None, course_content_id=None,
+            study_guide_id=None, course_id=None, course_content_id=None,
         )
         db_session.commit()
 
@@ -210,6 +210,6 @@ class TestAutoCreateTasksFromDates:
         parent = task_data["parent"]
         created = auto_create_tasks_from_dates(
             db_session, [], parent,
-            study_guide_id=1, course_id=None, course_content_id=None,
+            study_guide_id=None, course_id=None, course_content_id=None,
         )
         assert created == []

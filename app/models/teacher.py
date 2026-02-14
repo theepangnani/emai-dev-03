@@ -16,7 +16,7 @@ class Teacher(Base):
     __tablename__ = "teachers"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Nullable for shadow teachers
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)  # Nullable for shadow teachers
     school_name = Column(String(255), nullable=True)
     department = Column(String(255), nullable=True)
     teacher_type = Column(Enum(TeacherType), nullable=True)

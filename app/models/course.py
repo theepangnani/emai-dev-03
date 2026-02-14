@@ -9,8 +9,8 @@ from app.db.database import Base
 student_courses = Table(
     "student_courses",
     Base.metadata,
-    Column("student_id", Integer, ForeignKey("students.id"), primary_key=True),
-    Column("course_id", Integer, ForeignKey("courses.id"), primary_key=True),
+    Column("student_id", Integer, ForeignKey("students.id", ondelete="CASCADE"), primary_key=True),
+    Column("course_id", Integer, ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True),
 )
 
 
@@ -25,10 +25,10 @@ class Course(Base):
     # Google Classroom integration
     google_classroom_id = Column(String(255), unique=True, nullable=True)
 
-    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)
 
     # Parent-first platform: track who created the course and visibility
-    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     is_private = Column(Boolean, default=False, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
 
@@ -37,7 +37,7 @@ class Course(Base):
 
     teacher = relationship("Teacher")
     created_by = relationship("User", foreign_keys=[created_by_user_id])
-    students = relationship("Student", secondary=student_courses, backref="courses")
+    students = relationship("Student", secondary=student_courses, backref="courses", passive_deletes=True)
 
     __table_args__ = (
         Index("ix_courses_teacher", "teacher_id"),

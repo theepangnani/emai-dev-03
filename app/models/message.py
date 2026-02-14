@@ -9,9 +9,9 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True, index=True)
-    participant_1_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    participant_2_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
+    participant_1_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    participant_2_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
     subject = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -21,7 +21,8 @@ class Conversation(Base):
     participant_2 = relationship("User", foreign_keys=[participant_2_id])
     student = relationship("Student", foreign_keys=[student_id])
     messages = relationship(
-        "Message", back_populates="conversation", order_by="Message.created_at"
+        "Message", back_populates="conversation", order_by="Message.created_at",
+        passive_deletes=True
     )
 
     __table_args__ = (
@@ -34,8 +35,8 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
-    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
     read_at = Column(DateTime(timezone=True), nullable=True)

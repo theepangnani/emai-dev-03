@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -21,7 +21,7 @@ class CourseContent(Base):
     __tablename__ = "course_contents"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
 
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
@@ -32,14 +32,14 @@ class CourseContent(Base):
     reference_url = Column(String(1000), nullable=True)
     google_classroom_url = Column(String(1000), nullable=True)
 
-    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
     last_viewed_at = Column(DateTime(timezone=True), nullable=True)
 
-    course = relationship("Course", backref="contents")
+    course = relationship("Course", backref=backref("contents", passive_deletes=True))
     created_by = relationship("User", foreign_keys=[created_by_user_id])
 
     @property
