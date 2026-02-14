@@ -314,6 +314,26 @@ with engine.connect() as conn:
                 except Exception:
                     pass  # Already nullable
 
+        # ── students: add profile detail columns (#267) ──────────────
+        if "students" in inspector.get_table_names():
+            existing_cols = {c["name"] for c in inspector.get_columns("students")}
+            col_type_date = "DATE"
+            col_type_ts = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            new_student_cols = [
+                ("date_of_birth", col_type_date),
+                ("phone", "VARCHAR(30)"),
+                ("address", "VARCHAR(255)"),
+                ("city", "VARCHAR(100)"),
+                ("province", "VARCHAR(100)"),
+                ("postal_code", "VARCHAR(20)"),
+                ("notes", "TEXT"),
+                ("updated_at", col_type_ts),
+            ]
+            for col_name, col_type in new_student_cols:
+                if col_name not in existing_cols:
+                    conn.execute(text(f"ALTER TABLE students ADD COLUMN {col_name} {col_type}"))
+                    logger.info(f"Added '{col_name}' column to students")
+
         # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
         _apply_cascade_and_unique_migration(conn, inspector)
 
