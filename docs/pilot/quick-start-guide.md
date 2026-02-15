@@ -96,7 +96,7 @@ You can mark individual notifications as read, or tap **"Mark all read"** at the
 
 For the full experience, visit ClassBridge on your computer:
 
-**https://classbridge-924827764032.us-central1.run.app**
+**https://www.classbridge.ca**
 
 The web app includes everything in the mobile app plus:
 - Starting new conversations with teachers

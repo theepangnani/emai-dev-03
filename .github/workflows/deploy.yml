@@ -85,7 +85,7 @@ jobs:
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
             --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:emai-db \
-            --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://classbridge-924827764032.us-central1.run.app/api/google/callback,FRONTEND_URL=https://classbridge-924827764032.us-central1.run.app" \
+            --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://www.classbridge.ca/api/google/callback,FRONTEND_URL=https://www.classbridge.ca" \
             --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest" \
             --memory 512Mi \
             --cpu 1 \

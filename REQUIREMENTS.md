@@ -2445,7 +2445,7 @@ Current feature issues are tracked in GitHub:
 
 **Pilot prep subtasks (parallelizable):**
 - Issue #396: Register custom domains with Cloud Run (depends on DNS access)
-- Issue #397: Update Google OAuth redirect URIs for production domain (depends on #396)
+- ~~Issue #397: Update Google OAuth redirect URIs for production domain (depends on #396)~~ ✅
 - Issue #398: Create pilot user accounts and verify login
 - Issue #399: Run smoke-test.py against production with all 4 roles (depends on #398)
 - Issue #400: Verify SendGrid email delivery from production

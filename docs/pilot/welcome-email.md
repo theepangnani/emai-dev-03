@@ -22,7 +22,7 @@ ClassBridge is an education platform that gives you a single place to:
 We've made it easy to get started. You can access ClassBridge two ways:
 
 ### On Your Computer (Web App)
-Visit **https://classbridge-924827764032.us-central1.run.app** and log in with the account credentials we've provided.
+Visit **https://www.classbridge.ca** and log in with the account credentials we've provided.
 
 ### On Your Phone (Mobile App)
 We have a mobile app available through Expo Go — a free app that lets you run ClassBridge on your iPhone or Android. See the attached **Quick-Start Guide** for step-by-step setup instructions.

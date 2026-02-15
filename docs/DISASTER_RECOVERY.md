@@ -101,7 +101,7 @@ gcloud sql backups list --instance=emai-db --project=emai-dev-01
 gcloud sql instances describe emai-db --format='value(state)'
 
 # 4. Verify the application works
-curl -s https://classbridge-924827764032.us-central1.run.app/health
+curl -s https://www.classbridge.ca/health
 ```
 
 ### Scenario 3: Restore from GCS Export
@@ -116,7 +116,7 @@ gsutil ls -l gs://emai-dev-01-db-backups/manual/
 ./scripts/backup/restore-from-backup.sh --from-gcs gs://emai-dev-01-db-backups/manual/emai-20260215-143022.sql.gz
 
 # 3. Verify
-curl -s https://classbridge-924827764032.us-central1.run.app/health
+curl -s https://www.classbridge.ca/health
 ```
 
 ### Scenario 4: Full Disaster (instance deleted)

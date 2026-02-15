@@ -6,8 +6,8 @@ ClassBridge March 6, 2026 pilot launch.
 
 | Resource | URL / Command |
 |----------|---------------|
-| **App** | https://classbridge-924827764032.us-central1.run.app |
-| **Health** | https://classbridge-924827764032.us-central1.run.app/health |
+| **App** | https://www.classbridge.ca |
+| **Health** | https://www.classbridge.ca/health |
 | **GCP Console** | https://console.cloud.google.com/run/detail/us-central1/classbridge?project=emai-dev-01 |
 | **Logs** | See "Log Commands" below |
 | **Alerts** | GCP Monitoring → Alerting (5xx, latency, uptime policies active) |
@@ -64,7 +64,7 @@ Open these tabs and check every 15-30 minutes:
       → GCP Console → SQL → emai-db → Overview
 - [ ] **Alerts:** Check for any triggered alerts
       → GCP Console → Monitoring → Alerting
-- [ ] **Health endpoint:** `curl -s https://classbridge-924827764032.us-central1.run.app/health`
+- [ ] **Health endpoint:** `curl -s https://www.classbridge.ca/health`
 
 ## Incident Severity Levels
 
@@ -79,7 +79,7 @@ Open these tabs and check every 15-30 minutes:
 
 ### P1: Service Down
 
-1. **Verify:** `curl -s https://classbridge-924827764032.us-central1.run.app/health`
+1. **Verify:** `curl -s https://www.classbridge.ca/health`
 2. **Check logs:** Run the error log command above
 3. **Check Cloud Run:** Is the instance running? Check GCP Console
 4. **Rollback** if a recent deploy caused it:
@@ -124,7 +124,7 @@ gcloud run services update-traffic classbridge \
   --region=us-central1 --project=emai-dev-01
 
 # 3. Verify
-curl -s https://classbridge-924827764032.us-central1.run.app/health
+curl -s https://www.classbridge.ca/health
 ```
 
 To restore normal deployment after fixing the issue:
