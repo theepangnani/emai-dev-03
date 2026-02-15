@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'https://classbridge-924827764032.us-central1.run.app';
+const API_BASE_URL = 'https://www.classbridge.ca';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

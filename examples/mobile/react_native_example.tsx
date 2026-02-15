@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';  // Mobile
 
 const API_BASE_URL = __DEV__
   ? 'http://localhost:8000/api/v1'  // Dev
-  : 'https://classbridge-924827764032.us-central1.run.app/api/v1';  // Prod
+  : 'https://www.classbridge.ca/api';  // Prod
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

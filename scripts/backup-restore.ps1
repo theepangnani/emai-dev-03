@@ -89,7 +89,7 @@ if ($choice -eq "2") {
         Write-Host ""
         Write-Host "Restore completed." -ForegroundColor Green
         Write-Host "Verify application health immediately:" -ForegroundColor Cyan
-        Write-Host "  1. Check https://classbridge-924827764032.us-central1.run.app/health"
+        Write-Host "  1. Check https://www.classbridge.ca/health"
         Write-Host "  2. Log in and verify data"
     } else {
         Write-Host "ERROR: Restore failed." -ForegroundColor Red

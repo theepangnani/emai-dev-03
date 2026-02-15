@@ -5,7 +5,7 @@ Production smoke test for ClassBridge.
 Tests all critical API endpoints against a live environment.
 Usage:
     python scripts/smoke-test.py
-    python scripts/smoke-test.py --base-url https://classbridge-924827764032.us-central1.run.app
+    python scripts/smoke-test.py --base-url https://www.classbridge.ca
     python scripts/smoke-test.py --email admin@example.com --password secret
 
 Environment variables (alternative to CLI args):
@@ -317,7 +317,7 @@ def main():
     parser = argparse.ArgumentParser(description="ClassBridge production smoke test")
     parser.add_argument(
         "--base-url",
-        default=os.environ.get("SMOKE_BASE_URL", "https://classbridge-924827764032.us-central1.run.app"),
+        default=os.environ.get("SMOKE_BASE_URL", "https://www.classbridge.ca"),
         help="Base URL of the ClassBridge API",
     )
     parser.add_argument("--email", default=os.environ.get("SMOKE_EMAIL"), help="Login email")

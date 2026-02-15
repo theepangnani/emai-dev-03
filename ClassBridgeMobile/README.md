@@ -101,7 +101,7 @@ Create a `.env` file (ignored by git):
 
 ```bash
 # API Base URL
-API_URL=https://classbridge-924827764032.us-central1.run.app/api/v1
+API_URL=https://www.classbridge.ca/api
 
 # Firebase (for push notifications)
 FIREBASE_API_KEY=your_firebase_api_key
@@ -178,7 +178,7 @@ npm test -- --coverage
 
 The mobile app connects to the ClassBridge backend API:
 
-**Base URL:** `https://classbridge-924827764032.us-central1.run.app/api/v1`
+**Base URL:** `https://www.classbridge.ca/api`
 
 **Authentication:**
 - JWT tokens stored in AsyncStorage

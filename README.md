@@ -97,7 +97,7 @@ npm run android    # Android emulator
 - Google Cloud Run
 - Cloud SQL (PostgreSQL)
 - GitHub Actions CI/CD
-- URL: https://classbridge-924827764032.us-central1.run.app
+- URL: https://www.classbridge.ca
 
 ---
 
@@ -160,7 +160,7 @@ curl http://localhost:8000/api/courses \
 
 ### Base URL
 - **Development:** `http://localhost:8000/api`
-- **Production:** `https://classbridge-924827764032.us-central1.run.app/api`
+- **Production:** `https://www.classbridge.ca/api`
 - **API Docs:** `/docs` (Swagger UI) or `/redoc`
 
 ### API Versioning
@@ -231,7 +231,7 @@ See [MOBILE_DEV_GUIDE.md](MOBILE_DEV_GUIDE.md#testing)
 - **Trigger:** Push to `master` branch
 - **CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`)
 - **Target:** Google Cloud Run
-- **URL:** https://classbridge-924827764032.us-central1.run.app
+- **URL:** https://www.classbridge.ca
 
 ### Manual Deployment
 ```bash
@@ -352,8 +352,8 @@ See [REQUIREMENTS.md](REQUIREMENTS.md) for complete roadmap.
 
 ## 🔗 Quick Links
 
-- **Production App:** https://classbridge-924827764032.us-central1.run.app
-- **API Documentation:** https://classbridge-924827764032.us-central1.run.app/docs
+- **Production App:** https://www.classbridge.ca
+- **API Documentation:** https://www.classbridge.ca/docs
 - **GitHub Repository:** https://github.com/theepangnani/emai-dev-03
 - **Issues Tracker:** https://github.com/theepangnani/emai-dev-03/issues
 
