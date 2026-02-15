@@ -39,9 +39,9 @@ describe('Register', () => {
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByText(/select role\(s\)/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/parent \/ guardian/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/student/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/teacher/i)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /parent \/ guardian/i })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /student/i })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /teacher/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('Register', () => {
     const user = userEvent.setup()
     renderWithProviders(<Register />)
 
-    await user.click(screen.getByLabelText(/teacher/i))
+    await user.click(screen.getByRole('checkbox', { name: /teacher/i }))
 
     expect(screen.getByLabelText(/teacher type/i)).toBeInTheDocument()
     expect(screen.getByText(/school teacher/i)).toBeInTheDocument()
@@ -88,7 +88,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'Test User')
     await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'different456')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -105,7 +105,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'New User')
     await user.type(screen.getByLabelText(/email/i), 'new@example.com')
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -129,7 +129,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'Teacher User')
     await user.type(screen.getByLabelText(/email/i), 'teacher@example.com')
-    await user.click(screen.getByLabelText(/teacher/i))
+    await user.click(screen.getByRole('checkbox', { name: /teacher/i }))
     await user.selectOptions(screen.getByLabelText(/teacher type/i), 'school_teacher')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
@@ -154,7 +154,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'Test')
     await user.type(screen.getByLabelText(/email/i), 'dup@example.com')
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -172,7 +172,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'Test')
     await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -190,7 +190,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'Test')
     await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -220,7 +220,7 @@ describe('Register', () => {
 
     renderWithProviders(<Register />)
 
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -252,8 +252,8 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/full name/i), 'Multi Role User')
     await user.type(screen.getByLabelText(/email/i), 'multi@example.com')
-    await user.click(screen.getByLabelText(/parent \/ guardian/i))
-    await user.click(screen.getByLabelText(/student/i))
+    await user.click(screen.getByRole('checkbox', { name: /parent \/ guardian/i }))
+    await user.click(screen.getByRole('checkbox', { name: /student/i }))
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
