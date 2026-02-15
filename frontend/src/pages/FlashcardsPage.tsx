@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
@@ -23,6 +23,16 @@ export function FlashcardsPage() {
   const [cardProgress, setCardProgress] = useState<Map<string, CardDifficulty>>(new Map());
   const [showSummary, setShowSummary] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
+
+  // Refs for stable keyboard handler — avoids stale closures
+  const currentIndexRef = useRef(currentIndex);
+  const isFlippedRef = useRef(isFlipped);
+  const cardsRef = useRef(cards);
+  const showSummaryRef = useRef(showSummary);
+  currentIndexRef.current = currentIndex;
+  isFlippedRef.current = isFlipped;
+  cardsRef.current = cards;
+  showSummaryRef.current = showSummary;
 
   useEffect(() => {
     const fetchFlashcards = async () => {
@@ -58,12 +68,10 @@ export function FlashcardsPage() {
 
   const handlePrev = useCallback(() => {
     setCurrentIndex(prev => {
-      if (prev > 0) {
-        setIsFlipped(false);
-        return prev - 1;
-      }
+      if (prev > 0) return prev - 1;
       return prev;
     });
+    setIsFlipped(false);
   }, []);
 
   const handleNext = useCallback(() => {
@@ -90,30 +98,59 @@ export function FlashcardsPage() {
     setIsFlipped(false);
   };
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — uses refs to avoid stale closures (#153)
   useEffect(() => {
+    const advance = () => {
+      const idx = currentIndexRef.current;
+      const len = cardsRef.current.length;
+      if (idx < len - 1) {
+        setCurrentIndex(idx + 1);
+        setIsFlipped(false);
+      } else {
+        setShowSummary(true);
+      }
+    };
+
+    const markAndAdvance = (difficulty: CardDifficulty) => {
+      const card = cardsRef.current[currentIndexRef.current];
+      setCardProgress(prev => {
+        const next = new Map(prev);
+        next.set(card.front, difficulty);
+        return next;
+      });
+      advance();
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showSummary) return;
+      if (showSummaryRef.current) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        handleFlip();
+        setIsFlipped(prev => !prev);
       } else if (e.key === 'ArrowLeft') {
-        handlePrev();
+        setCurrentIndex(prev => {
+          if (prev > 0) return prev - 1;
+          return prev;
+        });
+        setIsFlipped(false);
       } else if (e.key === 'ArrowRight') {
-        if (isFlipped) {
-          handleMastery('mastered');
+        if (isFlippedRef.current) {
+          markAndAdvance('mastered');
         } else {
-          handleNext();
+          const idx = currentIndexRef.current;
+          if (idx < cardsRef.current.length - 1) {
+            setCurrentIndex(idx + 1);
+            setIsFlipped(false);
+          }
         }
-      } else if (e.key === '1' && isFlipped) {
-        handleMastery('mastered');
-      } else if (e.key === '2' && isFlipped) {
-        handleMastery('learning');
+      } else if (e.key === '1' && isFlippedRef.current) {
+        markAndAdvance('mastered');
+      } else if (e.key === '2' && isFlippedRef.current) {
+        markAndAdvance('learning');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFlip, handlePrev, handleNext, handleMastery, isFlipped, showSummary]);
+  }, []);
 
   const summary = useMemo(() => {
     let mastered = 0;
