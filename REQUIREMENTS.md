@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-02-14
+**Last Updated:** 2026-02-15
 
 ---
 
@@ -1708,8 +1708,38 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Notes & project tracking tools
 - [ ] Data privacy & user rights (account deletion, data export, consent)
 
-### Phase 2+
-- [ ] Native mobile apps (PWA first, then React Native)
+### Phase 2 (Mobile App — March 6 Pilot MVP) - IN PROGRESS
+
+See §9 Mobile App Development for detailed specification.
+
+**Status:** Parent-only MVP complete (8 screens built). Device testing and pilot launch pending.
+
+**Approach:** Lightweight parent-only mobile app for March 6, 2026 pilot. No backend API changes needed — mobile calls the same `/api/*` endpoints as the web frontend. Distributed via Expo Go (no App Store/Play Store submission for pilot).
+
+**Timeline:** 2 weeks (Feb 15 - Mar 5, 2026)
+- Week 1 (Feb 15-21): Foundation + all 8 screens ✅
+- Week 2 (Feb 22-28): Polish + device testing
+- Mar 1-5: Final testing + pilot prep
+
+**Deliverables:**
+- [x] Mobile app foundation (Expo SDK 54, React Native 0.81.5, TypeScript)
+- [x] API client with AsyncStorage token management + refresh interceptor
+- [x] Auth context + login screen
+- [x] Navigation (auth-gated stack + bottom tabs)
+- [x] 8 parent screens: Dashboard, Child Overview, Calendar, Messages List, Chat, Notifications, Profile
+- [x] UI polish: pull-to-refresh, tab bar badges, empty states, loading spinners
+- [ ] Device testing (iOS + Android via Expo Go)
+- [ ] Pilot launch (March 6)
+
+**Deferred to Phase 3+ (post-pilot):**
+- Push notifications (Firebase) — Issues #314-#318, #334-#335
+- API versioning — Issue #311 (not needed when you control both clients)
+- File uploads — Issues #319-#320, #333
+- App Store / Play Store submission — Issues #343-#346
+- Student & teacher mobile screens — Issues #379-#380
+- Offline mode — Issue #337
+
+**GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
 
 ### Phase 3
 - [ ] Multi-language support
@@ -1732,7 +1762,238 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 
 ---
 
-## 9. Technical Architecture
+## 9. Mobile App Development
+
+> **Status:** Parent-only MVP complete (8 screens). Device testing pending for March 6 pilot.
+
+---
+
+### 9.1 Overview
+
+**Technology Stack:** React Native + TypeScript with Expo (managed workflow)
+
+**Platforms:** iOS 13+ and Android 8.0+
+
+**Approach:** Parent-only "monitor & communicate" mobile app for the March 6, 2026 pilot. All complex workflows (registration, course management, study material generation, teacher linking) remain web-only. Mobile is read-heavy with limited write actions (reply to messages, mark tasks complete, mark notifications read).
+
+**Key Design Decision:** No backend API changes needed for the mobile MVP. The existing `/api/*` endpoints return all data the mobile app needs. The mobile API client calls the same endpoints as the web frontend.
+
+**GitHub Issues:** #364-#380 (pilot MVP + post-pilot enhancements)
+
+### 9.2 Strategic Decision: React Native with Expo
+
+**Selected Approach:** React Native with Expo SDK 54 (managed workflow)
+
+**Rationale:**
+1. **Maximum Code Reuse**: Web app already uses React — shared API types, business logic, patterns
+2. **Single Team**: Same tooling (npm, TypeScript, VSCode), hot reload like web
+3. **Fast Development**: 8 screens built in under a week using web API types as reference
+4. **Expo Go Distribution**: No App Store submission needed for pilot — parents install Expo Go and scan QR code
+5. **Native Performance**: Sufficient for educational platform (not gaming/AR)
+
+### 9.3 Mobile Stack (Actual)
+
+**Core:**
+- React Native 0.81.5
+- TypeScript 5.x
+- Expo SDK 54
+
+**Navigation:**
+- React Navigation 7 (native stack + bottom tabs)
+
+**State & Data Management (shared patterns with web):**
+- TanStack React Query 5.x (same query keys and patterns as web)
+- Axios (same interceptor pattern as web)
+- AsyncStorage (localStorage equivalent for token storage)
+
+**UI:**
+- @expo/vector-icons (MaterialIcons)
+- react-native-safe-area-context
+- Custom theme system matching ClassBridge brand colors
+
+**Deferred (Phase 3+):**
+- React Native Firebase (push notifications)
+- Expo Image Picker / Document Picker (file uploads)
+- React Native MMKV (offline cache persistence)
+
+### 9.4 Backend API Changes
+
+**Key Decision: No backend changes needed for the March 6 pilot.** The existing `/api/*` endpoints return all data the mobile app needs. CORS is not a factor for React Native (native HTTP clients bypass browser CORS restrictions). The mobile API client calls the exact same endpoints as the web frontend.
+
+**Deferred backend API work** (to be implemented post-pilot as needed):
+- Issue #311: API Versioning (`/api/v1`) — Not needed when you control both clients
+- Issue #312: Pagination on all list endpoints — Not needed for pilot scale
+- Issue #313: Structured error responses — Nice-to-have for Phase 3
+- Issues #314-#318: Firebase push notifications — Deferred to Phase 3 (late March)
+- Issues #319-#320: File upload endpoints — Not needed for read-only parent mobile
+- Issue #321: Health endpoint with version info — Deferred
+- Issue #322: Integration tests for v1 API — Deferred (no v1 API yet)
+
+### 9.5 Mobile App — What Was Built (Pilot MVP)
+
+**Project:** `ClassBridgeMobile/` — Expo SDK 54 managed workflow
+
+#### 9.5.1 Foundation (Issues #364-#366) ✅ COMPLETE
+
+**API Client (#364)** — Ported from `frontend/src/api/client.ts`
+- `src/api/client.ts` — Axios instance with AsyncStorage token management
+- Token refresh interceptor (same logic as web, using AsyncStorage instead of localStorage)
+- Form-urlencoded login (backend uses `OAuth2PasswordRequestForm`)
+- `src/api/parent.ts` — ParentDashboardData, ChildHighlight, ChildOverview types
+- `src/api/messages.ts` — ConversationSummary, ConversationDetail, MessageResponse types
+- `src/api/notifications.ts` — NotificationResponse type + list/read/count functions
+- `src/api/tasks.ts` — TaskItem type + list/toggleComplete functions
+
+**Auth & Login (#365)**
+- `src/context/AuthContext.tsx` — Token in AsyncStorage, auto-load user on app start, login/logout
+- `src/screens/auth/LoginScreen.tsx` — Email/password form, validation, error display
+
+**Navigation (#366)**
+- `src/navigation/AppNavigator.tsx` — Auth-gated navigation:
+  - Not authenticated → LoginScreen
+  - Authenticated → Bottom tab navigator (Home, Calendar, Messages, Notifications, Profile)
+  - HomeStack: Dashboard → ChildOverview (nested stack)
+  - MsgStack: ConversationsList → Chat (nested stack)
+
+#### 9.5.2 Core Screens (Issues #367-#373) ✅ COMPLETE
+
+| Screen | Issue | API Endpoint | Key Features |
+|--------|-------|-------------|--------------|
+| ParentDashboardScreen | #367 | `GET /api/parent/dashboard` | Greeting, 3 status cards (overdue/due today/messages), child cards with avatars and status badges |
+| ChildOverviewScreen | #368 | `GET /api/parent/children/{id}/overview` + `GET /api/tasks/` | Courses list, assignments sorted by due date, tasks with complete toggle |
+| CalendarScreen | #369 | Dashboard `all_assignments` + tasks API | Custom month grid, color-coded date dots, tap date → day items list |
+| MessagesListScreen | #370 | `GET /api/messages/conversations` | Conversation cards, unread badges, time formatting, tap → Chat |
+| ChatScreen | #371 | `GET /api/messages/conversations/{id}` + `POST .../messages` | Chat bubbles (sent/received), date separators, send message, auto-mark-read |
+| NotificationsScreen | #372 | `GET /api/notifications/` | Type-specific icons, mark as read, mark all read, relative timestamps |
+| ProfileScreen | #373 | `GET /api/auth/me` | User info, unread counts, Google status, logout, web app reminder |
+
+#### 9.5.3 UI Polish (#374) ✅ COMPLETE
+
+- SafeArea handling via `useSafeAreaInsets` on headerless screens
+- Native headers on Calendar, Notifications, Profile tabs
+- Tab bar badges with 30-second polling (Messages: unread count, Notifications: unread count)
+- Pull-to-refresh (`RefreshControl`) on all list/scroll screens
+- Empty states with icons and messages
+- Loading spinners with messages
+
+#### 9.5.4 Remaining Pilot Work
+
+- [x] **Device testing prep (#375):** ESLint 9 flat config migration, unused import cleanup, dependency compatibility fix (`react-native-screens`), `useMemo` dependency fix in ChatScreen — TypeScript and ESLint pass clean, Metro Bundler starts successfully
+- [ ] **Device testing (#375):** Test on physical iOS device via Expo Go, test on physical Android device
+- [x] **Pilot onboarding docs (#362):** Welcome email template (`docs/pilot/welcome-email.md`), quick-start guide with Expo Go instructions, known limitations, and feedback mechanism (`docs/pilot/quick-start-guide.md`)
+- [ ] **Pilot launch checklist (#376):** Verify mobile connects to production API, prepare Expo Go instructions
+
+### 9.6 Mobile Boundary (What's Mobile vs Web-Only)
+
+**MOBILE (parent read/reply only):**
+- View dashboard: children status cards (overdue, due today, courses)
+- View child detail: courses, assignments, upcoming deadlines
+- View calendar: assignments & tasks by date (read-only)
+- View/reply messages: parent-teacher conversations
+- View notifications: mark as read
+- Mark tasks complete: single tap toggle
+- View profile & logout
+
+**WEB ONLY (complex workflows):**
+- Registration & account setup
+- Create/link/edit children (invites, Google discovery)
+- Create courses, assign to children, Google sync
+- Link teachers (invite flow, email notifications)
+- Generate study materials (AI, file upload)
+- Create tasks with full detail & resource linking
+- Teacher email monitoring (Gmail OAuth)
+- All admin functions
+- All student & teacher functions
+
+### 9.7 Post-Pilot Phases
+
+#### Phase 3: Post-Pilot Enhancement (Mar 7-31)
+
+| Task | Issue | Est. |
+|------|-------|------|
+| Firebase Admin SDK setup | #314 | 1 day |
+| DeviceToken model + endpoints | #315 | 1 day |
+| Push notification service | #316 | 1 day |
+| Integrate with key events | #317 | 2 days |
+| Firebase in mobile app + deep linking | #334-#335 | 2 days |
+| Notification polling (30s foreground) | #377 | 1 day |
+| React Query offline caching | #378 | 1 day |
+| API versioning (/api/v1) | #311 | 2 days |
+| Structured error responses | #313 | 1 day |
+
+#### Phase 4: Full Mobile + Scale (April 2026)
+
+| Task | Issue |
+|------|-------|
+| Student mobile screens (dashboard, assignments, study viewer) | #379 |
+| Teacher mobile screens (messages, notifications, quick grade) | #380 |
+| Camera/file upload for course content | #333 |
+| Profile picture upload | #319 |
+| Offline mode with data sync | #337 |
+| App Store + Google Play public launch | #343-#346 |
+| Pagination on all endpoints | #312 |
+| Mobile CI/CD pipeline | #352 |
+
+### 9.8 Project Structure
+
+```
+ClassBridgeMobile/
+  src/
+    api/
+      client.ts          # Axios instance + AsyncStorage token management
+      parent.ts          # Parent dashboard/children types + functions
+      messages.ts        # Conversations, messages types + functions
+      notifications.ts   # Notification types + functions
+      tasks.ts           # Task types + functions
+    context/
+      AuthContext.tsx     # Auth state provider (AsyncStorage)
+    navigation/
+      AppNavigator.tsx    # Root stack + bottom tabs + nested stacks
+    screens/
+      auth/
+        LoginScreen.tsx
+      parent/
+        ParentDashboardScreen.tsx
+        ChildOverviewScreen.tsx
+        CalendarScreen.tsx
+      messages/
+        MessagesListScreen.tsx
+        ChatScreen.tsx
+      notifications/
+        NotificationsScreen.tsx
+      profile/
+        ProfileScreen.tsx
+    components/
+      LoadingSpinner.tsx
+      EmptyState.tsx
+    theme/
+      index.ts           # Colors, spacing, fontSize, borderRadius
+  app.json               # Expo configuration
+  package.json
+  tsconfig.json
+```
+
+### 9.9 Success Criteria (Pilot)
+
+**Pilot MVP (March 6):**
+- [x] All 8 screens built and type-checked
+- [ ] App loads on physical iOS device via Expo Go
+- [ ] App loads on physical Android device via Expo Go
+- [ ] Parent can log in and see dashboard with children
+- [ ] Parent can tap child → see courses/assignments
+- [ ] Parent can read and reply to messages
+- [ ] Parent can view and mark notifications as read
+- [ ] No crashes during pilot use
+
+**Post-Pilot Targets:**
+- Push notifications working for all event types
+- Student + teacher mobile screens
+- App Store + Google Play submission
+- < 1% crash rate, 4.0+ star rating
+
+---
+
+## 10. Technical Architecture
 
 ### Stack
 - **Frontend:** React + TypeScript + Vite
@@ -2083,6 +2344,14 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #262: Messages page: show all admin messages for every user~~ ✅
 - ~~Issue #263: User-to-admin messaging: any user can message admin, all admins get email~~ ✅
 
+### Phase 1 - Implemented (Feb 15: CI + Mobile MVP Sprint)
+- ~~Issue #247: Accessibility: ARIA labels, keyboard navigation, skip-to-content~~ ✅
+- ~~Issue #273: CI hardening: verify test job blocks deploy on failure~~ ✅ (deploy.yml already properly structured; 305 backend + 183 frontend tests passing)
+- ~~Issue #308: Update ClassBridge logo and favicon assets~~ ✅
+- ~~Issue #309: Admin endpoint to update user email with cascade to invites~~ ✅
+- ~~Issue #256: Auto-create profiles on registration~~ ✅
+- ~~Issue #257: Multi-role registration with checkbox UI~~ ✅
+
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers
@@ -2117,7 +2386,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #174: Global search: backend unified search endpoint~~ ✅
 - ~~Issue #175: Global search: frontend search component in DashboardLayout~~ ✅
 - ~~Issue #152: Mobile responsive web: CSS breakpoints for 5+ pages~~ ✅
-- Issue #308: Update ClassBridge logo and favicon assets
+- ~~Issue #308: Update ClassBridge logo and favicon assets~~ ✅
 - Issue #195: AI auto-task creation: extract critical dates from generated course materials
 - Issue #96: Student email identity merging (personal + school email)
 - Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
@@ -2140,8 +2409,74 @@ Current feature issues are tracked in GitHub:
 - Issue #29: TeachAssist Integration
 - Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
 
-### Phase 2+
-- Issue #192: Native mobile apps (PWA first, then React Native)
+### March 6 Pilot — Mobile MVP (Completed)
+- ~~Issue #364: Mobile MVP: API client & auth modules (AsyncStorage, refresh tokens)~~ ✅
+- ~~Issue #365: Mobile MVP: AuthContext & LoginScreen~~ ✅
+- ~~Issue #366: Mobile MVP: Navigation setup (auth-gated stack + bottom tabs)~~ ✅
+- ~~Issue #367: Mobile MVP: ParentDashboardScreen~~ ✅
+- ~~Issue #368: Mobile MVP: ChildOverviewScreen~~ ✅
+- ~~Issue #369: Mobile MVP: CalendarScreen (read-only)~~ ✅
+- ~~Issue #370: Mobile MVP: MessagesListScreen~~ ✅
+- ~~Issue #371: Mobile MVP: ChatScreen (read & reply)~~ ✅
+- ~~Issue #372: Mobile MVP: NotificationsScreen~~ ✅
+- ~~Issue #373: Mobile MVP: ProfileScreen (view & logout)~~ ✅
+- ~~Issue #374: Mobile MVP: UI polish (loading, empty states, pull-to-refresh, tab badges)~~ ✅
+- ~~Issue #357: Web: Update CORS config for mobile app origins~~ ✅ (Not needed — CORS is browser-only, React Native bypasses it)
+
+### March 6 Pilot — Web Production Readiness (In Progress)
+- ~~Issue #354: Infrastructure: Database Backup & Disaster Recovery for Production~~ ✅
+- Issue #355: API Versioning Strategy: Options & Decision
+- Issue #358: Web: End-to-end testing on production
+- Issue #359: Web: Performance validation with 50+ simulated users
+- ~~Issue #360: Web: Create pilot user accounts and demo data~~ ✅
+- ~~Issue #361: Web: Monitoring and alerting setup for production~~ ✅
+- ~~Issue #362: Web: Pilot onboarding prep (welcome email, quick-start guide)~~ ✅
+- Issue #363: Web: Deploy freeze and dress rehearsal
+- Issue #265: Go live: Production deployment with custom domains
+- Issue #375: Mobile MVP: Device testing (iOS + Android via Expo Go) — code quality prep done, physical testing pending
+- Issue #376: March 6 Pilot Launch: Go-Live Checklist
+
+### Mobile App — Post-Pilot (Phase 3-4, Open)
+- Issue #377: Phase 3: Add notification polling to mobile app
+- Issue #378: Phase 3: React Query offline caching for mobile
+- Issue #379: Phase 4: Student mobile screens (dashboard, assignments, study viewer)
+- Issue #380: Phase 4: Teacher mobile screens (messages, notifications, quick view)
+
+### Mobile App — Original Full Plan (Deferred, Open)
+
+**Backend API Preparation (#311-#322) — Deferred to post-pilot as needed:**
+- ~~Issue #311: Backend: Implement API Versioning (v1)~~ (CLOSED — not needed for pilot; mobile calls same `/api/*` endpoints)
+- Issue #312: Backend: Add Pagination to All List Endpoints
+- Issue #313: Backend: Implement Structured Error Responses
+- Issue #314: Backend: Set Up Firebase Admin SDK
+- Issue #315: Backend: Create DeviceToken Model and Registration Endpoints
+- Issue #316: Backend: Implement Push Notification Service
+- Issue #317: Backend: Integrate Push Notifications with Key Events
+- Issue #318: Backend: Assignment Reminder Background Job
+- Issue #319: Backend: Profile Picture Upload Endpoint
+- Issue #320: Backend: Assignment File Upload Endpoint
+- Issue #321: Backend: Enhance Health Endpoint with Version Info
+- Issue #322: Backend: Integration Tests for v1 API
+
+**Mobile App Screens (#323-#340) — Superseded by pilot MVP issues #364-#374:**
+- Issue #323-#340: Original full mobile plan screens (many superseded by simpler pilot MVP)
+
+**Testing & Deployment (#341-#346):**
+- Issue #340: Testing: Manual Testing - iOS
+- Issue #341: Testing: Manual Testing - Android
+- Issue #343: Deployment: Beta Testing with TestFlight (iOS) — Phase 3+
+- Issue #344: Deployment: Beta Testing with Google Play Internal Testing — Phase 3+
+- Issue #345: Deployment: Prepare App Store Submission - iOS — Phase 4
+- Issue #346: Deployment: Prepare Google Play Submission - Android — Phase 4
+
+**Documentation (#347-#349) & Risk (#350-#352):**
+- Issue #347-#349: Mobile documentation (deferred)
+- Issue #350: RISK: Push Notification Delivery Failures
+- Issue #351: RISK: File Upload Storage Costs
+- Issue #352: Infrastructure: Set Up CI/CD for Mobile Builds — Phase 4
+
+### Phase 2+ (Future)
+- Issue #192: ~~Native mobile apps~~ → SUPERSEDED by #364-#380
 
 ### Phase 3+
 - Issue #30: Tutor Marketplace

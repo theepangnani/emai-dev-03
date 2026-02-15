@@ -1,0 +1,32 @@
+{
+  "displayName": "ClassBridge: Cloud SQL Backup Failure",
+  "documentation": {
+    "content": "A Cloud SQL automated backup has failed for instance emai-db.\n\nCheck backup status:\n  gcloud sql backups list --instance=emai-db --project=emai-dev-01 --limit=5\n\nCheck instance status:\n  gcloud sql instances describe emai-db --project=emai-dev-01\n\nManual backup:\n  ./scripts/backup/manual-backup.sh\n\nSee docs/DISASTER_RECOVERY.md for full runbook.",
+    "mimeType": "text/markdown"
+  },
+  "conditions": [
+    {
+      "displayName": "Cloud SQL backup failure detected",
+      "conditionThreshold": {
+        "filter": "resource.type = \"cloudsql_database\" AND resource.labels.database_id = \"emai-dev-01:emai-db\" AND metric.type = \"cloudsql.googleapis.com/database/auto_failover_request_count\"",
+        "aggregations": [
+          {
+            "alignmentPeriod": "300s",
+            "perSeriesAligner": "ALIGN_COUNT"
+          }
+        ],
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "trigger": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "combiner": "OR",
+  "enabled": true,
+  "notificationChannels": [
+    "projects/emai-dev-01/notificationChannels/6195366348465449860"
+  ]
+}
