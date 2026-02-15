@@ -23,6 +23,14 @@ interface CourseItem {
 
 type SyncState = 'idle' | 'syncing' | 'done' | 'error';
 
+// Helper for keyboard accessibility
+const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    callback();
+  }
+};
+
 export function CoursesPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -343,6 +351,9 @@ export function CoursesPage() {
                     <div
                       className="course-card"
                       onClick={() => navigate(`/courses/${course.id}`)}
+                      onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                      role="button"
+                      tabIndex={0}
                       style={{ cursor: 'pointer' }}
                     >
                       <div className="course-card-color" style={{ background: getCourseColor(course.id, courseIds) }} />
@@ -400,6 +411,9 @@ export function CoursesPage() {
                         <div
                           className="course-card"
                           onClick={() => navigate(`/courses/${course.id}`)}
+                          onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                          role="button"
+                          tabIndex={0}
                           style={{ cursor: 'pointer' }}
                         >
                           <div className="course-card-color" style={{ background: getCourseColor(course.id, enrolledCourses.map(c => c.id)) }} />
@@ -497,6 +511,9 @@ export function CoursesPage() {
                   <div
                     className="course-card"
                     onClick={() => navigate(`/courses/${course.id}`)}
+                    onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                    role="button"
+                    tabIndex={0}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="course-card-color" style={{ background: 'var(--color-accent)' }} />

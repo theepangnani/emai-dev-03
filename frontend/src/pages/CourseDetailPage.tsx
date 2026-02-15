@@ -641,6 +641,7 @@ export function CourseDetailPage() {
                   <button
                     className="content-icon-btn"
                     title={generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
+                    aria-label="Generate Study Guide"
                     onClick={() => handleGenerateStudyGuide(item)}
                     disabled={generatingContentId === item.id}
                   >
@@ -649,6 +650,7 @@ export function CourseDetailPage() {
                   <button
                     className="content-icon-btn"
                     title="Create task"
+                    aria-label="Create task from this content"
                     onClick={() => setTaskModalContext({
                       courseId: courseId,
                       courseContentId: item.id,
@@ -660,8 +662,8 @@ export function CourseDetailPage() {
                   </button>
                   {item.created_by_user_id === user?.id && (
                     <>
-                      <button className="content-icon-btn" title="Edit" onClick={() => openEditContentModal(item)}>&#9998;</button>
-                      <button className="content-icon-btn danger" title="Archive" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
+                      <button className="content-icon-btn" title="Edit" aria-label="Edit this content" onClick={() => openEditContentModal(item)}>&#9998;</button>
+                      <button className="content-icon-btn danger" title="Archive" aria-label="Archive this content" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
                     </>
                   )}
                 </div>
@@ -700,8 +702,8 @@ export function CourseDetailPage() {
                 </div>
                 {canManageRoster && !a.google_classroom_id && (
                   <div className="course-assignment-actions">
-                    <button className="content-icon-btn" title="Edit" onClick={() => openEditAssignment(a)}>&#9998;</button>
-                    <button className="content-icon-btn danger" title="Delete" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+                    <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
+                    <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
                   </div>
                 )}
               </div>

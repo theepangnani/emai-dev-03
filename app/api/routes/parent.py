@@ -387,6 +387,7 @@ def create_child(
         hashed_password=UNUSABLE_PASSWORD_HASH,
         full_name=request.full_name,
         role=UserRole.STUDENT,
+        roles=UserRole.STUDENT.value,
     )
     db.add(student_user)
     db.flush()
@@ -480,6 +481,7 @@ def link_child(
             hashed_password=UNUSABLE_PASSWORD_HASH,
             full_name=full_name,
             role=UserRole.STUDENT,
+            roles=UserRole.STUDENT.value,
         )
         db.add(student_user)
         db.flush()

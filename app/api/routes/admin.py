@@ -186,14 +186,8 @@ def add_role_to_user(
     user.set_roles(current_roles)
 
     # Create profile record if needed
-    if new_role == UserRole.TEACHER:
-        existing = db.query(Teacher).filter(Teacher.user_id == user.id).first()
-        if not existing:
-            db.add(Teacher(user_id=user.id))
-    elif new_role == UserRole.STUDENT:
-        existing = db.query(Student).filter(Student.user_id == user.id).first()
-        if not existing:
-            db.add(Student(user_id=user.id))
+    from app.services.user_service import ensure_profile_records
+    ensure_profile_records(db, user)
 
     db.commit()
     db.refresh(user)

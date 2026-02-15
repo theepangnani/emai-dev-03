@@ -18,6 +18,14 @@ function getInitials(name: string): string {
   return (parts[0]?.[0] || '?').toUpperCase();
 }
 
+// Helper for keyboard accessibility
+const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    callback();
+  }
+};
+
 export function MyKidsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -179,6 +187,9 @@ export function MyKidsPage() {
               key={child.student_id}
               className="mykids-child-card-enhanced"
               onClick={() => setSelectedChild(child.student_id)}
+              onKeyDown={(e) => handleKeyDown(e, () => setSelectedChild(child.student_id))}
+              role="button"
+              tabIndex={0}
             >
               <div className="mykids-child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }}>
                 {getInitials(child.full_name)}
@@ -239,7 +250,7 @@ export function MyKidsPage() {
                 {overview.courses.length === 0 ? (
                   <p className="mykids-empty-hint">No courses enrolled.</p>
                 ) : overview.courses.map(c => (
-                  <div key={c.id} className="mykids-item-card" onClick={() => navigate(`/courses/${c.id}`)}>
+                  <div key={c.id} className="mykids-item-card" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-item-title">{c.name}</div>
                     {c.teacher_name && <div className="mykids-item-sub">{c.teacher_name}</div>}
                     {c.subject && <div className="mykids-item-sub">{c.subject}</div>}
@@ -260,7 +271,7 @@ export function MyKidsPage() {
                 {materials.length === 0 ? (
                   <p className="mykids-empty-hint">No course materials yet.</p>
                 ) : materials.map(m => (
-                  <div key={m.id} className="mykids-item-card" onClick={() => navigate(`/course-materials/${m.id}`)}>
+                  <div key={m.id} className="mykids-item-card" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-item-title">{m.title}</div>
                     <div className="mykids-item-sub">
                       <span className="mykids-badge">{m.content_type}</span>
@@ -285,8 +296,8 @@ export function MyKidsPage() {
                 ) : (
                   <>
                     {activeTasks.map(t => (
-                      <div key={t.id} className="mykids-task-row" onClick={() => navigate(`/tasks/${t.id}`)}>
-                        <span className={`task-priority-badge ${t.priority || 'medium'}`}>{(t.priority || 'medium') === 'high' ? '\u25B2 ' : (t.priority || 'medium') === 'low' ? '\u25BC ' : '\u25CF '}{t.priority || 'medium'}</span>
+                      <div key={t.id} className="mykids-task-row" onClick={() => navigate(`/tasks/${t.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/tasks/${t.id}`))} role="button" tabIndex={0}>
+                        <span className={`task-priority-badge ${t.priority || 'medium'}`} aria-label={`Priority: ${t.priority || 'medium'}`}>{(t.priority || 'medium') === 'high' ? '\u25B2 ' : (t.priority || 'medium') === 'low' ? '\u25BC ' : '\u25CF '}{t.priority || 'medium'}</span>
                         <span className="mykids-task-title">{t.title}</span>
                         {t.due_date && (
                           <span className="mykids-task-due">

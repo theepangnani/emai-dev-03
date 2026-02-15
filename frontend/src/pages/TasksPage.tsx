@@ -315,7 +315,7 @@ export function TasksPage() {
                   <div className="task-row-title">{task.title}</div>
                   <div className="task-row-meta">
                     {task.priority && (
-                      <span className={`task-priority-badge ${task.priority}`}>
+                      <span className={`task-priority-badge ${task.priority}`} aria-label={`Priority: ${task.priority}`}>
                         {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
                       </span>
                     )}
@@ -344,13 +344,13 @@ export function TasksPage() {
                 </div>
                 {isCreator(task) && task.archived_at ? (
                   <div className="task-row-actions">
-                    <button className="task-row-btn restore" onClick={() => handleRestore(task.id)} title="Restore">&#8634;</button>
-                    <button className="task-row-btn permanent-delete" onClick={() => handlePermanentDelete(task.id)} title="Delete Forever">&#128465;</button>
+                    <button className="task-row-btn restore" onClick={() => handleRestore(task.id)} title="Restore" aria-label="Restore this task">&#8634;</button>
+                    <button className="task-row-btn permanent-delete" onClick={() => handlePermanentDelete(task.id)} title="Delete Forever" aria-label="Permanently delete this task">&#128465;</button>
                   </div>
                 ) : isCreator(task) ? (
                   <div className="task-row-actions">
-                    <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit">&#9998;</button>
-                    <button className="task-row-btn danger" onClick={() => handleDelete(task.id)} title="Archive">&times;</button>
+                    <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
+                    <button className="task-row-btn danger" onClick={() => handleDelete(task.id)} title="Archive" aria-label="Archive this task">&times;</button>
                   </div>
                 ) : null}
               </div>

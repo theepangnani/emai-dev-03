@@ -144,8 +144,14 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
   }, [switchRole, navigate]);
 
   return (
-    <div className="dashboard">
-      <header className="dashboard-header">
+    <>
+      {/* Skip to content link for keyboard users */}
+      <a href="#main-content" className="skip-to-content">
+        Skip to main content
+      </a>
+
+      <div className="dashboard">
+        <header className="dashboard-header">
         <div className="header-left">
           <button
             className={`hamburger-btn${menuOpen ? ' open' : ''}`}
@@ -237,7 +243,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
         )}
       </div>
 
-      <main className="dashboard-main-full">
+      <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
         <div className="welcome-section">
           {inspiration ? (
             <>
@@ -268,6 +274,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
       {user?.role === 'teacher' && (
         <OnboardingTour steps={TEACHER_TOUR_STEPS} storageKey="tour_completed_teacher" />
       )}
-    </div>
+      </div>
+    </>
   );
 }

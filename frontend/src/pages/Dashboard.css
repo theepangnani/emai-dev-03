@@ -53,6 +53,24 @@
   text-transform: uppercase;
 }
 
+/* Skip to content link for keyboard navigation */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 12px 24px;
+  background: var(--color-accent);
+  color: white;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.skip-to-content:focus {
+  left: 0;
+  top: 0;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -330,6 +348,22 @@
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
   border-style: solid;
+}
+
+/* Keyboard focus styles for accessibility */
+.sidebar-link:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Card focus styles */
+.mykids-child-card-enhanced:focus,
+.mykids-item-card:focus,
+.mykids-task-row:focus,
+.course-card:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
 }
 
 .dashboard-main {

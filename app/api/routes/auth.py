@@ -65,7 +65,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         role=user_data.role,
-        roles=user_data.role.value,
+        roles=",".join(r.value for r in user_data.roles),
         google_id=user_data.google_id,
         google_access_token=google_access_token,
         google_refresh_token=google_refresh_token,
@@ -73,16 +73,15 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     db.add(user)
     db.flush()
 
-    # Auto-create Teacher or Student record
-    if user.role == UserRole.TEACHER:
-        teacher_type_value = None
-        if user_data.teacher_type:
-            teacher_type_value = TeacherType(user_data.teacher_type)
-        teacher = Teacher(user_id=user.id, teacher_type=teacher_type_value)
-        db.add(teacher)
-    elif user.role == UserRole.STUDENT:
-        student = Student(user_id=user.id)
-        db.add(student)
+    # Create all profile records for selected roles
+    from app.services.user_service import ensure_profile_records
+    ensure_profile_records(db, user)
+
+    # Set teacher_type if teacher role and type provided
+    if UserRole.TEACHER in user_data.roles and user_data.teacher_type:
+        teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+        if teacher:
+            teacher.teacher_type = TeacherType(user_data.teacher_type)
 
     log_action(db, user_id=user.id, action="create", resource_type="user", resource_id=user.id,
                details={"role": user_data.role, "email": user_data.email},

@@ -968,9 +968,9 @@ export function ParentDashboard() {
                       </div>
                     </div>
                     <div className="child-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="child-action-btn" title="Courses" onClick={() => navigate(`/courses?student_id=${h.student_id}`)}>{'\u{1F4DA}'}</button>
-                      <button className="child-action-btn" title="Tasks" onClick={() => navigate(`/tasks?assignee=${childSummary?.user_id || ''}`)}>{'\u2705'}</button>
-                      <button className="child-action-btn" title="Edit" onClick={() => { if (childSummary) openEditChild(childSummary); }}>{'\u270F\uFE0F'}</button>
+                      <button className="child-action-btn" title="Courses" aria-label="View courses for this child" onClick={() => navigate(`/courses?student_id=${h.student_id}`)}>{'\u{1F4DA}'}</button>
+                      <button className="child-action-btn" title="Tasks" aria-label="View tasks for this child" onClick={() => navigate(`/tasks?assignee=${childSummary?.user_id || ''}`)}>{'\u2705'}</button>
+                      <button className="child-action-btn" title="Edit" aria-label="Edit this child's profile" onClick={() => { if (childSummary) openEditChild(childSummary); }}>{'\u270F\uFE0F'}</button>
                     </div>
                   </div>
                 );
@@ -1442,11 +1442,11 @@ export function ParentDashboard() {
                         <div className="task-sticky-body">
                           <span className={`task-sticky-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
                           <span className="task-sticky-meta">
-                            <span className={`task-priority-badge ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
+                            <span className={`task-priority-badge ${priorityClass}`} aria-label={`Priority: ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
                             {task.assignee_name && <span className="task-sticky-assignee">&rarr; {task.assignee_name}</span>}
                           </span>
                         </div>
-                        <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} title="Archive task">&times;</button>
+                        <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} title="Archive task" aria-label="Delete this task">&times;</button>
                       </div>
                       {isExpanded && (
                         <div className="task-sticky-detail">

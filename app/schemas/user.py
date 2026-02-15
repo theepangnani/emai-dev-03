@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from datetime import datetime
 
 from app.models.user import UserRole
@@ -8,9 +8,28 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str
-    role: UserRole
+    role: UserRole | None = None  # Single role (backward compat)
+    roles: list[UserRole] = []    # New multi-role field
     teacher_type: str | None = None  # only relevant when role=teacher
     google_id: str | None = None
+
+    @model_validator(mode='after')
+    def validate_roles(self):
+        # If roles list is empty, use single role field
+        if not self.roles and self.role:
+            self.roles = [self.role]
+        elif not self.roles:
+            raise ValueError("At least one role is required")
+
+        # Prevent self-assigned admin
+        if UserRole.ADMIN in self.roles:
+            raise ValueError("Admin role cannot be self-registered")
+
+        # Set primary role (first in list becomes active role)
+        if not self.role:
+            self.role = self.roles[0]
+
+        return self
 
 
 class UserLogin(BaseModel):

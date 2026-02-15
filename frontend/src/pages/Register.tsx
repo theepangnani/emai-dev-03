@@ -10,7 +10,7 @@ export function Register() {
     password: '',
     confirmPassword: '',
     full_name: '',
-    role: 'parent',
+    roles: [] as string[],
     teacher_type: '',
   });
   const [googleData, setGoogleData] = useState<{
@@ -45,12 +45,36 @@ export function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleRoleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const role = e.target.name;
+    const isChecked = e.target.checked;
+
+    setFormData(prev => ({
+      ...prev,
+      roles: isChecked
+        ? [...prev.roles, role]
+        : prev.roles.filter(r => r !== role),
+      // Clear teacher_type if teacher unchecked
+      teacher_type: (!isChecked && role === 'teacher') ? '' : prev.teacher_type,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    if (formData.roles.length === 0) {
+      setError('Please select at least one role');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.roles.includes('teacher') && !formData.teacher_type) {
+      setError('Please select a teacher type');
       return;
     }
 
@@ -61,8 +85,8 @@ export function Register() {
         email: formData.email,
         password: formData.password,
         full_name: formData.full_name,
-        role: formData.role,
-        ...(formData.role === 'teacher' && formData.teacher_type
+        roles: formData.roles,
+        ...(formData.roles.includes('teacher') && formData.teacher_type
           ? { teacher_type: formData.teacher_type }
           : {}),
         ...(googleData || {}),
@@ -121,22 +145,47 @@ export function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="role">I am a</label>
-            <select id="role" name="role" value={formData.role} onChange={handleChange}>
-              <option value="parent">Parent / Guardian</option>
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-            </select>
+            <label>Select Role(s) *</label>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="parent"
+                  checked={formData.roles.includes('parent')}
+                  onChange={handleRoleChange}
+                />
+                Parent / Guardian
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="student"
+                  checked={formData.roles.includes('student')}
+                  onChange={handleRoleChange}
+                />
+                Student
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="teacher"
+                  checked={formData.roles.includes('teacher')}
+                  onChange={handleRoleChange}
+                />
+                Teacher
+              </label>
+            </div>
           </div>
 
-          {formData.role === 'teacher' && (
+          {formData.roles.includes('teacher') && (
             <div className="form-group">
-              <label htmlFor="teacher_type">Teacher Type</label>
+              <label htmlFor="teacher_type">Teacher Type *</label>
               <select
                 id="teacher_type"
                 name="teacher_type"
                 value={formData.teacher_type}
                 onChange={handleChange}
+                required
               >
                 <option value="">Select type...</option>
                 <option value="school_teacher">School Teacher</option>

@@ -333,7 +333,7 @@ export function TaskDetailPage() {
                 )}
                 <div className="td-meta-item">
                   <span className="td-meta-label">Priority</span>
-                  <span className={`td-priority-badge ${task.priority || 'medium'}`}>
+                  <span className={`td-priority-badge ${task.priority || 'medium'}`} aria-label={`Priority: ${task.priority || 'medium'}`}>
                     {priorityLabel(task.priority)}
                   </span>
                 </div>

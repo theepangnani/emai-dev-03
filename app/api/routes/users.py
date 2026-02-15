@@ -52,6 +52,10 @@ def switch_role(
             detail=f"You do not have the '{data.role}' role",
         )
 
+    # Defensive: ensure profile exists before switching
+    from app.services.user_service import ensure_profile_records
+    ensure_profile_records(db, current_user)
+
     current_user.role = target_role
     db.commit()
     db.refresh(current_user)
