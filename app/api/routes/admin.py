@@ -160,6 +160,88 @@ class AddRoleRequest(BaseModel):
     role: str
 
 
+class UpdateUserEmailRequest(BaseModel):
+    email: str
+
+
+@router.patch("/users/{user_id}/email", response_model=UserResponse)
+def update_user_email(
+    user_id: int,
+    data: UpdateUserEmailRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Update a user's email address with cascade updates to related records.
+
+    This endpoint:
+    1. Updates the user's email
+    2. Updates any pending invites sent TO the old email
+    3. Logs the change in audit log
+    """
+    from app.models.invite import Invite
+    from pydantic import EmailStr, ValidationError
+
+    # Validate email format
+    try:
+        EmailStr._validate(data.email)  # type: ignore
+    except ValidationError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email format")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    old_email = user.email
+    new_email = data.email.lower().strip()
+
+    if old_email == new_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is already set to this value")
+
+    # Check if new email is already taken
+    existing = db.query(User).filter(User.email == new_email, User.id != user_id).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use by another user")
+
+    # CASCADE UPDATE: Update pending invites sent TO the old email
+    updated_invites = (
+        db.query(Invite)
+        .filter(
+            Invite.email == old_email,
+            Invite.accepted_at.is_(None),  # Only pending invites
+        )
+        .update({"email": new_email}, synchronize_session=False)
+    )
+
+    # Update the user's email
+    user.email = new_email
+
+    # Log the change
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="user_email_update",
+        resource_type="user",
+        resource_id=user.id,
+        details={
+            "old_email": old_email,
+            "new_email": new_email,
+            "updated_invites": updated_invites,
+        },
+        ip_address=request.client.host if request.client else None,
+    )
+
+    db.commit()
+    db.refresh(user)
+
+    logger.info(
+        f"Admin {current_user.id} updated user {user.id} email: {old_email} → {new_email}. "
+        f"Updated {updated_invites} pending invite(s)."
+    )
+
+    return user
+
+
 @router.post("/users/{user_id}/add-role", response_model=UserResponse)
 def add_role_to_user(
     user_id: int,
