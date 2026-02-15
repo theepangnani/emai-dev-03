@@ -2451,7 +2451,7 @@ Current feature issues are tracked in GitHub:
 - Issue #400: Verify SendGrid email delivery from production
 - ~~Issue #388: Launch day: Monitoring and incident response plan~~ ✅
 - ~~Issue #401: Set Cloud Run min-instances=1 to avoid cold starts~~ ✅
-- Issue #402: Prepare Expo Go access instructions for pilot parents
+- ~~Issue #402: Prepare Expo Go access instructions for pilot parents~~ ✅
 
 ### Mobile App — Post-Pilot (Phase 3-4, Open)
 - Issue #377: Phase 3: Add notification polling to mobile app
