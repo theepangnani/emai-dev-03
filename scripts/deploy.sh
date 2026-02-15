@@ -36,7 +36,7 @@ gcloud run deploy "${SERVICE}" \
   --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest" \
   --memory 512Mi \
   --cpu 1 \
-  --min-instances 0 \
+  --min-instances 1 \
   --max-instances 3 \
   --timeout 300
 

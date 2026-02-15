@@ -2449,7 +2449,8 @@ Current feature issues are tracked in GitHub:
 - Issue #398: Create pilot user accounts and verify login
 - Issue #399: Run smoke-test.py against production with all 4 roles (depends on #398)
 - Issue #400: Verify SendGrid email delivery from production
-- Issue #401: Set Cloud Run min-instances=1 to avoid cold starts
+- ~~Issue #388: Launch day: Monitoring and incident response plan~~ ✅
+- ~~Issue #401: Set Cloud Run min-instances=1 to avoid cold starts~~ ✅
 - Issue #402: Prepare Expo Go access instructions for pilot parents
 
 ### Mobile App — Post-Pilot (Phase 3-4, Open)
