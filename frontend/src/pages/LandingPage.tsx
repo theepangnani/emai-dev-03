@@ -21,6 +21,7 @@ export function LandingPage() {
       </nav>
 
       <section className="landing-hero">
+        <img src="/classbridge-hero-logo.png" alt="ClassBridge" className="landing-hero-logo" />
         <h1>Stay connected to your child's education</h1>
         <p className="landing-hero-sub">
           ClassBridge brings parents, students, and teachers together in one platform.
