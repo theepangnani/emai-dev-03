@@ -1,7 +1,7 @@
 import { Suspense, lazy, type ComponentType } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -58,6 +58,7 @@ const ForgotPasswordPage = lazyRetry(() => import('./pages/ForgotPasswordPage').
 const ResetPasswordPage = lazyRetry(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
+const LandingPage = lazyRetry(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -211,7 +212,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </Suspense>
           </ErrorBoundary>
@@ -221,6 +222,13 @@ function App() {
     </QueryClientProvider>
     </ThemeProvider>
   );
+}
+
+function HomeRedirect() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <PageLoader />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <LandingPage />;
 }
 
 export default App;
