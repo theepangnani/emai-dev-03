@@ -1,12 +1,13 @@
-"""Seed the local database with realistic demo data for pilot testing.
+"""Seed the database with realistic demo data for pilot testing.
 
 Creates 9 users (1 admin, 2 teachers, 3 parents, 3 students),
 4 courses, 13 assignments with grades, conversations, messages,
 notifications, and tasks.
 
 Usage:
-  python -m scripts.seed_demo_data
-  python -m scripts.seed_demo_data --force
+  python -m scripts.seed_demo_data                  # local SQLite
+  python -m scripts.seed_demo_data --force           # wipe & reseed local
+  python -m scripts.seed_demo_data --database-url "postgresql+psycopg2://..."  # target production
 """
 import argparse
 import sys
@@ -15,10 +16,11 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import select
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 
 from app.core.security import get_password_hash
-from app.db.database import SessionLocal, engine, Base
+from app.db.database import SessionLocal, engine as default_engine, Base
 from app.models import (
     User, Teacher, Student, Course, Assignment, Conversation, Message,
     Notification, Task, StudyGuide, TeacherCommunication, Invite, Broadcast,
@@ -40,9 +42,15 @@ def _now():
     return datetime.now(timezone.utc)
 
 
-def seed(force: bool = False):
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+def seed(force: bool = False, database_url: str | None = None):
+    if database_url:
+        eng = create_engine(database_url)
+        Session = sessionmaker(autocommit=False, autoflush=False, bind=eng)
+    else:
+        eng = default_engine
+        Session = SessionLocal
+    Base.metadata.create_all(bind=eng)
+    db = Session()
     try:
         if not force and db.query(User).count() > 0:
             print("Database already has users. Use --force to seed anyway.")
@@ -521,5 +529,14 @@ def seed(force: bool = False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed ClassBridge with realistic demo data.")
     parser.add_argument("--force", action="store_true", help="Wipe existing data before seeding.")
+    parser.add_argument("--database-url", help="Database URL (defaults to local DB from .env)")
     args = parser.parse_args()
-    seed(force=args.force)
+
+    if args.database_url:
+        print(f"Targeting: {args.database_url.split('@')[-1] if '@' in args.database_url else args.database_url}")
+        confirm = input("This will write to an external database. Continue? [y/N] ")
+        if confirm.lower() != "y":
+            print("Aborted.")
+            sys.exit(0)
+
+    seed(force=args.force, database_url=args.database_url)
