@@ -1,0 +1,96 @@
+/* Legal pages (Privacy Policy, Terms of Service) — extends Auth.css */
+
+.legal-card {
+  max-width: 720px;
+  text-align: left;
+}
+
+.legal-content {
+  margin-top: 8px;
+}
+
+.legal-content section {
+  margin-bottom: 24px;
+}
+
+.legal-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  margin: 0 0 8px 0;
+}
+
+.legal-content h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 12px 0 6px 0;
+}
+
+.legal-content p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-ink-muted);
+  margin: 0 0 8px 0;
+}
+
+.legal-content ul {
+  margin: 4px 0 8px 0;
+  padding-left: 20px;
+}
+
+.legal-content li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-ink-muted);
+  margin-bottom: 4px;
+}
+
+.legal-content a {
+  color: var(--color-accent-strong);
+  text-decoration: none;
+}
+
+.legal-content a:hover {
+  text-decoration: underline;
+}
+
+.legal-content strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.legal-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.legal-footer a {
+  color: var(--color-accent-strong);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.legal-footer a:hover {
+  text-decoration: underline;
+}
+
+.legal-divider {
+  margin: 0 12px;
+  color: var(--color-ink-muted);
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .legal-card {
+    max-width: 100%;
+  }
+
+  .legal-content h2 {
+    font-size: 16px;
+  }
+}

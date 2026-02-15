@@ -56,6 +56,8 @@ const AcceptInvite = lazyRetry(() => import('./pages/AcceptInvite').then((m) => 
 const MyKidsPage = lazyRetry(() => import('./pages/MyKidsPage').then((m) => ({ default: m.MyKidsPage })));
 const ForgotPasswordPage = lazyRetry(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazyRetry(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) => ({ default: m.PrivacyPolicy })));
+const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +86,8 @@ function App() {
               <Route path="/accept-invite" element={<AcceptInvite />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
               <Route
                 path="/dashboard"
                 element={

@@ -132,6 +132,11 @@ export function Login() {
         <p className="auth-footer">
           Don't have an account? <Link to="/register">Sign up</Link>
         </p>
+        <p className="auth-footer" style={{ marginTop: '8px', fontSize: '13px' }}>
+          <Link to="/privacy">Privacy Policy</Link>
+          {' | '}
+          <Link to="/terms">Terms of Service</Link>
+        </p>
       </div>
     </div>
   );

@@ -229,6 +229,11 @@ export function Register() {
         <p className="auth-footer">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
+        <p className="auth-footer" style={{ marginTop: '8px', fontSize: '13px' }}>
+          <Link to="/privacy">Privacy Policy</Link>
+          {' | '}
+          <Link to="/terms">Terms of Service</Link>
+        </p>
       </div>
     </div>
   );
