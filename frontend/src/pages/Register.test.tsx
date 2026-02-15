@@ -74,10 +74,11 @@ describe('Register', () => {
     const user = userEvent.setup()
     renderWithProviders(<Register />)
 
-    await user.click(screen.getByLabelText(/teacher/i))
+    const teacherCheckbox = screen.getByRole('checkbox', { name: /teacher/i })
+    await user.click(teacherCheckbox)
     expect(screen.getByLabelText(/teacher type/i)).toBeInTheDocument()
 
-    await user.click(screen.getByLabelText(/teacher/i))
+    await user.click(teacherCheckbox)
     expect(screen.queryByLabelText(/teacher type/i)).not.toBeInTheDocument()
   })
 
