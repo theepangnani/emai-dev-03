@@ -2356,6 +2356,8 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #153: Fix FlashcardsPage stale closure bug in keyboard handler~~ ✅ (useRef pattern for stable keyboard event handler)
 - ~~Issue #154: Add frontend unit tests (vitest)~~ ✅ (75 new tests: FlashcardsPage 27, QuizPage 15, StudyGuidePage 13, TasksPage 20; total 258 frontend tests)
 - ~~Issue #353: Infrastructure: Database Backup & Disaster Recovery for Production~~ ✅ (daily backups 02:00 UTC, PITR 7-day, log-based metric + alert policy, 4 scripts + runbook)
+- ~~Issue #411: Improve landing page logo clarity and hero branding~~ ✅
+- Fix CI test failures: Add `pyproject.toml` with `testpaths = ["tests"]` and update `deploy.yml` — `scripts/load_test.py` matched pytest's `*_test.py` pattern, causing secret key mismatch in test environment ✅
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
@@ -2431,17 +2433,17 @@ Current feature issues are tracked in GitHub:
 ### March 6 Pilot — Web Production Readiness (In Progress)
 - ~~Issue #354: Infrastructure: Database Backup & Disaster Recovery for Production~~ ✅
 - ~~Issue #353: Infrastructure: Database Backup & Disaster Recovery for Production~~ ✅ (duplicate of #354)
-- Issue #355: API Versioning Strategy: Options & Decision
+- ~~Issue #355: API Versioning Strategy: Options & Decision~~ ✅ (Decision: no versioning needed for pilot; mobile calls same `/api/*` endpoints)
 - Issue #358: Web: End-to-end testing on production — smoke test script created (`scripts/smoke-test.py`), needs credentials for full run
-- Issue #359: Web: Performance validation with 50+ simulated users
+- ~~Issue #359: Web: Performance validation with 50+ simulated users~~ ✅
 - ~~Issue #360: Web: Create pilot user accounts and demo data~~ ✅
 - ~~Issue #361: Web: Monitoring and alerting setup for production~~ ✅
 - ~~Issue #362: Web: Pilot onboarding prep (welcome email, quick-start guide)~~ ✅
-- Issue #363: Web: Deploy freeze and dress rehearsal
+- ~~Issue #363: Web: Deploy freeze and dress rehearsal~~ ✅
 - ~~Issue #385: Create privacy policy and terms of service pages~~ ✅
 - Issue #265: Go live: Production deployment with custom domains
 - Issue #375: Mobile MVP: Device testing (iOS + Android via Expo Go) — code quality prep done, physical testing pending
-- Issue #376: March 6 Pilot Launch: Go-Live Checklist
+- ~~Issue #376: March 6 Pilot Launch: Go-Live Checklist~~ ✅
 
 **Pilot prep subtasks (parallelizable):**
 - Issue #396: Register custom domains with Cloud Run (depends on DNS access)
