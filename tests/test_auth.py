@@ -221,6 +221,37 @@ class TestAcceptInvite:
         assert resp.status_code == 400
         assert "expired" in resp.json()["detail"].lower()
 
+    def test_accepted_invite_cannot_be_reused(self, client, db_session, parent_user):
+        from app.models.invite import Invite, InviteType
+
+        token = secrets.token_urlsafe(32)
+        invite = Invite(
+            email="auth_reuse_invite@test.com",
+            invite_type=InviteType.STUDENT,
+            token=token,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            invited_by_user_id=parent_user.id,
+        )
+        db_session.add(invite)
+        db_session.commit()
+
+        # First accept should succeed
+        resp = client.post("/api/auth/accept-invite", json={
+            "token": token,
+            "password": PASSWORD,
+            "full_name": "First Accept",
+        })
+        assert resp.status_code == 200
+
+        # Second accept with same token should fail
+        resp2 = client.post("/api/auth/accept-invite", json={
+            "token": token,
+            "password": PASSWORD,
+            "full_name": "Second Accept",
+        })
+        assert resp2.status_code == 400
+        assert "already been accepted" in resp2.json()["detail"].lower()
+
 
 # ── Password reset tests ──────────────────────────────────────
 

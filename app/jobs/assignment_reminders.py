@@ -10,6 +10,7 @@ from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.user import User
 from app.models.notification import Notification, NotificationType
+from app.core.config import settings
 from app.services.email_service import send_email
 
 logger = logging.getLogger(__name__)
@@ -158,7 +159,7 @@ async def check_assignment_reminders():
                             course_name=course_name,
                             days_remaining=str(days),
                             due_date=due_date_str,
-                            app_url="http://localhost:5173",
+                            app_url=settings.frontend_url,
                         )
                         sent = await send_email(
                             to_email=parent.email,

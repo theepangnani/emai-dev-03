@@ -456,7 +456,9 @@ app.add_middleware(
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Include routers
+# Include all API routers at /api prefix
+# NOTE: Mobile apps will use these same endpoints initially.
+# Dedicated /api/v1 endpoints will be created as mobile-specific features are needed.
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(students.router, prefix="/api")
@@ -475,6 +477,8 @@ app.include_router(tasks.router, prefix="/api")
 app.include_router(course_contents.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(inspiration.router, prefix="/api")
+
+logger.info("API routes registered at /api")
 
 logger.info("All routers registered")
 

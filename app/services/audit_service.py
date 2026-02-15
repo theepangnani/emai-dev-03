@@ -21,20 +21,26 @@ def log_action(
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> None:
-    """Insert an audit log entry. Silently fails on error to never block requests."""
+    """Insert an audit log entry.
+
+    Uses a SAVEPOINT so that failures in audit logging never corrupt
+    the caller's transaction.  If the insert fails the savepoint is
+    rolled back and the outer transaction remains healthy.
+    """
     if not settings.audit_log_enabled:
         return
     try:
-        entry = AuditLog(
-            user_id=user_id,
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            details=json.dumps(details) if details else None,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-        db.add(entry)
-        db.flush()
+        with db.begin_nested():
+            entry = AuditLog(
+                user_id=user_id,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                details=json.dumps(details) if details else None,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            db.add(entry)
+            db.flush()
     except Exception:
         logger.warning("Failed to write audit log", exc_info=True)

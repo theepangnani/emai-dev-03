@@ -163,8 +163,8 @@ def logout(
 @router.post("/accept-invite", response_model=Token)
 def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Depends(get_db)):
     """Accept an invite and create a new user account."""
-    # Validate token
-    invite = db.query(Invite).filter(Invite.token == data.token).first()
+    # Validate token (FOR UPDATE prevents concurrent accept race condition)
+    invite = db.query(Invite).filter(Invite.token == data.token).with_for_update().first()
     if not invite:
         raise HTTPException(status_code=404, detail="Invalid invite token")
 
