@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { parentApi, coursesApi, googleApi } from '../api/client';
-import type { ChildSummary, ChildOverview } from '../api/client';
+import { parentApi, coursesApi, courseContentsApi, googleApi } from '../api/client';
+import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
@@ -60,6 +60,11 @@ export function CoursesPage() {
   const [myCourses, setMyCourses] = useState<CourseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState('');
+
+  // Inline course content expansion
+  const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
+  const [expandedContents, setExpandedContents] = useState<CourseContentItem[]>([]);
+  const [expandedLoading, setExpandedLoading] = useState(false);
 
   // Create course modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -129,6 +134,28 @@ export function CoursesPage() {
       setChildOverview(null);
     } finally {
       setOverviewLoading(false);
+    }
+  };
+
+  const CONTENT_TYPE_LABELS: Record<string, string> = {
+    notes: 'Notes', syllabus: 'Syllabus', labs: 'Labs',
+    assignments: 'Assignments', readings: 'Readings', resources: 'Resources', other: 'Other',
+  };
+
+  const toggleCourseExpand = async (courseId: number) => {
+    if (expandedCourseId === courseId) {
+      setExpandedCourseId(null);
+      return;
+    }
+    setExpandedCourseId(courseId);
+    setExpandedLoading(true);
+    try {
+      const contents = await courseContentsApi.list(courseId);
+      setExpandedContents(contents);
+    } catch {
+      setExpandedContents([]);
+    } finally {
+      setExpandedLoading(false);
     }
   };
 
@@ -349,16 +376,16 @@ export function CoursesPage() {
                 {childOverview.courses.map((course) => (
                   <div key={course.id} className="course-card-wrapper">
                     <div
-                      className="course-card"
-                      onClick={() => navigate(`/courses/${course.id}`)}
-                      onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                      className={`course-card${expandedCourseId === course.id ? ' expanded' : ''}`}
+                      onClick={() => toggleCourseExpand(course.id)}
+                      onKeyDown={(e) => handleKeyDown(e, () => toggleCourseExpand(course.id))}
                       role="button"
                       tabIndex={0}
                       style={{ cursor: 'pointer' }}
                     >
                       <div className="course-card-color" style={{ background: getCourseColor(course.id, courseIds) }} />
                       <div className="course-card-body">
-                        <h4>{course.name}</h4>
+                        <h4>{course.name} <span className="course-card-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span></h4>
                         {course.subject && <span className="course-card-subject">{course.subject}</span>}
                         {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
                         {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
@@ -373,6 +400,45 @@ export function CoursesPage() {
                         </button>
                       </div>
                     </div>
+                    {expandedCourseId === course.id && (
+                      <div className="course-content-panel">
+                        <div className="course-content-header">
+                          <h5>Course Materials</h5>
+                          <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                            View Details &rarr;
+                          </button>
+                        </div>
+                        {expandedLoading ? (
+                          <div className="course-content-empty"><p>Loading...</p></div>
+                        ) : expandedContents.length === 0 ? (
+                          <div className="course-content-empty">
+                            <p>No materials yet. <span style={{ cursor: 'pointer', color: 'var(--color-accent)' }} onClick={() => navigate(`/courses/${course.id}`)}>Add content &rarr;</span></p>
+                          </div>
+                        ) : (
+                          <div className="course-content-list">
+                            {expandedContents.map((item) => (
+                              <div key={item.id} className="content-item">
+                                <div className="content-item-info">
+                                  <span className={`content-type-badge ${item.content_type}`}>
+                                    {CONTENT_TYPE_LABELS[item.content_type] || item.content_type}
+                                  </span>
+                                  <span className="content-item-title">{item.title}</span>
+                                  {item.description && <p className="content-item-desc">{item.description}</p>}
+                                </div>
+                                <div className="content-item-links">
+                                  {item.reference_url && (
+                                    <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link" onClick={(e) => e.stopPropagation()}>Link</a>
+                                  )}
+                                  {item.google_classroom_url && (
+                                    <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google" onClick={(e) => e.stopPropagation()}>Google</a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -409,16 +475,16 @@ export function CoursesPage() {
                     {enrolledCourses.map((course) => (
                       <div key={course.id} className="course-card-wrapper">
                         <div
-                          className="course-card"
-                          onClick={() => navigate(`/courses/${course.id}`)}
-                          onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                          className={`course-card${expandedCourseId === course.id ? ' expanded' : ''}`}
+                          onClick={() => toggleCourseExpand(course.id)}
+                          onKeyDown={(e) => handleKeyDown(e, () => toggleCourseExpand(course.id))}
                           role="button"
                           tabIndex={0}
                           style={{ cursor: 'pointer' }}
                         >
                           <div className="course-card-color" style={{ background: getCourseColor(course.id, enrolledCourses.map(c => c.id)) }} />
                           <div className="course-card-body">
-                            <h4>{course.name}</h4>
+                            <h4>{course.name} <span className="course-card-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span></h4>
                             {course.subject && <span className="course-card-subject">{course.subject}</span>}
                             {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
                           </div>
@@ -433,6 +499,45 @@ export function CoursesPage() {
                             </button>
                           </div>
                         </div>
+                        {expandedCourseId === course.id && (
+                          <div className="course-content-panel">
+                            <div className="course-content-header">
+                              <h5>Course Materials</h5>
+                              <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                                View Details &rarr;
+                              </button>
+                            </div>
+                            {expandedLoading ? (
+                              <div className="course-content-empty"><p>Loading...</p></div>
+                            ) : expandedContents.length === 0 ? (
+                              <div className="course-content-empty">
+                                <p>No materials yet.</p>
+                              </div>
+                            ) : (
+                              <div className="course-content-list">
+                                {expandedContents.map((item) => (
+                                  <div key={item.id} className="content-item">
+                                    <div className="content-item-info">
+                                      <span className={`content-type-badge ${item.content_type}`}>
+                                        {CONTENT_TYPE_LABELS[item.content_type] || item.content_type}
+                                      </span>
+                                      <span className="content-item-title">{item.title}</span>
+                                      {item.description && <p className="content-item-desc">{item.description}</p>}
+                                    </div>
+                                    <div className="content-item-links">
+                                      {item.reference_url && (
+                                        <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link" onClick={(e) => e.stopPropagation()}>Link</a>
+                                      )}
+                                      {item.google_classroom_url && (
+                                        <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google" onClick={(e) => e.stopPropagation()}>Google</a>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

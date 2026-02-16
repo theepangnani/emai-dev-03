@@ -1,3 +1,37 @@
+/* Child selector tabs (parent multi-child) */
+.child-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.child-tab {
+  padding: 10px 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.child-tab:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+}
+
+.child-tab.active {
+  border-color: var(--color-accent);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  color: white;
+}
+
 .courses-page {
   max-width: 900px;
 }
