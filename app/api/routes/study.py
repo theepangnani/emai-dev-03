@@ -17,6 +17,7 @@ from app.models.assignment import Assignment
 from app.models.course import Course
 from app.models.course_content import CourseContent
 from app.models.student import Student, parent_students
+from app.models.course import student_courses
 from app.models.task import Task
 from app.models.user import User, UserRole
 from app.schemas.study import (
@@ -92,6 +93,30 @@ def get_linked_children_user_ids(db: Session, parent_id: int) -> list[int]:
         return []
     students = db.query(Student.user_id).filter(Student.id.in_(student_ids)).all()
     return [s[0] for s in students]
+
+
+def get_children_course_ids(db: Session, parent_id: int, student_user_id: int | None = None) -> list[int]:
+    """Get course IDs for a parent's linked children (optionally filtered to one child)."""
+    rows = db.query(parent_students.c.student_id).filter(
+        parent_students.c.parent_id == parent_id
+    ).all()
+    child_sids = [r[0] for r in rows]
+    if not child_sids:
+        return []
+
+    if student_user_id:
+        child_student = db.query(Student).filter(
+            Student.user_id == student_user_id,
+            Student.id.in_(child_sids),
+        ).first()
+        if not child_student:
+            return []
+        return [c.id for c in child_student.courses]
+
+    enrolled = db.query(student_courses.c.course_id).filter(
+        student_courses.c.student_id.in_(child_sids)
+    ).all()
+    return [r[0] for r in enrolled]
 
 
 def strip_json_fences(text: str) -> str:
@@ -641,16 +666,22 @@ def list_study_guides(
                 )
             )
         )
-    elif current_user.role == UserRole.PARENT and include_children:
-        user_ids = [current_user.id]
-        if student_user_id:
-            # Verify parent-child link
-            children_ids = get_linked_children_user_ids(db, current_user.id)
-            if student_user_id in children_ids:
-                user_ids.append(student_user_id)
-        else:
-            user_ids.extend(get_linked_children_user_ids(db, current_user.id))
-        query = db.query(StudyGuide).filter(StudyGuide.user_id.in_(user_ids))
+    elif current_user.role == UserRole.PARENT:
+        # Parents see: own guides + all guides tagged to children's courses
+        children_course_ids = get_children_course_ids(db, current_user.id, student_user_id)
+        conditions = [StudyGuide.user_id == current_user.id]
+        if children_course_ids:
+            conditions.append(
+                and_(
+                    StudyGuide.course_id.in_(children_course_ids),
+                    StudyGuide.course_id.isnot(None),
+                )
+            )
+        if include_children:
+            child_user_ids = get_linked_children_user_ids(db, current_user.id)
+            if child_user_ids:
+                conditions.append(StudyGuide.user_id.in_(child_user_ids))
+        query = db.query(StudyGuide).filter(or_(*conditions))
     else:
         # Default: own guides only
         query = db.query(StudyGuide).filter(StudyGuide.user_id == current_user.id)
@@ -682,11 +713,15 @@ def get_study_guide(
     if guide.user_id == current_user.id:
         return guide
 
-    # Parent can view linked children's guides
+    # Parent can view guides from children's courses or created by children
     if current_user.role == UserRole.PARENT:
         children_user_ids = get_linked_children_user_ids(db, current_user.id)
         if guide.user_id in children_user_ids:
             return guide
+        if guide.course_id:
+            children_course_ids = get_children_course_ids(db, current_user.id)
+            if guide.course_id in children_course_ids:
+                return guide
 
     # Student can view course-tagged guides for enrolled courses
     if current_user.role == UserRole.STUDENT and guide.course_id:

@@ -27,6 +27,7 @@ def users(db_session):
     if parent:
         student = db_session.query(User).filter(User.email == "sg_student@test.com").first()
         outsider = db_session.query(User).filter(User.email == "sg_outsider@test.com").first()
+        parent2 = db_session.query(User).filter(User.email == "sg_parent2@test.com").first()
         student_rec = db_session.query(Student).filter(Student.user_id == student.id).first()
         course = db_session.query(Course).filter(Course.name == "SG Test Course").first()
         parent_guide = db_session.query(StudyGuide).filter(
@@ -37,7 +38,7 @@ def users(db_session):
         ).first()
         return {
             "parent": parent, "student": student, "outsider": outsider,
-            "student_rec": student_rec, "course": course,
+            "parent2": parent2, "student_rec": student_rec, "course": course,
             "parent_guide": parent_guide, "child_guide": child_guide,
         }
 
@@ -45,8 +46,9 @@ def users(db_session):
     parent = User(email="sg_parent@test.com", full_name="SG Parent", role=UserRole.PARENT, hashed_password=hashed)
     student = User(email="sg_student@test.com", full_name="SG Student", role=UserRole.STUDENT, hashed_password=hashed)
     outsider = User(email="sg_outsider@test.com", full_name="SG Outsider", role=UserRole.PARENT, hashed_password=hashed)
+    parent2 = User(email="sg_parent2@test.com", full_name="SG Parent2", role=UserRole.PARENT, hashed_password=hashed)
     teacher = User(email="sg_teacher@test.com", full_name="SG Teacher", role=UserRole.TEACHER, hashed_password=hashed)
-    db_session.add_all([parent, student, outsider, teacher])
+    db_session.add_all([parent, student, outsider, parent2, teacher])
     db_session.flush()
 
     student_rec = Student(user_id=student.id)
@@ -57,6 +59,11 @@ def users(db_session):
     # Link parent → student
     db_session.execute(insert(parent_students).values(
         parent_id=parent.id, student_id=student_rec.id,
+        relationship_type=RelationshipType.GUARDIAN,
+    ))
+    # Link parent2 → same student (second parent scenario)
+    db_session.execute(insert(parent_students).values(
+        parent_id=parent2.id, student_id=student_rec.id,
         relationship_type=RelationshipType.GUARDIAN,
     ))
 
@@ -95,7 +102,7 @@ def users(db_session):
     parent_guide_v2.parent_guide_id = parent_guide.id
     db_session.commit()
 
-    for u in [parent, student, outsider]:
+    for u in [parent, student, outsider, parent2]:
         db_session.refresh(u)
     db_session.refresh(student_rec)
     db_session.refresh(course)
@@ -104,7 +111,7 @@ def users(db_session):
 
     return {
         "parent": parent, "student": student, "outsider": outsider,
-        "student_rec": student_rec, "course": course,
+        "parent2": parent2, "student_rec": student_rec, "course": course,
         "parent_guide": parent_guide, "child_guide": child_guide,
     }
 
@@ -119,12 +126,23 @@ class TestListStudyGuides:
         titles = [g["title"] for g in resp.json()]
         assert "Child Guide" in titles
 
-    def test_parent_sees_own_only_by_default(self, client, users):
+    def test_parent_sees_own_and_child_course_guides_by_default(self, client, users):
         headers = _auth(client, users["parent"].email)
         resp = client.get("/api/study/guides", headers=headers)
         assert resp.status_code == 200
-        for g in resp.json():
-            assert g["user_id"] == users["parent"].id
+        titles = {g["title"] for g in resp.json()}
+        # Parent sees own guides AND guides tagged to children's enrolled courses
+        assert "Parent Guide" in titles
+        assert "Child Guide" in titles  # tagged to child's enrolled course
+
+    def test_second_parent_sees_first_parents_course_guides(self, client, users):
+        """Second parent linked to same child sees guides tagged to that child's courses."""
+        headers = _auth(client, users["parent2"].email)
+        resp = client.get("/api/study/guides", headers=headers)
+        assert resp.status_code == 200
+        titles = {g["title"] for g in resp.json()}
+        # Parent2 should see Parent1's guide tagged to the shared child's course
+        assert "Parent Guide" in titles
 
     def test_parent_sees_childrens_with_include_children(self, client, users):
         headers = _auth(client, users["parent"].email)
