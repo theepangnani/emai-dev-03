@@ -18,7 +18,8 @@
 }
 
 .landing-nav-logo {
-  height: 72px;
+  height: 100px;
+  margin: -18px 0;
 }
 
 .landing-nav-links {
