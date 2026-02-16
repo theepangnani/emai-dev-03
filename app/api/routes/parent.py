@@ -978,7 +978,16 @@ def sync_child_courses(
     if not child_user or not child_user.google_access_token:
         raise HTTPException(status_code=400, detail="Child has not connected Google Classroom yet")
 
-    synced = _sync_courses_for_user(child_user, db)
+    try:
+        synced = _sync_courses_for_user(child_user, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Google sync failed for child user {child_user.id}: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to sync courses from Google Classroom. The child's Google connection may have expired.",
+        )
     return {
         "message": f"Synced {len(synced)} courses for {child_user.full_name}",
         "courses": synced,

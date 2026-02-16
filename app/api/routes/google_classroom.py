@@ -332,10 +332,17 @@ def _resolve_teacher_for_course(
 
 def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
     """Shared course sync logic. Returns list of synced course dicts."""
-    google_courses, credentials = list_courses(
-        user.google_access_token,
-        user.google_refresh_token,
-    )
+    try:
+        google_courses, credentials = list_courses(
+            user.google_access_token,
+            user.google_refresh_token,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to list Google courses for user {user.id}: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to fetch courses from Google Classroom. The Google connection may have expired — please reconnect Google.",
+        )
     update_user_tokens(user, credentials, db)
 
     # Determine if this user is a teacher
