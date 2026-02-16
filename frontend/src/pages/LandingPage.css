@@ -77,8 +77,8 @@
 }
 
 .landing-hero-logo {
-  height: 240px;
-  margin-bottom: 24px;
+  height: 300px;
+  margin: -30px auto -20px;
 }
 
 .landing-hero h1 {

@@ -23,10 +23,11 @@
 }
 
 .header-logo {
-  height: 56px;
+  height: 80px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
+  margin: -18px 0;
 }
 
 [data-theme="dark"] .header-logo {
