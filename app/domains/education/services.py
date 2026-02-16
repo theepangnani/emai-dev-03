@@ -58,6 +58,18 @@ class EducationService:
                 ecids = [r[0] for r in enrolled_course_ids]
                 if ecids:
                     filters.append(Course.id.in_(ecids))
+                # Also include courses created by co-parents
+                co_parent_rows = (
+                    self.db.query(parent_students.c.parent_id)
+                    .filter(
+                        parent_students.c.student_id.in_(child_sids),
+                        parent_students.c.parent_id != user.id,
+                    )
+                    .all()
+                )
+                co_parent_uids = [r[0] for r in co_parent_rows]
+                if co_parent_uids:
+                    filters.append(Course.created_by_user_id.in_(co_parent_uids))
 
         elif user.role == UserRole.ADMIN:
             # Admins see everything
@@ -216,11 +228,32 @@ class EducationService:
             if student and course in student.courses:
                 return True
 
-        # Parent has access to children's courses
+        # Parent has access to children's courses + co-parent courses
         if user.has_role(UserRole.PARENT):
             child_courses = self.get_parent_child_courses(user.id)
             for courses in child_courses.values():
                 if course in courses:
+                    return True
+
+            # Also grant access to courses created by co-parents
+            # (other parents linked to the same children)
+            child_student_ids = (
+                self.db.query(parent_students.c.student_id)
+                .filter(parent_students.c.parent_id == user.id)
+                .all()
+            )
+            child_sids = [r[0] for r in child_student_ids]
+            if child_sids:
+                co_parent_ids = (
+                    self.db.query(parent_students.c.parent_id)
+                    .filter(
+                        parent_students.c.student_id.in_(child_sids),
+                        parent_students.c.parent_id != user.id,
+                    )
+                    .all()
+                )
+                co_parent_uids = [r[0] for r in co_parent_ids]
+                if co_parent_uids and course.created_by_user_id in co_parent_uids:
                     return True
 
         return False

@@ -124,6 +124,19 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
                 child_created = db.query(Course.id).filter(Course.created_by_user_id.in_(child_uids)).all()
                 ids.update(r[0] for r in child_created)
 
+        # Also include courses created by co-parents (other parents of same children)
+        if child_sids:
+            co_parent_rows = db.query(parent_students.c.parent_id).filter(
+                parent_students.c.student_id.in_(child_sids),
+                parent_students.c.parent_id != user.id,
+            ).all()
+            co_parent_uids = [r[0] for r in co_parent_rows]
+            if co_parent_uids:
+                co_created = db.query(Course.id).filter(
+                    Course.created_by_user_id.in_(co_parent_uids)
+                ).all()
+                ids.update(r[0] for r in co_created)
+
     elif user.role == UserRole.TEACHER:
         from app.models.teacher import Teacher
         teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
