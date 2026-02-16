@@ -20,8 +20,8 @@
 
 .auth-logo {
   display: block;
-  margin: 0 auto 16px;
-  max-width: 200px;
+  margin: -20px auto -10px;
+  max-width: 280px;
   height: auto;
 }
 
@@ -275,8 +275,8 @@
   }
 
   .auth-logo {
-    max-width: 160px;
-    margin-bottom: 12px;
+    max-width: 220px;
+    margin: -16px auto -8px;
   }
 
   .auth-title {
