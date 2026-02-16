@@ -8,6 +8,7 @@ from app.core.config import settings
 SCOPES = [
     "https://www.googleapis.com/auth/classroom.courses.readonly",
     "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+    "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
     "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
     "https://www.googleapis.com/auth/classroom.announcements.readonly",
     "https://www.googleapis.com/auth/classroom.rosters.readonly",
@@ -207,6 +208,32 @@ def list_course_teachers(
     except Exception:
         pass
     return teachers, credentials
+
+
+def get_course_work_materials(
+    access_token: str,
+    course_id: str,
+    refresh_token: str | None = None,
+) -> tuple[list[dict], Credentials]:
+    """Get all courseWorkMaterials (teacher-posted resources) for a course."""
+    service, credentials = get_classroom_service(access_token, refresh_token)
+    materials = []
+    try:
+        page_token = None
+        while True:
+            response = (
+                service.courses()
+                .courseWorkMaterials()
+                .list(courseId=course_id, pageSize=100, pageToken=page_token)
+                .execute()
+            )
+            materials.extend(response.get("courseWorkMaterial", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception:
+        pass
+    return materials, credentials
 
 
 def get_student_submissions(

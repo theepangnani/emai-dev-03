@@ -52,7 +52,8 @@ class CourseContentResponse(BaseModel):
     content_type: str
     reference_url: Optional[str]
     google_classroom_url: Optional[str]
-    created_by_user_id: int
+    created_by_user_id: Optional[int] = None
+    google_classroom_material_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None

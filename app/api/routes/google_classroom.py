@@ -14,6 +14,7 @@ from app.models.assignment import Assignment
 from app.models.student import Student
 from app.models.teacher import Teacher
 from app.models.teacher_google_account import TeacherGoogleAccount
+from app.models.course_content import CourseContent
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
 from app.core.config import settings
@@ -24,6 +25,7 @@ from app.services.google_classroom import (
     get_user_info,
     list_courses,
     get_course_work,
+    get_course_work_materials,
     list_course_teachers,
 )
 
@@ -397,7 +399,120 @@ def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
 
     db.commit()
 
+    # Sync courseWorkMaterials and assignments for each synced course
+    for course in synced_courses:
+        if not course.google_classroom_id:
+            continue
+        _sync_materials_for_course(course, user, db)
+        _sync_assignments_for_course(course, user, db)
+
     return [{"id": c.id, "name": c.name, "google_id": c.google_classroom_id} for c in synced_courses]
+
+
+def _sync_materials_for_course(course: Course, user: User, db: Session):
+    """Sync courseWorkMaterials from Google Classroom into CourseContent."""
+    try:
+        materials, credentials = get_course_work_materials(
+            user.google_access_token,
+            course.google_classroom_id,
+            user.google_refresh_token,
+        )
+        update_user_tokens(user, credentials, db)
+    except Exception as e:
+        logger.warning(f"Failed to fetch courseWorkMaterials for course {course.google_classroom_id}: {e}")
+        return
+
+    for mat in materials:
+        # Skip drafts/deleted
+        if mat.get("state") in ("DRAFT", "DELETED"):
+            continue
+
+        material_id = mat.get("id")
+        if not material_id:
+            continue
+
+        # Check if already synced
+        existing = db.query(CourseContent).filter(
+            CourseContent.google_classroom_material_id == material_id,
+        ).first()
+
+        title = mat.get("title", "Untitled Material")
+        description = mat.get("description", "")
+        alternate_link = mat.get("alternateLink", "")
+
+        # Extract first link URL from materials array if available
+        reference_url = None
+        mat_items = mat.get("materials", [])
+        for item in mat_items:
+            if "link" in item:
+                reference_url = item["link"].get("url")
+                break
+            if "driveFile" in item:
+                reference_url = item["driveFile"].get("driveFile", {}).get("alternateLink")
+                break
+            if "youtubeVideo" in item:
+                reference_url = item["youtubeVideo"].get("alternateLink")
+                break
+
+        if existing:
+            existing.title = title
+            existing.description = description
+            existing.google_classroom_url = alternate_link
+            existing.reference_url = reference_url or existing.reference_url
+        else:
+            content = CourseContent(
+                course_id=course.id,
+                title=title,
+                description=description,
+                content_type="resources",
+                google_classroom_url=alternate_link,
+                google_classroom_material_id=material_id,
+                reference_url=reference_url,
+            )
+            db.add(content)
+
+    db.commit()
+
+
+def _sync_assignments_for_course(course: Course, user: User, db: Session):
+    """Auto-sync assignments from Google Classroom during course sync."""
+    try:
+        google_assignments, credentials = get_course_work(
+            user.google_access_token,
+            course.google_classroom_id,
+            user.google_refresh_token,
+        )
+        update_user_tokens(user, credentials, db)
+    except Exception as e:
+        logger.warning(f"Failed to fetch assignments for course {course.google_classroom_id}: {e}")
+        return
+
+    for ga in google_assignments:
+        existing = db.query(Assignment).filter(
+            Assignment.google_classroom_id == ga["id"]
+        ).first()
+
+        if existing:
+            existing.title = ga.get("title", existing.title)
+            existing.description = ga.get("description")
+        else:
+            due_date = None
+            if "dueDate" in ga:
+                from datetime import datetime
+                d = ga["dueDate"]
+                due_date = datetime(d.get("year", 2024), d.get("month", 1), d.get("day", 1))
+
+            assignment = Assignment(
+                title=ga.get("title", "Untitled Assignment"),
+                description=ga.get("description"),
+                course_id=course.id,
+                google_classroom_id=ga["id"],
+                due_date=due_date,
+                max_points=ga.get("maxPoints"),
+            )
+            db.add(assignment)
+
+    db.commit()
 
 
 @router.post("/courses/sync")
@@ -519,6 +634,42 @@ def sync_google_assignments(
     return {
         "message": f"Synced {len(synced_assignments)} assignments",
         "assignments": [{"id": a.id, "title": a.title} for a in synced_assignments],
+    }
+
+
+@router.post("/courses/{google_course_id}/materials/sync")
+def sync_google_materials(
+    google_course_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sync courseWorkMaterials from a Google Classroom course to CourseContent."""
+    if not current_user.google_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not connected to Google Classroom",
+        )
+
+    course = db.query(Course).filter(
+        Course.google_classroom_id == google_course_id
+    ).first()
+
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found. Please sync courses first.",
+        )
+
+    _sync_materials_for_course(course, current_user, db)
+
+    materials_count = db.query(CourseContent).filter(
+        CourseContent.course_id == course.id,
+        CourseContent.google_classroom_material_id.isnot(None),
+    ).count()
+
+    return {
+        "message": f"Synced materials for {course.name}",
+        "materials_count": materials_count,
     }
 
 

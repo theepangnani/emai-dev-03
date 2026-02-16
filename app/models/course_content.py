@@ -31,6 +31,7 @@ class CourseContent(Base):
 
     reference_url = Column(String(1000), nullable=True)
     google_classroom_url = Column(String(1000), nullable=True)
+    google_classroom_material_id = Column(String(255), nullable=True)
 
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 

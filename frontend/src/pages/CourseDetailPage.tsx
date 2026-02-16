@@ -616,6 +616,9 @@ export function CourseDetailPage() {
                     <span className={`content-type-badge ${item.content_type}`}>
                       {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
                     </span>
+                    {item.google_classroom_material_id && (
+                      <span className="course-detail-badge google">Google Classroom</span>
+                    )}
                     <span className="cd-content-item-title">{item.title}</span>
                   </div>
                   {item.description && <p className="cd-content-item-desc">{item.description}</p>}

@@ -271,6 +271,13 @@ with engine.connect() as conn:
             conn.execute(text(f"ALTER TABLE course_contents ADD COLUMN last_viewed_at {col_type}"))
             logger.info("Added 'last_viewed_at' column to course_contents")
         conn.commit()
+        if "google_classroom_material_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN google_classroom_material_id VARCHAR(255)"))
+                logger.info("Added 'google_classroom_material_id' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
     if "study_guides" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
         if "archived_at" not in existing_cols:

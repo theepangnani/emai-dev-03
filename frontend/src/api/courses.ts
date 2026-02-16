@@ -11,7 +11,8 @@ export interface CourseContentItem {
   content_type: string;
   reference_url: string | null;
   google_classroom_url: string | null;
-  created_by_user_id: number;
+  created_by_user_id: number | null;
+  google_classroom_material_id: string | null;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
