@@ -22,6 +22,8 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=True)  # Nullable for users pending onboarding
     roles = Column(String(50), nullable=True)  # comma-separated: "parent,teacher"
     needs_onboarding = Column(Boolean, default=False)
+    email_verified = Column(Boolean, default=False)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True)
 
     # Google OAuth

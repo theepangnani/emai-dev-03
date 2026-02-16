@@ -91,3 +91,21 @@ def decode_password_reset_token(token: str) -> str | None:
         return payload.get("sub")
     except Exception:
         return None
+
+
+def create_email_verification_token(email: str) -> str:
+    """Create a JWT for email verification (24-hour expiry)."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    to_encode = {"sub": email, "exp": expire, "type": "email_verify"}
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
+def decode_email_verification_token(token: str) -> str | None:
+    """Decode an email-verification JWT. Returns the email or None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") != "email_verify":
+            return None
+        return payload.get("sub")
+    except Exception:
+        return None

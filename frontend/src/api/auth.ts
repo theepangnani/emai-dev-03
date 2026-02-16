@@ -55,4 +55,14 @@ export const authApi = {
     });
     return response.data;
   },
+
+  verifyEmail: async (token: string) => {
+    const response = await api.post('/api/auth/verify-email', { token });
+    return response.data as { message: string };
+  },
+
+  resendVerification: async () => {
+    const response = await api.post('/api/auth/resend-verification');
+    return response.data as { message: string };
+  },
 };

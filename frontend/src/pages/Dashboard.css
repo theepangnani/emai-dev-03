@@ -1239,3 +1239,43 @@
 }
 .btn-sm:hover { background: var(--color-accent); color: #fff; }
 .btn-sm:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Email verification banner ──────────────────── */
+.verify-email-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 14px;
+  border-bottom: 1px solid #fcd34d;
+}
+.verify-email-banner__resend {
+  background: none;
+  border: none;
+  color: #92400e;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 0;
+}
+.verify-email-banner__resend:hover {
+  color: #78350f;
+}
+.verify-email-banner__status {
+  font-weight: 500;
+  font-style: italic;
+}
+.verify-email-banner__dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #92400e;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}

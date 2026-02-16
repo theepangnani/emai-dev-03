@@ -10,9 +10,9 @@ from app.models.user import User, UserRole
 from app.models.teacher import Teacher, TeacherType
 from app.models.student import Student, parent_students, RelationshipType
 from app.models.invite import Invite, InviteType
-from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest
+from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest
 from app.schemas.invite import AcceptInviteRequest
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, UNUSABLE_PASSWORD_HASH
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
 from app.api.deps import get_current_user, oauth2_scheme
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
@@ -23,6 +23,25 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 _ALLOWED_REGISTRATION_ROLES = {UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER}
+
+import logging as _logging
+_logger = _logging.getLogger(__name__)
+
+
+def _send_verification_email(user: User, db: Session) -> None:
+    """Send a verification email (best-effort, never raises)."""
+    try:
+        token = create_email_verification_token(user.email)
+        verify_url = f"{settings.frontend_url}/verify-email?token={token}"
+        template = _load_template("email_verification.html")
+        if template:
+            html = _render(template, user_name=user.full_name or "there", verify_url=verify_url)
+        else:
+            html = f'<p>Click <a href="{verify_url}">here</a> to verify your email. This link expires in 24 hours.</p>'
+        html = add_inspiration_to_email(html, db, user.role)
+        send_email_sync(to_email=user.email, subject="ClassBridge — Verify Your Email", html_content=html)
+    except Exception as e:
+        _logger.warning("Failed to send verification email to %s: %s", user.email, e)
 
 
 @router.post("/register", response_model=UserResponse)
@@ -62,6 +81,9 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     # Determine if this is a roleless registration (onboarding deferred)
     has_roles = bool(user_data.roles)
 
+    # Google-authenticated users have verified email via Google
+    is_google_signup = bool(user_data.google_id)
+
     # Create new user
     user = User(
         email=user_data.email,
@@ -70,6 +92,8 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         role=user_data.role if has_roles else None,
         roles=",".join(r.value for r in user_data.roles) if has_roles else "",
         needs_onboarding=not has_roles,
+        email_verified=is_google_signup,
+        email_verified_at=datetime.now(timezone.utc) if is_google_signup else None,
         google_id=user_data.google_id,
         google_access_token=google_access_token,
         google_refresh_token=google_refresh_token,
@@ -93,6 +117,11 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
                ip_address=request.client.host if request.client else None)
     db.commit()
     db.refresh(user)
+
+    # Send verification email for non-Google signups (best-effort)
+    if not is_google_signup:
+        _send_verification_email(user, db)
+
     return UserResponse(
         id=user.id,
         email=user.email or "",
@@ -102,6 +131,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         is_active=user.is_active,
         google_connected=bool(user.google_access_token),
         needs_onboarding=user.needs_onboarding or False,
+        email_verified=user.email_verified or False,
         created_at=user.created_at,
     )
 
@@ -199,13 +229,15 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     else:
         role = UserRole.TEACHER
 
-    # Create user
+    # Create user — email verified since they received the invite at this address
     user = User(
         email=invite.email,
         hashed_password=get_password_hash(data.password),
         full_name=data.full_name,
         role=role,
         roles=role.value,
+        email_verified=True,
+        email_verified_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.flush()
@@ -480,5 +512,45 @@ def complete_onboarding(
         is_active=current_user.is_active,
         google_connected=bool(current_user.google_access_token),
         needs_onboarding=False,
+        email_verified=current_user.email_verified or False,
         created_at=current_user.created_at,
     )
+
+
+@router.post("/verify-email")
+def verify_email(body: EmailVerifyRequest, request: Request, db: Session = Depends(get_db)):
+    """Verify a user's email address using a token from the verification email."""
+    email = decode_email_verification_token(body.token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    if user.email_verified:
+        return {"message": "Email already verified"}
+
+    user.email_verified = True
+    user.email_verified_at = datetime.now(timezone.utc)
+    log_action(db, user_id=user.id, action="email_verified", resource_type="user",
+               resource_id=user.id, ip_address=request.client.host if request.client else None)
+    db.commit()
+
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification")
+@limiter.limit("3/minute")
+def resend_verification(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Resend the verification email for the current user."""
+    if current_user.email_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
+
+    _send_verification_email(current_user, db)
+
+    return {"message": "Verification email sent"}

@@ -23,6 +23,7 @@ def _user_response(user: User) -> UserResponse:
         is_active=user.is_active,
         google_connected=bool(user.google_access_token),
         needs_onboarding=user.needs_onboarding or False,
+        email_verified=user.email_verified or False,
         created_at=user.created_at,
     )
 

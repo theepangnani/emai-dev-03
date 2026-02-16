@@ -181,6 +181,8 @@ Instead of a secondary AI call, the existing generation prompts are enhanced to 
 
 ClassBridge is designed as a **parent-first platform**. Parents can manage their children's education without requiring school board integration or Google Classroom access. Student email is **optional** — parents can create students with just a name.
 
+> **Note:** Registration no longer requires role selection. Users sign up with name/email/password only and select their role during a post-login onboarding flow. See §6.43 for the simplified registration & onboarding specification (#412, #413, #414).
+
 #### Design Principles
 - ClassBridge works **independently of school systems** — Google Classroom is an optional import source, not a requirement
 - Students don't need to be attached to a teacher — parent-created courses have no teacher
@@ -872,7 +874,7 @@ Users can hold multiple roles simultaneously (e.g., a parent who is also a teach
 #### Phase B — IN PROGRESS
 - [ ] **Admin role management UI** (#255) — Admin can add/remove roles for any user from the admin portal, with checkbox modal and auto-creation of profile records
 - [x] **Auto-create profile records** (#256) — When adding teacher/student roles, auto-create Teacher/Student records if missing; preserve data on role removal (IMPLEMENTED - Feb 2026, commit 120e065)
-- [x] **Multi-role registration** (#257) — Checkbox role selection during signup instead of single dropdown (IMPLEMENTED - Feb 2026, commit 120e065)
+- [x] **Multi-role registration** (#257) — Checkbox role selection during signup instead of single dropdown (IMPLEMENTED - Feb 2026, commit 120e065). **Note:** Role selection is being moved from registration to post-login onboarding (§6.43, #412-#414); multi-role selection will be supported in the onboarding flow instead
 - [ ] **Admin as multi-role** — Admin users can simultaneously hold parent, teacher, and/or student roles, accessing all corresponding dashboards and features via the role switcher
 - [ ] Merged data views (combined parent+teacher data on single dashboard)
 
@@ -1374,6 +1376,133 @@ Any authenticated user (parent, student, teacher) can send a message to any admi
 - [ ] Backend + Frontend: Show admin messages in Messages page (#262)
 - [ ] Backend + Frontend: User-to-admin messaging with email to all admins (#263)
 
+### 6.43 Simplified Registration & Post-Login Onboarding (Phase 1)
+
+Simplify the registration flow to reduce friction and reinforce ClassBridge as a **parent-first platform**. Role selection moves from the registration form to a post-login onboarding screen.
+
+**GitHub Issues:** #412 (simplified registration), #413 (onboarding UI), #414 (backend onboarding endpoint)
+
+#### Current State (Before)
+- Registration form collects: name, email, password, role checkboxes (Parent/Student/Teacher), teacher type dropdown
+- Roles are required at registration — `ensure_profile_records()` runs immediately
+- Users must understand platform roles before signing up
+
+#### New Flow (After)
+
+```
+1. REGISTER  →  Name, Email, Password (no role selection)
+2. AUTO-LOGIN
+3. ONBOARDING SCREEN  →  "How will you use ClassBridge?"
+     [🏠 Parent / Guardian]    ← Prominent, recommended (parent-first)
+     [📚 Teacher]
+     [🎓 Student]
+   If Teacher selected  →  "What type of teacher?"
+     [School Teacher]  — "I teach at a school"
+     [Private Tutor]   — "I teach independently"
+4. REDIRECT  →  Role-specific dashboard
+```
+
+#### Design Principles
+- **Parent-first**: Parent option is visually prominent (first position, highlighted/recommended badge)
+- **Low-friction signup**: Only 4 fields at registration (name, email, password, confirm password)
+- **Deferred role assignment**: User record created without a role; role set during onboarding
+- **Multi-role support**: Onboarding allows selecting multiple roles (e.g., parent + teacher)
+- **Teacher types**: School Teacher and Private Tutor — selected only when Teacher role is chosen
+- **Not skippable**: Role is required to access any dashboard; users are redirected to onboarding until complete
+
+#### Backend Changes
+
+**Registration (`POST /api/auth/register`):**
+- `roles` and `teacher_type` become optional (backward compatible)
+- When no roles provided: create User with `role=NULL`, `roles=""`, `needs_onboarding=TRUE`
+- Skip `ensure_profile_records()` when no role is set
+
+**New endpoint (`POST /api/auth/onboarding`):**
+- Auth: requires valid JWT
+- Accepts: `roles: list[str]`, `teacher_type: str | None`
+- Validates: at least one role, no admin self-assignment, teacher_type required if teacher
+- Actions: set user.role + user.roles, call `ensure_profile_records()`, set teacher_type if applicable, clear `needs_onboarding`
+- Audit log: `action="onboarding_complete"`
+
+**User model:**
+- New column: `needs_onboarding` (Boolean, default FALSE)
+- DB migration in `main.py` startup block
+- Included in UserResponse schema and all auth responses (login, register, /me)
+
+**Auth responses:**
+- `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me` all include `needs_onboarding` flag
+
+#### Frontend Changes
+
+**Register.tsx:**
+- Remove role checkboxes and teacher type dropdown
+- Fields: Full Name, Email, Password, Confirm Password only
+
+**New OnboardingPage.tsx (`/onboarding`):**
+- Role selection cards with icons (Parent prominent/first)
+- Conditional teacher type sub-selection
+- Multi-role checkbox support
+- Calls `POST /api/auth/onboarding` on completion
+- Redirects to role-specific dashboard
+- Matches auth page styling (logo, centered card, theme-aware)
+
+**AuthContext / ProtectedRoute:**
+- Check `needs_onboarding` flag from auth response
+- Redirect users with `needs_onboarding=true` to `/onboarding`
+- Existing users with roles skip onboarding entirely
+
+#### Backward Compatibility
+- API still accepts roles at registration (for programmatic/test use)
+- Existing users with roles already set have `needs_onboarding=false` (backfill migration)
+- Mobile app not affected (registration is web-only per §9.6)
+
+**Sub-tasks:**
+- [x] Backend: Make roles optional in registration, add `needs_onboarding` column (#412)
+- [x] Backend: `POST /api/auth/onboarding` endpoint with validation and profile creation (#414)
+- [x] Frontend: Simplify Register.tsx to 4 fields (#412)
+- [x] Frontend: OnboardingPage.tsx with role cards and teacher type selection (#413)
+- [x] Frontend: AuthContext/ProtectedRoute onboarding redirect (#413)
+- [x] Tests: Onboarding endpoint (happy path, validation, backward compat)
+
+### 6.44 Email Verification (Soft Gate) (Phase 1) - IMPLEMENTED
+
+Verify new users' email addresses after registration using a "soft gate" approach — users can log in without verification but see a persistent dashboard banner reminding them to verify.
+
+**GitHub Issue:** #417
+
+**Flow:**
+1. User registers → verification email sent with 24-hour JWT link
+2. User can log in immediately (no blocking)
+3. Dashboard shows yellow banner: "Please verify your email. [Resend email]"
+4. Clicking the email link → `/verify-email?token=...` → email verified
+5. Banner disappears after verification
+
+**Backend:**
+- **Model:** `email_verified` (Boolean, default `false`) and `email_verified_at` (DateTime, nullable) on User
+- **Migration:** `ALTER TABLE users ADD COLUMN email_verified/email_verified_at` + grandfather existing users as verified
+- **Token:** `create_email_verification_token(email)` / `decode_email_verification_token(token)` in `security.py` (24h expiry JWT)
+- **Template:** `app/templates/email_verification.html` (ClassBridge branded, matches password_reset pattern)
+- **Endpoints:**
+  - `POST /api/auth/verify-email` (public) — accepts `{token}`, verifies user email
+  - `POST /api/auth/resend-verification` (authenticated, rate-limited 3/min) — resends verification email
+- **Registration:** sends verification email after successful signup (best-effort, non-blocking)
+- **Auto-verify:** Google OAuth users and invite-accepted users are auto-verified (email already confirmed)
+- **Schema:** `email_verified: bool` added to `UserResponse`
+
+**Frontend:**
+- **VerifyEmailPage** (`/verify-email?token=...`) — public page, shows success/error/loading states
+- **AuthContext:** `email_verified: boolean` on User interface, `resendVerification()` method
+- **DashboardLayout:** yellow verification banner with resend button, dismissable per session
+- **Routing:** `/verify-email` added as public route in App.tsx
+
+**Sub-tasks:**
+- [x] Backend: Add `email_verified`/`email_verified_at` columns + migration + grandfathering (#417)
+- [x] Backend: JWT token functions for email verification (#417)
+- [x] Backend: `POST /verify-email` and `POST /resend-verification` endpoints (#417)
+- [x] Backend: Send verification email on registration, auto-verify Google/invite users (#417)
+- [x] Frontend: VerifyEmailPage, AuthContext, DashboardLayout banner, routing (#417)
+- [x] Tests: 11 backend tests covering all verification scenarios (#417)
+
 ### 6.30 Role-Based Inspirational Messages (Phase 2) - IMPLEMENTED
 
 Replace the static "Welcome back" dashboard greeting with role-specific inspirational messages that rotate on each visit. Messages are maintained in JSON seed files and imported into the database. Admins can manage messages via the admin dashboard.
@@ -1643,6 +1772,8 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
 - [x] **Admin individual messaging** — Send message + email to specific user (#259) (IMPLEMENTED)
 - [ ] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260)
+- [ ] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412)
+- [ ] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414)
 
 #### Architecture Foundation (Tier 0)
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)

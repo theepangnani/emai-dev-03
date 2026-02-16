@@ -22,7 +22,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: DashboardLayoutProps) {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -31,6 +31,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
   const [inspiration, setInspiration] = useState<InspirationMessage | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
@@ -143,6 +145,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     }
   }, [switchRole, navigate]);
 
+  const handleResendVerification = useCallback(async () => {
+    setResendStatus('sending');
+    try {
+      await resendVerification();
+      setResendStatus('sent');
+    } catch {
+      setResendStatus('idle');
+    }
+  }, [resendVerification]);
+
+  const showVerifyBanner = user && !user.email_verified && !verifyBannerDismissed;
+
   return (
     <>
       {/* Skip to content link for keyboard users */}
@@ -204,6 +218,22 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
           </button>
         </div>
       </header>
+
+      {showVerifyBanner && (
+        <div className="verify-email-banner">
+          <span>Please verify your email address. Check your inbox for a verification link.</span>
+          {resendStatus === 'idle' && (
+            <button className="verify-email-banner__resend" onClick={handleResendVerification}>
+              Resend email
+            </button>
+          )}
+          {resendStatus === 'sending' && <span className="verify-email-banner__status">Sending...</span>}
+          {resendStatus === 'sent' && <span className="verify-email-banner__status">Sent! Check your inbox.</span>}
+          <button className="verify-email-banner__dismiss" onClick={() => setVerifyBannerDismissed(true)} aria-label="Dismiss">
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Slide-out menu overlay */}
       {menuOpen && <div className="menu-overlay" onClick={() => setMenuOpen(false)} />}

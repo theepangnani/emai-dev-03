@@ -46,6 +46,7 @@ class UserResponse(BaseModel):
     is_active: bool
     google_connected: bool = False
     needs_onboarding: bool = False
+    email_verified: bool = False
     created_at: datetime
 
     @field_validator("roles", mode="before")
@@ -83,3 +84,7 @@ class ResetPasswordRequest(BaseModel):
 class OnboardingRequest(BaseModel):
     roles: list[str]
     teacher_type: str | None = None
+
+
+class EmailVerifyRequest(BaseModel):
+    token: str

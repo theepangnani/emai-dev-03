@@ -60,6 +60,7 @@ const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) =
 const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
 const LandingPage = lazyRetry(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const OnboardingPage = lazyRetry(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
+const VerifyEmailPage = lazyRetry(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +90,7 @@ function App() {
               <Route path="/accept-invite" element={<AcceptInvite />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route
