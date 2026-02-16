@@ -599,8 +599,10 @@ The platform uses ClassBridge logo files in multiple locations with theme-aware 
 
 | Logo Type | File | Usage | Dimensions | Theme Support |
 |-----------|------|-------|-----------|---------------|
-| Auth Logo | `classbridge-logo.png` | Login, Register, ForgotPassword, ResetPassword, AcceptInvite pages | max-width: 200px | Transparent BG works for all themes |
-| Header Icon | `logo-icon.png` | DashboardLayout header (all dashboards) | height: 48px | Transparent BG works for all themes |
+| Auth Logo | `classbridge-logo.png` | Login, Register, ForgotPassword, ResetPassword, AcceptInvite pages | max-width: 280px (220px mobile) | Transparent BG works for all themes |
+| Header Icon | `logo-icon.png` | DashboardLayout header (all dashboards) | height: 80px (margin-cropped) | Transparent BG works for all themes |
+| Landing Nav Logo | `classbridge-logo.png` | Landing page navigation bar | height: 100px (margin-cropped) | N/A |
+| Landing Hero Logo | `classbridge-hero-logo.png` | Landing page hero section | height: 300px (margin-cropped) | N/A |
 | Favicon | `favicon.png`, `favicon-192.png`, `favicon.ico`, `favicon.svg` | Browser tab, PWA icon, bookmarks | 16x16, 32x32, 48x48, 192x192 | N/A |
 
 **Theme Handling:**
@@ -618,12 +620,13 @@ The platform uses ClassBridge logo files in multiple locations with theme-aware 
 - Header icon (v7.1): 150KB - optimized for web performance
 - Multiple favicon formats for cross-browser/device support (PNG, ICO, SVG)
 - Transparent backgrounds work for both light and dark themes
+- All logo images have built-in transparent padding; CSS uses negative margins to visually crop whitespace and render the graphic larger (#427)
 
 **File Locations:**
 - Source: `frontend/public/*.{png,ico,svg}`
 - Build output: `frontend/dist/*.{png,ico,svg}` (copied during build)
 
-**Status:** Phase 1.5 — IMPLEMENTED (#308, #309) ✅ (Feb 2026, commits 619e42b, d7bb5ce)
+**Status:** Phase 1.5 — IMPLEMENTED (#308, #309, #427) ✅ (Feb 2026, commits 619e42b, d7bb5ce, cdaf63e–000e526)
 
 ### 6.16 Layout Redesign (turbo.ai-inspired) — PLANNED
 
@@ -1373,8 +1376,8 @@ Any authenticated user (parent, student, teacher) can send a message to any admi
 
 **Sub-tasks:**
 - [ ] Frontend: Notification click opens popup modal (#261)
-- [ ] Backend + Frontend: Show admin messages in Messages page (#262)
-- [ ] Backend + Frontend: User-to-admin messaging with email to all admins (#263)
+- [x] Backend + Frontend: Show admin messages in Messages page (#262)
+- [x] Backend + Frontend: User-to-admin messaging with email to all admins (#263)
 
 ### 6.43 Simplified Registration & Post-Login Onboarding (Phase 1)
 
@@ -1540,6 +1543,46 @@ Add a clickable eye icon to all password input fields across authentication page
 - [ ] Frontend: Add show/hide toggle to ResetPasswordPage.tsx fields (#420)
 - [ ] Frontend: Add show/hide toggle to AcceptInvite.tsx fields (#420)
 - [ ] Tests: Update existing tests to verify toggle functionality (#420)
+
+### 6.46 Lottie Animation Loader (Phase 2)
+
+Replace the current ⏳ emoji + CSS pulsing text animation during AI study material generation with a polished Lottie animation. A reusable `LottieLoader` component provides a professional, branded loading experience.
+
+**GitHub Issues:** #424 (web), #425 (mobile, backlogged)
+
+**Lottie Animation Asset:**
+- Education/book/loading themed animation matching ClassBridge brand colors (teal `#49b8c0`)
+- Stored at `frontend/public/animations/classbridge-loader.json`
+- File size target: under 50KB
+
+**Reusable Component (`frontend/src/components/LottieLoader.tsx`):**
+- Uses `lottie-react` package
+- Props: `size` (default 140px), `loop` (default true), `autoplay` (default true)
+- Theme-aware (works in light, dark, focus modes)
+
+**Integration Points:**
+
+| Location | Current | After Lottie | Priority |
+|----------|---------|-------------|----------|
+| StudyGuidesPage generating row | ⏳ emoji + pulsing text | Lottie animation (~40px) + text | Primary |
+| PageLoader (full-page) | Skeleton lines | Centered Lottie (~100px) | Secondary |
+| CourseMaterialDetailPage | Skeleton | Lottie animation | Optional |
+
+**Files Affected:**
+- `frontend/package.json` — add `lottie-react`
+- `frontend/public/animations/classbridge-loader.json` — new animation asset
+- `frontend/src/components/LottieLoader.tsx` — new component
+- `frontend/src/pages/StudyGuidesPage.tsx` — replace generating row icon
+- `frontend/src/pages/StudyGuidesPage.css` — update generating row styles
+- `frontend/src/components/PageLoader.tsx` — optional enhancement
+
+**Sub-tasks:**
+- [ ] Obtain/create Lottie animation JSON asset for ClassBridge (#424)
+- [ ] Install `lottie-react` and create reusable `LottieLoader` component (#424)
+- [ ] Replace AI generation placeholder in StudyGuidesPage with Lottie animation (#424)
+- [ ] (Optional) Enhance PageLoader with Lottie animation (#424)
+- [ ] Test across all 3 themes (light, dark, focus) (#424)
+- [ ] Mobile: Add Lottie loader to ClassBridgeMobile (backlogged, #425)
 
 ### 6.30 Role-Based Inspirational Messages (Phase 2) - IMPLEMENTED
 
@@ -2528,6 +2571,10 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #411: Improve landing page logo clarity and hero branding~~ ✅
 - Fix CI test failures: Add `pyproject.toml` with `testpaths = ["tests"]` and update `deploy.yml` — `scripts/load_test.py` matched pytest's `*_test.py` pattern, causing secret key mismatch in test environment ✅
 
+### Phase 1 - Implemented (Feb 15: UI Polish)
+- ~~Issue #420: Add show/hide password toggle to all auth pages~~ ✅ (eye icon toggle on Login, Register, Reset Password, Accept Invite)
+- ~~Issue #427: Reduce whitespace around logo and increase size~~ ✅ (CSS negative margins to crop built-in PNG padding on auth pages, landing nav/hero, dashboard header)
+
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers
@@ -2554,7 +2601,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #183: Task Detail Page: link/unlink resources (courses, materials, study guides)~~ ✅
 - ~~Issue #193: Task list: click task row to navigate to task detail page~~ ✅
 - Issue #194: Rename 'Study Guide' to 'Course Material' across UI and navigation
-- Issue #420: Frontend: Add show/hide password toggle to all auth pages
+- ~~Issue #420: Frontend: Add show/hide password toggle to all auth pages~~ ✅
 - ~~Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)~~ ✅
 - ~~Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)~~ ✅
 - ~~Issue #171: Color theme: Focus mode (muted warm tones for study sessions)~~ ✅
