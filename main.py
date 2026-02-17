@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -467,10 +468,15 @@ with engine.connect() as conn:
         conn.rollback()
 
 
+_is_prod = "sqlite" not in settings.database_url
+
 app = FastAPI(
     title=settings.app_name,
     description="AI-powered education management platform",
     version="0.1.0",
+    docs_url=None if _is_prod else "/api/docs",
+    redoc_url=None if _is_prod else "/api/redoc",
+    openapi_url=None if _is_prod else "/api/openapi.json",
 )
 
 # Rate limiting
@@ -553,6 +559,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 # No-ops when canonical_domain is empty; always registered, checks at runtime
 app.add_middleware(DomainRedirectMiddleware)
 
+# GZip compression — compress responses > 500 bytes (#516)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 # Include all API routers at /api prefix
 # NOTE: Mobile apps will use these same endpoints initially.
 # Dedicated /api/v1 endpoints will be created as mobile-specific features are needed.
@@ -612,9 +621,20 @@ FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
 if FRONTEND_DIR.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static-assets")
 
+    # Long-lived cache for hashed static assets (#516)
+    @app.middleware("http")
+    async def cache_hashed_assets(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve frontend SPA — returns index.html for all non-API routes."""
+        # Return JSON 404 for unmatched /api/* paths (#517)
+        if full_path.startswith("api/"):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
         file_path = FRONTEND_DIR / full_path
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
