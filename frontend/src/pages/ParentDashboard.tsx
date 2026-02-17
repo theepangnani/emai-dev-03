@@ -1,18 +1,19 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
 import { queueStudyGeneration } from './StudyGuidesPage';
 import { isValidEmail } from '../utils/validation';
-import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, SupportedFormats, DuplicateCheckResponse, TaskItem, InviteResponse } from '../api/client';
+import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, DuplicateCheckResponse, TaskItem, InviteResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, dateKey, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { useConfirm } from '../components/ConfirmModal';
+import CreateStudyMaterialModal, { StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import './ParentDashboard.css';
 
-const MAX_FILE_SIZE_MB = 100;
+
 
 type LinkTab = 'create' | 'email' | 'google';
 type DiscoveryState = 'idle' | 'discovering' | 'results' | 'no_results';
@@ -86,17 +87,10 @@ export function ParentDashboard() {
 
   // Study tools modal state
   const [showStudyModal, setShowStudyModal] = useState(false);
-  const [studyTitle, setStudyTitle] = useState('');
-  const [studyContent, setStudyContent] = useState('');
-  const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
-  const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [studyError, setStudyError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [studyModalInitialTitle, setStudyModalInitialTitle] = useState('');
+  const [studyModalInitialContent, setStudyModalInitialContent] = useState('');
 
   // One-click study generation state
   const [generatingStudyId, setGeneratingStudyId] = useState<number | null>(null);
@@ -494,74 +488,31 @@ export function ParentDashboard() {
   // Study Tools Handlers
   // ============================================
 
-  useEffect(() => {
-    if (showStudyModal && !supportedFormats) {
-      studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
-    }
-  }, [showStudyModal, supportedFormats]);
-
-  const handleFileSelect = (file: File) => {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setStudyError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
-      return;
-    }
-    setSelectedFile(file);
-    setStudyMode('file');
-    if (!studyTitle) {
-      setStudyTitle(file.name.replace(/\.[^/.]+$/, ''));
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  };
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const clearFileSelection = () => {
-    setSelectedFile(null);
-    setStudyMode('text');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const resetStudyModal = () => {
     setShowStudyModal(false);
-    setStudyTitle('');
-    setStudyContent('');
-    setStudyType('study_guide');
-    setStudyMode('text');
-    setSelectedFile(null);
-    setStudyError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setDuplicateCheck(null);
+    setStudyModalInitialTitle('');
+    setStudyModalInitialContent('');
   };
 
-  const handleGenerateStudy = async () => {
-    if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
-    if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
-
-    if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
-
+  const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     setIsGenerating(true);
     try {
-      if (studyMode === 'text' && !duplicateCheck) {
+      // Check for duplicates on text mode without pasted images
+      if (modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
+          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.type });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* Continue */ }
       }
       // Queue generation and navigate to study guides page (non-blocking)
       queueStudyGeneration({
-        title: studyTitle || `New ${studyType.replace('_', ' ')}`,
-        content: studyContent,
-        type: studyType,
-        mode: studyMode,
-        file: selectedFile ?? undefined,
+        title: modalParams.title,
+        content: modalParams.content,
+        type: modalParams.type,
+        mode: modalParams.mode,
+        file: modalParams.file,
+        pastedImages: modalParams.pastedImages,
         regenerateId: duplicateCheck?.existing_guide?.id,
       });
       setDuplicateCheck(null);
@@ -820,8 +771,8 @@ export function ParentDashboard() {
       // No existing material — generate with smart defaults (no modal)
       if (!assignment.description?.trim()) {
         // No content to generate from — fall back to modal
-        setStudyTitle(assignment.title);
-        setStudyContent('');
+        setStudyModalInitialTitle(assignment.title);
+        setStudyModalInitialContent('');
         setShowStudyModal(true);
         return;
       }
@@ -834,8 +785,8 @@ export function ParentDashboard() {
       navigate('/course-materials', { state: { selectedChild } });
     } catch {
       // On error, fall back to the modal
-      setStudyTitle(assignment.title);
-      setStudyContent(assignment.description || '');
+      setStudyModalInitialTitle(assignment.title);
+      setStudyModalInitialContent(assignment.description || '');
       setShowStudyModal(true);
     } finally {
       setGeneratingStudyId(null);
@@ -1513,77 +1464,29 @@ export function ParentDashboard() {
       )}
 
       {/* Study Tools Modal */}
-      {showStudyModal && (
-        <div className="modal-overlay" onClick={resetStudyModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Study Material</h2>
-            <p className="modal-desc">Upload a document or photo, or paste text to generate AI-powered study materials.</p>
-            <div className="modal-form">
-              <label>
-                What to create
-                <select value={studyType} onChange={(e) => setStudyType(e.target.value as any)} disabled={isGenerating}>
-                  <option value="study_guide">Study Guide</option>
-                  <option value="quiz">Practice Quiz</option>
-                  <option value="flashcards">Flashcards</option>
-                </select>
-              </label>
-              <label>
-                Title (optional)
-                <input type="text" value={studyTitle} onChange={(e) => setStudyTitle(e.target.value)} placeholder="e.g., Chapter 5 Review" disabled={isGenerating} />
-              </label>
-              <div className="mode-toggle">
-                <button className={`mode-btn ${studyMode === 'text' ? 'active' : ''}`} onClick={() => setStudyMode('text')} disabled={isGenerating}>Paste Text</button>
-                <button className={`mode-btn ${studyMode === 'file' ? 'active' : ''}`} onClick={() => setStudyMode('file')} disabled={isGenerating}>Upload File</button>
-              </div>
-              {studyMode === 'text' ? (
-                <label>
-                  Content to study
-                  <textarea value={studyContent} onChange={(e) => setStudyContent(e.target.value)} placeholder="Paste notes, textbook content, or any study material..." rows={8} disabled={isGenerating} />
-                </label>
-              ) : (
-                <div className="file-upload-section">
-                  <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
-                  <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
-                    {selectedFile ? (
-                      <div className="selected-file">
-                        <span className="file-icon">📄</span>
-                        <div className="file-info">
-                          <span className="file-name">{selectedFile.name}</span>
-                          <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                        <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>✕</button>
-                      </div>
-                    ) : (
-                      <div className="drop-zone-content">
-                        <span className="upload-icon">📁</span>
-                        <p>Drag & drop a file here, or click to browse</p>
-                        <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {studyError && <p className="link-error">{studyError}</p>}
-            </div>
-            {duplicateCheck && duplicateCheck.exists && (
-              <div className="duplicate-warning">
-                <p>{duplicateCheck.message}</p>
-                <div className="duplicate-actions">
-                  <button className="generate-btn" onClick={() => { const guide = duplicateCheck.existing_guide!; resetStudyModal(); setDuplicateCheck(null); navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`); }}>View Existing</button>
-                  <button className="generate-btn" onClick={handleGenerateStudy}>Regenerate (New Version)</button>
-                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
-                </div>
-              </div>
-            )}
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => { resetStudyModal(); setDuplicateCheck(null); }} disabled={isGenerating}>Cancel</button>
-              <button className="generate-btn" onClick={handleGenerateStudy} disabled={isGenerating || (studyMode === 'file' ? !selectedFile : !studyContent.trim())}>
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateStudyMaterialModal
+        open={showStudyModal}
+        onClose={resetStudyModal}
+        onGenerate={handleGenerateFromModal}
+        isGenerating={isGenerating}
+        initialTitle={studyModalInitialTitle}
+        initialContent={studyModalInitialContent}
+        duplicateCheck={duplicateCheck}
+        onViewExisting={() => {
+          const guide = duplicateCheck?.existing_guide;
+          if (guide) {
+            resetStudyModal();
+            navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`);
+          }
+        }}
+        onRegenerate={() => handleGenerateFromModal({
+          title: studyModalInitialTitle,
+          content: studyModalInitialContent,
+          type: 'study_guide',
+          mode: 'text',
+        })}
+        onDismissDuplicate={() => setDuplicateCheck(null)}
+      />
       {confirmModal}
     </DashboardLayout>
   );
