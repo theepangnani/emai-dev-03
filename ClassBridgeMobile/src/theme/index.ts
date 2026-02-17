@@ -1,17 +1,19 @@
 export const colors = {
-  primary: '#4285F4',
-  primaryDark: '#3367D6',
+  primary: '#49b8c0',
+  primaryDark: '#3a9aa1',
+  accent: '#f4801f',
   secondary: '#34A853',
   warning: '#FBBC04',
   error: '#EA4335',
-  background: '#F5F5F5',
+  background: '#eef1f5',
   surface: '#FFFFFF',
-  text: '#333333',
-  textSecondary: '#666666',
+  surfaceAlt: '#f5f6f9',
+  text: '#1b1e2b',
+  textSecondary: '#5b6274',
   textMuted: '#999999',
-  border: '#E0E0E0',
+  border: '#e3e6ee',
   divider: '#EEEEEE',
-  unread: '#E3F2FD',
+  unread: 'rgba(73, 184, 192, 0.12)',
 
   // Child color palette (matches web)
   childColors: [

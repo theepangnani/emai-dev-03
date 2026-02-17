@@ -8,8 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius } from '../../theme';
 
@@ -54,8 +56,11 @@ export function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <MaterialIcons name="school" size={56} color={colors.primary} />
-          <Text style={styles.title}>ClassBridge</Text>
+          <Image
+            source={require('../../../assets/classbridge-logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.subtitle}>Parent Mobile App</Text>
         </View>
 
@@ -121,13 +126,20 @@ export function LoginScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={isLoading}
+            style={[isLoading && styles.loginButtonDisabled]}
           >
-            <Text style={styles.loginButtonText}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Text>
+            <LinearGradient
+              colors={['#49b8c0', '#f4801f']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.loginButton}
+            >
+              <Text style={styles.loginButtonText}>
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           <Text style={styles.webNote}>
@@ -153,16 +165,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xxxl,
   },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: spacing.md,
+  logo: {
+    width: 260,
+    height: 120,
   },
   subtitle: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   form: {
     backgroundColor: colors.surface,
@@ -210,7 +220,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   loginButton: {
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
     alignItems: 'center',
