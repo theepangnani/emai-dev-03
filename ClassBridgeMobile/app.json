@@ -1,19 +1,27 @@
 {
   "expo": {
-    "name": "ClassBridgeMobile",
+    "name": "ClassBridge",
     "slug": "ClassBridgeMobile",
+    "owner": "EXPO_USERNAME_HERE",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/PROJECT_ID_HERE"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "ca.classbridge.mobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +29,16 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "ca.classbridge.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "PROJECT_ID_HERE"
+      }
     }
   }
 }
