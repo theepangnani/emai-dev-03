@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # Frontend
     frontend_url: str = "http://localhost:5173"
 
+    # Domain redirect (301 non-canonical → canonical)
+    canonical_domain: str = ""  # e.g. "www.classbridge.ca"
+
     # CORS (comma-separated origins, empty = allow all in development)
     allowed_origins: str = ""
 

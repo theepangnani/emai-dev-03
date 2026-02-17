@@ -1,8 +1,8 @@
-"""Custom security middleware."""
+"""Custom middleware for security headers and domain redirect."""
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
 from app.core.config import settings
 
@@ -50,3 +50,37 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             )
 
         return response
+
+
+class DomainRedirectMiddleware(BaseHTTPMiddleware):
+    """301 redirect non-canonical domains to the canonical domain.
+
+    Redirects clazzbridge.com, www.clazzbridge.com, and bare classbridge.ca
+    to www.classbridge.ca (or whatever CANONICAL_DOMAIN is set to).
+    Skips /health so Cloud Run liveness probes are not affected.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        canonical = settings.canonical_domain
+        if not canonical:
+            return await call_next(request)
+
+        # Use X-Forwarded-Host (set by Cloud Run) or fall back to Host header
+        host = (
+            request.headers.get("x-forwarded-host")
+            or request.headers.get("host", "")
+        )
+        # Strip port if present
+        host = host.split(":")[0].lower()
+
+        # Skip health check (Cloud Run probes) and already-canonical requests
+        if request.url.path == "/health" or host == canonical:
+            return await call_next(request)
+
+        # Build redirect URL preserving path and query string
+        scheme = request.headers.get("x-forwarded-proto", "https")
+        redirect_url = f"{scheme}://{canonical}{request.url.path}"
+        if request.url.query:
+            redirect_url += f"?{request.url.query}"
+
+        return RedirectResponse(url=redirect_url, status_code=301)
