@@ -293,7 +293,7 @@ Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 
 ### 6.4 Manual Course Content Upload (Phase 1) - PARTIALLY IMPLEMENTED
 - Upload or enter course content manually - IMPLEMENTED
-- Supported inputs: PDF, Word, PPTX, text notes - IMPLEMENTED (images/OCR pending)
+- Supported inputs: PDF, Word, PPTX, text notes - IMPLEMENTED (images/OCR for embedded images in .docx: #523 ✅)
 - Tag content to specific class or subject - IMPLEMENTED
 - AI generates study materials from user-provided content - IMPLEMENTED
 - Content privacy controls - pending
@@ -2334,7 +2334,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Extend calendar to Student and Teacher dashboards with role-aware data
 - [ ] Google Calendar push integration (sync tasks/reminders to Google Calendar)
 - [ ] Central document repository
-- [ ] Manual content upload with OCR (enhanced)
+- [x] Manual content upload with OCR (enhanced) — #523 ✅
 - [ ] Background periodic Google Classroom course/assignment sync for teachers (opt-in)
 
 #### Parent UX Simplification (Phase 1.5)
@@ -3127,7 +3127,7 @@ Current feature issues are tracked in GitHub:
 - Issue #96: Student email identity merging (personal + school email)
 - Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
 - Issue #46: Google Calendar push integration for tasks
-- Issue #25: Manual Content Upload with OCR (enhanced) — document upload + text extraction done; image OCR pending
+- ~~Issue #25: Manual Content Upload with OCR (enhanced) — document upload + text extraction done; image OCR for embedded images in .docx~~ ✅ (#523)
 - Issue #28: Central Document Repository
 - Issue #53: Background periodic Google Classroom sync for teachers
 - Issue #113: School & School Board model
