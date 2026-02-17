@@ -51,10 +51,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
       return [
         { label: 'Overview', path: '/dashboard' },
         { label: 'Child Profiles', path: '/my-kids' },
-        { label: 'Analytics', path: '/analytics' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
-        { label: 'FAQ', path: '/faq' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -62,7 +60,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     const items: Array<{ label: string; path: string }> = [
       { label: 'Dashboard', path: '/dashboard' },
       { label: 'Courses', path: '/courses' },
-      { label: 'Analytics', path: '/analytics' },
       { label: 'Course Materials', path: '/course-materials' },
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
@@ -72,7 +69,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
     }
 
-    items.push({ label: 'FAQ', path: '/faq' });
     items.push({ label: 'Help', path: '/help' });
 
     return items;
