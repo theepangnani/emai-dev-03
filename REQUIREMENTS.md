@@ -74,7 +74,7 @@ Education ecosystems are fragmented:
 - Identify strengths and weaknesses
 - **Confirmation dialogs**: All AI generation and destructive actions use custom styled confirmation modals (ConfirmModal component with useConfirm hook) instead of native browser dialogs, with danger variant for destructive operations like permanent delete
 - **Robust JSON parsing**: AI responses wrapped in markdown code fences (` ```json ... ``` `) are automatically stripped before parsing, preventing "Failed to parse" errors
-- **Non-blocking generation**: AI study material generation is fully non-blocking. Modal closes immediately after submission, a pulsing "Generating..." placeholder row appears in the study materials list, and the user can continue working. On success the placeholder is replaced with the real guide; on failure it shows an error with a dismiss button. Works from both Study Guides page and Parent Dashboard (queues generation and navigates to Study Guides page)
+- **Non-blocking generation**: AI study material generation is fully non-blocking. Modal closes immediately after submission, a pulsing "Generating..." placeholder row appears in the study materials list, and the user can continue working. On success the placeholder is replaced with the real guide; on failure it shows an error with a dismiss button. Works from both Study Guides page and Parent Dashboard (queues generation and navigates to Study Guides page). On the Course Material detail page, generation shows an inline spinner + pulsing message in the content area (no blocking overlay); the view auto-switches to the target tab so users see progress, and tabs remain navigable during generation
 
 #### 6.2.1 Study Guide Storage & Management (Phase 1) - IMPLEMENTED
 
@@ -118,9 +118,9 @@ All UI navigation and buttons use "Course Material(s)" terminology. The specific
 
 **Tabbed Detail View** (`/study-guides/:contentId`):
 - **Tab 1: Original Document** — shows the source text/description of the course content item
-- **Tab 2: Study Guide** — shows the generated study guide, or a "Generate Study Guide" button if none exists
-- **Tab 3: Quiz** — shows the generated quiz, or a "Generate Quiz" button if none exists
-- **Tab 4: Flashcards** — shows the generated flashcards, or a "Generate Flashcards" button if none exists
+- **Tab 2: Study Guide** — shows the generated study guide, or a "Generate Study Guide" button if none exists. During generation, an inline spinner + pulsing message replaces the empty state
+- **Tab 3: Quiz** — shows the generated quiz, or a "Generate Quiz" button if none exists. During generation, an inline spinner + pulsing message replaces the empty state
+- **Tab 4: Flashcards** — shows the generated flashcards, or a "Generate Flashcards" button if none exists. During generation, an inline spinner + pulsing message replaces the empty state
 
 **Filtering:**
 - Parents can filter by **child** (shows materials from that child's courses)
@@ -3084,6 +3084,9 @@ Current feature issues are tracked in GitHub:
 
 ### Phase 1 - Implemented (Feb 16: Hover Buttons Fix)
 - ~~Issue #446: Missing hover edit button on course tiles and assign-to-course on material tiles~~ ✅ (add edit ✏️ button to parent child-course tiles and student enrolled-course tiles; add move-to-course 📂 button to course material rows on StudyGuidesPage with course selector modal; add `course_id` to `CourseContentUpdate` schema for reassignment)
+
+### Phase 1 - Implemented (Feb 17: Inline Generation Loading)
+- ~~Issue #527: Quiz/Flashcard generation should show inline loading in content area instead of blocking spinner~~ ✅ (replace full-screen overlay with inline spinner + pulsing message in content area on CourseMaterialDetailPage; auto-switch to target tab on generation; tabs remain navigable during generation)
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
