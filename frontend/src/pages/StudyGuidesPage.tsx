@@ -545,7 +545,7 @@ export function StudyGuidesPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage study materials">
+      <DashboardLayout welcomeSubtitle="Manage study materials" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -554,6 +554,7 @@ export function StudyGuidesPage() {
   return (
     <DashboardLayout
       welcomeSubtitle="Manage study materials"
+      showBackButton
       sidebarActions={[
         { label: '+ Create Study Material', onClick: () => setShowModal(true) },
       ]}

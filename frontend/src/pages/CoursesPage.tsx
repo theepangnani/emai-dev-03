@@ -306,7 +306,7 @@ export function CoursesPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage courses">
+      <DashboardLayout welcomeSubtitle="Manage courses" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -315,6 +315,7 @@ export function CoursesPage() {
   return (
     <DashboardLayout
       welcomeSubtitle="Manage courses"
+      showBackButton
       sidebarActions={[
         { label: '+ Add Course', onClick: () => setShowCreateModal(true) },
       ]}

@@ -223,9 +223,9 @@ export function CourseMaterialDetailPage() {
     setQuizFinished(false);
   };
 
-  if (loading) return <DashboardLayout><DetailSkeleton /></DashboardLayout>;
+  if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
-    <DashboardLayout>
+    <DashboardLayout showBackButton>
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
@@ -242,7 +242,7 @@ export function CourseMaterialDetailPage() {
   ];
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showBackButton>
       <div className="cm-detail-page">
         <div className="cm-detail-header">
           <Link to="/course-materials" className="cm-back-link">&larr; Back</Link>

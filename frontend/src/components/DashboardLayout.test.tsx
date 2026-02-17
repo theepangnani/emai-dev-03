@@ -54,7 +54,8 @@ describe('DashboardLayout', () => {
     renderLayout('parent')
     expect(screen.getByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Child Profiles')).toBeInTheDocument()
-    expect(screen.queryByText('Courses')).not.toBeInTheDocument()
+    expect(screen.getByText('Courses')).toBeInTheDocument()
+    expect(screen.getByText('Course Materials')).toBeInTheDocument()
   })
 
   it('shows standard nav items for student role', () => {

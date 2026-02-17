@@ -901,10 +901,10 @@ Eliminate modal-in-modal patterns. Study generation from day detail should navig
 
 **Status:** IMPLEMENTED ✅
 
-#### 6.22.6 Simplified Parent Navigation (#206)
-Consolidate parent nav from 5 items to 3: Home (status + calendar), My Kids (merged course/task/material view per child), Messages.
+#### 6.22.6 Parent Navigation (#206, #529, #530)
+Parent nav includes full navigation: Overview, Child Profiles, Courses, Course Materials, Tasks, Messages, Help. All non-dashboard pages show a back button (←) in the header. Originally planned to consolidate to 3 items, but user feedback required direct sidebar access to Courses and Course Materials.
 
-**Status:** PLANNED (Phase 2 — deferred)
+**Status:** IMPLEMENTED ✅
 
 ### 6.23 Security Hardening (Phase 1) - IMPLEMENTED
 
@@ -1138,15 +1138,15 @@ Improve the My Kids page visual hierarchy and parent navigation for better disco
    - Display stats on each child card in the All Children grid view
 2. **Section header icons** (#237) - IMPLEMENTED
    - Add inline icons to collapsible section headers in child detail view (Courses, Course Materials, Tasks, Teachers)
-3. **Parent navigation simplification** (#237) - IMPLEMENTED
-   - Remove Courses from parent nav (parents access courses via My Kids → child → Courses section)
-   - Parent nav: Home | My Kids | Tasks | Messages
+3. **Parent navigation update** (#237, #529, #530) - IMPLEMENTED
+   - Parent nav: Overview | Child Profiles | Courses | Course Materials | Tasks | Messages | Help
+   - Previously Courses/Course Materials were removed from parent nav, but user feedback showed parents need direct sidebar access to these pages (#529, #530)
 
 **Sub-tasks:**
 - [x] Backend: Add course_count, active_task_count to ChildSummary (#236)
 - [x] Frontend: Child card stats display (#236)
 - [x] Frontend: Section header icons (#237)
-- [x] Frontend: Remove Courses from parent nav (#237)
+- [x] Frontend: Restore Courses and Course Materials to parent nav (#529, #530)
 
 ### 6.31b My Kids Visual Overhaul (Phase 2) - IMPLEMENTED
 
@@ -2072,16 +2072,19 @@ The Parent Dashboard uses a **three-panel layout**: left navigation, calendar-ce
 
 #### 2. Left Navigation
 The `DashboardLayout` sidebar includes role-specific navigation items for parents:
-- **Home** — Dashboard view (calendar)
-- **My Kids** — Per-child view with courses, materials, tasks, teachers
+- **Overview** — Dashboard view (calendar)
+- **Child Profiles** — Per-child view with courses, materials, tasks, teachers
+- **Courses** — Course management page
+- **Course Materials** — Study guides, quizzes, flashcards management
 - **Tasks** — Dedicated task management view
 - **Messages** — Opens messaging view
-- **+ Add Child** — Opens Add Child modal
-- **+ Add Course** — Opens Create Course modal
-- **+ Create Study Guide** — Opens Study Tools modal
-- **+ Add Task** — Opens Add Task modal
+- **Help** — FAQ and help page
+- **+ Add Child** — Opens Add Child modal (quick action)
+- **+ Add Course** — Opens Create Course modal (quick action)
+- **+ Create Study Guide** — Opens Study Tools modal (quick action)
+- **+ Add Task** — Opens Add Task modal (quick action)
 
-> **Note:** Courses was removed from parent nav (#237) since parents access courses through My Kids → child → Courses section.
+All non-dashboard pages include a back button (←) in the header for easy navigation to the previous page (#529).
 
 #### 3. Child Filter Tabs (Toggle Behavior)
 - Each child appears as a clickable tab button above the calendar
@@ -2343,7 +2346,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] Issue #203: Parent UX: One-click study material generation ✅
 - [x] Issue #204: Parent UX: Fix filter cascade on Course Materials page ✅
 - [x] Issue #205: Parent UX: Reduce modal nesting ✅
-- [ ] Issue #206: Parent UX: Consolidated 3-item navigation (Phase 2 — deferred)
+- [x] Issue #206: Parent UX: Parent navigation — restored Courses & Course Materials to sidebar (#529, #530) ✅
 - [ ] Issue #207: Parent Dashboard: Collapsible/expandable calendar section
 
 ### Phase 2
@@ -3087,6 +3090,10 @@ Current feature issues are tracked in GitHub:
 
 ### Phase 1 - Implemented (Feb 17: Inline Generation Loading)
 - ~~Issue #527: Quiz/Flashcard generation should show inline loading in content area instead of blocking spinner~~ ✅ (replace full-screen overlay with inline spinner + pulsing message in content area on CourseMaterialDetailPage; auto-switch to target tab on generation; tabs remain navigable during generation)
+
+### Phase 1 - Implemented (Feb 17: Navigation & Back Button Fix)
+- ~~Issue #529: Missing back button on Course Materials and Courses pages~~ ✅ (add `showBackButton` prop to DashboardLayout; back button uses `navigate(-1)` for true browser history back; enabled on all sub-pages: Courses, Course Materials, CourseDetail, CourseMaterialDetail, MyKids, Tasks, Help, FAQ)
+- ~~Issue #530: Parent sidebar missing Courses and Course Materials navigation links~~ ✅ (restore Courses and Course Materials to parent nav items in DashboardLayout sidebar)
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
