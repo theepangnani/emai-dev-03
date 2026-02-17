@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
+import { FAQErrorHint, extractFaqCode } from '../components/FAQErrorHint';
 import './CourseMaterialDetailPage.css';
 
 const MarkdownGuideBody = lazy(() =>
@@ -28,6 +29,7 @@ export function CourseMaterialDetailPage() {
   const [guides, setGuides] = useState<StudyGuide[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [faqCode, setFaqCode] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('document');
   const [generating, setGenerating] = useState<string | null>(null);
 
@@ -125,8 +127,9 @@ export function CourseMaterialDetailPage() {
       }
       await loadData();
       setActiveTab(type === 'study_guide' ? 'guide' : type);
-    } catch {
+    } catch (err) {
       setError(`Failed to generate ${labels[type].toLowerCase()}`);
+      setFaqCode(extractFaqCode(err));
     } finally {
       setGenerating(null);
     }
@@ -223,6 +226,7 @@ export function CourseMaterialDetailPage() {
     <DashboardLayout>
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
+        <FAQErrorHint faqCode={faqCode} />
         <Link to="/course-materials" className="cm-back-link">Back to Course Materials</Link>
       </div>
     </DashboardLayout>

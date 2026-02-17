@@ -200,6 +200,9 @@ export function AdminDashboard() {
           <Link to="/admin/inspiration" className="admin-audit-link">
             Manage Inspirational Messages &rarr;
           </Link>
+          <Link to="/admin/faq" className="admin-audit-link">
+            Manage FAQ &rarr;
+          </Link>
           <button
             className="admin-audit-link"
             onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}

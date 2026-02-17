@@ -8,6 +8,7 @@ import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
+import { FAQErrorHint, extractFaqCode } from '../components/FAQErrorHint';
 import './StudyGuidePage.css';
 
 function normalizeGuideContent(content: string) {
@@ -66,6 +67,7 @@ export function StudyGuidePage() {
   const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [faqCode, setFaqCode] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const { confirm, confirmModal } = useConfirm();
 
@@ -114,6 +116,7 @@ export function StudyGuidePage() {
     return (
       <div className="study-guide-page">
         <div className="error">{error || 'Study guide not found'}</div>
+        <FAQErrorHint faqCode={faqCode} />
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
           <Link to="/course-materials" className="back-link">View All Study Materials</Link>
           <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
@@ -143,8 +146,9 @@ export function StudyGuidePage() {
                   regenerate_from_id: guide.id,
                 });
                 navigate(`/study/guide/${result.id}`);
-              } catch {
+              } catch (err) {
                 setError('Failed to regenerate');
+                setFaqCode(extractFaqCode(err));
               }
             }}
           >

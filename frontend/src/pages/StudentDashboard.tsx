@@ -5,6 +5,7 @@ import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../ap
 import { StudyToolsButton } from '../components/StudyToolsButton';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
+import { FAQErrorHint, extractFaqCode } from '../components/FAQErrorHint';
 import { useConfirm } from '../components/ConfirmModal';
 import { logger } from '../utils/logger';
 
@@ -36,6 +37,7 @@ export function StudentDashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [faqCode, setFaqCode] = useState<string | null>(null);
 
   // Custom study material modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -84,6 +86,7 @@ export function StudentDashboard() {
       setSearchParams(newParams);
     } else if (error) {
       setStatusMessage({ type: 'error', text: `Connection failed: ${error}` });
+      setFaqCode('GOOGLE_SYNC_FAILED');
       setSearchParams({});
     }
 
@@ -126,8 +129,9 @@ export function StudentDashboard() {
     try {
       const { authorization_url } = await googleApi.getConnectUrl();
       window.location.href = authorization_url;
-    } catch {
+    } catch (err) {
       setStatusMessage({ type: 'error', text: 'Failed to initiate Google connection' });
+      setFaqCode(extractFaqCode(err));
       setIsConnecting(false);
     }
   };
@@ -150,8 +154,9 @@ export function StudentDashboard() {
       setStatusMessage({ type: 'success', text: result.message || 'Courses synced successfully' });
       loadCourses();
       loadAssignments();
-    } catch {
+    } catch (err) {
       setStatusMessage({ type: 'error', text: 'Failed to sync courses' });
+      setFaqCode(extractFaqCode(err));
     } finally {
       setIsSyncing(false);
     }
@@ -159,7 +164,7 @@ export function StudentDashboard() {
 
   useEffect(() => {
     if (statusMessage) {
-      const timer = setTimeout(() => setStatusMessage(null), 5000);
+      const timer = setTimeout(() => { setStatusMessage(null); setFaqCode(null); }, 5000);
       return () => clearTimeout(timer);
     }
   }, [statusMessage]);
@@ -364,6 +369,7 @@ export function StudentDashboard() {
       {statusMessage && (
         <div className={`status-message status-${statusMessage.type}`}>
           {statusMessage.text}
+          <FAQErrorHint faqCode={faqCode} />
         </div>
       )}
 

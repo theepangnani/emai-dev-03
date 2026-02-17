@@ -319,10 +319,49 @@ Dedicated page for viewing and managing a single course and its content:
 - **Navigation** — Course cards expand inline to show a materials preview panel; a "View Details" button navigates to the full detail page
 - **Role-aware UI** — All roles can view course materials; management buttons (Add Content, Upload Document, Create Task, Edit Course) only visible to course creator/admin
 
-### 6.5 Performance Analytics (Phase 2)
-- Subject-level insights
-- Trend analysis
-- Weekly progress reports
+### 6.5 Performance Analytics (Phase 2) - IMPLEMENTED
+
+Grade tracking and analytics dashboard for parents and students. Provides performance summaries, subject-level insights, grade trends over time, AI-powered recommendations, and weekly progress reports.
+
+**Data Model:**
+- `grade_records` — Analytics source of truth: student_id, course_id, assignment_id (nullable for course-level grades), grade, max_grade, percentage (pre-computed), source (google_classroom/manual/seed), recorded_at. Indexed on (student_id, course_id) and (student_id, recorded_at).
+- `StudentAssignment` (existing) — Google Classroom sync target with grade, status, submitted_at; feeds into grade_records via sync service
+- `progress_reports` — Cached weekly/monthly reports: student_id, report_type, period_start/end, data (JSON Text for SQLite compat), generated_at. 24h TTL before recomputation.
+
+**Grade Data Pipeline:**
+- Google Classroom submissions synced → `StudentAssignment` → `GradeRecord` (with pre-computed percentage)
+- `GradeRecord.assignment_id` is nullable to support future course-level grades (midterms, finals, manual entry)
+- `source` column tracks origin: `google_classroom`, `manual`, `seed`
+- Seed service provides 26 demo grade records across 3 courses with 60-day date spread
+- `_upsert_grade_record()` in grade_sync_service handles create-or-update logic
+
+**Analytics Service (app/services/analytics_service.py):**
+- `get_graded_assignments()` — paginated grades from GradeRecord with pre-computed percentages
+- `compute_summary()` — overall average, per-course averages, completion rate, trend detection
+- `compute_trend_points()` — chronological trend data points filtered by date range and optional course
+- `determine_trend()` — first-third vs last-third average comparison with 3-point threshold
+- `get_or_create_weekly_report()` — cached weekly ProgressReport with 24h TTL
+- `generate_ai_insight()` — on-demand AI analysis via OpenAI (gpt-4o-mini)
+
+**API Endpoints (all implemented):**
+- `GET /api/analytics/grades?student_id=&course_id=&limit=&offset=` — paginated grade records
+- `GET /api/analytics/summary?student_id=` — overall + per-course averages, trend, completion rate
+- `GET /api/analytics/trends?student_id=&course_id=&days=90` — chronological trend points
+- `POST /api/analytics/ai-insights` (body: student_id, focus_area) — AI-generated recommendations
+- `GET /api/analytics/reports/weekly?student_id=` — cached weekly progress report
+- `POST /api/analytics/sync-grades?student_id=` — trigger Google Classroom grade sync
+
+**RBAC:** Parents see linked children, students see own data, teachers see their course students, admins see all. Enforced via `_get_student_or_403()` helper.
+
+**Frontend (implemented):**
+- `/analytics` page with Recharts: grade trend LineChart, course averages BarChart, summary cards (average, completion, graded count, trend badge)
+- Child selector dropdown for parents with multiple children
+- AI insights panel with on-demand "Generate AI Insights" button (manages API costs)
+- Recent grades table with assignment, course, grade, and due date columns
+- Time range filter (30d/60d/90d/All) and course filter for trend chart
+- 14 backend tests + 6 frontend tests
+
+**GitHub Issues:** #469 (grade data pipeline — closed), #470 (aggregation service + API — closed), #471 (frontend charts — closed), #472 (AI insights — closed), #473 (weekly reports — closed), #474 (test expansion — open)
 
 ### 6.6 Communication (Phase 1) - IMPLEMENTED
 - Secure Parent <-> Teacher messaging
@@ -1918,7 +1957,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 
 ### Phase 2
 - [ ] TeachAssist integration
-- [ ] Performance analytics dashboard
+- [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [ ] Advanced notifications
 - [ ] Notes & project tracking tools
 - [ ] Data privacy & user rights (account deletion, data export, consent)
@@ -2675,10 +2714,18 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #207: Parent Dashboard: Calendar default expanded on all screen sizes~~ ✅
 
 ### Phase 2
-- Issue #26: Performance Analytics Dashboard
+- Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)
 - Issue #27: Notes & Project Tracking Tools
 - Issue #29: TeachAssist Integration
 - Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
+
+### Phase 2 — Performance Analytics (#26) ✅ COMPLETE
+- ~~Issue #469: Analytics: Grade data pipeline (GradeRecord model, sync service, seed service)~~ ✅
+- ~~Issue #470: Analytics: Backend aggregation service and API endpoints~~ ✅
+- ~~Issue #471: Analytics: Frontend dashboard with Recharts (LineChart, BarChart, summary cards)~~ ✅
+- ~~Issue #472: Analytics: AI-powered performance insights (on-demand via OpenAI)~~ ✅
+- ~~Issue #473: Analytics: Weekly cached progress reports (ProgressReport model, 24h TTL)~~ ✅
+- Issue #474: Analytics: Test expansion (14 backend + 6 frontend tests written; more coverage possible)
 
 ### Phase 2 — FAQ / Knowledge Base
 - Issue #437: FAQ: Backend models — FAQQuestion + FAQAnswer tables

@@ -8,6 +8,7 @@ const TYPE_ICONS: Record<string, string> = {
   study_guide: '\uD83D\uDCD6',   // 📖
   task: '\uD83D\uDCCB',          // 📋
   course_content: '\uD83D\uDCC4', // 📄
+  faq: '\u2753',                  // ❓
 };
 
 export function GlobalSearch() {

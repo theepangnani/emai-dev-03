@@ -12,6 +12,7 @@ from app.models.task import Task
 from app.models.course_content import CourseContent
 from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
+from app.models.faq import FAQQuestion
 from app.api.deps import get_current_user
 from app.schemas.search import SearchResultItem, SearchResultGroup, SearchResponse
 
@@ -22,6 +23,7 @@ ENTITY_LABELS = {
     "study_guide": "Course Materials",
     "task": "Tasks",
     "course_content": "Course Content",
+    "faq": "FAQ",
 }
 
 
@@ -183,6 +185,32 @@ def _search_course_content(db: Session, term: str, limit: int, course_ids: list[
     return SearchResultGroup(entity_type="course_content", label="Course Content", items=items, total=total)
 
 
+def _search_faq(db: Session, term: str, limit: int) -> SearchResultGroup:
+    """Search FAQ questions by title/description. Public — no access scoping needed."""
+    query = db.query(FAQQuestion).filter(
+        or_(
+            FAQQuestion.title.ilike(f"%{escape_like(term)}%"),
+            FAQQuestion.description.ilike(f"%{escape_like(term)}%"),
+        ),
+        FAQQuestion.archived_at.is_(None),
+    )
+
+    total = query.count()
+    rows = query.order_by(FAQQuestion.is_pinned.desc(), FAQQuestion.view_count.desc()).limit(limit).all()
+
+    items = [
+        SearchResultItem(
+            id=q.id,
+            title=q.title,
+            subtitle=("Pinned - " if q.is_pinned else "") + q.category.replace("-", " ").title(),
+            entity_type="faq",
+            url=f"/faq/{q.id}",
+        )
+        for q in rows
+    ]
+    return SearchResultGroup(entity_type="faq", label="FAQ", items=items, total=total)
+
+
 @router.get("", response_model=SearchResponse)
 def global_search(
     q: str = Query(..., min_length=2, max_length=200),
@@ -191,11 +219,11 @@ def global_search(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Search across courses, study guides, tasks, and course content."""
+    """Search across courses, study guides, tasks, course content, and FAQ."""
     term = q.strip()
 
     # Determine which types to search
-    all_types = {"course", "study_guide", "task", "course_content"}
+    all_types = {"course", "study_guide", "task", "course_content", "faq"}
     if types:
         requested = {t.strip() for t in types.split(",")} & all_types
     else:
@@ -255,6 +283,9 @@ def global_search(
 
     if "course_content" in requested:
         groups.append(_search_course_content(db, term, limit, course_ids))
+
+    if "faq" in requested:
+        groups.append(_search_faq(db, term, limit))
 
     total = sum(g.total for g in groups)
 

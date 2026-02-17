@@ -1,0 +1,98 @@
+[
+  {
+    "title": "How do I connect my Google Classroom account?",
+    "description": "I want to link my Google Classroom to ClassBridge so my courses sync automatically.",
+    "category": "getting-started",
+    "is_pinned": true,
+    "error_code": "GOOGLE_NOT_CONNECTED",
+    "answer": "Go to your Dashboard and click the \"Connect Google Classroom\" button. You'll be redirected to Google to sign in and grant ClassBridge permission to read your courses and assignments. Once connected, your courses will sync automatically."
+  },
+  {
+    "title": "How do I add my child to ClassBridge?",
+    "description": "I'm a parent and want to link my child's account.",
+    "category": "getting-started",
+    "is_pinned": true,
+    "answer": "From your Parent Dashboard, click \"Add Child\" and enter your child's details. If your child already has an account, you can link by email. If not, you can create an account for them and they'll receive an invite to set their password."
+  },
+  {
+    "title": "How do I link my child's teacher?",
+    "description": "I want to connect with my child's teacher for messaging.",
+    "category": "getting-started",
+    "is_pinned": true,
+    "answer": "From your Dashboard, go to Messages and select your child's teacher from the contact list. If the teacher hasn't joined ClassBridge yet, you can send them an invite from the Child Profiles section."
+  },
+  {
+    "title": "Why is my Google Classroom sync failing?",
+    "description": "My courses aren't syncing or I'm getting sync errors.",
+    "category": "google-classroom",
+    "error_code": "GOOGLE_SYNC_FAILED",
+    "answer": "Google sync can fail if your connection has expired. Try these steps:\n1. Go to your Dashboard\n2. Click \"Sync Courses\" to retry\n3. If that doesn't work, disconnect and reconnect Google Classroom\n4. Make sure you're signing in with the same Google account linked to your Classroom\n\nIf the issue persists, your school may have changed permissions. Contact your school's IT administrator."
+  },
+  {
+    "title": "How do I sync new courses from Google Classroom?",
+    "description": "I added a new course in Google Classroom but it's not showing up.",
+    "category": "google-classroom",
+    "answer": "New courses are synced automatically every few hours. To sync immediately, go to your Dashboard and click the \"Sync Courses\" button. The new course should appear within a few seconds."
+  },
+  {
+    "title": "Why don't I see my child's assignments?",
+    "description": "My child's assignments from Google Classroom aren't showing.",
+    "category": "google-classroom",
+    "answer": "Assignments are synced from Google Classroom through your child's account. Make sure:\n1. Your child's Google Classroom is connected\n2. The course is synced (click Sync Courses on their dashboard)\n3. Your child is enrolled in the course in Google Classroom\n\nAs a parent, you can view your child's assignments from the Child Profiles section."
+  },
+  {
+    "title": "How do I generate a study guide?",
+    "description": "I want to create a study guide from my course materials.",
+    "category": "study-tools",
+    "answer": "There are several ways to generate study materials:\n1. From a Course Material: Open any course material and click \"Generate Study Guide\", \"Generate Quiz\", or \"Generate Flashcards\"\n2. From an Assignment: Click the study tools button next to any assignment\n3. Custom: From your Dashboard, click \"Create Study Material\" and paste or upload your own content\n\nThe AI will analyze the content and create a structured study resource for you."
+  },
+  {
+    "title": "How do I convert a study guide to a quiz or flashcards?",
+    "description": "I have a study guide and want to practice with quizzes or flashcards.",
+    "category": "study-tools",
+    "answer": "Open the course material that the study guide was created from, then use the tabs to switch between Study Guide, Quiz, and Flashcards. If a quiz or flashcard set hasn't been generated yet, click the \"Generate\" button on that tab. You can also generate them directly from the Course Materials page."
+  },
+  {
+    "title": "What happens when AI study tool generation fails?",
+    "description": "I'm getting errors when trying to generate study materials.",
+    "category": "study-tools",
+    "error_code": "AI_GENERATION_FAILED",
+    "answer": "Study material generation can occasionally fail due to:\n1. Very long or complex content — try with a shorter excerpt\n2. Content in an unsupported format — plain text works best\n3. Temporary service issues — wait a minute and try again\n\nIf the problem persists, try creating the material from a different source or with simplified content."
+  },
+  {
+    "title": "How do I reset my password?",
+    "description": "I forgot my password and need to reset it.",
+    "category": "account",
+    "answer": "Click \"Forgot Password\" on the login page and enter your email address. You'll receive an email with a link to set a new password. The link expires after 24 hours. If you don't receive the email, check your spam folder."
+  },
+  {
+    "title": "How do I switch between roles?",
+    "description": "I have multiple roles (e.g., parent and teacher) and want to switch.",
+    "category": "account",
+    "answer": "If you have multiple roles, you'll see a role switcher next to your name in the top-right corner of the dashboard. Click on your current role to see a dropdown of your available roles, then click the one you want to switch to."
+  },
+  {
+    "title": "How do I create and assign tasks to my child?",
+    "description": "I want to create tasks for my child to complete.",
+    "category": "tasks",
+    "answer": "Go to the Tasks page and click \"Add Task\". Enter the task title, description, priority, and due date. You can assign it to your child by selecting them from the assignee dropdown. Your child will see the task on their dashboard and can mark it complete when done."
+  },
+  {
+    "title": "How do I message my child's teacher?",
+    "description": "I want to send a message to a teacher.",
+    "category": "messaging",
+    "answer": "Go to the Messages page from the navigation menu. Click \"New Conversation\" and select the teacher you want to message. Type your message and click Send. The teacher will receive a notification and can reply directly."
+  },
+  {
+    "title": "How do I create a course manually?",
+    "description": "I want to add a course that's not in Google Classroom.",
+    "category": "courses",
+    "answer": "Go to the Courses page and click \"Create Course\". Enter the course name, subject, and description. You can then add students to the course and upload course materials. Manual courses work the same as synced Google Classroom courses for study tools and tasks."
+  },
+  {
+    "title": "Where can I report a bug or request a feature?",
+    "description": "I found a problem or have a suggestion for ClassBridge.",
+    "category": "other",
+    "answer": "We appreciate your feedback! You can:\n1. Use the Help page to find answers to common questions\n2. Send a message to the admin through the Messages page\n3. Contact support at support@classbridge.ca\n\nPlease include as much detail as possible about the issue, including what you were doing when it occurred and any error messages you saw."
+  }
+]
