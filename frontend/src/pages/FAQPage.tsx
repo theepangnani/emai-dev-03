@@ -67,7 +67,7 @@ export function FAQPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Find answers and ask questions">
+    <DashboardLayout welcomeSubtitle="Find answers and ask questions" showBackButton>
       <div className="faq-page">
         <div className="faq-header">
           <h1>FAQ / Knowledge Base</h1>

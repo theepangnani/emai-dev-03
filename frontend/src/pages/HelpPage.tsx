@@ -123,7 +123,7 @@ export function HelpPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Find answers to common questions">
+    <DashboardLayout welcomeSubtitle="Find answers to common questions" showBackButton>
       <div className="help-container">
         {FAQ_SECTIONS.map((section, sIdx) => (
           <div key={section.title} className="help-section">

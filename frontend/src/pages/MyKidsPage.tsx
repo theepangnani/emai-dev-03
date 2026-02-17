@@ -145,7 +145,7 @@ export function MyKidsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
+      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -153,7 +153,7 @@ export function MyKidsPage() {
 
   if (children.length === 0) {
     return (
-      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
+      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management" showBackButton>
         <div className="mykids-empty">
           <h3>No children linked yet</h3>
           <p>Add a child from your Dashboard to get started.</p>
@@ -200,7 +200,7 @@ export function MyKidsPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
+    <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management" showBackButton>
       {/* Child Tabs */}
       <div className="child-selector">
         {children.length > 1 && (

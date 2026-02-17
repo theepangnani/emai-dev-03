@@ -234,7 +234,7 @@ export function TasksPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Manage your tasks">
+    <DashboardLayout welcomeSubtitle="Manage your tasks" showBackButton>
       <div className="tasks-page">
         {/* Header */}
         <div className="tasks-header">

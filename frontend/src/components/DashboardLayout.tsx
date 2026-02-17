@@ -19,9 +19,10 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
+  showBackButton?: boolean;
 }
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: DashboardLayoutProps) {
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,6 +52,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
       return [
         { label: 'Overview', path: '/dashboard' },
         { label: 'Child Profiles', path: '/my-kids' },
+        { label: 'Courses', path: '/courses' },
+        { label: 'Course Materials', path: '/course-materials' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -170,6 +173,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
       <div className="dashboard">
         <header className="dashboard-header">
         <div className="header-left">
+          {showBackButton && location.pathname !== '/dashboard' && (
+            <button className="layout-back-button" onClick={() => navigate(-1)} aria-label="Go back">
+              &larr;
+            </button>
+          )}
           <button
             className={`hamburger-btn${menuOpen ? ' open' : ''}`}
             onClick={() => setMenuOpen(!menuOpen)}
