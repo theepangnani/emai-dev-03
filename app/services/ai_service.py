@@ -130,14 +130,22 @@ async def generate_study_guide(
 **Description:**
 {assignment_description}
 
-Please include:
+Analyze the content above. If it contains math problems, equations, science calculations, or any exercises/questions that require solving, then:
+
+1. **Worked Solutions** - Solve each problem step-by-step with clear explanations
+2. **Key Concepts** - Explain the underlying concepts used in the solutions
+3. **Common Mistakes** - Warn about typical errors students make on these types of problems
+4. **Practice Problems** - 2-3 similar problems for extra practice (with answers)
+
+If the content is conceptual/reading material (no problems to solve), then:
+
 1. **Key Concepts** - Main topics and ideas to understand
 2. **Important Terms** - Vocabulary with definitions
 3. **Study Tips** - Strategies for mastering this material
 4. **Practice Questions** - 3-5 questions to test understanding
 5. **Resources** - Suggested areas to review
 
-Format the response in Markdown for easy reading.
+Format the response in Markdown for easy reading. For math, use clear notation (fractions, exponents, etc.).
 
 IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, quizzes, homework due dates, or review sessions, include a section at the very end of your response in this exact format:
 --- CRITICAL_DATES ---
@@ -146,9 +154,9 @@ IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, q
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
 Only include this section if specific dates are mentioned. If no dates are found, do not include this section at all."""
 
-    system_prompt = """You are an expert educational tutor. Create clear, well-organized study guides
-that help students understand concepts deeply. Use simple language and provide practical examples.
-Format responses in clean Markdown with proper headers and bullet points."""
+    system_prompt = """You are an expert educational tutor. When given math problems or exercises, solve them
+step-by-step with clear explanations so students can learn the process. For conceptual material, create
+well-organized study guides. Use simple language, practical examples, and clean Markdown formatting."""
 
     return await generate_content(prompt, system_prompt, max_tokens=2000)
 
@@ -177,11 +185,13 @@ async def generate_quiz(
 **Content:**
 {content}
 
+If the content contains math problems or calculations, create questions that test the student's ability to solve similar problems (provide numerical answer choices). If conceptual, test understanding.
+
 For each question, provide:
 1. The question text
 2. Four options labeled A, B, C, D
 3. The correct answer letter
-4. A brief explanation of why it's correct
+4. A brief explanation of why it's correct (for math, show the solution steps)
 
 Format your response as a JSON array with this structure:
 ```json
@@ -239,9 +249,10 @@ async def generate_flashcards(
 {content}
 
 Create flashcards that cover the most important concepts, terms, and ideas.
+If the content contains math problems or calculations, create flashcards with the problem on the front and the step-by-step solution on the back.
 Each flashcard should have:
-- Front: A term, concept, or question
-- Back: The definition, explanation, or answer
+- Front: A term, concept, question, or math problem
+- Back: The definition, explanation, answer, or worked solution
 
 Format your response as a JSON array:
 ```json

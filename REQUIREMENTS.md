@@ -75,6 +75,8 @@ Education ecosystems are fragmented:
 - **Confirmation dialogs**: All AI generation and destructive actions use custom styled confirmation modals (ConfirmModal component with useConfirm hook) instead of native browser dialogs, with danger variant for destructive operations like permanent delete
 - **Robust JSON parsing**: AI responses wrapped in markdown code fences (` ```json ... ``` `) are automatically stripped before parsing, preventing "Failed to parse" errors
 - **Non-blocking generation**: AI study material generation is fully non-blocking. Modal closes immediately after submission, a pulsing "Generating..." placeholder row appears in the study materials list, and the user can continue working. On success the placeholder is replaced with the real guide; on failure it shows an error with a dismiss button. Works from both Study Guides page and Parent Dashboard (queues generation and navigates to Study Guides page). On the Course Material detail page, generation shows an inline spinner + pulsing message in the content area (no blocking overlay); the view auto-switches to the target tab so users see progress, and tabs remain navigable during generation
+- **Math-aware AI prompts**: Study guide, quiz, and flashcard generation prompts detect math problems, equations, and exercises. When math content is found, the study guide provides step-by-step worked solutions with explanations; quizzes test problem-solving ability with numerical answer choices; flashcards show problems on front and worked solutions on back
+- **Comprehensive docx OCR**: All embedded images in .docx files are OCR'd via Tesseract regardless of how much regular text the document contains. This ensures screenshots of math problems, diagrams with text, and scanned worksheets are always extracted
 
 #### 6.2.1 Study Guide Storage & Management (Phase 1) - IMPLEMENTED
 
@@ -3087,6 +3089,9 @@ Current feature issues are tracked in GitHub:
 
 ### Phase 1 - Implemented (Feb 16: Hover Buttons Fix)
 - ~~Issue #446: Missing hover edit button on course tiles and assign-to-course on material tiles~~ ✅ (add edit ✏️ button to parent child-course tiles and student enrolled-course tiles; add move-to-course 📂 button to course material rows on StudyGuidesPage with course selector modal; add `course_id` to `CourseContentUpdate` schema for reassignment)
+
+### Phase 1 - Implemented (Feb 17: Docx OCR + Math-Aware AI Prompts)
+- ~~Issue #532: Word doc embedded screenshots not OCR'd + study guide should solve math problems~~ ✅ (always OCR all embedded images in .docx regardless of text length; enhance study guide/quiz/flashcard AI prompts to detect math problems and provide step-by-step solutions; 7 new unit tests for OCR logic)
 
 ### Phase 1 - Implemented (Feb 17: Inline Generation Loading)
 - ~~Issue #527: Quiz/Flashcard generation should show inline loading in content area instead of blocking spinner~~ ✅ (replace full-screen overlay with inline spinner + pulsing message in content area on CourseMaterialDetailPage; auto-switch to target tab on generation; tabs remain navigable during generation)

@@ -182,16 +182,16 @@ def extract_text_from_docx(file_content: bytes) -> str:
                         if p.text.strip():
                             text_parts.append(p.text)
 
-        # 5. OCR fallback for embedded images
-        # Run OCR when extracted text is minimal relative to embedded image count
+        # 5. OCR on all embedded images
+        # Always OCR embedded images — screenshots often contain the real content
+        # (e.g., math problems, diagrams with text, scanned worksheets)
         if OCR_AVAILABLE:
             images = _extract_images_from_docx(file_content)
-            total_text_len = sum(len(t) for t in text_parts)
-            should_ocr = images and (not text_parts or (len(images) > 3 and total_text_len < 200))
-            if should_ocr:
+            if images:
+                total_text_len = sum(len(t) for t in text_parts)
                 logger.info(
-                    f"Docx has {len(images)} images with only {total_text_len} chars text, "
-                    "attempting OCR on embedded images"
+                    f"Docx has {len(images)} embedded images ({total_text_len} chars text), "
+                    "running OCR on all images"
                 )
                 ocr_parts = []
                 for i, img_bytes in enumerate(images):
