@@ -101,6 +101,7 @@ export function CourseMaterialDetailPage() {
     if (!ok) return;
 
     setGenerating(type);
+    setActiveTab(type === 'study_guide' ? 'guide' : type);
     try {
       if (type === 'study_guide') {
         await studyApi.generateGuide({
@@ -376,6 +377,11 @@ export function CourseMaterialDetailPage() {
                     </Suspense>
                   </div>
                 </>
+              ) : generating === 'study_guide' ? (
+                <div className="cm-inline-generating">
+                  <div className="cm-inline-spinner" />
+                  <p>Generating study guide... This may take a moment.</p>
+                </div>
               ) : (
                 <div className="cm-empty-tab">
                   <p>No study guide generated yet.</p>
@@ -384,7 +390,7 @@ export function CourseMaterialDetailPage() {
                     onClick={() => handleGenerate('study_guide')}
                     disabled={generating !== null || !content.text_content}
                   >
-                    {generating === 'study_guide' ? 'Generating...' : 'Generate Study Guide'}
+                    Generate Study Guide
                   </button>
                   {!content.text_content && (
                     <p className="cm-hint">Upload document content first to generate a study guide.</p>
@@ -454,6 +460,11 @@ export function CourseMaterialDetailPage() {
                     </div>
                   )}
                 </>
+              ) : generating === 'quiz' ? (
+                <div className="cm-inline-generating">
+                  <div className="cm-inline-spinner" />
+                  <p>Generating quiz... This may take a moment.</p>
+                </div>
               ) : (
                 <div className="cm-empty-tab">
                   <p>No quiz generated yet.</p>
@@ -462,7 +473,7 @@ export function CourseMaterialDetailPage() {
                     onClick={() => handleGenerate('quiz')}
                     disabled={generating !== null || !content.text_content}
                   >
-                    {generating === 'quiz' ? 'Generating...' : 'Generate Quiz'}
+                    Generate Quiz
                   </button>
                   {!content.text_content && (
                     <p className="cm-hint">Upload document content first to generate a quiz.</p>
@@ -519,6 +530,11 @@ export function CourseMaterialDetailPage() {
                   </div>
                   <p className="cm-hint">Click card to flip. Use arrow keys to navigate.</p>
                 </>
+              ) : generating === 'flashcards' ? (
+                <div className="cm-inline-generating">
+                  <div className="cm-inline-spinner" />
+                  <p>Generating flashcards... This may take a moment.</p>
+                </div>
               ) : (
                 <div className="cm-empty-tab">
                   <p>No flashcards generated yet.</p>
@@ -527,7 +543,7 @@ export function CourseMaterialDetailPage() {
                     onClick={() => handleGenerate('flashcards')}
                     disabled={generating !== null || !content.text_content}
                   >
-                    {generating === 'flashcards' ? 'Generating...' : 'Generate Flashcards'}
+                    Generate Flashcards
                   </button>
                   {!content.text_content && (
                     <p className="cm-hint">Upload document content first to generate flashcards.</p>
@@ -538,12 +554,6 @@ export function CourseMaterialDetailPage() {
           )}
         </div>
 
-        {generating && (
-          <div className="cm-generating-overlay">
-            <div className="cm-generating-spinner" />
-            <p>Generating... This may take a moment.</p>
-          </div>
-        )}
       </div>
       <CreateTaskModal
         open={showTaskModal}
