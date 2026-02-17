@@ -5,13 +5,13 @@ ClassBridge March 6, 2026 pilot launch day procedures.
 ## Pre-Launch (Mar 5 Evening)
 
 - [ ] Final web smoke test on production URL — all four roles log in
-- [ ] Final mobile test on Expo Go (iOS + Android) — parent login and navigation
+- [ ] Final mobile test on ClassBridge app (iOS + Android) — parent login and navigation
 - [ ] All pilot user accounts verified (see [deploy-freeze.md](deploy-freeze.md#pilot-account-verification-mar-4-5))
 - [ ] Demo data in place (assignments, messages, notifications)
 - [ ] Pre-launch backup taken: `./scripts/backup/manual-backup.sh pre-launch`
 - [ ] Alert policies active (see [INCIDENT_RESPONSE.md](../INCIDENT_RESPONSE.md#active-alert-policies))
 - [ ] Welcome emails drafted and ready to send
-- [ ] Expo Go setup instructions ready to share
+- [ ] Mobile app download links ready to share (from EAS dashboard)
 
 ## Launch Morning (Mar 6)
 
@@ -32,13 +32,13 @@ ClassBridge March 6, 2026 pilot launch day procedures.
 - [ ] **Student** — log in on web, see courses and study tools
 - [ ] **Teacher** — log in on web, see courses and messages
 - [ ] **Admin** — log in on web, see system overview
-- [ ] **Parent (mobile)** — log in via Expo Go, navigate all tabs
+- [ ] **Parent (mobile)** — log in via ClassBridge app, navigate all tabs
 
 ### Send Communications
 
 - [ ] Send welcome emails to pilot parents (see [welcome-email.md](welcome-email.md))
 - [ ] Send welcome emails to pilot teachers and students
-- [ ] Share Expo Go instructions with pilot parents (see [mobile-setup-instructions.md](mobile-setup-instructions.md))
+- [ ] Share mobile app download links with pilot parents (see [mobile-setup-instructions.md](mobile-setup-instructions.md))
 
 ### Monitor
 
@@ -63,13 +63,14 @@ See [INCIDENT_RESPONSE.md](../INCIDENT_RESPONSE.md#monitoring-dashboard-checklis
 | Cloud SQL with automated backups | Active |
 | Monitoring and alerting | Active |
 
-### Mobile — Parent-Only via Expo Go
+### Mobile — Parent-Only App (EAS Development Build)
 
 | Feature | Status |
 |---------|--------|
 | Login, Dashboard, Child Overview | Available |
 | Calendar, Messages, Chat | Available |
 | Notifications, Profile | Available |
+| OTA updates via EAS Update | Available |
 | Push notifications | Not available (in-app polling only) |
 | File upload, Google OAuth, course management | Not available (use web) |
 
@@ -78,7 +79,7 @@ See [INCIDENT_RESPONSE.md](../INCIDENT_RESPONSE.md#monitoring-dashboard-checklis
 Share these with pilot participants in welcome emails and setup instructions:
 
 - [ ] Mobile app is **parent-only** — students and teachers use the web app
-- [ ] Mobile requires **Expo Go** app (not on App Store / Google Play yet)
+- [ ] Mobile app is distributed via **direct download link** (not on App Store / Google Play yet)
 - [ ] **No push notifications** — open the app to check for updates (auto-refreshes every 30s)
 - [ ] Account setup, child management, starting new conversations, study materials — **use the web app**
 
@@ -117,5 +118,6 @@ If any remain open, assess whether they are blockers or can be deferred.
 - [Incident Response](../INCIDENT_RESPONSE.md) — Monitoring and incident handling
 - [Disaster Recovery](../DISASTER_RECOVERY.md) — Backup and restore procedures
 - [Quick-Start Guide](quick-start-guide.md) — Parent-facing setup instructions
-- [Mobile Setup Instructions](mobile-setup-instructions.md) — Expo Go setup for parents
+- [Mobile Setup Instructions](mobile-setup-instructions.md) — App download and setup for parents
 - [Welcome Email](welcome-email.md) — Email templates for pilot participants
+- [Device Testing Checklist](device-testing-checklist.md) — iOS and Android testing procedures

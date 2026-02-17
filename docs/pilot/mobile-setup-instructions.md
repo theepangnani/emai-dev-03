@@ -1,6 +1,6 @@
 # ClassBridge Mobile App — Setup Instructions
 
-> Send this to pilot parents before launch day. Replace `[EXPO_URL]` with the actual Expo project URL after running `expo publish`.
+> Send this to pilot parents before launch day. Replace `[DOWNLOAD_LINK_ANDROID]` and `[DOWNLOAD_LINK_IOS]` with the actual EAS build download URLs after running `eas build`.
 
 ---
 
@@ -8,29 +8,24 @@
 
 Hi {parent_name},
 
-ClassBridge is now available on your phone! Follow these 3 steps to get started.
+ClassBridge is now available on your phone! Follow these steps to get started.
 
 ---
 
-### Step 1: Install Expo Go (free)
+### Step 1: Install ClassBridge
 
-Expo Go is a free app that runs ClassBridge on your phone.
+Tap the link for your phone type to install the ClassBridge app:
 
-- **iPhone / iPad:** [Download from App Store](https://apps.apple.com/app/expo-go/id982107779)
-- **Android:** [Download from Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)
+- **iPhone / iPad:** [Download ClassBridge for iOS]([DOWNLOAD_LINK_IOS])
+- **Android:** [Download ClassBridge for Android]([DOWNLOAD_LINK_ANDROID])
 
-### Step 2: Open ClassBridge
+> **Android users:** You may see a "Install from unknown sources" prompt — tap **Allow** to proceed. This is normal for apps not yet on Google Play.
 
-1. Open the **Expo Go** app
-2. Tap **"Enter URL manually"**
-3. Type: `[EXPO_URL]`
-4. ClassBridge will load (first load takes ~10 seconds)
+> **iPhone users:** After tapping the link, follow the on-screen instructions to install. Your device must be registered for the pilot (we'll handle this for you).
 
-> **Bookmark tip:** After it loads, the project will appear in your Expo Go "Recents" for quick access next time.
+### Step 2: Log In
 
-### Step 3: Log In
-
-Use the credentials from your welcome email:
+Open the ClassBridge app and sign in with the credentials from your welcome email:
 - **Email:** {parent_email}
 - **Password:** {temp_password}
 
@@ -45,6 +40,7 @@ Tap **Sign In** and you're in!
 | **Home** | See your children's status at a glance — overdue items, what's due today, unread messages. Tap a child's name for details. |
 | **Calendar** | Monthly view of all assignments and tasks. Tap any date to see that day's items. |
 | **Messages** | Read and reply to teacher conversations. Unread count shows on the tab badge. |
+| **Notifications** | View assignment reminders, teacher messages, and system alerts. |
 | **Profile** | View your account info and log out. |
 
 ---
@@ -63,8 +59,9 @@ Tap **Sign In** and you're in!
 | Issue | Fix |
 |-------|-----|
 | Can't log in | Check your email/password. Use "Forgot Password" at classbridge.ca if needed. |
-| App won't load | Check your internet connection. Close and reopen Expo Go. |
+| App won't open | Make sure you have enough storage space. Try reinstalling from the download link. |
 | Data looks old | Pull down on any screen to refresh. |
+| Android install blocked | Go to Settings → Security → Enable "Install from unknown sources" for your browser. |
 
 ---
 
