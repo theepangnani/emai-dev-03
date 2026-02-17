@@ -2,18 +2,11 @@
   "expo": {
     "name": "ClassBridge",
     "slug": "ClassBridgeMobile",
-    "owner": "EXPO_USERNAME_HERE",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/PROJECT_ID_HERE"
-    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -21,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ca.classbridge.mobile"
+      "bundleIdentifier": "ca.classbridge.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -37,8 +33,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "PROJECT_ID_HERE"
+        "projectId": "4b01a66d-f342-4c75-bebd-9145bc4f8a1a"
       }
-    }
+    },
+    "owner": "theepan.gnani"
   }
 }

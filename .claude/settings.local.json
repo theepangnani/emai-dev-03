@@ -42,7 +42,10 @@
       "Bash(git -C c:/dev/emai/emai-dev-03 add app/core/utils.py app/core/middleware.py app/core/rate_limit.py app/api/deps.py app/api/routes/admin.py app/api/routes/auth.py app/api/routes/search.py app/api/routes/study.py app/api/routes/teacher_communications.py main.py requirements.txt tests/conftest.py)",
       "Bash(git -C c:/dev/emai/emai-dev-03 commit -m \"$\\(cat <<''EOF''\nAdd security hardening: rate limiting, security headers, LIKE injection fix \\(#140, #141, #184\\)\n\n- Add slowapi rate limiting: 5/min login, 3/min register, 10/min AI generation, 5/min file upload\n- Add SecurityHeadersMiddleware: X-Content-Type-Options, X-Frame-Options, HSTS, CSP, Referrer-Policy\n- Add escape_like\\(\\) utility to sanitize LIKE wildcards \\(%, _\\) in 14 search queries\n- Set request.state.user_id in get_current_user for per-user rate limiting and request logging\n- Disable rate limiting in test suite via conftest fixture\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C c:devemaiemai-dev-03 status)",
-      "Bash(cmd /c \"cd /d c:\\\\dev\\\\emai\\\\emai-dev-03\\\\frontend && call npm run build 2>&1\")"
+      "Bash(cmd /c \"cd /d c:\\\\dev\\\\emai\\\\emai-dev-03\\\\frontend && call npm run build 2>&1\")",
+      "Bash(npm uninstall:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

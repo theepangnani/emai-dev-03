@@ -1939,6 +1939,101 @@ After a user successfully verifies their email via the verification link (§6.44
 - [ ] Tests: Welcome email on registration (sent, skipped for Google OAuth) (#509)
 - [ ] Tests: Acknowledgement email on verification (sent on success, skipped on failure) (#510)
 
+### 6.49 Admin Email Template Management (Phase 2)
+
+Allow admin users to view all email templates and edit their content directly from the Admin Dashboard, without requiring code deployments. Templates are HTML files with `{{placeholder}}` variables.
+
+**GitHub Issue:** #513
+
+**Current State:**
+- 14 email templates live as static HTML files in `app/templates/`
+- Templates use `{{placeholder}}` variables rendered via simple string replacement (`_render()` in `auth.py`)
+- No API exists to list, view, or edit templates — changes require a code push
+
+**Backend:**
+
+**New model — `email_templates` table:**
+- `id` (PK), `template_name` (String, unique — matches filename, e.g. `welcome.html`)
+- `html_content` (Text — the full HTML)
+- `updated_by_user_id` (FK → users.id, nullable)
+- `updated_at` (DateTime)
+- Only templates that have been admin-edited appear in this table; unedited templates use the filesystem default
+
+**Template registry** (code-defined, not DB):
+- Dict mapping template name → `{ display_name, description, variables: ["user_name", "app_url", ...] }`
+- e.g. `"welcome.html": { display_name: "Welcome Email", description: "Sent after registration", variables: ["user_name", "app_url"] }`
+
+**Template loading priority:** DB override → filesystem fallback. Modify `_load_template()` to check `email_templates` table first.
+
+**New endpoints (admin-only):**
+- `GET /api/admin/email-templates` — List all templates (name, display name, description, last modified, has DB override)
+- `GET /api/admin/email-templates/{name}` — Get full HTML content + metadata (available variables, description)
+- `PUT /api/admin/email-templates/{name}` — Update template HTML content; validate required `{{variables}}` are present; store in DB
+- `POST /api/admin/email-templates/{name}/preview` — Render template with sample data and return HTML preview
+- `POST /api/admin/email-templates/{name}/reset` — Delete DB override, revert to filesystem default
+
+**Audit:** Log every template edit with action `email_template_update`.
+
+**Frontend:**
+
+- New "Email Templates" page accessible from Admin Dashboard (link in admin nav or section)
+- Template list: cards/rows with name, description, last modified, "Edited" badge if DB override exists
+- Template editor view:
+  - HTML textarea (syntax-highlighted if possible, or plain textarea)
+  - Live preview panel (rendered with sample data via `/preview` endpoint)
+  - Available variables reference sidebar
+  - Save / Reset to Default buttons with confirmation modals
+
+**Sub-tasks:**
+- [ ] Backend: `email_templates` table + model (#513)
+- [ ] Backend: Template registry with metadata (#513)
+- [ ] Backend: Modify `_load_template()` to check DB first (#513)
+- [ ] Backend: CRUD + preview + reset endpoints (#513)
+- [ ] Frontend: Email Templates list page (#513)
+- [ ] Frontend: Template editor with preview (#513)
+- [ ] Tests: Template CRUD, preview, reset, RBAC (#513)
+
+### 6.50 Broadcast History: View Details, Reuse & Resend (Phase 2)
+
+Enhance the existing broadcast history so admins can view full broadcast details, reuse a past broadcast as a template for a new one, and resend a previous broadcast.
+
+**GitHub Issue:** #514
+
+**Current State:**
+- Broadcasts persisted in `broadcasts` table (subject, body, recipient_count, email_count, sender_id, created_at)
+- `GET /api/admin/broadcasts` lists past broadcasts (subject, date, counts)
+- `POST /api/admin/broadcast` sends a new broadcast
+- Admin Dashboard shows a collapsible broadcast history table with subject, date, and counts
+- **Missing:** No way to view full body, reuse, or resend a past broadcast
+
+**Backend:**
+
+**Model changes to `broadcasts` table:**
+- Add `parent_broadcast_id` (FK → broadcasts.id, nullable) — links resent broadcasts to the original
+
+**New/enhanced endpoints (admin-only):**
+- `GET /api/admin/broadcasts/{id}` — Full broadcast detail (subject, body, sender name, recipient_count, email_count, created_at, parent_broadcast_id)
+- `POST /api/admin/broadcasts/{id}/reuse` — Returns the broadcast's subject + body as JSON for pre-filling the broadcast modal (no side effects)
+- `POST /api/admin/broadcasts/{id}/resend` — Resend the exact same broadcast to all active users; creates a new `Broadcast` record with `parent_broadcast_id` set to the original
+
+**Migration:** `ALTER TABLE broadcasts ADD COLUMN parent_broadcast_id INTEGER REFERENCES broadcasts(id)` (top-level, independent, with try/except as per project convention).
+
+**Frontend:**
+
+- Broadcast history table: add "View" and "Reuse" action buttons per row
+- **View modal:** Shows full broadcast body (rendered HTML), delivery stats, sender, date
+- **Reuse flow:** Click "Reuse" → opens broadcast modal pre-filled with subject + body → admin edits → sends as new broadcast
+- **Resend:** Optional "Resend" button in view modal with confirmation dialog
+
+**Sub-tasks:**
+- [ ] Backend: Add `parent_broadcast_id` column + migration (#514)
+- [ ] Backend: `GET /api/admin/broadcasts/{id}` detail endpoint (#514)
+- [ ] Backend: `POST /api/admin/broadcasts/{id}/reuse` endpoint (#514)
+- [ ] Backend: `POST /api/admin/broadcasts/{id}/resend` endpoint (#514)
+- [ ] Frontend: View broadcast detail modal (#514)
+- [ ] Frontend: Reuse pre-fill in broadcast modal (#514)
+- [ ] Tests: Detail, reuse, resend endpoints + RBAC (#514)
+
 ---
 
 ## 7. Role-Based Dashboards - IMPLEMENTED
@@ -2258,6 +2353,8 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] Notes & project tracking tools
 - [ ] Data privacy & user rights (account deletion, data export, consent)
 - [ ] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444)
+- [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)
+- [ ] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514)
 
 #### 6.28 FAQ / Knowledge Base (Phase 2)
 
@@ -3055,6 +3152,10 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #472: Analytics: AI-powered performance insights (on-demand via OpenAI)~~ ✅
 - ~~Issue #473: Analytics: Weekly cached progress reports (ProgressReport model, 24h TTL)~~ ✅
 - Issue #474: Analytics: Test expansion (14 backend + 6 frontend tests written; more coverage possible)
+
+### Phase 2 — Admin Email & Broadcast Management
+- Issue #513: Admin: View and edit email templates from dashboard
+- Issue #514: Admin: Broadcast email history with reuse and resend
 
 ### Phase 2 — FAQ / Knowledge Base
 - Issue #437: FAQ: Backend models — FAQQuestion + FAQAnswer tables
