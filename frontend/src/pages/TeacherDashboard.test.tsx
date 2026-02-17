@@ -517,7 +517,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Messages')).toBeInTheDocument()
+      expect(screen.getByText('Parent messages')).toBeInTheDocument()
     })
 
     await user.click(screen.getByText('Parent messages').closest('.dashboard-card')!)
