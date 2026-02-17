@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton } from '../components/Skeleton';
+import { LottieLoader } from '../components/LottieLoader';
 import './StudyGuidesPage.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -618,7 +619,7 @@ export function StudyGuidesPage() {
                 <div key={item.tempId} className={`guide-row ${item.status === 'generating' ? 'guide-row-generating' : 'guide-row-error'}`}>
                   <div className="guide-row-main">
                     <span className="guide-row-icon">
-                      {item.status === 'generating' ? '\u23F3' : '\u26A0\uFE0F'}
+                      {item.status === 'generating' ? <LottieLoader size={28} /> : '\u26A0\uFE0F'}
                     </span>
                     <div className="guide-row-info">
                       <span className="guide-row-title">{item.title}</span>
