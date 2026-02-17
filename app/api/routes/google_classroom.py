@@ -20,7 +20,7 @@ from app.models.course_content import CourseContent
 from app.models.invite import Invite, InviteType
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
-from app.services.email_service import add_inspiration_to_email, send_email_sync
+from app.services.email_service import send_email_sync
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.services.google_classroom import (
@@ -340,7 +340,6 @@ def _auto_invite_shadow_teacher(
             <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create Your Account</a></p>
             <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
             """
-        html = add_inspiration_to_email(html, db, "teacher")
         send_email_sync(
             to_email=teacher_email,
             subject=f"{inviter_name} invited you to ClassBridge",
