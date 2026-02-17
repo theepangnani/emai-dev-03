@@ -3,9 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at top left, rgba(13, 101, 179, 0.25), transparent 50%),
-    radial-gradient(circle at bottom right, rgba(244, 128, 31, 0.20), transparent 50%),
-    var(--color-surface-bg);
+  background: var(--color-surface-bg);
   padding: 20px;
 }
 
@@ -121,7 +119,7 @@
 }
 
 .auth-button {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
+  background: var(--color-accent);
   color: white;
   border: none;
   padding: 14px 24px;
@@ -134,6 +132,7 @@
 }
 
 .auth-button:hover:not(:disabled) {
+  background: var(--color-accent-strong);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
 }

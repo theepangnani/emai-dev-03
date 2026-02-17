@@ -667,6 +667,58 @@ The platform uses ClassBridge logo files in multiple locations with theme-aware 
 
 **Status:** Phase 1.5 — IMPLEMENTED (#308, #309, #427) ✅ (Feb 2026, commits 619e42b, d7bb5ce, cdaf63e–000e526)
 
+### 6.15.2 Flat (Non-Gradient) Default Style (Phase 1)
+
+Replace all gradient UI styling with solid accent colors across web and mobile. This is a direct response to user feedback that the gradient style (teal-to-orange diagonal gradients on buttons, tabs, backgrounds) feels too flashy and distracting.
+
+**GitHub Issues:** #486 (parent), #487 (web CSS), #488 (mobile), #489 (gradient toggle)
+
+#### Design Decision
+- **Default style: Flat/Solid** — all buttons, tabs, backgrounds, and text accents use solid `var(--color-accent)` instead of `linear-gradient()`
+- **Gradient available as opt-in** — users who prefer the old gradient look can re-enable via a style toggle (low priority, #489)
+- **Mobile: Flat only** — no gradient style option on mobile
+
+#### Scope (30+ gradient instances across 14 files)
+
+**Web Frontend (13 CSS files):**
+
+| File | Elements Affected |
+|------|-------------------|
+| `index.css` | Body background (radial wash), dot pattern |
+| `Auth.css` | Auth page background, login/register button |
+| `Dashboard.css` | Logo text, messages button, active sidebar link, generate/create buttons |
+| `MessagesPage.css` | Page title text, new message button, sent message bubble, send button |
+| `MyKidsPage.css` | Active child tab, mykids button, study count card, link-child buttons |
+| `ParentDashboard.css` | Active child tab, study count card, link-child buttons |
+| `CoursesPage.css` | Active child tab |
+| `FlashcardsPage.css` | Flashcard front/back faces |
+| `Calendar.css` | Primary action button in calendar popover |
+| `NotificationBell.css` | Notification action button |
+| `AdminDashboard.css` | Admin submit button |
+| `TeacherCommsPage.css` | AI summary card |
+| `AnalyticsPage.css` | AI insights button |
+
+**Mobile App (1 file):**
+- `LoginScreen.tsx` — Replace `expo-linear-gradient` button with solid `colors.primary`
+
+#### Flat Style Design Guidelines
+- **Buttons**: `background: var(--color-accent)`, `color: white`. Hover: `var(--color-accent-strong)`
+- **Active tabs**: `background: var(--color-accent)`, `color: white`
+- **Text accents**: `color: var(--color-accent)` (no `background-clip` gradient text)
+- **Flashcards**: Front = `var(--color-accent)`, Back = `var(--color-accent-strong)`
+- **Subtle backgrounds** (count cards): `var(--color-accent-light)` (rgba variant)
+- **Page background**: Flat `var(--color-surface-bg)` — no radial gradient wash
+- **Auth background**: Flat `var(--color-surface-bg)` or subtle single-color tint
+- **Skeleton loader**: Keep gradient — it's a loading animation, not decorative
+
+#### Optional Gradient Toggle (#489, low priority)
+- `[data-style="gradient"]` CSS attribute restores all gradient declarations
+- `ThemeContext.tsx` extended with `style: 'flat' | 'gradient'` (default: `'flat'`)
+- Persisted to `localStorage` under `classbridge-style`
+- Mobile stays flat-only (no toggle)
+
+#### Status: Phase 1 — Not yet implemented
+
 ### 6.16 Layout Redesign (turbo.ai-inspired) — PLANNED
 
 A layout overhaul inspired by modern SaaS dashboards (turbo.ai), addressing prototype user feedback.
@@ -1864,6 +1916,9 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Color theme system: Hardcoded color cleanup** — Converted hardcoded hex/rgba values to CSS variables across all CSS files (IMPLEMENTED)
 - [x] **Color theme system: Dark mode** — Deep dark palette with purple glow in `[data-theme="dark"]`, ThemeContext, ThemeToggle in header (IMPLEMENTED)
 - [x] **Color theme system: Focus mode** — Warm muted tones in `[data-theme="focus"]` for study sessions (IMPLEMENTED)
+- [ ] **Flat (non-gradient) default style** — Replace 30+ gradient declarations across 13 CSS files with solid accent colors; make flat the default, gradient opt-in (#486, #487)
+- [ ] **Mobile: Remove gradient from login button** — Replace expo-linear-gradient with solid colors.primary (#488)
+- [ ] **Gradient/flat style toggle** — Optional `[data-style="gradient"]` for users who prefer gradients; ThemeContext extension (#489, low priority)
 - [x] **Make student email optional** — parent can create child with name only (no email, no login) (IMPLEMENTED)
 - [x] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional (IMPLEMENTED)
 - [x] **Parent creates courses** — allow PARENT role to create courses (private to their children) (IMPLEMENTED)
@@ -2172,6 +2227,23 @@ See §9 Mobile App Development for detailed specification.
 - [x] **Pilot onboarding docs (#362):** Welcome email template (`docs/pilot/welcome-email.md`), quick-start guide with Expo Go instructions, known limitations, and feedback mechanism (`docs/pilot/quick-start-guide.md`)
 - [ ] **Pilot launch checklist (#376):** Verify mobile connects to production API, prepare Expo Go instructions
 
+#### 9.5.5 Mobile Unit & Component Testing (#490-#494)
+
+**Framework:** Jest + React Native Testing Library (same pattern as web frontend's 319 tests)
+
+| Screen | Issue | Tests | Status |
+|--------|-------|-------|--------|
+| Test framework setup (Jest + RNTL config, mocks) | #490 | — | [ ] |
+| LoginScreen | #491 | Logo, inputs, validation, auth flow, error states | [ ] |
+| ParentDashboardScreen | #492 | Greeting, status cards, child cards, navigation | [ ] |
+| ChildOverviewScreen | #492 | Stats, assignments, tasks, completion toggle | [ ] |
+| CalendarScreen | #492 | Grid, date selection, month nav, item dots | [ ] |
+| MessagesListScreen | #493 | Conversations, unread styling, time formatting | [ ] |
+| ChatScreen | #493 | Message bubbles, send flow, date separators | [ ] |
+| NotificationsScreen | #494 | Icons, unread styling, mark read, time formatting | [ ] |
+| ProfileScreen | #494 | Avatar, stats, Google status, sign out alert | [ ] |
+| PlaceholderScreen | #494 | Smoke test | [ ] |
+
 ### 9.6 Mobile Boundary (What's Mobile vs Web-Only)
 
 **MOBILE (parent read/reply only):**
@@ -2257,7 +2329,11 @@ ClassBridgeMobile/
       EmptyState.tsx
     theme/
       index.ts           # Colors, spacing, fontSize, borderRadius
+  __tests__/             # Jest + React Native Testing Library tests
+    setup.ts             # Test setup (mocks for navigation, auth, React Query)
+    screens/             # Screen-level component tests
   app.json               # Expo configuration
+  jest.config.js         # Jest configuration
   package.json
   tsconfig.json
 ```
@@ -2897,6 +2973,12 @@ Current feature issues are tracked in GitHub:
 - Issue #67: Prevent duplicate APScheduler jobs in multi-worker deployments
 - Issue #68: Encrypt Google OAuth tokens at rest
 - Issue #69: Revisit JWT storage strategy to reduce XSS risk
+
+### UI & Theming
+- Issue #486: Flat (non-gradient) UI theme — replace gradients with solid colors (parent tracking)
+- Issue #487: Web: Replace all CSS gradient backgrounds with solid accent colors (13 CSS files)
+- Issue #488: Mobile: Remove gradient from login button and use solid theme colors
+- Issue #489: Add gradient/flat style toggle to theme system (low priority)
 
 ### Observability & Quality
 - Issue #70: Populate request.state.user_id for request logs

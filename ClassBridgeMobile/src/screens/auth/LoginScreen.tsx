@@ -11,7 +11,6 @@ import {
   Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius } from '../../theme';
 
@@ -128,18 +127,12 @@ export function LoginScreen() {
           <TouchableOpacity
             onPress={handleLogin}
             disabled={isLoading}
-            style={[isLoading && styles.loginButtonDisabled]}
+            activeOpacity={0.8}
+            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
           >
-            <LinearGradient
-              colors={['#49b8c0', '#f4801f']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.loginButton}
-            >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Text>
-            </LinearGradient>
+            <Text style={styles.loginButtonText}>
+              {isLoading ? 'Signing in...' : 'Sign In'}
+            </Text>
           </TouchableOpacity>
 
           <Text style={styles.webNote}>
@@ -220,6 +213,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   loginButton: {
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
     alignItems: 'center',

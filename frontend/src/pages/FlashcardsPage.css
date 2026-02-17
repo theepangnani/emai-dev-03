@@ -66,12 +66,12 @@
 }
 
 .flashcard-front {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
+  background: var(--color-accent);
   color: white;
 }
 
 .flashcard-back {
-  background: linear-gradient(135deg, var(--flashcard-gradient-start) 0%, var(--flashcard-gradient-end) 100%);
+  background: var(--color-accent-strong);
   color: white;
   transform: rotateY(180deg);
 }
