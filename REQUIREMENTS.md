@@ -1700,6 +1700,245 @@ Replace the static "Welcome back" dashboard greeting with role-specific inspirat
 - [x] Frontend: Dashboard greeting integration (#232)
 - [x] Backend + Frontend: Admin CRUD + re-import (#233)
 
+### 6.47 Course Planning & Guidance for High School (Phase 3)
+
+Help parents guide their high school children through course selection — from individual semester choices to a complete Grade 9-12 academic plan. All recommendations and course catalogs are scoped to the student's **school board** (e.g., TDSB, PDSB, YRDSB), since each board offers different courses, electives, and specialized programs. AI-powered recommendations ensure students stay on track for graduation and post-secondary goals.
+
+**Design Principles:**
+- **Parent-first**: Parents are the primary users; students can also self-plan
+- **School board-scoped**: Course catalogs, recommendations, and validation are tied to the student's specific school board — different boards offer different courses and pathways
+- **Ontario OSSD focus**: Built around Ontario graduation requirements; extensible to other provinces
+- **AI-assisted, not AI-driven**: AI recommends based on board offerings, parents decide
+- **Progressive planning**: Start with one semester, build up to a full 4-year plan
+- **Integrated**: Connects to existing ClassBridge data (courses, grades, analytics)
+
+#### 6.47.1 School Board Integration (Phase 3) — #511
+
+All course planning is scoped to the student's school board. Depends on Issue #113 (School & School Board model).
+
+**Data Model — `school_boards` table:**
+- `id` (PK), `name` (String — e.g., "Toronto District School Board")
+- `abbreviation` (String — e.g., "TDSB"), `province` (String — default "Ontario")
+- `website_url` (String, nullable), `course_catalog_url` (String, nullable — link to board's official course calendar)
+- `graduation_requirements_json` (JSON, nullable — board-specific requirements beyond OSSD)
+- `created_at`, `updated_at`
+
+**Student ↔ School Board:**
+- `students.school_board_id` (FK → school_boards.id, nullable) — set by parent in Edit Child modal
+- `students.school_name` (String, nullable) — specific school within the board
+- If no board selected, show all Ontario courses with a prompt to select a board for better recommendations
+
+**Seed Boards:** TDSB, PDSB, YRDSB, HDSB, OCDSB — each with their published course calendar.
+
+**API:**
+- `GET /api/school-boards/` — List all boards (for dropdown)
+- `GET /api/school-boards/{id}` — Board detail
+- `PATCH /api/parent/children/{id}` — Accept `school_board_id` field
+
+#### 6.47.2 Course Catalog (Phase 3) — #500
+
+Board-specific database of available high school courses with prerequisites, credits, and metadata. Each school board has its own catalog — different boards offer different electives, specialized programs, and pathways.
+
+**Data Model — `course_catalog` table:**
+- `id` (PK), `course_code` (String — e.g., "SBI3U", "MPM2D")
+- `course_name` (String — e.g., "Biology, Grade 11, University Prep")
+- `description` (Text), `grade_level` (Integer — 9-12)
+- `course_type` (String — mandatory, elective, AP, IB, college_prep, university_prep, open)
+- `credits` (Float — typically 1.0), `subject_area` (String — Science, Mathematics, English, Arts, etc.)
+- `stream` (String — academic, applied, open, locally_developed)
+- `is_mandatory` (Boolean), `prerequisites_json` (JSON — array of course_code strings)
+- `corequisites_json` (JSON)
+- `school_board_id` (FK → school_boards.id) — **required**; every catalog course belongs to a board
+- `availability` (String — all_schools, select_schools, online_only)
+- `special_program` (String, nullable — IB, AP, French Immersion, SHSM)
+- `province` (String — default "Ontario")
+- `created_at`, `updated_at`
+- Unique constraint on (`school_board_id`, `course_code`)
+
+**Seed Data:** Ontario OSSD Grade 9-12 courses per board, including board-specific electives and prerequisite chains (e.g., MPM1D → MPM2D → MCR3U → MHF4U/MCV4U).
+
+**API Endpoints:**
+- `GET /api/course-catalog/?school_board_id=X` — List filtered by board (+ grade_level, subject_area, course_type, stream)
+- `GET /api/course-catalog/{id}` — Detail with prerequisites resolved to full course objects
+
+#### 6.47.3 Academic Plans (Phase 3) — #501
+
+Multi-year course plan per student, created by parents or students.
+
+**Data Model — `academic_plans` table:**
+- `id` (PK), `student_id` (FK → students), `created_by_user_id` (FK → users)
+- `plan_name` (String), `start_grade` / `end_grade` (Integer), `graduation_target` (String — "OSSD")
+- `post_secondary_goal` (String, nullable — e.g., "Engineering at UofT")
+- `status` (String — draft, active, completed, archived), `notes` (Text, nullable)
+- `created_at`, `updated_at`
+
+**Data Model — `planned_courses` table:**
+- `id` (PK), `academic_plan_id` (FK → academic_plans, CASCADE)
+- `catalog_course_id` (FK → course_catalog, nullable), `custom_course_name` (String, nullable)
+- `grade_level` (Integer — 9-12), `semester` (Integer — 1 or 2)
+- `status` (String — planned, in_progress, completed, dropped)
+- `actual_grade` (Float, nullable), `notes` (String, nullable)
+- `created_at`, `updated_at`
+
+**RBAC:** Parents create/edit plans for linked children. Students create/edit own plans. Teachers view plans of students in their courses (read-only).
+
+**API Endpoints:**
+- `POST /api/academic-plans/` — Create plan
+- `GET /api/academic-plans/` — List plans (RBAC-filtered)
+- `GET /api/academic-plans/{id}` — Detail with all planned courses
+- `PATCH /api/academic-plans/{id}` — Update plan metadata
+- `DELETE /api/academic-plans/{id}` — Soft delete
+- `POST /api/academic-plans/{id}/courses` — Add course to plan
+- `PATCH /api/academic-plans/{id}/courses/{course_id}` — Update planned course
+- `DELETE /api/academic-plans/{id}/courses/{course_id}` — Remove course from plan
+
+#### 6.47.4 Prerequisite & Graduation Requirements Engine (Phase 3) — #502
+
+Validates academic plans against Ontario OSSD graduation requirements and prerequisite chains.
+
+**Ontario OSSD Requirements:**
+- 30 total credits (18 compulsory + 12 elective)
+- Compulsory: 4 English, 3 Math, 2 Science, 1 French, 1 Canadian History, 1 Canadian Geography, 1 Arts, 1 HPE, 0.5 Civics, 0.5 Career Studies + 3 from designated groups
+- 40 hours community involvement
+- OSSLT (literacy test) pass
+
+**Validation Service (`app/services/graduation_service.py`):**
+- `validate_plan(plan_id)` → total credits, compulsory checklist, prerequisite violations, schedule conflicts, missing requirements, completion percentage
+- `check_prerequisites(catalog_course_id, student_completed_courses)` → eligible boolean + missing prerequisites
+
+**API:**
+- `GET /api/academic-plans/{id}/validate` — Full plan validation report
+- `GET /api/course-catalog/{id}/check-prerequisites?student_id=X` — Eligibility check
+
+#### 6.47.5 AI Course Recommendations (Phase 3) — #503
+
+Personalized, **board-specific** course guidance using student grades, goals, and ClassBridge analytics data.
+
+**AI Service (`app/services/course_advisor_service.py`):**
+- Inputs: student's school board + its course catalog, completed courses + grades, current plan, post-secondary goal, strengths/weaknesses (from analytics), graduation status
+- Outputs: Top recommended courses **from the student's board catalog** with reasoning, pathway analysis, risk alerts, alternative paths, workload balance assessment
+- AI prompt includes board context: "Based on [Board Name]'s course offerings for Grade [X]..."
+- Uses gpt-4o-mini, on-demand generation (same cost-conscious pattern as analytics AI insights)
+- Fallback: if no board selected, use generic Ontario OSSD courses with a note to set the board
+
+**API:**
+- `POST /api/course-planning/recommend` — `{ student_id, plan_id, target_grade, target_semester }` → recommendations
+- `POST /api/course-planning/pathway-analysis` — `{ student_id, plan_id }` → full pathway review
+
+#### 6.47.6 University Pathway Alignment (Phase 3) — #506
+
+Map course plans against post-secondary program admission requirements.
+
+**Data Model — `program_requirements` table:**
+- `id`, `institution_name`, `program_name`, `faculty`
+- `required_courses_json`, `recommended_courses_json`, `minimum_average`
+- `prerequisite_courses_json`, `notes`, `url`, `province`
+
+**Features:**
+- Program search by institution, faculty, field of interest
+- Alignment check: ✅ planned/completed, ❌ missing, ⚠️ grade below competitive average
+- Gap analysis with actionable recommendations
+- Multi-program comparison (2-3 programs side-by-side)
+
+**Seed Data:** Top 10-15 Ontario university programs.
+
+**API:**
+- `GET /api/program-requirements/` — List/search
+- `GET /api/academic-plans/{id}/alignment?program_id=X` — Alignment check
+- `GET /api/academic-plans/{id}/alignment/compare?program_ids=X,Y,Z` — Multi-program comparison
+
+#### 6.47.7 Frontend — Semester Planner (Phase 3) — #504
+
+Route: `/course-planning/semester/:planId/:gradeLevel/:semester`
+
+- Course selection panel: browse available courses filtered by grade, search, prerequisite indicators (met ✅ / unmet ❌)
+- Semester schedule view: selected courses, total credits, workload balance indicator, remove button
+- Validation sidebar: real-time prerequisite check, graduation progress bar, warnings, AI recommendation prompt
+- Parent child selector dropdown (same pattern as analytics)
+
+#### 6.47.8 Frontend — Multi-Year Planner (Phase 3) — #505
+
+Route: `/course-planning/:planId`
+
+- 4-column grid (Grade 9-12) with semester rows; course cards showing name, code, credits, status badge
+- Prerequisite arrows/connections across grades
+- Color-coded by subject area
+- Top progress dashboard: credits (X/30), compulsory checklist, graduation readiness %, post-secondary alignment score
+- Actions: Add Course, Get AI Recommendations, Validate Plan, Export PDF, Share with Teacher
+- Drag-and-drop courses between semesters
+
+#### 6.47.9 Navigation & Dashboard Integration (Phase 3) — #507
+
+- "Course Planning" in DashboardLayout left nav (parent + student)
+- `/course-planning` landing page: children's plan list (parent) or own plan (student)
+- My Kids page: "Course Plan" button on child cards
+- Parent Dashboard: "Plan Courses" quick action
+
+**GitHub Issues:** #500 (catalog model), #501 (academic plan model), #502 (graduation engine), #503 (AI recommendations), #504 (semester planner UI), #505 (multi-year planner UI), #506 (university alignment), #507 (navigation integration), #508 (tests), #511 (school board integration)
+
+### 6.48 Welcome & Verification Acknowledgement Emails (Phase 1)
+
+Send branded lifecycle emails at two key registration milestones to welcome users and drive engagement with ClassBridge features.
+
+**GitHub Issues:** #509 (welcome email on registration), #510 (acknowledgement email after verification)
+
+#### 6.48.1 Welcome Email on Registration — #509
+
+Immediately after a user registers on ClassBridge, send a branded welcome email introducing the platform and encouraging them to get started. This is sent alongside the existing verification email (§6.44) and serves a different purpose — the verification email asks them to confirm their address, while the welcome email introduces ClassBridge features.
+
+**Template:** `app/templates/welcome.html`
+
+**Content:**
+- Greeting: "Welcome to ClassBridge, {{user_name}}!"
+- Brief intro: "ClassBridge connects parents, students, and teachers in one platform"
+- Feature highlights (3-4 bullet points with icons):
+  - AI-powered study tools (study guides, quizzes, flashcards)
+  - Google Classroom integration
+  - Parent-teacher messaging
+  - Task management & calendar
+- CTA button: "Get Started" → `{{app_url}}/login`
+- Footer: inspiration message via `add_inspiration_to_email()`
+
+**Backend:**
+- Create `app/templates/welcome.html` matching existing email template style (ClassBridge logo, indigo `#4f46e5` accent bar, white card, responsive table layout)
+- In `auth.py` `register()`: call `send_email_sync()` with welcome template after registration (after verification email send, non-blocking best-effort)
+- Skip for Google OAuth signups (they already went through the Google consent flow)
+
+**Subject line:** "Welcome to ClassBridge — Let's Get Started!"
+
+#### 6.48.2 Verification Acknowledgement Email — #510
+
+After a user successfully verifies their email via the verification link (§6.44), send a detailed acknowledgement/marketing email confirming verification and showcasing ClassBridge features to drive first-session engagement.
+
+**Template:** `app/templates/email_verified_welcome.html`
+
+**Content:**
+- Greeting: "Hi {{user_name}}, your email is verified!"
+- Confirmation message: "You're all set — your ClassBridge account is fully activated"
+- Detailed feature showcase (with descriptive paragraphs, not just bullets):
+  - AI Study Tools — Generate study guides, practice quizzes, and flashcards from any course material
+  - Google Classroom — Import courses, assignments, and grades with one click
+  - Smart Calendar — Track assignments and tasks across all courses in one view
+  - Parent-Teacher Messaging — Communicate directly with teachers in a secure channel
+  - Task Management — Create tasks, set reminders, and stay organized
+- CTA button: "Explore Your Dashboard" → `{{app_url}}/dashboard`
+- Footer: inspiration message via `add_inspiration_to_email()`
+
+**Backend:**
+- Create `app/templates/email_verified_welcome.html` matching existing email template style
+- In `auth.py` `verify_email()`: send acknowledgement email after successful verification (non-blocking best-effort)
+- Do NOT send if verification fails (bad token, expired token, already verified)
+
+**Subject line:** "You're Verified — Explore Everything ClassBridge Has to Offer"
+
+**Sub-tasks:**
+- [ ] Backend: Create `welcome.html` email template (#509)
+- [ ] Backend: Send welcome email on registration in `auth.py` (#509)
+- [ ] Backend: Create `email_verified_welcome.html` email template (#510)
+- [ ] Backend: Send acknowledgement email on verification in `auth.py` (#510)
+- [ ] Tests: Welcome email on registration (sent, skipped for Google OAuth) (#509)
+- [ ] Tests: Acknowledgement email on verification (sent on success, skipped on failure) (#510)
+
 ---
 
 ## 7. Role-Based Dashboards - IMPLEMENTED
@@ -1952,6 +2191,8 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [ ] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260)
 - [ ] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412)
 - [ ] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414)
+- [ ] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509)
+- [ ] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510)
 
 #### Architecture Foundation (Tier 0)
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
@@ -2085,7 +2326,17 @@ See §9 Mobile App Development for detailed specification.
 
 **GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
 
-### Phase 3
+### Phase 3 (Course Planning & Guidance)
+- [ ] **School Board Integration** — Board-specific course catalogs, student ↔ board linking, board selection in Edit Child modal; seed 5 Ontario boards (TDSB, PDSB, YRDSB, HDSB, OCDSB) (#511, depends on #113)
+- [ ] **Course Catalog Model** — Board-scoped high school course database with prerequisites, credits, grade levels, subject areas, streams, specialized programs (IB/AP/SHSM); seed per-board Ontario OSSD courses (#500)
+- [ ] **Academic Plan Model** — Multi-year course plan per student (Grade 9-12) with semester breakdown, planned/in-progress/completed statuses; parent + student CRUD with RBAC (#501)
+- [ ] **Prerequisite & Graduation Requirements Engine** — Validate plans against OSSD rules (30 credits, 18 compulsory), prerequisite chain checks, completion scoring, gap detection (#502)
+- [ ] **AI Course Recommendations** — Board-specific personalized guidance using student grades, goals, and analytics; on-demand generation (gpt-4o-mini); pathway analysis and risk alerts (#503)
+- [ ] **Semester Planner UI** — Course selection per semester with prerequisite indicators, credit counter, workload balance, real-time validation (#504)
+- [ ] **Multi-Year Planner UI** — Visual Grade 9-12 grid with course cards, prerequisite arrows, subject color coding, graduation progress dashboard, drag-and-drop (#505)
+- [ ] **University Pathway Alignment** — Map plans to post-secondary program admission requirements; gap analysis, multi-program comparison; seed top Ontario university programs (#506)
+- [ ] **Course Planning Navigation & Dashboard Integration** — Nav links, landing page, My Kids integration, Parent Dashboard quick actions (#507)
+- [ ] **Course Planning Tests** — 20+ backend route tests, 10+ frontend component tests (#508)
 - [ ] Multi-language support
 - [ ] Advanced AI personalization
 - [ ] Admin analytics
@@ -2764,6 +3015,8 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #193: Task list: click task row to navigate to task detail page~~ ✅
 - Issue #194: Rename 'Study Guide' to 'Course Material' across UI and navigation
 - ~~Issue #420: Frontend: Add show/hide password toggle to all auth pages~~ ✅
+- Issue #509: Send welcome email after user registration
+- Issue #510: Send acknowledgement email after email verification
 - ~~Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)~~ ✅
 - ~~Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)~~ ✅
 - ~~Issue #171: Color theme: Focus mode (muted warm tones for study sessions)~~ ✅
@@ -2905,7 +3158,19 @@ Current feature issues are tracked in GitHub:
 ### Phase 2+ (Future)
 - Issue #192: ~~Native mobile apps~~ → SUPERSEDED by #364-#380
 
-### Phase 3+
+### Phase 3 — Course Planning & Guidance (#500-#511)
+- Issue #511: School Board Integration — board-specific catalogs, student ↔ board linking (depends on #113)
+- Issue #500: Course Catalog Model — board-scoped high school course database with prerequisites, credits, grade levels
+- Issue #501: Academic Plan Model — multi-year high school course plan per student
+- Issue #502: Prerequisite & Graduation Requirements Engine — validate plans against OSSD rules
+- Issue #503: AI Course Recommendations — board-specific personalized guidance based on student profile and goals
+- Issue #504: Semester Planner UI — select and arrange courses per semester
+- Issue #505: Multi-Year High School Planner UI — visual Grade 9-12 course map
+- Issue #506: University Pathway Alignment — map course plans to post-secondary program requirements
+- Issue #507: Course Planning Navigation & Dashboard Integration
+- Issue #508: Course Planning Tests — backend + frontend test coverage
+
+### Phase 4+
 - Issue #30: Tutor Marketplace
 - Issue #31: AI Email Communication Agent
 

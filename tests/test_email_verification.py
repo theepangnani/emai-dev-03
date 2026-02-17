@@ -35,17 +35,18 @@ class TestRegistrationSendsVerification:
         resp = _register(client, "verify_send@test.com")
         assert resp.status_code == 200
         assert resp.json()["email_verified"] is False
-        mock_send.assert_called_once()
-        call_args = mock_send.call_args
-        assert call_args.kwargs["to_email"] == "verify_send@test.com"
-        assert "Verify Your Email" in call_args.kwargs["subject"]
+        # Sends both verification and welcome emails
+        assert mock_send.call_count == 2
+        verify_call = mock_send.call_args_list[0]
+        assert verify_call.kwargs["to_email"] == "verify_send@test.com"
+        assert "Verify Your Email" in verify_call.kwargs["subject"]
 
     @patch("app.api.routes.auth.send_email_sync")
     def test_google_signup_auto_verified(self, mock_send, client):
         resp = _register(client, "google_verify@test.com", google_id="gid-123")
         assert resp.status_code == 200
         assert resp.json()["email_verified"] is True
-        # Should NOT send verification email for Google signups
+        # Should NOT send verification or welcome email for Google signups
         mock_send.assert_not_called()
 
 
@@ -131,3 +132,57 @@ class TestMeIncludesEmailVerified:
         resp = client.get("/api/users/me", headers=headers)
         assert resp.status_code == 200
         assert resp.json()["email_verified"] is True
+
+
+class TestWelcomeEmail:
+    @patch("app.api.routes.auth.send_email_sync")
+    def test_register_sends_welcome_email(self, mock_send, client):
+        resp = _register(client, "welcome_test@test.com")
+        assert resp.status_code == 200
+        # Second call should be the welcome email
+        assert mock_send.call_count == 2
+        welcome_call = mock_send.call_args_list[1]
+        assert welcome_call.kwargs["to_email"] == "welcome_test@test.com"
+        assert "Welcome" in welcome_call.kwargs["subject"]
+
+    @patch("app.api.routes.auth.send_email_sync")
+    def test_google_signup_skips_welcome_email(self, mock_send, client):
+        resp = _register(client, "google_welcome@test.com", google_id="gid-welcome")
+        assert resp.status_code == 200
+        mock_send.assert_not_called()
+
+
+class TestVerificationAckEmail:
+    @patch("app.api.routes.auth.send_email_sync")
+    def test_verify_sends_ack_email(self, mock_send, client):
+        _register(client, "ack_test@test.com")
+        mock_send.reset_mock()  # Clear registration emails
+
+        token = _make_verify_token("ack_test@test.com")
+        resp = client.post("/api/auth/verify-email", json={"token": token})
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "Email verified successfully"
+        mock_send.assert_called_once()
+        call_args = mock_send.call_args
+        assert call_args.kwargs["to_email"] == "ack_test@test.com"
+        assert "Verified" in call_args.kwargs["subject"]
+
+    @patch("app.api.routes.auth.send_email_sync")
+    def test_already_verified_skips_ack_email(self, mock_send, client):
+        _register(client, "ack_dup@test.com")
+        token = _make_verify_token("ack_dup@test.com")
+        # Verify once
+        client.post("/api/auth/verify-email", json={"token": token})
+        mock_send.reset_mock()  # Clear all previous emails
+
+        # Verify again — should NOT send ack email
+        resp = client.post("/api/auth/verify-email", json={"token": token})
+        assert resp.status_code == 200
+        assert "already verified" in resp.json()["message"].lower()
+        mock_send.assert_not_called()
+
+    @patch("app.api.routes.auth.send_email_sync")
+    def test_invalid_token_skips_ack_email(self, mock_send, client):
+        resp = client.post("/api/auth/verify-email", json={"token": "bad-token"})
+        assert resp.status_code == 400
+        mock_send.assert_not_called()
