@@ -38,6 +38,7 @@ export function ParentDashboard() {
   const [allOverviews, setAllOverviews] = useState<ChildOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [overviewLoading, setOverviewLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState(false);
 
   // Dashboard summary data (from single API call)
   const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
@@ -159,7 +160,7 @@ export function ParentDashboard() {
       }
       childEmails = new Set(data.children.map(c => c.email?.toLowerCase()).filter(Boolean) as string[]);
     } catch {
-      // Failed to load dashboard
+      setDashboardError(true);
     } finally {
       setLoading(false);
       setOverviewLoading(false);
@@ -869,7 +870,17 @@ export function ParentDashboard() {
         { label: '+ Create Course Material', onClick: () => setShowStudyModal(true) },
       ]}
     >
-      {children.length === 0 ? (
+      {dashboardError ? (
+        <div className="no-children-state">
+          <h3>Unable to Load Dashboard</h3>
+          <p>Something went wrong while loading your dashboard. Please try refreshing the page.</p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+            <button className="link-child-btn" onClick={() => window.location.reload()}>
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      ) : children.length === 0 ? (
         <div className="no-children-state">
           <h3>Get Started</h3>
           <p>Add your child to start managing their education. No school account required!</p>
