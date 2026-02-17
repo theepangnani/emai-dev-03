@@ -1,0 +1,33 @@
+.faq-error-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-top: 6px;
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-light);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.faq-error-hint-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.faq-error-hint-link {
+  border: none;
+  background: transparent;
+  color: var(--color-accent-strong);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.faq-error-hint-link:hover {
+  color: var(--color-accent);
+}

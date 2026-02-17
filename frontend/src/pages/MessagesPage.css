@@ -38,10 +38,7 @@
   font-size: 24px;
   font-weight: 700;
   font-family: var(--font-display);
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-accent);
   margin: 0;
 }
 
@@ -57,7 +54,7 @@
 }
 
 .new-message-btn {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
+  background: var(--color-accent);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -361,7 +358,7 @@
 
 .message.sent {
   align-self: flex-end;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
+  background: var(--color-accent);
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -420,7 +417,7 @@
 }
 
 .send-button {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
+  background: var(--color-accent);
   color: white;
   border: none;
   padding: 12px 24px;

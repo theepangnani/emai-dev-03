@@ -70,6 +70,9 @@ vi.mock('../api/client', () => ({
   inspirationApi: {
     getRandom: vi.fn().mockRejectedValue(new Error('none')),
   },
+  faqApi: {
+    getByErrorCode: vi.fn().mockRejectedValue(new Error('not found')),
+  },
 }))
 
 vi.mock('../components/NotificationBell', () => ({

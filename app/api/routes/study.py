@@ -360,7 +360,12 @@ async def generate_study_guide_endpoint(
             due_date=due_date,
         )
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
+        raise_with_faq_hint(
+            status_code=500,
+            detail=str(e),
+            faq_code=AI_GENERATION_FAILED,
+        )
 
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)

@@ -255,9 +255,11 @@ def get_google_courses(
 ):
     """List all Google Classroom courses for the authenticated user."""
     if not current_user.google_access_token:
-        raise HTTPException(
+        from app.core.faq_errors import raise_with_faq_hint, GOOGLE_NOT_CONNECTED
+        raise_with_faq_hint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not connected to Google Classroom",
+            faq_code=GOOGLE_NOT_CONNECTED,
         )
 
     courses, credentials = list_courses(
@@ -339,9 +341,11 @@ def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
         )
     except Exception as e:
         logger.warning(f"Failed to list Google courses for user {user.id}: {e}")
-        raise HTTPException(
+        from app.core.faq_errors import raise_with_faq_hint, GOOGLE_SYNC_FAILED
+        raise_with_faq_hint(
             status_code=502,
             detail="Failed to fetch courses from Google Classroom. The Google connection may have expired — please reconnect Google.",
+            faq_code=GOOGLE_SYNC_FAILED,
         )
     update_user_tokens(user, credentials, db)
 

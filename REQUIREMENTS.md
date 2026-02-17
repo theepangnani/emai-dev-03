@@ -319,10 +319,49 @@ Dedicated page for viewing and managing a single course and its content:
 - **Navigation** — Course cards expand inline to show a materials preview panel; a "View Details" button navigates to the full detail page
 - **Role-aware UI** — All roles can view course materials; management buttons (Add Content, Upload Document, Create Task, Edit Course) only visible to course creator/admin
 
-### 6.5 Performance Analytics (Phase 2)
-- Subject-level insights
-- Trend analysis
-- Weekly progress reports
+### 6.5 Performance Analytics (Phase 2) - IMPLEMENTED
+
+Grade tracking and analytics dashboard for parents and students. Provides performance summaries, subject-level insights, grade trends over time, AI-powered recommendations, and weekly progress reports.
+
+**Data Model:**
+- `grade_records` — Analytics source of truth: student_id, course_id, assignment_id (nullable for course-level grades), grade, max_grade, percentage (pre-computed), source (google_classroom/manual/seed), recorded_at. Indexed on (student_id, course_id) and (student_id, recorded_at).
+- `StudentAssignment` (existing) — Google Classroom sync target with grade, status, submitted_at; feeds into grade_records via sync service
+- `progress_reports` — Cached weekly/monthly reports: student_id, report_type, period_start/end, data (JSON Text for SQLite compat), generated_at. 24h TTL before recomputation.
+
+**Grade Data Pipeline:**
+- Google Classroom submissions synced → `StudentAssignment` → `GradeRecord` (with pre-computed percentage)
+- `GradeRecord.assignment_id` is nullable to support future course-level grades (midterms, finals, manual entry)
+- `source` column tracks origin: `google_classroom`, `manual`, `seed`
+- Seed service provides 26 demo grade records across 3 courses with 60-day date spread
+- `_upsert_grade_record()` in grade_sync_service handles create-or-update logic
+
+**Analytics Service (app/services/analytics_service.py):**
+- `get_graded_assignments()` — paginated grades from GradeRecord with pre-computed percentages
+- `compute_summary()` — overall average, per-course averages, completion rate, trend detection
+- `compute_trend_points()` — chronological trend data points filtered by date range and optional course
+- `determine_trend()` — first-third vs last-third average comparison with 3-point threshold
+- `get_or_create_weekly_report()` — cached weekly ProgressReport with 24h TTL
+- `generate_ai_insight()` — on-demand AI analysis via OpenAI (gpt-4o-mini)
+
+**API Endpoints (all implemented):**
+- `GET /api/analytics/grades?student_id=&course_id=&limit=&offset=` — paginated grade records
+- `GET /api/analytics/summary?student_id=` — overall + per-course averages, trend, completion rate
+- `GET /api/analytics/trends?student_id=&course_id=&days=90` — chronological trend points
+- `POST /api/analytics/ai-insights` (body: student_id, focus_area) — AI-generated recommendations
+- `GET /api/analytics/reports/weekly?student_id=` — cached weekly progress report
+- `POST /api/analytics/sync-grades?student_id=` — trigger Google Classroom grade sync
+
+**RBAC:** Parents see linked children, students see own data, teachers see their course students, admins see all. Enforced via `_get_student_or_403()` helper.
+
+**Frontend (implemented):**
+- `/analytics` page with Recharts: grade trend LineChart, course averages BarChart, summary cards (average, completion, graded count, trend badge)
+- Child selector dropdown for parents with multiple children
+- AI insights panel with on-demand "Generate AI Insights" button (manages API costs)
+- Recent grades table with assignment, course, grade, and due date columns
+- Time range filter (30d/60d/90d/All) and course filter for trend chart
+- 14 backend tests + 6 frontend tests
+
+**GitHub Issues:** #469 (grade data pipeline — closed), #470 (aggregation service + API — closed), #471 (frontend charts — closed), #472 (AI insights — closed), #473 (weekly reports — closed), #474 (test expansion — open)
 
 ### 6.6 Communication (Phase 1) - IMPLEMENTED
 - Secure Parent <-> Teacher messaging
@@ -627,6 +666,58 @@ The platform uses ClassBridge logo files in multiple locations with theme-aware 
 - Build output: `frontend/dist/*.{png,ico,svg}` (copied during build)
 
 **Status:** Phase 1.5 — IMPLEMENTED (#308, #309, #427) ✅ (Feb 2026, commits 619e42b, d7bb5ce, cdaf63e–000e526)
+
+### 6.15.2 Flat (Non-Gradient) Default Style (Phase 1)
+
+Replace all gradient UI styling with solid accent colors across web and mobile. This is a direct response to user feedback that the gradient style (teal-to-orange diagonal gradients on buttons, tabs, backgrounds) feels too flashy and distracting.
+
+**GitHub Issues:** #486 (parent), #487 (web CSS), #488 (mobile), #489 (gradient toggle)
+
+#### Design Decision
+- **Default style: Flat/Solid** — all buttons, tabs, backgrounds, and text accents use solid `var(--color-accent)` instead of `linear-gradient()`
+- **Gradient available as opt-in** — users who prefer the old gradient look can re-enable via a style toggle (low priority, #489)
+- **Mobile: Flat only** — no gradient style option on mobile
+
+#### Scope (30+ gradient instances across 14 files)
+
+**Web Frontend (13 CSS files):**
+
+| File | Elements Affected |
+|------|-------------------|
+| `index.css` | Body background (radial wash), dot pattern |
+| `Auth.css` | Auth page background, login/register button |
+| `Dashboard.css` | Logo text, messages button, active sidebar link, generate/create buttons |
+| `MessagesPage.css` | Page title text, new message button, sent message bubble, send button |
+| `MyKidsPage.css` | Active child tab, mykids button, study count card, link-child buttons |
+| `ParentDashboard.css` | Active child tab, study count card, link-child buttons |
+| `CoursesPage.css` | Active child tab |
+| `FlashcardsPage.css` | Flashcard front/back faces |
+| `Calendar.css` | Primary action button in calendar popover |
+| `NotificationBell.css` | Notification action button |
+| `AdminDashboard.css` | Admin submit button |
+| `TeacherCommsPage.css` | AI summary card |
+| `AnalyticsPage.css` | AI insights button |
+
+**Mobile App (1 file):**
+- `LoginScreen.tsx` — Replace `expo-linear-gradient` button with solid `colors.primary`
+
+#### Flat Style Design Guidelines
+- **Buttons**: `background: var(--color-accent)`, `color: white`. Hover: `var(--color-accent-strong)`
+- **Active tabs**: `background: var(--color-accent)`, `color: white`
+- **Text accents**: `color: var(--color-accent)` (no `background-clip` gradient text)
+- **Flashcards**: Front = `var(--color-accent)`, Back = `var(--color-accent-strong)`
+- **Subtle backgrounds** (count cards): `var(--color-accent-light)` (rgba variant)
+- **Page background**: Flat `var(--color-surface-bg)` — no radial gradient wash
+- **Auth background**: Flat `var(--color-surface-bg)` or subtle single-color tint
+- **Skeleton loader**: Keep gradient — it's a loading animation, not decorative
+
+#### Optional Gradient Toggle (#489, low priority)
+- `[data-style="gradient"]` CSS attribute restores all gradient declarations
+- `ThemeContext.tsx` extended with `style: 'flat' | 'gradient'` (default: `'flat'`)
+- Persisted to `localStorage` under `classbridge-style`
+- Mobile stays flat-only (no toggle)
+
+#### Status: Phase 1 — Not yet implemented
 
 ### 6.16 Layout Redesign (turbo.ai-inspired) — PLANNED
 
@@ -1825,6 +1916,9 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 - [x] **Color theme system: Hardcoded color cleanup** — Converted hardcoded hex/rgba values to CSS variables across all CSS files (IMPLEMENTED)
 - [x] **Color theme system: Dark mode** — Deep dark palette with purple glow in `[data-theme="dark"]`, ThemeContext, ThemeToggle in header (IMPLEMENTED)
 - [x] **Color theme system: Focus mode** — Warm muted tones in `[data-theme="focus"]` for study sessions (IMPLEMENTED)
+- [ ] **Flat (non-gradient) default style** — Replace 30+ gradient declarations across 13 CSS files with solid accent colors; make flat the default, gradient opt-in (#486, #487)
+- [ ] **Mobile: Remove gradient from login button** — Replace expo-linear-gradient with solid colors.primary (#488)
+- [ ] **Gradient/flat style toggle** — Optional `[data-style="gradient"]` for users who prefer gradients; ThemeContext extension (#489, low priority)
 - [x] **Make student email optional** — parent can create child with name only (no email, no login) (IMPLEMENTED)
 - [x] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional (IMPLEMENTED)
 - [x] **Parent creates courses** — allow PARENT role to create courses (private to their children) (IMPLEMENTED)
@@ -1918,7 +2012,7 @@ Parents and students have a **many-to-many** relationship via the `parent_studen
 
 ### Phase 2
 - [ ] TeachAssist integration
-- [ ] Performance analytics dashboard
+- [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [ ] Advanced notifications
 - [ ] Notes & project tracking tools
 - [ ] Data privacy & user rights (account deletion, data export, consent)
@@ -2133,6 +2227,23 @@ See §9 Mobile App Development for detailed specification.
 - [x] **Pilot onboarding docs (#362):** Welcome email template (`docs/pilot/welcome-email.md`), quick-start guide with Expo Go instructions, known limitations, and feedback mechanism (`docs/pilot/quick-start-guide.md`)
 - [ ] **Pilot launch checklist (#376):** Verify mobile connects to production API, prepare Expo Go instructions
 
+#### 9.5.5 Mobile Unit & Component Testing (#490-#494)
+
+**Framework:** Jest + React Native Testing Library (same pattern as web frontend's 319 tests)
+
+| Screen | Issue | Tests | Status |
+|--------|-------|-------|--------|
+| Test framework setup (Jest + RNTL config, mocks) | #490 | — | [ ] |
+| LoginScreen | #491 | Logo, inputs, validation, auth flow, error states | [ ] |
+| ParentDashboardScreen | #492 | Greeting, status cards, child cards, navigation | [ ] |
+| ChildOverviewScreen | #492 | Stats, assignments, tasks, completion toggle | [ ] |
+| CalendarScreen | #492 | Grid, date selection, month nav, item dots | [ ] |
+| MessagesListScreen | #493 | Conversations, unread styling, time formatting | [ ] |
+| ChatScreen | #493 | Message bubbles, send flow, date separators | [ ] |
+| NotificationsScreen | #494 | Icons, unread styling, mark read, time formatting | [ ] |
+| ProfileScreen | #494 | Avatar, stats, Google status, sign out alert | [ ] |
+| PlaceholderScreen | #494 | Smoke test | [ ] |
+
 ### 9.6 Mobile Boundary (What's Mobile vs Web-Only)
 
 **MOBILE (parent read/reply only):**
@@ -2218,7 +2329,11 @@ ClassBridgeMobile/
       EmptyState.tsx
     theme/
       index.ts           # Colors, spacing, fontSize, borderRadius
+  __tests__/             # Jest + React Native Testing Library tests
+    setup.ts             # Test setup (mocks for navigation, auth, React Query)
+    screens/             # Screen-level component tests
   app.json               # Expo configuration
+  jest.config.js         # Jest configuration
   package.json
   tsconfig.json
 ```
@@ -2675,10 +2790,18 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #207: Parent Dashboard: Calendar default expanded on all screen sizes~~ ✅
 
 ### Phase 2
-- Issue #26: Performance Analytics Dashboard
+- Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)
 - Issue #27: Notes & Project Tracking Tools
 - Issue #29: TeachAssist Integration
 - Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
+
+### Phase 2 — Performance Analytics (#26) ✅ COMPLETE
+- ~~Issue #469: Analytics: Grade data pipeline (GradeRecord model, sync service, seed service)~~ ✅
+- ~~Issue #470: Analytics: Backend aggregation service and API endpoints~~ ✅
+- ~~Issue #471: Analytics: Frontend dashboard with Recharts (LineChart, BarChart, summary cards)~~ ✅
+- ~~Issue #472: Analytics: AI-powered performance insights (on-demand via OpenAI)~~ ✅
+- ~~Issue #473: Analytics: Weekly cached progress reports (ProgressReport model, 24h TTL)~~ ✅
+- Issue #474: Analytics: Test expansion (14 backend + 6 frontend tests written; more coverage possible)
 
 ### Phase 2 — FAQ / Knowledge Base
 - Issue #437: FAQ: Backend models — FAQQuestion + FAQAnswer tables
@@ -2850,6 +2973,12 @@ Current feature issues are tracked in GitHub:
 - Issue #67: Prevent duplicate APScheduler jobs in multi-worker deployments
 - Issue #68: Encrypt Google OAuth tokens at rest
 - Issue #69: Revisit JWT storage strategy to reduce XSS risk
+
+### UI & Theming
+- Issue #486: Flat (non-gradient) UI theme — replace gradients with solid colors (parent tracking)
+- Issue #487: Web: Replace all CSS gradient backgrounds with solid accent colors (13 CSS files)
+- Issue #488: Mobile: Remove gradient from login button and use solid theme colors
+- Issue #489: Add gradient/flat style toggle to theme system (low priority)
 
 ### Observability & Quality
 - Issue #70: Populate request.state.user_id for request logs

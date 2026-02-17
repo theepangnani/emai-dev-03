@@ -14,6 +14,8 @@ from app.models.audit_log import AuditLog, AuditAction
 from app.models.inspiration_message import InspirationMessage
 from app.models.broadcast import Broadcast
 from app.models.teacher_google_account import TeacherGoogleAccount
+from app.models.faq import FAQQuestion, FAQAnswer, FAQCategory, FAQQuestionStatus, FAQAnswerStatus
+from app.models.analytics import GradeRecord, ProgressReport
 
 __all__ = [
     "User",
@@ -40,4 +42,11 @@ __all__ = [
     "InspirationMessage",
     "Broadcast",
     "TeacherGoogleAccount",
+    "FAQQuestion",
+    "FAQAnswer",
+    "FAQCategory",
+    "FAQQuestionStatus",
+    "FAQAnswerStatus",
+    "GradeRecord",
+    "ProgressReport",
 ]

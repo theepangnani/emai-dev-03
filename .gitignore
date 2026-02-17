@@ -49,6 +49,9 @@ frontend/test-results/
 *deploy-key*.json
 *credentials*.json
 
+# Smoke test output
+smoke-results.json
+
 # Temp files
 ERROR
 WARNING

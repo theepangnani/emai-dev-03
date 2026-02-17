@@ -273,9 +273,7 @@ body {
   margin: 0;
   min-width: 320px;
   color: var(--color-ink);
-  background: radial-gradient(circle at top left, var(--bg-gradient-1), transparent 45%),
-    radial-gradient(circle at 15% 80%, var(--bg-gradient-2), transparent 55%),
-    var(--color-surface-bg);
+  background: var(--color-surface-bg);
   min-height: 100vh;
 }
 

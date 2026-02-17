@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -54,8 +55,11 @@ export function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <MaterialIcons name="school" size={56} color={colors.primary} />
-          <Text style={styles.title}>ClassBridge</Text>
+          <Image
+            source={require('../../../assets/classbridge-logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.subtitle}>Parent Mobile App</Text>
         </View>
 
@@ -121,9 +125,10 @@ export function LoginScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={isLoading}
+            activeOpacity={0.8}
+            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
           >
             <Text style={styles.loginButtonText}>
               {isLoading ? 'Signing in...' : 'Sign In'}
@@ -153,16 +158,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xxxl,
   },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: spacing.md,
+  logo: {
+    width: 260,
+    height: 120,
   },
   subtitle: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   form: {
     backgroundColor: colors.surface,

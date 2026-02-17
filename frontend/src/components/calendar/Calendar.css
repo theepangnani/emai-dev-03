@@ -459,7 +459,7 @@
 }
 
 .cal-popover-icon-btn.primary {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  background: var(--color-accent);
   border-color: transparent;
 }
 
