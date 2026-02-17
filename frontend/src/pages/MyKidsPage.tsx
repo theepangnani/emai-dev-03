@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { parentApi, courseContentsApi, tasksApi } from '../api/client';
+import { parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
@@ -47,6 +47,14 @@ export function MyKidsPage() {
   const [showTasks, setShowTasks] = useState(true);
   const [showTeachers, setShowTeachers] = useState(true);
 
+  // Reassign course material to course
+  const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
+  const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
+  const [categorizeCourseId, setCategorizeCourseId] = useState<number | string>('');
+  const [categorizeSearch, setCategorizeSearch] = useState('');
+  const [categorizeNewName, setCategorizeNewName] = useState('');
+  const [categorizeCreating, setCategorizeCreating] = useState(false);
+
   // Add teacher modal
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [teacherEmail, setTeacherEmail] = useState('');
@@ -89,11 +97,13 @@ export function MyKidsPage() {
       courseContentsApi.listAll({ student_user_id: child.user_id }),
       tasksApi.list({ assigned_to_user_id: child.user_id }),
       parentApi.getLinkedTeachers(selectedChild),
-    ]).then(([ov, mats, tks, teachers]) => {
+      coursesApi.list(),
+    ]).then(([ov, mats, tks, teachers, courseList]) => {
       setOverview(ov);
       setMaterials(mats.filter(m => !m.archived_at));
       setTasks(tks.filter(t => !t.archived_at));
       setLinkedTeachers(teachers);
+      setCourses(courseList);
     }).catch(() => {
       setOverview(null);
       setMaterials([]);
@@ -154,6 +164,40 @@ export function MyKidsPage() {
       </DashboardLayout>
     );
   }
+
+  const openReassignModal = (m: CourseContentItem) => {
+    setReassignContent(m);
+    setCategorizeCourseId('');
+    setCategorizeSearch('');
+    setCategorizeNewName('');
+  };
+
+  const handleReassignContent = async (courseId?: number) => {
+    if (!reassignContent) return;
+    const targetCourseId = courseId ?? (categorizeCourseId ? Number(categorizeCourseId) : null);
+    if (!targetCourseId) return;
+    try {
+      await courseContentsApi.update(reassignContent.id, { course_id: targetCourseId });
+      // Update local state
+      setMaterials(prev => prev.map(m =>
+        m.id === reassignContent.id
+          ? { ...m, course_id: targetCourseId, course_name: courses.find(c => c.id === targetCourseId)?.name ?? null }
+          : m
+      ));
+      setReassignContent(null);
+    } catch { /* ignore */ }
+  };
+
+  const handleCreateAndReassign = async () => {
+    if (!reassignContent || !categorizeNewName.trim()) return;
+    setCategorizeCreating(true);
+    try {
+      const newCourse = await coursesApi.create({ name: categorizeNewName.trim() });
+      setCourses(prev => [...prev, newCourse]);
+      await handleReassignContent(newCourse.id);
+    } catch { /* ignore */ }
+    setCategorizeCreating(false);
+  };
 
   return (
     <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management">
@@ -272,7 +316,14 @@ export function MyKidsPage() {
                 {materials.length === 0 ? (
                   <p className="mykids-empty-hint">No course materials yet.</p>
                 ) : materials.map(m => (
-                  <div key={m.id} className="mykids-item-card" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                  <div key={m.id} className="mykids-item-card mykids-item-card--material" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                    <div className="mykids-item-card-actions">
+                      <button
+                        className="mykids-item-action-btn"
+                        title="Move to course"
+                        onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
+                      >&#128194;</button>
+                    </div>
                     <div className="mykids-item-title">{m.title}</div>
                     <div className="mykids-item-sub">
                       <span className="mykids-badge">{m.content_type}</span>
@@ -440,6 +491,56 @@ export function MyKidsPage() {
               >
                 {addTeacherLoading ? 'Adding...' : 'Add Teacher'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Reassign course material to course modal */}
+      {reassignContent && (
+        <div className="modal-overlay" onClick={() => setReassignContent(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Move to Course</h2>
+            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a course.</p>
+            <div className="modal-form">
+              <input
+                type="text"
+                placeholder="Search courses or type a new name..."
+                value={categorizeSearch}
+                onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
+                autoFocus
+              />
+              <div className="categorize-list">
+                {courses
+                  .filter(c => !categorizeSearch || c.name.toLowerCase().includes(categorizeSearch.toLowerCase()))
+                  .map(c => (
+                    <div
+                      key={c.id}
+                      className={`categorize-item${categorizeCourseId === c.id ? ' selected' : ''}${c.id === reassignContent.course_id ? ' current' : ''}`}
+                      onClick={() => { setCategorizeCourseId(c.id); setCategorizeNewName(''); }}
+                    >
+                      &#127891; {c.name}{c.id === reassignContent.course_id ? ' (current)' : ''}
+                    </div>
+                  ))
+                }
+                {categorizeSearch.trim() && !courses.some(c => c.name.toLowerCase() === categorizeSearch.trim().toLowerCase()) && (
+                  <div
+                    className={`categorize-item create-new${categorizeNewName ? ' selected' : ''}`}
+                    onClick={() => { setCategorizeNewName(categorizeSearch.trim()); setCategorizeCourseId(''); }}
+                  >
+                    &#10133; Create &ldquo;{categorizeSearch.trim()}&rdquo;
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setReassignContent(null)}>Cancel</button>
+              {categorizeNewName ? (
+                <button className="generate-btn" disabled={categorizeCreating} onClick={handleCreateAndReassign}>
+                  {categorizeCreating ? 'Creating...' : 'Create & Move'}
+                </button>
+              ) : (
+                <button className="generate-btn" disabled={!categorizeCourseId || categorizeCourseId === reassignContent.course_id} onClick={() => handleReassignContent()}>Move</button>
+              )}
             </div>
           </div>
         </div>
