@@ -110,22 +110,108 @@ def extract_text_from_pdf(file_content: bytes) -> str:
         raise FileProcessingError(f"Failed to extract text from PDF: {str(e)}")
 
 
+def _extract_text_from_docx_textboxes(doc) -> list[str]:
+    """Extract text from text boxes and shapes in a Word document via XML."""
+    text_parts = []
+    nsmap = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    for txbx in doc.element.body.iter(
+        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}txbxContent"
+    ):
+        for paragraph in txbx.findall(".//w:p", nsmap):
+            runs = paragraph.findall(".//w:r/w:t", nsmap)
+            para_text = "".join(r.text or "" for r in runs)
+            if para_text.strip():
+                text_parts.append(para_text.strip())
+    return text_parts
+
+
+def _extract_images_from_docx(file_content: bytes) -> list[bytes]:
+    """Extract embedded images from a .docx file (which is a ZIP archive)."""
+    images = []
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as zf:
+            for name in zf.namelist():
+                if name.startswith("word/media/") and Path(name).suffix.lower() in IMAGE_EXTENSIONS:
+                    images.append(zf.read(name))
+    except Exception as e:
+        logger.debug(f"Failed to extract images from docx: {e}")
+    return images
+
+
 def extract_text_from_docx(file_content: bytes) -> str:
-    """Extract text from Word document (.docx)."""
+    """Extract text from Word document (.docx).
+
+    Extracts from paragraphs, tables, text boxes/shapes, and headers/footers.
+    Falls back to OCR on embedded images if insufficient text is found.
+    """
     try:
         doc = WordDocument(io.BytesIO(file_content))
         text_parts = []
+
+        # 1. Extract from paragraphs
         for paragraph in doc.paragraphs:
             if paragraph.text.strip():
                 text_parts.append(paragraph.text)
-        # Also extract from tables
+
+        # 2. Extract from tables
         for table in doc.tables:
             for row in table.rows:
                 row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
                 if row_text:
                     text_parts.append(" | ".join(row_text))
+
+        # 3. Extract from text boxes / shapes (common in docs with images)
+        try:
+            textbox_parts = _extract_text_from_docx_textboxes(doc)
+            text_parts.extend(textbox_parts)
+            if textbox_parts:
+                logger.debug(f"Extracted {len(textbox_parts)} text segments from text boxes")
+        except Exception as e:
+            logger.debug(f"Text box extraction skipped: {e}")
+
+        # 4. Extract from headers and footers
+        for section in doc.sections:
+            for header in [section.header, section.first_page_header, section.even_page_header]:
+                if header and header.is_linked_to_previous is False:
+                    for p in header.paragraphs:
+                        if p.text.strip():
+                            text_parts.append(p.text)
+            for footer in [section.footer, section.first_page_footer, section.even_page_footer]:
+                if footer and footer.is_linked_to_previous is False:
+                    for p in footer.paragraphs:
+                        if p.text.strip():
+                            text_parts.append(p.text)
+
+        # 5. OCR fallback for embedded images
+        # Run OCR when extracted text is minimal relative to embedded image count
+        if OCR_AVAILABLE:
+            images = _extract_images_from_docx(file_content)
+            total_text_len = sum(len(t) for t in text_parts)
+            should_ocr = images and (not text_parts or (len(images) > 3 and total_text_len < 200))
+            if should_ocr:
+                logger.info(
+                    f"Docx has {len(images)} images with only {total_text_len} chars text, "
+                    "attempting OCR on embedded images"
+                )
+                ocr_parts = []
+                for i, img_bytes in enumerate(images):
+                    try:
+                        img = Image.open(io.BytesIO(img_bytes))
+                        if img.mode in ("RGBA", "LA", "P"):
+                            img = img.convert("RGB")
+                        ocr_text = pytesseract.image_to_string(img)
+                        if ocr_text.strip():
+                            ocr_parts.append(ocr_text.strip())
+                    except Exception as ocr_err:
+                        logger.debug(f"OCR failed on embedded image {i}: {ocr_err}")
+                if ocr_parts:
+                    logger.info(f"OCR extracted text from {len(ocr_parts)}/{len(images)} images")
+                    text_parts.extend(ocr_parts)
+
         return "\n\n".join(text_parts)
     except Exception as e:
+        if isinstance(e, FileProcessingError):
+            raise
         raise FileProcessingError(f"Failed to extract text from Word document: {str(e)}")
 
 
