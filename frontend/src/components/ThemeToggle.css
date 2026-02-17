@@ -1,12 +1,4 @@
-.theme-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.theme-toggle,
-.style-toggle {
+.theme-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20,24 +12,12 @@
   flex-shrink: 0;
 }
 
-.theme-toggle:hover,
-.style-toggle:hover {
+.theme-toggle:hover {
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
 }
 
-.style-toggle.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-light);
-  color: var(--color-accent);
-}
-
-.theme-toggle-icon,
-.style-toggle-icon {
+.theme-toggle-icon {
   font-size: 16px;
   line-height: 1;
-}
-
-.style-toggle-icon {
-  font-size: 14px;
 }

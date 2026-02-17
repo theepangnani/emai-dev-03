@@ -71,6 +71,8 @@
   --color-accent-warm-strong: #d97745;
   --color-success-dark: #246c2c;
   --color-inactive: #c1c6d1;
+  --flashcard-gradient-start: #11998e;
+  --flashcard-gradient-end: #38ef7d;
 
   /* Overlays */
   --color-overlay: rgba(0, 0, 0, 0.5);
@@ -90,7 +92,9 @@
   --radius-md: 12px;
   --radius-sm: 8px;
 
-  /* Background patterns */
+  /* Background gradients */
+  --bg-gradient-1: rgba(13, 101, 179, 0.10);
+  --bg-gradient-2: rgba(244, 128, 31, 0.12);
   --bg-dot-color: rgba(12, 18, 34, 0.05);
   --bg-dot-opacity: 0.35;
   --skeleton-from: rgba(230, 233, 240, 0.9);
@@ -165,6 +169,8 @@
   --color-accent-warm-strong: #0ea5e9;
   --color-success-dark: #059669;
   --color-inactive: #4a4d5e;
+  --flashcard-gradient-start: #8b5cf6;
+  --flashcard-gradient-end: #22d3ee;
 
   --color-overlay: rgba(0, 0, 0, 0.7);
   --color-overlay-light: rgba(0, 0, 0, 0.5);
@@ -176,6 +182,8 @@
   --shadow-soft: 0 0 20px rgba(139, 92, 246, 0.12);
   --shadow-lift: 0 0 30px rgba(139, 92, 246, 0.18);
 
+  --bg-gradient-1: rgba(139, 92, 246, 0.08);
+  --bg-gradient-2: rgba(34, 211, 238, 0.06);
   --bg-dot-color: rgba(139, 92, 246, 0.08);
   --bg-dot-opacity: 0.25;
   --skeleton-from: rgba(42, 45, 62, 0.9);
@@ -240,6 +248,8 @@
   --color-accent-warm-strong: #a86830;
   --color-success-dark: #3a7a3a;
   --color-inactive: #c5beb5;
+  --flashcard-gradient-start: #5a9e8f;
+  --flashcard-gradient-end: #7ab88a;
 
   --color-overlay: rgba(44, 42, 38, 0.5);
   --color-overlay-light: rgba(44, 42, 38, 0.3);
@@ -251,6 +261,8 @@
   --shadow-soft: 0 8px 24px rgba(44, 42, 38, 0.06);
   --shadow-lift: 0 12px 30px rgba(44, 42, 38, 0.10);
 
+  --bg-gradient-1: rgba(90, 158, 143, 0.08);
+  --bg-gradient-2: rgba(196, 127, 59, 0.06);
   --bg-dot-color: rgba(44, 42, 38, 0.04);
   --bg-dot-opacity: 0.25;
   --skeleton-from: rgba(221, 214, 204, 0.6);
