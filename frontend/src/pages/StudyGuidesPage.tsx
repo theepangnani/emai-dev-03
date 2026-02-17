@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
-import type { StudyGuide, SupportedFormats, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
+import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
+import CreateStudyMaterialModal, { StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import './StudyGuidesPage.css';
-
-const MAX_FILE_SIZE_MB = 100;
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
 interface PendingGeneration {
@@ -19,6 +18,7 @@ interface PendingGeneration {
   type: 'study_guide' | 'quiz' | 'flashcards';
   mode: 'text' | 'file';
   file?: File;
+  pastedImages?: File[];
   regenerateId?: number;
   courseId?: number;
   courseContentId?: number;
@@ -69,21 +69,13 @@ export function StudyGuidesPage() {
 
   // Study tools modal
   const [showModal, setShowModal] = useState(false);
-  const [studyTitle, setStudyTitle] = useState('');
-  const [studyContent, setStudyContent] = useState('');
-  const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
-  const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [modalCourseId, setModalCourseId] = useState<number | ''>('');
   const [modalMaterials, setModalMaterials] = useState<CourseContentItem[]>([]);
   const [modalMaterialId, setModalMaterialId] = useState<number | ''>('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [studyError, setStudyError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const generatingRef = useRef(false);
+  const lastGenerateParamsRef = useRef<StudyMaterialGenerateParams | null>(null);
 
   // In-progress generation placeholders
   const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
@@ -129,12 +121,6 @@ export function StudyGuidesPage() {
       setFilterChild(navState.selectedChild);
     }
   }, [location.state]);
-
-  useEffect(() => {
-    if (showModal && !supportedFormats) {
-      studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
-    }
-  }, [showModal, supportedFormats]);
 
   // Reset course filter when child changes (filter cascade fix)
   useEffect(() => {
@@ -379,39 +365,10 @@ export function StudyGuidesPage() {
     return 'Study Guide';
   };
 
-  // File handling
-  const handleFileSelect = (file: File) => {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setStudyError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
-      return;
-    }
-    setSelectedFile(file);
-    setStudyMode('file');
-    if (!studyTitle) setStudyTitle(file.name.replace(/\.[^/.]+$/, ''));
-  };
-
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  };
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const clearFileSelection = () => {
-    setSelectedFile(null); setStudyMode('text');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const resetModal = () => {
-    setShowModal(false); setStudyTitle(''); setStudyContent('');
-    setStudyType('study_guide'); setStudyMode('text'); setSelectedFile(null);
-    setStudyError(''); setDuplicateCheck(null);
+    setShowModal(false);
+    setDuplicateCheck(null);
     setModalCourseId(''); setModalMaterialId(''); setModalMaterials([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const startGeneration = (params: PendingGeneration) => {
@@ -428,6 +385,17 @@ export function StudyGuidesPage() {
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId, course_content_id: params.courseContentId,
+          });
+        } else if (params.pastedImages && params.pastedImages.length > 0) {
+          result = await studyApi.generateFromTextAndImages({
+            content: params.content,
+            images: params.pastedImages,
+            title: params.title || undefined,
+            guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+            course_id: params.courseId,
+            course_content_id: params.courseContentId,
           });
         } else if (params.type === 'study_guide') {
           result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
@@ -457,31 +425,30 @@ export function StudyGuidesPage() {
     })();
   };
 
-  const handleGenerate = async () => {
-    if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
-    if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
+  const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     if (generatingRef.current) return;
-
-    if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
+    lastGenerateParamsRef.current = modalParams;
 
     setIsGenerating(true);
     try {
-      if (studyMode === 'text' && !duplicateCheck) {
+      // Check for duplicates on text mode
+      if (modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
+          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.type });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* continue */ }
       }
 
       const params: PendingGeneration = {
-        title: studyTitle || `New ${studyType.replace('_', ' ')}`,
-        content: studyContent,
-        type: studyType,
-        mode: studyMode,
-        file: selectedFile ?? undefined,
+        title: modalParams.title,
+        content: modalParams.content,
+        type: modalParams.type,
+        mode: modalParams.mode,
+        file: modalParams.file,
+        pastedImages: modalParams.pastedImages,
         regenerateId: duplicateCheck?.existing_guide?.id,
-        courseId: modalCourseId ? (modalCourseId as number) : undefined,
-        courseContentId: modalMaterialId ? (modalMaterialId as number) : undefined,
+        courseId: modalParams.courseId,
+        courseContentId: modalParams.courseContentId,
       };
 
       setDuplicateCheck(null);
@@ -797,97 +764,35 @@ export function StudyGuidesPage() {
       </div>
 
       {/* Study Tools Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={resetModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Study Material</h2>
-            <p className="modal-desc">Upload a document or photo, or paste text to generate AI-powered study materials.</p>
-            <div className="modal-form">
-              <label>
-                What to create
-                <select value={studyType} onChange={(e) => setStudyType(e.target.value as any)} disabled={isGenerating}>
-                  <option value="study_guide">Study Guide</option>
-                  <option value="quiz">Practice Quiz</option>
-                  <option value="flashcards">Flashcards</option>
-                </select>
-              </label>
-              <label>
-                Title (optional)
-                <input type="text" value={studyTitle} onChange={(e) => setStudyTitle(e.target.value)} placeholder="e.g., Chapter 5 Review" disabled={isGenerating} />
-              </label>
-              <label>
-                Course (optional)
-                <select value={modalCourseId} onChange={(e) => setModalCourseId(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
-                  <option value="">Main Course (default)</option>
-                  {courses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </label>
-              {modalCourseId && modalMaterials.length > 0 && (
-                <label>
-                  Existing material (optional)
-                  <select value={modalMaterialId} onChange={(e) => setModalMaterialId(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
-                    <option value="">Create new material</option>
-                    {modalMaterials.map(m => (
-                      <option key={m.id} value={m.id}>{m.title}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <div className="mode-toggle">
-                <button className={`mode-btn ${studyMode === 'text' ? 'active' : ''}`} onClick={() => setStudyMode('text')} disabled={isGenerating}>Paste Text</button>
-                <button className={`mode-btn ${studyMode === 'file' ? 'active' : ''}`} onClick={() => setStudyMode('file')} disabled={isGenerating}>Upload File</button>
-              </div>
-              {studyMode === 'text' ? (
-                <label>
-                  Content to study
-                  <textarea value={studyContent} onChange={(e) => setStudyContent(e.target.value)} placeholder="Paste notes, textbook content, or any study material..." rows={8} disabled={isGenerating} />
-                </label>
-              ) : (
-                <div className="file-upload-section">
-                  <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
-                  <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
-                    {selectedFile ? (
-                      <div className="selected-file">
-                        <span className="file-icon">&#128196;</span>
-                        <div className="file-info">
-                          <span className="file-name">{selectedFile.name}</span>
-                          <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                        <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>&times;</button>
-                      </div>
-                    ) : (
-                      <div className="drop-zone-content">
-                        <span className="upload-icon">&#128193;</span>
-                        <p>Drag & drop a file here, or click to browse</p>
-                        <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {studyError && <p className="link-error">{studyError}</p>}
-            </div>
-            {duplicateCheck && duplicateCheck.exists && (
-              <div className="duplicate-warning">
-                <p>{duplicateCheck.message}</p>
-                <div className="duplicate-actions">
-                  <button className="generate-btn" onClick={() => { const guide = duplicateCheck.existing_guide!; resetModal(); navigateToLegacyGuide(guide); }}>View Existing</button>
-                  <button className="generate-btn" onClick={handleGenerate}>Regenerate (New Version)</button>
-                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
-                </div>
-              </div>
-            )}
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={resetModal} disabled={isGenerating}>Cancel</button>
-              <button className="generate-btn" onClick={handleGenerate} disabled={isGenerating || (studyMode === 'file' ? !selectedFile : !studyContent.trim())}>
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateStudyMaterialModal
+        open={showModal}
+        onClose={resetModal}
+        onGenerate={handleGenerateFromModal}
+        isGenerating={isGenerating}
+        courses={courses}
+        materials={modalMaterials}
+        selectedCourseId={modalCourseId}
+        onCourseChange={setModalCourseId}
+        selectedMaterialId={modalMaterialId}
+        onMaterialChange={setModalMaterialId}
+        duplicateCheck={duplicateCheck}
+        onViewExisting={() => {
+          const guide = duplicateCheck?.existing_guide;
+          if (guide) { resetModal(); navigateToLegacyGuide(guide); }
+        }}
+        onRegenerate={() => {
+          if (lastGenerateParamsRef.current) {
+            const params = lastGenerateParamsRef.current;
+            setDuplicateCheck(null);
+            resetModal();
+            startGeneration({
+              ...params,
+              regenerateId: duplicateCheck?.existing_guide?.id,
+            });
+          }
+        }}
+        onDismissDuplicate={() => setDuplicateCheck(null)}
+      />
 
       <CreateTaskModal
         open={!!taskModalGuide}

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 
 from app.core.config import settings
 from app.core.utils import escape_like
@@ -42,6 +42,7 @@ from app.services.file_processor import (
     get_supported_formats,
     FileProcessingError,
     MAX_FILE_SIZE,
+    _ocr_images_with_vision,
 )
 
 router = APIRouter(prefix="/study", tags=["Study Tools"])
@@ -881,6 +882,177 @@ def update_study_guide(
 def get_upload_formats():
     """Get information about supported file upload formats."""
     return get_supported_formats()
+
+
+@router.post("/generate-with-images", response_model=StudyGuideResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def generate_from_text_and_images(
+    request: Request,
+    content: str = Form(""),
+    title: Optional[str] = Form(None),
+    guide_type: str = Form("study_guide"),
+    num_questions: int = Form(5),
+    num_cards: int = Form(10),
+    course_id: Optional[int] = Form(None),
+    course_content_id: Optional[int] = Form(None),
+    images: List[UploadFile] = File(default=[]),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate study material from pasted text content combined with pasted images.
+    Images are OCR'd via Vision API and the extracted text is combined with the
+    user's pasted text content for AI generation.
+
+    Maximum 10 images, each up to 10 MB.
+    """
+    study_service = StudyService(db)
+
+    if guide_type not in ("study_guide", "quiz", "flashcards"):
+        raise HTTPException(
+            status_code=400,
+            detail="guide_type must be one of: study_guide, quiz, flashcards"
+        )
+
+    # Validate and read image data
+    if len(images) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 images allowed")
+
+    image_bytes_list = []
+    for img in images:
+        img_data = await img.read()
+        if len(img_data) > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Image '{img.filename}' exceeds 10 MB limit"
+            )
+        if img_data:
+            image_bytes_list.append(img_data)
+
+    # OCR images via Vision API
+    ocr_parts = []
+    if image_bytes_list:
+        ocr_parts = _ocr_images_with_vision(image_bytes_list)
+
+    # Combine pasted text + OCR extracted text
+    combined_parts = []
+    if content.strip():
+        combined_parts.append(content.strip())
+    if ocr_parts:
+        combined_parts.append("--- Extracted from images ---")
+        combined_parts.extend(ocr_parts)
+
+    extracted_text = "\n\n".join(combined_parts)
+
+    if not extracted_text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No content provided. Please paste text or include images with readable content."
+        )
+
+    if not title:
+        # Generate a sensible default title from the first line of content
+        first_line = content.strip().split('\n')[0][:60] if content.strip() else "Pasted Content"
+        title = first_line if first_line else "Pasted Content"
+
+    # Generate the appropriate study material (same pattern as /upload/generate)
+    critical_dates = []
+    try:
+        if guide_type == "quiz":
+            raw_quiz = await generate_quiz(
+                topic=title,
+                content=extracted_text,
+                num_questions=num_questions,
+            )
+            raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
+            quiz_json = strip_json_fences(raw_quiz)
+            questions_data = json.loads(quiz_json)
+            questions = [QuizQuestion(**q) for q in questions_data]
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Quiz: {title}",
+                content=quiz_json,
+                guide_type="quiz",
+                content_hash=study_service.compute_content_hash(f"Quiz: {title}", "quiz"),
+            )
+
+        elif guide_type == "flashcards":
+            raw_cards = await generate_flashcards(
+                topic=title,
+                content=extracted_text,
+                num_cards=num_cards,
+            )
+            raw_cards, critical_dates = parse_critical_dates(raw_cards)
+            cards_json = strip_json_fences(raw_cards)
+            cards_data = json.loads(cards_json)
+            cards = [Flashcard(**c) for c in cards_data]
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Flashcards: {title}",
+                content=cards_json,
+                guide_type="flashcards",
+                content_hash=study_service.compute_content_hash(f"Flashcards: {title}", "flashcards"),
+            )
+
+        else:  # study_guide
+            raw_content = await generate_study_guide(
+                assignment_title=title,
+                assignment_description=extracted_text,
+                course_name="Pasted Content",
+            )
+            content_result, critical_dates = parse_critical_dates(raw_content)
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Study Guide: {title}",
+                content=content_result,
+                guide_type="study_guide",
+                content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
+            )
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse AI response")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Deduplicate: return existing if same hash was created recently
+    if study_guide.content_hash:
+        existing = study_service.find_recent_duplicate(current_user.id, study_guide.content_hash)
+        if existing:
+            return existing
+
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, title, extracted_text,
+        course_id=course_id,
+        course_content_id=course_content_id,
+    )
+    study_guide.course_id = resolved_course_id
+    study_guide.course_content_id = resolved_cc_id
+
+    # Enforce limit and save to database
+    enforce_study_guide_limit(db, current_user)
+    db.add(study_guide)
+    db.flush()
+
+    # Auto-create tasks from critical dates (or fallback review task)
+    if not critical_dates:
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        resolved_course_id, resolved_cc_id,
+    )
+
+    db.commit()
+    db.refresh(study_guide)
+
+    resp = StudyGuideResponse.model_validate(study_guide)
+    resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
+    return resp
 
 
 @router.post("/upload/generate", response_model=StudyGuideResponse)

@@ -1452,3 +1452,83 @@
   background: var(--color-danger);
   color: white;
 }
+
+/* ── Pasted images from email ─── */
+.pasted-images-strip {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--color-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.pasted-images-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.clear-images-btn {
+  background: none;
+  border: none;
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.clear-images-btn:hover {
+  text-decoration: underline;
+}
+
+.pasted-images-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pasted-image-thumb {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.pasted-image-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.remove-image-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.images-limit-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}

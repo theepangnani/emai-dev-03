@@ -166,6 +166,32 @@ export const studyApi = {
     return response.data as StudyGuide;
   },
 
+  generateFromTextAndImages: async (params: {
+    content: string;
+    images: File[];
+    title?: string;
+    guide_type: 'study_guide' | 'quiz' | 'flashcards';
+    num_questions?: number;
+    num_cards?: number;
+    course_id?: number;
+    course_content_id?: number;
+  }) => {
+    const formData = new FormData();
+    formData.append('content', params.content);
+    if (params.title) formData.append('title', params.title);
+    formData.append('guide_type', params.guide_type);
+    if (params.num_questions) formData.append('num_questions', params.num_questions.toString());
+    if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
+    if (params.course_id) formData.append('course_id', params.course_id.toString());
+    if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
+    params.images.forEach(img => formData.append('images', img));
+
+    const response = await api.post('/api/study/generate-with-images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as StudyGuide;
+  },
+
   extractTextFromFile: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
