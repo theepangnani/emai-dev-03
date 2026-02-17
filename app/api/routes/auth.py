@@ -44,6 +44,40 @@ def _send_verification_email(user: User, db: Session) -> None:
         _logger.warning("Failed to send verification email to %s: %s", user.email, e)
 
 
+def _send_welcome_email(user: User, db: Session) -> None:
+    """Send a welcome email after registration (best-effort, never raises)."""
+    try:
+        template = _load_template("welcome.html")
+        if template:
+            html = _render(template, user_name=user.full_name or "there",
+                           app_url=settings.frontend_url)
+        else:
+            html = f'<p>Welcome to ClassBridge, {user.full_name or "there"}!</p>'
+        html = add_inspiration_to_email(html, db, user.role or "parent")
+        send_email_sync(to_email=user.email,
+                        subject="Welcome to ClassBridge \u2014 Let's Get Started!",
+                        html_content=html)
+    except Exception as e:
+        _logger.warning("Failed to send welcome email to %s: %s", user.email, e)
+
+
+def _send_verification_ack_email(user: User, db: Session) -> None:
+    """Send an acknowledgement email after email verification (best-effort, never raises)."""
+    try:
+        template = _load_template("email_verified_welcome.html")
+        if template:
+            html = _render(template, user_name=user.full_name or "there",
+                           app_url=settings.frontend_url)
+        else:
+            html = f'<p>Your email is verified, {user.full_name or "there"}! Explore ClassBridge.</p>'
+        html = add_inspiration_to_email(html, db, user.role or "parent")
+        send_email_sync(to_email=user.email,
+                        subject="You're Verified \u2014 Explore Everything ClassBridge Has to Offer",
+                        html_content=html)
+    except Exception as e:
+        _logger.warning("Failed to send verification ack email to %s: %s", user.email, e)
+
+
 @router.post("/register", response_model=UserResponse)
 @limiter.limit("3/minute")
 def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
@@ -118,9 +152,10 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     db.commit()
     db.refresh(user)
 
-    # Send verification email for non-Google signups (best-effort)
+    # Send verification + welcome emails for non-Google signups (best-effort)
     if not is_google_signup:
         _send_verification_email(user, db)
+        _send_welcome_email(user, db)
 
     return UserResponse(
         id=user.id,
@@ -537,6 +572,9 @@ def verify_email(body: EmailVerifyRequest, request: Request, db: Session = Depen
     log_action(db, user_id=user.id, action="email_verified", resource_type="user",
                resource_id=user.id, ip_address=request.client.host if request.client else None)
     db.commit()
+
+    # Send verification acknowledgement email (best-effort)
+    _send_verification_ack_email(user, db)
 
     return {"message": "Email verified successfully"}
 
