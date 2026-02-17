@@ -8,7 +8,8 @@ import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
-import { FAQErrorHint, extractFaqCode } from '../components/FAQErrorHint';
+import { FAQErrorHint } from '../components/FAQErrorHint';
+import { extractFaqCode } from '../utils/faqUtils';
 import './StudyGuidePage.css';
 
 function normalizeGuideContent(content: string) {

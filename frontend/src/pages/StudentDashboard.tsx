@@ -5,7 +5,8 @@ import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../ap
 import { StudyToolsButton } from '../components/StudyToolsButton';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
-import { FAQErrorHint, extractFaqCode } from '../components/FAQErrorHint';
+import { FAQErrorHint } from '../components/FAQErrorHint';
+import { extractFaqCode } from '../utils/faqUtils';
 import { useConfirm } from '../components/ConfirmModal';
 import { logger } from '../utils/logger';
 

@@ -5,7 +5,8 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
-import { FAQErrorHint, extractFaqCode } from '../components/FAQErrorHint';
+import { FAQErrorHint } from '../components/FAQErrorHint';
+import { extractFaqCode } from '../utils/faqUtils';
 import './CourseMaterialDetailPage.css';
 
 const MarkdownGuideBody = lazy(() =>
