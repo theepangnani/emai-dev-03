@@ -16,7 +16,7 @@ from app.schemas.teacher_communication import (
 )
 from app.api.deps import get_current_user
 from app.services.google_classroom import get_email_monitoring_auth_url
-from app.services.email_service import send_email_sync
+from app.services.email_service import send_email_sync, add_inspiration_to_email
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +195,7 @@ def reply_to_communication(
     """
 
     try:
+        reply_html = add_inspiration_to_email(reply_html, db, current_user.role)
         send_email_sync(
             to_email=comm.sender_email,
             subject=subject,

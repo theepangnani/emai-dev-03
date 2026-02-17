@@ -21,6 +21,16 @@ export function NotificationBell() {
     return () => clearInterval(interval);
   }, []);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!modalNotification) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setModalNotification(null);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [modalNotification]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

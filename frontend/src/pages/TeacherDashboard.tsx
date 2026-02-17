@@ -13,6 +13,7 @@ interface Course {
   description: string | null;
   subject: string | null;
   google_classroom_id: string | null;
+  student_count: number;
 }
 
 export function TeacherDashboard() {
@@ -21,6 +22,7 @@ export function TeacherDashboard() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,9 +43,12 @@ export function TeacherDashboard() {
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
   const [removingAccountId, setRemovingAccountId] = useState<number | null>(null);
 
-  // Pending invites state
-  const [pendingInvites, setPendingInvites] = useState<InviteResponse[]>([]);
+  // Sent invites state
+  const [sentInvites, setSentInvites] = useState<InviteResponse[]>([]);
   const [resendingId, setResendingId] = useState<number | null>(null);
+  const [resentToastId, setResentToastId] = useState<number | null>(null);
+  const [invitesExpanded, setInvitesExpanded] = useState(true);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   // Course search
   const [courseSearch, setCourseSearch] = useState('');
@@ -80,7 +85,7 @@ export function TeacherDashboard() {
         setGoogleAccounts(accountsData.value);
       }
       if (invitesData.status === 'fulfilled') {
-        setPendingInvites(invitesData.value.filter(i => !i.accepted_at && new Date(i.expires_at) > new Date()));
+        setSentInvites(invitesData.value);
       }
     } finally {
       setLoading(false);
@@ -98,13 +103,17 @@ export function TeacherDashboard() {
 
   const handleSyncCourses = async () => {
     setSyncing(true);
+    setSyncMessage('');
     try {
-      await googleApi.syncCourses();
+      const result = await googleApi.syncCourses();
       // Reload courses after sync
       const coursesData = await coursesApi.teachingList();
       setCourses(coursesData);
+      setSyncMessage(result.message || 'Sync complete');
+      setTimeout(() => setSyncMessage(''), 5000);
     } catch {
-      // Sync failed
+      setSyncMessage('Sync failed. Please try again.');
+      setTimeout(() => setSyncMessage(''), 5000);
     } finally {
       setSyncing(false);
     }
@@ -170,11 +179,35 @@ export function TeacherDashboard() {
 
   const handleResendInvite = async (inviteId: number) => {
     setResendingId(inviteId);
+    setResendError(null);
     try {
       const updated = await invitesApi.resend(inviteId);
-      setPendingInvites(prev => prev.map(i => i.id === inviteId ? updated : i));
-    } catch { /* ignore */ }
+      setSentInvites(prev => prev.map(i => i.id === inviteId ? updated : i));
+      setResentToastId(inviteId);
+      setTimeout(() => setResentToastId(null), 3000);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 429 && detail) {
+        setResendError(detail);
+        setTimeout(() => setResendError(null), 5000);
+      }
+    }
     setResendingId(null);
+  };
+
+  const isResendCoolingDown = (invite: InviteResponse): boolean => {
+    if (!invite.last_resent_at) return false;
+    const lastResent = new Date(invite.last_resent_at).getTime();
+    const oneHour = 60 * 60 * 1000;
+    return Date.now() - lastResent < oneHour;
+  };
+
+  const getResendCooldownMinutes = (invite: InviteResponse): number => {
+    if (!invite.last_resent_at) return 0;
+    const lastResent = new Date(invite.last_resent_at).getTime();
+    const oneHour = 60 * 60 * 1000;
+    const remaining = oneHour - (Date.now() - lastResent);
+    return Math.max(0, Math.ceil(remaining / 60000));
   };
 
   const closeInviteParentModal = () => {
@@ -300,10 +333,22 @@ export function TeacherDashboard() {
         <section className="section teacher-courses-section">
           <div className="section-header">
             <h3>Your Courses</h3>
-            <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
-              + Create Course
-            </button>
+            <div className="section-header-actions">
+              {googleConnected && (
+                <button className="sync-btn" onClick={handleSyncCourses} disabled={syncing}>
+                  {syncing ? 'Syncing...' : 'Sync Courses'}
+                </button>
+              )}
+              <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
+                + Create Course
+              </button>
+            </div>
           </div>
+          {syncMessage && (
+            <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`}>
+              {syncMessage}
+            </div>
+          )}
           {courses.length > 3 && (
             <input
               type="text"
@@ -321,15 +366,22 @@ export function TeacherDashboard() {
                 c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
                 (c.subject && c.subject.toLowerCase().includes(courseSearch.toLowerCase()))
               ).map((course) => (
-                <div key={course.id} className="teacher-course-card">
-                  <h4>{course.name}</h4>
+                <div key={course.id} className="teacher-course-card" onClick={() => navigate(`/courses/${course.id}`)}>
+                  <div className="course-card-header">
+                    <h4>{course.name}</h4>
+                    <span className={`course-source-badge ${course.google_classroom_id ? 'source-google' : 'source-manual'}`}>
+                      {course.google_classroom_id ? 'Google Classroom' : 'Manual'}
+                    </span>
+                  </div>
                   {course.subject && <span className="course-subject-tag">{course.subject}</span>}
                   {course.description && (
                     <p className="course-desc">{course.description}</p>
                   )}
-                  {course.google_classroom_id && (
-                    <span className="google-badge">Google Classroom</span>
-                  )}
+                  <div className="course-card-footer">
+                    <span className="course-student-count">
+                      {course.student_count} {course.student_count === 1 ? 'student' : 'students'}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -355,27 +407,61 @@ export function TeacherDashboard() {
           )}
         </section>
 
-        {/* Pending Invites Section */}
-        {pendingInvites.length > 0 && (
-          <section className="section">
-            <div className="section-header">
-              <h3>Pending Invites</h3>
+        {/* Sent Invites Section */}
+        {sentInvites.length > 0 && (
+          <section className="section sent-invites-section">
+            <div className="section-header section-header-collapsible" onClick={() => setInvitesExpanded(!invitesExpanded)}>
+              <h3>
+                <span className={`collapse-arrow ${invitesExpanded ? 'expanded' : ''}`}>&#9654;</span>
+                {' '}Sent Invites ({sentInvites.length})
+              </h3>
             </div>
-            <div className="pending-invites-list">
-              {pendingInvites.map(inv => (
-                <div key={inv.id} className="pending-invite-row">
-                  <span className="pending-invite-email">{inv.email}</span>
-                  <span className="pending-invite-type">{inv.invite_type}</span>
-                  <button
-                    className="text-btn"
-                    disabled={resendingId === inv.id}
-                    onClick={() => handleResendInvite(inv.id)}
-                  >
-                    {resendingId === inv.id ? 'Sending...' : 'Resend'}
-                  </button>
-                </div>
-              ))}
-            </div>
+            {resendError && (
+              <div className="resend-error-toast">{resendError}</div>
+            )}
+            {invitesExpanded && (
+              <div className="sent-invites-list">
+                {sentInvites.map(inv => {
+                  const cooling = isResendCoolingDown(inv);
+                  const cooldownMins = cooling ? getResendCooldownMinutes(inv) : 0;
+                  const canResend = inv.status === 'pending' && !cooling;
+                  return (
+                    <div key={inv.id} className="sent-invite-row">
+                      <div className="sent-invite-info">
+                        <span className="sent-invite-email">{inv.email}</span>
+                        <span className={`sent-invite-type-badge badge-${inv.invite_type}`}>{inv.invite_type}</span>
+                        <span className={`sent-invite-status-badge status-${inv.status}`}>{inv.status}</span>
+                      </div>
+                      <div className="sent-invite-meta">
+                        <span className="sent-invite-date">
+                          Sent {new Date(inv.created_at).toLocaleDateString()}
+                        </span>
+                        {inv.status === 'pending' && (
+                          <div className="sent-invite-actions">
+                            {resentToastId === inv.id ? (
+                              <span className="resent-toast">Resent!</span>
+                            ) : (
+                              <button
+                                className="text-btn"
+                                disabled={resendingId === inv.id || !canResend}
+                                onClick={() => handleResendInvite(inv.id)}
+                                title={cooling ? `Wait ${cooldownMins} min before resending` : 'Resend invite'}
+                              >
+                                {resendingId === inv.id
+                                  ? 'Sending...'
+                                  : cooling
+                                    ? `Wait ${cooldownMins}m`
+                                    : 'Resend'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 

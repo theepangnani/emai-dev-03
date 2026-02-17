@@ -10,7 +10,9 @@ export interface InviteResponse {
   invited_by_user_id: number;
   metadata_json: Record<string, any> | null;
   accepted_at: string | null;
+  last_resent_at: string | null;
   created_at: string;
+  status: 'pending' | 'accepted' | 'expired';
 }
 
 // Invites API

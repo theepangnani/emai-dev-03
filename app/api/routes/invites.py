@@ -249,7 +249,10 @@ def resend_invite(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Resend a pending invite: refresh token + expiry, re-send email."""
+    """Resend a pending invite: refresh token + expiry, re-send email.
+
+    Rate-limited to 1 resend per hour.
+    """
     invite = db.query(Invite).filter(Invite.id == invite_id).first()
     if not invite:
         raise HTTPException(status_code=404, detail="Invite not found")
@@ -258,10 +261,22 @@ def resend_invite(
     if invite.accepted_at:
         raise HTTPException(status_code=400, detail="Invite already accepted")
 
+    # Rate limit: max 1 resend per hour
+    now = datetime.now(timezone.utc)
+    if invite.last_resent_at:
+        elapsed = now - invite.last_resent_at
+        if elapsed < timedelta(hours=1):
+            remaining_minutes = int((timedelta(hours=1) - elapsed).total_seconds() // 60) + 1
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining_minutes} minute(s) before resending this invite",
+            )
+
     # Refresh token and expiry
     invite.token = secrets.token_urlsafe(32)
     expiry_days = EXPIRY_DAYS.get(invite.invite_type, 30)
     invite.expires_at = datetime.now(timezone.utc) + timedelta(days=expiry_days)
+    invite.last_resent_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(invite)
 

@@ -8,7 +8,7 @@ from app.db.database import SessionLocal
 from app.models.task import Task
 from app.models.user import User
 from app.models.notification import Notification, NotificationType
-from app.services.email_service import send_email
+from app.services.email_service import send_email, add_inspiration_to_email
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,7 @@ async def check_task_reminders():
                             due_date=due_date_str,
                             task_url=f"/tasks/{task.id}",
                         )
+                        html = add_inspiration_to_email(html, db, user.role)
                         sent = await send_email(
                             to_email=user.email,
                             subject=f"Task Reminder: {task.title} due in {days} day{'s' if days != 1 else ''}",

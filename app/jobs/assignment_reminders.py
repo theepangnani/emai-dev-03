@@ -11,7 +11,7 @@ from app.models.student import Student, parent_students
 from app.models.user import User
 from app.models.notification import Notification, NotificationType
 from app.core.config import settings
-from app.services.email_service import send_email
+from app.services.email_service import send_email, add_inspiration_to_email
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +161,7 @@ async def check_assignment_reminders():
                             due_date=due_date_str,
                             app_url=settings.frontend_url,
                         )
+                        html = add_inspiration_to_email(html, db, "parent")
                         sent = await send_email(
                             to_email=parent.email,
                             subject=f"Assignment Reminder: {assignment.title} due in {days} day{'s' if days != 1 else ''}",

@@ -30,6 +30,7 @@ class CourseResponse(BaseModel):
     created_by_user_id: int | None = None
     is_private: bool = False
     is_default: bool = False
+    student_count: int = 0
     created_at: datetime
 
     class Config:

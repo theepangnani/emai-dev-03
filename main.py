@@ -431,6 +431,25 @@ with engine.connect() as conn:
             conn.rollback()
         conn.commit()
 
+    # --- teachers table: add is_platform_user (#58) ---
+    try:
+        cols = [row[1] for row in conn.execute(text("PRAGMA table_info(teachers)")).fetchall()]
+        if "is_platform_user" not in cols:
+            conn.execute(text("ALTER TABLE teachers ADD COLUMN is_platform_user BOOLEAN DEFAULT TRUE"))
+            conn.commit()
+    except Exception:
+        conn.rollback()
+
+    # --- invites table: add last_resent_at (#253) ---
+    try:
+        cols = [row[1] for row in conn.execute(text("PRAGMA table_info(invites)")).fetchall()]
+        if "last_resent_at" not in cols:
+            col_type = "TIMESTAMP" if is_postgres else "TEXT"
+            conn.execute(text(f"ALTER TABLE invites ADD COLUMN last_resent_at {col_type}"))
+            conn.commit()
+    except Exception:
+        conn.rollback()
+
     # One-time data fix: correct known invalid email (#408)
     try:
         conn.execute(text(
