@@ -57,6 +57,10 @@ class Course(Base):
             return self.teacher.google_email
         return self.teacher.user.email if self.teacher.user else None
 
+    @property
+    def student_count(self) -> int:
+        return len(self.students) if self.students else 0
+
     __table_args__ = (
         Index("ix_courses_teacher", "teacher_id"),
         Index("ix_courses_created_by", "created_by_user_id"),

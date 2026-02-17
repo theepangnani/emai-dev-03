@@ -1,6 +1,8 @@
 import logging
+import os
 import secrets
 import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
@@ -15,8 +17,10 @@ from app.models.student import Student
 from app.models.teacher import Teacher
 from app.models.teacher_google_account import TeacherGoogleAccount
 from app.models.course_content import CourseContent
+from app.models.invite import Invite, InviteType
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
+from app.services.email_service import send_email_sync
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.services.google_classroom import (
@@ -273,6 +277,79 @@ def get_google_courses(
     return {"courses": courses}
 
 
+_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates")
+
+
+def _auto_invite_shadow_teacher(
+    teacher_email: str,
+    teacher_name: str,
+    inviting_user: User,
+    db: Session,
+) -> None:
+    """Auto-create an invite and send email to a shadow teacher.
+
+    Called when a parent/student syncs Google Classroom and a new shadow
+    teacher record is created. Skips if a pending invite already exists.
+    """
+    # Check for existing pending invite
+    existing_invite = (
+        db.query(Invite)
+        .filter(
+            Invite.email == teacher_email,
+            Invite.invite_type == InviteType.TEACHER,
+            Invite.accepted_at.is_(None),
+            Invite.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+    )
+    if existing_invite:
+        return
+
+    token = secrets.token_urlsafe(32)
+    invite = Invite(
+        email=teacher_email,
+        invite_type=InviteType.TEACHER,
+        token=token,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        invited_by_user_id=inviting_user.id,
+        metadata_json={"source": "google_classroom_sync", "teacher_name": teacher_name},
+    )
+    db.add(invite)
+    db.flush()
+
+    # Send invite email
+    invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
+    inviter_name = inviting_user.full_name or "A ClassBridge user"
+    try:
+        tpl_path = os.path.join(_TEMPLATE_DIR, "teacher_invite_shadow.html")
+        if os.path.exists(tpl_path):
+            with open(tpl_path, "r") as f:
+                html = f.read()
+            html = (
+                html
+                .replace("{{teacher_name}}", teacher_name or "Teacher")
+                .replace("{{inviter_name}}", inviter_name)
+                .replace("{{invite_link}}", invite_link)
+            )
+        else:
+            html = f"""
+            <h2>You've Been Invited to ClassBridge</h2>
+            <p>Hi {teacher_name or 'there'},</p>
+            <p><strong>{inviter_name}</strong> synced their Google Classroom and your courses were discovered.
+            Join ClassBridge to connect with parents, share announcements, and track student progress.</p>
+            <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create Your Account</a></p>
+            <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
+            """
+        send_email_sync(
+            to_email=teacher_email,
+            subject=f"{inviter_name} invited you to ClassBridge",
+            html_content=html,
+        )
+        logger.info(f"Auto-invite email sent to shadow teacher {teacher_email}")
+    except Exception as e:
+        logger.warning(f"Failed to send auto-invite to shadow teacher {teacher_email}: {e}")
+
+
 def _resolve_teacher_for_course(
     google_course_id: str,
     user: User,
@@ -323,12 +400,17 @@ def _resolve_teacher_for_course(
     # Create shadow teacher
     teacher = Teacher(
         is_shadow=True,
+        is_platform_user=False,
         user_id=None,
         full_name=full_name,
         google_email=email,
     )
     db.add(teacher)
     db.flush()
+
+    # Auto-send invite to shadow teacher (#57)
+    _auto_invite_shadow_teacher(email, full_name, user, db)
+
     return teacher
 
 

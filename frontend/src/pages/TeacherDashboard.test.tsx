@@ -118,8 +118,8 @@ describe('TeacherDashboard', () => {
     expect(screen.getByText('Math')).toBeInTheDocument()
     expect(screen.getByText('Geometry')).toBeInTheDocument()
     expect(screen.getByText('All about shapes')).toBeInTheDocument()
-    // "Google Classroom" appears as both the card heading and the course badge
-    expect(document.querySelector('.google-badge')).toBeInTheDocument()
+    // "Google Classroom" appears as both the card heading and the course source badge
+    expect(document.querySelector('.course-source-badge')).toBeInTheDocument()
   })
 
   it('shows empty state when no courses', async () => {
@@ -470,29 +470,29 @@ describe('TeacherDashboard', () => {
     })
   })
 
-  // ── Pending Invites ──────────────────────────────────────────
-  it('shows pending invites section', async () => {
+  // ── Sent Invites ──────────────────────────────────────────
+  it('shows sent invites section', async () => {
     const futureDate = new Date(Date.now() + 86400000 * 7).toISOString()
     mockListSent.mockResolvedValue([
       createMockInvite({ id: 1, email: 'pending@example.com', invite_type: 'student', accepted_at: null, expires_at: futureDate }),
-      createMockInvite({ id: 2, email: 'accepted@example.com', invite_type: 'student', accepted_at: '2026-02-13T12:00:00Z', expires_at: futureDate }),
+      createMockInvite({ id: 2, email: 'accepted@example.com', invite_type: 'student', accepted_at: '2026-02-13T12:00:00Z', status: 'accepted', expires_at: futureDate }),
     ])
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Pending Invites')).toBeInTheDocument()
+      expect(screen.getByText(/Sent Invites/)).toBeInTheDocument()
     })
     expect(screen.getByText('pending@example.com')).toBeInTheDocument()
-    // Accepted invite should be filtered out
-    expect(screen.queryByText('accepted@example.com')).not.toBeInTheDocument()
+    // All invites are shown (both pending and accepted)
+    expect(screen.getByText('accepted@example.com')).toBeInTheDocument()
   })
 
   it('handles resend invite', async () => {
     const futureDate = new Date(Date.now() + 86400000 * 7).toISOString()
     mockListSent.mockResolvedValue([
-      createMockInvite({ id: 5, email: 'pending@example.com', invite_type: 'student', accepted_at: null, expires_at: futureDate }),
+      createMockInvite({ id: 5, email: 'pending@example.com', invite_type: 'student', accepted_at: null, status: 'pending', expires_at: futureDate }),
     ])
-    const updatedInvite = createMockInvite({ id: 5, email: 'pending@example.com', invite_type: 'student', expires_at: futureDate })
+    const updatedInvite = createMockInvite({ id: 5, email: 'pending@example.com', invite_type: 'student', status: 'pending', expires_at: futureDate, last_resent_at: new Date().toISOString() })
     mockResend.mockResolvedValue(updatedInvite)
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
@@ -501,7 +501,10 @@ describe('TeacherDashboard', () => {
       expect(screen.getByText('pending@example.com')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Resend' }))
+    // Click the Resend button inside the sent-invite-actions section
+    const resendBtn = document.querySelector('.sent-invite-actions .text-btn') as HTMLElement
+    expect(resendBtn).toBeTruthy()
+    await user.click(resendBtn)
 
     await waitFor(() => {
       expect(mockResend).toHaveBeenCalledWith(5)

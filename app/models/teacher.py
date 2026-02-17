@@ -23,6 +23,7 @@ class Teacher(Base):
 
     # Shadow teacher support
     is_shadow = Column(Boolean, default=False)
+    is_platform_user = Column(Boolean, default=True)  # False for shadow teachers created during sync
     google_email = Column(String(255), nullable=True, unique=True)
     full_name = Column(String(255), nullable=True)  # For shadow teachers without a User
 

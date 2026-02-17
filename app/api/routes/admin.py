@@ -425,6 +425,7 @@ def send_broadcast(
     for email, name in email_recipients:
         try:
             html = _render_broadcast_email(data.subject, data.body, name)
+            html = add_inspiration_to_email(html, db, "parent")
             email_batch.append((email, f"ClassBridge: {data.subject}", html))
         except Exception:
             logger.warning("Failed to render broadcast email for %s", email)

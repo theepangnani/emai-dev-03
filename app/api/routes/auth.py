@@ -257,6 +257,7 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
         if shadow:
             shadow.user_id = user.id
             shadow.is_shadow = False
+            shadow.is_platform_user = True
             if teacher_type_value:
                 shadow.teacher_type = teacher_type_value
             teacher = shadow
