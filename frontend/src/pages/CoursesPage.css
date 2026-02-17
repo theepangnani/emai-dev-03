@@ -28,7 +28,7 @@
 
 .child-tab.active {
   border-color: var(--color-accent);
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  background: var(--color-accent);
   color: white;
 }
 

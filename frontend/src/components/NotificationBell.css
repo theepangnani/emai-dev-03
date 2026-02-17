@@ -232,7 +232,7 @@
 }
 
 .notif-modal-action {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+  background: var(--color-accent);
   color: white;
   border: none;
   padding: 10px 20px;
