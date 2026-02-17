@@ -12,16 +12,14 @@ interface FAQErrorHintProps {
 
 export function FAQErrorHint({ faqCode }: FAQErrorHintProps) {
   const navigate = useNavigate();
-  const [faqEntry, setFaqEntry] = useState<{ id: number; title: string } | null>(null);
+  const cachedValue = faqCode && faqCode in faqCache ? faqCache[faqCode] : null;
+  const [faqEntry, setFaqEntry] = useState<{ id: number; title: string } | null>(cachedValue);
 
   useEffect(() => {
     if (!faqCode) return;
 
-    // Check cache first
-    if (faqCode in faqCache) {
-      setFaqEntry(faqCache[faqCode]);
-      return;
-    }
+    // Use cache if available
+    if (faqCode in faqCache) return;
 
     faqApi.getByErrorCode(faqCode).then((data) => {
       const entry = { id: data.id, title: data.title };
@@ -49,18 +47,3 @@ export function FAQErrorHint({ faqCode }: FAQErrorHintProps) {
   );
 }
 
-/**
- * Extract faq_code from an Axios error response.
- * Usage: const faqCode = extractFaqCode(err);
- */
-export function extractFaqCode(err: unknown): string | null {
-  if (
-    err &&
-    typeof err === 'object' &&
-    'response' in err &&
-    (err as any).response?.data?.faq_code
-  ) {
-    return (err as any).response.data.faq_code;
-  }
-  return null;
-}

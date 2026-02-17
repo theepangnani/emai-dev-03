@@ -22,7 +22,8 @@ vi.mock('../api/client', () => ({
 }))
 
 // ── Import after mocks ────────────────────────────────────────
-import { FAQErrorHint, extractFaqCode } from './FAQErrorHint'
+import { FAQErrorHint } from './FAQErrorHint'
+import { extractFaqCode } from '../utils/faqUtils'
 
 // ── Tests ──────────────────────────────────────────────────────
 describe('FAQErrorHint', () => {
