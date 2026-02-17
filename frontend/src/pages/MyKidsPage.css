@@ -558,3 +558,41 @@
   font-size: 13px;
   margin-bottom: 8px;
 }
+
+/* Assign button on unassigned course cards */
+.mykids-assign-btn {
+  font-size: 16px !important;
+  font-weight: 700;
+}
+
+/* Assign Course to Child modal */
+.mykids-assign-child-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.mykids-assign-child-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.mykids-assign-child-btn:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+.mykids-assign-child-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

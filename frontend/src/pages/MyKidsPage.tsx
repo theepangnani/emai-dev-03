@@ -62,6 +62,14 @@ export function MyKidsPage() {
   const [addTeacherError, setAddTeacherError] = useState('');
   const [addTeacherLoading, setAddTeacherLoading] = useState(false);
 
+  // All-children view: unassigned courses/materials
+  const [unassignedCourses, setUnassignedCourses] = useState<Array<{ id: number; name: string; description?: string | null; subject?: string | null; teacher_name?: string | null }>>([]);
+  const [unassignedMaterials, setUnassignedMaterials] = useState<CourseContentItem[]>([]);
+  const [showUnassignedCourses, setShowUnassignedCourses] = useState(true);
+  const [showUnassignedMaterials, setShowUnassignedMaterials] = useState(true);
+  const [assignCourseModal, setAssignCourseModal] = useState<{ id: number; name: string } | null>(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -86,6 +94,28 @@ export function MyKidsPage() {
       setMaterials([]);
       setTasks([]);
       setLinkedTeachers([]);
+      // Load unassigned courses/materials for "All Children" view
+      if (children.length > 0) {
+        setSectionLoading(true);
+        Promise.all([
+          coursesApi.list(),
+          courseContentsApi.listAll(),
+          ...children.map(c => parentApi.getChildOverview(c.student_id)),
+        ]).then(([courseList, mats, ...overviews]) => {
+          const enrolled = new Set<number>();
+          (overviews as ChildOverview[]).forEach(ov => {
+            ov.courses.forEach(c => enrolled.add(c.id));
+          });
+          const unassigned = (courseList as Array<{ id: number; name: string }>).filter(c => !enrolled.has(c.id));
+          setUnassignedCourses(unassigned);
+          const unassignedIds = new Set(unassigned.map(c => c.id));
+          setUnassignedMaterials((mats as CourseContentItem[]).filter(m => !m.archived_at && unassignedIds.has(m.course_id)));
+          setCourses(courseList);
+        }).catch(() => {
+          setUnassignedCourses([]);
+          setUnassignedMaterials([]);
+        }).finally(() => setSectionLoading(false));
+      }
       return;
     }
     const child = children.find(c => c.student_id === selectedChild);
@@ -226,34 +256,104 @@ export function MyKidsPage() {
 
       {!selectedChild ? (
         /* All-children overview */
-        <div className="mykids-overview-grid">
-          {children.map((child, index) => (
-            <div
-              key={child.student_id}
-              className="mykids-child-card-enhanced"
-              onClick={() => setSelectedChild(child.student_id)}
-              onKeyDown={(e) => handleKeyDown(e, () => setSelectedChild(child.student_id))}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="mykids-child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }}>
-                {getInitials(child.full_name)}
-              </div>
-              <div className="mykids-child-card-content">
-                <div className="mykids-child-card-header">
-                  <span className="mykids-child-card-name">{child.full_name}</span>
-                  {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+        <>
+          <div className="mykids-overview-grid">
+            {children.map((child, index) => (
+              <div
+                key={child.student_id}
+                className="mykids-child-card-enhanced"
+                onClick={() => setSelectedChild(child.student_id)}
+                onKeyDown={(e) => handleKeyDown(e, () => setSelectedChild(child.student_id))}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="mykids-child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }}>
+                  {getInitials(child.full_name)}
                 </div>
-                {child.school_name && <div className="mykids-child-card-school">{child.school_name}</div>}
-                <div className="mykids-child-card-stats">
-                  <span className="mykids-child-stat">{child.course_count} {child.course_count === 1 ? 'course' : 'courses'}</span>
-                  <span className="mykids-child-stat">{child.active_task_count} active {child.active_task_count === 1 ? 'task' : 'tasks'}</span>
+                <div className="mykids-child-card-content">
+                  <div className="mykids-child-card-header">
+                    <span className="mykids-child-card-name">{child.full_name}</span>
+                    {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+                  </div>
+                  {child.school_name && <div className="mykids-child-card-school">{child.school_name}</div>}
+                  <div className="mykids-child-card-stats">
+                    <span className="mykids-child-stat">{child.course_count} {child.course_count === 1 ? 'course' : 'courses'}</span>
+                    <span className="mykids-child-stat">{child.active_task_count} active {child.active_task_count === 1 ? 'task' : 'tasks'}</span>
+                  </div>
                 </div>
+                <div className="mykids-child-card-arrow">&rarr;</div>
               </div>
-              <div className="mykids-child-card-arrow">&rarr;</div>
+            ))}
+          </div>
+
+          {/* Unassigned Courses & Materials */}
+          {sectionLoading ? (
+            <PageSkeleton />
+          ) : (unassignedCourses.length > 0 || unassignedMaterials.length > 0) && (
+            <div className="mykids-sections">
+              {/* Unassigned Courses */}
+              {unassignedCourses.length > 0 && (
+                <div className="mykids-section">
+                  <button className="mykids-section-header" onClick={() => setShowUnassignedCourses(p => !p)}>
+                    <span className={`section-chevron${showUnassignedCourses ? ' expanded' : ''}`}>&#9654;</span>
+                    <span className="section-icon">&#128218;</span> Unassigned Courses ({unassignedCourses.length})
+                  </button>
+                  {showUnassignedCourses && (
+                    <div className="mykids-card-grid">
+                      {unassignedCourses.map(c => (
+                        <div key={c.id} className="mykids-item-card mykids-item-card--material">
+                          <div className="mykids-item-card-actions">
+                            <button
+                              className="mykids-item-action-btn mykids-assign-btn"
+                              title="Assign to child"
+                              onClick={(e) => { e.stopPropagation(); setAssignCourseModal(c); }}
+                            >&#43;</button>
+                          </div>
+                          <div className="mykids-item-title">{c.name}</div>
+                          <div className="mykids-item-sub">
+                            {c.subject && <span>{c.subject}</span>}
+                            {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
+                            {!c.subject && !c.teacher_name && <span>No child assigned</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Unassigned Materials */}
+              {unassignedMaterials.length > 0 && (
+                <div className="mykids-section">
+                  <button className="mykids-section-header" onClick={() => setShowUnassignedMaterials(p => !p)}>
+                    <span className={`section-chevron${showUnassignedMaterials ? ' expanded' : ''}`}>&#9654;</span>
+                    <span className="section-icon">&#128196;</span> Unassigned Materials ({unassignedMaterials.length})
+                  </button>
+                  {showUnassignedMaterials && (
+                    <div className="mykids-card-grid">
+                      {unassignedMaterials.map(m => (
+                        <div key={m.id} className="mykids-item-card mykids-item-card--material" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                          <div className="mykids-item-card-actions">
+                            <button
+                              className="mykids-item-action-btn"
+                              title="Move to course"
+                              onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
+                            >&#128194;</button>
+                          </div>
+                          <div className="mykids-item-title">{m.title}</div>
+                          <div className="mykids-item-sub">
+                            <span className="mykids-badge">{m.content_type}</span>
+                            {m.course_name && <span> &middot; {m.course_name}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       ) : sectionLoading ? (
         <PageSkeleton />
       ) : (
@@ -541,6 +641,52 @@ export function MyKidsPage() {
               ) : (
                 <button className="generate-btn" disabled={!categorizeCourseId || categorizeCourseId === reassignContent.course_id} onClick={() => handleReassignContent()}>Move</button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Assign Course to Child Modal */}
+      {assignCourseModal && (
+        <div className="mykids-modal-overlay" onClick={() => setAssignCourseModal(null)}>
+          <div className="mykids-modal" onClick={e => e.stopPropagation()}>
+            <h3>Assign Course to Child</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Select a child to assign &ldquo;{assignCourseModal.name}&rdquo; to.
+            </p>
+            <div className="mykids-assign-child-list">
+              {children.map((child, index) => (
+                <button
+                  key={child.student_id}
+                  className="mykids-assign-child-btn"
+                  disabled={assignLoading}
+                  onClick={async () => {
+                    setAssignLoading(true);
+                    try {
+                      await parentApi.assignCoursesToChild(child.student_id, [assignCourseModal.id]);
+                      // Remove from unassigned lists
+                      setUnassignedCourses(prev => prev.filter(c => c.id !== assignCourseModal.id));
+                      setUnassignedMaterials(prev => prev.filter(m => m.course_id !== assignCourseModal.id));
+                      // Update child's course count locally
+                      setChildren(prev => prev.map(c =>
+                        c.student_id === child.student_id
+                          ? { ...c, course_count: c.course_count + 1 }
+                          : c
+                      ));
+                      setAssignCourseModal(null);
+                    } catch { /* ignore */ }
+                    finally { setAssignLoading(false); }
+                  }}
+                >
+                  <span className="mykids-child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length], width: 32, height: 32, fontSize: 13 }}>
+                    {getInitials(child.full_name)}
+                  </span>
+                  <span>{child.full_name}</span>
+                  {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+                </button>
+              ))}
+            </div>
+            <div className="mykids-modal-actions">
+              <button onClick={() => setAssignCourseModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
