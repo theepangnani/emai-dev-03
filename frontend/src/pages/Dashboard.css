@@ -39,10 +39,7 @@
   font-weight: 700;
   line-height: 1;
   font-family: var(--font-display);
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-accent);
   margin: 0;
   padding: 0;
 }
@@ -145,7 +142,7 @@
 }
 
 .messages-button {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm) 100%);
+  background: var(--color-accent);
   color: white;
   border: none;
   padding: 9px 16px;
@@ -165,6 +162,7 @@
 }
 
 .messages-button:hover {
+  background: var(--color-accent-strong);
   transform: translateY(-1px);
   box-shadow: var(--shadow-soft);
 }
@@ -306,7 +304,7 @@
 }
 
 .sidebar-link.active {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  background: var(--color-accent);
   color: white;
   border-color: transparent;
 }
@@ -677,7 +675,7 @@
 
 .generate-btn {
   padding: 10px 22px;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  background: var(--color-accent);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -688,6 +686,7 @@
 }
 
 .generate-btn:hover:not(:disabled) {
+  background: var(--color-accent-strong);
   transform: translateY(-1px);
   box-shadow: var(--shadow-soft);
 }
@@ -920,7 +919,7 @@
 /* Create / action button inside sections */
 .create-custom-btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-warm));
+  background: var(--color-accent);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -931,7 +930,7 @@
 }
 
 .create-custom-btn:hover {
-  opacity: 0.9;
+  background: var(--color-accent-strong);
 }
 
 /* Disconnect button */
