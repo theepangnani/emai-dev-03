@@ -275,7 +275,9 @@ export function createMockInvite(
     invited_by_user_id: 1,
     metadata_json: null,
     accepted_at: null,
+    last_resent_at: null,
     created_at: '2026-02-14T12:00:00Z',
+    status: overrides.accepted_at ? 'accepted' as const : 'pending' as const,
     ...overrides,
   }
 }
