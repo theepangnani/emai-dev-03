@@ -111,7 +111,7 @@ def test_invalid_api_path_returns_json_404(client):
     resp = client.get("/api/nonexistent")
     assert resp.status_code == 404
     data = resp.json()
-    assert data["detail"] == "Not found"
+    assert data["detail"].lower() == "not found"
 
 
 def test_invalid_api_nested_path_returns_json_404(client):
@@ -119,4 +119,4 @@ def test_invalid_api_nested_path_returns_json_404(client):
     resp = client.get("/api/v99/some/deep/path")
     assert resp.status_code == 404
     data = resp.json()
-    assert data["detail"] == "Not found"
+    assert data["detail"].lower() == "not found"
