@@ -948,39 +948,26 @@ export function ParentDashboard() {
             onCreateCourse={() => navigate('/courses')}
           />
 
-          {/* Student Detail Panel (shown when a child is selected) */}
-          {selectedChild && (
-            <StudentDetailPanel
-              selectedChildName={children.find(c => c.student_id === selectedChild)?.full_name ?? null}
-              courses={panelCourses}
-              courseMaterials={courseMaterials}
-              tasks={filteredTasks}
-              collapsed={detailPanelCollapsed}
-              onToggleCollapsed={() => setDetailPanelCollapsed(v => !v)}
-              onGoToCourse={handleGoToCourse}
-              onViewMaterial={(mat) => {
-                const path = mat.guide_type === 'quiz' ? `/study/quiz/${mat.id}`
-                  : mat.guide_type === 'flashcards' ? `/study/flashcards/${mat.id}`
-                  : `/study/guide/${mat.id}`;
-                navigate(path);
-              }}
-              onToggleTask={handleToggleTask}
-              onTaskClick={(task) => setTaskDetailModal(task)}
-              onViewAllTasks={() => navigate('/tasks')}
-              onViewAllMaterials={() => navigate('/course-materials', { state: { selectedChild } })}
-            />
-          )}
-
-          {/* Tasks Section (shown when "All Children" / no filter) */}
-          {!selectedChild && (
-            <TasksSection
-              tasks={filteredTasks}
-              isAllChildren={true}
-              onToggleTask={handleToggleTask}
-              onTaskClick={(task) => setTaskDetailModal(task)}
-              onViewAllTasks={() => navigate('/tasks')}
-            />
-          )}
+          {/* Student Detail Panel (always shown — aggregated for All Children, specific for selected child) */}
+          <StudentDetailPanel
+            selectedChildName={selectedChild ? (children.find(c => c.student_id === selectedChild)?.full_name ?? null) : null}
+            courses={panelCourses}
+            courseMaterials={courseMaterials}
+            tasks={filteredTasks}
+            collapsed={detailPanelCollapsed}
+            onToggleCollapsed={() => setDetailPanelCollapsed(v => !v)}
+            onGoToCourse={handleGoToCourse}
+            onViewMaterial={(mat) => {
+              const path = mat.guide_type === 'quiz' ? `/study/quiz/${mat.id}`
+                : mat.guide_type === 'flashcards' ? `/study/flashcards/${mat.id}`
+                : `/study/guide/${mat.id}`;
+              navigate(path);
+            }}
+            onToggleTask={handleToggleTask}
+            onTaskClick={(task) => setTaskDetailModal(task)}
+            onViewAllTasks={() => navigate('/tasks')}
+            onViewAllMaterials={() => navigate('/course-materials', { state: { selectedChild } })}
+          />
 
           {/* Collapsible Calendar Section */}
           <div className="calendar-collapse-section">
@@ -1563,113 +1550,3 @@ export function ParentDashboard() {
   );
 }
 
-/* ── TasksSection sub-component ─────────────────────────────── */
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-interface TasksSectionProps {
-  tasks: TaskItem[];
-  isAllChildren: boolean;
-  onToggleTask: (task: TaskItem) => void;
-  onTaskClick: (task: TaskItem) => void;
-  onViewAllTasks: () => void;
-}
-
-function categorizeTasks(tasks: TaskItem[]) {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayEnd = new Date(todayStart);
-  todayEnd.setDate(todayEnd.getDate() + 1);
-  const threeDaysEnd = new Date(todayStart);
-  threeDaysEnd.setDate(threeDaysEnd.getDate() + 4);
-
-  const groups = { overdue: [] as TaskItem[], today: [] as TaskItem[], upcoming: [] as TaskItem[], other: [] as TaskItem[] };
-
-  for (const task of tasks) {
-    if (task.archived_at) continue;
-    if (!task.due_date) { groups.other.push(task); continue; }
-    const due = new Date(task.due_date);
-    if (due < todayStart && !task.is_completed) groups.overdue.push(task);
-    else if (due >= todayStart && due < todayEnd) groups.today.push(task);
-    else if (due >= todayEnd && due < threeDaysEnd) groups.upcoming.push(task);
-    else groups.other.push(task);
-  }
-  return groups;
-}
-
-function TasksSection({ tasks, isAllChildren, onToggleTask, onTaskClick, onViewAllTasks }: TasksSectionProps) {
-  const [showOther, setShowOther] = useState(false);
-  const groups = useMemo(() => categorizeTasks(tasks), [tasks]);
-  const isEmpty = groups.overdue.length === 0 && groups.today.length === 0 && groups.upcoming.length === 0 && groups.other.length === 0;
-
-  const renderRow = (task: TaskItem, urgency: string | null, badge: string | null) => (
-    <div
-      key={task.id}
-      className={`sdp-task-item clickable${task.is_completed ? ' completed' : ''}`}
-      onClick={() => onTaskClick(task)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTaskClick(task); } }}
-    >
-      <input
-        type="checkbox"
-        className="sdp-task-checkbox"
-        checked={task.is_completed}
-        onChange={(e) => { e.stopPropagation(); onToggleTask(task); }}
-        aria-label={`Mark "${task.title}" as ${task.is_completed ? 'incomplete' : 'complete'}`}
-      />
-      <span className={`sdp-task-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
-      {isAllChildren && task.assignee_name && <span className="sdp-child-label">{task.assignee_name}</span>}
-      {badge && urgency && <span className={`sdp-task-badge ${urgency}`}>{badge}</span>}
-    </div>
-  );
-
-  return (
-    <div className="tasks-section-panel">
-      <div className="sdp-section-header sdp-section-header--static">
-        <span>Tasks</span>
-      </div>
-      <div className="sdp-section-body">
-        {groups.overdue.length > 0 && (
-          <div className="sdp-urgency-group">
-            <div className="sdp-urgency-header overdue">Overdue ({groups.overdue.length})</div>
-            {groups.overdue.map(t => {
-              const now = new Date();
-              const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-              const days = Math.ceil((todayStart.getTime() - new Date(t.due_date!).getTime()) / (1000 * 60 * 60 * 24));
-              return renderRow(t, 'overdue', `${days} days overdue`);
-            })}
-          </div>
-        )}
-        {groups.today.length > 0 && (
-          <div className="sdp-urgency-group">
-            <div className="sdp-urgency-header today">Due Today ({groups.today.length})</div>
-            {groups.today.map(t => renderRow(t, 'today', 'Today'))}
-          </div>
-        )}
-        {groups.upcoming.length > 0 && (
-          <div className="sdp-urgency-group">
-            <div className="sdp-urgency-header upcoming">Next 3 Days ({groups.upcoming.length})</div>
-            {groups.upcoming.map(t => renderRow(t, 'upcoming', t.due_date ? DAY_NAMES[new Date(t.due_date).getDay()] : ''))}
-          </div>
-        )}
-        {groups.other.length > 0 && (
-          <div className="sdp-urgency-group">
-            {!showOther ? (
-              <button className="sdp-show-more" onClick={() => setShowOther(true)} type="button">
-                Show {groups.other.length} more
-              </button>
-            ) : (
-              <>
-                {groups.other.map(t => renderRow(t, null, null))}
-                <button className="sdp-show-more" onClick={() => setShowOther(false)} type="button">Show less</button>
-              </>
-            )}
-          </div>
-        )}
-        {isEmpty && <div className="sdp-empty">No tasks</div>}
-        <button className="sdp-view-all" onClick={onViewAllTasks} type="button">View All Tasks</button>
-      </div>
-    </div>
-  );
-}

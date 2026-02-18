@@ -1413,27 +1413,6 @@
 }
 
 /* ============================================
-   Tasks Section Panel (replaces StudentDetailPanel)
-   ============================================ */
-
-.tasks-section-panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.tasks-section-panel .sdp-task-item.clickable {
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.tasks-section-panel .sdp-task-item.clickable:hover {
-  background: var(--color-surface-alt);
-}
-
-/* ============================================
    Task Detail Modal
    ============================================ */
 
