@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
 import { queueStudyGeneration } from './StudyGuidesPage';
@@ -142,6 +142,22 @@ export function ParentDashboard() {
 
   // Student detail panel collapse state
   const [detailPanelCollapsed, setDetailPanelCollapsed] = useState(false);
+
+  // Scroll to a specific urgency group in the StudentDetailPanel
+  const scrollToUrgencyGroup = useCallback((urgency: 'overdue' | 'today' | 'upcoming') => {
+    // Expand panel if collapsed
+    setDetailPanelCollapsed(false);
+    // Wait for DOM to update after expanding
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-urgency="${urgency}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Brief highlight effect
+        el.classList.add('sdp-urgency-highlight');
+        setTimeout(() => el.classList.remove('sdp-urgency-highlight'), 1500);
+      }
+    });
+  }, []);
 
   // Course materials for StudentDetailPanel
   const [courseMaterials, setCourseMaterials] = useState<CourseMaterial[]>([]);
@@ -840,13 +856,13 @@ export function ParentDashboard() {
                 </div>
                 <div className="today-focus-items">
                   {overdue > 0 && (
-                    <span className="focus-tag overdue">{overdue} overdue</span>
+                    <button type="button" className="focus-tag overdue" onClick={() => scrollToUrgencyGroup('overdue')}>{overdue} overdue</button>
                   )}
                   {dueToday > 0 && (
-                    <span className="focus-tag today">{dueToday} due today</span>
+                    <button type="button" className="focus-tag today" onClick={() => scrollToUrgencyGroup('today')}>{dueToday} due today</button>
                   )}
                   {upcoming > 0 && (
-                    <span className="focus-tag upcoming">{upcoming} next 3 days</span>
+                    <button type="button" className="focus-tag upcoming" onClick={() => scrollToUrgencyGroup('upcoming')}>{upcoming} next 3 days</button>
                   )}
                 </div>
               </div>
