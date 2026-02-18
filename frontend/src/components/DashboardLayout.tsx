@@ -44,16 +44,16 @@ const NAV_ICONS: Record<string, string> = {
   'Teacher Comms': '\u{1F4E8}',
 };
 
-// Default quick action icons for parent role
+// Quick action icons — must match NAV_ICONS base icons for consistency
 const QUICK_ACTION_ICONS: Record<string, string> = {
-  '+ Course Material': '\u{1F4C4}',
-  '+ Create Course Material': '\u{1F4C4}',
-  '+ Task': '\u2795',
+  '+ Course Material': '\u{1F4DD}',
+  '+ Create Course Material': '\u{1F4DD}',
+  '+ Task': '\u2705',
   '+ Child': '\u{1F476}',
   '+ Add Child': '\u{1F476}',
-  '+ Course': '\u{1F393}',
-  '+ Add Course': '\u{1F393}',
-  '+ Create Study Material': '\u{1F4C4}',
+  '+ Course': '\u{1F4DA}',
+  '+ Add Course': '\u{1F4DA}',
+  '+ Create Study Material': '\u{1F4DD}',
 };
 
 export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask, headerSlot }: DashboardLayoutProps) {
@@ -171,11 +171,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     const actions: SidebarAction[] = [];
     // + Course Material (sidebarActions[1] if exists)
     if (sidebarActions && sidebarActions.length > 1) {
-      actions.push({ label: '+ Course Material', icon: '\u{1F4C4}', onClick: sidebarActions[1].onClick });
+      actions.push({ label: '+ Course Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
     }
     // + Task
     if (onCreateTask) {
-      actions.push({ label: '+ Task', icon: '\u2795', onClick: onCreateTask });
+      actions.push({ label: '+ Task', icon: '\u2705', onClick: onCreateTask });
     }
     // + Child (sidebarActions[0] if exists)
     if (sidebarActions && sidebarActions.length > 0) {
@@ -331,7 +331,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                   className="sidebar-action"
                   onClick={() => handleActionClick(action)}
                 >
-                  <span className="sidebar-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                  <span className="sidebar-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
                   <span className="sidebar-action-label">{action.label}</span>
                 </button>
               ))}
@@ -372,7 +372,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                     title={action.label}
                     aria-label={action.label}
                   >
-                    <span className="ps-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                    <span className="ps-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
                   </button>
                 ))}
               </div>
