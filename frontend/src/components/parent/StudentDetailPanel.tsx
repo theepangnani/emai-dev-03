@@ -1,28 +1,15 @@
 import { useState, useMemo } from 'react';
+import type { TaskItem } from '../../api/tasks';
 import './StudentDetailPanel.css';
 
 /* ── Interfaces ────────────────────────────────────────────── */
+
+export type { TaskItem };
 
 export interface CourseInfo {
   id: number;
   name: string;
   google_classroom_id?: string;
-}
-
-export interface TaskItem {
-  id: number;
-  title: string;
-  description?: string | null;
-  due_date?: string | null;
-  priority?: string | null;
-  is_completed: boolean;
-  archived_at?: string | null;
-  assignee_name?: string | null;
-  assigned_to_user_id?: number | null;
-  created_by_user_id?: number | null;
-  creator_name?: string | null;
-  category?: string | null;
-  [key: string]: unknown;
 }
 
 export interface CourseMaterial {

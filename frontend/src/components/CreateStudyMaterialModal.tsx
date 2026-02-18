@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { studyApi, SupportedFormats, DuplicateCheckResponse } from '../api/study';
+import { studyApi } from '../api/study';
+import type { SupportedFormats, DuplicateCheckResponse } from '../api/study';
 
 const MAX_FILE_SIZE_MB = 100;
 
