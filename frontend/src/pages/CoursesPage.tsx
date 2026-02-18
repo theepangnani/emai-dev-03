@@ -60,6 +60,7 @@ export function CoursesPage() {
   // Shared state
   const [myCourses, setMyCourses] = useState<CourseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState('');
 
   // Inline course content expansion
@@ -83,6 +84,13 @@ export function CoursesPage() {
 
   useEffect(() => {
     loadData();
+    const timeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) setLoadError(true);
+        return false;
+      });
+    }, 15000);
+    return () => clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
@@ -90,6 +98,7 @@ export function CoursesPage() {
   }, [selectedChild]);
 
   const loadData = async () => {
+    setLoadError(false);
     try {
       if (isParent) {
         const [childrenData, courses] = await Promise.all([
@@ -121,7 +130,9 @@ export function CoursesPage() {
         const courses = await coursesApi.list();
         setMyCourses(courses);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -305,10 +316,25 @@ export function CoursesPage() {
   const childName = childOverview?.full_name || children.find(c => c.student_id === selectedChild)?.full_name || '';
   const courseIds = (childOverview?.courses || []).map(c => c.id);
 
-  if (loading) {
+  if (loading || loadError) {
     return (
       <DashboardLayout welcomeSubtitle="Manage courses" showBackButton>
-        <PageSkeleton />
+        {loadError ? (
+          <div className="no-children-state">
+            <h3>Unable to Load Courses</h3>
+            <p>Something went wrong while loading your courses. Please try again.</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+              <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
+                Retry
+              </button>
+              <button className="cancel-btn" onClick={() => window.location.reload()}>
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        ) : (
+          <PageSkeleton />
+        )}
       </DashboardLayout>
     );
   }

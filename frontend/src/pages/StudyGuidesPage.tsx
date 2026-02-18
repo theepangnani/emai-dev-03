@@ -59,6 +59,7 @@ export function StudyGuidesPage() {
   // Map of course_content_id -> guide_types for filtering
   const [contentGuideMap, setContentGuideMap] = useState<Record<number, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Filters
   const [filterChild, setFilterChild] = useState<number | ''>('');
@@ -112,6 +113,14 @@ export function StudyGuidesPage() {
       _pendingGeneration = null;
       startGeneration(params);
     }
+    // Safety timeout: if loading takes too long, show error state
+    const timeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) setLoadError(true);
+        return false;
+      });
+    }, 15000);
+    return () => clearTimeout(timeout);
   }, []);
 
   // Set filter from navigation state (parent dashboard child selection)
@@ -143,6 +152,7 @@ export function StudyGuidesPage() {
   }, [modalCourseId]);
 
   const loadData = async () => {
+    setLoadError(false);
     try {
       const [contents, allGuides, courseList] = await Promise.all([
         courseContentsApi.listAll(),
@@ -171,7 +181,9 @@ export function StudyGuidesPage() {
         const childrenData = await parentApi.getChildren();
         setChildren(childrenData);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -510,10 +522,25 @@ export function StudyGuidesPage() {
     return counts;
   }, [contentItems, contentGuideMap, legacyGuides]);
 
-  if (loading) {
+  if (loading || loadError) {
     return (
       <DashboardLayout welcomeSubtitle="Manage study materials" showBackButton>
-        <PageSkeleton />
+        {loadError ? (
+          <div className="no-children-state">
+            <h3>Unable to Load Course Materials</h3>
+            <p>Something went wrong while loading your course materials. Please try again.</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+              <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
+                Retry
+              </button>
+              <button className="cancel-btn" onClick={() => window.location.reload()}>
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        ) : (
+          <PageSkeleton />
+        )}
       </DashboardLayout>
     );
   }
