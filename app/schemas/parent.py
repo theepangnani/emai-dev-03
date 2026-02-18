@@ -34,6 +34,7 @@ class ChildSummary(BaseModel):
     notes: Optional[str] = None
     relationship_type: str | None = None
     invite_link: str | None = None
+    link_request_pending: bool = False
     course_count: int = 0
     active_task_count: int = 0
 

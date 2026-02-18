@@ -155,3 +155,5 @@ export { faqApi } from './faq';
 export type { FAQQuestionItem, FAQAnswerItem, FAQQuestionDetail } from './faq';
 export { analyticsApi } from './analytics';
 export type { GradeItem, CourseAverage, GradeSummary, TrendPoint, TrendResponse, AIInsight, WeeklyReport } from './analytics';
+export { linkRequestsApi } from './linkRequests';
+export type { LinkRequestItem, LinkRequestUser } from './linkRequests';

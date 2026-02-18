@@ -37,6 +37,8 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+from app.services.notification_service import notify_parents_of_student
+from app.models.notification import NotificationType
 from app.services.file_processor import (
     process_file,
     get_supported_formats,
@@ -173,6 +175,27 @@ def ensure_course_and_content(
     return course.id, cc.id
 
 
+
+
+def _notify_parents_of_study_material(
+    db: Session, user: User, study_guide_id: int, title: str,
+) -> None:
+    """Notify parents when a student generates study material. Safe to call — never raises."""
+    if user.role != UserRole.STUDENT:
+        return
+    try:
+        notify_parents_of_student(
+            db=db,
+            student_user=user,
+            title=f"New study material: {title}",
+            content=f"{user.full_name} created \"{title}\".",
+            notification_type=NotificationType.STUDY_GUIDE_CREATED,
+            link=f"/study/guides/{study_guide_id}",
+            source_type="study_guide",
+            source_id=study_guide_id,
+        )
+    except Exception:
+        pass  # Never break primary action
 
 
 CRITICAL_DATES_SEPARATOR = "--- CRITICAL_DATES ---"
@@ -416,6 +439,8 @@ async def generate_study_guide_endpoint(
     db.commit()
     db.refresh(study_guide)
 
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
     return resp
@@ -521,6 +546,8 @@ async def generate_quiz_endpoint(
 
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     return QuizResponse(
         id=study_guide.id,
@@ -634,6 +661,8 @@ async def generate_flashcards_endpoint(
 
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     return FlashcardSetResponse(
         id=study_guide.id,
@@ -1051,6 +1080,8 @@ async def generate_from_text_and_images(
     db.commit()
     db.refresh(study_guide)
 
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
     return resp
@@ -1204,6 +1235,8 @@ async def generate_from_file_upload(
 
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]

@@ -2,9 +2,9 @@ import { api } from './client';
 
 // Auth API
 export const authApi = {
-  login: async (email: string, password: string) => {
+  login: async (identifier: string, password: string) => {
     const formData = new URLSearchParams();
-    formData.append('username', email);
+    formData.append('username', identifier);
     formData.append('password', password);
 
     const response = await api.post('/api/auth/login', formData, {
@@ -13,7 +13,7 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (data: { email: string; password: string; full_name: string; roles: string[]; teacher_type?: string; google_id?: string }) => {
+  register: async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles: string[]; teacher_type?: string; google_id?: string }) => {
     const response = await api.post('/api/auth/register', data);
     return response.data;
   },

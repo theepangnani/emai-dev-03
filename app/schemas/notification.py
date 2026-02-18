@@ -23,6 +23,13 @@ class NotificationResponse(BaseModel):
     read: bool
     created_at: datetime
 
+    # ACK system fields
+    requires_ack: bool = False
+    acked_at: Optional[datetime] = None
+    source_type: Optional[str] = None
+    source_id: Optional[int] = None
+    reminder_count: int = 0
+
     class Config:
         from_attributes = True
 

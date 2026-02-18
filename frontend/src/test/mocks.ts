@@ -132,6 +132,11 @@ export function createMockNotification(
     link: null,
     read: false,
     created_at: '2026-02-14T12:00:00Z',
+    requires_ack: false,
+    acked_at: null,
+    source_type: null,
+    source_id: null,
+    reminder_count: 0,
     ...overrides,
   }
 }

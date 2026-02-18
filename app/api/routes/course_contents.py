@@ -12,6 +12,8 @@ from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
 from app.api.deps import get_current_user, can_access_course
+from app.models.notification import NotificationType
+from app.services.notification_service import notify_parents_of_student
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -85,10 +87,8 @@ def create_course_content(
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
         try:
-            from app.models.notification import NotificationType
-            from app.services.notification_service import notify_parents_of_student
             notify_parents_of_student(
-                db,
+                db=db,
                 student_user=current_user,
                 title=f"{current_user.full_name} uploaded course material",
                 content=f"{current_user.full_name} uploaded \"{data.title}\" to {course.name}.",
