@@ -4,16 +4,16 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 
 | Dashboard | Key Features | Status |
 |-----------|--------------|--------|
-| **Parent Dashboard** | Persistent sidebar, child filter pills, alert banner, urgency-grouped tasks, student detail panel, Quick Actions bar, collapsible calendar | Implemented (v3 simplification in progress — #540) |
+| **Parent Dashboard** | Persistent sidebar, child filter pills, alert banner, urgency-grouped tasks, student detail panel, Quick Actions bar, collapsible calendar | Implemented (v3 simplification — #540, PR #545) |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination), role management, broadcast messaging, individual user messaging | Implemented (messaging planned) |
 
 > **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
 
-### Parent Dashboard Layout (v3 — Simplified) - IN PROGRESS
+### Parent Dashboard Layout (v3 — Simplified) - IMPLEMENTED
 
-**GitHub Issues:** #540 (parent), #541 (sidebar), #542 (alert banner + pills), #543 (actions + detail panel), #544 (calendar + cleanup)
+**GitHub Issues:** #540 (parent), #541 (sidebar), #542 (alert banner + pills), #543 (actions + detail panel), #544 (calendar + cleanup) — all closed, deployed via PR #545
 
 The Parent Dashboard uses an **urgency-first, single-hub layout**: persistent sidebar, child filter pills, alert banner, quick actions, student detail panel, and collapsible calendar. Replaces the v2 calendar-centric layout.
 

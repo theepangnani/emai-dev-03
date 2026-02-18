@@ -116,21 +116,21 @@ Replace all gradient UI styling with solid accent colors across web and mobile. 
 
 #### Status: Phase 1 — Not yet implemented
 
-### 6.16 Layout Redesign (turbo.ai-inspired) — PLANNED
+### 6.16 Layout Redesign (turbo.ai-inspired) — PARTIAL
 
 A layout overhaul inspired by modern SaaS dashboards (turbo.ai), addressing prototype user feedback.
 
 GitHub Issues: #198, #199, #200
 
-#### Planned Changes
-- Persistent collapsible sidebar navigation (replacing hamburger slide-out)
-- Glassmorphism card design with gradient borders
-- Improved information density and visual hierarchy
-- Simplified header (logo + search + notifications + avatar)
-- Generous spacing and modern typography
-- Mobile: sidebar converts to bottom nav or full-screen overlay
+#### Changes
+- [x] Persistent collapsible sidebar navigation (replacing hamburger slide-out) — IMPLEMENTED (#541, PR #545)
+- [ ] Glassmorphism card design with gradient borders
+- [x] Improved information density and visual hierarchy — IMPLEMENTED (#540, PR #545)
+- [x] Simplified header (logo + search + notifications + avatar) — IMPLEMENTED
+- [ ] Generous spacing and modern typography
+- [x] Mobile: sidebar converts to hamburger overlay on <768px — IMPLEMENTED (#541)
 
-#### Status: Phase 1.5 — Not yet implemented
+#### Status: Phase 1 — Partially implemented (sidebar + hierarchy done, visual polish remaining)
 
 ### 6.17 Global Search (Phase 1.5)
 
@@ -265,7 +265,7 @@ Allow parents to collapse/expand the calendar section on the Parent Dashboard fo
 - When collapsed, shows a compact bar with item count and expand button
 - When expanded, shows the full calendar (default state)
 - Collapse state persists via localStorage across sessions
-- Calendar defaults to **expanded** on all screen sizes
+- Calendar defaults to **collapsed** on all screen sizes (changed in v3 — #544)
 
 ### 6.22 Parent UX Simplification (Phase 1.5) — IMPLEMENTED
 

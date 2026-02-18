@@ -111,7 +111,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #182: HIGH: Secure logging endpoint and parent-created student passwords~~ ✅
 - ~~Issue #184: MEDIUM: Fix LIKE pattern injection in search and study guide routes~~ ✅
 - ~~Issue #206: Parent UX: Consolidated parent navigation via My Kids page~~ ✅
-- ~~Issue #207: Parent Dashboard: Calendar default expanded on all screen sizes~~ ✅
+- ~~Issue #207: Parent Dashboard: Collapsible/expandable calendar (now defaults to collapsed — #544)~~ ✅
 - ~~Issue #208: Fix overdue/due-today count mismatch between dashboard and TasksPage~~ ✅
 - ~~Issue #209: Add assignee filter to TasksPage for filtering by student~~ ✅
 - ~~Issue #210: Task Detail Page: Inline edit mode with all fields~~ ✅
@@ -174,12 +174,12 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #529: Missing back button on Course Materials and Courses pages~~ ✅ (add `showBackButton` prop to DashboardLayout; back button uses `navigate(-1)` for true browser history back; enabled on all sub-pages: Courses, Course Materials, CourseDetail, CourseMaterialDetail, MyKids, Tasks, Help, FAQ)
 - ~~Issue #530: Parent sidebar missing Courses and Course Materials navigation links~~ ✅ (restore Courses and Course Materials to parent nav items in DashboardLayout sidebar)
 
-### Phase 1 - Open (Dashboard Simplification — #540)
-- Issue #540: Parent Dashboard Simplification — Single Hub with Urgency-First Layout (parent tracking)
-- Issue #541: Dashboard: Persistent sidebar navigation (replace hamburger)
-- Issue #542: Dashboard: Alert banner + unified child filter pills
-- Issue #543: Dashboard: Quick Actions bar + Student Detail Panel with urgency-grouped tasks
-- Issue #544: Dashboard: Calendar default collapsed + dead code cleanup
+### Phase 1 - Implemented (Feb 18: Dashboard Simplification — #540, PR #545)
+- ~~Issue #540: Parent Dashboard Simplification — Single Hub with Urgency-First Layout~~ ✅
+- ~~Issue #541: Dashboard: Persistent sidebar navigation (replace hamburger)~~ ✅
+- ~~Issue #542: Dashboard: Alert banner + unified child filter pills~~ ✅
+- ~~Issue #543: Dashboard: Quick Actions bar + Student Detail Panel with urgency-grouped tasks~~ ✅
+- ~~Issue #544: Dashboard: Calendar default collapsed + dead code cleanup~~ ✅
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
@@ -233,7 +233,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #204: Parent UX: Fix filter cascade on Course Materials page~~ ✅
 - ~~Issue #205: Parent UX: Reduce modal nesting~~ ✅
 - ~~Issue #206: Parent UX: Consolidated parent navigation via My Kids page~~ ✅
-- ~~Issue #207: Parent Dashboard: Calendar default expanded on all screen sizes~~ ✅
+- ~~Issue #207: Parent Dashboard: Collapsible/expandable calendar (now defaults to collapsed — #544)~~ ✅
 
 ### Phase 2
 - Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)
@@ -412,7 +412,7 @@ Current feature issues are tracked in GitHub:
 - Issue #127: Split api/client.ts into domain-specific API modules
 - Issue #128: Extract backend domain services from route handlers
 - Issue #129: Introduce repository pattern for data access
-- Issue #130: Split ParentDashboard into sub-components
+- Issue #130: Split ParentDashboard into sub-components (PARTIAL — AlertBanner, StudentDetailPanel, QuickActionsBar extracted in #540)
 - Issue #131: Activate TanStack Query for server state management
 - Issue #132: Reorganize backend into domain modules (DDD bounded contexts)
 - Issue #133: Reorganize frontend into domain modules

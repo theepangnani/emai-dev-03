@@ -105,16 +105,16 @@
 - [ ] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414)
 - [ ] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509)
 - [ ] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510)
-- [ ] **Parent Dashboard v3: Persistent sidebar** — Replace hamburger with always-visible sidebar on desktop (#541)
-- [ ] **Parent Dashboard v3: Alert banner + child pills** — Unified alert banner (overdue/invites/messages) + single child filter pills replacing redundant tabs and cards (#542)
-- [ ] **Parent Dashboard v3: Quick Actions + Student Detail Panel** — Always-visible action bar (+ Material, + Task, + Child, + Course) + urgency-grouped tasks panel per child (#543)
-- [ ] **Parent Dashboard v3: Calendar default collapsed + cleanup** — Calendar defaults to collapsed; delete dead ParentSidebar/ParentActionBar code; fix #536 (#544)
+- [x] **Parent Dashboard v3: Persistent sidebar** — Replace hamburger with always-visible sidebar on desktop (#541) (IMPLEMENTED — PR #545)
+- [x] **Parent Dashboard v3: Alert banner + child pills** — Unified alert banner (overdue/invites/messages) + single child filter pills replacing redundant tabs and cards (#542) (IMPLEMENTED — PR #545)
+- [x] **Parent Dashboard v3: Quick Actions + Student Detail Panel** — Always-visible action bar (+ Material, + Task, + Child, + Course) + urgency-grouped tasks panel per child (#543) (IMPLEMENTED — PR #545)
+- [x] **Parent Dashboard v3: Calendar default collapsed + cleanup** — Calendar defaults to collapsed; delete dead ParentSidebar/ParentActionBar code; fix #536 (#544) (IMPLEMENTED — PR #545)
 
 #### Architecture Foundation (Tier 0)
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
 - [ ] **Extract backend services** — Move business logic from route handlers to domain service layer (#128)
 - [ ] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129)
-- [ ] **Split ParentDashboard** — Break 1222-LOC component into composable sub-components (#130)
+- [x] **Split ParentDashboard** — Break 1222-LOC component into composable sub-components (#130) (PARTIAL — extracted AlertBanner, StudentDetailPanel, QuickActionsBar; ~1494 LOC remains in ParentDashboard but logic is delegated to sub-components)
 - [ ] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
 - [ ] **Frontend DDD modules** — Reorganize into domain directories (#133)
@@ -165,7 +165,7 @@
 - [x] Issue #204: Parent UX: Fix filter cascade on Course Materials page ✅
 - [x] Issue #205: Parent UX: Reduce modal nesting ✅
 - [x] Issue #206: Parent UX: Parent navigation — restored Courses & Course Materials to sidebar (#529, #530) ✅
-- [ ] Issue #207: Parent Dashboard: Collapsible/expandable calendar section
+- [x] Issue #207: Parent Dashboard: Collapsible/expandable calendar section (IMPLEMENTED — defaults to collapsed, #544)
 
 ### Phase 2
 - [ ] TeachAssist integration
