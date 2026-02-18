@@ -12,16 +12,17 @@ export interface CourseInfo {
 export interface TaskItem {
   id: number;
   title: string;
-  description?: string;
-  due_date?: string;
-  priority?: string;
+  description?: string | null;
+  due_date?: string | null;
+  priority?: string | null;
   is_completed: boolean;
-  archived_at?: string;
-  assignee_name?: string;
-  assigned_to_user_id?: number;
-  created_by_user_id?: number;
-  creator_name?: string;
-  category?: string;
+  archived_at?: string | null;
+  assignee_name?: string | null;
+  assigned_to_user_id?: number | null;
+  created_by_user_id?: number | null;
+  creator_name?: string | null;
+  category?: string | null;
+  [key: string]: unknown;
 }
 
 export interface CourseMaterial {

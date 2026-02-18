@@ -8,7 +8,7 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
-import CreateStudyMaterialModal, { StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
+import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import './StudyGuidesPage.css';
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
