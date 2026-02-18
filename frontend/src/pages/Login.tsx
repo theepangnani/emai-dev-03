@@ -5,7 +5,7 @@ import { googleApi } from '../api/client';
 import './Auth.css';
 
 export function Login() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -42,7 +42,7 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(identifier, password);
       navigate('/dashboard');
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
@@ -78,13 +78,13 @@ export function Login() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="identifier">Email or Username</label>
             <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              type="text"
+              id="identifier"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="you@example.com or username"
               required
             />
           </div>

@@ -93,13 +93,23 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     if pw_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=pw_error)
 
-    # Check if user exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
+    # Check if email already exists
+    if user_data.email:
+        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
+
+    # Check if username already exists
+    if user_data.username:
+        existing_username = db.query(User).filter(User.username == user_data.username).first()
+        if existing_username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken",
+            )
 
     # Resolve Google tokens from server-side store (not from client)
     google_access_token = None
@@ -121,6 +131,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     # Create new user
     user = User(
         email=user_data.email,
+        username=user_data.username,
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         role=user_data.role if has_roles else None,
@@ -146,8 +157,83 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             if teacher:
                 teacher.teacher_type = TeacherType(user_data.teacher_type)
 
+    # Student registration: store parent_email and trigger LinkRequest or Invite
+    if has_roles and UserRole.STUDENT in user_data.roles and user_data.parent_email:
+        student = db.query(Student).filter(Student.user_id == user.id).first()
+        if student:
+            student.parent_email = user_data.parent_email
+
+            # Look up parent by email
+            parent_user = db.query(User).filter(User.email == user_data.parent_email).first()
+            if parent_user:
+                # Parent exists — create LinkRequest for approval
+                import secrets
+                from datetime import timedelta
+                from app.models.link_request import LinkRequest, LinkRequestType
+                from app.services.notification_service import send_multi_channel_notification
+                from app.models.notification import NotificationType
+
+                link_req = LinkRequest(
+                    request_type=LinkRequestType.STUDENT_TO_PARENT.value,
+                    requester_user_id=user.id,
+                    target_user_id=parent_user.id,
+                    student_id=student.id,
+                    relationship_type="guardian",
+                    token=secrets.token_urlsafe(32),
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+                )
+                db.add(link_req)
+                db.flush()
+
+                send_multi_channel_notification(
+                    db=db,
+                    recipient=parent_user,
+                    sender=user,
+                    title="Student Link Request",
+                    content=f"{user.full_name} has registered as a student and is requesting to link to your account.",
+                    notification_type=NotificationType.LINK_REQUEST,
+                    link="/link-requests",
+                )
+            else:
+                # Parent not in system — create Invite
+                import secrets
+                from datetime import timedelta
+                token = secrets.token_urlsafe(32)
+                invite = Invite(
+                    email=user_data.parent_email,
+                    invite_type=InviteType.PARENT,
+                    token=token,
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+                    invited_by_user_id=user.id,
+                    metadata_json={
+                        "student_user_id": user.id,
+                        "student_id": student.id,
+                        "relationship_type": "guardian",
+                    },
+                )
+                db.add(invite)
+                db.flush()
+
+                # Send invite email (best-effort)
+                try:
+                    invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
+                    invite_html = f"""
+                        <h2>Your child has joined ClassBridge</h2>
+                        <p><strong>{user.full_name}</strong> has registered on ClassBridge and listed you as their parent.</p>
+                        <p>Create your parent account to stay connected with their education:</p>
+                        <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
+                        <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
+                    """
+                    send_email_sync(
+                        to_email=user_data.parent_email,
+                        subject=f"{user.full_name} invited you to ClassBridge",
+                        html_content=invite_html,
+                    )
+                except Exception as e:
+                    _logger.warning("Failed to send parent invite email to %s: %s", user_data.parent_email, e)
+
     log_action(db, user_id=user.id, action="create", resource_type="user", resource_id=user.id,
-               details={"role": user_data.role, "email": user_data.email, "needs_onboarding": not has_roles},
+               details={"role": user_data.role, "email": user_data.email, "username": user_data.username, "needs_onboarding": not has_roles},
                ip_address=request.client.host if request.client else None)
     db.commit()
     db.refresh(user)
@@ -160,6 +246,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     return UserResponse(
         id=user.id,
         email=user.email or "",
+        username=user.username,
         full_name=user.full_name,
         role=user.role,
         roles=[r.value for r in user.get_roles_list()],
@@ -179,14 +266,17 @@ def login(
     db: Session = Depends(get_db),
 ):
     ip = request.client.host if request.client else None
+    # Try email first, then username
     user = db.query(User).filter(User.email == form_data.username).first()
+    if not user:
+        user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         log_action(db, user_id=None, action="login_failed", resource_type="user",
-                   details={"email": form_data.username}, ip_address=ip)
+                   details={"identifier": form_data.username}, ip_address=ip)
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect email/username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

@@ -17,6 +17,7 @@ def _user_response(user: User) -> UserResponse:
     return UserResponse(
         id=user.id,
         email=user.email or "",
+        username=user.username,
         full_name=user.full_name,
         role=user.role,
         roles=[r.value for r in user.get_roles_list()],
