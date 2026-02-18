@@ -1,73 +1,117 @@
 /* ============================================
-   Status Summary Cards
+   Today's Focus Header
    ============================================ */
 
-.status-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+.today-focus-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
   margin-bottom: 20px;
-}
-
-.status-card {
+  padding: 16px 20px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 16px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.status-card:hover {
-  border-color: var(--color-accent);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-soft);
+.today-focus-main {
+  flex: 1;
+  min-width: 0;
 }
 
-.status-card.urgent {
-  border-color: var(--priority-high);
-  background: var(--priority-high-light);
+.today-focus-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.status-card.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-subtle);
-}
-
-.status-card.notify {
-  border-color: var(--color-accent-warm);
-  background: var(--color-warning-light);
-}
-
-.status-card-count {
-  display: block;
+.today-focus-icon {
   font-size: 28px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.today-focus-title {
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-ink);
-  line-height: 1.2;
+  font-family: var(--font-display);
 }
 
-.status-card.urgent .status-card-count {
+.today-focus-subtitle {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+}
+
+.today-focus-items {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.focus-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.focus-tag.overdue {
+  background: var(--priority-high-light);
   color: var(--priority-high);
 }
 
-.status-card.active .status-card-count {
-  color: var(--color-accent);
+.focus-tag.today {
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
 }
 
-.status-card.notify .status-card-count {
-  color: var(--color-accent-warm);
+.focus-tag.upcoming {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
 }
 
-.status-card-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
+.today-focus-inspiration {
+  flex-shrink: 0;
+  max-width: 300px;
+  padding-left: 20px;
+  border-left: 2px solid var(--color-border);
+}
+
+.today-focus-quote {
+  font-size: 13px;
+  font-style: italic;
   color: var(--color-ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.today-focus-author {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .today-focus-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .today-focus-inspiration {
+    max-width: none;
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    padding-top: 10px;
+  }
 }
 
 /* ============================================

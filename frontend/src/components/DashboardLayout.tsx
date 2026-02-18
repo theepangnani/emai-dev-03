@@ -16,12 +16,19 @@ interface SidebarAction {
   onClick: () => void;
 }
 
+export interface InspirationData {
+  text: string;
+  author: string | null;
+}
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
   showBackButton?: boolean;
   onCreateTask?: () => void;
+  /** When provided, replaces the default welcome section. Receives inspiration data. */
+  headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
 }
 
 // Icon map for nav items (unicode emojis per project convention)
@@ -49,7 +56,7 @@ const QUICK_ACTION_ICONS: Record<string, string> = {
   '+ Create Study Material': '\u{1F4C4}',
 };
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask }: DashboardLayoutProps) {
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -374,21 +381,25 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         </aside>
 
         <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
-        <div className="welcome-section">
-          {inspiration ? (
-            <>
-              <h2 className="inspiration-text">"{inspiration.text}"</h2>
-              {inspiration.author && (
-                <p className="inspiration-author">— {inspiration.author}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
-              <p>{welcomeSubtitle || "Here's your overview"}</p>
-            </>
-          )}
-        </div>
+        {headerSlot ? (
+          headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
+        ) : (
+          <div className="welcome-section">
+            {inspiration ? (
+              <>
+                <h2 className="inspiration-text">"{inspiration.text}"</h2>
+                {inspiration.author && (
+                  <p className="inspiration-author">— {inspiration.author}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
+                <p>{welcomeSubtitle || "Here's your overview"}</p>
+              </>
+            )}
+          </div>
+        )}
 
         {children}
       </main>

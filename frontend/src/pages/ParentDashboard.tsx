@@ -5,6 +5,7 @@ import { queueStudyGeneration } from './StudyGuidesPage';
 import { isValidEmail } from '../utils/validation';
 import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, DuplicateCheckResponse, TaskItem, InviteResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
+import type { InspirationData } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
@@ -550,16 +551,27 @@ export function ParentDashboard() {
     );
   }, [allTasks, selectedChildUserId]);
 
-  // Compute overdue count from filtered tasks (for AlertBanner)
-  const taskOverdueCount = useMemo(() => {
+  // Compute task urgency counts from filtered tasks (for AlertBanner + Today's Focus)
+  const taskCounts = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    const threeDaysEnd = new Date(todayStart);
+    threeDaysEnd.setDate(threeDaysEnd.getDate() + 4);
+
     let overdue = 0;
+    let dueToday = 0;
+    let upcoming = 0;
+
     for (const t of filteredTasks) {
       if (t.is_completed || t.archived_at || !t.due_date) continue;
-      if (new Date(t.due_date) < todayStart) overdue++;
+      const due = new Date(t.due_date);
+      if (due < todayStart) overdue++;
+      else if (due >= todayStart && due < todayEnd) dueToday++;
+      else if (due >= todayEnd && due < threeDaysEnd) upcoming++;
     }
-    return overdue;
+    return { overdue, dueToday, upcoming };
   }, [filteredTasks]);
 
   // Courses for StudentDetailPanel (deduplicated across selected children)
@@ -788,6 +800,69 @@ export function ParentDashboard() {
   };
 
   // ============================================
+  // Today's Focus header builder
+  // ============================================
+
+  const selectedChildFirstName = useMemo(() => {
+    if (!selectedChild) return null;
+    const name = children.find(c => c.student_id === selectedChild)?.full_name;
+    return name?.split(' ')[0] ?? null;
+  }, [selectedChild, children]);
+
+  const renderHeaderSlot = (inspiration: InspirationData | null) => {
+    const { overdue, dueToday, upcoming } = taskCounts;
+    const allClear = overdue === 0 && dueToday === 0 && upcoming === 0;
+    const childLabel = selectedChildFirstName ?? (children.length === 1 ? children[0]?.full_name?.split(' ')[0] : null);
+
+    return (
+      <div className="today-focus-header">
+        <div className="today-focus-main">
+          {allClear ? (
+            <div className="today-focus-status all-clear">
+              <span className="today-focus-icon">{'\u2705'}</span>
+              <div>
+                <div className="today-focus-title">All caught up!</div>
+                <div className="today-focus-subtitle">
+                  {childLabel ? `${childLabel} has no urgent tasks.` : 'No urgent tasks right now.'}
+                  {' '}Great time to create study materials.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="today-focus-status">
+              <span className="today-focus-icon">{overdue > 0 ? '\u{1F525}' : '\u{1F4CB}'}</span>
+              <div>
+                <div className="today-focus-title">
+                  {childLabel ? `${childLabel}'s Focus` : "Today's Focus"}
+                </div>
+                <div className="today-focus-items">
+                  {overdue > 0 && (
+                    <span className="focus-tag overdue">{overdue} overdue</span>
+                  )}
+                  {dueToday > 0 && (
+                    <span className="focus-tag today">{dueToday} due today</span>
+                  )}
+                  {upcoming > 0 && (
+                    <span className="focus-tag upcoming">{upcoming} next 3 days</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        {inspiration && (
+          <div className="today-focus-inspiration">
+            <span className="today-focus-quote">"{inspiration.text}"</span>
+            {inspiration.author && (
+              <span className="today-focus-author"> — {inspiration.author}</span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ============================================
   // Render
   // ============================================
 
@@ -807,6 +882,7 @@ export function ParentDashboard() {
         { label: '+ Create Course Material', onClick: () => setShowStudyModal(true) },
       ]}
       onCreateTask={() => setShowCreateTaskModal(true)}
+      headerSlot={children.length > 0 ? renderHeaderSlot : undefined}
     >
       {dashboardError ? (
         <div className="no-children-state">
@@ -855,7 +931,7 @@ export function ParentDashboard() {
 
           {/* Alert Banner (overdue + pending invites only) */}
           <AlertBanner
-            overdueCount={taskOverdueCount}
+            overdueCount={taskCounts.overdue}
             pendingInvites={pendingInvites.map(i => ({ id: i.id, email: i.email }))}
             onResendInvite={handleResendInvite}
             resendingId={resendingId}

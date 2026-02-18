@@ -1,35 +1,73 @@
 .quick-actions-bar {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
-.quick-action-btn {
+.quick-actions-primary {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.quick-actions-secondary {
+  display: flex;
+  gap: 6px;
+}
+
+/* Primary CTA buttons — filled, prominent */
+.quick-action-btn.primary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
   transition: all 0.2s;
   flex: 1;
   justify-content: center;
-  min-width: 0;
 }
 
-.quick-action-btn:hover {
+.quick-action-btn.primary:hover {
+  background: var(--color-accent-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.quick-action-btn.primary:active {
+  transform: scale(0.98);
+}
+
+/* Secondary buttons — subtle, outline */
+.quick-action-btn.secondary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  transition: all 0.2s;
+}
+
+.quick-action-btn.secondary:hover {
   border-color: var(--color-accent);
-  background: var(--color-surface-alt);
   color: var(--color-accent);
+  background: var(--color-accent-subtle);
 }
 
-.quick-action-btn:active {
+.quick-action-btn.secondary:active {
   transform: scale(0.97);
 }
 
@@ -39,22 +77,32 @@
   line-height: 1;
 }
 
+.quick-action-btn.primary .quick-action-icon {
+  font-size: 18px;
+}
+
 .quick-action-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+@media (max-width: 640px) {
+  .quick-actions-primary {
+    flex-direction: column;
+  }
+
+  .quick-action-btn.primary {
+    padding: 10px 16px;
+  }
+}
+
 @media (max-width: 480px) {
-  .quick-action-label {
+  .quick-action-btn.secondary .quick-action-label {
     display: none;
   }
 
-  .quick-action-btn {
-    padding: 10px;
-    flex: none;
-    width: 44px;
-    height: 44px;
-    justify-content: center;
+  .quick-action-btn.secondary {
+    padding: 8px;
   }
 }
