@@ -317,13 +317,7 @@
   }
 }
 
-@media (min-width: 1024px) {
-  .persistent-sidebar {
-    width: 240px;
-    min-width: 240px;
-    padding: 16px;
-  }
-}
+/* No expanded sidebar at 1024px+ — always icon-only */
 
 /* Nav items in persistent sidebar */
 .persistent-sidebar-nav {
@@ -335,8 +329,9 @@
 .ps-nav-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 8px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -345,7 +340,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
   position: relative;
 }
@@ -366,29 +361,31 @@
 }
 
 .ps-nav-icon {
-  font-size: 18px;
+  font-size: 24px;
   flex-shrink: 0;
-  width: 24px;
+  width: 28px;
   text-align: center;
   line-height: 1;
 }
 
+/* Labels always hidden — icon-only sidebar */
 .ps-nav-label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 .ps-nav-badge {
   background: white;
   color: var(--color-accent);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 0 4px;
   border-radius: 10px;
-  min-width: 18px;
+  min-width: 14px;
   text-align: center;
   flex-shrink: 0;
+  position: absolute;
+  top: 4px;
+  right: 4px;
 }
 
 .ps-nav-item.active .ps-nav-badge {
@@ -405,15 +402,9 @@
   border-top: 1px dashed var(--color-border);
 }
 
-/* Section title */
+/* Section title — hidden in icon-only mode */
 .ps-section-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--color-ink-muted);
-  font-weight: 600;
-  padding: 0 12px;
-  margin-bottom: 6px;
+  display: none;
 }
 
 /* Quick action items */
@@ -426,8 +417,9 @@
 .ps-action-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 8px;
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -436,7 +428,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -447,43 +439,20 @@
 }
 
 .ps-action-icon {
-  font-size: 16px;
+  font-size: 22px;
   flex-shrink: 0;
-  width: 24px;
+  width: 28px;
   text-align: center;
   line-height: 1;
 }
 
+/* Labels always hidden — icon-only sidebar */
 .ps-action-label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
-/* 768-1023px: Icon-only mode — hide labels, show tooltips */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .ps-nav-label,
-  .ps-action-label,
-  .ps-section-title {
-    display: none;
-  }
-
-  .ps-nav-item,
-  .ps-action-item {
-    justify-content: center;
-    padding: 10px 8px;
-  }
-
-  .ps-nav-badge {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    font-size: 9px;
-    padding: 0 4px;
-    min-width: 14px;
-  }
-
-  /* Tooltip on hover for icon-only mode */
+/* Tooltip on hover for icon-only sidebar (all screen sizes >=768px) */
+@media (min-width: 768px) {
   .ps-nav-item[title]:hover::after,
   .ps-action-item[title]:hover::after {
     content: attr(title);
@@ -493,9 +462,9 @@
     transform: translateY(-50%);
     background: var(--color-ink);
     color: var(--color-surface);
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
     z-index: 100;

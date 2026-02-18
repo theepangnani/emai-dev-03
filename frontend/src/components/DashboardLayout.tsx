@@ -343,9 +343,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                 className={`ps-nav-item${location.pathname === item.path ? ' active' : ''}`}
                 onClick={() => navigate(item.path)}
                 title={item.label}
+                aria-label={item.label}
               >
                 <span className="ps-nav-icon">{NAV_ICONS[item.label] || ''}</span>
-                <span className="ps-nav-label">{item.label}</span>
                 {item.path === '/messages' && unreadCount > 0 && (
                   <span className="ps-nav-badge">{unreadCount}</span>
                 )}
@@ -356,7 +356,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
           {persistentQuickActions.length > 0 && (
             <>
               <div className="ps-divider" />
-              <div className="ps-section-title">Quick Actions</div>
               <div className="persistent-sidebar-actions">
                 {persistentQuickActions.map((action, i) => (
                   <button
@@ -364,9 +363,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                     className="ps-action-item"
                     onClick={action.onClick}
                     title={action.label}
+                    aria-label={action.label}
                   >
                     <span className="ps-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
-                    <span className="ps-action-label">{action.label}</span>
                   </button>
                 ))}
               </div>

@@ -24,6 +24,8 @@ export interface StudentDetailPanelProps {
   courses: CourseInfo[];
   courseMaterials: CourseMaterial[];
   tasks: TaskItem[];
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onGoToCourse: (courseId: number) => void;
   onViewMaterial: (material: CourseMaterial) => void;
   onToggleTask: (task: TaskItem) => void;
@@ -128,6 +130,8 @@ export function StudentDetailPanel({
   courses,
   courseMaterials,
   tasks,
+  collapsed,
+  onToggleCollapsed,
   onGoToCourse,
   onViewMaterial,
   onToggleTask,
@@ -150,10 +154,41 @@ export function StudentDetailPanel({
 
   const urgencyGroups = useMemo(() => categorizeTasks(tasks), [tasks]);
 
+  const totalActive = tasks.filter(t => !t.archived_at).length;
+
   /* ── Render ──────────────────────────────────────────────── */
 
   return (
     <div className="student-detail-panel">
+      {/* Collapse/expand header */}
+      <div
+        className="sdp-panel-header"
+        onClick={onToggleCollapsed}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggleCollapsed();
+          }
+        }}
+      >
+        <Chevron expanded={!collapsed} />
+        <span className="sdp-panel-title">
+          {selectedChildName ? `${selectedChildName}'s Details` : 'Student Details'}
+        </span>
+        <span className="sdp-panel-summary">
+          {courses.length} course{courses.length !== 1 ? 's' : ''}
+          {' \u00B7 '}
+          {totalActive} task{totalActive !== 1 ? 's' : ''}
+          {urgencyGroups.overdue.length > 0 && (
+            <span className="sdp-panel-overdue"> \u00B7 {urgencyGroups.overdue.length} overdue</span>
+          )}
+        </span>
+      </div>
+
+      {!collapsed && (
+      <>
       {/* ── Courses Section ───────────────────────────────── */}
       <div className="sdp-section">
         <div
@@ -385,6 +420,8 @@ export function StudentDetailPanel({
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

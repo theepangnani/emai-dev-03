@@ -7,6 +7,39 @@
   overflow: hidden;
 }
 
+/* ── Panel-level collapse header ──────────────────────────── */
+
+.sdp-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sdp-panel-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.sdp-panel-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.sdp-panel-summary {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin-left: auto;
+}
+
+.sdp-panel-overdue {
+  color: var(--priority-high);
+  font-weight: 600;
+}
+
 /* ── Section structure ─────────────────────────────────────── */
 
 .sdp-section {

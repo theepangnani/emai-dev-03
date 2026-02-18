@@ -136,6 +136,9 @@ export function ParentDashboard() {
   // Create task modal state (from quick actions)
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
 
+  // Student detail panel collapse state
+  const [detailPanelCollapsed, setDetailPanelCollapsed] = useState(false);
+
   // Course materials for StudentDetailPanel
   const [courseMaterials, setCourseMaterials] = useState<CourseMaterial[]>([]);
 
@@ -547,31 +550,16 @@ export function ParentDashboard() {
     );
   }, [allTasks, selectedChildUserId]);
 
-  // Compute overdue/due-today counts from filtered tasks (respects child filter)
-  // Uses local time to match TasksPage filter logic
-  const { taskOverdueCount, taskDueTodayCount, taskDueNext3DaysCount } = useMemo(() => {
+  // Compute overdue count from filtered tasks (for AlertBanner)
+  const taskOverdueCount = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-    const threeDaysEnd = new Date(todayStart);
-    threeDaysEnd.setDate(threeDaysEnd.getDate() + 4);
     let overdue = 0;
-    let dueToday = 0;
-    let dueNext3Days = 0;
     for (const t of filteredTasks) {
       if (t.is_completed || t.archived_at || !t.due_date) continue;
-      const due = new Date(t.due_date);
-      if (due < todayStart) overdue++;
-      else if (due >= todayStart && due < todayEnd) dueToday++;
-      else if (due >= todayEnd && due < threeDaysEnd) dueNext3Days++;
+      if (new Date(t.due_date) < todayStart) overdue++;
     }
-    return { taskOverdueCount: overdue, taskDueTodayCount: dueToday, taskDueNext3DaysCount: dueNext3Days };
-  }, [filteredTasks]);
-
-  // Compute total tasks count from filtered tasks (respects child filter)
-  const totalTasksCount = useMemo(() => {
-    return filteredTasks.filter(t => !t.archived_at).length;
+    return overdue;
   }, [filteredTasks]);
 
   // Courses for StudentDetailPanel (deduplicated across selected children)
@@ -865,47 +853,13 @@ export function ParentDashboard() {
             ))}
           </div>
 
-          {/* Alert Banner */}
+          {/* Alert Banner (overdue + pending invites only) */}
           <AlertBanner
             overdueCount={taskOverdueCount}
-            dueTodayCount={taskDueTodayCount}
-            dueNext3DaysCount={taskDueNext3DaysCount}
-            unreadMessages={dashboardData?.unread_messages ?? 0}
             pendingInvites={pendingInvites.map(i => ({ id: i.id, email: i.email }))}
             onResendInvite={handleResendInvite}
             resendingId={resendingId}
           />
-
-          {/* Status Summary Cards */}
-          {dashboardData && (
-            <div className="status-summary">
-              <div
-                className={`status-card${taskOverdueCount > 0 ? ' urgent' : ''}`}
-                onClick={() => navigate('/tasks?due=overdue')}
-              >
-                <span className="status-card-count">{taskOverdueCount}</span>
-                <span className="status-card-label">{'\u26A0'} Overdue</span>
-              </div>
-              <div
-                className={`status-card${taskDueTodayCount > 0 ? ' active' : ''}`}
-                onClick={() => navigate('/tasks?due=today')}
-              >
-                <span className="status-card-count">{taskDueTodayCount}</span>
-                <span className="status-card-label">{'\u{1F4C5}'} Due Today</span>
-              </div>
-              <div
-                className={`status-card${dashboardData.unread_messages > 0 ? ' notify' : ''}`}
-                onClick={() => navigate('/messages')}
-              >
-                <span className="status-card-count">{dashboardData.unread_messages}</span>
-                <span className="status-card-label">{'\u{1F4AC}'} Messages</span>
-              </div>
-              <div className="status-card" onClick={() => navigate('/tasks')}>
-                <span className="status-card-count">{totalTasksCount}</span>
-                <span className="status-card-label">{'\u{1F4CB}'} Total Tasks</span>
-              </div>
-            </div>
-          )}
 
           {/* Quick Actions */}
           <QuickActionsBar
@@ -921,6 +875,8 @@ export function ParentDashboard() {
             courses={panelCourses}
             courseMaterials={courseMaterials}
             tasks={filteredTasks}
+            collapsed={detailPanelCollapsed}
+            onToggleCollapsed={() => setDetailPanelCollapsed(v => !v)}
             onGoToCourse={handleGoToCourse}
             onViewMaterial={(mat) => {
               const path = mat.guide_type === 'quiz' ? `/study/quiz/${mat.id}`
