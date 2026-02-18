@@ -51,6 +51,7 @@ class Student(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     grade_level = Column(Integer, nullable=True)  # e.g., 5-12
     school_name = Column(String(255), nullable=True)
+    parent_email = Column(String(255), nullable=True)
 
     # Profile details
     date_of_birth = Column(Date, nullable=True)

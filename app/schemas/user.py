@@ -1,11 +1,17 @@
+import re
+
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from datetime import datetime
 
 from app.models.user import UserRole
 
+USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_]{3,30}$')
+
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: EmailStr | None = None
+    username: str | None = None
+    parent_email: EmailStr | None = None
     password: str
     full_name: str
     role: UserRole | None = None  # Single role (backward compat)
@@ -31,6 +37,25 @@ class UserCreate(BaseModel):
 
         return self
 
+    @model_validator(mode='after')
+    def validate_email_or_username(self):
+        # Username validation
+        if self.username and not USERNAME_PATTERN.match(self.username):
+            raise ValueError("Username must be 3-30 characters, alphanumeric and underscores only")
+
+        # Students can register with username + parent_email instead of email
+        if UserRole.STUDENT in self.roles:
+            if not self.email and not self.username:
+                raise ValueError("Student registration requires either a personal email or a username")
+            if self.username and not self.email and not self.parent_email:
+                raise ValueError("Parent email is required when registering with a username instead of email")
+        else:
+            # Non-student roles (and roleless registration) require email
+            if not self.email and not self.username:
+                raise ValueError("Email is required for registration")
+
+        return self
+
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -40,6 +65,7 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str | None = None
+    username: str | None = None
     full_name: str
     role: UserRole | None = None
     roles: list[str] = []

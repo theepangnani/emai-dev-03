@@ -1000,3 +1000,81 @@ Enhance the existing broadcast history so admins can view full broadcast details
 
 ---
 
+### 6.51 Phase 1 New Workflow — Student-First Registration, Approval Linking & Multi-Channel Notifications
+
+**Added:** 2026-02-18 | **Issues:** #546-#552 | **Branch:** `feature/phase1-foundation` + 3 parallel streams
+
+This section defines the expanded Phase 1 workflow that enables student-initiated registration, bidirectional parent-student approval linking, multi-channel notifications with persistent ACK reminders, Google Classroom type differentiation, and teacher/student invites.
+
+#### 6.51.1 Student Registration (Reqs 1-3) — #546
+
+- Student can register with **either personal email OR username + parent email**
+- Username login: alphanumeric + underscores, 3-30 chars
+- If parent email specified and parent exists → system creates a **LinkRequest** for parent to approve
+- If parent not in ClassBridge → system sends an **Invite email** for parent to register; auto-links on accept
+- Parent email stored on `students.parent_email` column
+
+**Models:** `users.username` (new column), `students.parent_email` (new column)
+
+#### 6.51.2 Parent-Student LinkRequest Approval (Reqs 10-14) — #547
+
+- New `link_requests` table: request_type, status (pending/approved/rejected/expired), requester, target, token
+- Parent tries to add **existing active student** → LinkRequest created, student must approve
+- Parent adds **placeholder student** (UNUSABLE_PASSWORD_HASH) → auto-links immediately (no approval)
+- Approval inserts into `parent_students` join table
+- Notifications sent via all channels on request + response
+
+**Endpoints:** `GET /api/link-requests`, `GET /api/link-requests/sent`, `POST /api/link-requests/{id}/respond`
+
+#### 6.51.3 Multi-Channel Notifications + ACK System (Reqs 9, 15, 24) — #548
+
+- Centralized `notification_service.py` sends via 3 channels:
+  1. **In-app notification bell** (Notification table)
+  2. **Email** (SendGrid/SMTP)
+  3. **ClassBridge message** (Conversation + Message)
+- **ACK system:** Notifications can require acknowledgment (`requires_ack=True`)
+  - Persistent reminders re-sent every 24h until ACKed or due date passes
+  - Background job runs every 6 hours (`notification_reminders.py`)
+- **Suppression:** Parents can permanently silence notifications for a specific source (assignment/task)
+  - `notification_suppressions` table tracks per-user suppressed items
+- Parent receives notifications for **all student actions**: material upload, task create, study guide generated, upcoming dues (3-day advance)
+
+**Models:** Notification ACK columns (`requires_ack`, `acked_at`, `source_type`, `source_id`, `next_reminder_at`, `reminder_count`), `notification_suppressions` table
+**Endpoints:** `PUT /api/notifications/{id}/ack`, `PUT /api/notifications/{id}/suppress`
+
+#### 6.51.4 Parent Request Assignment Completion (Req 16) — #549
+
+- Parent can request a student to complete a specific assignment or task
+- Multi-channel notification sent to student
+- **Endpoint:** `POST /api/parent/children/{student_id}/request-completion`
+
+#### 6.51.5 Google Classroom School vs Private (Reqs 4-5, 18) — #550
+
+- `courses.classroom_type` column: "school" or "private"
+- School classroom: student can see assignments/dues but **cannot download documents** (reference_url stripped)
+- Private classroom: full access to all content
+- DTAP approval required for school board connections (external process, UI disclaimer only)
+
+#### 6.51.6 Student/Teacher Invites + Course Enrollment (Reqs 6, 22-23) — #551
+
+- Students can invite **private teachers** to join ClassBridge
+- Teachers can invite **students to enroll** in a course → `POST /api/courses/{id}/invite-student`
+- Teachers can invite **parents to link** to a student (with student_id context)
+- All invites trigger multi-channel notifications
+
+#### 6.51.7 Course Material Upload with AI Tool Selection (Reqs 7-8) — #552
+
+- During upload, student selects AI help type: Study Guide, Quiz, Flash Card, Other (custom prompt)
+- "Other" sends user's custom text as a prompt to AI
+- Manual download from school Google Classroom → upload to ClassBridge (UI guidance, no download API)
+- Parent notified when material is uploaded
+
+**Implementation Notes:**
+- **Parallel development:** Foundation (Phase 0) creates all models/migrations/services. Then 3 streams run in parallel:
+  - Stream A (`feature/registration-linking`): Registration, login, LinkRequest, parent approval
+  - Stream B (`feature/notifications-ack`): ACK/suppress, parent notification hooks, reminder job
+  - Stream C (`feature/gc-teacher-features`): Google Classroom types, invites, upload UI
+- **New notification types:** LINK_REQUEST, MATERIAL_UPLOADED, STUDY_GUIDE_CREATED, PARENT_REQUEST, ASSESSMENT_UPCOMING, PROJECT_DUE
+
+---
+

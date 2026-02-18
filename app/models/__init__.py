@@ -16,6 +16,8 @@ from app.models.broadcast import Broadcast
 from app.models.teacher_google_account import TeacherGoogleAccount
 from app.models.faq import FAQQuestion, FAQAnswer, FAQCategory, FAQQuestionStatus, FAQAnswerStatus
 from app.models.analytics import GradeRecord, ProgressReport
+from app.models.link_request import LinkRequest, LinkRequestType, LinkRequestStatus
+from app.models.notification_suppression import NotificationSuppression
 
 __all__ = [
     "User",
@@ -49,4 +51,8 @@ __all__ = [
     "FAQAnswerStatus",
     "GradeRecord",
     "ProgressReport",
+    "LinkRequest",
+    "LinkRequestType",
+    "LinkRequestStatus",
+    "NotificationSuppression",
 ]
