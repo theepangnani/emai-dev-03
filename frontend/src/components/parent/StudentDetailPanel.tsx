@@ -29,6 +29,7 @@ export interface StudentDetailPanelProps {
   onGoToCourse: (courseId: number) => void;
   onViewMaterial: (material: CourseMaterial) => void;
   onToggleTask: (task: TaskItem) => void;
+  onTaskClick?: (task: TaskItem) => void;
   onViewAllTasks: () => void;
   onViewAllMaterials: () => void;
 }
@@ -135,6 +136,7 @@ export function StudentDetailPanel({
   onGoToCourse,
   onViewMaterial,
   onToggleTask,
+  onTaskClick,
   onViewAllTasks,
   onViewAllMaterials,
 }: StudentDetailPanelProps) {
@@ -325,6 +327,7 @@ export function StudentDetailPanel({
                   badge={`${daysOverdue(task.due_date!)} days overdue`}
                   showChildName={isAllChildren}
                   onToggle={onToggleTask}
+                  onClick={onTaskClick}
                 />
               ))}
             </div>
@@ -344,6 +347,7 @@ export function StudentDetailPanel({
                   badge="Today"
                   showChildName={isAllChildren}
                   onToggle={onToggleTask}
+                  onClick={onTaskClick}
                 />
               ))}
             </div>
@@ -363,6 +367,7 @@ export function StudentDetailPanel({
                   badge={task.due_date ? dayLabel(task.due_date) : ''}
                   showChildName={isAllChildren}
                   onToggle={onToggleTask}
+                  onClick={onTaskClick}
                 />
               ))}
             </div>
@@ -434,16 +439,23 @@ interface TaskRowProps {
   badge: string | null;
   showChildName: boolean;
   onToggle: (task: TaskItem) => void;
+  onClick?: (task: TaskItem) => void;
 }
 
-function TaskRow({ task, urgency, badge, showChildName, onToggle }: TaskRowProps) {
+function TaskRow({ task, urgency, badge, showChildName, onToggle, onClick }: TaskRowProps) {
   return (
-    <div className={`sdp-task-item${task.is_completed ? ' completed' : ''}`}>
+    <div
+      className={`sdp-task-item${onClick ? ' clickable' : ''}${task.is_completed ? ' completed' : ''}`}
+      onClick={onClick ? () => onClick(task) : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(task); } } : undefined}
+    >
       <input
         type="checkbox"
         className="sdp-task-checkbox"
         checked={task.is_completed}
-        onChange={() => onToggle(task)}
+        onChange={(e) => { e.stopPropagation(); onToggle(task); }}
         aria-label={`Mark "${task.title}" as ${task.is_completed ? 'incomplete' : 'complete'}`}
       />
       <span className={`sdp-task-title${task.is_completed ? ' completed' : ''}`}>
