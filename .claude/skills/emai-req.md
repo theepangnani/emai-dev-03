@@ -1,12 +1,13 @@
 # /emai-req - ClassBridge Requirement Review & Planning
 
-Review, analyze, and plan requirements for the ClassBridge (EMAI) platform with feedback, feasibility assessment, priority/phase recommendations, GitHub issue creation, REQUIREMENTS.md updates, and detailed implementation planning. **Does not include coding** — ends at planning stage.
+Review, analyze, and plan requirements for the ClassBridge (EMAI) platform with feedback, feasibility assessment, priority/phase recommendations, GitHub issue(s) creation, REQUIREMENTS.md updates, and detailed implementation planning. **Does not include coding** — ends at planning stage.
 
 ## Usage
 
 `/emai-req <description of the requirement>`
 
 Examples:
+
 - `/emai-req Add dark mode toggle to the app`
 - `/emai-req Parents should receive weekly progress summaries`
 - `/emai-req Implement student self-enrollment for courses`
@@ -21,7 +22,17 @@ Follow all 8 steps in order. Present findings to the user at each major checkpoi
 
 ### Step 1: Review the Requirement
 
-1. Read `REQUIREMENTS.md` to understand the current feature set, phases, and conventions
+1. Read the requirements files to understand the current feature set, phases, and conventions. The requirements are split across multiple files:
+   - `REQUIREMENTS.md` — Index + overview (sections 1-5)
+   - `requirements/features-part1.md` — §6.1-6.14 (core features: AI, users, courses, content, analytics, comms, teachers, tasks, audit)
+   - `requirements/features-part2.md` — §6.15-6.26 (UI/auth: themes, layout, search, mobile, security, multi-role, lifecycle, password reset)
+   - `requirements/features-part3.md` — §6.27-6.50 (extended: messaging, teacher linking, roster, admin, onboarding, verification, course planning, emails)
+   - `requirements/dashboards.md` — §7 (role-based dashboards)
+   - `requirements/roadmap.md` — §8 (phased roadmap with progress checklists)
+   - `requirements/mobile.md` — §9 (mobile app)
+   - `requirements/technical.md` — §10-11 (architecture, API endpoints, NFRs, KPIs)
+   - `requirements/tracking.md` — §12-13 (GitHub issues, dev setup)
+   Read the index file first, then the specific files relevant to the requirement being analyzed. You do NOT need to read all files — only those relevant to the requirement.
 2. Read relevant source code to understand what exists today:
    - Backend: models (`app/models/`), routes (`app/api/routes/`), schemas (`app/schemas/`), services (`app/services/`)
    - Frontend: pages (`frontend/src/pages/`), components (`frontend/src/components/`), API client (`frontend/src/api/client.ts`)
@@ -31,6 +42,7 @@ Follow all 8 steps in order. Present findings to the user at each major checkpoi
    gh issue list --repo theepangnani/emai-dev-03 --state closed --search "<keywords>" --limit 10 --json number,title,state --jq '.[] | "#\(.number) \(.title) (\(.state))"'
    ```
 4. Rewrite the requirement in structured format:
+
    ```
    As a <role>, I want to <action> so that <benefit>.
 
@@ -289,6 +301,7 @@ After REQUIREMENTS.md and GitHub issues are created/updated, create a detailed d
 
 3. **File-by-File Plan**:
    List each file to be created/modified with specific changes:
+
    ```
    File: app/models/example.py
    Action: CREATE
@@ -318,6 +331,7 @@ After REQUIREMENTS.md and GitHub issues are created/updated, create a detailed d
    - Performance testing requirements
 
 **Update GitHub issues** with the detailed implementation plan:
+
 ```bash
 gh issue edit <number> --body "$(cat <<'EOF'
 [existing content]
@@ -392,22 +406,35 @@ READY FOR IMPLEMENTATION
 
 ## Quick Reference
 
-### REQUIREMENTS.md Sections
-Read the current file to find the right section. Common sections:
-- 6.1 User Management & Auth
-- 6.2 AI Study Tools
-- 6.3 Google Classroom Integration
-- 6.4 Parent-Teacher Messaging
-- 6.5 Dashboard & Navigation
-- 6.6+ Feature-specific sections
+### Requirements File Map
+
+Requirements are split into multiple files under `requirements/`:
+
+| Need to find... | Read this file |
+|----------------|----------------|
+| AI Study Tools, Integrations | `requirements/features-part1.md` (§6.1-6.2) |
+| Registration, Courses, Content | `requirements/features-part1.md` (§6.3-6.4) |
+| Analytics, Communication, Teachers | `requirements/features-part1.md` (§6.5-6.12) |
+| Tasks, Calendar, Audit | `requirements/features-part1.md` (§6.13-6.14) |
+| Themes, UI, Layout, Search | `requirements/features-part2.md` (§6.15-6.17) |
+| Parent UX, Security, Multi-Role | `requirements/features-part2.md` (§6.20-6.26) |
+| Messaging, Teacher Linking, Admin | `requirements/features-part3.md` (§6.27-6.42) |
+| Onboarding, Verification, Emails | `requirements/features-part3.md` (§6.43-6.50) |
+| Dashboards (Parent, Student, etc.) | `requirements/dashboards.md` (§7) |
+| Roadmap, Phase checklists | `requirements/roadmap.md` (§8) |
+| Mobile app | `requirements/mobile.md` (§9) |
+| Architecture, API endpoints | `requirements/technical.md` (§10-11) |
+| GitHub issue tracking | `requirements/tracking.md` (§12-13) |
 
 ### Cross-DB Rules (SQLite + PostgreSQL)
+
 - Use `String(N)` not `Enum` for column types
 - Use `DEFAULT FALSE` not `DEFAULT 0` for booleans
 - Use `TIMESTAMPTZ` (PostgreSQL) / `DATETIME` (SQLite)
 - Test with SQLite locally, deploy to PostgreSQL
 
 ### UI Convention
+
 - Use icon buttons with `title` tooltips (not text buttons)
 - Use HTML entities/unicode for icons (e.g., &#128203; clipboard, &#128214; book)
 - Follow existing CSS variable patterns from `index.css`
