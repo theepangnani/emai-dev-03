@@ -1413,6 +1413,73 @@
 }
 
 /* ============================================
+   Tasks Section Panel (replaces StudentDetailPanel)
+   ============================================ */
+
+.tasks-section-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.tasks-section-panel .sdp-task-item.clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tasks-section-panel .sdp-task-item.clickable:hover {
+  background: var(--color-surface-alt);
+}
+
+/* ============================================
+   Task Detail Modal
+   ============================================ */
+
+.task-detail-modal-body {
+  padding: 0 24px 16px;
+}
+
+.task-detail-desc {
+  font-size: 14px;
+  color: var(--color-ink);
+  line-height: 1.6;
+  margin: 0 0 16px;
+  white-space: pre-wrap;
+}
+
+.task-detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.task-detail-label {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.sdp-task-badge.completed {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.sdp-task-badge.pending {
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
+}
+
+/* ============================================
    Responsive: Tablets & Small Desktops (768px)
    ============================================ */
 
