@@ -1,0 +1,98 @@
+.alert-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.alert-section {
+  display: flex;
+  flex-direction: row;
+  padding: 10px 16px;
+  border-radius: 8px;
+  align-items: center;
+  gap: 12px;
+}
+
+.alert-section.red {
+  background: var(--priority-high-light);
+  border-left: 4px solid var(--priority-high);
+  color: var(--priority-high);
+}
+
+.alert-section.amber {
+  background: var(--color-warning-light);
+  border-left: 4px solid var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+.alert-section.blue {
+  background: var(--color-accent-subtle);
+  border-left: 4px solid var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.alert-section-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.alert-section-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.alert-section-dismiss {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.alert-section-dismiss:hover {
+  opacity: 1;
+}
+
+.alert-invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.alert-invite-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.alert-invite-email {
+  flex: 1;
+}
+
+.alert-resend-btn {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.alert-resend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

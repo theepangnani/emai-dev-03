@@ -11,6 +11,11 @@ import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, dateKey, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { useConfirm } from '../components/ConfirmModal';
 import CreateStudyMaterialModal, { StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
+import { AlertBanner } from '../components/parent/AlertBanner';
+import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
+import type { CourseInfo, CourseMaterial } from '../components/parent/StudentDetailPanel';
+import { QuickActionsBar } from '../components/parent/QuickActionsBar';
+import { CreateTaskModal } from '../components/CreateTaskModal';
 import './ParentDashboard.css';
 
 
@@ -48,7 +53,7 @@ export function ParentDashboard() {
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('calendar_collapsed');
-      return saved === '1';
+      return saved !== '0';
     } catch { return false; }
   });
   const toggleCalendar = () => {
@@ -133,6 +138,12 @@ export function ParentDashboard() {
   const [pendingInvites, setPendingInvites] = useState<InviteResponse[]>([]);
   const [resendingId, setResendingId] = useState<number | null>(null);
 
+  // Create task modal state (from quick actions)
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+
+  // Course materials for StudentDetailPanel
+  const [courseMaterials, setCourseMaterials] = useState<CourseMaterial[]>([]);
+
   // ============================================
   // Data Loading
   // ============================================
@@ -206,6 +217,25 @@ export function ParentDashboard() {
       setAllOverviews(overviews);
     }
   }, [selectedChild, children, dashboardData]);
+
+  // Load course materials for StudentDetailPanel
+  useEffect(() => {
+    if (loading) return;
+    studyApi.listGuides({ include_children: true })
+      .then(guides => {
+        setCourseMaterials(
+          guides
+            .filter(g => !g.archived_at)
+            .map(g => ({
+              id: g.id,
+              title: g.title,
+              guide_type: g.guide_type as CourseMaterial['guide_type'],
+              created_at: g.created_at,
+            }))
+        );
+      })
+      .catch(() => {});
+  }, [loading]);
 
   const loadChildOverview = async (studentId: number) => {
     setOverviewLoading(true);
@@ -544,26 +574,47 @@ export function ParentDashboard() {
 
   // Compute overdue/due-today counts from filtered tasks (respects child filter)
   // Uses local time to match TasksPage filter logic
-  const { taskOverdueCount, taskDueTodayCount } = useMemo(() => {
+  const { taskOverdueCount, taskDueTodayCount, taskDueNext3DaysCount } = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
+    const threeDaysEnd = new Date(todayStart);
+    threeDaysEnd.setDate(threeDaysEnd.getDate() + 4);
     let overdue = 0;
     let dueToday = 0;
+    let dueNext3Days = 0;
     for (const t of filteredTasks) {
       if (t.is_completed || t.archived_at || !t.due_date) continue;
       const due = new Date(t.due_date);
       if (due < todayStart) overdue++;
       else if (due >= todayStart && due < todayEnd) dueToday++;
+      else if (due >= todayEnd && due < threeDaysEnd) dueNext3Days++;
     }
-    return { taskOverdueCount: overdue, taskDueTodayCount: dueToday };
+    return { taskOverdueCount: overdue, taskDueTodayCount: dueToday, taskDueNext3DaysCount: dueNext3Days };
   }, [filteredTasks]);
 
   // Compute total tasks count from filtered tasks (respects child filter)
   const totalTasksCount = useMemo(() => {
     return filteredTasks.filter(t => !t.archived_at).length;
   }, [filteredTasks]);
+
+  // Courses for StudentDetailPanel (deduplicated across selected children)
+  const panelCourses = useMemo<CourseInfo[]>(() => {
+    if (!dashboardData) return [];
+    const highlights = dashboardData.child_highlights.filter(h => !selectedChild || h.student_id === selectedChild);
+    const seen = new Set<number>();
+    const courses: CourseInfo[] = [];
+    for (const h of highlights) {
+      for (const c of h.courses) {
+        if (!seen.has(c.id)) {
+          seen.add(c.id);
+          courses.push({ id: c.id, name: c.name });
+        }
+      }
+    }
+    return courses;
+  }, [dashboardData, selectedChild]);
 
   // Per-child task stats for enhanced cards
   const childTaskStats = useMemo(() => {
@@ -820,6 +871,7 @@ export function ParentDashboard() {
         { label: '+ Add Child', onClick: () => setShowLinkModal(true) },
         { label: '+ Create Course Material', onClick: () => setShowStudyModal(true) },
       ]}
+      onCreateTask={() => setShowCreateTaskModal(true)}
     >
       {dashboardError ? (
         <div className="no-children-state">
@@ -866,6 +918,17 @@ export function ParentDashboard() {
             ))}
           </div>
 
+          {/* Alert Banner */}
+          <AlertBanner
+            overdueCount={taskOverdueCount}
+            dueTodayCount={taskDueTodayCount}
+            dueNext3DaysCount={taskDueNext3DaysCount}
+            unreadMessages={dashboardData?.unread_messages ?? 0}
+            pendingInvites={pendingInvites.map(i => ({ id: i.id, email: i.email }))}
+            onResendInvite={handleResendInvite}
+            resendingId={resendingId}
+          />
+
           {/* Status Summary Cards */}
           {dashboardData && (
             <div className="status-summary">
@@ -897,95 +960,31 @@ export function ParentDashboard() {
             </div>
           )}
 
-          {/* Per-Child Enhanced Cards */}
-          {dashboardData && dashboardData.child_highlights.length > 0 && (
-            <div className="child-highlights">
-              {dashboardData.child_highlights
-                .filter(h => !selectedChild || h.student_id === selectedChild)
-                .map((h, index) => {
-                const childSummary = children.find(c => c.student_id === h.student_id);
-                const stats = childTaskStats.find(s => s.studentId === h.student_id);
-                return (
-                  <div
-                    key={h.student_id}
-                    className="child-card-enhanced"
-                    onClick={() => navigate(`/my-kids?student_id=${h.student_id}`)}
-                  >
-                    <div className="child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }}>
-                      {getInitials(h.full_name)}
-                    </div>
-                    <div className="child-card-content">
-                      <div className="child-card-header">
-                        <span className="child-card-name">{h.full_name}</span>
-                        {h.grade_level != null && <span className="grade-badge">Grade {h.grade_level}</span>}
-                      </div>
-                      {childSummary?.school_name && (
-                        <div className="child-card-school">{childSummary.school_name}</div>
-                      )}
-                      <div className="child-card-stats">
-                        <span className="child-card-stat">{h.courses.length} course{h.courses.length !== 1 ? 's' : ''}</span>
-                        <span className="child-card-stat">{stats?.totalTasks ?? 0} task{(stats?.totalTasks ?? 0) !== 1 ? 's' : ''}</span>
-                        {h.overdue_count > 0 && <span className="child-card-stat overdue">{h.overdue_count} overdue</span>}
-                      </div>
-                      {stats && stats.totalTasks > 0 && (
-                        <div className="child-card-progress">
-                          <div className="child-card-progress-bar">
-                            <div className="child-card-progress-fill" style={{ width: `${stats.completionPct}%`, backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                          </div>
-                          <span className="child-card-progress-label">{stats.completionPct}%</span>
-                        </div>
-                      )}
-                      <div className="child-card-deadline">
-                        {stats?.nextDeadline ? (
-                          <>
-                            <span className="child-card-deadline-title">{stats.nextDeadline.title}</span>
-                            <span className="child-card-deadline-label">{stats.nextDeadline.label}</span>
-                          </>
-                        ) : (
-                          <span className="child-card-all-clear">All caught up!</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="child-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="child-action-btn" title="Courses" aria-label="View courses for this child" onClick={() => navigate(`/courses?student_id=${h.student_id}`)}>{'\u{1F4DA}'}</button>
-                      <button className="child-action-btn" title="Tasks" aria-label="View tasks for this child" onClick={() => navigate(`/tasks?assignee=${childSummary?.user_id || ''}`)}>{'\u2705'}</button>
-                      <button className="child-action-btn" title="Edit" aria-label="Edit this child's profile" onClick={() => { if (childSummary) openEditChild(childSummary); }}>{'\u270F\uFE0F'}</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Quick Actions */}
+          <QuickActionsBar
+            onCreateMaterial={() => setShowStudyModal(true)}
+            onCreateTask={() => setShowCreateTaskModal(true)}
+            onAddChild={() => setShowLinkModal(true)}
+            onCreateCourse={() => navigate('/courses')}
+          />
 
-          {/* Pending Invites */}
-          {pendingInvites.length > 0 && (
-            <div className="pending-invites-section">
-              <h3>Pending Invites</h3>
-              {pendingInvites.map(inv => (
-                <div key={inv.id} className="pending-invite-row">
-                  <span className="pending-invite-email">{inv.email}</span>
-                  <span className="pending-invite-type">{inv.invite_type}</span>
-                  <button
-                    className="btn-sm"
-                    disabled={resendingId === inv.id}
-                    onClick={() => handleResendInvite(inv.id)}
-                  >
-                    {resendingId === inv.id ? 'Sending...' : 'Resend'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Quick Actions Above Calendar */}
-          <div className="calendar-actions-bar">
-            <button className="btn-accent-outline" onClick={() => setShowStudyModal(true)}>
-              + Create Course Material
-            </button>
-            <button className="btn-accent-outline" onClick={() => navigate('/course-materials', { state: { selectedChild } })}>
-              View Course Materials
-            </button>
-          </div>
+          {/* Student Detail Panel */}
+          <StudentDetailPanel
+            selectedChildName={selectedChild ? children.find(c => c.student_id === selectedChild)?.full_name ?? null : null}
+            courses={panelCourses}
+            courseMaterials={courseMaterials}
+            tasks={filteredTasks}
+            onGoToCourse={handleGoToCourse}
+            onViewMaterial={(mat) => {
+              const path = mat.guide_type === 'quiz' ? `/study/quiz/${mat.id}`
+                : mat.guide_type === 'flashcards' ? `/study/flashcards/${mat.id}`
+                : `/study/guide/${mat.id}`;
+              navigate(path);
+            }}
+            onToggleTask={handleToggleTask}
+            onViewAllTasks={() => navigate('/tasks')}
+            onViewAllMaterials={() => navigate('/course-materials', { state: { selectedChild } })}
+          />
 
           {/* Collapsible Calendar Section */}
           <div className="calendar-collapse-section">
@@ -1486,6 +1485,12 @@ export function ParentDashboard() {
           mode: 'text',
         })}
         onDismissDuplicate={() => setDuplicateCheck(null)}
+      />
+      {/* Create Task Modal (quick action) */}
+      <CreateTaskModal
+        open={showCreateTaskModal}
+        onClose={() => setShowCreateTaskModal(false)}
+        onCreated={() => { setShowCreateTaskModal(false); loadDashboard(); }}
       />
       {confirmModal}
     </DashboardLayout>

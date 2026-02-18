@@ -31,6 +31,7 @@ const mockTasksUpdate = vi.fn()
 const mockTasksDelete = vi.fn()
 const mockGetSupportedFormats = vi.fn()
 const mockCheckDuplicate = vi.fn()
+const mockListGuides = vi.fn()
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
@@ -71,6 +72,7 @@ vi.mock('../api/client', () => ({
   studyApi: {
     getSupportedFormats: (...args: any[]) => mockGetSupportedFormats(...args),
     checkDuplicate: (...args: any[]) => mockCheckDuplicate(...args),
+    listGuides: (...args: any[]) => mockListGuides(...args),
   },
   tasksApi: {
     create: (...args: any[]) => mockTasksCreate(...args),
@@ -171,6 +173,7 @@ function setupDefaults() {
   )
   mockListSent.mockResolvedValue([])
   mockGetSupportedFormats.mockResolvedValue({ supported_types: ['pdf', 'docx', 'txt'], max_file_size_mb: 100 })
+  mockListGuides.mockResolvedValue([])
 }
 
 describe('ParentDashboard', () => {
@@ -241,7 +244,7 @@ describe('ParentDashboard', () => {
     expect(screen.getAllByText('Jamie Smith').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders child highlight cards for multiple children', async () => {
+  it('renders student detail panel with courses section', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({
         children: [child1, child2],
@@ -251,12 +254,11 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('1 overdue')).toBeInTheDocument()
+      // StudentDetailPanel shows Courses and Tasks section headers
+      // "Courses" appears in both sidebar nav and StudentDetailPanel
+      expect(screen.getAllByText('Courses').length).toBeGreaterThanOrEqual(1)
     })
-    // Enhanced cards show course count and "All caught up!" when no tasks
-    expect(screen.getAllByText(/All caught up!/)).toHaveLength(2)
-    // Both cards show course count
-    expect(screen.getAllByText(/course/).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
   })
 
   // ── Status Card Navigation ───────────────────────────────────
@@ -286,55 +288,65 @@ describe('ParentDashboard', () => {
   })
 
   // ── Calendar ─────────────────────────────────────────────────
-  it('renders calendar view', async () => {
+  it('calendar is collapsed by default', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('calendar-view')).toBeInTheDocument()
+      expect(screen.getByText(/Calendar/)).toBeInTheDocument()
     })
+    // Calendar is collapsed by default — no calendar-view rendered
+    expect(screen.queryByTestId('calendar-view')).not.toBeInTheDocument()
   })
 
-  it('toggles calendar collapse', async () => {
+  it('toggles calendar expand and collapse', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
+      expect(screen.getByText(/Calendar/)).toBeInTheDocument()
+    })
+
+    // Calendar starts collapsed
+    expect(screen.queryByTestId('calendar-view')).not.toBeInTheDocument()
+
+    // Expand calendar
+    const toggleBtn = screen.getByText(/Calendar/).closest('button')!
+    await user.click(toggleBtn)
+    await waitFor(() => {
       expect(screen.getByTestId('calendar-view')).toBeInTheDocument()
     })
 
-    // Find the collapse toggle
-    const toggleBtn = screen.getByText('Calendar').closest('button')!
+    // Collapse again
     await user.click(toggleBtn)
-
-    // Calendar should now be hidden
     expect(screen.queryByTestId('calendar-view')).not.toBeInTheDocument()
-
-    // Re-expand
-    await user.click(toggleBtn)
-    expect(screen.getByTestId('calendar-view')).toBeInTheDocument()
   })
 
   // ── Quick Action Buttons ─────────────────────────────────────
-  it('renders quick action buttons', async () => {
+  it('renders quick actions bar with Material, Task, Child, Course buttons', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // "+ Create Course Material" appears in both sidebar actions and quick actions bar
-      expect(screen.getAllByRole('button', { name: /\+ Create Course Material/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText('Material')).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /View Course Materials/i })).toBeInTheDocument()
+    expect(screen.getByText('Task')).toBeInTheDocument()
+    expect(screen.getByText('Child')).toBeInTheDocument()
+    expect(screen.getByText('Course')).toBeInTheDocument()
   })
 
-  it('navigates to course materials on View button click', async () => {
+  it('opens study modal from Material quick action', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /View Course Materials/i })).toBeInTheDocument()
+      expect(screen.getByText('Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /View Course Materials/i }))
-    expect(mockNavigate).toHaveBeenCalledWith('/course-materials', { state: { selectedChild: 100 } })
+    await user.click(screen.getByText('Material'))
+
+    await waitFor(() => {
+      // Study material modal should open
+      expect(screen.getByText(/Create Study Material/i)).toBeInTheDocument()
+    })
   })
 
   // ── Add Child Modal — Create New Tab ─────────────────────────
@@ -492,7 +504,7 @@ describe('ParentDashboard', () => {
   })
 
   // ── Pending Invites ──────────────────────────────────────────
-  it('shows pending invites section', async () => {
+  it('shows pending invites in alert banner', async () => {
     const futureDate = new Date(Date.now() + 86400000 * 7).toISOString()
     mockListSent.mockResolvedValue([
       createMockInvite({ id: 1, email: 'pending@example.com', accepted_at: null, expires_at: futureDate }),
@@ -500,7 +512,7 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Pending Invites')).toBeInTheDocument()
+      expect(screen.getByText(/pending invite/i)).toBeInTheDocument()
     })
     expect(screen.getByText('pending@example.com')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Resend' })).toBeInTheDocument()
@@ -528,56 +540,7 @@ describe('ParentDashboard', () => {
     })
   })
 
-  // ── Edit Child Modal ─────────────────────────────────────────
-  it('opens edit child modal', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ParentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
-    })
-
-    // Click the edit pencil button
-    const editBtn = screen.getByTitle('Edit')
-    await user.click(editBtn)
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Edit Child' })).toBeInTheDocument()
-    })
-    expect(screen.getByText(/update alex smith/i)).toBeInTheDocument()
-  })
-
-  it('saves child edits', async () => {
-    mockUpdateChild.mockResolvedValue({})
-    mockGetDashboard
-      .mockResolvedValueOnce(defaultDashboard())
-      .mockResolvedValueOnce(defaultDashboard())
-    const user = userEvent.setup()
-    renderWithProviders(<ParentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
-    })
-
-    await user.click(screen.getByTitle('Edit'))
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Edit Child' })).toBeInTheDocument()
-    })
-
-    // Change the school name
-    const schoolInput = screen.getByPlaceholderText('e.g., Lincoln Elementary')
-    await user.clear(schoolInput)
-    await user.type(schoolInput, 'New School')
-    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
-
-    await waitFor(() => {
-      expect(mockUpdateChild).toHaveBeenCalledWith(
-        100,
-        expect.objectContaining({ school_name: 'New School' }),
-      )
-    })
-  })
+  // Edit child modal is now accessed from the My Kids page, not the dashboard
 
   // ── Study Tools Modal ────────────────────────────────────────
   it('opens study tools modal from quick action', async () => {

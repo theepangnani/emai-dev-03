@@ -12,6 +12,7 @@ import '../pages/Dashboard.css';
 
 interface SidebarAction {
   label: string;
+  icon?: string;
   onClick: () => void;
 }
 
@@ -20,9 +21,35 @@ interface DashboardLayoutProps {
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
   showBackButton?: boolean;
+  onCreateTask?: () => void;
 }
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton }: DashboardLayoutProps) {
+// Icon map for nav items (unicode emojis per project convention)
+const NAV_ICONS: Record<string, string> = {
+  'Overview': '\u{1F3E0}',
+  'Child Profiles': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
+  'Courses': '\u{1F4DA}',
+  'Course Materials': '\u{1F4DD}',
+  'Tasks': '\u2705',
+  'Messages': '\u{1F4AC}',
+  'Help': '\u2753',
+  'Dashboard': '\u{1F3E0}',
+  'Teacher Comms': '\u{1F4E8}',
+};
+
+// Default quick action icons for parent role
+const QUICK_ACTION_ICONS: Record<string, string> = {
+  '+ Course Material': '\u{1F4C4}',
+  '+ Create Course Material': '\u{1F4C4}',
+  '+ Task': '\u2795',
+  '+ Child': '\u{1F476}',
+  '+ Add Child': '\u{1F476}',
+  '+ Course': '\u{1F393}',
+  '+ Add Course': '\u{1F393}',
+  '+ Create Study Material': '\u{1F4C4}',
+};
+
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -130,6 +157,26 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
+
+  // Build the full quick actions list for persistent sidebar (parent only)
+  const persistentQuickActions = useMemo(() => {
+    if (user?.role !== 'parent') return sidebarActions || [];
+    const actions: SidebarAction[] = [];
+    // + Course Material (sidebarActions[1] if exists)
+    if (sidebarActions && sidebarActions.length > 1) {
+      actions.push({ label: '+ Course Material', icon: '\u{1F4C4}', onClick: sidebarActions[1].onClick });
+    }
+    // + Task
+    if (onCreateTask) {
+      actions.push({ label: '+ Task', icon: '\u2795', onClick: onCreateTask });
+    }
+    // + Child (sidebarActions[0] if exists)
+    if (sidebarActions && sidebarActions.length > 0) {
+      actions.push({ label: '+ Child', icon: '\u{1F476}', onClick: sidebarActions[0].onClick });
+    }
+    // + Course (placeholder - will be wired by integration session)
+    return actions;
+  }, [user?.role, sidebarActions, onCreateTask]);
 
   const handleNavClick = useCallback((path: string) => {
     navigate(path);
@@ -246,7 +293,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         </div>
       )}
 
-      {/* Slide-out menu overlay */}
+      {/* Slide-out menu overlay (mobile only, <768px) */}
       {menuOpen && <div className="menu-overlay" onClick={() => setMenuOpen(false)} />}
 
       <div className={`slide-menu${menuOpen ? ' open' : ''}`}>
@@ -258,7 +305,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
               className={`sidebar-link${location.pathname === item.path ? ' active' : ''}`}
               onClick={() => handleNavClick(item.path)}
             >
-              {item.label}
+              <span className="sidebar-link-icon">{NAV_ICONS[item.label] || ''}</span>
+              <span className="sidebar-link-label">{item.label}</span>
               {item.path === '/messages' && unreadCount > 0 && (
                 <span className="sidebar-badge">{unreadCount}</span>
               )}
@@ -276,7 +324,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                   className="sidebar-action"
                   onClick={() => handleActionClick(action)}
                 >
-                  {action.label}
+                  <span className="sidebar-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                  <span className="sidebar-action-label">{action.label}</span>
                 </button>
               ))}
             </div>
@@ -284,7 +333,48 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         )}
       </div>
 
-      <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
+      <div className="dashboard-body">
+        {/* Persistent sidebar (>=768px) */}
+        <aside className="persistent-sidebar" aria-label="Main navigation">
+          <nav className="persistent-sidebar-nav">
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                className={`ps-nav-item${location.pathname === item.path ? ' active' : ''}`}
+                onClick={() => navigate(item.path)}
+                title={item.label}
+              >
+                <span className="ps-nav-icon">{NAV_ICONS[item.label] || ''}</span>
+                <span className="ps-nav-label">{item.label}</span>
+                {item.path === '/messages' && unreadCount > 0 && (
+                  <span className="ps-nav-badge">{unreadCount}</span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {persistentQuickActions.length > 0 && (
+            <>
+              <div className="ps-divider" />
+              <div className="ps-section-title">Quick Actions</div>
+              <div className="persistent-sidebar-actions">
+                {persistentQuickActions.map((action, i) => (
+                  <button
+                    key={i}
+                    className="ps-action-item"
+                    onClick={action.onClick}
+                    title={action.label}
+                  >
+                    <span className="ps-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                    <span className="ps-action-label">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </aside>
+
+        <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
         <div className="welcome-section">
           {inspiration ? (
             <>
@@ -303,6 +393,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
 
         {children}
       </main>
+      </div>{/* end dashboard-body */}
 
       <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 

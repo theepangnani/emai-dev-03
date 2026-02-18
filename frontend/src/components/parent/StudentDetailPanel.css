@@ -1,0 +1,278 @@
+/* ── StudentDetailPanel ────────────────────────────────────── */
+
+.student-detail-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* ── Section structure ─────────────────────────────────────── */
+
+.sdp-section {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sdp-section:last-child {
+  border-bottom: none;
+}
+
+.sdp-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.sdp-section-header:hover {
+  background: var(--color-surface-alt);
+}
+
+/* Non-clickable variant for Tasks header (always expanded) */
+.sdp-section-header--static {
+  cursor: default;
+}
+
+.sdp-section-header--static:hover {
+  background: transparent;
+}
+
+.sdp-section-header .sdp-chevron {
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  transition: transform 0.2s;
+}
+
+.sdp-section-header .sdp-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.sdp-section-body {
+  padding: 0 16px 12px;
+}
+
+/* ── Count badge ───────────────────────────────────────────── */
+
+.sdp-count-badge {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-accent);
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+}
+
+/* ── Course items ──────────────────────────────────────────── */
+
+.sdp-course-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sdp-course-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.sdp-course-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Material items ────────────────────────────────────────── */
+
+.sdp-material-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sdp-material-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.sdp-material-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sdp-material-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sdp-material-type-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Urgency groups ────────────────────────────────────────── */
+
+.sdp-urgency-group {
+  margin-bottom: 8px;
+}
+
+.sdp-urgency-header {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.sdp-urgency-header.overdue {
+  background: var(--priority-high-light);
+  color: var(--priority-high);
+}
+
+.sdp-urgency-header.today {
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
+}
+
+.sdp-urgency-header.upcoming {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+/* ── Task items ────────────────────────────────────────────── */
+
+.sdp-task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.sdp-task-item.completed {
+  opacity: 0.5;
+}
+
+.sdp-task-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sdp-task-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.sdp-task-title.completed {
+  text-decoration: line-through;
+  color: var(--color-ink-muted);
+}
+
+/* ── Task urgency badges ───────────────────────────────────── */
+
+.sdp-task-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sdp-task-badge.overdue {
+  background: var(--priority-high-light);
+  color: var(--priority-high);
+}
+
+.sdp-task-badge.today {
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
+}
+
+.sdp-task-badge.upcoming {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+/* ── Child name label (All Children mode) ──────────────────── */
+
+.sdp-child-label {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Action links ──────────────────────────────────────────── */
+
+.sdp-show-more {
+  font-size: 13px;
+  color: var(--color-accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-weight: 500;
+}
+
+.sdp-show-more:hover {
+  text-decoration: underline;
+}
+
+.sdp-view-all {
+  font-size: 13px;
+  color: var(--color-accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  font-weight: 500;
+  display: block;
+  text-align: center;
+  width: 100%;
+}
+
+.sdp-view-all:hover {
+  text-decoration: underline;
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+
+.sdp-empty {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  padding: 8px;
+  font-style: italic;
+}
