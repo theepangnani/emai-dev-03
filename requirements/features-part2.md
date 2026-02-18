@@ -120,17 +120,17 @@ Replace all gradient UI styling with solid accent colors across web and mobile. 
 
 A layout overhaul inspired by modern SaaS dashboards (turbo.ai), addressing prototype user feedback.
 
-GitHub Issues: #198, #199, #200
+GitHub Issues: #198, #199, #200, #557
 
 #### Changes
-- [x] Persistent collapsible sidebar navigation (replacing hamburger slide-out) — IMPLEMENTED (#541, PR #545)
+- [x] Persistent collapsible sidebar navigation (replacing hamburger slide-out) — IMPLEMENTED (#541, PR #545); further refined to always icon-only with bigger icons and hover tooltips (#557)
 - [ ] Glassmorphism card design with gradient borders
-- [x] Improved information density and visual hierarchy — IMPLEMENTED (#540, PR #545)
+- [x] Improved information density and visual hierarchy — IMPLEMENTED (#540, PR #545); further improved with Today's Focus header replacing status cards, primary/secondary quick action hierarchy (#557)
 - [x] Simplified header (logo + search + notifications + avatar) — IMPLEMENTED
 - [ ] Generous spacing and modern typography
 - [x] Mobile: sidebar converts to hamburger overlay on <768px — IMPLEMENTED (#541)
 
-#### Status: Phase 1 — Partially implemented (sidebar + hierarchy done, visual polish remaining)
+#### Status: Phase 1 — Partially implemented (sidebar + hierarchy + Today's Focus done, visual polish remaining)
 
 ### 6.17 Global Search (Phase 1.5)
 
