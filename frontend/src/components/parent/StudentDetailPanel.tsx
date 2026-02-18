@@ -177,7 +177,7 @@ export function StudentDetailPanel({
       >
         <Chevron expanded={!collapsed} />
         <span className="sdp-panel-title">
-          {selectedChildName ? `${selectedChildName}'s Details` : 'Student Details'}
+          {selectedChildName ? `${selectedChildName}'s Details` : 'All Children Overview'}
         </span>
         <span className="sdp-panel-summary">
           {courses.length} course{courses.length !== 1 ? 's' : ''}
