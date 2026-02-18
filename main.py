@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -33,7 +33,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
@@ -455,6 +455,106 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── Phase 1 New Workflow: users.username column ─────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "username" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                logger.info("Added 'username' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: students.parent_email column ────
+    if "students" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "parent_email" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN parent_email VARCHAR(255)"))
+                logger.info("Added 'parent_email' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: courses.classroom_type column ───
+    if "courses" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("courses")}
+        if "classroom_type" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE courses ADD COLUMN classroom_type VARCHAR(20)"))
+                logger.info("Added 'classroom_type' column to courses")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: notifications ACK columns ───────
+    if "notifications" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("notifications")}
+
+        if "requires_ack" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN requires_ack BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'requires_ack' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "acked_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE notifications ADD COLUMN acked_at {col_type}"))
+                logger.info("Added 'acked_at' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "source_type" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN source_type VARCHAR(50)"))
+                logger.info("Added 'source_type' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "source_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN source_id INTEGER"))
+                logger.info("Added 'source_id' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "next_reminder_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE notifications ADD COLUMN next_reminder_at {col_type}"))
+                logger.info("Added 'next_reminder_at' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "reminder_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN reminder_count INTEGER DEFAULT 0"))
+                logger.info("Added 'reminder_count' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: notification enum types (PostgreSQL) ──
+    if is_pg:
+        new_notif_types = [
+            "LINK_REQUEST", "MATERIAL_UPLOADED", "STUDY_GUIDE_CREATED",
+            "PARENT_REQUEST", "ASSESSMENT_UPCOMING", "PROJECT_DUE",
+        ]
+        for ntype in new_notif_types:
+            try:
+                conn.execute(text(f"ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS '{ntype}'"))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
     # One-time data fix: correct known invalid email (#408)
     try:
         conn.execute(text(
@@ -585,6 +685,7 @@ app.include_router(search.router, prefix="/api")
 app.include_router(inspiration.router, prefix="/api")
 app.include_router(faq.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
+app.include_router(link_requests.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

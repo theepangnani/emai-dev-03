@@ -110,6 +110,16 @@
 - [x] **Parent Dashboard v3: Quick Actions + Student Detail Panel** — Always-visible action bar (+ Material, + Task, + Child, + Course) + urgency-grouped tasks panel per child (#543) (IMPLEMENTED — PR #545)
 - [x] **Parent Dashboard v3: Calendar default collapsed + cleanup** — Calendar defaults to collapsed; delete dead ParentSidebar/ParentActionBar code; fix #536 (#544) (IMPLEMENTED — PR #545)
 
+#### Phase 1 New Workflow (§6.51) — #546-#552
+- [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
+- [ ] **Student registration with username + parent email** — Username login, parent linking on register (#546)
+- [ ] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547)
+- [ ] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548)
+- [ ] **Parent request assignment completion** — Parent requests student complete assignment (#549)
+- [ ] **Google Classroom school vs private** — classroom_type, download restriction (#550)
+- [ ] **Student/teacher invites + course enrollment** — Student invite teacher, teacher invite student/parent (#551)
+- [ ] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552)
+
 #### Architecture Foundation (Tier 0)
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
 - [ ] **Extract backend services** — Move business logic from route handlers to domain service layer (#128)
