@@ -175,6 +175,21 @@
 
 .sdp-urgency-group {
   margin-bottom: 8px;
+  transition: box-shadow 0.3s;
+  border-radius: 6px;
+}
+
+.sdp-urgency-highlight {
+  box-shadow: 0 0 0 2px var(--color-accent-strong);
+}
+
+@keyframes sdp-highlight-fade {
+  0% { box-shadow: 0 0 0 2px var(--color-accent-strong); }
+  100% { box-shadow: none; }
+}
+
+.sdp-urgency-highlight {
+  animation: sdp-highlight-fade 1.5s ease-out forwards;
 }
 
 .sdp-urgency-header {

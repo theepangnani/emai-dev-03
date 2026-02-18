@@ -315,7 +315,7 @@ export function StudentDetailPanel({
         <div className="sdp-section-body">
           {/* Overdue */}
           {urgencyGroups.overdue.length > 0 && (
-            <div className="sdp-urgency-group">
+            <div className="sdp-urgency-group" data-urgency="overdue">
               <div className="sdp-urgency-header overdue">
                 Overdue ({urgencyGroups.overdue.length})
               </div>
@@ -335,7 +335,7 @@ export function StudentDetailPanel({
 
           {/* Due Today */}
           {urgencyGroups.today.length > 0 && (
-            <div className="sdp-urgency-group">
+            <div className="sdp-urgency-group" data-urgency="today">
               <div className="sdp-urgency-header today">
                 Due Today ({urgencyGroups.today.length})
               </div>
@@ -355,7 +355,7 @@ export function StudentDetailPanel({
 
           {/* Next 3 Days */}
           {urgencyGroups.upcoming.length > 0 && (
-            <div className="sdp-urgency-group">
+            <div className="sdp-urgency-group" data-urgency="upcoming">
               <div className="sdp-urgency-header upcoming">
                 Next 3 Days ({urgencyGroups.upcoming.length})
               </div>
