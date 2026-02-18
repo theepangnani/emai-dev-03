@@ -476,6 +476,65 @@ def link_child(
             detail="This email belongs to a non-student account",
         )
 
+    # Active student (not placeholder) — require approval via LinkRequest
+    if existing_user and existing_user.hashed_password != UNUSABLE_PASSWORD_HASH:
+        student = db.query(Student).filter(Student.user_id == existing_user.id).first()
+        if not student:
+            student = Student(user_id=existing_user.id)
+            db.add(student)
+            db.flush()
+
+        # Check if already linked
+        existing_link = (
+            db.query(parent_students)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                parent_students.c.student_id == student.id,
+            )
+            .first()
+        )
+        if existing_link:
+            raise HTTPException(status_code=400, detail="This student is already linked to your account")
+
+        from app.models.link_request import LinkRequest, LinkRequestType
+        from app.models.notification import NotificationType
+        from app.services.notification_service import send_multi_channel_notification
+
+        link_req = LinkRequest(
+            request_type=LinkRequestType.PARENT_TO_STUDENT.value,
+            requester_user_id=current_user.id,
+            target_user_id=existing_user.id,
+            student_id=student.id,
+            relationship_type=request.relationship_type,
+            token=secrets.token_urlsafe(32),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        )
+        db.add(link_req)
+        db.flush()
+
+        send_multi_channel_notification(
+            db=db,
+            recipient=existing_user,
+            sender=current_user,
+            title="Parent Link Request",
+            content=f"{current_user.full_name} is requesting to link to your student account.",
+            notification_type=NotificationType.LINK_REQUEST,
+            link="/link-requests",
+        )
+        db.commit()
+
+        return ChildSummary(
+            student_id=student.id,
+            user_id=student.user_id,
+            full_name=existing_user.full_name,
+            email=existing_user.email,
+            grade_level=student.grade_level,
+            school_name=student.school_name,
+            relationship_type=request.relationship_type,
+            invite_link=None,
+            link_request_pending=True,
+        )
+
     if existing_user:
         student_user = existing_user
     else:

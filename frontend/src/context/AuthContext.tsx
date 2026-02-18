@@ -4,6 +4,7 @@ import { authApi } from '../api/client';
 interface User {
   id: number;
   email: string;
+  username?: string;
   full_name: string;
   role: string | null;
   roles: string[];
@@ -17,9 +18,9 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   loginWithToken: (token: string, refreshToken?: string) => void;
-  register: (data: { email: string; password: string; full_name: string; roles: string[]; teacher_type?: string; [key: string]: string | string[] | undefined }) => Promise<void>;
+  register: (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles: string[]; teacher_type?: string; google_id?: string }) => Promise<void>;
   logout: () => void;
   switchRole: (role: string) => Promise<void>;
   completeOnboarding: (roles: string[], teacherType?: string) => Promise<void>;
@@ -53,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, [token]);
 
-  const login = async (email: string, password: string) => {
-    const data = await authApi.login(email, password);
+  const login = async (identifier: string, password: string) => {
+    const data = await authApi.login(identifier, password);
     localStorage.setItem('token', data.access_token);
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
     setToken(data.access_token);
@@ -68,9 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
   };
 
-  const register = async (data: { email: string; password: string; full_name: string; roles: string[]; teacher_type?: string; [key: string]: string | string[] | undefined }) => {
+  const register = async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles: string[]; teacher_type?: string; google_id?: string }) => {
     await authApi.register(data);
-    await login(data.email, data.password);
+    // Login with email or username, whichever was provided
+    const identifier = data.email || data.username || '';
+    await login(identifier, data.password);
   };
 
   const logout = () => {
