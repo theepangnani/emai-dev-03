@@ -83,7 +83,7 @@ export interface ExtractedText {
 
 // Study Tools API
 export const studyApi = {
-  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number }) => {
+  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string }) => {
     const response = await api.post('/api/study/generate', params);
     return response.data as StudyGuide;
   },

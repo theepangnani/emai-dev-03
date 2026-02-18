@@ -382,6 +382,7 @@ async def generate_study_guide_endpoint(
             assignment_description=description,
             course_name=course_name,
             due_date=due_date,
+            custom_prompt=body.custom_prompt,
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED

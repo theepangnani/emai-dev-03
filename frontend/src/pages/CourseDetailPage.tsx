@@ -33,6 +33,7 @@ interface CourseDetail {
   is_private: boolean;
   created_at: string;
   google_classroom_id: string | null;
+  classroom_type: string | null;
 }
 
 interface RosterStudent {
@@ -110,7 +111,8 @@ export function CourseDetailPage() {
 
   // Upload: optional study guide generation
   const [generateAfterUpload, setGenerateAfterUpload] = useState(false);
-  const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
+  const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards' | 'other'>('study_guide');
+  const [customPrompt, setCustomPrompt] = useState('');
 
   // Create task modal context
   const [taskModalContext, setTaskModalContext] = useState<{
@@ -327,6 +329,7 @@ export function CourseDetailPage() {
     setIsDragging(false);
     setGenerateAfterUpload(false);
     setStudyGuideType('study_guide');
+    setCustomPrompt('');
     setShowUploadModal(true);
   };
 
@@ -408,6 +411,7 @@ export function CourseDetailPage() {
               content: extractedText,
               title: uploadTitle.trim(),
               course_id: courseId,
+              custom_prompt: studyGuideType === 'other' && customPrompt.trim() ? customPrompt.trim() : undefined,
             });
             navigate(`/study/guide/${result.id}`);
           }
@@ -569,6 +573,8 @@ export function CourseDetailPage() {
             <div className="course-detail-meta">
               {course.subject && <span className="course-detail-subject">{course.subject}</span>}
               {course.google_classroom_id && <span className="course-detail-badge google">Google Classroom</span>}
+              {course.classroom_type === 'school' && <span className="course-detail-badge school">School</span>}
+              {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-detail-badge private-gc">Private</span>}
               {course.is_private && <span className="course-detail-badge private">Private</span>}
             </div>
             {course.description && <p className="course-detail-desc">{course.description}</p>}
@@ -580,6 +586,11 @@ export function CourseDetailPage() {
             <span className="course-detail-date">
               Created {new Date(course.created_at).toLocaleDateString()}
             </span>
+            {course.classroom_type === 'school' && (
+              <div className="dtap-disclaimer">
+                Document downloads are restricted for school courses. DTAP approval is required for school board connections.
+              </div>
+            )}
           </div>
           {canEdit && (
             <button className="courses-btn secondary" onClick={openEditModal}>&#9998; Edit</button>
@@ -911,14 +922,34 @@ export function CourseDetailPage() {
                 Generate study material from this document
               </label>
               {generateAfterUpload && (
-                <label>
-                  Study Material Type
-                  <select value={studyGuideType} onChange={(e) => setStudyGuideType(e.target.value as any)} disabled={uploading}>
-                    <option value="study_guide">Study Guide</option>
-                    <option value="quiz">Quiz</option>
-                    <option value="flashcards">Flashcards</option>
-                  </select>
-                </label>
+                <>
+                  <label>
+                    AI Help Type
+                    <select value={studyGuideType} onChange={(e) => setStudyGuideType(e.target.value as any)} disabled={uploading}>
+                      <option value="study_guide">Study Guide</option>
+                      <option value="quiz">Quiz</option>
+                      <option value="flashcards">Flashcards</option>
+                      <option value="other">Other (Custom Prompt)</option>
+                    </select>
+                  </label>
+                  {studyGuideType === 'other' && (
+                    <label>
+                      Custom AI Prompt
+                      <textarea
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        placeholder="Describe what you want the AI to do with this content, e.g. 'Summarize the key themes' or 'Create a timeline of events'"
+                        rows={3}
+                        disabled={uploading}
+                      />
+                    </label>
+                  )}
+                </>
+              )}
+              {course?.classroom_type === 'school' && (
+                <div className="dtap-disclaimer" style={{ marginTop: 8 }}>
+                  For school Google Classroom courses, download documents from Google Classroom first, then upload them here to generate study materials.
+                </div>
               )}
               {uploadError && <p className="link-error">{uploadError}</p>}
             </div>

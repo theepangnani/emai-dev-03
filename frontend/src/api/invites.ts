@@ -22,9 +22,17 @@ export const invitesApi = {
     return response.data as InviteResponse;
   },
 
-  inviteParent: async (parentEmail: string) => {
+  inviteParent: async (parentEmail: string, studentId?: number) => {
     const response = await api.post('/api/invites/invite-parent', {
       parent_email: parentEmail,
+      student_id: studentId,
+    });
+    return response.data;
+  },
+
+  inviteTeacher: async (teacherEmail: string) => {
+    const response = await api.post('/api/invites/invite-teacher', {
+      teacher_email: teacherEmail,
     });
     return response.data;
   },

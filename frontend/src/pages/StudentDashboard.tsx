@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
+import { invitesApi } from '../api/invites';
 import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../api/client';
 import { StudyToolsButton } from '../components/StudyToolsButton';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -56,6 +57,12 @@ export function StudentDashboard() {
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { confirm, confirmModal } = useConfirm();
+
+  // Invite teacher state
+  const [showInviteTeacherModal, setShowInviteTeacherModal] = useState(false);
+  const [inviteTeacherEmail, setInviteTeacherEmail] = useState('');
+  const [inviteTeacherLoading, setInviteTeacherLoading] = useState(false);
+  const [inviteTeacherMsg, setInviteTeacherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const justRegistered = searchParams.get('just_registered') === 'true';
 
@@ -340,6 +347,25 @@ export function StudentDashboard() {
     }
   };
 
+  const handleInviteTeacher = async () => {
+    if (!inviteTeacherEmail.trim()) return;
+    setInviteTeacherLoading(true);
+    setInviteTeacherMsg(null);
+    try {
+      const result = await invitesApi.inviteTeacher(inviteTeacherEmail.trim());
+      if (result.action === 'message_sent') {
+        setInviteTeacherMsg({ type: 'success', text: result.message || 'Message sent to teacher!' });
+      } else {
+        setInviteTeacherMsg({ type: 'success', text: 'Invite sent! Your teacher will receive an email.' });
+      }
+      setInviteTeacherEmail('');
+    } catch (err: any) {
+      setInviteTeacherMsg({ type: 'error', text: err.response?.data?.detail || 'Failed to invite teacher' });
+    } finally {
+      setInviteTeacherLoading(false);
+    }
+  };
+
   const calculateStreak = (guides: StudyGuide[]): number => {
     if (!guides.length) return 0;
     const uniqueDates = Array.from(
@@ -567,7 +593,12 @@ export function StudentDashboard() {
         </section>
 
         <section className="section">
-          <h3>Your Courses</h3>
+          <div className="section-header">
+            <h3>Your Courses</h3>
+            <button className="create-custom-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
+              + Invite Teacher
+            </button>
+          </div>
           {courses.length > 0 ? (
             <ul className="courses-list">
               {courses.map((course) => (
@@ -739,6 +770,39 @@ export function StudentDashboard() {
                 disabled={isGenerating || (uploadMode === 'file' ? !selectedFile : !customContent.trim())}
               >
                 {isGenerating ? 'Generating...' : 'Generate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Invite Teacher Modal */}
+      {showInviteTeacherModal && (
+        <div className="modal-overlay" onClick={() => setShowInviteTeacherModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Invite a Teacher</h2>
+            <p className="modal-desc">Enter your teacher's email address. If they don't have an account, they'll receive an invitation.</p>
+            <div className="modal-form">
+              <label>
+                Teacher Email *
+                <input
+                  type="email"
+                  value={inviteTeacherEmail}
+                  onChange={(e) => setInviteTeacherEmail(e.target.value)}
+                  placeholder="teacher@example.com"
+                  disabled={inviteTeacherLoading}
+                  onKeyDown={(e) => e.key === 'Enter' && handleInviteTeacher()}
+                />
+              </label>
+              {inviteTeacherMsg && (
+                <p className={inviteTeacherMsg.type === 'error' ? 'link-error' : 'link-success'}>
+                  {inviteTeacherMsg.text}
+                </p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowInviteTeacherModal(false)} disabled={inviteTeacherLoading}>Close</button>
+              <button className="generate-btn" onClick={handleInviteTeacher} disabled={inviteTeacherLoading || !inviteTeacherEmail.trim()}>
+                {inviteTeacherLoading ? 'Sending...' : 'Send Invite'}
               </button>
             </div>
           </div>

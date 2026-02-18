@@ -271,6 +271,16 @@
   color: var(--brand-google);
 }
 
+.course-card-badge.school {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.course-card-badge.private-gc {
+  background: #f0fdf4;
+  color: #166534;
+}
+
 .course-card-desc {
   font-size: 13px;
   color: var(--color-ink-muted);
