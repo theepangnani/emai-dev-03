@@ -99,6 +99,28 @@ export function NotificationBell() {
     }
   };
 
+  const handleAcknowledge = async () => {
+    if (!modalNotification) return;
+    try {
+      const updated = await notificationsApi.ack(modalNotification.id);
+      setModalNotification(updated);
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const handleSuppress = async () => {
+    if (!modalNotification) return;
+    try {
+      await notificationsApi.suppress(modalNotification.id);
+      setModalNotification(null);
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // Silently fail
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -120,6 +142,13 @@ export function NotificationBell() {
       case 'grade_posted': return '📊';
       case 'message': return '💬';
       case 'system': return '⚙️';
+      case 'task_due': return '✅';
+      case 'link_request': return '🔗';
+      case 'material_uploaded': return '📤';
+      case 'study_guide_created': return '📚';
+      case 'parent_request': return '👨‍👩‍👧';
+      case 'assessment_upcoming': return '📋';
+      case 'project_due': return '🎯';
       default: return '🔔';
     }
   };
@@ -166,12 +195,17 @@ export function NotificationBell() {
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`notification-item ${!n.read ? 'unread' : ''}`}
+                  className={`notification-item ${!n.read ? 'unread' : ''} ${n.requires_ack && !n.acked_at ? 'requires-ack' : ''}`}
                   onClick={() => handleNotificationClick(n)}
                 >
                   <span className="notification-icon">{getTypeIcon(n.type)}</span>
                   <div className="notification-content">
-                    <p className="notification-title">{n.title}</p>
+                    <div className="notification-title-row">
+                      <p className="notification-title">{n.title}</p>
+                      {n.requires_ack && !n.acked_at && (
+                        <span className="ack-badge">ACK</span>
+                      )}
+                    </div>
                     {n.content && (
                       <p className="notification-text">{n.content}</p>
                     )}
@@ -202,8 +236,18 @@ export function NotificationBell() {
             )}
             <span className="notif-modal-time">{formatTime(modalNotification.created_at)}</span>
           </div>
-          {modalNotification.link && (
-            <div className="notif-modal-footer">
+          <div className="notif-modal-footer">
+            {modalNotification.requires_ack && !modalNotification.acked_at && (
+              <button className="notif-modal-ack-btn" onClick={handleAcknowledge}>
+                Acknowledge
+              </button>
+            )}
+            {modalNotification.source_type && (
+              <button className="notif-modal-silence-btn" onClick={handleSuppress}>
+                Silence
+              </button>
+            )}
+            {modalNotification.link && (
               <button
                 className="notif-modal-action"
                 onClick={() => {
@@ -213,8 +257,8 @@ export function NotificationBell() {
               >
                 Go to {modalNotification.link.replace('/', '')} &rarr;
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>,
       document.body

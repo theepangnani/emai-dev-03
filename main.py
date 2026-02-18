@@ -755,6 +755,7 @@ async def startup_event():
     from app.services.scheduler import scheduler, start_scheduler
     from app.jobs.assignment_reminders import check_assignment_reminders
     from app.jobs.task_reminders import check_task_reminders
+    from app.jobs.notification_reminders import check_notification_reminders
     from app.services.inspiration_service import seed_messages
     from app.services.faq_seed_service import seed_faq
     from app.services.grade_seed_service import seed_grades
@@ -778,6 +779,12 @@ async def startup_event():
         check_task_reminders,
         CronTrigger(hour=8, minute=15),
         id="task_reminders",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        check_notification_reminders,
+        CronTrigger(hour="*/6"),
+        id="notification_reminders",
         replace_existing=True,
     )
 

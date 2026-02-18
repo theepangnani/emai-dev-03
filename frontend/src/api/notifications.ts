@@ -4,12 +4,30 @@ import { api } from './client';
 export interface NotificationResponse {
   id: number;
   user_id: number;
-  type: 'assignment_due' | 'grade_posted' | 'message' | 'system';
+  type:
+    | 'assignment_due'
+    | 'grade_posted'
+    | 'message'
+    | 'system'
+    | 'task_due'
+    | 'link_request'
+    | 'material_uploaded'
+    | 'study_guide_created'
+    | 'parent_request'
+    | 'assessment_upcoming'
+    | 'project_due';
   title: string;
   content: string | null;
   link: string | null;
   read: boolean;
   created_at: string;
+
+  // ACK system fields
+  requires_ack: boolean;
+  acked_at: string | null;
+  source_type: string | null;
+  source_id: number | null;
+  reminder_count: number;
 }
 
 export interface NotificationPreferences {
@@ -40,6 +58,16 @@ export const notificationsApi = {
 
   delete: async (id: number) => {
     await api.delete(`/api/notifications/${id}`);
+  },
+
+  ack: async (id: number) => {
+    const response = await api.put(`/api/notifications/${id}/ack`);
+    return response.data as NotificationResponse;
+  },
+
+  suppress: async (id: number) => {
+    const response = await api.put(`/api/notifications/${id}/suppress`);
+    return response.data as NotificationResponse;
   },
 
   getSettings: async () => {

@@ -145,6 +145,163 @@ class TestDeleteNotification:
 
 # ── Notification settings ─────────────────────────────────────
 
+# ── Acknowledge notification ──────────────────────────────────
+
+class TestAcknowledgeNotification:
+    def test_ack_sets_fields(self, client, notif_user, db_session):
+        from app.models.notification import Notification, NotificationType
+
+        n = Notification(
+            user_id=notif_user.id, type=NotificationType.ASSIGNMENT_DUE,
+            title="ACK Me", content="body", read=False,
+            requires_ack=True, source_type="assignment", source_id=999,
+        )
+        db_session.add(n)
+        db_session.commit()
+        db_session.refresh(n)
+
+        headers = _auth(client, notif_user.email)
+        resp = client.put(f"/api/notifications/{n.id}/ack", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["acked_at"] is not None
+        assert data["read"] is True
+        assert data["requires_ack"] is True
+
+    def test_ack_non_ack_notification_returns_400(self, client, notif_user, db_session):
+        from app.models.notification import Notification, NotificationType
+
+        n = Notification(
+            user_id=notif_user.id, type=NotificationType.SYSTEM,
+            title="No ACK", content="body", read=False,
+            requires_ack=False,
+        )
+        db_session.add(n)
+        db_session.commit()
+        db_session.refresh(n)
+
+        headers = _auth(client, notif_user.email)
+        resp = client.put(f"/api/notifications/{n.id}/ack", headers=headers)
+        assert resp.status_code == 400
+
+    def test_ack_nonexistent_returns_404(self, client, notif_user):
+        headers = _auth(client, notif_user.email)
+        resp = client.put("/api/notifications/999999/ack", headers=headers)
+        assert resp.status_code == 404
+
+
+# ── Suppress notification ─────────────────────────────────────
+
+class TestSuppressNotification:
+    def test_suppress_creates_suppression_row(self, client, notif_user, db_session):
+        from app.models.notification import Notification, NotificationType
+        from app.models.notification_suppression import NotificationSuppression
+
+        n = Notification(
+            user_id=notif_user.id, type=NotificationType.ASSIGNMENT_DUE,
+            title="Suppress Me", content="body", read=False,
+            requires_ack=True, source_type="assignment", source_id=888,
+        )
+        db_session.add(n)
+        db_session.commit()
+        db_session.refresh(n)
+
+        headers = _auth(client, notif_user.email)
+        resp = client.put(f"/api/notifications/{n.id}/suppress", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["acked_at"] is not None
+        assert data["read"] is True
+
+        # Verify suppression row exists
+        suppression = db_session.query(NotificationSuppression).filter(
+            NotificationSuppression.user_id == notif_user.id,
+            NotificationSuppression.source_type == "assignment",
+            NotificationSuppression.source_id == 888,
+        ).first()
+        assert suppression is not None
+
+    def test_suppress_no_source_returns_400(self, client, notif_user, db_session):
+        from app.models.notification import Notification, NotificationType
+
+        n = Notification(
+            user_id=notif_user.id, type=NotificationType.SYSTEM,
+            title="No Source", content="body", read=False,
+        )
+        db_session.add(n)
+        db_session.commit()
+        db_session.refresh(n)
+
+        headers = _auth(client, notif_user.email)
+        resp = client.put(f"/api/notifications/{n.id}/suppress", headers=headers)
+        assert resp.status_code == 400
+
+    def test_suppress_idempotent_on_repeat(self, client, notif_user, db_session):
+        from app.models.notification import Notification, NotificationType
+        from app.models.notification_suppression import NotificationSuppression
+
+        n1 = Notification(
+            user_id=notif_user.id, type=NotificationType.ASSIGNMENT_DUE,
+            title="Suppress First", content="body", read=False,
+            requires_ack=True, source_type="assignment", source_id=777,
+        )
+        n2 = Notification(
+            user_id=notif_user.id, type=NotificationType.ASSIGNMENT_DUE,
+            title="Suppress Second", content="body", read=False,
+            requires_ack=True, source_type="assignment", source_id=777,
+        )
+        db_session.add_all([n1, n2])
+        db_session.commit()
+        db_session.refresh(n1)
+        db_session.refresh(n2)
+
+        headers = _auth(client, notif_user.email)
+        resp1 = client.put(f"/api/notifications/{n1.id}/suppress", headers=headers)
+        assert resp1.status_code == 200
+
+        # Second suppress on same source should still succeed (idempotent)
+        resp2 = client.put(f"/api/notifications/{n2.id}/suppress", headers=headers)
+        assert resp2.status_code == 200
+
+        # Only one suppression row
+        count = db_session.query(NotificationSuppression).filter(
+            NotificationSuppression.user_id == notif_user.id,
+            NotificationSuppression.source_type == "assignment",
+            NotificationSuppression.source_id == 777,
+        ).count()
+        assert count == 1
+
+
+# ── Notification response schema ──────────────────────────────
+
+class TestNotificationResponseSchema:
+    def test_list_includes_ack_fields(self, client, notif_user, db_session):
+        from app.models.notification import Notification, NotificationType
+
+        n = Notification(
+            user_id=notif_user.id, type=NotificationType.ASSIGNMENT_DUE,
+            title="Schema Test", content="body", read=False,
+            requires_ack=True, source_type="assignment", source_id=555,
+            reminder_count=1,
+        )
+        db_session.add(n)
+        db_session.commit()
+
+        headers = _auth(client, notif_user.email)
+        resp = client.get("/api/notifications/", headers=headers)
+        assert resp.status_code == 200
+        items = resp.json()
+        schema_item = next((i for i in items if i["title"] == "Schema Test"), None)
+        assert schema_item is not None
+        assert schema_item["requires_ack"] is True
+        assert schema_item["source_type"] == "assignment"
+        assert schema_item["source_id"] == 555
+        assert schema_item["reminder_count"] == 1
+        assert schema_item["acked_at"] is None
+
+
+# ── Notification settings ─────────────────────────────────────
+
 class TestNotificationSettings:
     def test_get_settings(self, client, notif_user):
         headers = _auth(client, notif_user.email)
