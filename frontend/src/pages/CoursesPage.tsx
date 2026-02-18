@@ -16,6 +16,7 @@ interface CourseItem {
   subject: string | null;
   created_at: string;
   google_classroom_id?: string | null;
+  classroom_type?: string | null;
   teacher_name?: string | null;
   teacher_id?: number | null;
   is_private?: boolean;
@@ -390,6 +391,8 @@ export function CoursesPage() {
                         {course.subject && <span className="course-card-subject">{course.subject}</span>}
                         {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
                         {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                        {course.classroom_type === 'school' && <span className="course-card-badge school">School</span>}
+                        {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
                       </div>
                       <div className="course-card-actions">
                         <button

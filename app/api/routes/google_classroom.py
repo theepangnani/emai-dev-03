@@ -351,6 +351,24 @@ def _auto_invite_shadow_teacher(
         logger.warning(f"Failed to send auto-invite to shadow teacher {teacher_email}: {e}")
 
 
+def _set_classroom_type(course: Course, db: Session) -> None:
+    """Set classroom_type based on the course teacher's teacher_type.
+
+    school_teacher → "school", private_tutor or unknown → "private".
+    Does not override if already set.
+    """
+    if course.classroom_type:
+        return
+    if course.teacher_id:
+        teacher = db.query(Teacher).filter(Teacher.id == course.teacher_id).first()
+        if teacher and teacher.teacher_type:
+            from app.models.teacher import TeacherType
+            if teacher.teacher_type == TeacherType.SCHOOL_TEACHER:
+                course.classroom_type = "school"
+                return
+    course.classroom_type = "private"
+
+
 def _resolve_teacher_for_course(
     google_course_id: str,
     user: User,
@@ -470,6 +488,9 @@ def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
             resolved_teacher = _resolve_teacher_for_course(gc["id"], user, db)
             if resolved_teacher:
                 course.teacher_id = resolved_teacher.id
+
+        # Set classroom_type based on teacher's type
+        _set_classroom_type(course, db)
 
         # Link student to course
         if student:

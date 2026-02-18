@@ -19,10 +19,39 @@ from app.schemas.course_content import (
     CourseContentUpdateResponse,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 _ONE_YEAR = timedelta(days=365)
 _SEVEN_YEARS = timedelta(days=365 * 7)
 
 router = APIRouter(prefix="/course-contents", tags=["Course Contents"])
+
+
+def _get_school_course_ids(db: Session, course_ids: list[int]) -> set[int]:
+    """Return the subset of course_ids that have classroom_type='school'."""
+    if not course_ids:
+        return set()
+    rows = (
+        db.query(Course.id)
+        .filter(Course.id.in_(course_ids), Course.classroom_type == "school")
+        .all()
+    )
+    return {r[0] for r in rows}
+
+
+def _strip_urls_for_school(
+    items: list, school_ids: set[int]
+) -> list[CourseContentResponse]:
+    """Convert ORM items to Pydantic and strip URLs for school courses."""
+    results = []
+    for item in items:
+        resp = CourseContentResponse.model_validate(item)
+        if item.course_id in school_ids:
+            resp.reference_url = None
+            resp.google_classroom_url = None
+        results.append(resp)
+    return results
 
 
 @router.post("/", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
@@ -52,6 +81,26 @@ def create_course_content(
     db.add(content)
     db.commit()
     db.refresh(content)
+
+    # Notify parents when a student uploads material
+    if current_user.role == UserRole.STUDENT:
+        try:
+            from app.models.notification import NotificationType
+            from app.services.notification_service import notify_parents_of_student
+            notify_parents_of_student(
+                db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded course material",
+                content=f"{current_user.full_name} uploaded \"{data.title}\" to {course.name}.",
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{data.course_id}",
+                source_type="course_content",
+                source_id=content.id,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to notify parents of student upload: {e}")
+
     return content
 
 
@@ -80,7 +129,17 @@ def list_course_contents(
 
     if content_type:
         query = query.filter(CourseContent.content_type == content_type.strip().lower())
-    return query.order_by(CourseContent.created_at.desc()).all()
+
+    items = query.order_by(CourseContent.created_at.desc()).all()
+
+    # Strip reference_url and google_classroom_url for students on school courses
+    if current_user.role == UserRole.STUDENT and items:
+        cids = list({item.course_id for item in items})
+        school_ids = _get_school_course_ids(db, cids)
+        if school_ids:
+            return _strip_urls_for_school(items, school_ids)
+
+    return items
 
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
@@ -190,6 +249,15 @@ def get_course_content(
     content.last_viewed_at = now
     db.commit()
     db.refresh(content)
+
+    # Strip URLs for students on school courses
+    if current_user.role == UserRole.STUDENT:
+        school_ids = _get_school_course_ids(db, [content.course_id])
+        if content.course_id in school_ids:
+            resp = CourseContentResponse.model_validate(content)
+            resp.reference_url = None
+            resp.google_classroom_url = None
+            return resp
 
     return content
 

@@ -488,6 +488,20 @@ def add_student_to_course(
     return {"invited": True, "message": f"Invitation sent to {email}"}
 
 
+@router.post("/{course_id}/invite-student")
+def invite_student_to_course(
+    course_id: int,
+    body: AddStudentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Invite a student to a course (alias for add_student_to_course).
+
+    Teacher-friendly endpoint name for the invite flow.
+    """
+    return add_student_to_course(course_id, body, db, current_user)
+
+
 @router.delete("/{course_id}/students/{student_id}")
 def remove_student_from_course(
     course_id: int,

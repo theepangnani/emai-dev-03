@@ -304,8 +304,116 @@ def resend_invite(
     return invite
 
 
+class _InviteTeacherRequest(PydanticBaseModel):
+    teacher_email: EmailStr
+
+
+@router.post("/invite-teacher")
+def invite_teacher(
+    data: _InviteTeacherRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STUDENT)),
+):
+    """Student invites a private teacher to ClassBridge.
+
+    If the teacher already has an account, sends them a welcome message instead.
+    Also notifies the student's parents.
+    """
+    from app.services.notification_service import notify_parents_of_student
+
+    # Check if teacher email already registered
+    existing_user = db.query(User).filter(User.email == data.teacher_email).first()
+    if existing_user:
+        result = _send_message_to_existing_user(
+            db,
+            sender=current_user,
+            recipient=existing_user,
+            message_content=(
+                f"Hi {existing_user.full_name}! I'm {current_user.full_name}, "
+                f"one of your students. I'd like to connect with you on ClassBridge "
+                f"for study tools and communication with my parents."
+            ),
+        )
+        # Notify parents
+        notify_parents_of_student(
+            db,
+            student_user=current_user,
+            title=f"{current_user.full_name} invited a teacher",
+            content=f"{current_user.full_name} connected with {existing_user.full_name} on ClassBridge.",
+            notification_type=NotificationType.SYSTEM,
+            link="/messages",
+        )
+        db.commit()
+        return result
+
+    # Check for existing pending teacher invite
+    existing_invite = (
+        db.query(Invite)
+        .filter(
+            Invite.email == data.teacher_email,
+            Invite.invite_type == InviteType.TEACHER,
+            Invite.accepted_at.is_(None),
+            Invite.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+    )
+    if existing_invite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A pending invite already exists for this email",
+        )
+
+    token = secrets.token_urlsafe(32)
+    invite = Invite(
+        email=data.teacher_email,
+        invite_type=InviteType.TEACHER,
+        token=token,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        invited_by_user_id=current_user.id,
+        metadata_json={"source": "student_invite"},
+    )
+    db.add(invite)
+    db.flush()
+
+    # Send email
+    invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
+    try:
+        html = f"""
+        <h2>You've Been Invited to ClassBridge</h2>
+        <p>Hi there,</p>
+        <p><strong>{current_user.full_name}</strong>, one of your students, invited you to join ClassBridge.
+        Connect with parents, share announcements, and track student progress.</p>
+        <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create Your Account</a></p>
+        <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
+        """
+        html = add_inspiration_to_email(html, db, "teacher")
+        send_email_sync(
+            to_email=data.teacher_email,
+            subject=f"{current_user.full_name} invited you to ClassBridge",
+            html_content=html,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send teacher invite email to {data.teacher_email}: {e}")
+
+    # Notify parents
+    notify_parents_of_student(
+        db,
+        student_user=current_user,
+        title=f"{current_user.full_name} invited a teacher",
+        content=f"{current_user.full_name} invited {data.teacher_email} to join ClassBridge as a teacher.",
+        notification_type=NotificationType.SYSTEM,
+    )
+
+    db.commit()
+    db.refresh(invite)
+
+    logger.info(f"Student {current_user.id} invited teacher {data.teacher_email}")
+    return invite
+
+
 class _InviteParentRequest(PydanticBaseModel):
     parent_email: EmailStr
+    student_id: int | None = None
 
 
 @router.post("/invite-parent")
@@ -319,17 +427,26 @@ def invite_parent(
     If the parent already has an account, sends them a welcome message instead
     (which also triggers an email notification).
     """
+    # Resolve student name for context
+    student_name = None
+    if data.student_id:
+        from app.models.student import Student
+        student = db.query(Student).filter(Student.id == data.student_id).first()
+        if student and student.user:
+            student_name = student.user.full_name
+
     # Check if parent email already registered
     existing_user = db.query(User).filter(User.email == data.parent_email).first()
     if existing_user:
+        student_context = f" regarding {student_name}'s education" if student_name else " regarding your child's education"
         return _send_message_to_existing_user(
             db,
             sender=current_user,
             recipient=existing_user,
             message_content=(
                 f"Hi {existing_user.full_name}! I'm {current_user.full_name}, "
-                f"a teacher on ClassBridge. I'd like to connect with you "
-                f"regarding your child's education. Feel free to message me anytime!"
+                f"a teacher on ClassBridge. I'd like to connect with you"
+                f"{student_context}. Feel free to message me anytime!"
             ),
         )
 
@@ -351,12 +468,18 @@ def invite_parent(
         )
 
     token = secrets.token_urlsafe(32)
+    metadata = {}
+    if data.student_id:
+        metadata["student_id"] = data.student_id
+        if student_name:
+            metadata["student_name"] = student_name
     invite = Invite(
         email=data.parent_email,
         invite_type=InviteType.PARENT,
         token=token,
         expires_at=datetime.now(timezone.utc) + timedelta(days=30),
         invited_by_user_id=current_user.id,
+        metadata_json=metadata or None,
     )
     db.add(invite)
     db.commit()

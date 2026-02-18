@@ -11,6 +11,7 @@ class StudyGuideCreate(BaseModel):
     title: str | None = None  # Optional custom title
     content: str | None = None  # Optional custom content to base guide on
     regenerate_from_id: int | None = None  # ID of existing guide to create new version of
+    custom_prompt: str | None = None  # Custom AI prompt (for "Other" tool selection)
 
 
 class AutoCreatedTask(BaseModel):

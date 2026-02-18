@@ -106,6 +106,7 @@ async def generate_study_guide(
     assignment_description: str,
     course_name: str,
     due_date: str | None = None,
+    custom_prompt: str | None = None,
 ) -> str:
     """
     Generate a study guide for an assignment.
@@ -154,7 +155,10 @@ IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, q
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
 Only include this section if specific dates are mentioned. If no dates are found, do not include this section at all."""
 
-    system_prompt = """You are an expert educational tutor. When given math problems or exercises, solve them
+    if custom_prompt:
+        system_prompt = custom_prompt
+    else:
+        system_prompt = """You are an expert educational tutor. When given math problems or exercises, solve them
 step-by-step with clear explanations so students can learn the process. For conceptual material, create
 well-organized study guides. Use simple language, practical examples, and clean Markdown formatting."""
 
