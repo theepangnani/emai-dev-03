@@ -76,17 +76,25 @@ export default function CreateStudyMaterialModal({
 
   // Reset state when modal opens/closes; apply initial values on open
   useEffect(() => {
-    if (open) {
-      setStudyTitle(initialTitle);
-      setStudyContent(initialContent);
-      setStudyType('study_guide');
-      setStudyMode('text');
-      setSelectedFile(null);
-      setStudyError('');
-      setIsDragging(false);
-      setPastedImages([]);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    if (!open) return;
+    // Intentional sync setState on open to reset form fields
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyTitle(initialTitle);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyContent(initialContent);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyType('study_guide');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyMode('text');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedFile(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyError('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDragging(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPastedImages([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }, [open, initialTitle, initialContent]);
 
   const handleFileSelect = (file: File) => {

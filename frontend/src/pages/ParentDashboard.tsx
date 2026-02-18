@@ -28,12 +28,6 @@ const CHILD_COLORS = [
   '#3b82f6', '#ef4444', '#10b981', '#6366f1',
 ];
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return (parts[0]?.[0] || '?').toUpperCase();
-}
-
 export function ParentDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -429,26 +423,6 @@ export function ParentDashboard() {
   // Edit Child Handlers
   // ============================================
 
-  const openEditChild = (child: ChildSummary) => {
-    setEditChild(child);
-    setEditChildName(child.full_name);
-    setEditChildEmail(child.email || '');
-    setEditChildGrade(child.grade_level != null ? String(child.grade_level) : '');
-    setEditChildSchool(child.school_name || '');
-    setEditChildDob(child.date_of_birth || '');
-    setEditChildPhone(child.phone || '');
-    setEditChildAddress(child.address || '');
-    setEditChildCity(child.city || '');
-    setEditChildProvince(child.province || '');
-    setEditChildPostal(child.postal_code || '');
-    setEditChildNotes(child.notes || '');
-    setEditChildError('');
-    // Auto-expand optional section if any optional field has data
-    const hasOptionalData = !!(child.date_of_birth || child.phone || child.address || child.city || child.province || child.postal_code || child.notes);
-    setEditChildOptionalOpen(hasOptionalData);
-    setShowEditChildModal(true);
-  };
-
   const closeEditChildModal = () => {
     setShowEditChildModal(false);
     setEditChild(null);
@@ -615,34 +589,6 @@ export function ParentDashboard() {
     }
     return courses;
   }, [dashboardData, selectedChild]);
-
-  // Per-child task stats for enhanced cards
-  const childTaskStats = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return children.map(child => {
-      const childTasks = allTasks.filter(t => t.assigned_to_user_id === child.user_id && !t.archived_at);
-      const totalTasks = childTasks.length;
-      const completedTasks = childTasks.filter(t => t.is_completed).length;
-      const completionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      const pendingWithDue = childTasks
-        .filter(t => !t.is_completed && t.due_date)
-        .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
-      let nextDeadline: { title: string; label: string } | null = null;
-      if (pendingWithDue.length > 0) {
-        const next = pendingWithDue[0];
-        const dueDate = new Date(next.due_date!);
-        const diffDays = Math.floor((dueDate.getTime() - todayStart.getTime()) / (86400000));
-        let label: string;
-        if (diffDays < 0) label = `overdue by ${Math.abs(diffDays)}d`;
-        else if (diffDays === 0) label = 'due today';
-        else if (diffDays === 1) label = 'due tomorrow';
-        else label = `due in ${diffDays} days`;
-        nextDeadline = { title: next.title, label };
-      }
-      return { studentId: child.student_id, totalTasks, completedTasks, completionPct, nextDeadline };
-    });
-  }, [children, allTasks]);
 
   const openDayModal = (date: Date) => {
     setDayModalDate(date);
