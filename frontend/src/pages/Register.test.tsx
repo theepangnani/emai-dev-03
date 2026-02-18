@@ -42,9 +42,9 @@ describe('Register', () => {
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
 
-    // Role checkboxes and teacher type should NOT be present
+    // Role selection checkboxes and teacher type should NOT be present
     expect(screen.queryByText(/select role/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/parent/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/teacher type/i)).not.toBeInTheDocument()
   })
 
