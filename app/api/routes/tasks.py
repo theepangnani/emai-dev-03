@@ -14,8 +14,10 @@ from app.models.teacher import Teacher
 from app.models.course_content import CourseContent
 from app.models.study_guide import StudyGuide
 from app.api.deps import get_current_user
+from app.models.notification import NotificationType
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 from app.services.audit_service import log_action
+from app.services.notification_service import notify_parents_of_student
 from app.domains.tasks.services import TaskService
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -203,6 +205,23 @@ def create_task(
                details={"title": request.title, "assigned_to": request.assigned_to_user_id})
     db.commit()
     db.refresh(task)
+
+    # Notify parents if a student created a task
+    if current_user.role == UserRole.STUDENT:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"New task: {task.title}",
+                content=f"{current_user.full_name} created task \"{task.title}\".",
+                notification_type=NotificationType.TASK_DUE,
+                link=f"/tasks/{task.id}",
+                source_type="task",
+                source_id=task.id,
+            )
+        except Exception:
+            pass  # Never break primary action
+
     return _task_to_response(task)
 
 

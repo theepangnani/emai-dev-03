@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -6,6 +8,7 @@ from sqlalchemy import desc
 from app.db.database import get_db
 from app.models.user import User
 from app.models.notification import Notification
+from app.models.notification_suppression import NotificationSuppression
 from app.schemas.notification import (
     NotificationResponse,
     NotificationPreferences,
@@ -69,6 +72,83 @@ def mark_as_read(
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
 
+    notification.read = True
+    db.commit()
+    db.refresh(notification)
+    return notification
+
+
+@router.put("/{notification_id}/ack", response_model=NotificationResponse)
+def acknowledge_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Acknowledge a notification that requires acknowledgement."""
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    if not notification.requires_ack:
+        raise HTTPException(status_code=400, detail="This notification does not require acknowledgement")
+
+    notification.acked_at = datetime.now(timezone.utc)
+    notification.next_reminder_at = None
+    notification.read = True
+    db.commit()
+    db.refresh(notification)
+    return notification
+
+
+@router.put("/{notification_id}/suppress", response_model=NotificationResponse)
+def suppress_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Suppress future notifications from the same source. Also ACKs and marks as read."""
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    if not notification.source_type or not notification.source_id:
+        raise HTTPException(status_code=400, detail="This notification has no source to suppress")
+
+    # Check for existing suppression before insert (safe against unique constraint race)
+    existing = (
+        db.query(NotificationSuppression)
+        .filter(
+            NotificationSuppression.user_id == current_user.id,
+            NotificationSuppression.source_type == notification.source_type,
+            NotificationSuppression.source_id == notification.source_id,
+        )
+        .first()
+    )
+    if not existing:
+        suppression = NotificationSuppression(
+            user_id=current_user.id,
+            source_type=notification.source_type,
+            source_id=notification.source_id,
+        )
+        db.add(suppression)
+
+    # Also ACK + mark read
+    notification.acked_at = datetime.now(timezone.utc)
+    notification.next_reminder_at = None
     notification.read = True
     db.commit()
     db.refresh(notification)

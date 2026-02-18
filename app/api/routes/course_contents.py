@@ -12,6 +12,8 @@ from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
 from app.api.deps import get_current_user, can_access_course
+from app.models.notification import NotificationType
+from app.services.notification_service import notify_parents_of_student
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -52,6 +54,23 @@ def create_course_content(
     db.add(content)
     db.commit()
     db.refresh(content)
+
+    # Notify parents if a student uploaded content
+    if current_user.role == UserRole.STUDENT:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"New material uploaded: {content.title}",
+                content=f"{current_user.full_name} uploaded \"{content.title}\".",
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/course-contents/{content.id}",
+                source_type="course_content",
+                source_id=content.id,
+            )
+        except Exception:
+            pass  # Never break primary action
+
     return content
 
 
