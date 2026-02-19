@@ -89,6 +89,11 @@
   color: var(--color-accent-strong);
 }
 
+.focus-tag.invites {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
 .today-focus-inspiration {
   flex-shrink: 0;
   max-width: 300px;
