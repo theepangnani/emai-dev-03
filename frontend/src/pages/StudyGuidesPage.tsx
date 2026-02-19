@@ -445,6 +445,33 @@ export function StudyGuidesPage() {
 
     setIsGenerating(true);
     try {
+      // Upload-only mode: no AI types selected → create course content directly
+      if (modalParams.types.length === 0) {
+        try {
+          let courseId = modalParams.courseId;
+          if (!courseId) {
+            const defaultCourse = await coursesApi.getDefault();
+            courseId = defaultCourse.id;
+          }
+          let textContent = modalParams.content;
+          if (modalParams.mode === 'file' && modalParams.file) {
+            const extracted = await studyApi.extractTextFromFile(modalParams.file);
+            textContent = extracted.text;
+          }
+          await courseContentsApi.create({
+            course_id: courseId,
+            title: modalParams.title || 'Uploaded material',
+            text_content: textContent || undefined,
+            content_type: 'notes',
+          });
+          resetModal();
+          loadData();
+        } catch {
+          // Silently handle — user will see content list refresh
+        }
+        return;
+      }
+
       // Check for duplicates only when single type selected (skip for multi-select)
       if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {

@@ -166,6 +166,26 @@ export const courseContentsApi = {
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
   },
+
+  download: async (id: number) => {
+    const response = await api.get(`/api/course-contents/${id}/download`, {
+      responseType: 'blob',
+    });
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `document-${id}.txt`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (match) filename = match[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
 
 // Assignments API

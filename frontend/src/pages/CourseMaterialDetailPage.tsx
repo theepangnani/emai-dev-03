@@ -53,6 +53,7 @@ export function CourseMaterialDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Focus prompt for AI generation
   const [focusPrompt, setFocusPrompt] = useState('');
@@ -162,6 +163,18 @@ export function CourseMaterialDetailPage() {
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleDownload = async () => {
+    if (!content) return;
+    setDownloading(true);
+    try {
+      await courseContentsApi.download(content.id);
+    } catch {
+      setError('Failed to download document');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleStartEdit = () => {
@@ -300,6 +313,11 @@ export function CourseMaterialDetailPage() {
           {activeTab === 'document' && (
             <div className="cm-document-tab">
               <div className="cm-guide-actions">
+                {!isEditing && (
+                  <button className="cm-action-btn" onClick={handleDownload} disabled={downloading}>
+                    {downloading ? 'Downloading...' : 'Download'}
+                  </button>
+                )}
                 {!isEditing ? (
                   <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
                 ) : (
