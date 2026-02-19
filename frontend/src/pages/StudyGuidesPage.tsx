@@ -150,8 +150,10 @@ export function StudyGuidesPage() {
   const loadData = async () => {
     setLoadError(false);
     try {
+      const contentParams: Record<string, any> = {};
+      if (filterChild) contentParams.student_user_id = filterChild;
       const [contents, allGuides, courseList] = await Promise.all([
-        courseContentsApi.listAll(),
+        courseContentsApi.listAll(contentParams),
         studyApi.listGuides(),
         coursesApi.list(),
       ]);

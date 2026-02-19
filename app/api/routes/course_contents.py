@@ -144,47 +144,53 @@ def list_course_contents(
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
     """Return course IDs visible to the user for cross-course content listing."""
-    # Courses created by the user
-    created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
-    ids = {r[0] for r in created}
 
     if user.role == UserRole.STUDENT:
+        # Courses created by the user + enrolled courses
+        created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+        ids = {r[0] for r in created}
         student = db.query(Student).filter(Student.user_id == user.id).first()
         if student:
             ids.update(c.id for c in student.courses)
+        return list(ids)
 
-    elif user.role == UserRole.PARENT:
-        # Get children's enrolled course IDs
+    if user.role == UserRole.PARENT:
+        # Get children's student IDs
         child_rows = db.query(parent_students.c.student_id).filter(
             parent_students.c.parent_id == user.id
         ).all()
         child_sids = [r[0] for r in child_rows]
 
         if student_user_id:
-            # Filter to a specific child
+            # Specific child selected — only courses this child is enrolled in
             child_student = db.query(Student).filter(
                 Student.user_id == student_user_id,
                 Student.id.in_(child_sids),
             ).first()
-            if child_student:
-                ids.update(c.id for c in child_student.courses)
-                # Also include contents created by this child
-                child_created = db.query(Course.id).filter(Course.created_by_user_id == student_user_id).all()
-                ids.update(r[0] for r in child_created)
-        elif child_sids:
+            if not child_student:
+                return []
+            ids = {c.id for c in child_student.courses}
+            # Also include courses created by this child
+            child_created = db.query(Course.id).filter(Course.created_by_user_id == student_user_id).all()
+            ids.update(r[0] for r in child_created)
+            return list(ids)
+
+        # No child selected — show all children's courses + parent-created courses
+        created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+        ids = {r[0] for r in created}
+        if child_sids:
             enrolled = db.query(student_courses.c.course_id).filter(
                 student_courses.c.student_id.in_(child_sids)
             ).all()
             ids.update(r[0] for r in enrolled)
-            # Also include contents created by children
+            # Also include courses created by children
             child_user_ids = db.query(Student.user_id).filter(Student.id.in_(child_sids)).all()
             child_uids = [r[0] for r in child_user_ids]
             if child_uids:
                 child_created = db.query(Course.id).filter(Course.created_by_user_id.in_(child_uids)).all()
                 ids.update(r[0] for r in child_created)
 
-        # Also include courses created by co-parents (other parents of same children)
-        if child_sids:
+            # Also include courses created by co-parents (other parents of same children)
             co_parent_rows = db.query(parent_students.c.parent_id).filter(
                 parent_students.c.student_id.in_(child_sids),
                 parent_students.c.parent_id != user.id,
@@ -195,8 +201,13 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
                     Course.created_by_user_id.in_(co_parent_uids)
                 ).all()
                 ids.update(r[0] for r in co_created)
+        return list(ids)
 
-    elif user.role == UserRole.TEACHER:
+    # Courses created by the user (teacher fallback)
+    created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+    ids = {r[0] for r in created}
+
+    if user.role == UserRole.TEACHER:
         from app.models.teacher import Teacher
         teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
         if teacher:
