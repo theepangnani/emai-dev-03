@@ -143,6 +143,9 @@ export function ParentDashboard() {
   // Student detail panel collapse state
   const [detailPanelCollapsed, setDetailPanelCollapsed] = useState(false);
 
+  // Today's Focus dismiss state
+  const [focusDismissed, setFocusDismissed] = useState(false);
+
   // Scroll to a specific urgency group in the StudentDetailPanel
   const scrollToUrgencyGroup = useCallback((urgency: 'overdue' | 'today' | 'upcoming') => {
     // Expand panel if collapsed
@@ -832,6 +835,26 @@ export function ParentDashboard() {
   }, [selectedChild, children]);
 
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
+    if (focusDismissed) {
+      return (
+        <div className="welcome-section">
+          {inspiration ? (
+            <>
+              <h2 className="inspiration-text">"{inspiration.text}"</h2>
+              {inspiration.author && (
+                <p className="inspiration-author">— {inspiration.author}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <h2>Welcome back!</h2>
+              <p>At-a-glance monitoring, calendar, and quick actions</p>
+            </>
+          )}
+        </div>
+      );
+    }
+
     const { overdue, dueToday, upcoming } = taskCounts;
     const allClear = overdue === 0 && dueToday === 0 && upcoming === 0;
     const childLabel = selectedChildFirstName ?? (children.length === 1 ? children[0]?.full_name?.split(' ')[0] : null);
@@ -880,6 +903,13 @@ export function ParentDashboard() {
             )}
           </div>
         )}
+        <button
+          className="today-focus-close"
+          onClick={() => setFocusDismissed(true)}
+          aria-label="Close Today's Focus"
+        >
+          {'\u00D7'}
+        </button>
       </div>
     );
   };
