@@ -1,6 +1,6 @@
 # /emai-req - ClassBridge Requirement Review & Planning
 
-Review, analyze, and plan requirements for the ClassBridge (EMAI) platform with feedback, feasibility assessment, priority/phase recommendations, GitHub issue(s) creation, REQUIREMENTS.md updates, and detailed implementation planning. **Does not include coding** — ends at planning stage.
+Review, analyze, and plan requirements for the ClassBridge (EMAI) platform with feedback, feasibility assessment, priority/phase recommendations, GitHub issue(s) creation, REQUIREMENTS.md updates, and detailed implementation planning, structure the plan so tasks can run in parallel Claude sessions with minimal merge conflicts. . **Does not include coding** — ends at planning stage.
 
 ## Usage
 
@@ -32,7 +32,7 @@ Follow all 8 steps in order. Present findings to the user at each major checkpoi
    - `requirements/mobile.md` — §9 (mobile app)
    - `requirements/technical.md` — §10-11 (architecture, API endpoints, NFRs, KPIs)
    - `requirements/tracking.md` — §12-13 (GitHub issues, dev setup)
-   Read the index file first, then the specific files relevant to the requirement being analyzed. You do NOT need to read all files — only those relevant to the requirement.
+     Read the index file first, then the specific files relevant to the requirement being analyzed. You do NOT need to read all files — only those relevant to the requirement.
 2. Read relevant source code to understand what exists today:
    - Backend: models (`app/models/`), routes (`app/api/routes/`), schemas (`app/schemas/`), services (`app/services/`)
    - Frontend: pages (`frontend/src/pages/`), components (`frontend/src/components/`), API client (`frontend/src/api/client.ts`)
@@ -410,21 +410,21 @@ READY FOR IMPLEMENTATION
 
 Requirements are split into multiple files under `requirements/`:
 
-| Need to find... | Read this file |
-|----------------|----------------|
-| AI Study Tools, Integrations | `requirements/features-part1.md` (§6.1-6.2) |
-| Registration, Courses, Content | `requirements/features-part1.md` (§6.3-6.4) |
-| Analytics, Communication, Teachers | `requirements/features-part1.md` (§6.5-6.12) |
-| Tasks, Calendar, Audit | `requirements/features-part1.md` (§6.13-6.14) |
-| Themes, UI, Layout, Search | `requirements/features-part2.md` (§6.15-6.17) |
-| Parent UX, Security, Multi-Role | `requirements/features-part2.md` (§6.20-6.26) |
-| Messaging, Teacher Linking, Admin | `requirements/features-part3.md` (§6.27-6.42) |
-| Onboarding, Verification, Emails | `requirements/features-part3.md` (§6.43-6.50) |
-| Dashboards (Parent, Student, etc.) | `requirements/dashboards.md` (§7) |
-| Roadmap, Phase checklists | `requirements/roadmap.md` (§8) |
-| Mobile app | `requirements/mobile.md` (§9) |
-| Architecture, API endpoints | `requirements/technical.md` (§10-11) |
-| GitHub issue tracking | `requirements/tracking.md` (§12-13) |
+| Need to find...                    | Read this file                                |
+| ---------------------------------- | --------------------------------------------- |
+| AI Study Tools, Integrations       | `requirements/features-part1.md` (§6.1-6.2)   |
+| Registration, Courses, Content     | `requirements/features-part1.md` (§6.3-6.4)   |
+| Analytics, Communication, Teachers | `requirements/features-part1.md` (§6.5-6.12)  |
+| Tasks, Calendar, Audit             | `requirements/features-part1.md` (§6.13-6.14) |
+| Themes, UI, Layout, Search         | `requirements/features-part2.md` (§6.15-6.17) |
+| Parent UX, Security, Multi-Role    | `requirements/features-part2.md` (§6.20-6.26) |
+| Messaging, Teacher Linking, Admin  | `requirements/features-part3.md` (§6.27-6.42) |
+| Onboarding, Verification, Emails   | `requirements/features-part3.md` (§6.43-6.50) |
+| Dashboards (Parent, Student, etc.) | `requirements/dashboards.md` (§7)             |
+| Roadmap, Phase checklists          | `requirements/roadmap.md` (§8)                |
+| Mobile app                         | `requirements/mobile.md` (§9)                 |
+| Architecture, API endpoints        | `requirements/technical.md` (§10-11)          |
+| GitHub issue tracking              | `requirements/tracking.md` (§12-13)           |
 
 ### Cross-DB Rules (SQLite + PostgreSQL)
 
