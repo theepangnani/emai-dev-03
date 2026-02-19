@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
 import { courseContentsApi } from '../api/courses';
@@ -146,22 +146,6 @@ export function ParentDashboard() {
 
   // Today's Focus dismiss state
   const [focusDismissed, setFocusDismissed] = useState(false);
-
-  // Scroll to a specific urgency group in the StudentDetailPanel
-  const scrollToUrgencyGroup = useCallback((urgency: 'overdue' | 'today' | 'upcoming') => {
-    // Expand panel if collapsed
-    setDetailPanelCollapsed(false);
-    // Wait for DOM to update after expanding
-    requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-urgency="${urgency}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Brief highlight effect
-        el.classList.add('sdp-urgency-highlight');
-        setTimeout(() => el.classList.remove('sdp-urgency-highlight'), 1500);
-      }
-    });
-  }, []);
 
   // Course materials for StudentDetailPanel
   const [courseMaterials, setCourseMaterials] = useState<CourseMaterial[]>([]);
