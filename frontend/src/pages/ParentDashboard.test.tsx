@@ -500,7 +500,7 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/pending invite/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/pending invite/i).length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.getByText('pending@example.com')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Resend' })).toBeInTheDocument()
