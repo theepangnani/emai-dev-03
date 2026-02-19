@@ -985,8 +985,6 @@ export function ParentDashboard() {
           <QuickActionsBar
             onCreateMaterial={() => setShowStudyModal(true)}
             onCreateTask={() => setShowCreateTaskModal(true)}
-            onAddChild={() => setShowLinkModal(true)}
-            onCreateCourse={() => navigate('/courses')}
           />
 
           {/* Student Detail Panel (always shown — aggregated for All Children, specific for selected child) */}
