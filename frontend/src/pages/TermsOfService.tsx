@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 import './Legal.css';
 
 export function TermsOfService() {
+  const navigate = useNavigate();
+
   return (
     <div className="auth-container">
       <div className="auth-card legal-card">
@@ -167,7 +169,7 @@ export function TermsOfService() {
         <div className="legal-footer">
           <Link to="/privacy">Privacy Policy</Link>
           <span className="legal-divider">|</span>
-          <Link to="/login">Back to Sign In</Link>
+          <button className="legal-back-btn" onClick={() => navigate(-1)}>&larr; Back</button>
         </div>
       </div>
     </div>
