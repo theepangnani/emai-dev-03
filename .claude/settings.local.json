@@ -45,7 +45,12 @@
       "Bash(cmd /c \"cd /d c:\\\\dev\\\\emai\\\\emai-dev-03\\\\frontend && call npm run build 2>&1\")",
       "Bash(npm uninstall:*)",
       "Bash(git cherry-pick:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git worktree add:*)",
+      "Bash(git worktree:*)",
+      "Bash(nslookup:*)",
+      "WebFetch(domain:support.google.com)",
+      "WebFetch(domain:www.cloudsponge.com)"
     ]
   }
 }
