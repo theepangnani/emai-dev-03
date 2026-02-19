@@ -824,23 +824,7 @@ export function ParentDashboard() {
 
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
     if (focusDismissed) {
-      return (
-        <div className="welcome-section">
-          {inspiration ? (
-            <>
-              <h2 className="inspiration-text">"{inspiration.text}"</h2>
-              {inspiration.author && (
-                <p className="inspiration-author">— {inspiration.author}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h2>Welcome back!</h2>
-              <p>At-a-glance monitoring, calendar, and quick actions</p>
-            </>
-          )}
-        </div>
-      );
+      return null;
     }
 
     const { overdue, dueToday, upcoming } = taskCounts;
