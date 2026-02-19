@@ -526,23 +526,26 @@ export function ParentDashboard() {
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     setIsGenerating(true);
     try {
-      // Check for duplicates on text mode without pasted images
-      if (modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      // Check for duplicates only when single type selected
+      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.type });
+          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* Continue */ }
       }
-      // Queue generation and navigate to study guides page (non-blocking)
-      queueStudyGeneration({
-        title: modalParams.title,
-        content: modalParams.content,
-        type: modalParams.type,
-        mode: modalParams.mode,
-        file: modalParams.file,
-        pastedImages: modalParams.pastedImages,
-        regenerateId: duplicateCheck?.existing_guide?.id,
-      });
+      // Queue one generation per selected type, then navigate
+      for (const type of modalParams.types) {
+        queueStudyGeneration({
+          title: modalParams.title,
+          content: modalParams.content,
+          type,
+          focusPrompt: modalParams.focusPrompt,
+          mode: modalParams.mode,
+          file: modalParams.file,
+          pastedImages: modalParams.pastedImages,
+          regenerateId: duplicateCheck?.existing_guide?.id,
+        });
+      }
       setDuplicateCheck(null);
       resetStudyModal();
       navigate('/course-materials', { state: { selectedChild } });
@@ -1550,7 +1553,7 @@ export function ParentDashboard() {
         onRegenerate={() => handleGenerateFromModal({
           title: studyModalInitialTitle,
           content: studyModalInitialContent,
-          type: 'study_guide',
+          types: ['study_guide'],
           mode: 'text',
         })}
         onDismissDuplicate={() => setDuplicateCheck(null)}

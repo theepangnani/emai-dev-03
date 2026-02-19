@@ -16,6 +16,7 @@ interface PendingGeneration {
   title: string;
   content: string;
   type: 'study_guide' | 'quiz' | 'flashcards';
+  focusPrompt?: string;
   mode: 'text' | 'file';
   file?: File;
   pastedImages?: File[];
@@ -24,11 +25,11 @@ interface PendingGeneration {
   courseContentId?: number;
 }
 
-let _pendingGeneration: PendingGeneration | null = null;
+let _pendingGenerations: PendingGeneration[] = [];
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function queueStudyGeneration(params: PendingGeneration) {
-  _pendingGeneration = params;
+  _pendingGenerations.push(params);
 }
 
 // In-progress generation placeholder
@@ -108,10 +109,10 @@ export function StudyGuidesPage() {
 
   useEffect(() => {
     loadData();
-    if (_pendingGeneration) {
-      const params = _pendingGeneration;
-      _pendingGeneration = null;
-      startGeneration(params);
+    if (_pendingGenerations.length > 0) {
+      const pending = [..._pendingGenerations];
+      _pendingGenerations = [];
+      pending.forEach(p => startGeneration(p));
     }
     // Safety timeout: if loading takes too long, show error state
     const timeout = setTimeout(() => {
@@ -397,6 +398,7 @@ export function StudyGuidesPage() {
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId, course_content_id: params.courseContentId,
+            focus_prompt: params.focusPrompt,
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
           result = await studyApi.generateFromTextAndImages({
@@ -408,13 +410,14 @@ export function StudyGuidesPage() {
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId,
             course_content_id: params.courseContentId,
+            focus_prompt: params.focusPrompt,
           });
         } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else {
-          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
@@ -443,29 +446,32 @@ export function StudyGuidesPage() {
 
     setIsGenerating(true);
     try {
-      // Check for duplicates on text mode
-      if (modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      // Check for duplicates only when single type selected (skip for multi-select)
+      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.type });
+          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* continue */ }
       }
 
-      const params: PendingGeneration = {
-        title: modalParams.title,
-        content: modalParams.content,
-        type: modalParams.type,
-        mode: modalParams.mode,
-        file: modalParams.file,
-        pastedImages: modalParams.pastedImages,
-        regenerateId: duplicateCheck?.existing_guide?.id,
-        courseId: modalParams.courseId,
-        courseContentId: modalParams.courseContentId,
-      };
-
       setDuplicateCheck(null);
       resetModal();
-      startGeneration(params);
+
+      // Fan out: one startGeneration() per selected type (parallel)
+      for (const type of modalParams.types) {
+        startGeneration({
+          title: modalParams.title,
+          content: modalParams.content,
+          type,
+          focusPrompt: modalParams.focusPrompt,
+          mode: modalParams.mode,
+          file: modalParams.file,
+          pastedImages: modalParams.pastedImages,
+          regenerateId: duplicateCheck?.existing_guide?.id,
+          courseId: modalParams.courseId,
+          courseContentId: modalParams.courseContentId,
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -812,10 +818,20 @@ export function StudyGuidesPage() {
             const params = lastGenerateParamsRef.current;
             setDuplicateCheck(null);
             resetModal();
-            startGeneration({
-              ...params,
-              regenerateId: duplicateCheck?.existing_guide?.id,
-            });
+            for (const type of params.types) {
+              startGeneration({
+                title: params.title,
+                content: params.content,
+                type,
+                focusPrompt: params.focusPrompt,
+                mode: params.mode,
+                file: params.file,
+                pastedImages: params.pastedImages,
+                regenerateId: duplicateCheck?.existing_guide?.id,
+                courseId: params.courseId,
+                courseContentId: params.courseContentId,
+              });
+            }
           }
         }}
         onDismissDuplicate={() => setDuplicateCheck(null)}

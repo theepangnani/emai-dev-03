@@ -186,6 +186,13 @@
 - [ ] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444)
 - [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)
 - [ ] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514)
+- [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
+- [ ] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, AI improvement suggestions (#574)
+- [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
+- [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
+- [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
+- [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
+- [ ] **Parent AI Insights** — Student interest profiling, academic health score, semester reports, engagement analysis (#581)
 
 #### 6.28 FAQ / Knowledge Base (Phase 2)
 
@@ -254,7 +261,36 @@ See §9 Mobile App Development for detailed specification.
 
 **GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
 
+### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
+
+New features that deepen ClassBridge's AI capabilities, build a data foundation for student insights, and reduce platform costs.
+
+| # | Feature | Issue | Phase | Value Add | Dependencies |
+|---|---------|-------|-------|-----------|-------------|
+| 1 | **Ontario Curriculum Management** | #571 | 2→3 | **Strategic** — Enables curriculum-aligned analytics, gap analysis, and exam prep. Foundation for Course Planning (Phase 3). Differentiates ClassBridge from generic education tools by being Ontario-specific. | #500, #114 |
+| 2 | **Course Materials Storage** | #572 | 2 | **Infrastructure** — Prerequisite for file reuse, download, and audit. Without persistent storage, users re-upload constantly. Unlocks Study Guide Repository and test upload features. GCS is 8-10x cheaper than DB BLOBs. | #114 |
+| 3 | **Study Guide Repository & Reuse** | #573 | 2 | **Cost Savings** — Eliminates redundant AI calls when 30 students in the same class upload the same handout. Estimated 67% reduction in AI generation costs at scale (~$1,000/yr savings per 1,000 users). | #572 |
+| 4 | **Quiz Results History** | #574 | 2 | **Core Learning** — Currently quizzes are stateless (results lost on page close). Persisting results enables retry tracking, improvement analysis, and feeds every downstream AI feature. Most impactful single data source for student intelligence. | Analytics §6.5 |
+| 5 | **Student Progress Analysis (Test Uploads)** | #575 | 2 | **Parent Engagement** — Makes ClassBridge the single source of truth for ALL grades (not just Google Classroom). Parents can photograph paper tests and track everything in one place. Critical for schools without Google Classroom. | #572, Analytics §6.5 |
+| 6 | **Exam Preparation Engine** | #576 | 2→3 | **Student Outcomes** — Directly impacts academic performance by creating personalized prep plans. Connects curriculum + quiz history + test records into actionable study plans. High perceived value for parents evaluating the platform. | #571, #574, #575 |
+| 7 | **Sample Exams/Tests Upload + AI Assessment** | #577 | 2 | **Teacher Engagement** — Gives teachers a reason to use ClassBridge actively (not just passively). AI assessment of exam quality is unique — helps teachers improve their assessments. Practice mode drives student engagement. | #572, #574 |
+| 8 | **User-Provided AI API Key (BYOK)** | #578 | 2 | **Cost Sustainability** — Shifts AI costs from platform to power users. Essential for scaling beyond 500 users without unsustainable API bills. Common pattern in AI SaaS. Low effort, high impact on unit economics. | None |
+| 9 | **Parent AI Insights** | #581 | 2→3 | **Premium Differentiator** — The "wow factor" feature. Parents see a holistic view of their child's trajectory, interests, and actionable guidance. Drives retention and word-of-mouth. Could be a premium/paid tier feature. | #574, #575, #571 |
+
+**Recommended implementation order:**
+1. **#572** Course Materials Storage (infrastructure prerequisite)
+2. **#574** Quiz Results History (core data — feeds everything else)
+3. **#578** BYOK AI Key (quick win — reduces costs immediately)
+4. **#573** Study Guide Repository (cost savings)
+5. **#575** Student Progress Analysis (parent engagement)
+6. **#577** Sample Exams Upload (teacher engagement)
+7. **#571** Ontario Curriculum (strategic, feeds Phase 3)
+8. **#581** Parent AI Insights (premium differentiator, needs data from #574 + #575)
+9. **#576** Exam Prep Engine (capstone — combines all data sources)
+
 ### Phase 3 (Course Planning & Guidance)
+- [ ] **Ontario Curriculum Management** — Download, parse, and serve Ontario curriculum data; curriculum-aligned analytics and AI anchoring (#571)
+- [ ] **Exam Preparation Engine** — AI-powered personalized prep plans combining curriculum + quiz history + test records (#576)
 - [ ] **School Board Integration** — Board-specific course catalogs, student ↔ board linking, board selection in Edit Child modal; seed 5 Ontario boards (TDSB, PDSB, YRDSB, HDSB, OCDSB) (#511, depends on #113)
 - [ ] **Course Catalog Model** — Board-scoped high school course database with prerequisites, credits, grade levels, subject areas, streams, specialized programs (IB/AP/SHSM); seed per-board Ontario OSSD courses (#500)
 - [ ] **Academic Plan Model** — Multi-year course plan per student (Grade 9-12) with semester breakdown, planned/in-progress/completed statuses; parent + student CRUD with RBAC (#501)

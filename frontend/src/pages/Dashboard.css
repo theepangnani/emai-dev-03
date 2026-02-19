@@ -1561,6 +1561,50 @@
   border-left-color: var(--color-accent-warm);
 }
 
+/* ── Shared: study material modal – material type checkboxes ─── */
+.material-type-checkboxes {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.material-type-checkboxes legend {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-ink);
+  margin-bottom: 8px;
+}
+
+.material-type-checkboxes .material-type-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-ink);
+  transition: background 0.15s;
+}
+
+.material-type-checkbox:hover {
+  background: var(--color-surface-alt);
+}
+
+.material-type-checkbox.checked {
+  background: var(--color-accent-light);
+}
+
+.material-type-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  margin: 0;
+}
+
 /* ── Shared: study material modal – mode toggle & file upload ─── */
 .mode-toggle {
   display: flex;

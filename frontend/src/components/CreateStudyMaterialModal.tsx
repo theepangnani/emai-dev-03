@@ -7,10 +7,13 @@ const MAX_FILE_SIZE_MB = 100;
 interface CourseOption { id: number; name: string; }
 interface MaterialOption { id: number; title: string; }
 
+export type StudyMaterialType = 'study_guide' | 'quiz' | 'flashcards';
+
 export interface StudyMaterialGenerateParams {
   title: string;
   content: string;
-  type: 'study_guide' | 'quiz' | 'flashcards';
+  types: StudyMaterialType[];
+  focusPrompt?: string;
   mode: 'text' | 'file';
   file?: File;
   pastedImages?: File[];
@@ -59,7 +62,8 @@ export default function CreateStudyMaterialModal({
 }: CreateStudyMaterialModalProps) {
   const [studyTitle, setStudyTitle] = useState('');
   const [studyContent, setStudyContent] = useState('');
-  const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
+  const [selectedTypes, setSelectedTypes] = useState<Set<StudyMaterialType>>(new Set(['study_guide']));
+  const [focusPrompt, setFocusPrompt] = useState('');
   const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [studyError, setStudyError] = useState('');
@@ -84,7 +88,9 @@ export default function CreateStudyMaterialModal({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyContent(initialContent);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyType('study_guide');
+    setSelectedTypes(new Set(['study_guide']));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFocusPrompt('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyMode('text');
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -148,11 +154,13 @@ export default function CreateStudyMaterialModal({
   const handleSubmit = () => {
     if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
     if (studyMode === 'text' && !studyContent.trim() && pastedImages.length === 0) { setStudyError('Please enter content or paste images'); return; }
+    if (selectedTypes.size === 0) { setStudyError('Please select at least one material type'); return; }
 
     onGenerate({
-      title: studyTitle || `New ${studyType.replace('_', ' ')}`,
+      title: studyTitle || 'New study material',
       content: studyContent,
-      type: studyType,
+      types: Array.from(selectedTypes),
+      focusPrompt: focusPrompt.trim() || undefined,
       mode: studyMode,
       file: selectedFile ?? undefined,
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
@@ -169,13 +177,42 @@ export default function CreateStudyMaterialModal({
         <h2>Create Study Material</h2>
         <p className="modal-desc">Upload a document or photo, or paste text and images to generate AI-powered study materials.</p>
         <div className="modal-form">
+          <fieldset className="material-type-checkboxes" disabled={isGenerating}>
+            <legend>What to create</legend>
+            {([
+              { value: 'study_guide' as const, label: 'Study Guide' },
+              { value: 'quiz' as const, label: 'Practice Quiz' },
+              { value: 'flashcards' as const, label: 'Flashcards' },
+            ]).map(opt => (
+              <label key={opt.value} className={`material-type-checkbox${selectedTypes.has(opt.value) ? ' checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.has(opt.value)}
+                  onChange={() => {
+                    setSelectedTypes(prev => {
+                      const next = new Set(prev);
+                      if (next.has(opt.value)) {
+                        if (next.size > 1) next.delete(opt.value);
+                      } else {
+                        next.add(opt.value);
+                      }
+                      return next;
+                    });
+                  }}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </fieldset>
           <label>
-            What to create
-            <select value={studyType} onChange={(e) => setStudyType(e.target.value as any)} disabled={isGenerating}>
-              <option value="study_guide">Study Guide</option>
-              <option value="quiz">Practice Quiz</option>
-              <option value="flashcards">Flashcards</option>
-            </select>
+            Focus on... (optional)
+            <input
+              type="text"
+              value={focusPrompt}
+              onChange={(e) => setFocusPrompt(e.target.value)}
+              placeholder="e.g., photosynthesis and the Calvin cycle"
+              disabled={isGenerating}
+            />
           </label>
           <label>
             Title (optional)
@@ -302,7 +339,7 @@ export default function CreateStudyMaterialModal({
             onClick={handleSubmit}
             disabled={isGenerating || (studyMode === 'file' ? !selectedFile : (!studyContent.trim() && pastedImages.length === 0))}
           >
-            {isGenerating ? 'Generating...' : 'Generate'}
+            {isGenerating ? 'Generating...' : selectedTypes.size > 1 ? `Generate ${selectedTypes.size} Materials` : 'Generate'}
           </button>
         </div>
       </div>

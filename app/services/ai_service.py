@@ -107,6 +107,7 @@ async def generate_study_guide(
     course_name: str,
     due_date: str | None = None,
     custom_prompt: str | None = None,
+    focus_prompt: str | None = None,
 ) -> str:
     """
     Generate a study guide for an assignment.
@@ -155,6 +156,9 @@ IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, q
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
 Only include this section if specific dates are mentioned. If no dates are found, do not include this section at all."""
 
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Prioritize these topics in your response while still covering other key material briefly."
+
     if custom_prompt:
         system_prompt = custom_prompt
     else:
@@ -169,6 +173,7 @@ async def generate_quiz(
     topic: str,
     content: str,
     num_questions: int = 5,
+    focus_prompt: str | None = None,
 ) -> str:
     """
     Generate a practice quiz from content.
@@ -221,6 +226,9 @@ IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, o
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
 Use "high" for exams/tests, "medium" for homework. Only include if dates are found."""
 
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure quiz questions heavily cover these topics."
+
     system_prompt = """You are an expert quiz creator. Create clear, educational questions that test
 understanding, not just memorization. Make wrong answers plausible but clearly incorrect.
 Always return valid JSON."""
@@ -232,6 +240,7 @@ async def generate_flashcards(
     topic: str,
     content: str,
     num_cards: int = 10,
+    focus_prompt: str | None = None,
 ) -> str:
     """
     Generate flashcards from content.
@@ -274,6 +283,9 @@ IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, o
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
 Use "high" for exams/tests, "medium" for homework. Only include if dates are found."""
+
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure flashcards heavily cover these topics."
 
     system_prompt = """You are an expert at creating effective study flashcards.
 Focus on key concepts and important details. Make cards concise but informative.
