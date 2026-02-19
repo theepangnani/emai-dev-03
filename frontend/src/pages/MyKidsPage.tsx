@@ -208,12 +208,24 @@ export function MyKidsPage() {
     if (!targetCourseId) return;
     try {
       await courseContentsApi.update(reassignContent.id, { course_id: targetCourseId });
-      // Update local state
+      const targetCourseName = courses.find(c => c.id === targetCourseId)?.name ?? null;
+      // Update child-view materials list
       setMaterials(prev => prev.map(m =>
         m.id === reassignContent.id
-          ? { ...m, course_id: targetCourseId, course_name: courses.find(c => c.id === targetCourseId)?.name ?? null }
+          ? { ...m, course_id: targetCourseId, course_name: targetCourseName }
           : m
       ));
+      // Update unassigned materials: remove if moved to enrolled course, update if moved to another unassigned course
+      const isTargetUnassigned = unassignedCourses.some(c => c.id === targetCourseId);
+      if (isTargetUnassigned) {
+        setUnassignedMaterials(prev => prev.map(m =>
+          m.id === reassignContent.id
+            ? { ...m, course_id: targetCourseId, course_name: targetCourseName }
+            : m
+        ));
+      } else {
+        setUnassignedMaterials(prev => prev.filter(m => m.id !== reassignContent.id));
+      }
       setReassignContent(null);
     } catch { /* ignore */ }
   };
@@ -224,6 +236,8 @@ export function MyKidsPage() {
     try {
       const newCourse = await coursesApi.create({ name: categorizeNewName.trim() });
       setCourses(prev => [...prev, newCourse]);
+      // New course has no child enrolled — add to unassigned so handleReassignContent keeps the material visible
+      setUnassignedCourses(prev => [...prev, { id: newCourse.id, name: newCourse.name }]);
       await handleReassignContent(newCourse.id);
     } catch { /* ignore */ }
     setCategorizeCreating(false);
