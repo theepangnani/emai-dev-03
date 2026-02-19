@@ -837,7 +837,8 @@ export function ParentDashboard() {
 
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
     const { overdue, dueToday, upcoming } = taskCounts;
-    const allClear = overdue === 0 && dueToday === 0 && upcoming === 0;
+    const inviteCount = pendingInvites.length;
+    const allClear = overdue === 0 && dueToday === 0 && upcoming === 0 && inviteCount === 0;
     const childLabel = selectedChildFirstName ?? (children.length === 1 ? children[0]?.full_name?.split(' ')[0] : null);
 
     return (
@@ -863,13 +864,16 @@ export function ParentDashboard() {
                 </div>
                 <div className="today-focus-items">
                   {overdue > 0 && (
-                    <button type="button" className="focus-tag overdue" onClick={() => scrollToUrgencyGroup('overdue')}>{overdue} overdue</button>
+                    <button type="button" className="focus-tag overdue" onClick={() => navigate('/tasks?due=overdue')}>{overdue} overdue</button>
                   )}
                   {dueToday > 0 && (
-                    <button type="button" className="focus-tag today" onClick={() => scrollToUrgencyGroup('today')}>{dueToday} due today</button>
+                    <button type="button" className="focus-tag today" onClick={() => navigate('/tasks?due=today')}>{dueToday} due today</button>
                   )}
                   {upcoming > 0 && (
-                    <button type="button" className="focus-tag upcoming" onClick={() => scrollToUrgencyGroup('upcoming')}>{upcoming} next 3 days</button>
+                    <button type="button" className="focus-tag upcoming" onClick={() => navigate('/tasks?due=week')}>{upcoming} next 3 days</button>
+                  )}
+                  {inviteCount > 0 && (
+                    <button type="button" className="focus-tag invites" onClick={() => navigate('/my-kids')}>{inviteCount} pending invite{inviteCount !== 1 ? 's' : ''}</button>
                   )}
                 </div>
               </div>
