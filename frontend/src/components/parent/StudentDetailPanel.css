@@ -66,14 +66,6 @@
   background: var(--color-surface-alt);
 }
 
-/* Non-clickable variant for Tasks header (always expanded) */
-.sdp-section-header--static {
-  cursor: default;
-}
-
-.sdp-section-header--static:hover {
-  background: transparent;
-}
 
 .sdp-chevron {
   display: inline-block;

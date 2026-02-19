@@ -140,8 +140,9 @@ export function StudentDetailPanel({
   onViewAllTasks,
   onViewAllMaterials,
 }: StudentDetailPanelProps) {
-  const [coursesExpanded, setCoursesExpanded] = useState(true);
+  const [coursesExpanded, setCoursesExpanded] = useState(false);
   const [materialsExpanded, setMaterialsExpanded] = useState(false);
+  const [tasksExpanded, setTasksExpanded] = useState(true);
   const [showOtherTasks, setShowOtherTasks] = useState(false);
 
   const isAllChildren = selectedChildName === null;
@@ -191,127 +192,28 @@ export function StudentDetailPanel({
 
       {!collapsed && (
       <>
-      {/* ── Courses Section ───────────────────────────────── */}
+      {/* ── Tasks by Urgency Section (first) ─────────────── */}
       <div className="sdp-section">
         <div
           className="sdp-section-header"
-          onClick={() => setCoursesExpanded((v) => !v)}
+          onClick={() => setTasksExpanded((v) => !v)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              setCoursesExpanded((v) => !v);
+              setTasksExpanded((v) => !v);
             }
           }}
         >
           <span>
-            Courses
-            <span className="sdp-count-badge">{courses.length}</span>
+            Tasks
+            <span className="sdp-count-badge">{totalActive}</span>
           </span>
-          <Chevron expanded={coursesExpanded} />
+          <Chevron expanded={tasksExpanded} />
         </div>
 
-        {coursesExpanded && (
-          <div className="sdp-section-body">
-            {courses.length === 0 ? (
-              <div className="sdp-empty">No courses enrolled</div>
-            ) : (
-              courses.map((course, idx) => (
-                <div
-                  key={course.id}
-                  className="sdp-course-item"
-                  onClick={() => onGoToCourse(course.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onGoToCourse(course.id);
-                    }
-                  }}
-                >
-                  <span
-                    className="sdp-course-dot"
-                    style={{ backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }}
-                  />
-                  <span>{course.name}</span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Course Materials Section ──────────────────────── */}
-      <div className="sdp-section">
-        <div
-          className="sdp-section-header"
-          onClick={() => setMaterialsExpanded((v) => !v)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setMaterialsExpanded((v) => !v);
-            }
-          }}
-        >
-          <span>
-            Course Materials
-            <span className="sdp-count-badge">{courseMaterials.length}</span>
-          </span>
-          <Chevron expanded={materialsExpanded} />
-        </div>
-
-        {materialsExpanded && (
-          <div className="sdp-section-body">
-            {courseMaterials.length === 0 ? (
-              <div className="sdp-empty">No course materials yet</div>
-            ) : (
-              <>
-                {recentMaterials.map((mat) => (
-                  <div
-                    key={mat.id}
-                    className="sdp-material-item"
-                    onClick={() => onViewMaterial(mat)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onViewMaterial(mat);
-                      }
-                    }}
-                  >
-                    <span className="sdp-material-icon">
-                      {MATERIAL_ICONS[mat.guide_type]}
-                    </span>
-                    <span className="sdp-material-title">{mat.title}</span>
-                    <span className="sdp-material-type-badge">
-                      {MATERIAL_LABELS[mat.guide_type]}
-                    </span>
-                  </div>
-                ))}
-                <button
-                  className="sdp-view-all"
-                  onClick={onViewAllMaterials}
-                  type="button"
-                >
-                  View All
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Tasks by Urgency Section ─────────────────────── */}
-      <div className="sdp-section">
-        <div className="sdp-section-header sdp-section-header--static">
-          <span>Tasks</span>
-        </div>
-
+        {tasksExpanded && (
         <div className="sdp-section-body">
           {/* Overdue */}
           {urgencyGroups.overdue.length > 0 && (
@@ -424,6 +326,122 @@ export function StudentDetailPanel({
             View All Tasks
           </button>
         </div>
+        )}
+      </div>
+
+      {/* ── Course Materials Section ──────────────────────── */}
+      <div className="sdp-section">
+        <div
+          className="sdp-section-header"
+          onClick={() => setMaterialsExpanded((v) => !v)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setMaterialsExpanded((v) => !v);
+            }
+          }}
+        >
+          <span>
+            Course Materials
+            <span className="sdp-count-badge">{courseMaterials.length}</span>
+          </span>
+          <Chevron expanded={materialsExpanded} />
+        </div>
+
+        {materialsExpanded && (
+          <div className="sdp-section-body">
+            {courseMaterials.length === 0 ? (
+              <div className="sdp-empty">No course materials yet</div>
+            ) : (
+              <>
+                {recentMaterials.map((mat) => (
+                  <div
+                    key={mat.id}
+                    className="sdp-material-item"
+                    onClick={() => onViewMaterial(mat)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onViewMaterial(mat);
+                      }
+                    }}
+                  >
+                    <span className="sdp-material-icon">
+                      {MATERIAL_ICONS[mat.guide_type]}
+                    </span>
+                    <span className="sdp-material-title">{mat.title}</span>
+                    <span className="sdp-material-type-badge">
+                      {MATERIAL_LABELS[mat.guide_type]}
+                    </span>
+                  </div>
+                ))}
+                <button
+                  className="sdp-view-all"
+                  onClick={onViewAllMaterials}
+                  type="button"
+                >
+                  View All
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Courses Section ───────────────────────────────── */}
+      <div className="sdp-section">
+        <div
+          className="sdp-section-header"
+          onClick={() => setCoursesExpanded((v) => !v)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setCoursesExpanded((v) => !v);
+            }
+          }}
+        >
+          <span>
+            Courses
+            <span className="sdp-count-badge">{courses.length}</span>
+          </span>
+          <Chevron expanded={coursesExpanded} />
+        </div>
+
+        {coursesExpanded && (
+          <div className="sdp-section-body">
+            {courses.length === 0 ? (
+              <div className="sdp-empty">No courses enrolled</div>
+            ) : (
+              courses.map((course, idx) => (
+                <div
+                  key={course.id}
+                  className="sdp-course-item"
+                  onClick={() => onGoToCourse(course.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onGoToCourse(course.id);
+                    }
+                  }}
+                >
+                  <span
+                    className="sdp-course-dot"
+                    style={{ backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }}
+                  />
+                  <span>{course.name}</span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
       </>
       )}
