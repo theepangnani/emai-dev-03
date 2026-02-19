@@ -54,6 +54,9 @@ export function CourseMaterialDetailPage() {
   const [editTextContent, setEditTextContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
+  // Focus prompt for AI generation
+  const [focusPrompt, setFocusPrompt] = useState('');
+
   // Toast + regeneration prompt
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
@@ -103,12 +106,14 @@ export function CourseMaterialDetailPage() {
     setGenerating(type);
     setActiveTab(type === 'study_guide' ? 'guide' : type);
     try {
+      const fp = focusPrompt.trim() || undefined;
       if (type === 'study_guide') {
         await studyApi.generateGuide({
           course_content_id: contentId,
           course_id: content.course_id,
           title: content.title,
           content: content.text_content || content.description || '',
+          focus_prompt: fp,
         });
       } else if (type === 'quiz') {
         await studyApi.generateQuiz({
@@ -117,6 +122,7 @@ export function CourseMaterialDetailPage() {
           topic: content.title,
           content: content.text_content || content.description || '',
           num_questions: 5,
+          focus_prompt: fp,
         });
       } else {
         await studyApi.generateFlashcards({
@@ -125,6 +131,7 @@ export function CourseMaterialDetailPage() {
           topic: content.title,
           content: content.text_content || content.description || '',
           num_cards: 10,
+          focus_prompt: fp,
         });
       }
       await loadData();
@@ -274,6 +281,19 @@ export function CourseMaterialDetailPage() {
             </button>
           ))}
         </div>
+
+        {/* Focus prompt (shown on study material tabs) */}
+        {activeTab !== 'document' && (
+          <div className="cm-focus-prompt">
+            <input
+              type="text"
+              value={focusPrompt}
+              onChange={(e) => setFocusPrompt(e.target.value)}
+              placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+              disabled={generating !== null}
+            />
+          </div>
+        )}
 
         {/* Tab Content */}
         <div className="cm-tab-content">
