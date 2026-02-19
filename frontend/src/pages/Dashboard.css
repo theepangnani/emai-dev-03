@@ -1811,3 +1811,27 @@
   font-size: 11px;
   color: var(--color-ink-muted);
 }
+
+/* Dashboard footer — legal links */
+.dashboard-footer {
+  text-align: center;
+  padding: 16px 24px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+.dashboard-footer a {
+  color: var(--color-ink-muted);
+  text-decoration: none;
+}
+
+.dashboard-footer a:hover {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
+.dashboard-footer-divider {
+  margin: 0 8px;
+  color: var(--color-border);
+}

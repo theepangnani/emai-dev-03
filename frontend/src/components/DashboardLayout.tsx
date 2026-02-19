@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
 import type { InspirationMessage } from '../api/client';
@@ -404,6 +404,14 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         {children}
       </main>
       </div>{/* end dashboard-body */}
+
+      <footer className="dashboard-footer">
+        <Link to="/privacy">Privacy Policy</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <Link to="/terms">Terms of Service</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <a href="mailto:support@classbridge.ca">Contact Us</a>
+      </footer>
 
       <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
