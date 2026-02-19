@@ -310,26 +310,24 @@ describe('ParentDashboard', () => {
   })
 
   // ── Quick Action Buttons ─────────────────────────────────────
-  it('renders quick actions bar with primary and secondary buttons', async () => {
+  it('renders quick actions bar with Upload Documents and Create Task buttons', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Create Study Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
     })
     expect(screen.getByText('Create Task')).toBeInTheDocument()
-    expect(screen.getByText('Child')).toBeInTheDocument()
-    expect(screen.getByText('Course')).toBeInTheDocument()
   })
 
-  it('opens study modal from primary quick action', async () => {
+  it('opens study modal from Upload Documents quick action', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Create Study Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Create Study Material'))
+    await user.click(screen.getByText('Upload Documents'))
 
     await waitFor(() => {
       // Study material modal should open
