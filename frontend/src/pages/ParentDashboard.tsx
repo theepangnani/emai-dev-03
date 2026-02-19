@@ -548,7 +548,7 @@ export function ParentDashboard() {
       }
       setDuplicateCheck(null);
       resetStudyModal();
-      navigate('/course-materials', { state: { selectedChild } });
+      navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
     } finally {
       setIsGenerating(false);
     }
@@ -802,7 +802,7 @@ export function ParentDashboard() {
         type: 'study_guide',
         mode: 'text',
       });
-      navigate('/course-materials', { state: { selectedChild } });
+      navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
     } catch {
       // On error, fall back to the modal
       setStudyModalInitialTitle(assignment.title);
@@ -818,7 +818,7 @@ export function ParentDashboard() {
   };
 
   const handleViewStudyGuides = () => {
-    navigate('/course-materials', { state: { selectedChild } });
+    navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
   };
 
   // ============================================
@@ -984,8 +984,8 @@ export function ParentDashboard() {
             }}
             onToggleTask={handleToggleTask}
             onTaskClick={(task) => setTaskDetailModal(task)}
-            onViewAllTasks={() => navigate('/tasks')}
-            onViewAllMaterials={() => navigate('/course-materials', { state: { selectedChild } })}
+            onViewAllTasks={() => navigate('/tasks', { state: { selectedChild: selectedChildUserId } })}
+            onViewAllMaterials={() => navigate('/course-materials', { state: { selectedChild: selectedChildUserId } })}
           />
 
           {/* Collapsible Calendar Section */}

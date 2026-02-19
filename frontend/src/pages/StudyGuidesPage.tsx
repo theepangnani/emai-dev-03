@@ -62,8 +62,11 @@ export function StudyGuidesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  // Filters
-  const [filterChild, setFilterChild] = useState<number | ''>('');
+  // Filters — initialize child from navigation state if parent dashboard passed it
+  const [filterChild, setFilterChild] = useState<number | ''>(() => {
+    const navState = location.state as { selectedChild?: number | null } | null;
+    return navState?.selectedChild || '';
+  });
   const [filterCourse, setFilterCourse] = useState<number | ''>('');
   const [filterType, setFilterType] = useState<string>('all');
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -123,14 +126,6 @@ export function StudyGuidesPage() {
     }, 15000);
     return () => clearTimeout(timeout);
   }, []);
-
-  // Set filter from navigation state (parent dashboard child selection)
-  useEffect(() => {
-    const navState = location.state as { selectedChild?: number | null } | null;
-    if (navState?.selectedChild) {
-      setFilterChild(navState.selectedChild);
-    }
-  }, [location.state]);
 
   // Reset course filter when child changes (filter cascade fix)
   useEffect(() => {
@@ -200,8 +195,10 @@ export function StudyGuidesPage() {
 
   const loadArchived = async () => {
     try {
+      const archiveParams: Record<string, any> = { include_archived: true };
+      if (filterChild) archiveParams.student_user_id = filterChild;
       const [allContents, allGuides] = await Promise.all([
-        courseContentsApi.listAll({ include_archived: true }),
+        courseContentsApi.listAll(archiveParams),
         studyApi.listGuides({ include_archived: true }),
       ]);
       setArchivedContents(allContents.filter(c => c.archived_at));

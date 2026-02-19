@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { tasksApi } from '../api/client';
 import type { TaskItem, AssignableUser } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,7 @@ type FilterDue = 'all' | 'overdue' | 'today' | 'week';
 export function TasksPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
@@ -27,6 +28,8 @@ export function TasksPage() {
     return (due === 'overdue' || due === 'today' || due === 'week') ? due : 'all';
   });
   const [filterAssignee, setFilterAssignee] = useState<number | 'all'>(() => {
+    const navState = location.state as { selectedChild?: number | null } | null;
+    if (navState?.selectedChild) return navState.selectedChild;
     const assignee = searchParams.get('assignee');
     return assignee ? Number(assignee) : 'all';
   });
