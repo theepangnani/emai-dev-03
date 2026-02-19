@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,7 @@ from app.models.user import User, UserRole
 from app.api.deps import get_current_user, can_access_course
 from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
+from app.services.storage_service import get_file_path, delete_file
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -273,6 +275,34 @@ def get_course_content(
     return content
 
 
+@router.get("/{content_id}/download")
+def download_course_content_file(
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download the original uploaded file for a content item."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    if not content.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file attached to this content")
+
+    file_abs = get_file_path(content.file_path)
+    if not file_abs.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
+
+    return FileResponse(
+        path=str(file_abs),
+        filename=content.original_filename or content.file_path,
+        media_type=content.mime_type or "application/octet-stream",
+    )
+
+
 @router.patch("/{content_id}", response_model=CourseContentUpdateResponse)
 def update_course_content(
     content_id: int,
@@ -383,6 +413,8 @@ def permanent_delete_course_content(
 
 
 def _permanent_delete_content(db: Session, content: CourseContent):
-    """Hard-delete a content item and all linked study guides."""
+    """Hard-delete a content item, its stored file, and all linked study guides."""
+    if content.file_path:
+        delete_file(content.file_path)
     db.query(StudyGuide).filter(StudyGuide.course_content_id == content.id).delete()
     db.delete(content)

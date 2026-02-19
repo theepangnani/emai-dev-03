@@ -279,6 +279,21 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         conn.commit()
+        # File storage columns (#572)
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        for col_name, col_type in [
+            ("file_path", "VARCHAR(500)"),
+            ("original_filename", "VARCHAR(500)"),
+            ("file_size", "INTEGER"),
+            ("mime_type", "VARCHAR(100)"),
+        ]:
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(text(f"ALTER TABLE course_contents ADD COLUMN {col_name} {col_type}"))
+                    logger.info("Added '%s' column to course_contents", col_name)
+                except Exception:
+                    conn.rollback()
+        conn.commit()
     if "study_guides" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
         if "archived_at" not in existing_cols:

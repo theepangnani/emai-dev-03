@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""  # Gmail App Password
 
+    # File storage
+    upload_dir: str = "./uploads"
+
     class Config:
         env_file = ".env"
         extra = "ignore"

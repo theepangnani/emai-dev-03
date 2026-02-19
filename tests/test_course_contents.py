@@ -227,3 +227,83 @@ class TestContentPermissions:
             headers=headers,
         )
         assert resp.status_code == 200
+
+
+# ── Download ─────────────────────────────────────────────────
+
+class TestContentDownload:
+    def _create_content_with_file(self, client, db_session, users):
+        """Create a content item and attach a fake stored file."""
+        from pathlib import Path
+        from app.models.course_content import CourseContent
+        from app.core.config import settings
+
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id, "title": "File Content",
+        }, headers=headers)
+        assert resp.status_code == 201
+        cid = resp.json()["id"]
+
+        # Write a test file to the uploads dir
+        upload_dir = Path(settings.upload_dir)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        test_file = upload_dir / "test_download.pdf"
+        test_file.write_bytes(b"fake-pdf-content")
+
+        # Set file metadata on the record
+        cc = db_session.query(CourseContent).filter(CourseContent.id == cid).first()
+        cc.file_path = "test_download.pdf"
+        cc.original_filename = "lecture-notes.pdf"
+        cc.file_size = 16
+        cc.mime_type = "application/pdf"
+        db_session.commit()
+
+        return cid
+
+    def test_download_file(self, client, db_session, users):
+        cid = self._create_content_with_file(client, db_session, users)
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get(f"/api/course-contents/{cid}/download", headers=headers)
+        assert resp.status_code == 200
+        assert resp.content == b"fake-pdf-content"
+        assert "lecture-notes.pdf" in resp.headers.get("content-disposition", "")
+
+    def test_download_no_file_returns_404(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id, "title": "No File Content",
+        }, headers=headers)
+        cid = resp.json()["id"]
+        resp = client.get(f"/api/course-contents/{cid}/download", headers=headers)
+        assert resp.status_code == 404
+
+    def test_download_nonexistent_content_returns_404(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get("/api/course-contents/999999/download", headers=headers)
+        assert resp.status_code == 404
+
+    def test_download_unauthenticated_rejected(self, client):
+        resp = client.get("/api/course-contents/1/download")
+        assert resp.status_code == 401
+
+    def test_response_includes_file_fields(self, client, db_session, users):
+        cid = self._create_content_with_file(client, db_session, users)
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get(f"/api/course-contents/{cid}", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["has_file"] is True
+        assert data["original_filename"] == "lecture-notes.pdf"
+        assert data["file_size"] == 16
+        assert data["mime_type"] == "application/pdf"
+
+    def test_content_without_file_has_file_false(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id, "title": "No File",
+        }, headers=headers)
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["has_file"] is False
+        assert data["original_filename"] is None
