@@ -15,7 +15,8 @@ export interface CourseInfo {
 export interface CourseMaterial {
   id: number;
   title: string;
-  guide_type: 'study_guide' | 'quiz' | 'flashcards';
+  content_type: string;
+  course_name: string | null;
   created_at: string;
 }
 
@@ -41,16 +42,18 @@ const COURSE_COLORS = [
   '#46bdc6', '#7baaf7', '#f07b72', '#57bb8a', '#e8710a',
 ];
 
-const MATERIAL_ICONS: Record<CourseMaterial['guide_type'], string> = {
-  study_guide: '\uD83D\uDCD8', // open book
-  quiz: '\u2753',               // question mark
-  flashcards: '\uD83C\uDCCF',  // joker card
+const CONTENT_TYPE_ICONS: Record<string, string> = {
+  material: '\uD83D\uDCC4',      // page facing up
+  assignment: '\uD83D\uDCDD',    // memo
+  announcement: '\uD83D\uDCE2',  // loudspeaker
+  topic: '\uD83D\uDCC1',         // file folder
 };
 
-const MATERIAL_LABELS: Record<CourseMaterial['guide_type'], string> = {
-  study_guide: 'Study Guide',
-  quiz: 'Quiz',
-  flashcards: 'Flashcards',
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  material: 'Material',
+  assignment: 'Assignment',
+  announcement: 'Announcement',
+  topic: 'Topic',
 };
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -371,11 +374,11 @@ export function StudentDetailPanel({
                     }}
                   >
                     <span className="sdp-material-icon">
-                      {MATERIAL_ICONS[mat.guide_type]}
+                      {CONTENT_TYPE_ICONS[mat.content_type] || '\uD83D\uDCC4'}
                     </span>
                     <span className="sdp-material-title">{mat.title}</span>
                     <span className="sdp-material-type-badge">
-                      {MATERIAL_LABELS[mat.guide_type]}
+                      {CONTENT_TYPE_LABELS[mat.content_type] || mat.content_type}
                     </span>
                   </div>
                 ))}

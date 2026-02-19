@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
+import { courseContentsApi } from '../api/courses';
 import { queueStudyGeneration } from './StudyGuidesPage';
 import { isValidEmail } from '../utils/validation';
 import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, DuplicateCheckResponse, TaskItem, InviteResponse } from '../api/client';
@@ -235,25 +236,6 @@ export function ParentDashboard() {
       setAllOverviews(overviews);
     }
   }, [selectedChild, children, dashboardData]);
-
-  // Load course materials for StudentDetailPanel
-  useEffect(() => {
-    if (loading) return;
-    studyApi.listGuides({ include_children: true })
-      .then(guides => {
-        setCourseMaterials(
-          guides
-            .filter(g => !g.archived_at)
-            .map(g => ({
-              id: g.id,
-              title: g.title,
-              guide_type: g.guide_type as CourseMaterial['guide_type'],
-              created_at: g.created_at,
-            }))
-        );
-      })
-      .catch(() => {});
-  }, [loading]);
 
   const loadChildOverview = async (studentId: number) => {
     setOverviewLoading(true);
@@ -562,6 +544,28 @@ export function ParentDashboard() {
     if (!selectedChild) return null;
     return children.find(c => c.student_id === selectedChild)?.user_id ?? null;
   }, [selectedChild, children]);
+
+  // Load course materials for StudentDetailPanel
+  useEffect(() => {
+    if (loading) return;
+    const params: { student_user_id?: number } = {};
+    if (selectedChildUserId) params.student_user_id = selectedChildUserId;
+    courseContentsApi.listAll(params)
+      .then(items => {
+        setCourseMaterials(
+          items
+            .filter(item => !item.archived_at)
+            .map(item => ({
+              id: item.id,
+              title: item.title,
+              content_type: item.content_type,
+              course_name: item.course_name,
+              created_at: item.created_at,
+            }))
+        );
+      })
+      .catch(() => {});
+  }, [loading, selectedChildUserId]);
 
   // Tasks are loaded from the dashboard API call.
   // When a specific child is selected, filter tasks client-side.
@@ -977,10 +981,7 @@ export function ParentDashboard() {
             onToggleCollapsed={() => setDetailPanelCollapsed(v => !v)}
             onGoToCourse={handleGoToCourse}
             onViewMaterial={(mat) => {
-              const path = mat.guide_type === 'quiz' ? `/study/quiz/${mat.id}`
-                : mat.guide_type === 'flashcards' ? `/study/flashcards/${mat.id}`
-                : `/study/guide/${mat.id}`;
-              navigate(path);
+              navigate(`/course-materials/${mat.id}`);
             }}
             onToggleTask={handleToggleTask}
             onTaskClick={(task) => setTaskDetailModal(task)}
