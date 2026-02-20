@@ -45,13 +45,9 @@ vi.mock('../components/CreateTaskModal', () => ({
     open ? <div data-testid="create-task-modal">Task Modal</div> : null,
 }))
 
-// Mock react-markdown to avoid lazy-loading complexity in tests
-vi.mock('react-markdown', () => ({
-  default: ({ children }: { children: string }) => <div data-testid="markdown-content">{children}</div>,
-}))
-
-vi.mock('remark-gfm', () => ({
-  default: () => {},
+vi.mock('../components/ContentCard', () => ({
+  ContentCard: ({ children }: { children: React.ReactNode }) => <div data-testid="content-card">{children}</div>,
+  MarkdownBody: ({ content }: { content: string }) => <div data-testid="markdown-content">{content}</div>,
 }))
 
 // ── Helpers ────────────────────────────────────────────────────

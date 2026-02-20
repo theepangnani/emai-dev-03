@@ -51,14 +51,7 @@
   background-color: var(--color-danger);
 }
 
-.study-guide-content {
-  background: var(--color-surface);
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: var(--shadow-soft);
-}
-
-.study-guide-content h1 {
+.content-card h1 {
   color: var(--color-ink);
   border-bottom: 2px solid var(--color-success);
   padding-bottom: 0.5rem;
@@ -69,111 +62,6 @@
   color: var(--color-ink-muted);
   font-size: 0.9rem;
   margin-bottom: 1.5rem;
-}
-
-.guide-body {
-  line-height: 1.8;
-  color: var(--color-ink);
-}
-
-.guide-render-loading {
-  color: var(--color-ink-muted);
-  font-size: 0.95rem;
-}
-
-.guide-body > :first-child {
-  margin-top: 0;
-}
-
-.guide-body > :last-child {
-  margin-bottom: 0;
-}
-
-.guide-body h1 {
-  font-size: 1.5rem;
-  margin: 1.5rem 0 0.75rem;
-}
-
-.guide-body h2 {
-  font-size: 1.3rem;
-  color: var(--color-accent-strong);
-  margin: 1.25rem 0 0.75rem;
-}
-
-.guide-body h3 {
-  font-size: 1.1rem;
-  color: var(--color-ink);
-  margin: 1rem 0 0.5rem;
-}
-
-.guide-body p {
-  margin: 0 0 0.85rem;
-}
-
-.guide-body ul,
-.guide-body ol {
-  margin: 0 0 1rem 1.5rem;
-  padding: 0;
-}
-
-.guide-body li {
-  margin: 0.25rem 0;
-}
-
-.guide-body table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0 1.25rem;
-  font-size: 0.95rem;
-}
-
-.guide-body th,
-.guide-body td {
-  border: 1px solid var(--color-border);
-  padding: 0.55rem 0.65rem;
-  vertical-align: top;
-  text-align: left;
-}
-
-.guide-body th {
-  background: var(--color-surface-alt);
-  font-weight: 600;
-}
-
-.guide-body code {
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0.1rem 0.35rem;
-  font-size: 0.9em;
-}
-
-.guide-body pre {
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.85rem;
-  overflow-x: auto;
-  margin: 1rem 0 1.25rem;
-}
-
-.guide-body pre code {
-  border: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.guide-body blockquote {
-  border-left: 3px solid var(--color-border);
-  margin: 1rem 0;
-  padding: 0.25rem 0 0.25rem 0.9rem;
-  color: var(--color-ink-muted);
-}
-
-.guide-body hr {
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  margin: 1.1rem 0;
 }
 
 .loading, .error {
@@ -193,10 +81,6 @@
 
   .study-guide-page {
     padding: 0;
-  }
-
-  .study-guide-content {
-    box-shadow: none;
   }
 }
 
@@ -231,36 +115,7 @@
     display: none;
   }
 
-  .study-guide-content {
-    padding: 1rem;
-    border-radius: 8px;
-  }
-
-  .study-guide-content h1 {
+  .content-card h1 {
     font-size: 1.25rem;
-  }
-
-  .guide-body h1 {
-    font-size: 1.2rem;
-  }
-
-  .guide-body h2 {
-    font-size: 1.1rem;
-  }
-
-  .guide-body h3 {
-    font-size: 1rem;
-  }
-
-  .guide-body table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    font-size: 0.85rem;
-  }
-
-  .guide-body pre {
-    padding: 0.65rem;
-    font-size: 0.85em;
   }
 }
