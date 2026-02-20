@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.database import get_db
 from app.models.quiz_result import QuizResult
+from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.quiz_result import (
     QuizHistoryStats,
     QuizResultCreate,
@@ -17,6 +18,42 @@ from app.schemas.quiz_result import (
 )
 
 router = APIRouter(prefix="/quiz-results", tags=["Quiz Results"])
+
+
+def _get_target_user_ids(
+    db: Session, current_user: User, student_user_id: int | None = None
+) -> list[int]:
+    """Return the user_id(s) whose quiz results should be visible.
+
+    - Students/teachers/admins see their own results.
+    - Parents see their linked children's results (optionally filtered to one child).
+    """
+    if current_user.role != UserRole.PARENT:
+        return [current_user.id]
+
+    # Parent: resolve children via parent_students join table
+    rows = db.query(parent_students.c.student_id).filter(
+        parent_students.c.parent_id == current_user.id
+    ).all()
+    child_student_ids = [r[0] for r in rows]
+    if not child_student_ids:
+        return []
+
+    if student_user_id:
+        # Verify this child belongs to the parent
+        child = db.query(Student).filter(
+            Student.user_id == student_user_id,
+            Student.id.in_(child_student_ids),
+        ).first()
+        if not child:
+            return []
+        return [student_user_id]
+
+    # All children's user_ids
+    students = db.query(Student.user_id).filter(
+        Student.id.in_(child_student_ids)
+    ).all()
+    return [s[0] for s in students]
 
 
 @router.post("/", response_model=QuizResultResponse, status_code=status.HTTP_201_CREATED)
@@ -65,15 +102,20 @@ def save_quiz_result(
 @router.get("/", response_model=list[QuizResultSummary])
 def list_quiz_results(
     study_guide_id: int | None = Query(None),
+    student_user_id: int | None = Query(None, description="Filter by child (parent only)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    target_ids = _get_target_user_ids(db, current_user, student_user_id)
+    if not target_ids:
+        return []
+
     query = (
         db.query(QuizResult, StudyGuide.title)
         .outerjoin(StudyGuide, QuizResult.study_guide_id == StudyGuide.id)
-        .filter(QuizResult.user_id == current_user.id)
+        .filter(QuizResult.user_id.in_(target_ids))
     )
     if study_guide_id is not None:
         query = query.filter(QuizResult.study_guide_id == study_guide_id)
@@ -90,10 +132,21 @@ def list_quiz_results(
 
 @router.get("/stats", response_model=QuizHistoryStats)
 def get_quiz_stats(
+    student_user_id: int | None = Query(None, description="Filter by child (parent only)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    base = db.query(QuizResult).filter(QuizResult.user_id == current_user.id)
+    target_ids = _get_target_user_ids(db, current_user, student_user_id)
+    if not target_ids:
+        return QuizHistoryStats(
+            total_attempts=0,
+            unique_quizzes=0,
+            average_score=0.0,
+            best_score=0.0,
+            recent_trend="stable",
+        )
+
+    base = db.query(QuizResult).filter(QuizResult.user_id.in_(target_ids))
 
     total_attempts = base.count()
     if total_attempts == 0:
@@ -107,17 +160,17 @@ def get_quiz_stats(
 
     unique_quizzes = (
         db.query(sql_func.count(sql_func.distinct(QuizResult.study_guide_id)))
-        .filter(QuizResult.user_id == current_user.id)
+        .filter(QuizResult.user_id.in_(target_ids))
         .scalar()
     )
     average_score = (
         db.query(sql_func.avg(QuizResult.percentage))
-        .filter(QuizResult.user_id == current_user.id)
+        .filter(QuizResult.user_id.in_(target_ids))
         .scalar()
     ) or 0.0
     best_score = (
         db.query(sql_func.max(QuizResult.percentage))
-        .filter(QuizResult.user_id == current_user.id)
+        .filter(QuizResult.user_id.in_(target_ids))
         .scalar()
     ) or 0.0
 

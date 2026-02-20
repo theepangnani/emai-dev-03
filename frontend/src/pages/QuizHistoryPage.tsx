@@ -2,29 +2,52 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { studyApi } from '../api/client';
-import type { QuizResultSummary, QuizHistoryStats } from '../api/client';
+import { studyApi, parentApi } from '../api/client';
+import type { QuizResultSummary, QuizHistoryStats, ChildSummary } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import './QuizHistoryPage.css';
 
 export function QuizHistoryPage() {
   const [searchParams] = useSearchParams();
   const quizFilter = searchParams.get('quiz');
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
 
   const [results, setResults] = useState<QuizResultSummary[]>([]);
   const [stats, setStats] = useState<QuizHistoryStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Parent child selector
+  const [children, setChildren] = useState<ChildSummary[]>([]);
+  const [selectedChild, setSelectedChild] = useState<number | null>(null);
+
   useEffect(() => {
+    if (isParent) {
+      parentApi.getChildren().then((c) => {
+        setChildren(c);
+        if (c.length > 0) setSelectedChild(c[0].user_id);
+      });
+    }
+  }, [isParent]);
+
+  useEffect(() => {
+    // For parents, wait until a child is selected before loading
+    if (isParent && selectedChild === null && children.length === 0) {
+      // Still loading children — skip
+      return;
+    }
+
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const params: { study_guide_id?: number; limit?: number } = { limit: 100 };
+        const params: { study_guide_id?: number; student_user_id?: number; limit?: number } = { limit: 100 };
         if (quizFilter) params.study_guide_id = parseInt(quizFilter);
+        if (isParent && selectedChild) params.student_user_id = selectedChild;
         const [historyData, statsData] = await Promise.all([
           studyApi.getQuizHistory(params),
-          studyApi.getQuizStats(),
+          studyApi.getQuizStats(isParent && selectedChild ? { student_user_id: selectedChild } : undefined),
         ]);
         setResults(historyData);
         setStats(statsData);
@@ -35,7 +58,7 @@ export function QuizHistoryPage() {
       }
     };
     load();
-  }, [quizFilter]);
+  }, [quizFilter, selectedChild, isParent, children.length]);
 
   const chartData = useMemo(() => {
     return [...results]
@@ -64,6 +87,19 @@ export function QuizHistoryPage() {
       <div className="quiz-history-page">
         <div className="quiz-history-header">
           <h2>Quiz History</h2>
+          {isParent && children.length > 0 && (
+            <select
+              className="qh-child-select"
+              value={selectedChild ?? ''}
+              onChange={(e) => setSelectedChild(Number(e.target.value))}
+            >
+              {children.map((c) => (
+                <option key={c.user_id} value={c.user_id}>
+                  {c.full_name}
+                </option>
+              ))}
+            </select>
+          )}
           {quizFilter && (
             <Link to="/quiz-history" className="clear-filter">
               Show all quizzes

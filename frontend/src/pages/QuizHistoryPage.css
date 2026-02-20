@@ -14,6 +14,17 @@
   margin: 0;
 }
 
+.qh-child-select {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #d0d0d0);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #333);
+  cursor: pointer;
+  margin-left: auto;
+}
+
 .clear-filter {
   font-size: 0.85rem;
   color: #1565c0;

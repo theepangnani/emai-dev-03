@@ -254,13 +254,13 @@ export const studyApi = {
     return response.data as QuizResultResponse;
   },
 
-  getQuizHistory: async (params?: { study_guide_id?: number; limit?: number; offset?: number }) => {
+  getQuizHistory: async (params?: { study_guide_id?: number; student_user_id?: number; limit?: number; offset?: number }) => {
     const response = await api.get('/api/quiz-results/', { params: params || {} });
     return response.data as QuizResultSummary[];
   },
 
-  getQuizStats: async () => {
-    const response = await api.get('/api/quiz-results/stats');
+  getQuizStats: async (params?: { student_user_id?: number }) => {
+    const response = await api.get('/api/quiz-results/stats', { params: params || {} });
     return response.data as QuizHistoryStats;
   },
 
