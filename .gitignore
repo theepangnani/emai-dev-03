@@ -52,6 +52,9 @@ frontend/test-results/
 # Smoke test output
 smoke-results.json
 
+# Uploaded files
+uploads/
+
 # Temp files
 ERROR
 WARNING

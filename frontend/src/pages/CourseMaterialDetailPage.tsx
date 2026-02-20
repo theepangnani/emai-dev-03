@@ -313,9 +313,9 @@ export function CourseMaterialDetailPage() {
           {activeTab === 'document' && (
             <div className="cm-document-tab">
               <div className="cm-guide-actions">
-                {!isEditing && (
+                {!isEditing && content?.has_file && (
                   <button className="cm-action-btn" onClick={handleDownload} disabled={downloading}>
-                    {downloading ? 'Downloading...' : 'Download'}
+                    {downloading ? 'Downloading...' : `Download${content.original_filename ? ` (${content.original_filename})` : ''}`}
                   </button>
                 )}
                 {!isEditing ? (

@@ -37,6 +37,7 @@ const NAV_ICONS: Record<string, string> = {
   'Child Profiles': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
   'Courses': '\u{1F4DA}',
   'Course Materials': '\u{1F4DD}',
+  'Quiz History': '\u{1F4CA}',
   'Tasks': '\u2705',
   'Messages': '\u{1F4AC}',
   'Help': '\u2753',
@@ -88,6 +89,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         { label: 'Child Profiles', path: '/my-kids' },
         { label: 'Courses', path: '/courses' },
         { label: 'Course Materials', path: '/course-materials' },
+        { label: 'Quiz History', path: '/quiz-history' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -98,6 +100,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
       { label: 'Dashboard', path: '/dashboard' },
       { label: 'Courses', path: '/courses' },
       { label: 'Course Materials', path: '/course-materials' },
+      { label: 'Quiz History', path: '/quiz-history' },
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
     ];

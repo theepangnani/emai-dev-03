@@ -499,17 +499,21 @@ export function ParentDashboard() {
       if (modalParams.types.length === 0) {
         try {
           const defaultCourse = await coursesApi.getDefault();
-          let textContent = modalParams.content;
           if (modalParams.mode === 'file' && modalParams.file) {
-            const extracted = await studyApi.extractTextFromFile(modalParams.file);
-            textContent = extracted.text;
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              defaultCourse.id,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            await courseContentsApi.create({
+              course_id: defaultCourse.id,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
           }
-          await courseContentsApi.create({
-            course_id: defaultCourse.id,
-            title: modalParams.title || 'Uploaded material',
-            text_content: textContent || undefined,
-            content_type: 'notes',
-          });
         } catch { /* continue */ }
         setDuplicateCheck(null);
         resetStudyModal();
@@ -846,23 +850,7 @@ export function ParentDashboard() {
 
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
     if (focusDismissed) {
-      return (
-        <div className="welcome-section">
-          {inspiration ? (
-            <>
-              <h2 className="inspiration-text">"{inspiration.text}"</h2>
-              {inspiration.author && (
-                <p className="inspiration-author">— {inspiration.author}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h2>Welcome back!</h2>
-              <p>At-a-glance monitoring, calendar, and quick actions</p>
-            </>
-          )}
-        </div>
-      );
+      return null;
     }
 
     const { overdue, dueToday, upcoming } = taskCounts;

@@ -448,22 +448,23 @@ export function StudyGuidesPage() {
       // Upload-only mode: no AI types selected → create course content directly
       if (modalParams.types.length === 0) {
         try {
-          let courseId = modalParams.courseId;
-          if (!courseId) {
-            const defaultCourse = await coursesApi.getDefault();
-            courseId = defaultCourse.id;
-          }
-          let textContent = modalParams.content;
+          const courseId = modalParams.courseId
+            ?? (await coursesApi.getDefault()).id;
           if (modalParams.mode === 'file' && modalParams.file) {
-            const extracted = await studyApi.extractTextFromFile(modalParams.file);
-            textContent = extracted.text;
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              courseId,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            await courseContentsApi.create({
+              course_id: courseId,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
           }
-          await courseContentsApi.create({
-            course_id: courseId,
-            title: modalParams.title || 'Uploaded material',
-            text_content: textContent || undefined,
-            content_type: 'notes',
-          });
           resetModal();
           loadData();
         } catch {
