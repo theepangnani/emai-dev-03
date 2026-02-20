@@ -192,15 +192,18 @@ export const courseContentsApi = {
     await api.delete(`/api/course-contents/${id}/permanent`);
   },
 
-  download: async (id: number) => {
+  download: async (id: number, originalFilename?: string) => {
     const response = await api.get(`/api/course-contents/${id}/download`, {
       responseType: 'blob',
     });
     const contentDisposition = response.headers['content-disposition'];
-    let filename = `document-${id}.txt`;
+    let filename = originalFilename || `document-${id}`;
     if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
-      if (match) filename = match[1];
+      // Try filename*=UTF-8'' first (RFC 5987), then standard filename=
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+      const stdMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (utf8Match) filename = decodeURIComponent(utf8Match[1]);
+      else if (stdMatch) filename = stdMatch[1];
     }
     const url = URL.createObjectURL(response.data);
     const a = document.createElement('a');

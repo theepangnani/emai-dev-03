@@ -60,6 +60,7 @@ export function CourseMaterialDetailPage() {
   // Toast + regeneration prompt
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
 
   const contentId = parseInt(id || '0');
 
@@ -168,7 +169,7 @@ export function CourseMaterialDetailPage() {
     if (!content) return;
     setDownloading(true);
     try {
-      await courseContentsApi.download(content.id);
+      await courseContentsApi.download(content.id, content.original_filename || undefined);
     } catch {
       setError('Failed to download document');
     } finally {
@@ -224,14 +225,20 @@ export function CourseMaterialDetailPage() {
   const handleReplaceDocument = async () => {
     if (!replaceFile || !content || replacingRef.current) return;
     replacingRef.current = true;
-    setReplacing(true);
+    const fileToUpload = replaceFile;
+    const hadFile = content.has_file;
+
+    // Close modal immediately so user can continue working
+    setShowReplaceModal(false);
+    setReplaceFile(null);
     setReplaceError('');
+    setReplacing(false);
+    setUploadStatus('uploading');
+
     try {
-      const hadFile = content.has_file;
-      const result = await courseContentsApi.replaceFile(content.id, replaceFile);
+      const result = await courseContentsApi.replaceFile(content.id, fileToUpload);
       setContent(result);
-      setShowReplaceModal(false);
-      setReplaceFile(null);
+      setUploadStatus(null);
       if (result.archived_guides_count > 0) {
         showToast(`Document replaced. ${result.archived_guides_count} linked study material(s) archived.`);
         setShowRegenPrompt(true);
@@ -241,9 +248,10 @@ export function CourseMaterialDetailPage() {
         await loadData();
       }
     } catch (err: any) {
-      setReplaceError(err.response?.data?.detail || 'Failed to replace document');
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus(null), 5000);
+      showToast(err.response?.data?.detail || 'Failed to upload document');
     } finally {
-      setReplacing(false);
       replacingRef.current = false;
     }
   };
@@ -668,10 +676,21 @@ export function CourseMaterialDetailPage() {
       />
       {confirmModal}
       {toast && <div className="toast-notification">{toast}</div>}
+      {uploadStatus === 'uploading' && (
+        <div className="cm-upload-status">
+          <span className="cm-upload-spinner" />
+          Uploading &amp; extracting text...
+        </div>
+      )}
+      {uploadStatus === 'error' && (
+        <div className="cm-upload-status error">
+          Upload failed
+        </div>
+      )}
       {showReplaceModal && (
         <div className="modal-overlay" onClick={closeReplaceModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-            <h3>{content.has_file ? 'Replace Document' : 'Upload Document'}</h3>
+            <h2>{content.has_file ? 'Replace Document' : 'Upload Document'}</h2>
             <p className="cm-replace-warning">
               {content.has_file
                 ? 'Uploading a new file will replace the current document and re-extract text.'

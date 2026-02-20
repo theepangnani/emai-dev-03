@@ -466,6 +466,7 @@
   font-size: 0.85rem;
   color: var(--color-ink-muted);
   margin-bottom: 1rem;
+  padding: 0 24px;
 }
 
 .cm-replace-drop-zone {
@@ -476,7 +477,7 @@
   cursor: pointer;
   transition: all 0.2s;
   background: var(--color-bg, #fafafa);
-  margin-bottom: 1rem;
+  margin: 0 24px 1rem;
 }
 
 .cm-replace-drop-zone:hover,
@@ -552,12 +553,52 @@
   color: var(--color-danger);
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
+  padding: 0 24px;
 }
 
 .cm-replace-actions {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Upload status indicator */
+.cm-upload-status {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  box-shadow: var(--shadow-soft);
+  z-index: 999;
+}
+
+.cm-upload-status.error {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.cm-upload-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: cm-spin 0.8s linear infinite;
+}
+
+@keyframes cm-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Regeneration prompt */
