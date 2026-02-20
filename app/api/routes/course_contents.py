@@ -93,7 +93,7 @@ def create_course_content(
             notify_parents_of_student(
                 db=db,
                 student_user=current_user,
-                title=f"{current_user.full_name} uploaded course material",
+                title=f"{current_user.full_name} uploaded class material",
                 content=f"{current_user.full_name} uploaded \"{data.title}\" to {course.name}.",
                 notification_type=NotificationType.MATERIAL_UPLOADED,
                 link=f"/courses/{data.course_id}",
@@ -166,7 +166,7 @@ async def upload_course_content_file(
             notify_parents_of_student(
                 db=db,
                 student_user=current_user,
-                title=f"{current_user.full_name} uploaded course material",
+                title=f"{current_user.full_name} uploaded class material",
                 content=f'{current_user.full_name} uploaded "{title or filename}" to {course.name}.',
                 notification_type=NotificationType.MATERIAL_UPLOADED,
                 link=f"/courses/{course_id}",
@@ -419,6 +419,71 @@ def update_course_content(
         for guide in guides:
             guide.archived_at = now
             archived_guides_count += 1
+
+    db.commit()
+    db.refresh(content)
+
+    resp = CourseContentUpdateResponse.model_validate(content)
+    resp.archived_guides_count = archived_guides_count
+    return resp
+
+
+@router.put("/{content_id}/replace-file", response_model=CourseContentUpdateResponse)
+async def replace_course_content_file(
+    content_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Replace the file for an existing content item. Re-extracts text and archives linked study guides."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can replace content")
+
+    file_content = await file.read()
+    if len(file_content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
+        )
+
+    # Delete old file from storage
+    if content.file_path:
+        try:
+            delete_file(content.file_path)
+        except Exception as e:
+            logger.warning("Failed to delete old file %s: %s", content.file_path, e)
+
+    # Save new file
+    filename = file.filename or "unknown"
+    stored_path = save_file(file_content, filename)
+
+    # Extract text from new file
+    extracted_text = ""
+    try:
+        extracted_text = process_file(file_content, filename)
+    except FileProcessingError as e:
+        logger.warning("Text extraction failed for %s: %s", filename, e)
+
+    # Update record
+    content.file_path = stored_path
+    content.original_filename = filename
+    content.file_size = len(file_content)
+    content.mime_type = file.content_type
+    content.text_content = extracted_text or None
+
+    # Archive linked study guides since source content changed
+    archived_guides_count = 0
+    now = datetime.now(timezone.utc)
+    guides = db.query(StudyGuide).filter(
+        StudyGuide.course_content_id == content_id,
+        StudyGuide.archived_at.is_(None),
+    ).all()
+    for guide in guides:
+        guide.archived_at = now
+        archived_guides_count += 1
 
     db.commit()
     db.refresh(content)

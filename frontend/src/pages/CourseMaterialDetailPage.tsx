@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -44,6 +44,15 @@ export function CourseMaterialDetailPage() {
   const [editTextContent, setEditTextContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  // Replace document modal
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [replaceFile, setReplaceFile] = useState<File | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  const [replaceError, setReplaceError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const replacingRef = useRef(false);
 
   // Focus prompt for AI generation
   const [focusPrompt, setFocusPrompt] = useState('');
@@ -200,6 +209,53 @@ export function CourseMaterialDetailPage() {
     await handleGenerate(type);
   };
 
+  // Replace document handlers
+  const MAX_FILE_SIZE_MB = 100;
+
+  const handleFileSelect = (file: File) => {
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setReplaceError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
+      return;
+    }
+    setReplaceFile(file);
+    setReplaceError('');
+  };
+
+  const handleReplaceDocument = async () => {
+    if (!replaceFile || !content || replacingRef.current) return;
+    replacingRef.current = true;
+    setReplacing(true);
+    setReplaceError('');
+    try {
+      const result = await courseContentsApi.replaceFile(content.id, replaceFile);
+      setContent(result);
+      setShowReplaceModal(false);
+      setReplaceFile(null);
+      if (result.archived_guides_count > 0) {
+        showToast(`Document replaced. ${result.archived_guides_count} linked study material(s) archived.`);
+        setShowRegenPrompt(true);
+        await loadData();
+      } else {
+        showToast('Document replaced successfully');
+        await loadData();
+      }
+    } catch (err: any) {
+      setReplaceError(err.response?.data?.detail || 'Failed to replace document');
+    } finally {
+      setReplacing(false);
+      replacingRef.current = false;
+    }
+  };
+
+  const closeReplaceModal = () => {
+    if (replacing) return;
+    setShowReplaceModal(false);
+    setReplaceFile(null);
+    setReplaceError('');
+    setIsDragging(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Quiz handlers
   const handleQuizAnswer = (answer: string) => {
     if (showResult) return;
@@ -239,7 +295,7 @@ export function CourseMaterialDetailPage() {
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
-        <Link to="/course-materials" className="cm-back-link">Back to Course Materials</Link>
+        <Link to="/course-materials" className="cm-back-link">Back to Class Materials</Link>
       </div>
     </DashboardLayout>
   );
@@ -295,7 +351,12 @@ export function CourseMaterialDetailPage() {
                   </button>
                 )}
                 {!isEditing ? (
-                  <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
+                  <>
+                    <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
+                    {content.has_file && (
+                      <button className="cm-action-btn" onClick={() => setShowReplaceModal(true)}>Replace Document</button>
+                    )}
+                  </>
                 ) : (
                   <>
                     <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
@@ -606,6 +667,71 @@ export function CourseMaterialDetailPage() {
       />
       {confirmModal}
       {toast && <div className="toast-notification">{toast}</div>}
+      {showReplaceModal && (
+        <div className="modal-overlay" onClick={closeReplaceModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <h3>Replace Document</h3>
+            <p className="cm-replace-warning">
+              Uploading a new file will replace the current document and re-extract text.
+              {guides.length > 0 && ' Linked study materials will be archived and can be regenerated.'}
+            </p>
+            <div
+              className={`cm-replace-drop-zone${isDragging ? ' dragging' : ''}${replaceFile ? ' has-file' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files[0];
+                if (file) handleFileSelect(file);
+              }}
+              onClick={() => !replacing && fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileSelect(file);
+                }}
+              />
+              {replaceFile ? (
+                <div className="cm-replace-file-info">
+                  <span className="cm-replace-file-icon">&#128196;</span>
+                  <div className="cm-replace-file-details">
+                    <span className="cm-replace-file-name">{replaceFile.name}</span>
+                    <span className="cm-replace-file-size">{(replaceFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                  </div>
+                  <button
+                    className="cm-replace-clear-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReplaceFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    disabled={replacing}
+                  >&times;</button>
+                </div>
+              ) : (
+                <div className="cm-replace-drop-content">
+                  <span className="cm-replace-upload-icon">&#128193;</span>
+                  <p>Drag & drop a file here, or click to browse</p>
+                  <small>PDF, Word, Excel, PowerPoint, Images, Text, ZIP</small>
+                </div>
+              )}
+            </div>
+            {replaceError && <p className="cm-replace-error">{replaceError}</p>}
+            <div className="cm-replace-actions">
+              <button className="cm-action-btn" onClick={closeReplaceModal} disabled={replacing}>Cancel</button>
+              <button className="generate-btn" onClick={handleReplaceDocument} disabled={!replaceFile || replacing}>
+                {replacing ? 'Replacing...' : 'Replace Document'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showRegenPrompt && (
         <div className="cm-regen-prompt">
           <p>Source content was modified. Regenerate study materials?</p>
