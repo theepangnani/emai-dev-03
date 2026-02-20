@@ -969,6 +969,17 @@
   cursor: not-allowed;
 }
 
+.view-details-btn.generate-btn {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.view-details-btn.generate-btn:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: white;
+}
+
 /* Confirm modal */
 .confirm-modal {
   max-width: 420px;
