@@ -227,6 +227,7 @@ export function CourseMaterialDetailPage() {
     setReplacing(true);
     setReplaceError('');
     try {
+      const hadFile = content.has_file;
       const result = await courseContentsApi.replaceFile(content.id, replaceFile);
       setContent(result);
       setShowReplaceModal(false);
@@ -236,7 +237,7 @@ export function CourseMaterialDetailPage() {
         setShowRegenPrompt(true);
         await loadData();
       } else {
-        showToast('Document replaced successfully');
+        showToast(hadFile ? 'Document replaced successfully' : 'Document uploaded successfully');
         await loadData();
       }
     } catch (err: any) {
@@ -353,9 +354,9 @@ export function CourseMaterialDetailPage() {
                 {!isEditing ? (
                   <>
                     <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
-                    {content.has_file && (
-                      <button className="cm-action-btn" onClick={() => setShowReplaceModal(true)}>Replace Document</button>
-                    )}
+                    <button className="cm-action-btn" onClick={() => setShowReplaceModal(true)}>
+                      {content.has_file ? 'Replace Document' : 'Upload Document'}
+                    </button>
                   </>
                 ) : (
                   <>
@@ -670,10 +671,12 @@ export function CourseMaterialDetailPage() {
       {showReplaceModal && (
         <div className="modal-overlay" onClick={closeReplaceModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-            <h3>Replace Document</h3>
+            <h3>{content.has_file ? 'Replace Document' : 'Upload Document'}</h3>
             <p className="cm-replace-warning">
-              Uploading a new file will replace the current document and re-extract text.
-              {guides.length > 0 && ' Linked study materials will be archived and can be regenerated.'}
+              {content.has_file
+                ? 'Uploading a new file will replace the current document and re-extract text.'
+                : 'Upload a file to attach to this content. Text will be extracted automatically.'}
+              {content.has_file && guides.length > 0 && ' Linked study materials will be archived and can be regenerated.'}
             </p>
             <div
               className={`cm-replace-drop-zone${isDragging ? ' dragging' : ''}${replaceFile ? ' has-file' : ''}`}
@@ -726,7 +729,7 @@ export function CourseMaterialDetailPage() {
             <div className="cm-replace-actions">
               <button className="cm-action-btn" onClick={closeReplaceModal} disabled={replacing}>Cancel</button>
               <button className="generate-btn" onClick={handleReplaceDocument} disabled={!replaceFile || replacing}>
-                {replacing ? 'Replacing...' : 'Replace Document'}
+                {replacing ? (content.has_file ? 'Replacing...' : 'Uploading...') : (content.has_file ? 'Replace Document' : 'Upload Document')}
               </button>
             </div>
           </div>
