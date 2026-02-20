@@ -1,66 +1,14 @@
-import { useState, useEffect } from 'react';
-import type { ReactElement } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import type { Components } from 'react-markdown';
-import type { PluggableList } from 'unified';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import './StudyGuidePage.css';
-
-function normalizeGuideContent(content: string) {
-  return content
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-type MarkdownRenderer = (props: {
-  children: string;
-  remarkPlugins?: PluggableList;
-  components?: Components;
-}) => ReactElement;
-
-function MarkdownGuideBody({ content }: { content: string }) {
-  const [Renderer, setRenderer] = useState<MarkdownRenderer | null>(null);
-  const [gfmPlugin, setGfmPlugin] = useState<PluggableList | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadMarkdown = async () => {
-      const [{ default: ReactMarkdown }, { default: remarkGfm }] = await Promise.all([
-        import('react-markdown'),
-        import('remark-gfm'),
-      ]);
-
-      if (!isMounted) return;
-
-      setRenderer(() => ReactMarkdown as MarkdownRenderer);
-      setGfmPlugin([remarkGfm] as PluggableList);
-    };
-
-    loadMarkdown().catch((err) => {
-      console.error('Failed to load markdown renderer', err);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const normalized = normalizeGuideContent(content);
-
-  if (!Renderer || !gfmPlugin) {
-    return <div className="guide-render-loading">Formatting study guide...</div>;
-  }
-
-  return <Renderer remarkPlugins={gfmPlugin}>{normalized}</Renderer>;
-}
 
 export function StudyGuidePage() {
   const { id } = useParams<{ id: string }>();
@@ -160,16 +108,16 @@ export function StudyGuidePage() {
         </div>
       </div>
 
-      <div className="study-guide-content">
+      <ContentCard>
         <h1>{guide.title}</h1>
         <p className="guide-meta">
           {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.85rem', marginRight: '0.5rem' }}>v{guide.version}</span>}
           Created: {new Date(guide.created_at).toLocaleDateString()}
         </p>
-        <div className="guide-body">
-          <MarkdownGuideBody content={guide.content} />
-        </div>
-      </div>
+        <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
+          <MarkdownBody content={guide.content} />
+        </Suspense>
+      </ContentCard>
       <CreateTaskModal
         open={showTaskModal}
         onClose={() => setShowTaskModal(false)}

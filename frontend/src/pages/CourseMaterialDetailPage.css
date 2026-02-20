@@ -158,13 +158,6 @@
 }
 
 /* Document tab */
-.cm-document-text {
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-.cm-document-text p {
-  margin-bottom: 0.8rem;
-}
 .cm-document-desc {
   white-space: pre-wrap;
   line-height: 1.6;
@@ -194,12 +187,6 @@
 }
 .cm-ref-link:hover {
   text-decoration: underline;
-}
-
-.cm-render-loading {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-muted-light);
 }
 
 /* Guide tab */
@@ -233,25 +220,6 @@
 }
 .cm-action-btn.danger:hover {
   background: var(--color-danger-light);
-}
-
-.cm-guide-body {
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-.cm-guide-body h1,
-.cm-guide-body h2,
-.cm-guide-body h3 {
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-.cm-guide-body ul,
-.cm-guide-body ol {
-  padding-left: 1.5rem;
-  margin-bottom: 1rem;
-}
-.cm-guide-body li {
-  margin-bottom: 0.3rem;
 }
 
 /* Quiz tab */
