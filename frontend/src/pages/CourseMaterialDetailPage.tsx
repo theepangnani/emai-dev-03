@@ -294,19 +294,6 @@ export function CourseMaterialDetailPage() {
           ))}
         </div>
 
-        {/* Focus prompt (shown on study material tabs) */}
-        {activeTab !== 'document' && (
-          <div className="cm-focus-prompt">
-            <input
-              type="text"
-              value={focusPrompt}
-              onChange={(e) => setFocusPrompt(e.target.value)}
-              placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-              disabled={generating !== null}
-            />
-          </div>
-        )}
-
         {/* Tab Content */}
         <div className="cm-tab-content">
           {activeTab === 'document' && (
@@ -401,6 +388,15 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'guide' && (
             <div className="cm-guide-tab">
+              <div className="cm-focus-prompt">
+                <input
+                  type="text"
+                  value={focusPrompt}
+                  onChange={(e) => setFocusPrompt(e.target.value)}
+                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+                  disabled={generating !== null}
+                />
+              </div>
               {studyGuide ? (
                 <>
                   <div className="cm-guide-actions">
@@ -439,6 +435,15 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'quiz' && (
             <div className="cm-quiz-tab">
+              <div className="cm-focus-prompt">
+                <input
+                  type="text"
+                  value={focusPrompt}
+                  onChange={(e) => setFocusPrompt(e.target.value)}
+                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+                  disabled={generating !== null}
+                />
+              </div>
               {quiz && parsedQuiz.length > 0 ? (
                 <>
                   <div className="cm-guide-actions">
@@ -522,6 +527,15 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'flashcards' && (
             <div className="cm-flashcards-tab">
+              <div className="cm-focus-prompt">
+                <input
+                  type="text"
+                  value={focusPrompt}
+                  onChange={(e) => setFocusPrompt(e.target.value)}
+                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+                  disabled={generating !== null}
+                />
+              </div>
               {flashcardSet && parsedCards.length > 0 ? (
                 <>
                   <div className="cm-guide-actions">
