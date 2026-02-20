@@ -500,6 +500,7 @@ export function ParentDashboard() {
         try {
           const defaultCourse = await coursesApi.getDefault();
           if (modalParams.mode === 'file' && modalParams.file) {
+            // File upload: save original file + extract text on backend
             await courseContentsApi.uploadFile(
               modalParams.file,
               defaultCourse.id,
@@ -507,6 +508,7 @@ export function ParentDashboard() {
               'notes',
             );
           } else {
+            // Text/paste mode: create content with text only
             await courseContentsApi.create({
               course_id: defaultCourse.id,
               title: modalParams.title || 'Uploaded material',

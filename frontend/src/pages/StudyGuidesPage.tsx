@@ -451,6 +451,7 @@ export function StudyGuidesPage() {
           const courseId = modalParams.courseId
             ?? (await coursesApi.getDefault()).id;
           if (modalParams.mode === 'file' && modalParams.file) {
+            // File upload: save original file + extract text on backend
             await courseContentsApi.uploadFile(
               modalParams.file,
               courseId,
@@ -458,6 +459,7 @@ export function StudyGuidesPage() {
               'notes',
             );
           } else {
+            // Text/paste mode: create content with text only
             await courseContentsApi.create({
               course_id: courseId,
               title: modalParams.title || 'Uploaded material',

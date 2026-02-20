@@ -265,7 +265,6 @@ export function CourseMaterialDetailPage() {
     <DashboardLayout showBackButton>
       <div className="cm-detail-page">
         <div className="cm-detail-header">
-          <Link to="/course-materials" className="cm-back-link">&larr; Back</Link>
           <div className="cm-detail-title-row">
             <h2>{content.title}</h2>
             {content.course_name && (
@@ -275,7 +274,7 @@ export function CourseMaterialDetailPage() {
           <div className="cm-detail-meta">
             <span className="cm-type-badge">{content.content_type}</span>
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
-            <button className="cm-action-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
+            <button className="cm-header-task-btn" onClick={() => setShowTaskModal(true)}>+ Create Task</button>
           </div>
         </div>
 
@@ -301,7 +300,7 @@ export function CourseMaterialDetailPage() {
             <div className="cm-document-tab">
               <div className="cm-guide-actions">
                 {!isEditing && content?.has_file && (
-                  <button className="cm-action-btn" onClick={handleDownload} disabled={downloading}>
+                  <button className="cm-action-btn primary" onClick={handleDownload} disabled={downloading}>
                     {downloading ? 'Downloading...' : `Download${content.original_filename ? ` (${content.original_filename})` : ''}`}
                   </button>
                 )}
