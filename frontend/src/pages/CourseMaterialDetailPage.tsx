@@ -361,7 +361,9 @@ export function CourseMaterialDetailPage() {
                 )}
                 {!isEditing ? (
                   <>
-                    <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
+                    {!content.has_file && (
+                      <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
+                    )}
                     <button className="cm-action-btn" onClick={() => setShowReplaceModal(true)}>
                       {content.has_file ? 'Replace Document' : 'Upload Document'}
                     </button>
