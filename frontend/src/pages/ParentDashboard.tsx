@@ -1550,6 +1550,15 @@ export function ParentDashboard() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setTaskDetailModal(null)}>Close</button>
               <button
+                className="generate-btn view-details-btn"
+                onClick={() => {
+                  setTaskDetailModal(null);
+                  navigate(`/tasks/${taskDetailModal.id}`);
+                }}
+              >
+                View Details
+              </button>
+              <button
                 className="generate-btn"
                 onClick={() => {
                   handleToggleTask(taskDetailModal);
