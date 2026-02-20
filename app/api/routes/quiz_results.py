@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.database import get_db
+from app.models.course import student_courses
 from app.models.quiz_result import QuizResult
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
@@ -71,11 +72,42 @@ def save_quiz_result(
     if guide.guide_type != "quiz":
         raise HTTPException(status_code=400, detail="Study guide is not a quiz")
 
+    # Determine which user_id to attribute the result to
+    target_user_id = current_user.id
+    if current_user.has_role(UserRole.PARENT):
+        # Get parent's linked children
+        rows = db.query(parent_students.c.student_id).filter(
+            parent_students.c.parent_id == current_user.id
+        ).all()
+        child_student_ids = [r[0] for r in rows]
+
+        if data.student_user_id and child_student_ids:
+            # Explicit child specified — verify it belongs to parent
+            child = db.query(Student).filter(
+                Student.user_id == data.student_user_id,
+                Student.id.in_(child_student_ids),
+            ).first()
+            if child:
+                target_user_id = data.student_user_id
+        elif child_student_ids and guide.course_id:
+            # Auto-resolve: find which child is enrolled in this quiz's course
+            enrolled_child = (
+                db.query(Student.user_id)
+                .join(student_courses, Student.id == student_courses.c.student_id)
+                .filter(
+                    student_courses.c.course_id == guide.course_id,
+                    Student.id.in_(child_student_ids),
+                )
+                .first()
+            )
+            if enrolled_child:
+                target_user_id = enrolled_child[0]
+
     # Auto-compute attempt number
     prev_count = (
         db.query(sql_func.count(QuizResult.id))
         .filter(
-            QuizResult.user_id == current_user.id,
+            QuizResult.user_id == target_user_id,
             QuizResult.study_guide_id == data.study_guide_id,
         )
         .scalar()
@@ -84,7 +116,7 @@ def save_quiz_result(
     percentage = round((data.score / data.total_questions) * 100, 1) if data.total_questions > 0 else 0.0
 
     result = QuizResult(
-        user_id=current_user.id,
+        user_id=target_user_id,
         study_guide_id=data.study_guide_id,
         score=data.score,
         total_questions=data.total_questions,

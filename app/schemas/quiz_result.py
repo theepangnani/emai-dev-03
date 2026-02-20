@@ -8,6 +8,7 @@ class QuizResultCreate(BaseModel):
     total_questions: int
     answers: dict[int, str]
     time_taken_seconds: int | None = None
+    student_user_id: int | None = None  # Parent can attribute quiz to a child
 
 
 class QuizResultResponse(BaseModel):

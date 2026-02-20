@@ -88,6 +88,7 @@ export interface QuizResultCreate {
   total_questions: number;
   answers: Record<number, string>;
   time_taken_seconds?: number;
+  student_user_id?: number;
 }
 
 export interface QuizResultResponse {
