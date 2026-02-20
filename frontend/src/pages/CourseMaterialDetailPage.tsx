@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse } from '../api/client';
+import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
@@ -15,6 +16,8 @@ type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { confirm, confirmModal } = useConfirm();
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
 
   const [content, setContent] = useState<CourseContentItem | null>(null);
   const [guides, setGuides] = useState<StudyGuide[]>([]);
@@ -57,6 +60,9 @@ export function CourseMaterialDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replacingRef = useRef(false);
 
+  // Resolved student for quiz attribution (parents)
+  const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
+
   // Focus prompt for AI generation
   const [focusPrompt, setFocusPrompt] = useState('');
 
@@ -85,6 +91,14 @@ export function CourseMaterialDetailPage() {
   }, [contentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Resolve which student this quiz is for (parents only)
+  useEffect(() => {
+    if (!isParent || !content?.course_id) return;
+    studyApi.resolveStudent({ course_id: content.course_id })
+      .then(setResolvedStudent)
+      .catch(() => {});
+  }, [isParent, content?.course_id]);
 
   const studyGuide = guides.find(g => g.guide_type === 'study_guide');
   const quiz = guides.find(g => g.guide_type === 'quiz');
@@ -302,6 +316,7 @@ export function CourseMaterialDetailPage() {
       score: quizScore,
       total_questions: parsedQuiz.length,
       answers: quizAnswers,
+      ...(resolvedStudent ? { student_user_id: resolvedStudent.student_user_id } : {}),
     }).then((result) => {
       quizSavedId.current = result.id;
     }).catch(() => {
@@ -521,6 +536,13 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'quiz' && (
             <div className="cm-quiz-tab">
+              {isParent && (
+                <div className={`cm-student-banner ${resolvedStudent ? 'resolved' : 'unresolved'}`}>
+                  {resolvedStudent
+                    ? <>Taking quiz for: <strong>{resolvedStudent.student_name}</strong></>
+                    : 'This quiz is not linked to a student. Results will be saved under your account.'}
+                </div>
+              )}
               <div className="cm-focus-prompt">
                 <input
                   type="text"

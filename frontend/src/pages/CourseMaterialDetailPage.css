@@ -270,6 +270,24 @@
   color: var(--color-danger);
 }
 
+/* Student banner for parent quiz attribution */
+.cm-student-banner {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+.cm-student-banner.resolved {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+.cm-student-banner.unresolved {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffe0b2;
+}
+
 /* Quiz tab */
 .cm-quiz-results {
   text-align: center;

@@ -237,6 +237,52 @@ def get_quiz_stats(
     )
 
 
+@router.get("/resolve-student")
+def resolve_student_for_quiz(
+    course_id: int | None = Query(None),
+    study_guide_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """For parents: resolve which child is enrolled in the given course.
+
+    Non-parents get back their own info. Returns null if no student found.
+    """
+    if not current_user.has_role(UserRole.PARENT):
+        return {"student_user_id": current_user.id, "student_name": current_user.full_name}
+
+    # Resolve course_id from study_guide if not provided directly
+    resolved_course_id = course_id
+    if not resolved_course_id and study_guide_id:
+        guide = db.query(StudyGuide.course_id).filter(StudyGuide.id == study_guide_id).first()
+        if guide:
+            resolved_course_id = guide[0]
+
+    if not resolved_course_id:
+        return None
+
+    rows = db.query(parent_students.c.student_id).filter(
+        parent_students.c.parent_id == current_user.id
+    ).all()
+    child_student_ids = [r[0] for r in rows]
+    if not child_student_ids:
+        return None
+
+    enrolled = (
+        db.query(Student.user_id, User.full_name)
+        .join(student_courses, Student.id == student_courses.c.student_id)
+        .join(User, Student.user_id == User.id)
+        .filter(
+            student_courses.c.course_id == resolved_course_id,
+            Student.id.in_(child_student_ids),
+        )
+        .first()
+    )
+    if enrolled:
+        return {"student_user_id": enrolled[0], "student_name": enrolled[1]}
+    return None
+
+
 @router.get("/{result_id}", response_model=QuizResultResponse)
 def get_quiz_result(
     result_id: int,

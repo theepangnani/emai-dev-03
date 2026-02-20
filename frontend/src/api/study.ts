@@ -124,6 +124,11 @@ export interface QuizHistoryStats {
   recent_trend: 'improving' | 'declining' | 'stable';
 }
 
+export interface ResolvedStudent {
+  student_user_id: number;
+  student_name: string;
+}
+
 // Study Tools API
 export const studyApi = {
   generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string }) => {
@@ -272,5 +277,10 @@ export const studyApi = {
 
   deleteQuizResult: async (id: number) => {
     await api.delete(`/api/quiz-results/${id}`);
+  },
+
+  resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
+    const response = await api.get('/api/quiz-results/resolve-student', { params });
+    return response.data as ResolvedStudent | null;
   },
 };

@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
-import type { StudyGuide, QuizQuestion } from '../api/client';
+import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import './QuizPage.css';
 
 export function QuizPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
   const [guide, setGuide] = useState<StudyGuide | null>(null);
+  const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -39,6 +43,14 @@ export function QuizPage() {
     };
     fetchQuiz();
   }, [id]);
+
+  // Resolve which student this quiz is for (parents only)
+  useEffect(() => {
+    if (!isParent || !guide) return;
+    studyApi.resolveStudent(
+      guide.course_id ? { course_id: guide.course_id } : { study_guide_id: guide.id }
+    ).then(setResolvedStudent).catch(() => {});
+  }, [isParent, guide]);
 
   const handleAnswer = (answer: string) => {
     setSelectedAnswer(answer);
@@ -76,6 +88,7 @@ export function QuizPage() {
       score,
       total_questions: questions.length,
       answers,
+      ...(resolvedStudent ? { student_user_id: resolvedStudent.student_user_id } : {}),
     }).then((result) => {
       savedResultId.current = result.id;
     }).catch(() => {
@@ -131,6 +144,13 @@ export function QuizPage() {
           onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
         />
         <button className="submit-btn" onClick={() => setShowTaskModal(true)} title="Create task" style={{ padding: '6px 12px', fontSize: '13px' }}>&#128203; + Task</button>
+        {isParent && (
+          <div className={`quiz-student-banner ${resolvedStudent ? 'resolved' : 'unresolved'}`}>
+            {resolvedStudent
+              ? <>Taking quiz for: <strong>{resolvedStudent.student_name}</strong></>
+              : 'This quiz is not linked to a student. Results will be saved under your account.'}
+          </div>
+        )}
         <div className="progress">
           Question {currentQuestion + 1} of {questions.length}
         </div>

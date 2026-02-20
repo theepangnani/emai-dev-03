@@ -13,6 +13,23 @@
   color: var(--color-ink);
 }
 
+.quiz-student-banner {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+.quiz-student-banner.resolved {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+.quiz-student-banner.unresolved {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffe0b2;
+}
+
 .progress {
   color: var(--color-ink-muted);
   font-size: 0.9rem;
