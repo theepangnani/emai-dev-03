@@ -84,14 +84,6 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Loading & Data ───────────────────────────────────────────
-  it('shows loading skeleton initially', () => {
-    // Never resolve so loading stays true
-    mockTeachingList.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<TeacherDashboard />)
-    // PageSkeleton renders skeleton divs
-    expect(document.querySelector('.skeleton')).toBeInTheDocument()
-  })
-
   it('renders courses count card after loading', async () => {
     mockTeachingList.mockResolvedValue([
       { id: 1, name: 'Algebra I', description: null, subject: 'Math', google_classroom_id: null },

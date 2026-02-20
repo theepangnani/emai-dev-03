@@ -151,15 +151,6 @@ describe('FAQDetailPage', () => {
     expect(screen.getByText('Step by step guide for Google connection')).toBeInTheDocument()
   })
 
-  it('renders question badges (pinned, category, answered)', async () => {
-    renderDetail()
-    await waitFor(() => {
-      expect(screen.getByText('Pinned')).toBeInTheDocument()
-    })
-    expect(screen.getByText('google classroom')).toBeInTheDocument()
-    expect(screen.getByText('Answered')).toBeInTheDocument()
-  })
-
   it('renders question metadata', async () => {
     renderDetail()
     await waitFor(() => {

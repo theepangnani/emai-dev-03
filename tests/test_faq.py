@@ -1,18 +1,7 @@
 """Tests for FAQ / Knowledge Base endpoints (GET/POST/PATCH/DELETE /api/faq/*)."""
 
 import pytest
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 @pytest.fixture()
@@ -104,11 +93,6 @@ class TestFAQQuestions:
         assert data["id"] == q_id
         assert "answers" in data
         assert data["view_count"] >= 1  # view_count incremented
-
-    def test_get_question_not_found(self, client, faq_users):
-        headers = _auth(client, "faquser@test.com")
-        resp = client.get("/api/faq/questions/99999", headers=headers)
-        assert resp.status_code == 404
 
     def test_update_own_question(self, client, faq_users):
         headers = _auth(client, "faquser@test.com")
@@ -251,19 +235,6 @@ class TestFAQQuestions:
         assert resp.status_code == 201
         assert resp.json()["category"] == "other"
 
-    def test_delete_nonexistent_question(self, client, faq_users):
-        """Deleting a question that does not exist returns 404."""
-        headers = _auth(client, "faquser@test.com")
-        resp = client.delete("/api/faq/questions/99999", headers=headers)
-        assert resp.status_code == 404
-
-    def test_update_nonexistent_question(self, client, faq_users):
-        """Updating a question that does not exist returns 404."""
-        headers = _auth(client, "faquser@test.com")
-        resp = client.patch("/api/faq/questions/99999", json={
-            "title": "Does not exist",
-        }, headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Answer CRUD ────────────────────────────────────────────────
@@ -297,13 +268,6 @@ class TestFAQAnswers:
         }, headers=admin_headers)
         assert resp.status_code == 201
         assert resp.json()["status"] == "approved"
-
-    def test_submit_answer_question_not_found(self, client, faq_users):
-        headers = _auth(client, "faquser@test.com")
-        resp = client.post("/api/faq/questions/99999/answers", json={
-            "content": "This answer goes nowhere because the question doesn't exist.",
-        }, headers=headers)
-        assert resp.status_code == 404
 
     def test_submit_answer_too_short(self, client, faq_users):
         headers = _auth(client, "faquser@test.com")
@@ -361,13 +325,6 @@ class TestFAQAnswers:
         }, headers=user2_headers)
         assert resp.status_code == 400
 
-    def test_edit_nonexistent_answer_404(self, client, faq_users):
-        """Editing a non-existent answer returns 404."""
-        headers = _auth(client, "faquser@test.com")
-        resp = client.patch("/api/faq/answers/99999", json={
-            "content": "This answer does not exist so should return 404.",
-        }, headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Admin Approval Workflow ────────────────────────────────────
@@ -396,11 +353,6 @@ class TestFAQAdmin:
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_list_pending_non_admin_forbidden(self, client, faq_users):
-        user_headers = _auth(client, "faquser@test.com")
-        resp = client.get("/api/faq/admin/pending", headers=user_headers)
-        assert resp.status_code == 403
-
     def test_approve_answer(self, client, faq_users):
         admin_headers = _auth(client, "faqadmin@test.com")
         resp = client.patch(f"/api/faq/admin/answers/{self.answer_id}/approve", headers=admin_headers)
@@ -420,11 +372,6 @@ class TestFAQAdmin:
         resp = client.patch(f"/api/faq/admin/answers/{new_id}/reject", headers=admin_headers)
         assert resp.status_code == 200
         assert resp.json()["status"] == "rejected"
-
-    def test_approve_non_admin_forbidden(self, client, faq_users):
-        user_headers = _auth(client, "faquser@test.com")
-        resp = client.patch(f"/api/faq/admin/answers/{self.answer_id}/approve", headers=user_headers)
-        assert resp.status_code == 403
 
     def test_pin_question(self, client, faq_users):
         admin_headers = _auth(client, "faqadmin@test.com")
@@ -446,13 +393,6 @@ class TestFAQAdmin:
         }, headers=admin_headers)
         assert resp.status_code == 200
         assert resp.json()["is_pinned"] is False
-
-    def test_pin_non_admin_forbidden(self, client, faq_users):
-        user_headers = _auth(client, "faquser@test.com")
-        resp = client.patch(f"/api/faq/admin/questions/{self.question_id}/pin", json={
-            "is_pinned": True,
-        }, headers=user_headers)
-        assert resp.status_code == 403
 
     def test_mark_official(self, client, faq_users):
         admin_headers = _auth(client, "faqadmin@test.com")
@@ -535,18 +475,6 @@ class TestFAQAdmin:
         resp = client.patch(f"/api/faq/admin/answers/{new_id}/reject", headers=admin_headers)
         assert resp.status_code == 400
 
-    def test_reject_non_admin_forbidden(self, client, faq_users):
-        """Non-admin cannot reject answers."""
-        user_headers = _auth(client, "faquser@test.com")
-        resp = client.patch(f"/api/faq/admin/answers/{self.answer_id}/reject", headers=user_headers)
-        assert resp.status_code == 403
-
-    def test_mark_official_non_admin_forbidden(self, client, faq_users):
-        """Non-admin cannot mark answers as official."""
-        user_headers = _auth(client, "faquser@test.com")
-        resp = client.patch(f"/api/faq/admin/answers/{self.answer_id}/mark-official", headers=user_headers)
-        assert resp.status_code == 403
-
     def test_toggle_official_off(self, client, faq_users):
         """Marking official answer again should toggle it off."""
         admin_headers = _auth(client, "faqadmin@test.com")
@@ -575,43 +503,64 @@ class TestFAQAdmin:
         q_resp = client.get(f"/api/faq/questions/{self.question_id}", headers=user_headers)
         assert q_resp.json()["status"] == "answered"
 
-    def test_delete_nonexistent_answer(self, client, faq_users):
-        """Deleting a non-existent answer returns 404."""
-        admin_headers = _auth(client, "faqadmin@test.com")
-        resp = client.delete("/api/faq/admin/answers/99999", headers=admin_headers)
-        assert resp.status_code == 404
 
-    def test_approve_nonexistent_answer(self, client, faq_users):
-        """Approving a non-existent answer returns 404."""
-        admin_headers = _auth(client, "faqadmin@test.com")
-        resp = client.patch("/api/faq/admin/answers/99999/approve", headers=admin_headers)
-        assert resp.status_code == 404
 
-    def test_reject_nonexistent_answer(self, client, faq_users):
-        """Rejecting a non-existent answer returns 404."""
-        admin_headers = _auth(client, "faqadmin@test.com")
-        resp = client.patch("/api/faq/admin/answers/99999/reject", headers=admin_headers)
-        assert resp.status_code == 404
+# ── Parameterized 404 tests ───────────────────────────────────
 
-    def test_mark_official_nonexistent_answer(self, client, faq_users):
-        """Marking a non-existent answer official returns 404."""
-        admin_headers = _auth(client, "faqadmin@test.com")
-        resp = client.patch("/api/faq/admin/answers/99999/mark-official", headers=admin_headers)
-        assert resp.status_code == 404
 
-    def test_pin_nonexistent_question(self, client, faq_users):
-        """Pinning a non-existent question returns 404."""
-        admin_headers = _auth(client, "faqadmin@test.com")
-        resp = client.patch("/api/faq/admin/questions/99999/pin", json={
-            "is_pinned": True,
-        }, headers=admin_headers)
-        assert resp.status_code == 404
+@pytest.mark.parametrize("method,url,json_body", [
+    ("GET", "/api/faq/questions/99999", None),
+    ("DELETE", "/api/faq/questions/99999", None),
+    ("PATCH", "/api/faq/questions/99999", {"title": "x"}),
+    ("POST", "/api/faq/questions/99999/answers", {"content": "x" * 20}),
+    ("PATCH", "/api/faq/answers/99999", {"content": "x" * 20}),
+    ("DELETE", "/api/faq/admin/answers/99999", None),
+    ("PATCH", "/api/faq/admin/answers/99999/approve", None),
+    ("PATCH", "/api/faq/admin/answers/99999/reject", None),
+    ("PATCH", "/api/faq/admin/answers/99999/mark-official", None),
+    ("PATCH", "/api/faq/admin/questions/99999/pin", {"is_pinned": True}),
+])
+def test_nonexistent_resource_returns_404(client, faq_users, method, url, json_body):
+    headers = _auth(client, faq_users["admin"].email)
+    kwargs = {"headers": headers}
+    if json_body:
+        kwargs["json"] = json_body
+    resp = getattr(client, method.lower())(url, **kwargs)
+    assert resp.status_code == 404
 
-    def test_delete_answer_non_admin_forbidden(self, client, faq_users):
-        """Non-admin cannot delete answers via admin endpoint."""
-        user_headers = _auth(client, "faquser@test.com")
-        resp = client.delete(f"/api/faq/admin/answers/{self.answer_id}", headers=user_headers)
-        assert resp.status_code == 403
+
+# ── Parameterized non-admin forbidden tests ───────────────────
+
+
+@pytest.mark.parametrize("method,url_template,json_body", [
+    ("GET", "/api/faq/admin/pending", None),
+    ("PATCH", "/api/faq/admin/answers/{answer_id}/approve", None),
+    ("PATCH", "/api/faq/admin/answers/{answer_id}/reject", None),
+    ("PATCH", "/api/faq/admin/answers/{answer_id}/mark-official", None),
+    ("PATCH", "/api/faq/admin/questions/{question_id}/pin", {"is_pinned": True}),
+    ("DELETE", "/api/faq/admin/answers/{answer_id}", None),
+])
+def test_non_admin_forbidden(client, faq_users, method, url_template, json_body):
+    """Non-admin users cannot access admin FAQ endpoints."""
+    # Create a question + answer for URL substitution
+    user_headers = _auth(client, faq_users["user"].email)
+    q_resp = client.post("/api/faq/questions", json={
+        "title": "Forbidden test question", "category": "other",
+    }, headers=user_headers)
+    q_id = q_resp.json()["id"]
+
+    user2_headers = _auth(client, faq_users["user2"].email)
+    a_resp = client.post(f"/api/faq/questions/{q_id}/answers", json={
+        "content": "Forbidden test answer content for parameterized test.",
+    }, headers=user2_headers)
+    a_id = a_resp.json()["id"]
+
+    url = url_template.format(answer_id=a_id, question_id=q_id)
+    kwargs = {"headers": user_headers}
+    if json_body:
+        kwargs["json"] = json_body
+    resp = getattr(client, method.lower())(url, **kwargs)
+    assert resp.status_code == 403
 
 
 # ── Visibility ─────────────────────────────────────────────────

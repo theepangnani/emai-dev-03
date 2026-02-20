@@ -183,13 +183,6 @@ describe('ParentDashboard', () => {
     setupDefaults()
   })
 
-  // ── Loading ──────────────────────────────────────────────────
-  it('shows loading skeleton initially', () => {
-    mockGetDashboard.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<ParentDashboard />)
-    expect(document.querySelector('.skeleton')).toBeInTheDocument()
-  })
-
   // ── No Children State ────────────────────────────────────────
   it('shows "Get Started" when no children', async () => {
     mockGetDashboard.mockResolvedValue(

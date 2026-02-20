@@ -1,17 +1,6 @@
 import pytest
 from unittest.mock import patch, AsyncMock
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 @pytest.fixture()
@@ -303,79 +292,30 @@ def test_sync_grades_no_google(client, analytics_data):
     assert "Google" in resp.json()["detail"]
 
 
-# ── determine_trend unit test ───────────────────────────────────
+# ── determine_trend unit tests (parameterized) ──────────────────
 
-def test_determine_trend():
+
+@pytest.mark.parametrize("grades,expected", [
+    ([70, 75, 80, 85, 90], "improving"),
+    ([90, 85, 80, 75, 70], "declining"),
+    ([80, 81, 80, 79, 80], "stable"),
+    ([50, 60], "stable"),
+    ([], "stable"),
+    ([85], "stable"),
+    ([50, 100], "stable"),
+    ([100, 50], "stable"),
+    ([80, 80, 80, 80, 80], "stable"),
+    ([50, 55, 60, 65, 70, 75, 80, 85, 90], "improving"),
+    ([95, 90, 85, 80, 75, 70, 65, 60, 55], "declining"),
+    ([80, 80, 80, 81, 81, 82, 82, 82, 82], "stable"),
+    ([50, 70, 90], "improving"),
+    ([90, 70, 50], "declining"),
+    ([80, 70, 80], "stable"),
+])
+def test_determine_trend(grades, expected):
     from app.services.analytics_service import determine_trend
 
-    assert determine_trend([70, 75, 80, 85, 90]) == "improving"
-    assert determine_trend([90, 85, 80, 75, 70]) == "declining"
-    assert determine_trend([80, 81, 80, 79, 80]) == "stable"
-    assert determine_trend([50, 60]) == "stable"  # too few
-    assert determine_trend([]) == "stable"
-
-
-# ═══════════════════════════════════════════════════════════════════
-# EXPANDED TEST COVERAGE (Issue #474)
-# ═══════════════════════════════════════════════════════════════════
-
-
-# ── determine_trend: edge cases ──────────────────────────────────
-
-def test_determine_trend_single_value():
-    """A single grade record should return stable (too few data points)."""
-    from app.services.analytics_service import determine_trend
-
-    assert determine_trend([85]) == "stable"
-
-
-def test_determine_trend_two_values():
-    """Two data points are still too few for a trend — always stable."""
-    from app.services.analytics_service import determine_trend
-
-    assert determine_trend([50, 100]) == "stable"
-    assert determine_trend([100, 50]) == "stable"
-
-
-def test_determine_trend_all_same_grades():
-    """All identical grades should be 'stable'."""
-    from app.services.analytics_service import determine_trend
-
-    assert determine_trend([80, 80, 80, 80, 80]) == "stable"
-
-
-def test_determine_trend_improving():
-    """Clear upward trend should be detected."""
-    from app.services.analytics_service import determine_trend
-
-    assert determine_trend([50, 55, 60, 65, 70, 75, 80, 85, 90]) == "improving"
-
-
-def test_determine_trend_declining():
-    """Clear downward trend should be detected."""
-    from app.services.analytics_service import determine_trend
-
-    assert determine_trend([95, 90, 85, 80, 75, 70, 65, 60, 55]) == "declining"
-
-
-def test_determine_trend_stable_within_threshold():
-    """Grades varying within the ±3 threshold should be stable."""
-    from app.services.analytics_service import determine_trend
-
-    # First third avg ≈ 80, last third avg ≈ 82 → diff < 3 → stable
-    assert determine_trend([80, 80, 80, 81, 81, 82, 82, 82, 82]) == "stable"
-
-
-def test_determine_trend_exactly_three_values():
-    """Three values is the minimum for trend detection (len >= 3)."""
-    from app.services.analytics_service import determine_trend
-
-    # third = max(1, 3//3) = 1 → first_avg = 50, last_avg = 90 → improving
-    assert determine_trend([50, 70, 90]) == "improving"
-    # first_avg = 90, last_avg = 50 → declining
-    assert determine_trend([90, 70, 50]) == "declining"
-    # first_avg = 80, last_avg = 80 → stable
-    assert determine_trend([80, 70, 80]) == "stable"
+    assert determine_trend(grades) == expected
 
 
 # ── compute_summary: unit tests ─────────────────────────────────
@@ -929,26 +869,18 @@ def test_grade_item_complete_structure(client, analytics_data):
         assert field in g, f"Missing field: {field}"
 
 
-# ── Student not found ───────────────────────────────────────────
+# ── Student not found (parameterized) ──────────────────────────
 
-def test_grades_student_not_found(client, analytics_data):
-    """Requesting grades for a non-existent student returns 404."""
+
+@pytest.mark.parametrize("endpoint", [
+    "/api/analytics/grades",
+    "/api/analytics/summary",
+    "/api/analytics/trends",
+])
+def test_student_not_found(client, analytics_data, endpoint):
+    """Requesting analytics for a non-existent student returns 404."""
     headers = _auth(client, "ana_parent@test.com")
-    resp = client.get("/api/analytics/grades?student_id=999999", headers=headers)
-    assert resp.status_code == 404
-
-
-def test_summary_student_not_found(client, analytics_data):
-    """Requesting summary for a non-existent student returns 404."""
-    headers = _auth(client, "ana_parent@test.com")
-    resp = client.get("/api/analytics/summary?student_id=999999", headers=headers)
-    assert resp.status_code == 404
-
-
-def test_trends_student_not_found(client, analytics_data):
-    """Requesting trends for a non-existent student returns 404."""
-    headers = _auth(client, "ana_parent@test.com")
-    resp = client.get("/api/analytics/trends?student_id=999999", headers=headers)
+    resp = client.get(f"{endpoint}?student_id=999999", headers=headers)
     assert resp.status_code == 404
 
 

@@ -1,16 +1,5 @@
 import pytest
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 @pytest.fixture()
@@ -137,10 +126,6 @@ class TestDeleteNotification:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
-    def test_delete_nonexistent_returns_404(self, client, notif_user):
-        headers = _auth(client, notif_user.email)
-        resp = client.delete("/api/notifications/999999", headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Notification settings ─────────────────────────────────────
@@ -184,10 +169,6 @@ class TestAcknowledgeNotification:
         resp = client.put(f"/api/notifications/{n.id}/ack", headers=headers)
         assert resp.status_code == 400
 
-    def test_ack_nonexistent_returns_404(self, client, notif_user):
-        headers = _auth(client, notif_user.email)
-        resp = client.put("/api/notifications/999999/ack", headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Suppress notification ─────────────────────────────────────
@@ -330,3 +311,16 @@ class TestNotificationSettings:
         assert get_resp.json()["email_notifications"] is False
         assert get_resp.json()["assignment_reminder_days"] == "1,7"
         assert get_resp.json()["task_reminder_days"] == "1,2,5"
+
+
+# ── Parameterized 404 tests ──────────────────────────────────
+
+
+@pytest.mark.parametrize("method,url", [
+    ("DELETE", "/api/notifications/999999"),
+    ("PUT", "/api/notifications/999999/ack"),
+])
+def test_nonexistent_notification_returns_404(client, notif_user, method, url):
+    headers = _auth(client, notif_user.email)
+    resp = getattr(client, method.lower())(url, headers=headers)
+    assert resp.status_code == 404

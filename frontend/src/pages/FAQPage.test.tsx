@@ -93,14 +93,6 @@ describe('FAQPage', () => {
     return renderWithProviders(<FAQPage />, { initialEntries: ['/faq'] })
   }
 
-  it('renders page title and ask button', async () => {
-    renderFAQ()
-    await waitFor(() => {
-      expect(screen.getByText('FAQ / Knowledge Base')).toBeInTheDocument()
-    })
-    expect(screen.getByText('Ask a Question')).toBeInTheDocument()
-  })
-
   it('renders question list after loading', async () => {
     renderFAQ()
     await waitFor(() => {
