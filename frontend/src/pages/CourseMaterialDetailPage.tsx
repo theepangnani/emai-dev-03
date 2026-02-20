@@ -383,7 +383,7 @@ export function CourseMaterialDetailPage() {
                   rows={20}
                   disabled={editSaving}
                 />
-              ) : content.text_content ? (
+              ) : content.text_content && !content.has_file ? (
                 <ContentCard ocrCheckText={content.text_content}>
                   {(() => {
                     // Detect JSON quiz/flashcard data and format readably
@@ -435,9 +435,9 @@ export function CourseMaterialDetailPage() {
                 </ContentCard>
               ) : content.description ? (
                 <p className="cm-document-desc">{content.description}</p>
-              ) : (
+              ) : !content.has_file ? (
                 <p className="cm-empty-message">No document content available.</p>
-              )}
+              ) : null}
               {content.reference_url && (
                 <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">
                   View Original Source
