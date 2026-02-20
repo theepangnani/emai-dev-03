@@ -67,6 +67,7 @@ const FAQDetailPage = lazyRetry(() => import('./pages/FAQDetailPage').then((m) =
 const AdminFAQPage = lazyRetry(() => import('./pages/AdminFAQPage').then((m) => ({ default: m.AdminFAQPage })));
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 const LinkRequestsPage = lazyRetry(() => import('./pages/LinkRequestsPage').then((m) => ({ default: m.LinkRequestsPage })));
+const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((m) => ({ default: m.QuizHistoryPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,6 +153,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <FlashcardsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/quiz-history"
+                element={
+                  <ProtectedRoute>
+                    <QuizHistoryPage />
                   </ProtectedRoute>
                 }
               />

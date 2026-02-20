@@ -453,17 +453,23 @@ export function StudyGuidesPage() {
             const defaultCourse = await coursesApi.getDefault();
             courseId = defaultCourse.id;
           }
-          let textContent = modalParams.content;
           if (modalParams.mode === 'file' && modalParams.file) {
-            const extracted = await studyApi.extractTextFromFile(modalParams.file);
-            textContent = extracted.text;
+            // File upload: save original file + extract text on backend
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              courseId,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            // Text/paste mode: create content with text only
+            await courseContentsApi.create({
+              course_id: courseId,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
           }
-          await courseContentsApi.create({
-            course_id: courseId,
-            title: modalParams.title || 'Uploaded material',
-            text_content: textContent || undefined,
-            content_type: 'notes',
-          });
           resetModal();
           loadData();
         } catch {

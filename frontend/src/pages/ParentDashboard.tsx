@@ -499,17 +499,23 @@ export function ParentDashboard() {
       if (modalParams.types.length === 0) {
         try {
           const defaultCourse = await coursesApi.getDefault();
-          let textContent = modalParams.content;
           if (modalParams.mode === 'file' && modalParams.file) {
-            const extracted = await studyApi.extractTextFromFile(modalParams.file);
-            textContent = extracted.text;
+            // File upload: save original file + extract text on backend
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              defaultCourse.id,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            // Text/paste mode: create content with text only
+            await courseContentsApi.create({
+              course_id: defaultCourse.id,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
           }
-          await courseContentsApi.create({
-            course_id: defaultCourse.id,
-            title: modalParams.title || 'Uploaded material',
-            text_content: textContent || undefined,
-            content_type: 'notes',
-          });
         } catch { /* continue */ }
         setDuplicateCheck(null);
         resetStudyModal();

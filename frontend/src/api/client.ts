@@ -107,6 +107,10 @@ export type {
   FlashcardSet,
   SupportedFormats,
   ExtractedText,
+  QuizResultCreate,
+  QuizResultResponse,
+  QuizResultSummary,
+  QuizHistoryStats,
 } from './study';
 export { messagesApi } from './messages';
 export type {

@@ -13,6 +13,10 @@ export interface CourseContentItem {
   google_classroom_url: string | null;
   created_by_user_id: number | null;
   google_classroom_material_id: string | null;
+  has_file: boolean;
+  original_filename: string | null;
+  file_size: number | null;
+  mime_type: string | null;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -138,6 +142,18 @@ export const courseContentsApi = {
     google_classroom_url?: string;
   }) => {
     const response = await api.post('/api/course-contents/', data);
+    return response.data as CourseContentItem;
+  },
+
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('course_id', String(courseId));
+    if (title) formData.append('title', title);
+    if (contentType) formData.append('content_type', contentType);
+    const response = await api.post('/api/course-contents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data as CourseContentItem;
   },
 
