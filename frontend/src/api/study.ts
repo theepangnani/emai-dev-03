@@ -81,6 +81,48 @@ export interface ExtractedText {
   word_count: number;
 }
 
+// Quiz Result Types
+export interface QuizResultCreate {
+  study_guide_id: number;
+  score: number;
+  total_questions: number;
+  answers: Record<number, string>;
+  time_taken_seconds?: number;
+}
+
+export interface QuizResultResponse {
+  id: number;
+  user_id: number;
+  study_guide_id: number;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  answers_json: string;
+  attempt_number: number;
+  time_taken_seconds: number | null;
+  completed_at: string;
+  quiz_title: string | null;
+}
+
+export interface QuizResultSummary {
+  id: number;
+  study_guide_id: number;
+  quiz_title: string | null;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  attempt_number: number;
+  completed_at: string;
+}
+
+export interface QuizHistoryStats {
+  total_attempts: number;
+  unique_quizzes: number;
+  average_score: number;
+  best_score: number;
+  recent_trend: 'improving' | 'declining' | 'stable';
+}
+
 // Study Tools API
 export const studyApi = {
   generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string }) => {
@@ -204,5 +246,30 @@ export const studyApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data as ExtractedText;
+  },
+
+  // Quiz Results Methods
+  saveQuizResult: async (data: QuizResultCreate) => {
+    const response = await api.post('/api/quiz-results/', data);
+    return response.data as QuizResultResponse;
+  },
+
+  getQuizHistory: async (params?: { study_guide_id?: number; limit?: number; offset?: number }) => {
+    const response = await api.get('/api/quiz-results/', { params: params || {} });
+    return response.data as QuizResultSummary[];
+  },
+
+  getQuizStats: async () => {
+    const response = await api.get('/api/quiz-results/stats');
+    return response.data as QuizHistoryStats;
+  },
+
+  getQuizResult: async (id: number) => {
+    const response = await api.get(`/api/quiz-results/${id}`);
+    return response.data as QuizResultResponse;
+  },
+
+  deleteQuizResult: async (id: number) => {
+    await api.delete(`/api/quiz-results/${id}`);
   },
 };

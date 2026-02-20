@@ -16,6 +16,7 @@ from app.models.study_guide import StudyGuide
 from app.models.assignment import Assignment
 from app.models.course import Course
 from app.models.course_content import CourseContent
+from app.services.storage_service import save_file
 from app.models.student import Student, parent_students
 from app.models.course import student_courses
 from app.models.task import Task
@@ -1134,6 +1135,8 @@ async def generate_from_file_upload(
             detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024*1024)} MB"
         )
 
+    stored_path = save_file(file_content, file.filename or "unknown")
+
     try:
         extracted_text = process_file(file_content, file.filename or "unknown")
     except FileProcessingError as e:
@@ -1228,6 +1231,15 @@ async def generate_from_file_upload(
     )
     study_guide.course_id = resolved_course_id
     study_guide.course_content_id = resolved_cc_id
+
+    # Attach file metadata to CourseContent record
+    if resolved_cc_id:
+        cc_rec = db.query(CourseContent).filter(CourseContent.id == resolved_cc_id).first()
+        if cc_rec and not cc_rec.file_path:
+            cc_rec.file_path = stored_path
+            cc_rec.original_filename = file.filename
+            cc_rec.file_size = len(file_content)
+            cc_rec.mime_type = file.content_type
 
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)

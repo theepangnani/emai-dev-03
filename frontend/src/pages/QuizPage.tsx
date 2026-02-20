@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, QuizQuestion } from '../api/client';
@@ -18,6 +18,9 @@ export function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savedResultId = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -62,6 +65,25 @@ export function QuizPage() {
   };
 
   const isQuizComplete = currentQuestion === questions.length - 1 && showResult;
+
+  // Save quiz result when complete
+  useEffect(() => {
+    if (!isQuizComplete || !guide || savedResultId.current !== null) return;
+    setSaving(true);
+    setSaveError(null);
+    studyApi.saveQuizResult({
+      study_guide_id: guide.id,
+      score,
+      total_questions: questions.length,
+      answers,
+    }).then((result) => {
+      savedResultId.current = result.id;
+    }).catch(() => {
+      setSaveError('Could not save result');
+    }).finally(() => {
+      setSaving(false);
+    });
+  }, [isQuizComplete, guide, score, questions.length, answers]);
 
   if (loading) {
     return (
@@ -199,6 +221,11 @@ export function QuizPage() {
                 return 'Keep studying — every attempt makes you stronger!';
               })()}
             </p>
+            {saving && <p className="save-status">Saving result...</p>}
+            {saveError && <p className="save-status save-error">{saveError}</p>}
+            {savedResultId.current !== null && !saving && !saveError && (
+              <p className="save-status save-success">Result saved</p>
+            )}
             <div className="results-actions">
               <button
                 className="retry-btn"
@@ -208,10 +235,15 @@ export function QuizPage() {
                   setShowResult(false);
                   setScore(0);
                   setAnswers({});
+                  savedResultId.current = null;
+                  setSaveError(null);
                 }}
               >
                 Try Again
               </button>
+              <Link to={`/quiz-history?quiz=${guide.id}`} className="done-btn" style={{ background: '#e3f2fd', color: '#1565c0' }}>
+                View History
+              </Link>
               <Link to="/dashboard" className="done-btn">
                 Done
               </Link>

@@ -1,0 +1,261 @@
+.quiz-history-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.quiz-history-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.quiz-history-header h2 {
+  margin: 0;
+}
+
+.clear-filter {
+  font-size: 0.85rem;
+  color: #1565c0;
+  text-decoration: none;
+}
+
+.clear-filter:hover {
+  text-decoration: underline;
+}
+
+.quiz-history-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quiz-history-error {
+  color: #c62828;
+  padding: 16px;
+  background: #fce4ec;
+  border-radius: 8px;
+}
+
+/* Stats Grid */
+.qh-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.qh-stat-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.qh-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #222);
+}
+
+.qh-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+  margin-top: 4px;
+}
+
+/* Chart Card */
+.qh-chart-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.qh-chart-card h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+/* Attempts List */
+.qh-attempts-list h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.qh-attempts-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qh-attempt-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.qh-attempt-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qh-attempt-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qh-attempt-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+}
+
+.qh-attempt-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.qh-score-text {
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 44px;
+  text-align: right;
+}
+
+.qh-score-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--border-color, #e0e0e0);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.qh-score-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.qh-score-pct {
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+.qh-attempt-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.qh-retry-btn {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: #e3f2fd;
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.qh-retry-btn:hover {
+  background: #bbdefb;
+}
+
+.qh-delete-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #999;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.qh-delete-btn:hover {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+/* Empty State */
+.qh-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.qh-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.qh-empty-state h3 {
+  margin: 0 0 8px;
+}
+
+.qh-empty-state p {
+  color: var(--text-secondary, #666);
+  margin: 0 0 16px;
+}
+
+.qh-cta-btn {
+  display: inline-block;
+  padding: 8px 20px;
+  background: #1565c0;
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.qh-cta-btn:hover {
+  background: #0d47a1;
+}
+
+/* Save status in QuizPage */
+.save-status {
+  font-size: 0.85rem;
+  margin: 8px 0;
+  text-align: center;
+}
+.save-error {
+  color: #c62828;
+}
+.save-success {
+  color: #2e7d32;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .qh-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .qh-attempt-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .qh-attempt-score {
+    min-width: 0;
+  }
+  .qh-attempt-actions {
+    justify-content: flex-end;
+  }
+}

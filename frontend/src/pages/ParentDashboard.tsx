@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
-import { courseContentsApi } from '../api/courses';
+import { courseContentsApi, coursesApi } from '../api/courses';
 import { queueStudyGeneration } from './StudyGuidesPage';
 import { isValidEmail } from '../utils/validation';
 import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, DuplicateCheckResponse, TaskItem, InviteResponse } from '../api/client';
@@ -495,6 +495,34 @@ export function ParentDashboard() {
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     setIsGenerating(true);
     try {
+      // Upload-only mode: no AI types selected → create course content directly
+      if (modalParams.types.length === 0) {
+        try {
+          const defaultCourse = await coursesApi.getDefault();
+          if (modalParams.mode === 'file' && modalParams.file) {
+            // File upload: save original file + extract text on backend
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              defaultCourse.id,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            // Text/paste mode: create content with text only
+            await courseContentsApi.create({
+              course_id: defaultCourse.id,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
+          }
+        } catch { /* continue */ }
+        setDuplicateCheck(null);
+        resetStudyModal();
+        navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+        return;
+      }
+
       // Check for duplicates only when single type selected
       if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from datetime import datetime
 from typing import Optional
 
@@ -55,10 +55,20 @@ class CourseContentResponse(BaseModel):
     google_classroom_url: Optional[str]
     created_by_user_id: Optional[int] = None
     google_classroom_material_id: Optional[str] = None
+    file_path: Optional[str] = None
+    original_filename: Optional[str] = None
+    file_size: Optional[int] = None
+    mime_type: Optional[str] = None
+    has_file: bool = False
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
     last_viewed_at: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def compute_has_file(self):
+        self.has_file = self.file_path is not None
+        return self
 
     class Config:
         from_attributes = True
