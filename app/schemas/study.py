@@ -12,6 +12,7 @@ class StudyGuideCreate(BaseModel):
     content: str | None = None  # Optional custom content to base guide on
     regenerate_from_id: int | None = None  # ID of existing guide to create new version of
     custom_prompt: str | None = None  # Custom AI prompt (for "Other" tool selection)
+    focus_prompt: str | None = None  # Optional focus area for AI generation
 
 
 class AutoCreatedTask(BaseModel):
@@ -51,6 +52,7 @@ class QuizGenerateRequest(BaseModel):
     content: str | None = None
     num_questions: int = 5
     regenerate_from_id: int | None = None
+    focus_prompt: str | None = None  # Optional focus area for AI generation
 
 
 class QuizQuestion(BaseModel):
@@ -85,6 +87,7 @@ class FlashcardGenerateRequest(BaseModel):
     content: str | None = None
     num_cards: int = 10
     regenerate_from_id: int | None = None
+    focus_prompt: str | None = None  # Optional focus area for AI generation
 
 
 class Flashcard(BaseModel):

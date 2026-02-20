@@ -1,35 +1,34 @@
 .quick-actions-bar {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
-.quick-action-btn {
+/* Compact outlined buttons */
+.quick-action-btn.secondary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--color-surface);
+  gap: 4px;
+  padding: 8px 12px;
+  background: transparent;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--color-ink);
+  color: var(--color-ink-muted);
   transition: all 0.2s;
-  flex: 1;
-  justify-content: center;
-  min-width: 0;
 }
 
-.quick-action-btn:hover {
+.quick-action-btn.secondary:hover {
   border-color: var(--color-accent);
-  background: var(--color-surface-alt);
   color: var(--color-accent);
+  background: var(--color-accent-subtle);
 }
 
-.quick-action-btn:active {
+.quick-action-btn.secondary:active {
   transform: scale(0.97);
 }
 
@@ -46,15 +45,7 @@
 }
 
 @media (max-width: 480px) {
-  .quick-action-label {
-    display: none;
-  }
-
-  .quick-action-btn {
-    padding: 10px;
-    flex: none;
-    width: 44px;
-    height: 44px;
-    justify-content: center;
+  .quick-action-btn.secondary {
+    padding: 8px;
   }
 }

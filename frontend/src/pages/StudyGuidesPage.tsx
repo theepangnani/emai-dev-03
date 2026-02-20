@@ -16,6 +16,7 @@ interface PendingGeneration {
   title: string;
   content: string;
   type: 'study_guide' | 'quiz' | 'flashcards';
+  focusPrompt?: string;
   mode: 'text' | 'file';
   file?: File;
   pastedImages?: File[];
@@ -24,11 +25,11 @@ interface PendingGeneration {
   courseContentId?: number;
 }
 
-let _pendingGeneration: PendingGeneration | null = null;
+let _pendingGenerations: PendingGeneration[] = [];
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function queueStudyGeneration(params: PendingGeneration) {
-  _pendingGeneration = params;
+  _pendingGenerations.push(params);
 }
 
 // In-progress generation placeholder
@@ -59,9 +60,13 @@ export function StudyGuidesPage() {
   // Map of course_content_id -> guide_types for filtering
   const [contentGuideMap, setContentGuideMap] = useState<Record<number, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  // Filters
-  const [filterChild, setFilterChild] = useState<number | ''>('');
+  // Filters — initialize child from navigation state if parent dashboard passed it
+  const [filterChild, setFilterChild] = useState<number | ''>(() => {
+    const navState = location.state as { selectedChild?: number | null } | null;
+    return navState?.selectedChild || '';
+  });
   const [filterCourse, setFilterCourse] = useState<number | ''>('');
   const [filterType, setFilterType] = useState<string>('all');
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -107,20 +112,20 @@ export function StudyGuidesPage() {
 
   useEffect(() => {
     loadData();
-    if (_pendingGeneration) {
-      const params = _pendingGeneration;
-      _pendingGeneration = null;
-      startGeneration(params);
+    if (_pendingGenerations.length > 0) {
+      const pending = [..._pendingGenerations];
+      _pendingGenerations = [];
+      pending.forEach(p => startGeneration(p));
     }
+    // Safety timeout: if loading takes too long, show error state
+    const timeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) setLoadError(true);
+        return false;
+      });
+    }, 15000);
+    return () => clearTimeout(timeout);
   }, []);
-
-  // Set filter from navigation state (parent dashboard child selection)
-  useEffect(() => {
-    const navState = location.state as { selectedChild?: number | null } | null;
-    if (navState?.selectedChild) {
-      setFilterChild(navState.selectedChild);
-    }
-  }, [location.state]);
 
   // Reset course filter when child changes (filter cascade fix)
   useEffect(() => {
@@ -143,9 +148,12 @@ export function StudyGuidesPage() {
   }, [modalCourseId]);
 
   const loadData = async () => {
+    setLoadError(false);
     try {
+      const contentParams: Record<string, any> = {};
+      if (filterChild) contentParams.student_user_id = filterChild;
       const [contents, allGuides, courseList] = await Promise.all([
-        courseContentsApi.listAll(),
+        courseContentsApi.listAll(contentParams),
         studyApi.listGuides(),
         coursesApi.list(),
       ]);
@@ -171,7 +179,9 @@ export function StudyGuidesPage() {
         const childrenData = await parentApi.getChildren();
         setChildren(childrenData);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -187,8 +197,10 @@ export function StudyGuidesPage() {
 
   const loadArchived = async () => {
     try {
+      const archiveParams: Record<string, any> = { include_archived: true };
+      if (filterChild) archiveParams.student_user_id = filterChild;
       const [allContents, allGuides] = await Promise.all([
-        courseContentsApi.listAll({ include_archived: true }),
+        courseContentsApi.listAll(archiveParams),
         studyApi.listGuides({ include_archived: true }),
       ]);
       setArchivedContents(allContents.filter(c => c.archived_at));
@@ -385,6 +397,7 @@ export function StudyGuidesPage() {
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId, course_content_id: params.courseContentId,
+            focus_prompt: params.focusPrompt,
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
           result = await studyApi.generateFromTextAndImages({
@@ -396,13 +409,14 @@ export function StudyGuidesPage() {
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId,
             course_content_id: params.courseContentId,
+            focus_prompt: params.focusPrompt,
           });
         } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else {
-          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
@@ -431,29 +445,62 @@ export function StudyGuidesPage() {
 
     setIsGenerating(true);
     try {
-      // Check for duplicates on text mode
-      if (modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      // Upload-only mode: no AI types selected → create course content directly
+      if (modalParams.types.length === 0) {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.type });
+          const courseId = modalParams.courseId
+            ?? (await coursesApi.getDefault()).id;
+          if (modalParams.mode === 'file' && modalParams.file) {
+            // File upload: save original file + extract text on backend
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              courseId,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            // Text/paste mode: create content with text only
+            await courseContentsApi.create({
+              course_id: courseId,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
+          }
+          resetModal();
+          loadData();
+        } catch {
+          // Silently handle — user will see content list refresh
+        }
+        return;
+      }
+
+      // Check for duplicates only when single type selected (skip for multi-select)
+      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+        try {
+          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* continue */ }
       }
 
-      const params: PendingGeneration = {
-        title: modalParams.title,
-        content: modalParams.content,
-        type: modalParams.type,
-        mode: modalParams.mode,
-        file: modalParams.file,
-        pastedImages: modalParams.pastedImages,
-        regenerateId: duplicateCheck?.existing_guide?.id,
-        courseId: modalParams.courseId,
-        courseContentId: modalParams.courseContentId,
-      };
-
       setDuplicateCheck(null);
       resetModal();
-      startGeneration(params);
+
+      // Fan out: one startGeneration() per selected type (parallel)
+      for (const type of modalParams.types) {
+        startGeneration({
+          title: modalParams.title,
+          content: modalParams.content,
+          type,
+          focusPrompt: modalParams.focusPrompt,
+          mode: modalParams.mode,
+          file: modalParams.file,
+          pastedImages: modalParams.pastedImages,
+          regenerateId: duplicateCheck?.existing_guide?.id,
+          courseId: modalParams.courseId,
+          courseContentId: modalParams.courseContentId,
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -510,10 +557,25 @@ export function StudyGuidesPage() {
     return counts;
   }, [contentItems, contentGuideMap, legacyGuides]);
 
-  if (loading) {
+  if (loading || loadError) {
     return (
       <DashboardLayout welcomeSubtitle="Manage study materials" showBackButton>
-        <PageSkeleton />
+        {loadError ? (
+          <div className="no-children-state">
+            <h3>Unable to Load Course Materials</h3>
+            <p>Something went wrong while loading your course materials. Please try again.</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+              <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
+                Retry
+              </button>
+              <button className="cancel-btn" onClick={() => window.location.reload()}>
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        ) : (
+          <PageSkeleton />
+        )}
       </DashboardLayout>
     );
   }
@@ -785,10 +847,20 @@ export function StudyGuidesPage() {
             const params = lastGenerateParamsRef.current;
             setDuplicateCheck(null);
             resetModal();
-            startGeneration({
-              ...params,
-              regenerateId: duplicateCheck?.existing_guide?.id,
-            });
+            for (const type of params.types) {
+              startGeneration({
+                title: params.title,
+                content: params.content,
+                type,
+                focusPrompt: params.focusPrompt,
+                mode: params.mode,
+                file: params.file,
+                pastedImages: params.pastedImages,
+                regenerateId: duplicateCheck?.existing_guide?.id,
+                courseId: params.courseId,
+                courseContentId: params.courseContentId,
+              });
+            }
           }
         }}
         onDismissDuplicate={() => setDuplicateCheck(null)}

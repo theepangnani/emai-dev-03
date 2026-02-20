@@ -208,12 +208,24 @@ export function MyKidsPage() {
     if (!targetCourseId) return;
     try {
       await courseContentsApi.update(reassignContent.id, { course_id: targetCourseId });
-      // Update local state
+      const targetCourseName = courses.find(c => c.id === targetCourseId)?.name ?? null;
+      // Update child-view materials list
       setMaterials(prev => prev.map(m =>
         m.id === reassignContent.id
-          ? { ...m, course_id: targetCourseId, course_name: courses.find(c => c.id === targetCourseId)?.name ?? null }
+          ? { ...m, course_id: targetCourseId, course_name: targetCourseName }
           : m
       ));
+      // Update unassigned materials: remove if moved to enrolled course, update if moved to another unassigned course
+      const isTargetUnassigned = unassignedCourses.some(c => c.id === targetCourseId);
+      if (isTargetUnassigned) {
+        setUnassignedMaterials(prev => prev.map(m =>
+          m.id === reassignContent.id
+            ? { ...m, course_id: targetCourseId, course_name: targetCourseName }
+            : m
+        ));
+      } else {
+        setUnassignedMaterials(prev => prev.filter(m => m.id !== reassignContent.id));
+      }
       setReassignContent(null);
     } catch { /* ignore */ }
   };
@@ -224,6 +236,8 @@ export function MyKidsPage() {
     try {
       const newCourse = await coursesApi.create({ name: categorizeNewName.trim() });
       setCourses(prev => [...prev, newCourse]);
+      // New course has no child enrolled — add to unassigned so handleReassignContent keeps the material visible
+      setUnassignedCourses(prev => [...prev, { id: newCourse.id, name: newCourse.name }]);
       await handleReassignContent(newCourse.id);
     } catch { /* ignore */ }
     setCategorizeCreating(false);
@@ -250,42 +264,17 @@ export function MyKidsPage() {
             <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
             {child.full_name}
             {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+            <span className="child-tab-detail">
+              {child.school_name && <>{child.school_name} · </>}
+              {child.course_count} {child.course_count === 1 ? 'course' : 'courses'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
+            </span>
           </button>
         ))}
       </div>
 
       {!selectedChild ? (
-        /* All-children overview */
+        /* All-children overview — tabs are the single navigation; jump straight to actionable content */
         <>
-          <div className="mykids-overview-grid">
-            {children.map((child, index) => (
-              <div
-                key={child.student_id}
-                className="mykids-child-card-enhanced"
-                onClick={() => setSelectedChild(child.student_id)}
-                onKeyDown={(e) => handleKeyDown(e, () => setSelectedChild(child.student_id))}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="mykids-child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }}>
-                  {getInitials(child.full_name)}
-                </div>
-                <div className="mykids-child-card-content">
-                  <div className="mykids-child-card-header">
-                    <span className="mykids-child-card-name">{child.full_name}</span>
-                    {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
-                  </div>
-                  {child.school_name && <div className="mykids-child-card-school">{child.school_name}</div>}
-                  <div className="mykids-child-card-stats">
-                    <span className="mykids-child-stat">{child.course_count} {child.course_count === 1 ? 'course' : 'courses'}</span>
-                    <span className="mykids-child-stat">{child.active_task_count} active {child.active_task_count === 1 ? 'task' : 'tasks'}</span>
-                  </div>
-                </div>
-                <div className="mykids-child-card-arrow">&rarr;</div>
-              </div>
-            ))}
-          </div>
-
           {/* Unassigned Courses & Materials */}
           {sectionLoading ? (
             <PageSkeleton />

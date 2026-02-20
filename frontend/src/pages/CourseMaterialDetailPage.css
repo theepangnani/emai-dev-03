@@ -110,6 +110,27 @@
   display: inline-block;
 }
 
+/* Focus prompt */
+.cm-focus-prompt {
+  margin-bottom: 1rem;
+}
+.cm-focus-prompt input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.cm-focus-prompt input:focus {
+  outline: 2px solid var(--color-accent);
+  border-color: transparent;
+}
+.cm-focus-prompt input:disabled {
+  opacity: 0.5;
+}
+
 /* Tab content */
 .cm-tab-content {
   min-height: 200px;

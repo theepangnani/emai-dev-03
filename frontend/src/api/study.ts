@@ -125,17 +125,17 @@ export interface QuizHistoryStats {
 
 // Study Tools API
 export const studyApi = {
-  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string }) => {
+  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string }) => {
     const response = await api.post('/api/study/generate', params);
     return response.data as StudyGuide;
   },
 
-  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number }) => {
+  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
     const response = await api.post('/api/study/quiz/generate', params);
     return response.data as Quiz;
   },
 
-  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number }) => {
+  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
     const response = await api.post('/api/study/flashcards/generate', params);
     return response.data as FlashcardSet;
   },
@@ -192,6 +192,7 @@ export const studyApi = {
     num_cards?: number;
     course_id?: number;
     course_content_id?: number;
+    focus_prompt?: string;
   }) => {
     const formData = new FormData();
     formData.append('file', params.file);
@@ -201,6 +202,7 @@ export const studyApi = {
     if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
     if (params.course_id) formData.append('course_id', params.course_id.toString());
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
+    if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
 
     const response = await api.post('/api/study/upload/generate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -217,6 +219,7 @@ export const studyApi = {
     num_cards?: number;
     course_id?: number;
     course_content_id?: number;
+    focus_prompt?: string;
   }) => {
     const formData = new FormData();
     formData.append('content', params.content);
@@ -226,6 +229,7 @@ export const studyApi = {
     if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
     if (params.course_id) formData.append('course_id', params.course_id.toString());
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
+    if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
     params.images.forEach(img => formData.append('images', img));
 
     const response = await api.post('/api/study/generate-with-images', formData, {

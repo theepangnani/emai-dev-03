@@ -16,6 +16,7 @@ from app.models.study_guide import StudyGuide
 from app.models.assignment import Assignment
 from app.models.course import Course
 from app.models.course_content import CourseContent
+from app.services.storage_service import save_file
 from app.models.student import Student, parent_students
 from app.models.course import student_courses
 from app.models.task import Task
@@ -383,6 +384,7 @@ async def generate_study_guide_endpoint(
             course_name=course_name,
             due_date=due_date,
             custom_prompt=body.custom_prompt,
+            focus_prompt=body.focus_prompt,
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
@@ -488,6 +490,7 @@ async def generate_quiz_endpoint(
             topic=topic,
             content=content,
             num_questions=body.num_questions,
+            focus_prompt=body.focus_prompt,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
@@ -603,6 +606,7 @@ async def generate_flashcards_endpoint(
             topic=topic,
             content=content,
             num_cards=body.num_cards,
+            focus_prompt=body.focus_prompt,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_cards, critical_dates = parse_critical_dates(raw_cards)
@@ -925,6 +929,7 @@ async def generate_from_text_and_images(
     num_cards: int = Form(10),
     course_id: Optional[int] = Form(None),
     course_content_id: Optional[int] = Form(None),
+    focus_prompt: Optional[str] = Form(None),
     images: List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -993,6 +998,7 @@ async def generate_from_text_and_images(
                 topic=title,
                 content=extracted_text,
                 num_questions=num_questions,
+                focus_prompt=focus_prompt,
             )
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
@@ -1012,6 +1018,7 @@ async def generate_from_text_and_images(
                 topic=title,
                 content=extracted_text,
                 num_cards=num_cards,
+                focus_prompt=focus_prompt,
             )
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
@@ -1031,6 +1038,7 @@ async def generate_from_text_and_images(
                 assignment_title=title,
                 assignment_description=extracted_text,
                 course_name="Pasted Content",
+                focus_prompt=focus_prompt,
             )
             content_result, critical_dates = parse_critical_dates(raw_content)
 
@@ -1098,6 +1106,7 @@ async def generate_from_file_upload(
     num_cards: int = Form(10),
     course_id: Optional[int] = Form(None),
     course_content_id: Optional[int] = Form(None),
+    focus_prompt: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1126,6 +1135,8 @@ async def generate_from_file_upload(
             detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024*1024)} MB"
         )
 
+    stored_path = save_file(file_content, file.filename or "unknown")
+
     try:
         extracted_text = process_file(file_content, file.filename or "unknown")
     except FileProcessingError as e:
@@ -1149,6 +1160,7 @@ async def generate_from_file_upload(
                 topic=title,
                 content=extracted_text,
                 num_questions=num_questions,
+                focus_prompt=focus_prompt,
             )
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
@@ -1168,6 +1180,7 @@ async def generate_from_file_upload(
                 topic=title,
                 content=extracted_text,
                 num_cards=num_cards,
+                focus_prompt=focus_prompt,
             )
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
@@ -1187,6 +1200,7 @@ async def generate_from_file_upload(
                 assignment_title=title,
                 assignment_description=extracted_text,
                 course_name="Uploaded Content",
+                focus_prompt=focus_prompt,
             )
             content, critical_dates = parse_critical_dates(raw_content)
 
@@ -1217,6 +1231,15 @@ async def generate_from_file_upload(
     )
     study_guide.course_id = resolved_course_id
     study_guide.course_content_id = resolved_cc_id
+
+    # Attach file metadata to CourseContent record
+    if resolved_cc_id:
+        cc_rec = db.query(CourseContent).filter(CourseContent.id == resolved_cc_id).first()
+        if cc_rec and not cc_rec.file_path:
+            cc_rec.file_path = stored_path
+            cc_rec.original_filename = file.filename
+            cc_rec.file_size = len(file_content)
+            cc_rec.mime_type = file.content_type
 
     # Enforce limit and save to database
     enforce_study_guide_limit(db, current_user)

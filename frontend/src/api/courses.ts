@@ -13,6 +13,10 @@ export interface CourseContentItem {
   google_classroom_url: string | null;
   created_by_user_id: number | null;
   google_classroom_material_id: string | null;
+  has_file: boolean;
+  original_filename: string | null;
+  file_size: number | null;
+  mime_type: string | null;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -141,6 +145,18 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('course_id', String(courseId));
+    if (title) formData.append('title', title);
+    if (contentType) formData.append('content_type', contentType);
+    const response = await api.post('/api/course-contents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as CourseContentItem;
+  },
+
   update: async (id: number, data: {
     title?: string;
     description?: string;
@@ -165,6 +181,26 @@ export const courseContentsApi = {
 
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
+  },
+
+  download: async (id: number) => {
+    const response = await api.get(`/api/course-contents/${id}/download`, {
+      responseType: 'blob',
+    });
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `document-${id}.txt`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (match) filename = match[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };
 

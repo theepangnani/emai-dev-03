@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
 import type { InspirationMessage } from '../api/client';
@@ -16,12 +16,19 @@ interface SidebarAction {
   onClick: () => void;
 }
 
+export interface InspirationData {
+  text: string;
+  author: string | null;
+}
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
   showBackButton?: boolean;
   onCreateTask?: () => void;
+  /** When provided, replaces the default welcome section. Receives inspiration data. */
+  headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
 }
 
 // Icon map for nav items (unicode emojis per project convention)
@@ -38,19 +45,19 @@ const NAV_ICONS: Record<string, string> = {
   'Teacher Comms': '\u{1F4E8}',
 };
 
-// Default quick action icons for parent role
+// Quick action icons — must match NAV_ICONS base icons for consistency
 const QUICK_ACTION_ICONS: Record<string, string> = {
-  '+ Course Material': '\u{1F4C4}',
-  '+ Create Course Material': '\u{1F4C4}',
-  '+ Task': '\u2795',
+  '+ Course Material': '\u{1F4DD}',
+  '+ Create Course Material': '\u{1F4DD}',
+  '+ Task': '\u2705',
   '+ Child': '\u{1F476}',
   '+ Add Child': '\u{1F476}',
-  '+ Course': '\u{1F393}',
-  '+ Add Course': '\u{1F393}',
-  '+ Create Study Material': '\u{1F4C4}',
+  '+ Course': '\u{1F4DA}',
+  '+ Add Course': '\u{1F4DA}',
+  '+ Create Study Material': '\u{1F4DD}',
 };
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask }: DashboardLayoutProps) {
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -167,11 +174,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     const actions: SidebarAction[] = [];
     // + Course Material (sidebarActions[1] if exists)
     if (sidebarActions && sidebarActions.length > 1) {
-      actions.push({ label: '+ Course Material', icon: '\u{1F4C4}', onClick: sidebarActions[1].onClick });
+      actions.push({ label: '+ Course Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
     }
     // + Task
     if (onCreateTask) {
-      actions.push({ label: '+ Task', icon: '\u2795', onClick: onCreateTask });
+      actions.push({ label: '+ Task', icon: '\u2705', onClick: onCreateTask });
     }
     // + Child (sidebarActions[0] if exists)
     if (sidebarActions && sidebarActions.length > 0) {
@@ -327,7 +334,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                   className="sidebar-action"
                   onClick={() => handleActionClick(action)}
                 >
-                  <span className="sidebar-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                  <span className="sidebar-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
                   <span className="sidebar-action-label">{action.label}</span>
                 </button>
               ))}
@@ -346,9 +353,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                 className={`ps-nav-item${location.pathname === item.path ? ' active' : ''}`}
                 onClick={() => navigate(item.path)}
                 title={item.label}
+                aria-label={item.label}
               >
                 <span className="ps-nav-icon">{NAV_ICONS[item.label] || ''}</span>
-                <span className="ps-nav-label">{item.label}</span>
                 {item.path === '/messages' && unreadCount > 0 && (
                   <span className="ps-nav-badge">{unreadCount}</span>
                 )}
@@ -359,7 +366,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
           {persistentQuickActions.length > 0 && (
             <>
               <div className="ps-divider" />
-              <div className="ps-section-title">Quick Actions</div>
               <div className="persistent-sidebar-actions">
                 {persistentQuickActions.map((action, i) => (
                   <button
@@ -367,9 +373,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                     className="ps-action-item"
                     onClick={action.onClick}
                     title={action.label}
+                    aria-label={action.label}
                   >
-                    <span className="ps-action-icon">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
-                    <span className="ps-action-label">{action.label}</span>
+                    <span className="ps-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
                   </button>
                 ))}
               </div>
@@ -378,25 +384,37 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         </aside>
 
         <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
-        <div className="welcome-section">
-          {inspiration ? (
-            <>
-              <h2 className="inspiration-text">"{inspiration.text}"</h2>
-              {inspiration.author && (
-                <p className="inspiration-author">— {inspiration.author}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
-              <p>{welcomeSubtitle || "Here's your overview"}</p>
-            </>
-          )}
-        </div>
+        {headerSlot ? (
+          headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
+        ) : (
+          <div className="welcome-section">
+            {inspiration ? (
+              <>
+                <h2 className="inspiration-text">"{inspiration.text}"</h2>
+                {inspiration.author && (
+                  <p className="inspiration-author">— {inspiration.author}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
+                <p>{welcomeSubtitle || "Here's your overview"}</p>
+              </>
+            )}
+          </div>
+        )}
 
         {children}
       </main>
       </div>{/* end dashboard-body */}
+
+      <footer className="dashboard-footer">
+        <Link to="/privacy">Privacy Policy</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <Link to="/terms">Terms of Service</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <a href="mailto:support@classbridge.ca">Contact Us</a>
+      </footer>
 
       <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 

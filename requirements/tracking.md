@@ -181,6 +181,9 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #543: Dashboard: Quick Actions bar + Student Detail Panel with urgency-grouped tasks~~ ✅
 - ~~Issue #544: Dashboard: Calendar default collapsed + dead code cleanup~~ ✅
 
+### Phase 1 - Implemented (Feb 18: Dashboard UX Polish — #557)
+- ~~Issue #557: Parent Dashboard UX: Today's Focus header, icon-only sidebar, collapsible detail panel~~ ✅ (removed redundant status cards; simplified AlertBanner to overdue + invites only; added Today's Focus header with urgency badges and "All caught up!" state; converted sidebar to always icon-only with bigger icons and hover tooltips; made StudentDetailPanel collapsible with summary header; redesigned QuickActionsBar with primary/secondary action hierarchy)
+
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers

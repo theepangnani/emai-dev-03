@@ -17,6 +17,7 @@ vi.mock('../api/client', () => ({
   studyApi: {
     getGuide: (...args: any[]) => mockGetGuide(...args),
     updateGuide: vi.fn(),
+    saveQuizResult: vi.fn().mockResolvedValue({ id: 1 }),
   },
   coursesApi: { list: vi.fn().mockResolvedValue([]) },
   tasksApi: { create: vi.fn() },

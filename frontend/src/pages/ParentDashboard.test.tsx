@@ -206,15 +206,13 @@ describe('ParentDashboard', () => {
   })
 
   // ── Dashboard with Children ──────────────────────────────────
-  it('renders status summary cards', async () => {
+  it('renders student detail panel', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Overdue/)).toBeInTheDocument()
+      // With 1 child, auto-selects Alex Smith → "Alex Smith's Details"
+      expect(screen.getByText(/Alex Smith's Details/)).toBeInTheDocument()
     })
-    expect(screen.getByText(/Due Today/)).toBeInTheDocument()
-    expect(screen.getAllByText(/Messages/).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/Total Tasks/)).toBeInTheDocument()
   })
 
   it('renders child tab with name and grade', async () => {
@@ -261,30 +259,20 @@ describe('ParentDashboard', () => {
     expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
   })
 
-  // ── Status Card Navigation ───────────────────────────────────
-  it('navigates to /tasks?due=overdue on Overdue card click', async () => {
-    const user = userEvent.setup()
+  // ── Alert Banner Navigation ─────────────────────────────────
+  it('shows overdue alert banner with View link', async () => {
+    mockGetDashboard.mockResolvedValue(
+      createMockParentDashboard({
+        children: [child1],
+        child_highlights: [highlight1],
+        all_tasks: [{ id: 1, title: 'Late HW', due_date: '2020-01-01', is_completed: false, archived_at: null, created_by_user_id: 1, assigned_to_user_id: 1100, assignee_name: 'Alex Smith', creator_name: 'Parent', description: null, priority: null, category: null, completed_at: null, course_id: null, course_content_id: null, study_guide_id: null, course_name: null, course_content_title: null, study_guide_title: null, study_guide_type: null, created_at: '2020-01-01', updated_at: null }],
+      }),
+    )
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Overdue/)).toBeInTheDocument()
+      expect(screen.getByText(/overdue item/i)).toBeInTheDocument()
     })
-
-    await user.click(screen.getByText(/Overdue/).closest('.status-card')!)
-    expect(mockNavigate).toHaveBeenCalledWith('/tasks?due=overdue')
-  })
-
-  it('navigates to /messages on Messages card click', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ParentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/Overdue/)).toBeInTheDocument()
-    })
-
-    const messagesCard = screen.getAllByText(/Messages/).map(el => el.closest('.status-card')).find(Boolean)!
-    await user.click(messagesCard)
-    expect(mockNavigate).toHaveBeenCalledWith('/messages')
   })
 
   // ── Calendar ─────────────────────────────────────────────────
@@ -322,30 +310,28 @@ describe('ParentDashboard', () => {
   })
 
   // ── Quick Action Buttons ─────────────────────────────────────
-  it('renders quick actions bar with Material, Task, Child, Course buttons', async () => {
+  it('renders quick actions bar with Upload Documents and Create Task buttons', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
     })
-    expect(screen.getByText('Task')).toBeInTheDocument()
-    expect(screen.getByText('Child')).toBeInTheDocument()
-    expect(screen.getByText('Course')).toBeInTheDocument()
+    expect(screen.getByText('Create Task')).toBeInTheDocument()
   })
 
-  it('opens study modal from Material quick action', async () => {
+  it('opens study modal from Upload Documents quick action', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Material'))
+    await user.click(screen.getByText('Upload Documents'))
 
     await waitFor(() => {
       // Study material modal should open
-      expect(screen.getByText(/Create Study Material/i)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
   })
 
@@ -512,7 +498,7 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/pending invite/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/pending invite/i).length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.getByText('pending@example.com')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Resend' })).toBeInTheDocument()
@@ -555,16 +541,16 @@ describe('ParentDashboard', () => {
     await user.click(screen.getAllByRole('button', { name: /\+ Create Course Material/i })[0])
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Create Study Material' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
   })
 
-  // ── Messages count ───────────────────────────────────────────
-  it('displays unread message count', async () => {
+  // ── Dashboard loads successfully ─────────────────────────────
+  it('loads dashboard data and renders child name', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('2')).toBeInTheDocument() // unread_messages = 2
+      expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
     })
   })
 })

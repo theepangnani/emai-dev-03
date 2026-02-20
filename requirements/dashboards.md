@@ -4,61 +4,69 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 
 | Dashboard | Key Features | Status |
 |-----------|--------------|--------|
-| **Parent Dashboard** | Persistent sidebar, child filter pills, alert banner, urgency-grouped tasks, student detail panel, Quick Actions bar, collapsible calendar | Implemented (v3 simplification — #540, PR #545) |
+| **Parent Dashboard** | Icon-only sidebar, child filter pills, Today's Focus header, simplified alert banner, collapsible student detail panel, primary/secondary Quick Actions, collapsible calendar | Implemented (v3 simplification — #540, PR #545; v3.1 UX polish — #557) |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination), role management, broadcast messaging, individual user messaging | Implemented (messaging planned) |
 
 > **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
 
-### Parent Dashboard Layout (v3 — Simplified) - IMPLEMENTED
+### Parent Dashboard Layout (v3.1 — Simplified + UX Polish) - IMPLEMENTED
 
-**GitHub Issues:** #540 (parent), #541 (sidebar), #542 (alert banner + pills), #543 (actions + detail panel), #544 (calendar + cleanup) — all closed, deployed via PR #545
+**GitHub Issues:** #540 (parent), #541 (sidebar), #542 (alert banner + pills), #543 (actions + detail panel), #544 (calendar + cleanup), #557 (UX polish: Today's Focus, icon-only sidebar, collapsible panel) — all closed, deployed via PR #545
 
-The Parent Dashboard uses an **urgency-first, single-hub layout**: persistent sidebar, child filter pills, alert banner, quick actions, student detail panel, and collapsible calendar. Replaces the v2 calendar-centric layout.
+The Parent Dashboard uses an **urgency-first, single-hub layout**: icon-only sidebar, child filter pills, Today's Focus header, simplified alert banner, primary/secondary quick actions, collapsible student detail panel, and collapsible calendar. Replaces the v2 calendar-centric layout.
 
 #### Design Principles
 - **No scroll / single viewport**: The entire dashboard should fit within one screen (no vertical scrolling on desktop). All content visible without scrolling at 1080p resolution. Overflow handled via expandable sections and collapsed panels, not page length.
 - **Urgency-first**: Lead with what needs action NOW (overdue → due today → due soon)
-- **Progressive disclosure**: Summary counts at top, expandable detail below
+- **Progressive disclosure**: Summary counts in Today's Focus header, expandable detail below
 - **Single child selection model**: One mechanism (pills), one effect (filters everything)
-- **Consistent creation patterns**: Every creatable entity gets a button in the same action bar
+- **Consistent creation patterns**: Every creatable entity gets a button in the same action bar, with primary/secondary visual hierarchy
 - **Calendar as reference, not center**: Default collapsed with item count badge
+- **Positive reinforcement**: "All caught up!" message when no urgent tasks
 
 #### Layout Structure
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header: Logo | Search (Ctrl+K) | Bell | User ▼ | Sign Out  │
-├────────────┬────────────────────────────────────────────────┤
-│ PERSISTENT │  [Child1] [Child2] [All]   ← Child Filter Pills│
-│ SIDEBAR    │─────────────────────────────────────────────────│
-│            │  ⚠ ALERT BANNER (overdue, invites, messages)   │
-│ Overview   │─────────────────────────────────────────────────│
-│ My Kids    │  STATUS CARDS                                   │
-│ Courses    │  [Overdue ❗] [Due Today] [Next 3 Days] [Tasks] │
-│ Materials  │─────────────────────────────────────────────────│
-│ Tasks      │  QUICK ACTIONS                                  │
-│ Messages 3 │  [+ Material] [+ Task] [+ Child] [+ Course]    │
-│ Help       │─────────────────────────────────────────────────│
-│            │  STUDENT DETAIL PANEL (for selected child)      │
-│ ─────────  │  ┌ Courses (3) ─────────────────────────┐      │
-│ + Material │  │ Math 101 | Science | English          │      │
-│ + Task     │  ├ Course Materials (5) ─────────────────┤      │
-│ + Child    │  │ Ch5 Guide | Quiz 3 | Flashcards...    │      │
-│ + Course   │  ├ Tasks by Urgency ─────────────────────┤      │
-│            │  │ 🔴 Overdue: Math HW (2 days ago)       │      │
-│            │  │ 🟡 Today: Science Lab Report            │      │
-│            │  │ 🟢 Next 3 Days: English Essay (Wed)     │      │
-│            │  └───────────────────────────────────────┘      │
-│            │─────────────────────────────────────────────────│
-│            │  ▶ Calendar (collapsed by default)              │
-└────────────┴────────────────────────────────────────────────┘
+├─────┬───────────────────────────────────────────────────────┤
+│ICON │  [Child1] [Child2] [All]   ← Child Filter Pills      │
+│ONLY │───────────────────────────────────────────────────────│
+│SIDE │  TODAY'S FOCUS HEADER                                 │
+│BAR  │  "Good morning, Name!"                                │
+│     │  [3 Overdue] [2 Due Today] [5 Upcoming]               │
+│ 🏠  │  "Small steps lead to big achievements" (quote)       │
+│ 👨‍👩‍👧 │  — OR —                                               │
+│ 📚  │  "All caught up! Great job staying on top of things." │
+│ 📄  │───────────────────────────────────────────────────────│
+│ ✅  │  ⚠ ALERT BANNER (overdue + pending invites only)     │
+│ 💬  │───────────────────────────────────────────────────────│
+│ ❓  │  QUICK ACTIONS (primary/secondary hierarchy)          │
+│     │  [Create Study Material] [Create Task]  ← PRIMARY     │
+│     │  [+ Child] [+ Course]                   ← SECONDARY   │
+│     │───────────────────────────────────────────────────────│
+│     │  STUDENT DETAIL PANEL (collapsible)                   │
+│     │  ┌─ Summary Header (click to collapse) ──────┐       │
+│     │  │ "Emma — 3 courses, 2 overdue tasks"       │       │
+│     │  ├─ Courses (3) ─────────────────────────────┤       │
+│     │  │ Math 101 | Science | English              │       │
+│     │  ├─ Course Materials (5) ────────────────────┤       │
+│     │  │ Ch5 Guide | Quiz 3 | Flashcards...        │       │
+│     │  ├─ Tasks by Urgency ────────────────────────┤       │
+│     │  │ Overdue: Math HW (2 days ago)             │       │
+│     │  │ Today: Science Lab Report                  │       │
+│     │  │ Next 3 Days: English Essay (Wed)           │       │
+│     │  └────────────────────────────────────────────┘       │
+│     │───────────────────────────────────────────────────────│
+│     │  ▶ Calendar (collapsed by default)                    │
+└─────┴───────────────────────────────────────────────────────┘
 ```
 
-#### 1. Persistent Sidebar (#541)
-The `DashboardLayout` renders a **persistent left sidebar** on desktop (≥1024px), replacing the hamburger slide-out menu.
+#### 1. Icon-Only Sidebar (#541, #557)
+The `DashboardLayout` renders an **always icon-only left sidebar** on desktop (≥768px), replacing the previous full-width persistent sidebar.
 
-**Navigation items** (all roles):
+**Navigation items** (all roles, icon-only with hover tooltips):
 - **Overview** — Dashboard view
 - **Child Profiles** — `/my-kids`
 - **Courses** — `/courses`
@@ -67,15 +75,14 @@ The `DashboardLayout` renders a **persistent left sidebar** on desktop (≥1024p
 - **Messages** — `/messages` (with unread badge)
 - **Help** — `/help`
 
-**Quick Actions** (below divider):
-- **+ Course Material** — Opens CreateStudyMaterialModal
-- **+ Task** — Opens CreateTaskModal
-- **+ Child** — Opens Link Child modal
-- **+ Course** — Opens Create Course modal
+**Design:**
+- Always displays as icon-only (no expanded label mode)
+- Bigger icons for easy recognition
+- Hover tooltips show the full navigation label
+- Compact width maximizes content area
 
 **Responsive behavior:**
-- ≥1024px: Full sidebar with labels
-- 768-1023px: Icon-only sidebar
+- ≥768px: Icon-only sidebar with hover tooltips
 - <768px: Hamburger overlay (existing behavior)
 
 All non-dashboard pages include a back button (←) in the header (#529).
@@ -83,35 +90,48 @@ All non-dashboard pages include a back button (←) in the header (#529).
 #### 2. Child Filter Pills (#542)
 - Single row of clickable pill buttons at the top of the content area (parent only)
 - "All Children" pill shown when >1 child
-- **Click** a pill → filters everything below (status cards, detail panel, calendar, tasks)
+- **Click** a pill → filters everything below (Today's Focus, detail panel, calendar, tasks)
 - **Click again** → deselects back to "All"
 - Single-child families: child auto-selected, no pills shown
 - Replaces the old child tab bar AND child highlight cards (removed as redundant)
 
-#### 3. Alert Banner (#542)
-- Appears below child pills when there are urgent items
+#### 3. Today's Focus Header (#557)
+Replaces the old welcome section and the removed status summary cards. Provides an at-a-glance view of the day's priorities.
+
+- **Greeting**: "Good morning/afternoon/evening, [Name]!"
+- **Urgency badges**: Compact inline badges showing overdue, due-today, and upcoming counts (filtered by selected child)
+- **Inspiration quote**: Short, compact motivational quote (role-based)
+- **All-clear state**: When no overdue or due-today items exist, displays a positive "All caught up! Great job staying on top of things." message instead of counts
+- Badges link to filtered task views (e.g., clicking "3 Overdue" navigates to `/tasks?due=overdue`)
+
+#### 4. Alert Banner (#542, #557 — simplified)
+- Appears below Today's Focus header when there are urgent items
 - **Red section**: Overdue items (count + "View" link to `/tasks?due=overdue`)
-- **Amber section**: Pending invites (with Resend button), unread messages (count + link)
-- **Blue section**: Upcoming deadlines (next 24h)
+- **Amber section**: Pending invites (with Resend button)
 - Sections are independently dismissible per session
 - Hidden when no urgent items
+- **Removed** (v3.1): Blue upcoming deadlines section and unread messages section — these are now covered by Today's Focus header and the notification bell respectively
 
-#### 4. Status Summary Cards
-Four cards showing key metrics (filtered by selected child):
-- **Overdue** — red accent when >0, links to `/tasks?due=overdue`
-- **Due Today** — accent when >0, links to `/tasks?due=today`
-- **Next 3 Days** — count of items due in next 3 days
-- **Total Tasks** — links to `/tasks`
+#### 5. Quick Actions Bar (#543, #557 — redesigned)
+Row of buttons with **primary/secondary visual hierarchy**:
 
-#### 5. Quick Actions Bar (#543)
-Row of 4 buttons always visible above the main content:
-- **+ Course Material** → CreateStudyMaterialModal (existing)
-- **+ Task** → CreateTaskModal (reuse from TasksPage)
+**Primary actions** (larger, accent-colored buttons):
+- **Create Study Material** → CreateStudyMaterialModal (existing)
+- **Create Task** → CreateTaskModal (reuse from TasksPage)
+
+**Secondary actions** (smaller, outlined/subtle buttons):
 - **+ Child** → Link Child modal (existing)
 - **+ Course** → Create Course modal (existing)
 
-#### 6. Student Detail Panel (#543)
-When a child is selected, shows their world inline:
+The primary/secondary split reflects usage frequency — parents create study materials and tasks daily, but add children and courses infrequently.
+
+#### 6. Collapsible Student Detail Panel (#543, #557 — collapsible)
+When a child is selected, shows their world inline with a collapsible interface:
+
+**Summary header** (always visible, click to collapse/expand):
+- Shows child name with key stats (course count, overdue task count)
+- Chevron indicator for expand/collapse state
+- **Defaults to expanded** on page load
 
 **Courses** (expandable section):
 - List of enrolled courses with color dots
@@ -120,9 +140,9 @@ When a child is selected, shows their world inline:
 - Recent materials with type badges (guide/quiz/flashcards)
 
 **Tasks by Urgency** (always expanded):
-- 🔴 **Overdue**: red items with "X days overdue" badge
-- 🟡 **Due Today**: amber items
-- 🟢 **Next 3 Days**: green items with day label
+- **Overdue**: red items with "X days overdue" badge
+- **Due Today**: amber items
+- **Next 3 Days**: green items with day label
 - Remaining tasks collapsed under "Other"
 
 **"All Children" mode** — merges tasks from all children with child-name labels on each item.
