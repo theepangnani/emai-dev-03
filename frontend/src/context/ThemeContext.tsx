@@ -24,10 +24,6 @@ function getInitialTheme(): Theme {
   if (stored && THEMES.includes(stored as Theme)) {
     return stored as Theme;
   }
-  // Auto-detect OS preference
-  if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
   return 'light';
 }
 
@@ -85,21 +81,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(theme);
     applyStyle(style);
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Listen for OS theme changes
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => {
-      // Only auto-switch if user hasn't manually set a preference
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        const next = e.matches ? 'dark' : 'light';
-        setThemeState(next);
-        applyTheme(next);
-      }
-    };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [applyTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, cycleTheme, style, toggleStyle }}>
