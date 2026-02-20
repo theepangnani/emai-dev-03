@@ -147,7 +147,7 @@ export function ParentDashboard() {
   // Today's Focus dismiss state
   const [focusDismissed, setFocusDismissed] = useState(false);
 
-  // Course materials for StudentDetailPanel
+  // Class materials for StudentDetailPanel
   const [courseMaterials, setCourseMaterials] = useState<CourseMaterial[]>([]);
 
   // ============================================
@@ -560,7 +560,7 @@ export function ParentDashboard() {
     return children.find(c => c.student_id === selectedChild)?.user_id ?? null;
   }, [selectedChild, children]);
 
-  // Load course materials for StudentDetailPanel
+  // Load class materials for StudentDetailPanel
   useEffect(() => {
     if (loading) return;
     const params: { student_user_id?: number } = {};
@@ -935,7 +935,7 @@ export function ParentDashboard() {
       welcomeSubtitle="At-a-glance monitoring, calendar, and quick actions"
       sidebarActions={[
         { label: '+ Add Child', onClick: () => setShowLinkModal(true) },
-        { label: '+ Create Course Material', onClick: () => setShowStudyModal(true) },
+        { label: '+ Create Class Material', onClick: () => setShowStudyModal(true) },
       ]}
       onCreateTask={() => setShowCreateTaskModal(true)}
       headerSlot={children.length > 0 ? renderHeaderSlot : undefined}

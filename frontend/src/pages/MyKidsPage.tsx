@@ -47,7 +47,7 @@ export function MyKidsPage() {
   const [showTasks, setShowTasks] = useState(true);
   const [showTeachers, setShowTeachers] = useState(true);
 
-  // Reassign course material to course
+  // Reassign class material to course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
   const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
   const [categorizeCourseId, setCategorizeCourseId] = useState<number | string>('');
@@ -394,16 +394,16 @@ export function MyKidsPage() {
             )}
           </div>
 
-          {/* ── Course Materials ───────────────────── */}
+          {/* ── Class Materials ───────────────────── */}
           <div className="mykids-section">
             <button className="mykids-section-header" onClick={() => setShowMaterials(p => !p)}>
               <span className={`section-chevron${showMaterials ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon">&#128196;</span> Course Materials ({materials.length})
+              <span className="section-icon">&#128196;</span> Class Materials ({materials.length})
             </button>
             {showMaterials && (
               <div className="mykids-card-grid">
                 {materials.length === 0 ? (
-                  <p className="mykids-empty-hint">No course materials yet.</p>
+                  <p className="mykids-empty-hint">No class materials yet.</p>
                 ) : materials.map(m => (
                   <div key={m.id} className="mykids-item-card mykids-item-card--material" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-item-card-actions">
@@ -584,7 +584,7 @@ export function MyKidsPage() {
           </div>
         </div>
       )}
-      {/* Reassign course material to course modal */}
+      {/* Reassign class material to course modal */}
       {reassignContent && (
         <div className="modal-overlay" onClick={() => setReassignContent(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>

@@ -56,14 +56,14 @@ describe('DashboardLayout', () => {
     expect(screen.getAllByText('Overview').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Child Profiles').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Courses').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Course Materials').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Class Materials').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows standard nav items for student role', () => {
     renderLayout('student')
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Courses').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Course Materials').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Class Materials').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows teacher comms for teacher role', () => {

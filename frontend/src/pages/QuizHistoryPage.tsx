@@ -184,7 +184,7 @@ export function QuizHistoryPage() {
                 <h3>No quiz attempts yet</h3>
                 <p>Complete a quiz to start tracking your progress!</p>
                 <Link to="/course-materials" className="qh-cta-btn">
-                  Browse Course Materials
+                  Browse Class Materials
                 </Link>
               </div>
             )}

@@ -308,7 +308,7 @@ export function CourseDetailPage() {
   const handleDeleteContent = async (contentId: number) => {
     const ok = await confirm({
       title: 'Archive Content',
-      message: 'This will archive the content item. You can restore it later from Course Materials.',
+      message: 'This will archive the content item. You can restore it later from Class Materials.',
       confirmLabel: 'Archive',
     });
     if (!ok) return;
@@ -599,7 +599,7 @@ export function CourseDetailPage() {
 
         {/* Action bar */}
         <div className="course-detail-actions">
-          <h3>Course Materials</h3>
+          <h3>Class Materials</h3>
           {canEdit && (
             <div className="course-detail-action-btns">
               <button className="courses-btn secondary" onClick={openAddContentModal}>+ Add Content</button>
@@ -618,7 +618,7 @@ export function CourseDetailPage() {
           <ListSkeleton rows={3} />
         ) : contents.length === 0 ? (
           <div className="course-detail-empty-content">
-            <p>{canEdit ? 'No course materials yet. Add notes, links, resources, or upload documents.' : 'No course materials available yet.'}</p>
+            <p>{canEdit ? 'No class materials yet. Add notes, links, resources, or upload documents.' : 'No class materials available yet.'}</p>
           </div>
         ) : (
           <div className="course-detail-content-list">

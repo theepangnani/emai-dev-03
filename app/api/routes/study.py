@@ -270,7 +270,7 @@ def auto_create_tasks_from_dates(
 
         task = Task(
             title=d["title"],
-            description=f"Auto-created from course material generation",
+            description=f"Auto-created from class material generation",
             due_date=due_date,
             priority=priority,
             created_by_user_id=user.id,

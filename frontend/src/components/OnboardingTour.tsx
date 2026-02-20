@@ -156,7 +156,7 @@ export const STUDENT_TOUR_STEPS: TourStep[] = [
   },
   {
     target: '.sidebar-nav .sidebar-link:nth-child(3)',
-    title: 'Course Materials',
+    title: 'Class Materials',
     content: 'Access study guides, quizzes, and flashcards generated from your assignments.',
     position: 'right',
   },

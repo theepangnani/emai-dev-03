@@ -534,11 +534,11 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // "+ Create Course Material" appears in both sidebar and quick actions bar
-      expect(screen.getAllByRole('button', { name: /\+ Create Course Material/i }).length).toBeGreaterThanOrEqual(1)
+      // "+ Create Class Material" appears in both sidebar and quick actions bar
+      expect(screen.getAllByRole('button', { name: /\+ Create Class Material/i }).length).toBeGreaterThanOrEqual(1)
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ Create Course Material/i })[0])
+    await user.click(screen.getAllByRole('button', { name: /\+ Create Class Material/i })[0])
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()

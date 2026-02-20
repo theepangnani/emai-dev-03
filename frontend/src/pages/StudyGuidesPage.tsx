@@ -218,7 +218,7 @@ export function StudyGuidesPage() {
   };
 
   const handleArchiveContent = async (id: number) => {
-    const ok = await confirm({ title: 'Archive Material', message: 'This will archive the course material. You can restore it later from the archive.', confirmLabel: 'Archive' });
+    const ok = await confirm({ title: 'Archive Material', message: 'This will archive the class material. You can restore it later from the archive.', confirmLabel: 'Archive' });
     if (!ok) return;
     try {
       await courseContentsApi.delete(id);
@@ -562,8 +562,8 @@ export function StudyGuidesPage() {
       <DashboardLayout welcomeSubtitle="Manage study materials" showBackButton>
         {loadError ? (
           <div className="no-children-state">
-            <h3>Unable to Load Course Materials</h3>
-            <p>Something went wrong while loading your course materials. Please try again.</p>
+            <h3>Unable to Load Class Materials</h3>
+            <p>Something went wrong while loading your class materials. Please try again.</p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
               <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
                 Retry
@@ -641,7 +641,7 @@ export function StudyGuidesPage() {
 
         {/* Course content items */}
         <div className="guides-section">
-          <h3>Course Materials ({filteredContent.length + generatingItems.length})</h3>
+          <h3>Class Materials ({filteredContent.length + generatingItems.length})</h3>
           {filteredContent.length > 0 || generatingItems.length > 0 ? (
             <div className="guides-list">
               {/* In-progress generation placeholders */}
@@ -699,7 +699,7 @@ export function StudyGuidesPage() {
             </div>
           ) : (
             <div className="guides-empty">
-              <p>No course materials yet. Click "+ Create" to generate study materials from your content.</p>
+              <p>No class materials yet. Click "+ Create" to generate study materials from your content.</p>
             </div>
           )}
         </div>
@@ -984,8 +984,8 @@ export function StudyGuidesPage() {
             <h2>Tasks Created</h2>
             <p className="modal-desc">
               {datePromptTasks.length === 1
-                ? 'A task was auto-created from your course material. Set the action date:'
-                : `${datePromptTasks.length} tasks were auto-created from your course material. Set the action dates:`}
+                ? 'A task was auto-created from your class material. Set the action date:'
+                : `${datePromptTasks.length} tasks were auto-created from your class material. Set the action dates:`}
             </p>
             <div className="modal-form">
               {datePromptTasks.map(task => (

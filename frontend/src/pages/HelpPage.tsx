@@ -24,7 +24,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         question: 'How do I sync my courses and assignments?',
         answer:
-          'After connecting Google Classroom, your courses sync automatically. To manually refresh, click the sync button on your Dashboard or Courses page. Assignments, due dates, and course materials will be pulled from Google Classroom.',
+          'After connecting Google Classroom, your courses sync automatically. To manually refresh, click the sync button on your Dashboard or Courses page. Assignments, due dates, and class materials will be pulled from Google Classroom.',
       },
       {
         question: 'How do I link my child\'s account (for parents)?',
@@ -37,9 +37,9 @@ const FAQ_SECTIONS: FaqSection[] = [
     title: 'Study Tools',
     items: [
       {
-        question: 'How do I create a study guide from course materials?',
+        question: 'How do I create a study guide from class materials?',
         answer:
-          'Navigate to "Course Materials," select a course, and click "Generate Study Guide." ClassBridge uses AI to create a structured study guide from your course content. You can also upload your own files (PDFs, documents) to generate guides from.',
+          'Navigate to "Class Materials," select a course, and click "Generate Study Guide." ClassBridge uses AI to create a structured study guide from your course content. You can also upload your own files (PDFs, documents) to generate guides from.',
       },
       {
         question: 'How do I take a quiz or use flashcards?',
@@ -49,7 +49,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         question: 'How do I upload files for study guide generation?',
         answer:
-          'On the "Course Materials" page, click "Upload Material." You can upload PDFs, Word documents, and other text files. ClassBridge will process the content and let you generate AI-powered study guides, quizzes, and flashcards from them.',
+          'On the "Class Materials" page, click "Upload Material." You can upload PDFs, Word documents, and other text files. ClassBridge will process the content and let you generate AI-powered study guides, quizzes, and flashcards from them.',
       },
     ],
   },

@@ -36,7 +36,7 @@ const NAV_ICONS: Record<string, string> = {
   'Overview': '\u{1F3E0}',
   'Child Profiles': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
   'Courses': '\u{1F4DA}',
-  'Course Materials': '\u{1F4DD}',
+  'Class Materials': '\u{1F4DD}',
   'Quiz History': '\u{1F4CA}',
   'Tasks': '\u2705',
   'Messages': '\u{1F4AC}',
@@ -47,8 +47,8 @@ const NAV_ICONS: Record<string, string> = {
 
 // Quick action icons — must match NAV_ICONS base icons for consistency
 const QUICK_ACTION_ICONS: Record<string, string> = {
-  '+ Course Material': '\u{1F4DD}',
-  '+ Create Course Material': '\u{1F4DD}',
+  '+ Class Material': '\u{1F4DD}',
+  '+ Create Class Material': '\u{1F4DD}',
   '+ Task': '\u2705',
   '+ Child': '\u{1F476}',
   '+ Add Child': '\u{1F476}',
@@ -88,7 +88,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
         { label: 'Overview', path: '/dashboard' },
         { label: 'Child Profiles', path: '/my-kids' },
         { label: 'Courses', path: '/courses' },
-        { label: 'Course Materials', path: '/course-materials' },
+        { label: 'Class Materials', path: '/course-materials' },
         { label: 'Quiz History', path: '/quiz-history' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
@@ -99,7 +99,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     const items: Array<{ label: string; path: string }> = [
       { label: 'Dashboard', path: '/dashboard' },
       { label: 'Courses', path: '/courses' },
-      { label: 'Course Materials', path: '/course-materials' },
+      { label: 'Class Materials', path: '/course-materials' },
       { label: 'Quiz History', path: '/quiz-history' },
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
@@ -172,9 +172,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
   const persistentQuickActions = useMemo(() => {
     if (user?.role !== 'parent') return sidebarActions || [];
     const actions: SidebarAction[] = [];
-    // + Course Material (sidebarActions[1] if exists)
+    // + Class Material (sidebarActions[1] if exists)
     if (sidebarActions && sidebarActions.length > 1) {
-      actions.push({ label: '+ Course Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
+      actions.push({ label: '+ Class Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
     }
     // + Task
     if (onCreateTask) {

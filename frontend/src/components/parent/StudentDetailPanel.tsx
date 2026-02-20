@@ -332,7 +332,7 @@ export function StudentDetailPanel({
         )}
       </div>
 
-      {/* ── Course Materials Section ──────────────────────── */}
+      {/* ── Class Materials Section ──────────────────────── */}
       <div className="sdp-section">
         <div
           className="sdp-section-header"
@@ -347,7 +347,7 @@ export function StudentDetailPanel({
           }}
         >
           <span>
-            Course Materials
+            Class Materials
             <span className="sdp-count-badge">{courseMaterials.length}</span>
           </span>
           <Chevron expanded={materialsExpanded} />
@@ -356,7 +356,7 @@ export function StudentDetailPanel({
         {materialsExpanded && (
           <div className="sdp-section-body">
             {courseMaterials.length === 0 ? (
-              <div className="sdp-empty">No course materials yet</div>
+              <div className="sdp-empty">No class materials yet</div>
             ) : (
               <>
                 {recentMaterials.map((mat) => (

@@ -587,7 +587,7 @@ export function StudentDashboard() {
           ) : (
             <div className="empty-state">
               <p>No study materials yet</p>
-              <small>Click "Create Custom" to generate course materials from any content</small>
+              <small>Click "Create Custom" to generate class materials from any content</small>
             </div>
           )}
         </section>

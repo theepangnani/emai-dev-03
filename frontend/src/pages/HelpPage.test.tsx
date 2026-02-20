@@ -60,7 +60,7 @@ describe('HelpPage', () => {
     expect(screen.getByText('How do I connect my Google Classroom account?')).toBeInTheDocument()
     expect(screen.getByText('How do I sync my courses and assignments?')).toBeInTheDocument()
     expect(screen.getByText("How do I link my child's account (for parents)?")).toBeInTheDocument()
-    expect(screen.getByText('How do I create a study guide from course materials?')).toBeInTheDocument()
+    expect(screen.getByText('How do I create a study guide from class materials?')).toBeInTheDocument()
     expect(screen.getByText('How do I take a quiz or use flashcards?')).toBeInTheDocument()
     expect(screen.getByText('How do I send a message to a teacher or parent?')).toBeInTheDocument()
     expect(screen.getByText('How do I create and track tasks?')).toBeInTheDocument()

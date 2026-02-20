@@ -74,7 +74,7 @@ export function CourseMaterialDetailPage() {
       setContent(cc);
       setGuides(allGuides);
     } catch {
-      setError('Failed to load course material');
+      setError('Failed to load class material');
     } finally {
       setLoading(false);
     }

@@ -440,7 +440,7 @@ export function CoursesPage() {
                     {expandedCourseId === course.id && (
                       <div className="course-content-panel">
                         <div className="course-content-header">
-                          <h5>Course Materials</h5>
+                          <h5>Class Materials</h5>
                           <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
                             View Details &rarr;
                           </button>
@@ -546,7 +546,7 @@ export function CoursesPage() {
                         {expandedCourseId === course.id && (
                           <div className="course-content-panel">
                             <div className="course-content-header">
-                              <h5>Course Materials</h5>
+                              <h5>Class Materials</h5>
                               <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
                                 View Details &rarr;
                               </button>

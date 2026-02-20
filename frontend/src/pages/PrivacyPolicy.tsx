@@ -70,7 +70,7 @@ export function PrivacyPolicy() {
             <h2>3. How We Use Your Information</h2>
             <ul>
               <li><strong>Provide the Service:</strong> Display dashboards, assignments, messages, and notifications</li>
-              <li><strong>AI Study Tools:</strong> Generate study guides, quizzes, and flashcards from course materials using OpenAI</li>
+              <li><strong>AI Study Tools:</strong> Generate study guides, quizzes, and flashcards from class materials using OpenAI</li>
               <li><strong>Communication:</strong> Facilitate parent-teacher messaging and deliver email notifications via SendGrid</li>
               <li><strong>Security:</strong> Detect unauthorized access, prevent abuse, and maintain audit logs</li>
               <li><strong>Improvement:</strong> Understand usage patterns to improve the Service</li>
