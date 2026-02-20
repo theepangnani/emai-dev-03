@@ -448,11 +448,8 @@ export function StudyGuidesPage() {
       // Upload-only mode: no AI types selected → create course content directly
       if (modalParams.types.length === 0) {
         try {
-          let courseId = modalParams.courseId;
-          if (!courseId) {
-            const defaultCourse = await coursesApi.getDefault();
-            courseId = defaultCourse.id;
-          }
+          const courseId = modalParams.courseId
+            ?? (await coursesApi.getDefault()).id;
           if (modalParams.mode === 'file' && modalParams.file) {
             // File upload: save original file + extract text on backend
             await courseContentsApi.uploadFile(
