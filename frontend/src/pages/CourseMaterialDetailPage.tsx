@@ -29,8 +29,11 @@ export function CourseMaterialDetailPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
-  const [, setQuizAnswers] = useState<Record<number, string>>({});
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [quizFinished, setQuizFinished] = useState(false);
+  const [quizSaving, setQuizSaving] = useState(false);
+  const [quizSaveError, setQuizSaveError] = useState<string | null>(null);
+  const quizSavedId = useRef<number | null>(null);
 
   // Flashcard state
   const [cardIndex, setCardIndex] = useState(0);
@@ -289,6 +292,25 @@ export function CourseMaterialDetailPage() {
     }
   };
 
+  // Save quiz result when finished
+  useEffect(() => {
+    if (!quizFinished || !quiz || quizSavedId.current !== null) return;
+    setQuizSaving(true);
+    setQuizSaveError(null);
+    studyApi.saveQuizResult({
+      study_guide_id: quiz.id,
+      score: quizScore,
+      total_questions: parsedQuiz.length,
+      answers: quizAnswers,
+    }).then((result) => {
+      quizSavedId.current = result.id;
+    }).catch(() => {
+      setQuizSaveError('Could not save result');
+    }).finally(() => {
+      setQuizSaving(false);
+    });
+  }, [quizFinished, quiz, quizScore, parsedQuiz.length, quizAnswers]);
+
   const resetQuiz = () => {
     setQuizIndex(0);
     setSelectedAnswer(null);
@@ -296,6 +318,8 @@ export function CourseMaterialDetailPage() {
     setQuizScore(0);
     setQuizAnswers({});
     setQuizFinished(false);
+    quizSavedId.current = null;
+    setQuizSaveError(null);
   };
 
   if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
@@ -522,7 +546,15 @@ export function CourseMaterialDetailPage() {
                           ({Math.round((quizScore / parsedQuiz.length) * 100)}%)
                         </span>
                       </div>
-                      <button className="generate-btn" onClick={resetQuiz}>Try Again</button>
+                      {quizSaving && <p className="save-status">Saving result...</p>}
+                      {quizSaveError && <p className="save-status save-error">{quizSaveError}</p>}
+                      {quizSavedId.current !== null && !quizSaving && !quizSaveError && (
+                        <p className="save-status save-success">Result saved</p>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="generate-btn" onClick={resetQuiz}>Try Again</button>
+                        <Link to={`/quiz-history?quiz=${quiz?.id}`} className="generate-btn" style={{ background: '#e3f2fd', color: '#1565c0', textDecoration: 'none', textAlign: 'center' }}>View History</Link>
+                      </div>
                     </div>
                   ) : (
                     <div className="cm-quiz-question">
