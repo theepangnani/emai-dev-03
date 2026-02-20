@@ -26,18 +26,20 @@ def _get_target_user_ids(
     """Return the user_id(s) whose quiz results should be visible.
 
     - Students/teachers/admins see their own results.
-    - Parents see their linked children's results (optionally filtered to one child).
+    - Parents see their own results + linked children's results.
     """
-    if current_user.role != UserRole.PARENT:
+    if not current_user.has_role(UserRole.PARENT):
         return [current_user.id]
 
-    # Parent: resolve children via parent_students join table
+    # Parent: always include own results + children's results
+    target_ids = [current_user.id]
+
     rows = db.query(parent_students.c.student_id).filter(
         parent_students.c.parent_id == current_user.id
     ).all()
     child_student_ids = [r[0] for r in rows]
     if not child_student_ids:
-        return []
+        return target_ids
 
     if student_user_id:
         # Verify this child belongs to the parent
@@ -45,15 +47,16 @@ def _get_target_user_ids(
             Student.user_id == student_user_id,
             Student.id.in_(child_student_ids),
         ).first()
-        if not child:
-            return []
-        return [student_user_id]
+        if child:
+            target_ids.append(student_user_id)
+        return target_ids
 
     # All children's user_ids
     students = db.query(Student.user_id).filter(
         Student.id.in_(child_student_ids)
     ).all()
-    return [s[0] for s in students]
+    target_ids.extend(s[0] for s in students)
+    return target_ids
 
 
 @router.post("/", response_model=QuizResultResponse, status_code=status.HTTP_201_CREATED)
