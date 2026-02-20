@@ -1,24 +1,14 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
+import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import './CourseMaterialDetailPage.css';
-
-const MarkdownGuideBody = lazy(() =>
-  import('react-markdown').then(mod => {
-    const ReactMarkdown = mod.default;
-    return import('remark-gfm').then(gfm => ({
-      default: ({ content }: { content: string }) => (
-        <ReactMarkdown remarkPlugins={[gfm.default]}>{content}</ReactMarkdown>
-      ),
-    }));
-  })
-);
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
 
@@ -265,7 +255,6 @@ export function CourseMaterialDetailPage() {
     <DashboardLayout showBackButton>
       <div className="cm-detail-page">
         <div className="cm-detail-header">
-          <Link to="/course-materials" className="cm-back-link">&larr; Back</Link>
           <div className="cm-detail-title-row">
             <h2>{content.title}</h2>
             {content.course_name && (
@@ -275,7 +264,7 @@ export function CourseMaterialDetailPage() {
           <div className="cm-detail-meta">
             <span className="cm-type-badge">{content.content_type}</span>
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
-            <button className="cm-action-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
+            <button className="cm-header-task-btn" onClick={() => setShowTaskModal(true)}>+ Create Task</button>
           </div>
         </div>
 
@@ -295,26 +284,13 @@ export function CourseMaterialDetailPage() {
           ))}
         </div>
 
-        {/* Focus prompt (shown on study material tabs) */}
-        {activeTab !== 'document' && (
-          <div className="cm-focus-prompt">
-            <input
-              type="text"
-              value={focusPrompt}
-              onChange={(e) => setFocusPrompt(e.target.value)}
-              placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-              disabled={generating !== null}
-            />
-          </div>
-        )}
-
         {/* Tab Content */}
         <div className="cm-tab-content">
           {activeTab === 'document' && (
             <div className="cm-document-tab">
               <div className="cm-guide-actions">
                 {!isEditing && content?.has_file && (
-                  <button className="cm-action-btn" onClick={handleDownload} disabled={downloading}>
+                  <button className="cm-action-btn primary" onClick={handleDownload} disabled={downloading}>
                     {downloading ? 'Downloading...' : `Download${content.original_filename ? ` (${content.original_filename})` : ''}`}
                   </button>
                 )}
@@ -338,7 +314,7 @@ export function CourseMaterialDetailPage() {
                   disabled={editSaving}
                 />
               ) : content.text_content ? (
-                <div className="cm-document-text">
+                <ContentCard ocrCheckText={content.text_content}>
                   {(() => {
                     // Detect JSON quiz/flashcard data and format readably
                     const trimmed = content.text_content!.trim();
@@ -381,12 +357,12 @@ export function CourseMaterialDetailPage() {
                       } catch { /* not JSON, fall through to markdown */ }
                     }
                     return (
-                      <Suspense fallback={<div className="cm-render-loading">Rendering...</div>}>
-                        <MarkdownGuideBody content={content.text_content!} />
+                      <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+                        <MarkdownBody content={content.text_content!} />
                       </Suspense>
                     );
                   })()}
-                </div>
+                </ContentCard>
               ) : content.description ? (
                 <p className="cm-document-desc">{content.description}</p>
               ) : (
@@ -402,6 +378,15 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'guide' && (
             <div className="cm-guide-tab">
+              <div className="cm-focus-prompt">
+                <input
+                  type="text"
+                  value={focusPrompt}
+                  onChange={(e) => setFocusPrompt(e.target.value)}
+                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+                  disabled={generating !== null}
+                />
+              </div>
               {studyGuide ? (
                 <>
                   <div className="cm-guide-actions">
@@ -409,11 +394,11 @@ export function CourseMaterialDetailPage() {
                     <button className="cm-action-btn" onClick={() => handleGenerate('study_guide')} disabled={generating !== null}>Regenerate</button>
                     <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(studyGuide)}>Delete</button>
                   </div>
-                  <div className="cm-guide-body">
-                    <Suspense fallback={<div className="cm-render-loading">Rendering...</div>}>
-                      <MarkdownGuideBody content={studyGuide.content} />
+                  <ContentCard>
+                    <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+                      <MarkdownBody content={studyGuide.content} />
                     </Suspense>
-                  </div>
+                  </ContentCard>
                 </>
               ) : generating === 'study_guide' ? (
                 <div className="cm-inline-generating">
@@ -440,6 +425,15 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'quiz' && (
             <div className="cm-quiz-tab">
+              <div className="cm-focus-prompt">
+                <input
+                  type="text"
+                  value={focusPrompt}
+                  onChange={(e) => setFocusPrompt(e.target.value)}
+                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+                  disabled={generating !== null}
+                />
+              </div>
               {quiz && parsedQuiz.length > 0 ? (
                 <>
                   <div className="cm-guide-actions">
@@ -523,6 +517,15 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'flashcards' && (
             <div className="cm-flashcards-tab">
+              <div className="cm-focus-prompt">
+                <input
+                  type="text"
+                  value={focusPrompt}
+                  onChange={(e) => setFocusPrompt(e.target.value)}
+                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
+                  disabled={generating !== null}
+                />
+              </div>
               {flashcardSet && parsedCards.length > 0 ? (
                 <>
                   <div className="cm-guide-actions">
