@@ -117,6 +117,25 @@ Instead of a secondary AI call, the existing generation prompts are enhanced to 
 
 **GitHub Issues:** #195 (AI auto-task creation)
 
+#### 6.2.4 Quiz Results History (Phase 2) - IMPLEMENTED
+
+Persist quiz attempts and track performance over time.
+
+- **Quiz Result Saving**: Both the dedicated Quiz page (`/study/quiz/:id`) and the inline quiz tab on Course Material Detail page automatically save results on quiz completion via `POST /api/quiz-results/`. Results include score, total questions, percentage, per-question answers, and attempt number
+- **Quiz History Page**: Dedicated `/quiz-history` page showing stats cards (Total Attempts, Unique Quizzes, Average Score, Best Score with trend arrow), score trend chart (Recharts line chart), and scrollable attempts list with score bars, retry buttons, and delete
+- **Parent-to-Child Access**: Parents see their own quiz results plus linked children's results. Child selector dropdown allows filtering by specific child. Uses `student_user_id` query parameter with `parent_students` join table verification. Multi-role support via `has_role()` check
+- **Score Trend Analysis**: Backend compares average of last 5 attempts vs previous 5 to compute trend (improving/declining/stable)
+- **View History Link**: Quiz completion screen on both quiz pages shows "View History" link filtered to that specific quiz
+
+**Endpoints:**
+- `POST /api/quiz-results/` — Save quiz result
+- `GET /api/quiz-results/` — List results (supports `study_guide_id`, `student_user_id` filters)
+- `GET /api/quiz-results/stats` — Aggregated stats (supports `student_user_id` filter)
+- `GET /api/quiz-results/{id}` — Single result detail
+- `DELETE /api/quiz-results/{id}` — Delete result
+
+**GitHub Issues:** #574, #621
+
 ### 6.3 Parent-Student Registration & Linking (Phase 1)
 
 ClassBridge is designed as a **parent-first platform**. Parents can manage their children's education without requiring school board integration or Google Classroom access. Student email is **optional** — parents can create students with just a name.
