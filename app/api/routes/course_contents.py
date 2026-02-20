@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -15,7 +15,8 @@ from app.models.user import User, UserRole
 from app.api.deps import get_current_user, can_access_course
 from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
-from app.services.storage_service import get_file_path, delete_file
+from app.services.storage_service import get_file_path, delete_file, save_file
+from app.services.file_processor import process_file, FileProcessingError
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -102,6 +103,79 @@ def create_course_content(
             db.commit()
         except Exception as e:
             logger.warning(f"Failed to notify parents of student upload: {e}")
+
+    return content
+
+
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+@router.post("/upload", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+async def upload_course_content_file(
+    file: UploadFile = File(...),
+    course_id: int = Form(...),
+    title: str = Form(""),
+    content_type: str = Form("notes"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a file as course content. Saves the original file and extracts text.
+    No AI generation — just stores the material."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    file_content = await file.read()
+    if len(file_content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
+        )
+
+    filename = file.filename or "unknown"
+    stored_path = save_file(file_content, filename)
+
+    # Extract text from uploaded file
+    extracted_text = ""
+    try:
+        extracted_text = process_file(file_content, filename)
+    except FileProcessingError as e:
+        logger.warning("Text extraction failed for %s: %s", filename, e)
+
+    content = CourseContent(
+        course_id=course_id,
+        title=title or filename,
+        content_type=content_type,
+        text_content=extracted_text or None,
+        file_path=stored_path,
+        original_filename=filename,
+        file_size=len(file_content),
+        mime_type=file.content_type,
+        created_by_user_id=current_user.id,
+    )
+    db.add(content)
+    db.commit()
+    db.refresh(content)
+
+    # Notify parents when a student uploads material
+    if current_user.role == UserRole.STUDENT:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded course material",
+                content=f'{current_user.full_name} uploaded "{title or filename}" to {course.name}.',
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{course_id}",
+                source_type="course_content",
+                source_id=content.id,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to notify parents of student upload: %s", e)
 
     return content
 

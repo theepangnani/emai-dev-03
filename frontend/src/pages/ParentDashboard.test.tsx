@@ -331,7 +331,7 @@ describe('ParentDashboard', () => {
 
     await waitFor(() => {
       // Study material modal should open
-      expect(screen.getByRole('heading', { level: 2, name: 'Create Study Material' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
   })
 
@@ -541,7 +541,7 @@ describe('ParentDashboard', () => {
     await user.click(screen.getAllByRole('button', { name: /\+ Create Course Material/i })[0])
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Create Study Material' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
   })
 

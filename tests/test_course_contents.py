@@ -307,3 +307,69 @@ class TestContentDownload:
         data = resp.json()
         assert data["has_file"] is False
         assert data["original_filename"] is None
+
+
+# ── File Upload (no AI) ──────────────────────────────────────
+
+class TestContentFileUpload:
+    def test_upload_file_creates_content_with_file(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload",
+            data={"course_id": str(users["course"].id), "title": "My Notes"},
+            files={"file": ("notes.txt", b"Hello world notes content", "text/plain")},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["has_file"] is True
+        assert data["original_filename"] == "notes.txt"
+        assert data["file_size"] == len(b"Hello world notes content")
+        assert data["mime_type"] == "text/plain"
+        assert data["title"] == "My Notes"
+        assert data["text_content"]  # extracted text should be populated
+
+    def test_upload_file_uses_filename_as_title_fallback(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload",
+            data={"course_id": str(users["course"].id)},
+            files={"file": ("chapter5.txt", b"Chapter 5 content", "text/plain")},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["title"] == "chapter5.txt"
+
+    def test_upload_file_downloadable(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload",
+            data={"course_id": str(users["course"].id), "title": "Download Test"},
+            files={"file": ("test.txt", b"download me", "text/plain")},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        cid = resp.json()["id"]
+
+        # Now download it
+        dl_resp = client.get(f"/api/course-contents/{cid}/download", headers=headers)
+        assert dl_resp.status_code == 200
+        assert dl_resp.content == b"download me"
+
+    def test_upload_unauthenticated_rejected(self, client, users):
+        resp = client.post(
+            "/api/course-contents/upload",
+            data={"course_id": str(users["course"].id)},
+            files={"file": ("x.txt", b"data", "text/plain")},
+        )
+        assert resp.status_code == 401
+
+    def test_upload_invalid_course_returns_404(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload",
+            data={"course_id": "99999"},
+            files={"file": ("x.txt", b"data", "text/plain")},
+            headers=headers,
+        )
+        assert resp.status_code == 404
