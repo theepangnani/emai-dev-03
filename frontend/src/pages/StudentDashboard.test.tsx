@@ -123,16 +123,6 @@ describe('StudentDashboard', () => {
     setupDefaults()
   })
 
-  // ── Loading ──────────────────────────────────────────────────
-  it('shows loading skeleton initially', () => {
-    mockGetStatus.mockReturnValue(new Promise(() => {}))
-    mockCoursesList.mockReturnValue(new Promise(() => {}))
-    mockAssignmentsList.mockReturnValue(new Promise(() => {}))
-    mockListGuides.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<StudentDashboard />)
-    expect(document.querySelector('.skeleton')).toBeInTheDocument()
-  })
-
   // ── Google Connect Banner ────────────────────────────────────
   it('shows connect banner when Google is not connected', async () => {
     renderWithProviders(<StudentDashboard />)

@@ -57,3 +57,18 @@ def db_session(app):
 def client(app):
     with TestClient(app) as test_client:
         yield test_client
+
+
+# ── Shared auth helpers (used by all test files) ──
+
+PASSWORD = "Password123!"
+
+
+def _login(client, email):
+    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
+def _auth(client, email):
+    return {"Authorization": f"Bearer {_login(client, email)}"}

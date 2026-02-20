@@ -1,16 +1,5 @@
 import pytest
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 @pytest.fixture()
@@ -128,10 +117,6 @@ class TestContentCRUD:
         assert resp.status_code == 200
         assert resp.json()["title"] == "Single Item"
 
-    def test_get_nonexistent_returns_404(self, client, users):
-        headers = _auth(client, users["teacher"].email)
-        resp = client.get("/api/course-contents/999999", headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Update ────────────────────────────────────────────────────
@@ -171,10 +156,6 @@ class TestContentUpdate:
         assert resp.status_code == 200
         assert resp.json()["content_type"] == "syllabus"
 
-    def test_update_nonexistent_returns_404(self, client, users):
-        headers = _auth(client, users["teacher"].email)
-        resp = client.patch("/api/course-contents/999999", json={"title": "X"}, headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Delete ────────────────────────────────────────────────────
@@ -200,10 +181,6 @@ class TestContentDelete:
         resp = client.delete(f"/api/course-contents/{cid}", headers=headers)
         assert resp.status_code == 403
 
-    def test_delete_nonexistent_returns_404(self, client, users):
-        headers = _auth(client, users["teacher"].email)
-        resp = client.delete("/api/course-contents/999999", headers=headers)
-        assert resp.status_code == 404
 
 
 # ── Permissions ───────────────────────────────────────────────
@@ -373,3 +350,20 @@ class TestContentFileUpload:
             headers=headers,
         )
         assert resp.status_code == 404
+
+
+# ── Parameterized 404 tests ──────────────────────────────────
+
+
+@pytest.mark.parametrize("method,url,json_body", [
+    ("GET", "/api/course-contents/999999", None),
+    ("PATCH", "/api/course-contents/999999", {"title": "X"}),
+    ("DELETE", "/api/course-contents/999999", None),
+])
+def test_nonexistent_content_returns_404(client, users, method, url, json_body):
+    headers = _auth(client, users["teacher"].email)
+    kwargs = {"headers": headers}
+    if json_body:
+        kwargs["json"] = json_body
+    resp = getattr(client, method.lower())(url, **kwargs)
+    assert resp.status_code == 404

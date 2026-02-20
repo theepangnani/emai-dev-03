@@ -1,23 +1,12 @@
 """Tests for audit logging feature."""
 import pytest
-
-PASSWORD = "Password123!"
+from conftest import PASSWORD, _login, _auth
 
 
 def _register(client, email, role="parent", full_name="Test User"):
     return client.post("/api/auth/register", json={
         "email": email, "password": PASSWORD, "full_name": full_name, "role": role,
     })
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
 
 
 def _setup_admin(client, db_session):

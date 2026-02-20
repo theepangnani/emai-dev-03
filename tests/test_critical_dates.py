@@ -2,18 +2,7 @@
 
 import pytest
 from datetime import datetime
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 class TestParseCriticalDates:

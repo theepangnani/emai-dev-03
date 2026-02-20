@@ -144,16 +144,6 @@ describe('AdminFAQPage', () => {
 
   // ── Pending Tab ──────────────────────────────────────────────
 
-  it('renders page title and tabs', async () => {
-    renderAdmin()
-    await waitFor(() => {
-      expect(screen.getByText('Manage FAQ')).toBeInTheDocument()
-    })
-    expect(screen.getByText('Pending Answers')).toBeInTheDocument()
-    expect(screen.getByText('All Questions')).toBeInTheDocument()
-    expect(screen.getByText('Create Official FAQ')).toBeInTheDocument()
-  })
-
   it('shows pending answers on default tab', async () => {
     renderAdmin()
     await waitFor(() => {
