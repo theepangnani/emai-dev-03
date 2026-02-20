@@ -166,8 +166,11 @@
 
 .cm-empty-tab {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 48px 20px;
   color: var(--color-muted);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
 }
 .cm-empty-tab p {
   margin-bottom: 1rem;
