@@ -44,6 +44,29 @@
   margin-top: 2px;
 }
 
+/* Hero headline for personalized focus */
+.hero-headline {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  line-height: 1.2;
+}
+
+.hero-headline.hero-overdue .hero-count {
+  color: var(--color-danger);
+}
+
+.hero-headline.hero-clear {
+  color: var(--color-success);
+}
+
+.hero-breakdown {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin-top: 4px;
+}
+
 .today-focus-items {
   display: flex;
   gap: 8px;
