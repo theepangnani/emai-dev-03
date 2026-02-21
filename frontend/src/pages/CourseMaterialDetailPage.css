@@ -95,12 +95,19 @@
 /* Tabs */
 .cm-tabs {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
   padding: 0.25rem;
   background: var(--color-surface-alt);
   border-radius: 10px;
+}
+
+.cm-tabs .add-action-trigger {
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
 }
 
 .cm-tab {
