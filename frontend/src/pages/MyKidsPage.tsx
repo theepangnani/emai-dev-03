@@ -70,6 +70,16 @@ export function MyKidsPage() {
   const [assignCourseModal, setAssignCourseModal] = useState<{ id: number; name: string } | null>(null);
   const [assignLoading, setAssignLoading] = useState(false);
 
+  // Add Child modal state
+  const [showAddChildModal, setShowAddChildModal] = useState(false);
+  const [addChildTab, setAddChildTab] = useState<'create' | 'email'>('create');
+  const [addChildName, setAddChildName] = useState('');
+  const [addChildEmail, setAddChildEmail] = useState('');
+  const [addChildRelationship, setAddChildRelationship] = useState('guardian');
+  const [addChildLoading, setAddChildLoading] = useState(false);
+  const [addChildError, setAddChildError] = useState('');
+  const [addChildInviteLink, setAddChildInviteLink] = useState('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -183,14 +193,16 @@ export function MyKidsPage() {
 
   if (children.length === 0) {
     return (
-      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management" showBackButton>
+      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton>
         <div className="mykids-empty">
           <h3>No children linked yet</h3>
-          <p>Add a child from your Dashboard to get started.</p>
-          <button className="mykids-btn" onClick={() => navigate('/dashboard')}>
-            Go to Dashboard
+          <p>Add your child to start managing their education.</p>
+          <button className="mykids-btn" onClick={() => setShowAddChildModal(true)}>
+            + Add Child
           </button>
         </div>
+        {/* Add Child Modal (accessible from empty state) */}
+        {showAddChildModal && renderAddChildModal()}
       </DashboardLayout>
     );
   }
@@ -243,8 +255,197 @@ export function MyKidsPage() {
     setCategorizeCreating(false);
   };
 
+  const closeAddChildModal = () => {
+    setShowAddChildModal(false);
+    setAddChildTab('create');
+    setAddChildName('');
+    setAddChildEmail('');
+    setAddChildRelationship('guardian');
+    setAddChildError('');
+    setAddChildInviteLink('');
+  };
+
+  const handleCreateChild = async () => {
+    if (!addChildName.trim()) return;
+    if (addChildEmail.trim() && !isValidEmail(addChildEmail.trim())) {
+      setAddChildError('Please enter a valid email address');
+      return;
+    }
+    setAddChildLoading(true);
+    setAddChildError('');
+    try {
+      const result = await parentApi.createChild(
+        addChildName.trim(),
+        addChildRelationship,
+        addChildEmail.trim() || undefined,
+      );
+      if (result.invite_link) {
+        setAddChildInviteLink(result.invite_link);
+      } else {
+        closeAddChildModal();
+      }
+      // Refresh children list
+      const kids = await parentApi.getChildren();
+      setChildren(kids);
+      if (kids.length === 1) setSelectedChild(kids[0].student_id);
+    } catch (err: any) {
+      setAddChildError(err.response?.data?.detail || 'Failed to create child');
+    } finally {
+      setAddChildLoading(false);
+    }
+  };
+
+  const handleLinkChild = async () => {
+    if (!addChildEmail.trim()) return;
+    if (!isValidEmail(addChildEmail.trim())) {
+      setAddChildError('Please enter a valid email address');
+      return;
+    }
+    setAddChildLoading(true);
+    setAddChildError('');
+    try {
+      const result = await parentApi.linkChild(
+        addChildEmail.trim(),
+        addChildRelationship,
+        addChildName.trim() || undefined,
+      );
+      if (result.invite_link) {
+        setAddChildInviteLink(result.invite_link);
+      } else {
+        closeAddChildModal();
+      }
+      // Refresh children list
+      const kids = await parentApi.getChildren();
+      setChildren(kids);
+      if (kids.length === 1) setSelectedChild(kids[0].student_id);
+    } catch (err: any) {
+      setAddChildError(err.response?.data?.detail || 'Failed to link child');
+    } finally {
+      setAddChildLoading(false);
+    }
+  };
+
+  const renderAddChildModal = () => (
+    <div className="modal-overlay" onClick={closeAddChildModal}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Add Child</h2>
+
+        <div className="link-tabs">
+          <button className={`link-tab ${addChildTab === 'create' ? 'active' : ''}`} onClick={() => { setAddChildTab('create'); setAddChildError(''); }}>
+            Create New
+          </button>
+          <button className={`link-tab ${addChildTab === 'email' ? 'active' : ''}`} onClick={() => { setAddChildTab('email'); setAddChildError(''); }}>
+            Link by Email
+          </button>
+        </div>
+
+        {addChildTab === 'create' && (
+          <>
+            {addChildInviteLink ? (
+              <div className="modal-form">
+                <div className="invite-success-box">
+                  <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child added successfully!</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                    Share this link with your child so they can set their password and log in:
+                  </p>
+                  <div className="invite-link-container">
+                    <span className="invite-link">{addChildInviteLink}</span>
+                    <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(addChildInviteLink)}>Copy</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="modal-desc">Add your child with just their name. Email is optional.</p>
+                <div className="modal-form">
+                  <label>
+                    Child's Name *
+                    <input type="text" value={addChildName} onChange={(e) => setAddChildName(e.target.value)} placeholder="e.g. Alex Smith" disabled={addChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleCreateChild()} />
+                  </label>
+                  <label>
+                    Email (optional)
+                    <input type="email" value={addChildEmail} onChange={(e) => { setAddChildEmail(e.target.value); setAddChildError(''); }} placeholder="child@example.com" disabled={addChildLoading} />
+                  </label>
+                  <label>
+                    Relationship
+                    <select value={addChildRelationship} onChange={(e) => setAddChildRelationship(e.target.value)} disabled={addChildLoading}>
+                      <option value="mother">Mother</option>
+                      <option value="father">Father</option>
+                      <option value="guardian">Guardian</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  {addChildError && <p className="link-error">{addChildError}</p>}
+                </div>
+              </>
+            )}
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeAddChildModal} disabled={addChildLoading}>{addChildInviteLink ? 'Close' : 'Cancel'}</button>
+              {!addChildInviteLink && (
+                <button className="generate-btn" onClick={handleCreateChild} disabled={addChildLoading || !addChildName.trim()}>
+                  {addChildLoading ? 'Creating...' : 'Add Child'}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {addChildTab === 'email' && (
+          <>
+            {addChildInviteLink ? (
+              <div className="modal-form">
+                <div className="invite-success-box">
+                  <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child linked successfully!</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                    Share this link with your child so they can set their password and log in:
+                  </p>
+                  <div className="invite-link-container">
+                    <span className="invite-link">{addChildInviteLink}</span>
+                    <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(addChildInviteLink)}>Copy</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="modal-desc">Enter your child's email to link or create their account.</p>
+                <div className="modal-form">
+                  <label>
+                    Child's Name
+                    <input type="text" value={addChildName} onChange={(e) => setAddChildName(e.target.value)} placeholder="e.g. Alex Smith" disabled={addChildLoading} />
+                  </label>
+                  <label>
+                    Student Email *
+                    <input type="email" value={addChildEmail} onChange={(e) => { setAddChildEmail(e.target.value); setAddChildError(''); }} placeholder="child@school.edu" disabled={addChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleLinkChild()} />
+                  </label>
+                  <label>
+                    Relationship
+                    <select value={addChildRelationship} onChange={(e) => setAddChildRelationship(e.target.value)} disabled={addChildLoading}>
+                      <option value="mother">Mother</option>
+                      <option value="father">Father</option>
+                      <option value="guardian">Guardian</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  {addChildError && <p className="link-error">{addChildError}</p>}
+                </div>
+              </>
+            )}
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeAddChildModal} disabled={addChildLoading}>{addChildInviteLink ? 'Close' : 'Cancel'}</button>
+              {!addChildInviteLink && (
+                <button className="generate-btn" onClick={handleLinkChild} disabled={addChildLoading || !addChildEmail.trim()}>
+                  {addChildLoading ? 'Linking...' : 'Link Child'}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management" showBackButton>
+    <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton>
       {/* Child Tabs */}
       <div className="child-selector">
         {children.length > 1 && (
@@ -270,6 +471,26 @@ export function MyKidsPage() {
             </span>
           </button>
         ))}
+      </div>
+
+      {/* Action Buttons Grid */}
+      <div className="mykids-action-grid">
+        <button className="mykids-action-btn" onClick={() => setShowAddChildModal(true)}>
+          <span className="mykids-action-icon">{'\u{1F476}'}</span>
+          <span className="mykids-action-label">Add Child</span>
+        </button>
+        <button className="mykids-action-btn" onClick={() => navigate('/courses')}>
+          <span className="mykids-action-icon">{'\u{1F4DA}'}</span>
+          <span className="mykids-action-label">View Courses</span>
+        </button>
+        <button className="mykids-action-btn" onClick={() => navigate('/course-materials')}>
+          <span className="mykids-action-icon">{'\u{1F4DD}'}</span>
+          <span className="mykids-action-label">Class Materials</span>
+        </button>
+        <button className="mykids-action-btn" onClick={() => navigate('/quiz-history')}>
+          <span className="mykids-action-icon">{'\u{1F4CA}'}</span>
+          <span className="mykids-action-label">Quiz History</span>
+        </button>
       </div>
 
       {!selectedChild ? (
@@ -680,6 +901,8 @@ export function MyKidsPage() {
           </div>
         </div>
       )}
+      {/* Add Child Modal */}
+      {showAddChildModal && renderAddChildModal()}
       {confirmModal}
     </DashboardLayout>
   );
