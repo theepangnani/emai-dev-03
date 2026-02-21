@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
 import { invitesApi } from '../api/invites';
@@ -9,7 +9,10 @@ import { PageSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { useConfirm } from '../components/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
+import type { InspirationData } from '../components/DashboardLayout';
 import { logger } from '../utils/logger';
+import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
 
@@ -65,6 +68,39 @@ export function StudentDashboard() {
   const [inviteTeacherMsg, setInviteTeacherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const justRegistered = searchParams.get('just_registered') === 'true';
+
+  const { user } = useAuth();
+  const [focusDismissed, setFocusDismissed] = useState(false);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const firstName = user?.full_name?.split(' ')[0] || 'there';
+    if (hour < 12) return `Good morning, ${firstName}!`;
+    if (hour < 17) return `Good afternoon, ${firstName}!`;
+    return `Good evening, ${firstName}!`;
+  }, [user?.full_name]);
+
+  const urgencyCounts = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    const weekEnd = new Date(todayStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    let overdue = 0;
+    let dueToday = 0;
+    let upcoming = 0;
+
+    for (const a of assignments) {
+      if (!a.due_date) continue;
+      const due = new Date(a.due_date);
+      if (due < todayStart) overdue++;
+      else if (due < todayEnd) dueToday++;
+      else if (due < weekEnd) upcoming++;
+    }
+    return { overdue, dueToday, upcoming };
+  }, [assignments]);
 
   useEffect(() => {
     const checkGoogleStatus = async () => {
@@ -383,6 +419,57 @@ export function StudentDashboard() {
     return streak;
   };
 
+  const renderHeaderSlot = (inspiration: InspirationData | null) => {
+    if (focusDismissed) return null;
+
+    const { overdue, dueToday, upcoming } = urgencyCounts;
+    const allClear = overdue === 0 && dueToday === 0 && upcoming === 0;
+
+    return (
+      <div className="student-focus-header">
+        <div className="student-focus-main">
+          <div className="student-focus-greeting">{greeting}</div>
+          {allClear ? (
+            <div className="student-focus-status all-clear">
+              <span className="student-focus-icon">{'\u2705'}</span>
+              <span>All caught up! Keep up the great work.</span>
+            </div>
+          ) : (
+            <div className="student-focus-status">
+              <span className="student-focus-icon">{overdue > 0 ? '\u{1F525}' : '\u{1F4CB}'}</span>
+              <div className="student-focus-items">
+                {overdue > 0 && (
+                  <button type="button" className="student-focus-tag overdue" onClick={() => navigate('/tasks?due=overdue')}>{overdue} overdue</button>
+                )}
+                {dueToday > 0 && (
+                  <button type="button" className="student-focus-tag today" onClick={() => navigate('/tasks?due=today')}>{dueToday} due today</button>
+                )}
+                {upcoming > 0 && (
+                  <button type="button" className="student-focus-tag upcoming" onClick={() => navigate('/tasks?due=week')}>{upcoming} this week</button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        {inspiration && (
+          <div className="student-focus-inspiration">
+            <span className="student-focus-quote">"{inspiration.text}"</span>
+            {inspiration.author && (
+              <span className="student-focus-author"> — {inspiration.author}</span>
+            )}
+          </div>
+        )}
+        <button
+          className="student-focus-close"
+          onClick={() => setFocusDismissed(true)}
+          aria-label="Dismiss"
+        >
+          {'\u00D7'}
+        </button>
+      </div>
+    );
+  };
+
   if (initialLoading) {
     return (
       <DashboardLayout welcomeSubtitle="Here's your learning overview">
@@ -392,7 +479,7 @@ export function StudentDashboard() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle="Here's your learning overview">
+    <DashboardLayout welcomeSubtitle="Here's your learning overview" headerSlot={renderHeaderSlot}>
       {statusMessage && (
         <div className={`status-message status-${statusMessage.type}`}>
           {statusMessage.text}
