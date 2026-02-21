@@ -26,7 +26,6 @@ interface DashboardLayoutProps {
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
   showBackButton?: boolean;
-  onCreateTask?: () => void;
   /** When provided, replaces the default welcome section. Receives inspiration data. */
   headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
 }
@@ -57,7 +56,7 @@ const QUICK_ACTION_ICONS: Record<string, string> = {
   '+ Create Study Material': '\u{1F4DD}',
 };
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, onCreateTask, headerSlot }: DashboardLayoutProps) {
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,9 +86,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
-        { label: 'Courses', path: '/courses' },
-        { label: 'Class Materials', path: '/course-materials' },
-        { label: 'Quiz History', path: '/quiz-history' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -168,24 +164,10 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
-  // Build the full quick actions list for persistent sidebar (parent only)
+  // Build the full quick actions list for persistent sidebar (non-parent roles only)
   const persistentQuickActions = useMemo(() => {
-    if (user?.role !== 'parent') return sidebarActions || [];
-    const actions: SidebarAction[] = [];
-    // + Child (under My Kids)
-    if (sidebarActions && sidebarActions.length > 0) {
-      actions.push({ label: '+ Child', icon: '\u{1F476}', onClick: sidebarActions[0].onClick });
-    }
-    // + Class Material (under Class Materials)
-    if (sidebarActions && sidebarActions.length > 1) {
-      actions.push({ label: '+ Class Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
-    }
-    // + Task (under Tasks)
-    if (onCreateTask) {
-      actions.push({ label: '+ Task', icon: '\u2705', onClick: onCreateTask });
-    }
-    return actions;
-  }, [user?.role, sidebarActions, onCreateTask]);
+    return sidebarActions || [];
+  }, [sidebarActions]);
 
   const handleNavClick = useCallback((path: string) => {
     navigate(path);

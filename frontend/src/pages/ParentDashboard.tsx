@@ -86,6 +86,7 @@ export function ParentDashboard() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [coursesSearched, setCoursesSearched] = useState(0);
   const [bulkLinking, setBulkLinking] = useState(false);
+  const [bulkLinkSuccess, setBulkLinkSuccess] = useState(0);
 
   // Study tools modal state
   const [showStudyModal, setShowStudyModal] = useState(false);
@@ -372,12 +373,15 @@ export function ParentDashboard() {
 
   const handleBulkLink = async () => {
     if (selectedDiscovered.size === 0) return;
+    const linkedCount = selectedDiscovered.size;
     setBulkLinking(true);
     setLinkError('');
     try {
       await parentApi.linkChildrenBulk(Array.from(selectedDiscovered));
-      closeLinkModal();
-      await loadDashboard();
+      setBulkLinkSuccess(linkedCount);
+      // Refresh dashboard in background, then re-discover to show updated "Already linked" badges
+      loadDashboard();
+      await triggerDiscovery();
     } catch (err: any) {
       setLinkError(err.response?.data?.detail || 'Failed to link selected children');
     } finally {
@@ -405,12 +409,20 @@ export function ParentDashboard() {
     setDiscoveryState('idle');
     setDiscoveredChildren([]);
     setSelectedDiscovered(new Set());
+    setBulkLinkSuccess(0);
     setCreateChildName('');
     setCreateChildEmail('');
     setCreateChildRelationship('guardian');
     setCreateChildError('');
     setCreateChildInviteLink('');
   };
+
+  // Auto-trigger discovery when switching to Google tab while already connected
+  useEffect(() => {
+    if (showLinkModal && linkTab === 'google' && googleConnected && discoveryState === 'idle') {
+      triggerDiscovery();
+    }
+  }, [linkTab, showLinkModal]);
 
   // ============================================
   // Edit Child Handlers
@@ -916,11 +928,6 @@ export function ParentDashboard() {
   return (
     <DashboardLayout
       welcomeSubtitle="At-a-glance monitoring, calendar, and quick actions"
-      sidebarActions={[
-        { label: '+ Add Child', onClick: () => setShowLinkModal(true) },
-        { label: '+ Create Class Material', onClick: () => setShowStudyModal(true) },
-      ]}
-      onCreateTask={() => setShowCreateTaskModal(true)}
       headerSlot={children.length > 0 ? renderHeaderSlot : undefined}
     >
       {dashboardError ? (
@@ -1187,15 +1194,9 @@ export function ParentDashboard() {
                   </div>
                 )}
                 {googleConnected && discoveryState === 'idle' && (
-                  <div className="google-connect-prompt">
-                    <div className="google-icon">✓</div>
-                    <h3>Google Account Connected</h3>
-                    <p>Search your Google Classroom courses to find your children's student accounts.</p>
-                    <button className="google-connect-btn" onClick={triggerDiscovery}>Search Google Classroom</button>
-                    <button className="cancel-btn" style={{ marginTop: '8px', fontSize: '13px' }} onClick={async () => { try { await googleApi.disconnect(); setGoogleConnected(false); } catch { setLinkError('Failed to disconnect Google account'); } }}>
-                      Disconnect Google
-                    </button>
-                    {linkError && <p className="link-error">{linkError}</p>}
+                  <div className="discovery-loading">
+                    <div className="loading-spinner-large" />
+                    <p>Searching Google Classroom courses for student accounts...</p>
                   </div>
                 )}
                 {discoveryState === 'discovering' && (
@@ -1206,9 +1207,22 @@ export function ParentDashboard() {
                 )}
                 {discoveryState === 'results' && (
                   <div className="discovery-results">
-                    <p className="modal-desc">
-                      Found {discoveredChildren.length} student{discoveredChildren.length !== 1 ? 's' : ''} across {coursesSearched} course{coursesSearched !== 1 ? 's' : ''}. Select the children you want to link:
-                    </p>
+                    {bulkLinkSuccess > 0 && (
+                      <div className="invite-success-box" style={{ marginBottom: 12 }}>
+                        <p style={{ margin: 0, fontWeight: 600 }}>
+                          Successfully linked {bulkLinkSuccess} child{bulkLinkSuccess !== 1 ? 'ren' : ''}!
+                        </p>
+                      </div>
+                    )}
+                    {discoveredChildren.every(c => c.already_linked) ? (
+                      <p className="modal-desc">
+                        All {discoveredChildren.length} discovered student{discoveredChildren.length !== 1 ? 's' : ''} are linked to your account.
+                      </p>
+                    ) : (
+                      <p className="modal-desc">
+                        Found {discoveredChildren.length} student{discoveredChildren.length !== 1 ? 's' : ''} across {coursesSearched} course{coursesSearched !== 1 ? 's' : ''}. Select the children you want to link:
+                      </p>
+                    )}
                     <div className="discovered-list">
                       {discoveredChildren.map((child) => (
                         <label key={child.user_id} className={`discovered-item ${child.already_linked ? 'disabled' : ''}`}>
@@ -1223,11 +1237,18 @@ export function ParentDashboard() {
                       ))}
                     </div>
                     {linkError && <p className="link-error">{linkError}</p>}
-                    <div className="modal-actions">
-                      <button className="cancel-btn" onClick={closeLinkModal} disabled={bulkLinking}>Cancel</button>
-                      <button className="generate-btn" onClick={handleBulkLink} disabled={bulkLinking || selectedDiscovered.size === 0}>
-                        {bulkLinking ? 'Linking...' : `Link ${selectedDiscovered.size} Selected`}
+                    <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+                      <button className="cancel-btn" style={{ fontSize: '13px' }} onClick={async () => { try { await googleApi.disconnect(); setGoogleConnected(false); setDiscoveryState('idle'); setDiscoveredChildren([]); setBulkLinkSuccess(0); } catch { setLinkError('Failed to disconnect Google account'); } }}>
+                        Disconnect Google
                       </button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="cancel-btn" onClick={closeLinkModal} disabled={bulkLinking}>Done</button>
+                        {!discoveredChildren.every(c => c.already_linked) && (
+                          <button className="generate-btn" onClick={handleBulkLink} disabled={bulkLinking || selectedDiscovered.size === 0}>
+                            {bulkLinking ? 'Linking...' : `Link ${selectedDiscovered.size} Selected`}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
