@@ -40,7 +40,9 @@ export function TasksPage() {
     const navState = location.state as { selectedChild?: number | null } | null;
     if (navState?.selectedChild) return navState.selectedChild;
     const assignee = searchParams.get('assignee');
-    return assignee ? Number(assignee) : 'all';
+    if (assignee) return Number(assignee);
+    const stored = sessionStorage.getItem('selectedChildId');
+    return stored ? Number(stored) : 'all';
   });
 
   // Create task form
@@ -278,7 +280,7 @@ export function TasksPage() {
           <div className="tasks-child-selector">
             <button
               className={`child-tab${filterAssignee === 'all' ? ' active' : ''}`}
-              onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); }}
+              onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); sessionStorage.removeItem('selectedChildId'); }}
             >
               All Kids
             </button>
@@ -286,7 +288,7 @@ export function TasksPage() {
               <button
                 key={child.user_id}
                 className={`child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
-                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); }}
+                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
               >
                 <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}

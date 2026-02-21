@@ -26,7 +26,11 @@ export function QuizHistoryPage() {
     if (isParent) {
       parentApi.getChildren().then((c) => {
         setChildren(c);
-        if (c.length > 0) setSelectedChild(c[0].user_id);
+        if (c.length > 0) {
+          const storedUserId = sessionStorage.getItem('selectedChildId');
+          const storedMatch = storedUserId ? c.find(k => k.user_id === Number(storedUserId)) : null;
+          setSelectedChild(storedMatch ? storedMatch.user_id : c[0].user_id);
+        }
       });
     }
   }, [isParent]);
@@ -91,7 +95,7 @@ export function QuizHistoryPage() {
             <select
               className="qh-child-select"
               value={selectedChild ?? ''}
-              onChange={(e) => setSelectedChild(Number(e.target.value))}
+              onChange={(e) => { const val = Number(e.target.value); setSelectedChild(val); sessionStorage.setItem('selectedChildId', String(val)); }}
             >
               {children.map((c) => (
                 <option key={c.user_id} value={c.user_id}>

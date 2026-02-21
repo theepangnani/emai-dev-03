@@ -52,7 +52,9 @@ export function AnalyticsPage() {
     parentApi.getChildren().then((kids) => {
       setChildren(kids);
       if (kids.length > 0 && !selectedStudentId) {
-        setSelectedStudentId(kids[0].student_id);
+        const storedUserId = sessionStorage.getItem('selectedChildId');
+        const storedMatch = storedUserId ? kids.find(k => k.user_id === Number(storedUserId)) : null;
+        setSelectedStudentId(storedMatch ? storedMatch.student_id : kids[0].student_id);
       }
     }).catch(() => { /* handled by main load */ });
   }, [isParent]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -194,7 +196,7 @@ export function AnalyticsPage() {
           <label>Student:</label>
           <select
             value={selectedStudentId ?? ''}
-            onChange={(e) => setSelectedStudentId(Number(e.target.value))}
+            onChange={(e) => { const sid = Number(e.target.value); setSelectedStudentId(sid); const child = children.find(c => c.student_id === sid); if (child) sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
           >
             {children.map((child) => (
               <option key={child.student_id} value={child.student_id}>

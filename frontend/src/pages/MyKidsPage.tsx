@@ -106,8 +106,15 @@ export function MyKidsPage() {
         const match = urlSid ? kids.find(k => k.student_id === urlSid) : null;
         if (match) {
           setSelectedChild(match.student_id);
-        } else if (kids.length === 1) {
-          setSelectedChild(kids[0].student_id);
+        } else {
+          // Restore persisted child selection from sessionStorage
+          const storedUserId = sessionStorage.getItem('selectedChildId');
+          const storedMatch = storedUserId ? kids.find(k => k.user_id === Number(storedUserId)) : null;
+          if (storedMatch) {
+            setSelectedChild(storedMatch.student_id);
+          } else if (kids.length === 1) {
+            setSelectedChild(kids[0].student_id);
+          }
         }
       } catch { /* */ }
       finally { setLoading(false); }
@@ -527,7 +534,15 @@ export function MyKidsPage() {
           <button
             key={child.student_id}
             className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-            onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
+            onClick={() => {
+              if (selectedChild === child.student_id) {
+                setSelectedChild(null);
+                sessionStorage.removeItem('selectedChildId');
+              } else {
+                setSelectedChild(child.student_id);
+                sessionStorage.setItem('selectedChildId', String(child.user_id));
+              }
+            }}
           >
             <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
             {child.full_name}

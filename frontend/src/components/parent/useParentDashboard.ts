@@ -167,7 +167,10 @@ export function useParentDashboard() {
       if (data.children.length === 1) {
         setSelectedChild(data.children[0].student_id);
       } else {
-        setSelectedChild(null);
+        // Restore persisted child selection from sessionStorage
+        const storedUserId = sessionStorage.getItem('selectedChildId');
+        const storedMatch = storedUserId ? data.children.find(c => c.user_id === Number(storedUserId)) : null;
+        setSelectedChild(storedMatch ? storedMatch.student_id : null);
       }
       childEmails = new Set(data.children.map(c => c.email?.toLowerCase()).filter(Boolean) as string[]);
     } catch {
@@ -481,8 +484,11 @@ export function useParentDashboard() {
     if (selectedChild === studentId) {
       setSelectedChild(null);
       setChildOverview(null);
+      sessionStorage.removeItem('selectedChildId');
     } else {
       setSelectedChild(studentId);
+      const child = children.find(c => c.student_id === studentId);
+      if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
     }
   };
 
