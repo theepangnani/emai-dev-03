@@ -505,6 +505,15 @@
 /* ================================================
    Drag and Drop
    ================================================ */
+
+/* Long-press visual hint */
+.cal-entry-chip,
+.cal-entry-card {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .cal-entry-chip[draggable="true"],
 .cal-entry-card[draggable="true"] {
   cursor: grab;
@@ -515,23 +524,48 @@
   cursor: grabbing;
 }
 
+/* Active drag state on source element */
 .cal-entry-dragging {
-  opacity: 0.35;
+  opacity: 0.4;
+  transform: scale(0.95);
+  transition: opacity 0.15s, transform 0.15s;
 }
 
-.cal-day-cell.cal-day-drag-over {
-  background: rgba(59, 130, 246, 0.08);
-  outline: 2px dashed #3b82f6;
-  outline-offset: -2px;
-}
-
+/* Drop zone highlight */
+.cal-day-cell.cal-day-drag-over,
 .cal-week-column-body.cal-day-drag-over {
-  background: rgba(59, 130, 246, 0.08);
-  outline: 2px dashed #3b82f6;
-  outline-offset: -2px;
+  background: var(--color-accent-subtle) !important;
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+  transition: background 0.15s, box-shadow 0.15s;
 }
 
-/* Touch drag ghost */
+/* Prevent text selection during drag */
+.calendar-container.is-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Ghost element during drag */
+.cal-drag-ghost {
+  position: fixed;
+  padding: 6px 12px;
+  background: var(--color-accent);
+  color: white;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Legacy touch ghost (kept for compatibility) */
 .cal-touch-ghost {
   background: var(--color-accent, #3b82f6);
   color: #fff;
@@ -575,5 +609,33 @@
 
   .cal-entry-chip {
     font-size: 10px;
+  }
+
+  /* Swipe transition hint */
+  .calendar-container {
+    overflow-x: hidden;
+    touch-action: pan-y;
+  }
+}
+
+@media (max-width: 360px) {
+  .cal-month-grid,
+  .cal-week-grid {
+    font-size: 11px;
+  }
+
+  .cal-day-header {
+    padding: 4px 2px;
+    font-size: 10px;
+  }
+
+  .cal-day-cell {
+    min-height: 50px;
+    padding: 2px;
+  }
+
+  .cal-entry-chip {
+    font-size: 10px;
+    padding: 1px 3px;
   }
 }

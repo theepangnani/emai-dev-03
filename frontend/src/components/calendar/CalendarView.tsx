@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useCalendarNav } from './useCalendarNav';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarMonthGrid } from './CalendarMonthGrid';
@@ -36,6 +36,32 @@ export function CalendarView({ assignments, onCreateStudyGuide, onDayClick: exte
   const nav = useCalendarNav('month');
   const [popover, setPopover] = useState<{ assignment: CalendarAssignment; rect: DOMRect } | null>(null);
   const touchDrag = useTouchDrag(onTaskDrop);
+
+  // Swipe gesture detection for month/week navigation
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    };
+  };
+
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+
+    // Quick horizontal swipe: >60px in <300ms, mostly horizontal
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 300) {
+      if (dx > 0) {
+        nav.goPrev();
+      } else {
+        nav.goNext();
+      }
+    }
+  };
 
   const handleAssignmentClick = (assignment: CalendarAssignment, anchorRect: DOMRect) => {
     setPopover({ assignment, rect: anchorRect });
@@ -118,33 +144,39 @@ export function CalendarView({ assignments, onCreateStudyGuide, onDayClick: exte
         onToday={nav.goToday}
       />
 
-      {nav.viewMode === 'month' && (
-        <CalendarMonthGrid
-          currentDate={nav.currentDate}
-          assignments={visibleAssignments}
-          onAssignmentClick={handleAssignmentClick}
-          onDayClick={handleDayClick}
-          onTaskDrop={onTaskDrop}
-          touchDrag={touchDrag}
-        />
-      )}
+      <div
+        className="calendar-container"
+        onTouchStart={handleSwipeStart}
+        onTouchEnd={handleSwipeEnd}
+      >
+        {nav.viewMode === 'month' && (
+          <CalendarMonthGrid
+            currentDate={nav.currentDate}
+            assignments={visibleAssignments}
+            onAssignmentClick={handleAssignmentClick}
+            onDayClick={handleDayClick}
+            onTaskDrop={onTaskDrop}
+            touchDrag={touchDrag}
+          />
+        )}
 
-      {(nav.viewMode === 'week' || nav.viewMode === '3day') && (
-        <CalendarWeekGrid
-          dates={weekDates}
-          assignments={visibleAssignments}
-          onAssignmentClick={handleAssignmentClick}
-          onTaskDrop={onTaskDrop}
-        />
-      )}
+        {(nav.viewMode === 'week' || nav.viewMode === '3day') && (
+          <CalendarWeekGrid
+            dates={weekDates}
+            assignments={visibleAssignments}
+            onAssignmentClick={handleAssignmentClick}
+            onTaskDrop={onTaskDrop}
+          />
+        )}
 
-      {nav.viewMode === 'day' && (
-        <CalendarDayGrid
-          date={nav.currentDate}
-          assignments={dayAssignments}
-          onAssignmentClick={handleAssignmentClick}
-        />
-      )}
+        {nav.viewMode === 'day' && (
+          <CalendarDayGrid
+            date={nav.currentDate}
+            assignments={dayAssignments}
+            onAssignmentClick={handleAssignmentClick}
+          />
+        )}
+      </div>
 
       {popover && (
         <CalendarEntryPopover

@@ -1975,6 +1975,28 @@
   color: var(--color-border);
 }
 
+/* ── Mobile modal scroll fix ── */
+@media (max-width: 640px) {
+  .modal {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    margin: 1rem;
+    width: calc(100% - 2rem) !important;
+    max-width: none !important;
+    border-radius: 12px;
+  }
+
+  .modal-form {
+    max-height: calc(100vh - 10rem);
+    overflow-y: auto;
+  }
+
+  /* Ensure modal overlay covers mobile viewport */
+  .modal-overlay {
+    padding: 0;
+  }
+}
+
 /* ── Reduced motion: accessibility ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
