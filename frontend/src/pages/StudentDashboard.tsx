@@ -102,6 +102,47 @@ export function StudentDashboard() {
     return { overdue, dueToday, upcoming };
   }, [assignments]);
 
+  type UrgencyTier = 'overdue' | 'today' | 'week' | 'later';
+
+  const getUrgencyTier = (dueDate: string | null): UrgencyTier => {
+    if (!dueDate) return 'later';
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    const weekEnd = new Date(todayStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const due = new Date(dueDate);
+    if (due < todayStart) return 'overdue';
+    if (due < todayEnd) return 'today';
+    if (due < weekEnd) return 'week';
+    return 'later';
+  };
+
+  const groupedAssignments = useMemo(() => {
+    const groups: Record<UrgencyTier, Assignment[]> = {
+      overdue: [], today: [], week: [], later: [],
+    };
+    for (const a of assignments) {
+      groups[getUrgencyTier(a.due_date)].push(a);
+    }
+    // Sort within each group by due date (nearest first)
+    for (const tier of Object.keys(groups) as UrgencyTier[]) {
+      groups[tier].sort((a, b) => {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
+    }
+    return groups;
+  }, [assignments]);
+
+  const dueThisWeekCount = groupedAssignments.overdue.length + groupedAssignments.today.length + groupedAssignments.week.length;
+
+  const TIER_LABELS: Record<UrgencyTier, string> = {
+    overdue: 'Overdue', today: 'Due Today', week: 'This Week', later: 'Later',
+  };
+
   useEffect(() => {
     const checkGoogleStatus = async () => {
       try {
@@ -564,21 +605,41 @@ export function StudentDashboard() {
         <section className="section">
           <h3>Your Assignments</h3>
           {assignments.length > 0 ? (
-            <ul className="assignments-list">
-              {assignments.map((assignment) => (
-                <li key={assignment.id} className="assignment-item">
-                  <div className="assignment-info">
-                    <span className="assignment-title">{assignment.title}</span>
-                    {assignment.due_date && (
-                      <span className="assignment-due">
-                        Due: {new Date(assignment.due_date).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                  <StudyToolsButton assignmentId={assignment.id} assignmentTitle={assignment.title} />
-                </li>
-              ))}
-            </ul>
+            <>
+              {dueThisWeekCount > 0 && (
+                <div className="student-assignments-summary">
+                  <span className="student-due-week-count">{dueThisWeekCount} due this week</span>
+                </div>
+              )}
+              <ul className="assignments-list">
+                {(['overdue', 'today', 'week', 'later'] as UrgencyTier[]).map(tier => {
+                  const items = groupedAssignments[tier];
+                  if (items.length === 0) return null;
+                  return (
+                    <li key={tier} className="student-assignment-group">
+                      <div className={`student-assignment-group-header ${tier}`}>
+                        {TIER_LABELS[tier]} ({items.length})
+                      </div>
+                      <ul className="student-assignment-group-list">
+                        {items.map((assignment) => (
+                          <li key={assignment.id} className="assignment-item">
+                            <div className="assignment-info">
+                              <span className="assignment-title">{assignment.title}</span>
+                              <span className={`student-due-badge ${tier}`}>
+                                {assignment.due_date
+                                  ? new Date(assignment.due_date).toLocaleDateString()
+                                  : 'No due date'}
+                              </span>
+                            </div>
+                            <StudyToolsButton assignmentId={assignment.id} assignmentTitle={assignment.title} />
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           ) : (
             <div className="empty-state">
               <p>No assignments yet</p>

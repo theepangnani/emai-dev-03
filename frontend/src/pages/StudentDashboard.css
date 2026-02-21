@@ -135,6 +135,91 @@
   background: var(--color-surface-alt);
 }
 
+/* ============================================
+   Student Dashboard — Assignment Urgency
+   ============================================ */
+
+.student-assignments-summary {
+  margin-bottom: 12px;
+}
+
+.student-due-week-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+.student-assignment-group {
+  list-style: none;
+}
+
+.student-assignment-group-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 0 4px;
+  margin-top: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.student-assignment-group-header.overdue {
+  color: var(--priority-high);
+}
+
+.student-assignment-group-header.today {
+  color: var(--priority-medium);
+}
+
+.student-assignment-group-header.week {
+  color: var(--color-accent-strong);
+}
+
+.student-assignment-group-header.later {
+  color: var(--color-ink-muted);
+}
+
+.student-assignment-group-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.student-due-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.student-due-badge.overdue {
+  background: var(--priority-high-light);
+  color: var(--priority-high);
+}
+
+.student-due-badge.today {
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
+}
+
+.student-due-badge.week {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+.student-due-badge.later {
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
 @media (max-width: 640px) {
   .student-focus-header {
     flex-direction: column;
