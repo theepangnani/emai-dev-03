@@ -542,42 +542,33 @@
 
 /* ── Action Buttons Grid ──────────────────── */
 .mykids-action-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
-}
-@media (max-width: 600px) {
-  .mykids-action-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 .mykids-action-btn {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 20px 12px;
+  gap: 6px;
+  padding: 8px 14px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   color: var(--color-ink);
 }
 .mykids-action-btn:hover {
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .mykids-action-icon {
-  font-size: 28px;
+  font-size: 16px;
   line-height: 1;
 }
 .mykids-action-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-ink);
-  text-align: center;
 }
