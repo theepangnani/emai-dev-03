@@ -279,12 +279,9 @@ export function TasksPage() {
   return (
     <DashboardLayout welcomeSubtitle="Manage your tasks" showBackButton>
       <div className="tasks-page">
-        {/* Header with title + New Task */}
+        {/* Header with title */}
         <div className="tasks-header">
           <h3>Tasks</h3>
-          <button className="generate-btn action-icon-btn" onClick={() => setShowCreate(true)}>
-            <span className="action-icon">&#9745;</span> New Task
-          </button>
         </div>
 
         {/* Child selector pills (parent only) */}
@@ -303,6 +300,12 @@ export function TasksPage() {
             ))}
           </div>
         )}
+
+        {/* New Task button (below child selector) */}
+        <button className="tasks-new-btn" onClick={() => setShowCreate(true)}>
+          <span className="tasks-new-btn-icon">{'\u2705'}</span>
+          <span>New Task</span>
+        </button>
 
         {/* Filter bar: count + toggle + active-filter badges */}
         <div className="tasks-filter-bar">
