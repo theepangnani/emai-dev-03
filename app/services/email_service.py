@@ -22,6 +22,8 @@ def _send_via_sendgrid(to_email: str, subject: str, html_content: str) -> bool:
     )
     sg = SendGridAPIClient(settings.sendgrid_api_key)
     response = sg.send(message)
+    if response.status_code not in (200, 201, 202):
+        raise RuntimeError(f"SendGrid returned status {response.status_code}: {response.body}")
     logger.info(f"Email sent via SendGrid to {to_email} | status={response.status_code}")
     return True
 

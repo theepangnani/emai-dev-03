@@ -516,7 +516,11 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
     """Send a password reset email. Always returns 200 to avoid user enumeration."""
     user = db.query(User).filter(User.email == body.email).first()
 
-    if user and user.hashed_password and user.hashed_password != UNUSABLE_PASSWORD_HASH:
+    if not user:
+        _logger.warning("pwd_reset: no account found for requested email")
+    elif not user.hashed_password or user.hashed_password == UNUSABLE_PASSWORD_HASH:
+        _logger.warning(f"pwd_reset: user {user.id} has unusable password (invite/OAuth-only), skipping email")
+    else:
         token = create_password_reset_token(user.email)
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
         template = _load_template("password_reset.html")
@@ -525,7 +529,11 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
         else:
             html = f'<p>Click <a href="{reset_url}">here</a> to reset your password. This link expires in 1 hour.</p>'
         html = add_inspiration_to_email(html, db, user.role)
-        send_email_sync(to_email=user.email, subject="ClassBridge — Reset Your Password", html_content=html)
+        sent = send_email_sync(to_email=user.email, subject="ClassBridge — Reset Your Password", html_content=html)
+        if sent:
+            _logger.warning(f"pwd_reset: reset email sent to user {user.id}")
+        else:
+            _logger.warning(f"pwd_reset: failed to send reset email to user {user.id}")
         try:
             log_action(db, user_id=user.id, action="pwd_reset_req", resource_type="user",
                        resource_id=user.id, ip_address=request.client.host if request.client else None)
