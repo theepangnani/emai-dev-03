@@ -33,6 +33,9 @@ vi.mock('../api/client', () => ({
     permanentDelete: (...args: any[]) => mockPermanentDelete(...args),
     getAssignableUsers: (...args: any[]) => mockGetAssignableUsers(...args),
   },
+  parentApi: {
+    getChildren: vi.fn().mockResolvedValue([]),
+  },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
   },
@@ -59,6 +62,10 @@ vi.mock('../components/GlobalSearch', () => ({
 
 vi.mock('../components/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
+}))
+
+vi.mock('../components/parent/useParentDashboard', () => ({
+  CHILD_COLORS: ['#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b'],
 }))
 
 // ── Helpers ────────────────────────────────────────────────────

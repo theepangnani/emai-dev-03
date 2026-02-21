@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { tasksApi } from '../api/client';
-import type { TaskItem, AssignableUser } from '../api/client';
+import { tasksApi, parentApi } from '../api/client';
+import type { TaskItem, AssignableUser, ChildSummary } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { ListSkeleton } from '../components/Skeleton';
 import './TasksPage.css';
 
@@ -19,6 +20,8 @@ export function TasksPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [children, setChildren] = useState<ChildSummary[]>([]);
+  const isParent = user?.role === 'parent';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>(() => {
@@ -63,6 +66,7 @@ export function TasksPage() {
   useEffect(() => {
     loadTasks();
     loadAssignableUsers();
+    if (isParent) loadChildren();
   }, [filterStatus]);
 
   const loadTasks = async () => {
@@ -96,6 +100,15 @@ export function TasksPage() {
     try {
       const data = await tasksApi.getAssignableUsers();
       setAssignableUsers(data);
+    } catch {
+      // silently fail
+    }
+  };
+
+  const loadChildren = async () => {
+    try {
+      const data = await parentApi.getChildren();
+      setChildren(data);
     } catch {
       // silently fail
     }
@@ -252,20 +265,42 @@ export function TasksPage() {
   return (
     <DashboardLayout welcomeSubtitle="Manage your tasks" showBackButton>
       <div className="tasks-page">
-        {/* Header */}
+        {/* Header with title + New Task */}
         <div className="tasks-header">
           <h3>Tasks</h3>
-        </div>
-
-        {/* Filter bar header with count + New Task */}
-        <div className="tasks-filter-bar">
-          <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
           <button className="generate-btn action-icon-btn" onClick={() => setShowCreate(true)}>
             <span className="action-icon">&#9745;</span> New Task
           </button>
         </div>
 
-        {/* Filter chips */}
+        {/* Child selector pills (parent only) */}
+        {isParent && children.length > 0 && (
+          <div className="tasks-child-selector">
+            <button
+              className={`child-tab${filterAssignee === 'all' ? ' active' : ''}`}
+              onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); }}
+            >
+              All Kids
+            </button>
+            {children.map((child, index) => (
+              <button
+                key={child.user_id}
+                className={`child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
+                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); }}
+              >
+                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                {child.full_name}
+                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Filter bar with count + chips */}
+        <div className="tasks-filter-bar">
+          <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
+        </div>
+
         <div className="tasks-filters-chips">
           {/* Status */}
           <div className="tasks-chip-group">
@@ -330,8 +365,8 @@ export function TasksPage() {
             </div>
           </div>
 
-          {/* Assignee (kids) */}
-          {assignableUsers.length > 0 && (
+          {/* Assignee chip filter (non-parent fallback when no children) */}
+          {!isParent && assignableUsers.length > 0 && (
             <div className="tasks-chip-group">
               <span className="tasks-chip-label">Assignee</span>
               <div className="tasks-chip-row">

@@ -16,6 +16,65 @@
   margin: 0;
 }
 
+/* Child selector pills (parent) */
+.tasks-child-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tasks-child-selector .child-tab {
+  padding: 10px 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tasks-child-selector .child-tab:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+}
+
+.tasks-child-selector .child-tab.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: white;
+}
+
+.tasks-child-selector .child-tab.active .grade-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.tasks-child-selector .child-color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tasks-child-selector .child-tab.active .child-color-dot {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.tasks-child-selector .grade-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
 /* Create form */
 .tasks-create-form {
   background: var(--color-surface);
