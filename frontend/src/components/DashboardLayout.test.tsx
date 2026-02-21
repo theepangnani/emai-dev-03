@@ -63,7 +63,7 @@ describe('DashboardLayout', () => {
   it('shows standard nav items for student role', () => {
     renderLayout('student')
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Courses').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Classes').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Class Materials').length).toBeGreaterThanOrEqual(1)
   })
 

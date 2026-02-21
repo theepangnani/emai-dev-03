@@ -186,9 +186,9 @@ export function AdminDashboard() {
 
         <div className="dashboard-card">
           <div className="card-icon">&#128218;</div>
-          <h3>Courses</h3>
+          <h3>Classes</h3>
           <p className="card-value">{stats?.total_courses ?? 0}</p>
-          <p className="card-label">Total courses</p>
+          <p className="card-label">Total classes</p>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ const CATEGORIES = [
   { value: 'google-classroom', label: 'Google Classroom' },
   { value: 'study-tools', label: 'Study Tools' },
   { value: 'account', label: 'Account' },
-  { value: 'courses', label: 'Courses' },
+  { value: 'courses', label: 'Classes' },
   { value: 'messaging', label: 'Messaging' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'other', label: 'Other' },

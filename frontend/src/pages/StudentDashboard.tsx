@@ -84,7 +84,7 @@ export function StudentDashboard() {
       setStatusMessage({ type: 'success', text: 'Google Classroom connected successfully!' });
       // Auto-sync courses after Google connection
       googleApi.syncCourses().then((result) => {
-        setStatusMessage({ type: 'success', text: result.message || 'Courses synced!' });
+        setStatusMessage({ type: 'success', text: result.message || 'Classes synced!' });
         loadCourses();
         loadAssignments();
       }).catch(() => {});
@@ -159,11 +159,11 @@ export function StudentDashboard() {
     setStatusMessage(null);
     try {
       const result = await googleApi.syncCourses();
-      setStatusMessage({ type: 'success', text: result.message || 'Courses synced successfully' });
+      setStatusMessage({ type: 'success', text: result.message || 'Classes synced successfully' });
       loadCourses();
       loadAssignments();
     } catch (err) {
-      setStatusMessage({ type: 'error', text: 'Failed to sync courses' });
+      setStatusMessage({ type: 'error', text: 'Failed to sync classes' });
       setFaqCode(extractFaqCode(err));
     } finally {
       setIsSyncing(false);
@@ -409,8 +409,8 @@ export function StudentDashboard() {
             </strong>
             <p className="onboarding-subtitle">
               {justRegistered
-                ? 'Your parent invited you to EMAI. Connect Google Classroom so they can see your courses and teachers.'
-                : 'Connect your Google Classroom so your parent can see your courses and track your progress.'}
+                ? 'Your parent invited you to EMAI. Connect Google Classroom so they can see your classes and teachers.'
+                : 'Connect your Google Classroom so your parent can see your classes and track your progress.'}
             </p>
           </div>
           <button
@@ -426,9 +426,9 @@ export function StudentDashboard() {
       <div className="dashboard-grid">
         <div className="dashboard-card">
           <div className="card-icon">📚</div>
-          <h3>Courses</h3>
+          <h3>Classes</h3>
           <p className="card-value">{courses.length || '--'}</p>
-          <p className="card-label">Active courses</p>
+          <p className="card-label">Active classes</p>
         </div>
 
         <div className="dashboard-card">
@@ -459,7 +459,7 @@ export function StudentDashboard() {
           {googleConnected ? (
             <div className="card-buttons">
               <button className="connect-button" onClick={handleSyncCourses} disabled={isSyncing}>
-                {isSyncing ? 'Syncing...' : 'Sync Courses'}
+                {isSyncing ? 'Syncing...' : 'Sync Classes'}
               </button>
               <button className="disconnect-button" onClick={handleDisconnectGoogle}>
                 Disconnect
@@ -517,7 +517,7 @@ export function StudentDashboard() {
                   loadStudyGuides(val || undefined);
                 }}
               >
-                <option value="">All Courses</option>
+                <option value="">All Classes</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -552,7 +552,7 @@ export function StudentDashboard() {
                   {courses.length > 0 && (
                     <select
                       className="inline-course-select"
-                      title="Assign to course"
+                      title="Assign to class"
                       value={guide.course_id ?? ''}
                       onClick={(e) => e.preventDefault()}
                       onChange={async (e) => {
@@ -564,7 +564,7 @@ export function StudentDashboard() {
                         } catch { /* ignore */ }
                       }}
                     >
-                      <option value="">No course</option>
+                      <option value="">No class</option>
                       {courses.map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
@@ -594,7 +594,7 @@ export function StudentDashboard() {
 
         <section className="section">
           <div className="section-header">
-            <h3>Your Courses</h3>
+            <h3>Your Classes</h3>
             <button className="create-custom-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
               + Invite Teacher
             </button>
@@ -612,8 +612,8 @@ export function StudentDashboard() {
             </ul>
           ) : (
             <div className="empty-state">
-              <p>No courses yet</p>
-              <small>Connect Google Classroom to sync your courses</small>
+              <p>No classes yet</p>
+              <small>Connect Google Classroom to sync your classes</small>
             </div>
           )}
         </section>

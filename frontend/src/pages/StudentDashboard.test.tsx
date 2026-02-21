@@ -165,7 +165,7 @@ describe('StudentDashboard', () => {
 
     // Wait for loading to complete — check for a card label
     await waitFor(() => {
-      expect(screen.getByText('Active courses')).toBeInTheDocument()
+      expect(screen.getByText('Active classes')).toBeInTheDocument()
     })
     // Stat cards: Courses (2), Assignments (1), Study Materials (--), Google Classroom (Not Connected)
     expect(screen.getByText('Total assignments')).toBeInTheDocument()
@@ -180,7 +180,7 @@ describe('StudentDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('Connected')).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: 'Sync Courses' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sync Classes' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Disconnect' })).toBeInTheDocument()
   })
 
@@ -210,17 +210,17 @@ describe('StudentDashboard', () => {
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true })
   })
 
-  it('handles Sync Courses', async () => {
+  it('handles Sync Classes', async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
     mockSyncCourses.mockResolvedValue({ message: 'Synced 3 courses' })
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Sync Courses' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sync Classes' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Sync Courses' }))
+    await user.click(screen.getByRole('button', { name: 'Sync Classes' }))
 
     await waitFor(() => {
       expect(mockSyncCourses).toHaveBeenCalled()
@@ -272,8 +272,8 @@ describe('StudentDashboard', () => {
     })
   })
 
-  // ── Courses Section ──────────────────────────────────────────
-  it('renders courses list with Google badge', async () => {
+  // ── Classes Section ──────────────────────────────────────────
+  it('renders classes list with Google badge', async () => {
     mockCoursesList.mockResolvedValue([
       { id: 1, name: 'Math 101', google_classroom_id: 'gc-1' },
       { id: 2, name: 'History', google_classroom_id: null },
@@ -289,11 +289,11 @@ describe('StudentDashboard', () => {
     expect(document.querySelector('.google-badge')).toBeInTheDocument()
   })
 
-  it('shows empty state for courses', async () => {
+  it('shows empty state for classes', async () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('No courses yet')).toBeInTheDocument()
+      expect(screen.getByText('No classes yet')).toBeInTheDocument()
     })
   })
 
@@ -406,7 +406,7 @@ describe('StudentDashboard', () => {
       expect(screen.getByText('Bio Notes')).toBeInTheDocument()
     })
 
-    // Course filter select should be present
-    expect(screen.getByDisplayValue('All Courses')).toBeInTheDocument()
+    // Class filter select should be present
+    expect(screen.getByDisplayValue('All Classes')).toBeInTheDocument()
   })
 })

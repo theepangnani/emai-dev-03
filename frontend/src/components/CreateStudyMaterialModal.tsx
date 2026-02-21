@@ -254,9 +254,9 @@ export default function CreateStudyMaterialModal({
           {/* Course selector (only shown if courses prop is provided) */}
           {courses && onCourseChange && (
             <label>
-              Course (optional)
+              Class (optional)
               <select value={selectedCourseId ?? ''} onChange={(e) => onCourseChange(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
-                <option value="">Main Course (default)</option>
+                <option value="">Main Class (default)</option>
                 {courses.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}

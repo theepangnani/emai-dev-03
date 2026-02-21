@@ -194,7 +194,7 @@ export function CoursesPage() {
       // Navigate to the new course detail page
       navigate(`/courses/${newCourse.id}`);
     } catch (err: any) {
-      setCreateError(err.response?.data?.detail || 'Failed to create course');
+      setCreateError(err.response?.data?.detail || 'Failed to create class');
     } finally {
       setCreateLoading(false);
     }
@@ -218,7 +218,7 @@ export function CoursesPage() {
       setSelectedCoursesForAssign(new Set());
       loadChildOverview(selectedChild);
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to assign courses');
+      setActionError(err.response?.data?.detail || 'Failed to assign classes');
     } finally {
       setAssignLoading(false);
     }
@@ -235,7 +235,7 @@ export function CoursesPage() {
       loadChildOverview(selectedChild);
       setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
     } catch (err: any) {
-      setSyncMessage(err.response?.data?.detail || 'Failed to sync courses');
+      setSyncMessage(err.response?.data?.detail || 'Failed to sync classes');
       setSyncState('error');
       setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
     }
@@ -244,7 +244,7 @@ export function CoursesPage() {
   const handleUnassignCourse = async (courseId: number, courseName: string) => {
     if (!selectedChild) return;
     const ok = await confirm({
-      title: 'Unassign Course',
+      title: 'Unassign Class',
       message: `Remove "${courseName}" from ${childName}?`,
       confirmLabel: 'Unassign',
     });
@@ -253,7 +253,7 @@ export function CoursesPage() {
       await parentApi.unassignCourseFromChild(selectedChild, courseId);
       loadChildOverview(selectedChild);
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to unassign course');
+      setActionError(err.response?.data?.detail || 'Failed to unassign class');
     }
   };
 
@@ -263,7 +263,7 @@ export function CoursesPage() {
       await parentApi.assignCoursesToChild(selectedChild, [courseId]);
       loadChildOverview(selectedChild);
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to assign course');
+      setActionError(err.response?.data?.detail || 'Failed to assign class');
     }
   };
 
@@ -286,7 +286,7 @@ export function CoursesPage() {
 
   const handleUnenroll = async (courseId: number, courseName: string) => {
     const ok = await confirm({
-      title: 'Unenroll from Course',
+      title: 'Unenroll from Class',
       message: `Are you sure you want to unenroll from "${courseName}"?`,
       confirmLabel: 'Unenroll',
     });
@@ -318,11 +318,11 @@ export function CoursesPage() {
 
   if (loading || loadError) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage courses" showBackButton>
+      <DashboardLayout welcomeSubtitle="Manage classes" showBackButton>
         {loadError ? (
           <div className="no-children-state">
-            <h3>Unable to Load Courses</h3>
-            <p>Something went wrong while loading your courses. Please try again.</p>
+            <h3>Unable to Load Classes</h3>
+            <p>Something went wrong while loading your classes. Please try again.</p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
               <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
                 Retry
@@ -341,10 +341,10 @@ export function CoursesPage() {
 
   return (
     <DashboardLayout
-      welcomeSubtitle="Manage courses"
+      welcomeSubtitle="Manage classes"
       showBackButton
       sidebarActions={[
-        { label: '+ Add Course', onClick: () => setShowCreateModal(true) },
+        { label: '+ Add Class', onClick: () => setShowCreateModal(true) },
       ]}
     >
       <div className="courses-page">
@@ -373,14 +373,14 @@ export function CoursesPage() {
         {isParent && (
           <div className="courses-section">
             <div className="courses-section-header">
-              <h3>{childName ? `${childName}'s Courses` : 'Courses'}</h3>
+              <h3>{childName ? `${childName}'s Classes` : 'Classes'}</h3>
               <div className="courses-header-actions">
                 <button className="generate-btn" onClick={() => setShowCreateModal(true)}>
-                  + Create Course
+                  + Create Class
                 </button>
                 {myCourses.length > 0 && selectedChild && (
                   <button className="courses-btn secondary" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
-                    Assign Course
+                    Assign Class
                   </button>
                 )}
                 {googleConnected && childOverview?.google_connected && (
@@ -423,7 +423,7 @@ export function CoursesPage() {
                       <div className="course-card-actions">
                         <button
                           className="course-card-action-btn edit"
-                          title="View course details"
+                          title="View class details"
                           onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
                         >
                           &#9998;
@@ -481,7 +481,7 @@ export function CoursesPage() {
               </div>
             ) : (
               <div className="courses-empty">
-                <p>No courses yet. Create a course or sync from Google Classroom.</p>
+                <p>No classes yet. Create a class or sync from Google Classroom.</p>
               </div>
             )}
           </div>
@@ -495,13 +495,13 @@ export function CoursesPage() {
                 className={`courses-tab ${studentTab === 'enrolled' ? 'active' : ''}`}
                 onClick={() => setStudentTab('enrolled')}
               >
-                My Courses ({enrolledCourses.length})
+                My Classes ({enrolledCourses.length})
               </button>
               <button
                 className={`courses-tab ${studentTab === 'browse' ? 'active' : ''}`}
                 onClick={() => setStudentTab('browse')}
               >
-                Browse Courses ({availableCourses.length})
+                Browse Classes ({availableCourses.length})
               </button>
             </div>
 
@@ -528,7 +528,7 @@ export function CoursesPage() {
                           <div className="course-card-actions">
                             <button
                               className="course-card-action-btn edit"
-                              title="View course details"
+                              title="View class details"
                               onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
                             >
                               &#9998;
@@ -587,9 +587,9 @@ export function CoursesPage() {
                   </div>
                 ) : (
                   <div className="courses-empty">
-                    <p>Not enrolled in any courses yet.</p>
+                    <p>Not enrolled in any classes yet.</p>
                     <button className="courses-btn primary" style={{ marginTop: 12 }} onClick={() => setStudentTab('browse')}>
-                      Browse Courses
+                      Browse Classes
                     </button>
                   </div>
                 )}
@@ -601,7 +601,7 @@ export function CoursesPage() {
                 <div className="courses-search">
                   <input
                     type="text"
-                    placeholder="Search courses by name, subject, or teacher..."
+                    placeholder="Search classes by name, subject, or teacher..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="courses-search-input"
@@ -634,7 +634,7 @@ export function CoursesPage() {
                   </div>
                 ) : (
                   <div className="courses-empty">
-                    <p>{searchTerm ? 'No courses match your search.' : 'No available courses to browse.'}</p>
+                    <p>{searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}</p>
                   </div>
                 )}
               </div>
@@ -646,10 +646,10 @@ export function CoursesPage() {
         {!isStudent && (
         <div className="courses-section">
           <div className="courses-section-header">
-            <h3>{isParent ? 'My Created Courses' : 'Courses'}</h3>
+            <h3>{isParent ? 'My Created Classes' : 'Classes'}</h3>
             {!isParent && (
               <button className="generate-btn" onClick={() => setShowCreateModal(true)}>
-                + Create Course
+                + Create Class
               </button>
             )}
           </div>
@@ -688,7 +688,7 @@ export function CoursesPage() {
                       })()}
                       <button
                         className="course-card-action-btn edit"
-                        title="Edit course"
+                        title="Edit class"
                         onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
                       >
                         &#9998;
@@ -700,7 +700,7 @@ export function CoursesPage() {
             </div>
           ) : (
             <div className="courses-empty">
-              <p>{isParent ? 'No courses created yet.' : 'No courses available. Create one to get started.'}</p>
+              <p>{isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}</p>
             </div>
           )}
         </div>
@@ -711,11 +711,11 @@ export function CoursesPage() {
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Course</h2>
-            <p className="modal-desc">Create a new course.</p>
+            <h2>Create Class</h2>
+            <p className="modal-desc">Create a new class.</p>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input type="text" value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={createLoading} onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()} />
               </label>
               <label>
@@ -724,7 +724,7 @@ export function CoursesPage() {
               </label>
               <label>
                 Description (optional)
-                <textarea value={courseDescription} onChange={(e) => setCourseDescription(e.target.value)} placeholder="Course details..." rows={3} disabled={createLoading} />
+                <textarea value={courseDescription} onChange={(e) => setCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={createLoading} />
               </label>
               {user?.role !== 'teacher' && (
                 <label>
@@ -737,7 +737,7 @@ export function CoursesPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={closeCreateModal} disabled={createLoading}>Cancel</button>
               <button className="generate-btn" onClick={handleCreateCourse} disabled={createLoading || !courseName.trim()}>
-                {createLoading ? 'Creating...' : 'Create Course'}
+                {createLoading ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>
@@ -748,13 +748,13 @@ export function CoursesPage() {
       {showAssignModal && selectedChild && (
         <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Assign Course to {childName}</h2>
-            <p className="modal-desc">Select courses to assign to your child.</p>
+            <h2>Assign Class to {childName}</h2>
+            <p className="modal-desc">Select classes to assign to your child.</p>
             <div className="modal-form">
               {myCourses.length === 0 ? (
                 <div className="empty-state">
-                  <p>No courses created yet</p>
-                  <button className="link-child-btn-small" onClick={() => { setShowAssignModal(false); setShowCreateModal(true); }}>+ Create Course</button>
+                  <p>No classes created yet</p>
+                  <button className="link-child-btn-small" onClick={() => { setShowAssignModal(false); setShowCreateModal(true); }}>+ Create Class</button>
                 </div>
               ) : (
                 <div className="discovered-list">
@@ -777,7 +777,7 @@ export function CoursesPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowAssignModal(false)} disabled={assignLoading}>Cancel</button>
               <button className="generate-btn" onClick={handleAssignCourses} disabled={assignLoading || selectedCoursesForAssign.size === 0}>
-                {assignLoading ? 'Assigning...' : `Assign ${selectedCoursesForAssign.size} Course${selectedCoursesForAssign.size !== 1 ? 's' : ''}`}
+                {assignLoading ? 'Assigning...' : `Assign ${selectedCoursesForAssign.size} Class${selectedCoursesForAssign.size !== 1 ? 'es' : ''}`}
               </button>
             </div>
           </div>

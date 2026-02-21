@@ -317,21 +317,21 @@ describe('AnalyticsPage', () => {
 
   // ── Course filter changes ───────────────────────────────────
 
-  it('renders course filter dropdown with All Courses option', async () => {
+  it('renders class filter dropdown with All Classes option', async () => {
     renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('Grade Trends')).toBeInTheDocument()
     })
 
-    // The course filter dropdown should have "All Courses" option
-    expect(screen.getByText('All Courses')).toBeInTheDocument()
-    // And course options from the summary
+    // The class filter dropdown should have "All Classes" option
+    expect(screen.getByText('All Classes')).toBeInTheDocument()
+    // And class options from the summary
     expect(screen.getByRole('option', { name: 'Math' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Science' })).toBeInTheDocument()
   })
 
-  it('reloads trends when course filter changes', async () => {
+  it('reloads trends when class filter changes', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -341,8 +341,8 @@ describe('AnalyticsPage', () => {
 
     mockGetTrends.mockClear()
 
-    // Select a specific course by its value (course_id=1)
-    const courseSelect = screen.getByDisplayValue('All Courses')
+    // Select a specific class by its value (course_id=1)
+    const courseSelect = screen.getByDisplayValue('All Classes')
     await user.selectOptions(courseSelect, '1')
 
     await waitFor(() => {

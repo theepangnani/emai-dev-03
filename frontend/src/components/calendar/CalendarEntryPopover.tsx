@@ -95,7 +95,7 @@ export function CalendarEntryPopover({ assignment, anchorRect, onClose, onCreate
         {assignment.courseId > 0 && onGoToCourse && (
           <button
             className="cal-popover-icon-btn"
-            title="Go to Course"
+            title="Go to Class"
             onClick={() => onGoToCourse(assignment.courseId)}
           >
             &#127891;
