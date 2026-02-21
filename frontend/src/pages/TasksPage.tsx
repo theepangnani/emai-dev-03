@@ -72,6 +72,17 @@ export function TasksPage() {
     if (isParent) loadChildren();
   }, [filterStatus]);
 
+  // Auto-select first child when children load and no specific child is selected
+  useEffect(() => {
+    if (isParent && children.length > 0 && filterAssignee === 'all') {
+      const first = children[0];
+      setFilterAssignee(first.user_id);
+      searchParams.set('assignee', String(first.user_id));
+      setSearchParams(searchParams, { replace: true });
+      sessionStorage.setItem('selectedChildId', String(first.user_id));
+    }
+  }, [children]);
+
   const loadTasks = async () => {
     try {
       setError(null);
@@ -279,12 +290,6 @@ export function TasksPage() {
         {/* Child selector pills (parent only) */}
         {isParent && children.length > 0 && (
           <div className="tasks-child-selector">
-            <button
-              className={`child-tab${filterAssignee === 'all' ? ' active' : ''}`}
-              onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); sessionStorage.removeItem('selectedChildId'); }}
-            >
-              All Kids
-            </button>
             {children.map((child, index) => (
               <button
                 key={child.user_id}
@@ -323,7 +328,7 @@ export function TasksPage() {
             <span className="tasks-filter-toggle-icon">{filtersExpanded ? '\u25B2' : '\u25BC'}</span>
             Filters
             {(() => {
-              const count = (filterStatus !== 'all' ? 1 : 0) + (filterPriority !== 'all' ? 1 : 0) + (filterDue !== 'all' ? 1 : 0) + (filterAssignee !== 'all' ? 1 : 0);
+              const count = (filterStatus !== 'all' ? 1 : 0) + (filterPriority !== 'all' ? 1 : 0) + (filterDue !== 'all' ? 1 : 0) + (!isParent && filterAssignee !== 'all' ? 1 : 0);
               return count > 0 ? <span className="tasks-filter-count">{count}</span> : null;
             })()}
           </button>
