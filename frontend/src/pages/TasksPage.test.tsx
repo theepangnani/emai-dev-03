@@ -107,6 +107,11 @@ import { TasksPage } from './TasksPage'
 describe('TasksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset search params to avoid pollution between tests
+    mockSearchParams.delete('status')
+    mockSearchParams.delete('priority')
+    mockSearchParams.delete('due')
+    mockSearchParams.delete('assignee')
   })
 
   it('shows loading skeleton initially', () => {
