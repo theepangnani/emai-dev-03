@@ -351,7 +351,7 @@ export function CourseMaterialDetailPage() {
   );
 
   const tabs: { key: TabKey; label: string; hasContent: boolean }[] = [
-    { key: 'document', label: 'Original Document', hasContent: !!(content.text_content || content.description) },
+    { key: 'document', label: 'Original Document', hasContent: !!(content.text_content || content.description || content.has_file) },
     { key: 'guide', label: 'Study Guide', hasContent: !!studyGuide },
     { key: 'quiz', label: 'Quiz', hasContent: !!quiz },
     { key: 'flashcards', label: 'Flashcards', hasContent: !!flashcardSet },
@@ -435,7 +435,7 @@ export function CourseMaterialDetailPage() {
                   rows={20}
                   disabled={editSaving}
                 />
-              ) : content.text_content && !content.has_file ? (
+              ) : content.text_content ? (
                 <ContentCard ocrCheckText={content.text_content}>
                   {(() => {
                     // Detect JSON quiz/flashcard data and format readably
@@ -485,11 +485,16 @@ export function CourseMaterialDetailPage() {
                     );
                   })()}
                 </ContentCard>
+              ) : content.has_file ? (
+                <div className="cm-file-info-card">
+                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
+                  <p className="cm-file-info-hint">Use the + button above to download the original file.</p>
+                </div>
               ) : content.description ? (
                 <p className="cm-document-desc">{content.description}</p>
-              ) : !content.has_file ? (
+              ) : (
                 <p className="cm-empty-message">No document content available.</p>
-              ) : null}
+              )}
               {content.reference_url && (
                 <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">
                   View Original Source
