@@ -34,6 +34,7 @@ vi.mock('../api/client', () => ({
     sendBroadcast: (...args: any[]) => mockSendBroadcast(...args),
     getBroadcasts: (...args: any[]) => mockGetBroadcasts(...args),
     sendMessage: (...args: any[]) => mockSendMessage(...args),
+    getAuditLogs: vi.fn().mockResolvedValue({ items: [] }),
   },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
