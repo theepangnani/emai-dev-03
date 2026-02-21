@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
-import type { AdminStats, AdminUserItem, BroadcastItem } from '../api/client';
+import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useDebounce } from '../utils/useDebounce';
 import { ListSkeleton } from '../components/Skeleton';
@@ -10,7 +10,15 @@ import './AdminDashboard.css';
 const PAGE_SIZE = 10;
 const ALL_ROLES = ['parent', 'student', 'teacher', 'admin'] as const;
 
+interface TrendCounts {
+  total: number;
+  student: number;
+  teacher: number;
+  classes: number;
+}
+
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -19,6 +27,12 @@ export function AdminDashboard() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const debouncedSearch = useDebounce(search, 400);
+
+  // Trend indicators
+  const [trends, setTrends] = useState<TrendCounts>({ total: 0, student: 0, teacher: 0, classes: 0 });
+
+  // Recent activity
+  const [recentActivity, setRecentActivity] = useState<AuditLogItem[]>([]);
 
   // Role management modal
   const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
@@ -52,8 +66,34 @@ export function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const data = await adminApi.getStats();
-      setStats(data);
+      const [statsData, allUsersData, auditData] = await Promise.allSettled([
+        adminApi.getStats(),
+        adminApi.getUsers({ limit: 5000 }),
+        adminApi.getAuditLogs({ limit: 5 }),
+      ]);
+
+      if (statsData.status === 'fulfilled') {
+        setStats(statsData.value);
+      }
+
+      // Compute trend counts from user creation dates
+      if (allUsersData.status === 'fulfilled') {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const recentUsers = allUsersData.value.users.filter(
+          (u: AdminUserItem) => new Date(u.created_at) >= oneWeekAgo
+        );
+        setTrends({
+          total: recentUsers.length,
+          student: recentUsers.filter((u: AdminUserItem) => u.roles.includes('student')).length,
+          teacher: recentUsers.filter((u: AdminUserItem) => u.roles.includes('teacher')).length,
+          classes: 0, // courses don't have creation dates in the stats API
+        });
+      }
+
+      if (auditData.status === 'fulfilled') {
+        setRecentActivity(auditData.value.items);
+      }
     } catch {
       // Failed to load stats
     }
@@ -169,6 +209,9 @@ export function AdminDashboard() {
           <h3>Total Users</h3>
           <p className="card-value">{stats?.total_users ?? '—'}</p>
           <p className="card-label">Registered users</p>
+          {trends.total > 0 && (
+            <span className="admin-trend-badge">+{trends.total} this week</span>
+          )}
         </div>
 
         <div className="dashboard-card">
@@ -176,6 +219,9 @@ export function AdminDashboard() {
           <h3>Students</h3>
           <p className="card-value">{stats?.users_by_role?.student ?? 0}</p>
           <p className="card-label">Active students</p>
+          {trends.student > 0 && (
+            <span className="admin-trend-badge">+{trends.student} this week</span>
+          )}
         </div>
 
         <div className="dashboard-card">
@@ -183,6 +229,9 @@ export function AdminDashboard() {
           <h3>Teachers</h3>
           <p className="card-value">{stats?.users_by_role?.teacher ?? 0}</p>
           <p className="card-label">Active teachers</p>
+          {trends.teacher > 0 && (
+            <span className="admin-trend-badge">+{trends.teacher} this week</span>
+          )}
         </div>
 
         <div className="dashboard-card">
@@ -212,6 +261,36 @@ export function AdminDashboard() {
             Send Broadcast &rarr;
           </button>
         </section>
+
+        {/* Recent Activity Feed */}
+        {recentActivity.length > 0 && (
+          <section className="section admin-recent-activity-section">
+            <div className="admin-recent-activity-header">
+              <h3>Recent Activity</h3>
+            </div>
+            <div className="admin-recent-activity-list">
+              {recentActivity.map((entry) => (
+                <div key={entry.id} className="admin-activity-item">
+                  <div className="admin-activity-dot" />
+                  <div className="admin-activity-content">
+                    <div className="admin-activity-action">
+                      {entry.user_name && <span className="admin-activity-actor">{entry.user_name}</span>}
+                      {' '}<span className="admin-activity-verb">{entry.action}</span>
+                      {entry.resource_type && <span className="admin-activity-target"> {entry.resource_type}{entry.resource_id ? ` #${entry.resource_id}` : ''}</span>}
+                    </div>
+                    {entry.details && <div className="admin-activity-details">{entry.details}</div>}
+                    <div className="admin-activity-time">
+                      {new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="admin-activity-view-all" onClick={() => navigate('/admin/audit-log')}>
+              View Full Audit Log &rarr;
+            </button>
+          </section>
+        )}
 
         {/* Broadcast History */}
         <section className="section" style={{ marginBottom: '16px' }}>
