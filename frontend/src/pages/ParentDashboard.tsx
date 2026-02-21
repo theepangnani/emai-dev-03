@@ -1006,7 +1006,6 @@ export function ParentDashboard() {
             tasks={filteredTasks}
             collapsed={detailPanelCollapsed}
             onToggleCollapsed={() => setDetailPanelCollapsed(v => !v)}
-            onGoToCourse={handleGoToCourse}
             onViewMaterial={(mat) => {
               navigate(`/course-materials/${mat.id}`);
             }}
