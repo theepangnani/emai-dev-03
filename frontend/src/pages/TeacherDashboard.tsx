@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi } from '../api/client';
-import type { GoogleAccount, InviteResponse } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
+import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import type { InspirationData } from '../components/DashboardLayout';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
 import './TeacherDashboard.css';
@@ -18,11 +20,18 @@ interface Course {
 
 export function TeacherDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+
+  // Activity summary state
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentItem[]>([]);
+  const [focusDismissed, setFocusDismissed] = useState(false);
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -70,11 +79,14 @@ export function TeacherDashboard() {
 
   const loadData = async () => {
     try {
-      const [coursesData, googleStatus, accountsData, invitesData] = await Promise.allSettled([
+      const [coursesData, googleStatus, accountsData, invitesData, unreadData, conversationsData, assignmentsData] = await Promise.allSettled([
         coursesApi.teachingList(),
         googleApi.getStatus(),
         googleApi.getTeacherAccounts(),
         invitesApi.listSent(),
+        messagesApi.getUnreadCount(),
+        messagesApi.listConversations({ limit: 3 }),
+        assignmentsApi.list(),
       ]);
 
       if (coursesData.status === 'fulfilled') {
@@ -88,6 +100,20 @@ export function TeacherDashboard() {
       }
       if (invitesData.status === 'fulfilled') {
         setSentInvites(invitesData.value);
+      }
+      if (unreadData.status === 'fulfilled') {
+        setUnreadCount(unreadData.value.total_unread);
+      }
+      if (conversationsData.status === 'fulfilled') {
+        setRecentConversations(conversationsData.value.slice(0, 3));
+      }
+      if (assignmentsData.status === 'fulfilled') {
+        const now = new Date();
+        const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const upcoming = assignmentsData.value
+          .filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) >= now && new Date(a.due_date) <= sevenDays)
+          .sort((a: AssignmentItem, b: AssignmentItem) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+        setUpcomingAssignments(upcoming);
       }
     } finally {
       setLoading(false);
@@ -269,6 +295,53 @@ export function TeacherDashboard() {
     }
   };
 
+  const firstName = user?.full_name?.split(' ')[0] ?? '';
+
+  const renderHeaderSlot = (inspiration: InspirationData | null) => {
+    if (focusDismissed) return null;
+
+    const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+
+    return (
+      <div className="teacher-focus-header">
+        <div className="teacher-focus-main">
+          <span className="teacher-focus-icon">{unreadCount > 0 ? '\u{1F4EC}' : '\u{1F4DA}'}</span>
+          <div>
+            <div className="teacher-focus-title">
+              {greeting}, {firstName}!
+              {unreadCount > 0 && ` You have ${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}.`}
+              {unreadCount === 0 && ' Your inbox is clear.'}
+            </div>
+            <div className="teacher-focus-badges">
+              {unreadCount > 0 && (
+                <button type="button" className="teacher-focus-badge messages" onClick={() => navigate('/messages')}>
+                  {unreadCount} unread
+                </button>
+              )}
+              {upcomingAssignments.length > 0 && (
+                <button type="button" className="teacher-focus-badge deadlines" onClick={() => navigate('/courses')}>
+                  {upcomingAssignments.length} deadline{upcomingAssignments.length !== 1 ? 's' : ''} this week
+                </button>
+              )}
+              {courses.length > 0 && (
+                <span className="teacher-focus-badge classes">
+                  {courses.reduce((sum, c) => sum + c.student_count, 0)} students
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {inspiration && (
+          <div className="teacher-focus-inspiration">
+            <span className="teacher-focus-quote">"{inspiration.text}"</span>
+            {inspiration.author && <span className="teacher-focus-author"> — {inspiration.author}</span>}
+          </div>
+        )}
+        <button className="teacher-focus-close" onClick={() => setFocusDismissed(true)} aria-label="Dismiss">{'\u00D7'}</button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <DashboardLayout welcomeSubtitle="Your classroom overview">
@@ -278,7 +351,7 @@ export function TeacherDashboard() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle="Your classroom overview">
+    <DashboardLayout welcomeSubtitle="Your classroom overview" headerSlot={renderHeaderSlot}>
       <div className="dashboard-grid">
         <div className="dashboard-card">
           <div className="card-icon">📚</div>
@@ -330,6 +403,62 @@ export function TeacherDashboard() {
           )}
         </div>
       </div>
+
+      {/* Activity Summary */}
+      {(recentConversations.length > 0 || upcomingAssignments.length > 0) && (
+        <div className="teacher-activity-summary">
+          {recentConversations.length > 0 && (
+            <div className="teacher-activity-card">
+              <div className="teacher-activity-card-header">
+                <h4>Recent Messages</h4>
+                <button className="teacher-activity-view-all" onClick={() => navigate('/messages')}>View All</button>
+              </div>
+              <div className="teacher-activity-list">
+                {recentConversations.map((conv) => (
+                  <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
+                      <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
+                    </div>
+                    <div className="teacher-activity-item-meta">
+                      {conv.unread_count > 0 && (
+                        <span className="teacher-activity-unread-badge">{conv.unread_count}</span>
+                      )}
+                      {conv.last_message_at && (
+                        <span className="teacher-activity-item-time">
+                          {new Date(conv.last_message_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {upcomingAssignments.length > 0 && (
+            <div className="teacher-activity-card">
+              <div className="teacher-activity-card-header">
+                <h4>Upcoming Deadlines</h4>
+                <span className="teacher-activity-subtitle">Next 7 days</span>
+              </div>
+              <div className="teacher-activity-list">
+                {upcomingAssignments.slice(0, 5).map((assignment) => (
+                  <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate(`/courses`)}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{assignment.title}</span>
+                      <span className="teacher-activity-item-preview">{assignment.course_name}</span>
+                    </div>
+                    <span className="teacher-activity-item-time">
+                      {new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="dashboard-sections">
         <section className="section teacher-courses-section">
