@@ -263,40 +263,7 @@ describe('ParentDashboard', () => {
     })
   })
 
-  // ── Calendar ─────────────────────────────────────────────────
-  it('calendar section renders toggle button', async () => {
-    renderWithProviders(<ParentDashboard />)
-
-    await waitFor(() => {
-      expect(document.querySelector('.calendar-collapse-label')).toBeInTheDocument()
-    })
-    expect(document.querySelector('.calendar-collapse-toggle')).toBeInTheDocument()
-  })
-
-  it('toggles calendar collapse and expand', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ParentDashboard />)
-
-    await waitFor(() => {
-      expect(document.querySelector('.calendar-collapse-toggle')).toBeInTheDocument()
-    })
-
-    // On first visit, calendar starts expanded — shows empty state since no assignments
-    await waitFor(() => {
-      expect(screen.getByText('Calendar is clear')).toBeInTheDocument()
-    })
-
-    // Collapse calendar
-    const toggleBtn = document.querySelector('.calendar-collapse-toggle') as HTMLElement
-    await user.click(toggleBtn)
-    expect(screen.queryByText('Calendar is clear')).not.toBeInTheDocument()
-
-    // Expand again
-    await user.click(toggleBtn)
-    await waitFor(() => {
-      expect(screen.getByText('Calendar is clear')).toBeInTheDocument()
-    })
-  })
+  // ── Calendar moved to TasksPage ──────────────────────────────
 
   // ── Quick Action Buttons ─────────────────────────────────────
   it('renders quick actions bar with Upload Documents and Create Task buttons', async () => {

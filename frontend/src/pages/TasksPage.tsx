@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { tasksApi, parentApi } from '../api/client';
 import type { TaskItem, AssignableUser, ChildSummary } from '../api/client';
+import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { CalendarView } from '../components/calendar/CalendarView';
+import type { CalendarAssignment } from '../components/calendar/types';
+import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
 import './TasksPage.css';
 
@@ -66,6 +70,15 @@ export function TasksPage() {
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const { confirm, confirmModal } = useConfirm();
 
+  // Calendar state
+  const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_collapsed');
+      return saved !== '0';
+    } catch { return true; }
+  });
+  const [overviews, setOverviews] = useState<ChildOverview[]>([]);
+
   useEffect(() => {
     loadTasks();
     loadAssignableUsers();
@@ -125,6 +138,81 @@ export function TasksPage() {
       setChildren(data);
     } catch {
       // silently fail
+    }
+  };
+
+  // Fetch overviews for calendar (parent only)
+  useEffect(() => {
+    if (!isParent || children.length === 0) return;
+    const fetchOverviews = async () => {
+      try {
+        const results = await Promise.all(
+          children.map(c => parentApi.getChildOverview(c.student_id))
+        );
+        setOverviews(results);
+      } catch { /* silently fail */ }
+    };
+    fetchOverviews();
+  }, [children]);
+
+  const toggleCalendar = () => {
+    setCalendarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('calendar_collapsed', next ? '1' : '0'); } catch { /* */ }
+      return next;
+    });
+  };
+
+  // Calendar assignments derived from overviews + tasks
+  const courseIds = useMemo(() => overviews.flatMap(o => o.courses.map(c => c.id)), [overviews]);
+
+  const calendarAssignments: CalendarAssignment[] = useMemo(() => {
+    const assignments = overviews.flatMap(overview =>
+      overview.assignments
+        .filter(a => a.due_date)
+        .map(a => ({
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          courseId: a.course_id,
+          courseName: overview.courses.find(c => c.id === a.course_id)?.name || 'Unknown',
+          courseColor: getCourseColor(a.course_id, courseIds),
+          dueDate: new Date(a.due_date!),
+          childName: children.length > 1 ? overview.full_name : '',
+          maxPoints: a.max_points,
+          itemType: 'assignment' as const,
+        }))
+    );
+    const taskItems: CalendarAssignment[] = tasks
+      .filter(t => t.due_date)
+      .map(t => ({
+        id: t.id + 1_000_000,
+        taskId: t.id,
+        title: t.title,
+        description: t.description,
+        courseId: 0,
+        courseName: '',
+        courseColor: TASK_PRIORITY_COLORS[t.priority || 'medium'],
+        dueDate: new Date(t.due_date!),
+        childName: t.assignee_name || '',
+        maxPoints: null,
+        itemType: 'task' as const,
+        priority: (t.priority || 'medium') as 'low' | 'medium' | 'high',
+        isCompleted: t.is_completed,
+      }));
+    return [...assignments, ...taskItems];
+  }, [overviews, courseIds, children.length, tasks]);
+
+  const handleTaskDrop = async (calendarId: number, newDate: Date) => {
+    const taskId = calendarId - 1_000_000;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newDueDate = newDate.toISOString();
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
+    try {
+      await tasksApi.update(taskId, { due_date: newDueDate });
+    } catch {
+      loadTasks(); // revert on failure
     }
   };
 
@@ -306,6 +394,39 @@ export function TasksPage() {
           <span className="tasks-new-btn-icon">{'\u2705'}</span>
           <span>New Task</span>
         </button>
+
+        {/* Collapsible Calendar Section */}
+        {isParent && (
+          <>
+            <div className="calendar-collapse-section">
+              <button className="calendar-collapse-toggle" onClick={toggleCalendar}>
+                <span className={`calendar-collapse-chevron${calendarCollapsed ? '' : ' expanded'}`}>&#9654;</span>
+                <span className="calendar-collapse-label">Calendar</span>
+                {calendarCollapsed && calendarAssignments.length > 0 && (
+                  <span className="calendar-badge">{calendarAssignments.length} item{calendarAssignments.length !== 1 ? 's' : ''}</span>
+                )}
+              </button>
+            </div>
+
+            {!calendarCollapsed && (
+              calendarAssignments.length === 0 ? (
+                <div className="empty-state" style={{ marginBottom: 16 }}>
+                  <div className="empty-state-icon">{'\uD83D\uDCC5'}</div>
+                  <h3 className="empty-state-title">Calendar is clear</h3>
+                  <p className="empty-state-text">No upcoming assignments or tasks this week.</p>
+                </div>
+              ) : (
+                <CalendarView
+                  assignments={calendarAssignments}
+                  onCreateStudyGuide={() => {}}
+                  onGoToCourse={(courseId) => navigate(`/courses?highlight=${courseId}`)}
+                  onViewStudyGuides={() => navigate('/course-materials')}
+                  onTaskDrop={handleTaskDrop}
+                />
+              )
+            )}
+          </>
+        )}
 
         {/* Filter bar: count + toggle + active-filter badges */}
         <div className="tasks-filter-bar">

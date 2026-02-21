@@ -1,6 +1,5 @@
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
-import { CalendarView } from '../components/calendar/CalendarView';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
@@ -98,64 +97,7 @@ export function ParentDashboard() {
             onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
           />
 
-          {/* Collapsible Calendar Section */}
-          <div className="calendar-collapse-section">
-            <button className="calendar-collapse-toggle" onClick={pd.toggleCalendar}>
-              <span className={`calendar-collapse-chevron${pd.calendarCollapsed ? '' : ' expanded'}`}>&#9654;</span>
-              <span className="calendar-collapse-label">Calendar</span>
-              {pd.calendarCollapsed && pd.calendarAssignments.length > 0 && (
-                <span className="calendar-badge">{pd.calendarAssignments.length} item{pd.calendarAssignments.length !== 1 ? 's' : ''}</span>
-              )}
-            </button>
-          </div>
-
-          {pd.showCalendarTooltip && !pd.calendarCollapsed && (
-            <div className="calendar-tooltip">
-              <span>Your calendar shows all assignments and tasks. Click dates to see details.</span>
-              <button onClick={pd.dismissCalendarTooltip}>Got it</button>
-            </div>
-          )}
-
-          {!pd.calendarCollapsed && (
-            <>
-              {pd.overviewLoading ? (
-                <PageSkeleton />
-              ) : pd.calendarAssignments.length === 0 && pd.undatedAssignments.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">📅</div>
-                  <h3 className="empty-state-title">Calendar is clear</h3>
-                  <p className="empty-state-text">No upcoming assignments or tasks this week.</p>
-                </div>
-              ) : (
-                <>
-                  <CalendarView
-                    assignments={pd.calendarAssignments}
-                    onCreateStudyGuide={pd.handleOneClickStudy}
-                    onDayClick={pd.openDayModal}
-                    onTaskDrop={pd.handleTaskDrop}
-                    onGoToCourse={pd.handleGoToCourse}
-                    onViewStudyGuides={pd.handleViewStudyGuides}
-                    generatingStudyId={pd.generatingStudyId}
-                  />
-
-                  {pd.undatedAssignments.length > 0 && (
-                    <div className="undated-section">
-                      <h4>Undated Assignments ({pd.undatedAssignments.length})</h4>
-                      <div className="undated-list">
-                        {pd.undatedAssignments.map(a => (
-                          <div key={a.id} className="undated-item" onClick={() => pd.handleOneClickStudy(a)}>
-                            <span className="cal-entry-dot" style={{ background: a.courseColor }} />
-                            <span className="undated-title">{a.title}</span>
-                            <span className="undated-course">{a.courseName}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
+          {/* Calendar moved to Tasks page */}
         </>
       )}
 
