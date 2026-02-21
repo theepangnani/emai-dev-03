@@ -431,6 +431,120 @@
   margin-top: 12px;
 }
 
+/* Trend Badges */
+.admin-trend-badge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+/* Recent Activity Feed */
+.admin-recent-activity-section {
+  grid-column: 1 / -1;
+  margin-bottom: 16px;
+}
+
+.admin-recent-activity-header {
+  margin-bottom: 12px;
+}
+
+.admin-recent-activity-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.admin-recent-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.admin-activity-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.admin-activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.admin-activity-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-activity-action {
+  font-size: 13px;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.admin-activity-actor {
+  font-weight: 600;
+}
+
+.admin-activity-verb {
+  color: var(--color-ink);
+}
+
+.admin-activity-target {
+  color: var(--color-ink-muted);
+}
+
+.admin-activity-details {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-activity-time {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-top: 4px;
+}
+
+.admin-activity-view-all {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-activity-view-all:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+}
+
 /* Mobile responsive */
 @media (max-width: 600px) {
   .admin-filters {

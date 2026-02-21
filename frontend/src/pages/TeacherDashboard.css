@@ -1,3 +1,248 @@
+/* Teacher Focus Header */
+.teacher-focus-header {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px 40px 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teacher-focus-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.teacher-focus-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.teacher-focus-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.teacher-focus-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.teacher-focus-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: none;
+  cursor: default;
+}
+
+.teacher-focus-badge.messages {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.teacher-focus-badge.messages:hover {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.teacher-focus-badge.deadlines {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  cursor: pointer;
+}
+
+.teacher-focus-badge.deadlines:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.teacher-focus-badge.classes {
+  background: rgba(73, 184, 192, 0.12);
+  color: var(--color-accent-strong);
+}
+
+.teacher-focus-inspiration {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+  line-height: 1.5;
+}
+
+.teacher-focus-quote {
+  font-style: italic;
+}
+
+.teacher-focus-author {
+  font-style: normal;
+  font-weight: 500;
+}
+
+.teacher-focus-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.teacher-focus-close:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+/* Activity Summary */
+.teacher-activity-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.teacher-activity-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.teacher-activity-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.teacher-activity-card-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.teacher-activity-view-all {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.teacher-activity-view-all:hover {
+  background: var(--color-accent-subtle);
+}
+
+.teacher-activity-subtitle {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.teacher-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.teacher-activity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 12px;
+}
+
+.teacher-activity-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.teacher-activity-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.teacher-activity-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teacher-activity-item-preview {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teacher-activity-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.teacher-activity-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.teacher-activity-item-time {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .teacher-focus-header {
+    padding: 14px 36px 14px 14px;
+  }
+  .teacher-focus-title {
+    font-size: 14px;
+  }
+  .teacher-activity-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .teacher-courses-section {
   grid-column: 1 / -1;
 }
@@ -413,6 +658,79 @@
   padding: 8px 14px;
   border-radius: 8px;
   margin-bottom: 12px;
+}
+
+/* Upload Drop Zone */
+.upload-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.upload-drop-zone:hover,
+.upload-drop-zone.dragging {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.upload-drop-zone.has-file {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.upload-drop-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+
+.upload-drop-icon {
+  font-size: 28px;
+}
+
+.upload-file-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.upload-file-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-file-size {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.upload-file-remove {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.upload-file-remove:hover {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Tablet */

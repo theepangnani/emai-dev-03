@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi } from '../api/client';
-import type { GoogleAccount, InviteResponse } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, courseContentsApi } from '../api/client';
+import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import type { InspirationData } from '../components/DashboardLayout';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
 import './TeacherDashboard.css';
@@ -18,11 +20,18 @@ interface Course {
 
 export function TeacherDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+
+  // Activity summary state
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentItem[]>([]);
+  const [focusDismissed, setFocusDismissed] = useState(false);
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -64,17 +73,32 @@ export function TeacherDashboard() {
   const [announceError, setAnnounceError] = useState('');
   const [announceSuccess, setAnnounceSuccess] = useState('');
 
+  // Upload material modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadCourseId, setUploadCourseId] = useState<number | ''>('');
+  const [uploadType, setUploadType] = useState('notes');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDragging, setUploadDragging] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const [coursesData, googleStatus, accountsData, invitesData] = await Promise.allSettled([
+      const [coursesData, googleStatus, accountsData, invitesData, unreadData, conversationsData, assignmentsData] = await Promise.allSettled([
         coursesApi.teachingList(),
         googleApi.getStatus(),
         googleApi.getTeacherAccounts(),
         invitesApi.listSent(),
+        messagesApi.getUnreadCount(),
+        messagesApi.listConversations({ limit: 3 }),
+        assignmentsApi.list(),
       ]);
 
       if (coursesData.status === 'fulfilled') {
@@ -88,6 +112,20 @@ export function TeacherDashboard() {
       }
       if (invitesData.status === 'fulfilled') {
         setSentInvites(invitesData.value);
+      }
+      if (unreadData.status === 'fulfilled') {
+        setUnreadCount(unreadData.value.total_unread);
+      }
+      if (conversationsData.status === 'fulfilled') {
+        setRecentConversations(conversationsData.value.slice(0, 3));
+      }
+      if (assignmentsData.status === 'fulfilled') {
+        const now = new Date();
+        const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const upcoming = assignmentsData.value
+          .filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) >= now && new Date(a.due_date) <= sevenDays)
+          .sort((a: AssignmentItem, b: AssignmentItem) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+        setUpcomingAssignments(upcoming);
       }
     } finally {
       setLoading(false);
@@ -269,6 +307,109 @@ export function TeacherDashboard() {
     }
   };
 
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadCourseId('');
+    setUploadType('notes');
+    setUploadTitle('');
+    setUploadDescription('');
+    setUploadFile(null);
+    setUploadError('');
+    setUploadSuccess('');
+    setUploadDragging(false);
+  };
+
+  const handleUploadMaterial = async () => {
+    if (!uploadCourseId || !uploadFile) return;
+    setUploadLoading(true);
+    setUploadError('');
+    setUploadSuccess('');
+    try {
+      await courseContentsApi.uploadFile(
+        uploadFile,
+        uploadCourseId as number,
+        uploadTitle.trim() || undefined,
+        uploadType,
+      );
+      setUploadSuccess('Material uploaded successfully!');
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+      setTimeout(() => {
+        closeUploadModal();
+      }, 1500);
+    } catch (err: any) {
+      setUploadError(err.response?.data?.detail || 'Failed to upload material');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleUploadDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
+  const handleUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
+  const firstName = user?.full_name?.split(' ')[0] ?? '';
+
+  const renderHeaderSlot = (inspiration: InspirationData | null) => {
+    if (focusDismissed) return null;
+
+    const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+
+    return (
+      <div className="teacher-focus-header">
+        <div className="teacher-focus-main">
+          <span className="teacher-focus-icon">{unreadCount > 0 ? '\u{1F4EC}' : '\u{1F4DA}'}</span>
+          <div>
+            <div className="teacher-focus-title">
+              {greeting}, {firstName}!
+              {unreadCount > 0 && ` You have ${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}.`}
+              {unreadCount === 0 && ' Your inbox is clear.'}
+            </div>
+            <div className="teacher-focus-badges">
+              {unreadCount > 0 && (
+                <button type="button" className="teacher-focus-badge messages" onClick={() => navigate('/messages')}>
+                  {unreadCount} unread
+                </button>
+              )}
+              {upcomingAssignments.length > 0 && (
+                <button type="button" className="teacher-focus-badge deadlines" onClick={() => navigate('/courses')}>
+                  {upcomingAssignments.length} deadline{upcomingAssignments.length !== 1 ? 's' : ''} this week
+                </button>
+              )}
+              {courses.length > 0 && (
+                <span className="teacher-focus-badge classes">
+                  {courses.reduce((sum, c) => sum + c.student_count, 0)} students
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {inspiration && (
+          <div className="teacher-focus-inspiration">
+            <span className="teacher-focus-quote">"{inspiration.text}"</span>
+            {inspiration.author && <span className="teacher-focus-author"> — {inspiration.author}</span>}
+          </div>
+        )}
+        <button className="teacher-focus-close" onClick={() => setFocusDismissed(true)} aria-label="Dismiss">{'\u00D7'}</button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <DashboardLayout welcomeSubtitle="Your classroom overview">
@@ -278,7 +419,7 @@ export function TeacherDashboard() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle="Your classroom overview">
+    <DashboardLayout welcomeSubtitle="Your classroom overview" headerSlot={renderHeaderSlot}>
       <div className="dashboard-grid">
         <div className="dashboard-card">
           <div className="card-icon">📚</div>
@@ -315,6 +456,13 @@ export function TeacherDashboard() {
           <p className="card-label">Connect families</p>
         </div>
 
+        <div className="dashboard-card clickable" onClick={() => setShowUploadModal(true)}>
+          <div className="card-icon">📄</div>
+          <h3>Upload Material</h3>
+          <p className="card-value">Upload</p>
+          <p className="card-label">Share class content</p>
+        </div>
+
         <div className="dashboard-card">
           <div className="card-icon">🔗</div>
           <h3>Google Classroom</h3>
@@ -330,6 +478,62 @@ export function TeacherDashboard() {
           )}
         </div>
       </div>
+
+      {/* Activity Summary */}
+      {(recentConversations.length > 0 || upcomingAssignments.length > 0) && (
+        <div className="teacher-activity-summary">
+          {recentConversations.length > 0 && (
+            <div className="teacher-activity-card">
+              <div className="teacher-activity-card-header">
+                <h4>Recent Messages</h4>
+                <button className="teacher-activity-view-all" onClick={() => navigate('/messages')}>View All</button>
+              </div>
+              <div className="teacher-activity-list">
+                {recentConversations.map((conv) => (
+                  <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
+                      <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
+                    </div>
+                    <div className="teacher-activity-item-meta">
+                      {conv.unread_count > 0 && (
+                        <span className="teacher-activity-unread-badge">{conv.unread_count}</span>
+                      )}
+                      {conv.last_message_at && (
+                        <span className="teacher-activity-item-time">
+                          {new Date(conv.last_message_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {upcomingAssignments.length > 0 && (
+            <div className="teacher-activity-card">
+              <div className="teacher-activity-card-header">
+                <h4>Upcoming Deadlines</h4>
+                <span className="teacher-activity-subtitle">Next 7 days</span>
+              </div>
+              <div className="teacher-activity-list">
+                {upcomingAssignments.slice(0, 5).map((assignment) => (
+                  <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate(`/courses`)}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{assignment.title}</span>
+                      <span className="teacher-activity-item-preview">{assignment.course_name}</span>
+                    </div>
+                    <span className="teacher-activity-item-time">
+                      {new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="dashboard-sections">
         <section className="section teacher-courses-section">
@@ -686,6 +890,112 @@ export function TeacherDashboard() {
                 disabled={announceSending || !announceCourseId || !announceSubject.trim() || !announceBody.trim()}
               >
                 {announceSending ? 'Sending...' : 'Send Announcement'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Upload Material Modal */}
+      {showUploadModal && (
+        <div className="modal-overlay" onClick={closeUploadModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Upload Material</h2>
+            <p className="modal-desc">
+              Upload class notes, tests, or other materials to a course.
+            </p>
+            <div className="modal-form">
+              <label>
+                Course *
+                <select
+                  value={uploadCourseId}
+                  onChange={(e) => { setUploadCourseId(e.target.value ? Number(e.target.value) : ''); setUploadError(''); }}
+                  disabled={uploadLoading}
+                >
+                  <option value="">Select a class...</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Material Type *
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  disabled={uploadLoading}
+                >
+                  <option value="notes">Class Notes</option>
+                  <option value="test">Test / Quiz</option>
+                  <option value="lab">Lab / Project</option>
+                  <option value="assignment">Assignment</option>
+                </select>
+              </label>
+              <label>
+                Title
+                <input
+                  type="text"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="e.g., Chapter 5 Notes"
+                  disabled={uploadLoading}
+                />
+              </label>
+              <label>
+                Description
+                <textarea
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  placeholder="Optional description..."
+                  rows={2}
+                  disabled={uploadLoading}
+                />
+              </label>
+              <div
+                className={`upload-drop-zone${uploadDragging ? ' dragging' : ''}${uploadFile ? ' has-file' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setUploadDragging(true); }}
+                onDragLeave={() => setUploadDragging(false)}
+                onDrop={handleUploadDrop}
+                onClick={() => document.getElementById('teacher-upload-input')?.click()}
+              >
+                {uploadFile ? (
+                  <div className="upload-file-info">
+                    <span className="upload-file-name">{uploadFile.name}</span>
+                    <span className="upload-file-size">({(uploadFile.size / 1024).toFixed(0)} KB)</span>
+                    <button
+                      type="button"
+                      className="upload-file-remove"
+                      onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
+                    >
+                      {'\u00D7'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="upload-drop-prompt">
+                    <span className="upload-drop-icon">📁</span>
+                    <span>Drag & drop a file here, or click to browse</span>
+                  </div>
+                )}
+                <input
+                  id="teacher-upload-input"
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadFileChange}
+                  disabled={uploadLoading}
+                />
+              </div>
+              {uploadError && <p className="link-error">{uploadError}</p>}
+              {uploadSuccess && <p className="link-success">{uploadSuccess}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeUploadModal} disabled={uploadLoading}>
+                {uploadSuccess ? 'Close' : 'Cancel'}
+              </button>
+              <button
+                className="generate-btn"
+                onClick={handleUploadMaterial}
+                disabled={uploadLoading || !uploadCourseId || !uploadFile}
+              >
+                {uploadLoading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
           </div>
