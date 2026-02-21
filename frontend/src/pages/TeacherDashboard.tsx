@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, courseContentsApi } from '../api/client';
 import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -72,6 +72,18 @@ export function TeacherDashboard() {
   const [announceSending, setAnnounceSending] = useState(false);
   const [announceError, setAnnounceError] = useState('');
   const [announceSuccess, setAnnounceSuccess] = useState('');
+
+  // Upload material modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadCourseId, setUploadCourseId] = useState<number | ''>('');
+  const [uploadType, setUploadType] = useState('notes');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDragging, setUploadDragging] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
 
   useEffect(() => {
     loadData();
@@ -295,6 +307,62 @@ export function TeacherDashboard() {
     }
   };
 
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadCourseId('');
+    setUploadType('notes');
+    setUploadTitle('');
+    setUploadDescription('');
+    setUploadFile(null);
+    setUploadError('');
+    setUploadSuccess('');
+    setUploadDragging(false);
+  };
+
+  const handleUploadMaterial = async () => {
+    if (!uploadCourseId || !uploadFile) return;
+    setUploadLoading(true);
+    setUploadError('');
+    setUploadSuccess('');
+    try {
+      await courseContentsApi.uploadFile(
+        uploadFile,
+        uploadCourseId as number,
+        uploadTitle.trim() || undefined,
+        uploadType,
+      );
+      setUploadSuccess('Material uploaded successfully!');
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+      setTimeout(() => {
+        closeUploadModal();
+      }, 1500);
+    } catch (err: any) {
+      setUploadError(err.response?.data?.detail || 'Failed to upload material');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleUploadDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
+  const handleUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
   const firstName = user?.full_name?.split(' ')[0] ?? '';
 
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
@@ -386,6 +454,13 @@ export function TeacherDashboard() {
           <h3>Invite Parent</h3>
           <p className="card-value">Invite</p>
           <p className="card-label">Connect families</p>
+        </div>
+
+        <div className="dashboard-card clickable" onClick={() => setShowUploadModal(true)}>
+          <div className="card-icon">📄</div>
+          <h3>Upload Material</h3>
+          <p className="card-value">Upload</p>
+          <p className="card-label">Share class content</p>
         </div>
 
         <div className="dashboard-card">
@@ -815,6 +890,112 @@ export function TeacherDashboard() {
                 disabled={announceSending || !announceCourseId || !announceSubject.trim() || !announceBody.trim()}
               >
                 {announceSending ? 'Sending...' : 'Send Announcement'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Upload Material Modal */}
+      {showUploadModal && (
+        <div className="modal-overlay" onClick={closeUploadModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Upload Material</h2>
+            <p className="modal-desc">
+              Upload class notes, tests, or other materials to a course.
+            </p>
+            <div className="modal-form">
+              <label>
+                Course *
+                <select
+                  value={uploadCourseId}
+                  onChange={(e) => { setUploadCourseId(e.target.value ? Number(e.target.value) : ''); setUploadError(''); }}
+                  disabled={uploadLoading}
+                >
+                  <option value="">Select a class...</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Material Type *
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  disabled={uploadLoading}
+                >
+                  <option value="notes">Class Notes</option>
+                  <option value="test">Test / Quiz</option>
+                  <option value="lab">Lab / Project</option>
+                  <option value="assignment">Assignment</option>
+                </select>
+              </label>
+              <label>
+                Title
+                <input
+                  type="text"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="e.g., Chapter 5 Notes"
+                  disabled={uploadLoading}
+                />
+              </label>
+              <label>
+                Description
+                <textarea
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  placeholder="Optional description..."
+                  rows={2}
+                  disabled={uploadLoading}
+                />
+              </label>
+              <div
+                className={`upload-drop-zone${uploadDragging ? ' dragging' : ''}${uploadFile ? ' has-file' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setUploadDragging(true); }}
+                onDragLeave={() => setUploadDragging(false)}
+                onDrop={handleUploadDrop}
+                onClick={() => document.getElementById('teacher-upload-input')?.click()}
+              >
+                {uploadFile ? (
+                  <div className="upload-file-info">
+                    <span className="upload-file-name">{uploadFile.name}</span>
+                    <span className="upload-file-size">({(uploadFile.size / 1024).toFixed(0)} KB)</span>
+                    <button
+                      type="button"
+                      className="upload-file-remove"
+                      onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
+                    >
+                      {'\u00D7'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="upload-drop-prompt">
+                    <span className="upload-drop-icon">📁</span>
+                    <span>Drag & drop a file here, or click to browse</span>
+                  </div>
+                )}
+                <input
+                  id="teacher-upload-input"
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadFileChange}
+                  disabled={uploadLoading}
+                />
+              </div>
+              {uploadError && <p className="link-error">{uploadError}</p>}
+              {uploadSuccess && <p className="link-success">{uploadSuccess}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeUploadModal} disabled={uploadLoading}>
+                {uploadSuccess ? 'Close' : 'Cancel'}
+              </button>
+              <button
+                className="generate-btn"
+                onClick={handleUploadMaterial}
+                disabled={uploadLoading || !uploadCourseId || !uploadFile}
+              >
+                {uploadLoading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
           </div>

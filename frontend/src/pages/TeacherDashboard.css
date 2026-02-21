@@ -660,6 +660,79 @@
   margin-bottom: 12px;
 }
 
+/* Upload Drop Zone */
+.upload-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.upload-drop-zone:hover,
+.upload-drop-zone.dragging {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.upload-drop-zone.has-file {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.upload-drop-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+
+.upload-drop-icon {
+  font-size: 28px;
+}
+
+.upload-file-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.upload-file-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-file-size {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.upload-file-remove {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.upload-file-remove:hover {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
 /* Tablet */
 @media (max-width: 768px) {
   .teacher-courses-grid {
