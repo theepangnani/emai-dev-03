@@ -363,11 +363,18 @@
 }
 
 .ps-nav-icon {
-  font-size: 22px;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
-  text-align: center;
-  line-height: 1;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.ps-nav-icon svg {
+  width: 20px;
+  height: 20px;
+  transition: color 0.15s;
 }
 
 /* Labels below icons in persistent sidebar */
@@ -485,11 +492,17 @@
 }
 
 .ps-action-icon {
-  font-size: 22px;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
-  text-align: center;
-  line-height: 1;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.ps-action-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Labels always hidden — icon-only sidebar */
@@ -580,9 +593,19 @@
 /* Slide-menu icon styling for mobile */
 .sidebar-link-icon,
 .sidebar-action-icon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   margin-right: 8px;
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-link-icon svg,
+.sidebar-action-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .sidebar-link {

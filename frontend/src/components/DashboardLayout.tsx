@@ -30,30 +30,83 @@ interface DashboardLayoutProps {
   headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
 }
 
-// Icon map for nav items (unicode emojis per project convention)
-const NAV_ICONS: Record<string, string> = {
-  'Home': '\u{1F3E0}',
-  'My Kids': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
-  'Classes': '\u{1F4DA}',
-  'Class Materials': '\u{1F4DD}',
-  'Quiz History': '\u{1F4CA}',
-  'Tasks': '\u2705',
-  'Messages': '\u{1F4AC}',
-  'Help': '\u2753',
-  'Dashboard': '\u{1F3E0}',
-  'Teacher Comms': '\u{1F4E8}',
+// SVG icon component for nav items (Feather/Lucide style)
+const NAV_SVG: Record<string, React.ReactNode> = {
+  Home: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+  'My Kids': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Classes: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
+  Materials: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  ),
+  'Quiz History': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  Tasks: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 11 12 14 22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  ),
+  Messages: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
+  'Teacher Comms': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  ),
+  Help: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
 };
 
-// Quick action icons — must match NAV_ICONS base icons for consistency
-const QUICK_ACTION_ICONS: Record<string, string> = {
-  '+ Class Material': '\u{1F4DD}',
-  '+ Create Class Material': '\u{1F4DD}',
-  '+ Task': '\u2705',
-  '+ Child': '\u{1F476}',
-  '+ Add Child': '\u{1F476}',
-  '+ Class': '\u{1F4DA}',
-  '+ Add Class': '\u{1F4DA}',
-  '+ Create Study Material': '\u{1F4DD}',
+const NavIcon = ({ name }: { name: string }) => {
+  return NAV_SVG[name] || <span>{name[0]}</span>;
+};
+
+// Quick action SVG icons
+const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
+  '+ Class Material': NAV_SVG.Materials,
+  '+ Create Class Material': NAV_SVG.Materials,
+  '+ Task': NAV_SVG.Tasks,
+  '+ Child': NAV_SVG['My Kids'],
+  '+ Add Child': NAV_SVG['My Kids'],
+  '+ Class': NAV_SVG.Classes,
+  '+ Add Class': NAV_SVG.Classes,
+  '+ Create Study Material': NAV_SVG.Materials,
 };
 
 export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, headerSlot }: DashboardLayoutProps) {
@@ -94,13 +147,19 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     }
 
     const items: Array<{ label: string; path: string }> = [
-      { label: 'Dashboard', path: '/dashboard' },
+      { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
-      { label: 'Class Materials', path: '/course-materials' },
-      { label: 'Quiz History', path: '/quiz-history' },
+      { label: 'Materials', path: '/course-materials' },
+    ];
+
+    if (user?.role === 'student') {
+      items.push({ label: 'Quiz History', path: '/quiz-history' });
+    }
+
+    items.push(
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
-    ];
+    );
 
     if (user?.role === 'teacher') {
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
@@ -298,7 +357,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
               className={`sidebar-link${location.pathname === item.path ? ' active' : ''}`}
               onClick={() => handleNavClick(item.path)}
             >
-              <span className="sidebar-link-icon">{NAV_ICONS[item.label] || ''}</span>
+              <span className="sidebar-link-icon"><NavIcon name={item.label} /></span>
               <span className="sidebar-link-label">{item.label}</span>
               {item.path === '/messages' && unreadCount > 0 && (
                 <span className="sidebar-badge">{unreadCount}</span>
@@ -317,7 +376,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                   className="sidebar-action"
                   onClick={() => handleActionClick(action)}
                 >
-                  <span className="sidebar-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                  <span className="sidebar-action-icon icon-with-plus">{QUICK_ACTION_SVG[action.label] || <NavIcon name={action.label} />}</span>
                   <span className="sidebar-action-label">{action.label}</span>
                 </button>
               ))}
@@ -338,7 +397,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                 title={item.label}
                 aria-label={item.label}
               >
-                <span className="ps-nav-icon">{NAV_ICONS[item.label] || ''}</span>
+                <span className="ps-nav-icon"><NavIcon name={item.label} /></span>
                 <span className="ps-nav-label">{item.label}</span>
                 {item.path === '/messages' && unreadCount > 0 && (
                   <span className="ps-nav-badge">{unreadCount}</span>
@@ -368,7 +427,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                       title={action.label}
                       aria-label={action.label}
                     >
-                      <span className="ps-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                      <span className="ps-action-icon icon-with-plus">{QUICK_ACTION_SVG[action.label] || <NavIcon name={action.label} />}</span>
                     </button>
                   ))}
                 </div>
