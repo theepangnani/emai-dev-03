@@ -235,7 +235,7 @@ describe('ParentDashboard', () => {
     expect(screen.getAllByText('Jamie Smith').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders student detail panel with courses section', async () => {
+  it('renders student detail panel with tasks section', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({
         children: [child1, child2],
@@ -245,11 +245,9 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // StudentDetailPanel shows Courses and Tasks section headers
-      // "Courses" appears in both sidebar nav and StudentDetailPanel
-      expect(screen.getAllByText('Courses').length).toBeGreaterThanOrEqual(1)
+      // StudentDetailPanel shows Tasks section header
+      expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
     })
-    expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
   })
 
   // ── Alert Banner Navigation ─────────────────────────────────
