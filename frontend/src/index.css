@@ -108,78 +108,78 @@
 }
 
 /* ========================================
-   Dark Theme (turbo.ai-inspired)
+   Dark Theme (warm charcoal)
    ======================================== */
 [data-theme="dark"] {
-  --color-ink: #e8eaf0;
-  --color-ink-muted: #9ca0b0;
-  --color-surface: #1a1d2e;
-  --color-surface-alt: #252836;
-  --color-surface-bg: #0d0f1a;
-  --color-surface-header: rgba(26, 29, 46, 0.92);
-  --color-border: #2a2d3e;
+  --color-ink: #e4e4e7;
+  --color-ink-muted: #a1a1aa;
+  --color-surface: #1e1e1e;
+  --color-surface-alt: #2a2a2a;
+  --color-surface-bg: #141414;
+  --color-surface-header: rgba(30, 30, 30, 0.94);
+  --color-border: #3f3f46;
 
-  --color-accent: #8b5cf6;
-  --color-accent-strong: #7c3aed;
+  --color-accent: #a78bfa;
+  --color-accent-strong: #8b5cf6;
   --color-accent-warm: #22d3ee;
-  --color-accent-light: rgba(139, 92, 246, 0.15);
-  --color-accent-subtle: rgba(139, 92, 246, 0.08);
-  --color-focus-ring: rgba(139, 92, 246, 0.2);
+  --color-accent-light: rgba(167, 139, 250, 0.15);
+  --color-accent-subtle: rgba(167, 139, 250, 0.08);
+  --color-focus-ring: rgba(167, 139, 250, 0.25);
 
-  --color-purple: #a78bfa;
-  --color-purple-strong: #8b5cf6;
-  --color-purple-light: rgba(139, 92, 246, 0.12);
-  --color-purple-bg: rgba(139, 92, 246, 0.18);
+  --color-purple: #c4b5fd;
+  --color-purple-strong: #a78bfa;
+  --color-purple-light: rgba(167, 139, 250, 0.14);
+  --color-purple-bg: rgba(167, 139, 250, 0.18);
 
-  --color-blue: #60a5fa;
-  --color-blue-dark: #3b82f6;
-  --color-danger: #f87171;
-  --color-danger-light: rgba(248, 113, 113, 0.12);
-  --color-warning: #fbbf24;
-  --color-warning-light: rgba(251, 191, 36, 0.12);
-  --color-warning-text: #fcd34d;
-  --color-success: #34d399;
-  --color-success-light: rgba(52, 211, 153, 0.12);
+  --color-blue: #7dd3fc;
+  --color-blue-dark: #38bdf8;
+  --color-danger: #fca5a5;
+  --color-danger-light: rgba(252, 165, 165, 0.14);
+  --color-warning: #fde68a;
+  --color-warning-light: rgba(253, 230, 138, 0.14);
+  --color-warning-text: #fef08a;
+  --color-success: #6ee7b7;
+  --color-success-light: rgba(110, 231, 183, 0.14);
 
-  --priority-high: #f87171;
-  --priority-high-light: rgba(248, 113, 113, 0.12);
-  --priority-medium: #fbbf24;
-  --priority-medium-light: rgba(251, 191, 36, 0.12);
-  --priority-low: #34d399;
-  --priority-low-light: rgba(52, 211, 153, 0.12);
+  --priority-high: #fca5a5;
+  --priority-high-light: rgba(252, 165, 165, 0.14);
+  --priority-medium: #fde68a;
+  --priority-medium-light: rgba(253, 230, 138, 0.14);
+  --priority-low: #6ee7b7;
+  --priority-low-light: rgba(110, 231, 183, 0.14);
 
-  --brand-google: #60a5fa;
-  --brand-google-light: rgba(96, 165, 250, 0.12);
+  --brand-google: #7dd3fc;
+  --brand-google-light: rgba(125, 211, 252, 0.14);
 
-  --badge-syllabus: #c084fc;
-  --badge-labs: #fb923c;
-  --badge-readings: #60a5fa;
-  --badge-resources: #4ade80;
-  --badge-assignments: #fb7185;
+  --badge-syllabus: #d8b4fe;
+  --badge-labs: #fdba74;
+  --badge-readings: #7dd3fc;
+  --badge-resources: #86efac;
+  --badge-assignments: #fda4af;
 
-  --role-parent: #fb923c;
-  --role-teacher: #34d399;
-  --role-admin: #fbbf24;
+  --role-parent: #fdba74;
+  --role-teacher: #6ee7b7;
+  --role-admin: #fde68a;
 
-  --color-accent-dark: #6d28d9;
+  --color-accent-dark: #7c3aed;
   --color-accent-warm-strong: #0ea5e9;
-  --color-success-dark: #059669;
-  --color-inactive: #4a4d5e;
+  --color-success-dark: #10b981;
+  --color-inactive: #52525b;
 
   --color-overlay: rgba(0, 0, 0, 0.7);
   --color-overlay-light: rgba(0, 0, 0, 0.5);
 
-  --color-muted: #9ca0b0;
-  --color-muted-light: #6b7085;
-  --color-muted-border: #3a3d4e;
+  --color-muted: #a1a1aa;
+  --color-muted-light: #71717a;
+  --color-muted-border: #52525b;
 
-  --shadow-soft: 0 0 20px rgba(139, 92, 246, 0.12);
-  --shadow-lift: 0 0 30px rgba(139, 92, 246, 0.18);
+  --shadow-soft: 0 2px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 4px 24px rgba(0, 0, 0, 0.45);
 
-  --bg-dot-color: rgba(139, 92, 246, 0.08);
-  --bg-dot-opacity: 0.25;
-  --skeleton-from: rgba(42, 45, 62, 0.9);
-  --skeleton-mid: rgba(55, 58, 75, 0.9);
+  --bg-dot-color: rgba(161, 161, 170, 0.06);
+  --bg-dot-opacity: 0.2;
+  --skeleton-from: rgba(63, 63, 70, 0.9);
+  --skeleton-mid: rgba(82, 82, 91, 0.9);
 }
 
 /* ========================================
