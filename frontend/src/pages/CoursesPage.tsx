@@ -98,7 +98,11 @@ export function CoursesPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedChild) loadChildOverview(selectedChild);
+    if (selectedChild) {
+      loadChildOverview(selectedChild);
+    } else if (children.length > 0) {
+      loadAllChildrenCourses();
+    }
   }, [selectedChild]);
 
   const loadData = async () => {
@@ -146,6 +150,35 @@ export function CoursesPage() {
     try {
       const data = await parentApi.getChildOverview(studentId);
       setChildOverview(data);
+    } catch {
+      setChildOverview(null);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  const loadAllChildrenCourses = async () => {
+    setOverviewLoading(true);
+    try {
+      const overviews = await Promise.all(
+        children.map(c => parentApi.getChildOverview(c.student_id))
+      );
+      const seen = new Set<number>();
+      const allCourses = overviews.flatMap(o => o.courses).filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
+      setChildOverview({
+        student_id: 0,
+        user_id: 0,
+        full_name: '',
+        grade_level: null,
+        google_connected: false,
+        courses: allCourses,
+        assignments: [],
+        study_guides_count: 0,
+      });
     } catch {
       setChildOverview(null);
     } finally {
@@ -365,7 +398,7 @@ export function CoursesPage() {
               <button
                 key={child.student_id}
                 className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-                onClick={() => setSelectedChild(child.student_id)}
+                onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
               >
                 {child.full_name}
               </button>

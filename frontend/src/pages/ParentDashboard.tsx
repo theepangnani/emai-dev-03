@@ -954,14 +954,6 @@ export function ParentDashboard() {
         <>
           {/* Child Filter */}
           <div className="child-selector">
-            {children.length > 1 && (
-              <button
-                className={`child-tab ${selectedChild === null ? 'active' : ''}`}
-                onClick={() => { setSelectedChild(null); setChildOverview(null); }}
-              >
-                All Children
-              </button>
-            )}
             {children.map((child, index) => (
               <button
                 key={child.student_id}

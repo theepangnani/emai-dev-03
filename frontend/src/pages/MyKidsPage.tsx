@@ -514,19 +514,11 @@ export function MyKidsPage() {
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
       {/* Child Tabs */}
       <div className="child-selector">
-        {children.length > 1 && (
-          <button
-            className={`child-tab ${selectedChild === null ? 'active' : ''}`}
-            onClick={() => setSelectedChild(null)}
-          >
-            All Children
-          </button>
-        )}
         {children.map((child, index) => (
           <button
             key={child.student_id}
             className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-            onClick={() => setSelectedChild(child.student_id)}
+            onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
           >
             <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
             {child.full_name}
