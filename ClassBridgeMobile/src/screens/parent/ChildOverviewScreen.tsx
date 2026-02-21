@@ -15,10 +15,12 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme';
 import type { TaskItem } from '../../api/tasks';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { HomeStackParamList } from '../../navigation/AppNavigator';
+import type { RouteProp } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'ChildOverview'>;
+type ChildOverviewRouteParams = {
+  ChildOverview: { studentId: number; name: string };
+};
 
 function formatDueDate(dateStr: string | null): string {
   if (!dateStr) return 'No due date';
@@ -47,7 +49,8 @@ function getDueDateColor(dateStr: string | null): string {
   return colors.textSecondary;
 }
 
-export function ChildOverviewScreen({ route }: Props) {
+export function ChildOverviewScreen() {
+  const route = useRoute<RouteProp<ChildOverviewRouteParams, 'ChildOverview'>>();
   const { studentId } = route.params;
   const queryClient = useQueryClient();
 
