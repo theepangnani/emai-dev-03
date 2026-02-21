@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api/client';
 import type {
@@ -7,14 +7,13 @@ import type {
   ConversationDetail,
   RecipientOption,
 } from '../api/client';
-import { NotificationBell } from '../components/NotificationBell';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { logger } from '../utils/logger';
 import './MessagesPage.css';
 
 export function MessagesPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -223,7 +222,7 @@ export function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="messages-page">
+      <DashboardLayout welcomeSubtitle="Your conversations" showBackButton>
         <div className="loading-container">
           <div className="loading-grid">
             <div className="loading-card">
@@ -238,31 +237,12 @@ export function MessagesPage() {
             </div>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="messages-page">
-      <header className="messages-header">
-        <div className="header-left">
-          <button className="back-button" onClick={() => navigate('/dashboard')}>
-            &larr; Dashboard
-          </button>
-          <h1 className="page-title">Messages</h1>
-        </div>
-        <div className="header-right">
-          <span className="user-name">{user?.full_name}</span>
-          <NotificationBell />
-          <button className="new-message-btn" onClick={() => setShowNewModal(true)}>
-            + New Message
-          </button>
-          <button className="logout-button" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <DashboardLayout welcomeSubtitle="Your conversations" showBackButton>
       {error && (
         <div className="error-banner">
           {error}
@@ -275,6 +255,9 @@ export function MessagesPage() {
         <aside className="conversation-list">
           <div className="list-header">
             <h2>Conversations</h2>
+            <button className="new-message-btn" onClick={() => setShowNewModal(true)}>
+              + New Message
+            </button>
           </div>
           {conversations.length === 0 ? (
             <div className="empty-state">
@@ -477,6 +460,6 @@ export function MessagesPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

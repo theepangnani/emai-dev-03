@@ -37,13 +37,26 @@ vi.mock('../api/client', () => ({
     markAsRead: vi.fn().mockResolvedValue(undefined),
     markAllAsRead: vi.fn().mockResolvedValue(undefined),
   },
+  inspirationApi: {
+    getRandom: vi.fn().mockRejectedValue(new Error('none')),
+  },
 }))
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     user: mockUser,
     logout: mockLogout,
+    switchRole: vi.fn(),
+    resendVerification: vi.fn(),
   }),
+}))
+
+vi.mock('../components/GlobalSearch', () => ({
+  GlobalSearch: () => <div data-testid="global-search" />,
+}))
+
+vi.mock('../components/ThemeToggle', () => ({
+  ThemeToggle: () => <div data-testid="theme-toggle" />,
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -79,7 +92,6 @@ describe('MessagesPage', () => {
 
     renderWithProviders(<MessagesPage />)
 
-    expect(screen.queryByText('Messages')).not.toBeInTheDocument()
     // Skeleton is visible via CSS class
     expect(document.querySelector('.loading-grid')).toBeInTheDocument()
   })
@@ -392,43 +404,15 @@ describe('MessagesPage', () => {
 
   // ── Navigation & Auth ───────────────────────────────────────
 
-  it('dashboard button navigates to /dashboard', async () => {
-    mockListConversations.mockResolvedValue([])
-    const user = userEvent.setup()
-
-    renderWithProviders(<MessagesPage />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/dashboard/i)).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText(/dashboard/i))
-
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
-  })
-
-  it('logout button calls logout', async () => {
-    mockListConversations.mockResolvedValue([])
-    const user = userEvent.setup()
-
-    renderWithProviders(<MessagesPage />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/logout/i)).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText(/logout/i))
-
-    expect(mockLogout).toHaveBeenCalledOnce()
-  })
-
-  it('displays user name in header', async () => {
+  it('renders inside DashboardLayout with nav and header', async () => {
     mockListConversations.mockResolvedValue([])
 
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
+      // DashboardLayout provides the header with user name and sign out
       expect(screen.getByText('Test Parent')).toBeInTheDocument()
+      expect(screen.getByText(/sign out/i)).toBeInTheDocument()
     })
   })
 
@@ -454,8 +438,10 @@ describe('MessagesPage', () => {
       expect(screen.getByText(/failed to load conversations/i)).toBeInTheDocument()
     })
 
-    // Click the × dismiss button
-    await user.click(screen.getByText('×'))
+    // Click the × dismiss button within the error banner
+    const errorBanner = screen.getByText(/failed to load conversations/i).closest('.error-banner')!
+    const dismissBtn = errorBanner.querySelector('button')!
+    await user.click(dismissBtn)
 
     expect(screen.queryByText(/failed to load conversations/i)).not.toBeInTheDocument()
   })
