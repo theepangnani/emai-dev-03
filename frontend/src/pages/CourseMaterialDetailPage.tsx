@@ -9,6 +9,7 @@ import { DetailSkeleton } from '../components/Skeleton';
 import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
+import { Breadcrumb } from '../components/Breadcrumb';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
@@ -337,9 +338,9 @@ export function CourseMaterialDetailPage() {
     setQuizSaveError(null);
   };
 
-  if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
+  if (loading) return <DashboardLayout><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
-    <DashboardLayout showBackButton>
+    <DashboardLayout>
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
@@ -356,8 +357,13 @@ export function CourseMaterialDetailPage() {
   ];
 
   return (
-    <DashboardLayout showBackButton>
+    <DashboardLayout>
       <div className="cm-detail-page">
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Materials', to: '/course-materials' },
+          { label: content?.title || 'Material' },
+        ]} />
         <div className="cm-detail-header">
           <div className="cm-detail-title-row">
             <h2>{content.title}</h2>

@@ -5,6 +5,7 @@ import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { Breadcrumb } from '../components/Breadcrumb';
 import './QuizPage.css';
 
 export function QuizPage() {
@@ -123,7 +124,11 @@ export function QuizPage() {
     return (
       <div className="quiz-page">
         <div className="error">{error || 'Quiz not found'}</div>
-        <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Materials', to: '/course-materials' },
+          { label: 'Quiz' },
+        ]} />
       </div>
     );
   }
@@ -133,7 +138,11 @@ export function QuizPage() {
   return (
     <div className="quiz-page">
       <div className="quiz-header">
-        <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Materials', to: '/course-materials' },
+          { label: 'Quiz' },
+        ]} />
         <h1>
           {guide.title}
           {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>v{guide.version}</span>}

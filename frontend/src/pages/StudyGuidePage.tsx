@@ -8,6 +8,7 @@ import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
+import { Breadcrumb } from '../components/Breadcrumb';
 import './StudyGuidePage.css';
 
 export function StudyGuidePage() {
@@ -86,7 +87,11 @@ export function StudyGuidePage() {
   return (
     <div className="study-guide-page">
       <div className="study-guide-header">
-        <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Materials', to: '/course-materials' },
+          { label: guide?.title || 'Study Guide' },
+        ]} />
         <div className="header-actions">
           <CourseAssignSelect
             guideId={guide.id}

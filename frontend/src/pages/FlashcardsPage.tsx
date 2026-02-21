@@ -4,6 +4,7 @@ import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { Breadcrumb } from '../components/Breadcrumb';
 import './FlashcardsPage.css';
 
 type CardDifficulty = 'mastered' | 'learning';
@@ -206,7 +207,11 @@ export function FlashcardsPage() {
     return (
       <div className="flashcards-page">
         <div className="error">{error || 'Flashcards not found'}</div>
-        <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Materials', to: '/course-materials' },
+          { label: 'Flashcards' },
+        ]} />
       </div>
     );
   }
@@ -216,7 +221,11 @@ export function FlashcardsPage() {
     return (
       <div className="flashcards-page">
         <div className="flashcards-header">
-          <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+          <Breadcrumb items={[
+            { label: 'Home', to: '/dashboard' },
+            { label: 'Materials', to: '/course-materials' },
+            { label: 'Flashcards' },
+          ]} />
           <h1>{guide.title}</h1>
         </div>
         <div className="fc-summary">
@@ -261,7 +270,11 @@ export function FlashcardsPage() {
   return (
     <div className="flashcards-page">
       <div className="flashcards-header">
-        <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Materials', to: '/course-materials' },
+          { label: 'Flashcards' },
+        ]} />
         <h1>
           {guide.title}
           {reviewMode && <span className="review-mode-badge">Review Mode</span>}

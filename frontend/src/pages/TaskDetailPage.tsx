@@ -4,6 +4,7 @@ import { tasksApi, coursesApi, studyApi, courseContentsApi, type TaskItem, type 
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton, ListSkeleton } from '../components/Skeleton';
+import { Breadcrumb } from '../components/Breadcrumb';
 import './TaskDetailPage.css';
 
 interface CourseOption { id: number; name: string; }
@@ -224,9 +225,11 @@ export function TaskDetailPage() {
   return (
     <DashboardLayout>
       <div className="td-page">
-        <div className="td-header">
-          <Link to="/tasks" className="td-back-link">&larr; Back to Tasks</Link>
-        </div>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Tasks', to: '/tasks' },
+          { label: task?.title || 'Task' },
+        ]} />
 
         {/* Task Info Card */}
         <div className="td-card">

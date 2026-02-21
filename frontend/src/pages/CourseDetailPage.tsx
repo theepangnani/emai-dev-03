@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
+import { Breadcrumb } from '../components/Breadcrumb';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -541,7 +542,7 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Class details" showBackButton>
+      <DashboardLayout welcomeSubtitle="Class details">
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -549,7 +550,7 @@ export function CourseDetailPage() {
 
   if (!course) {
     return (
-      <DashboardLayout welcomeSubtitle="Class not found" showBackButton>
+      <DashboardLayout welcomeSubtitle="Class not found">
         <div className="course-detail-empty">
           <p>Class not found or you don't have access.</p>
           <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Classes</button>
@@ -559,12 +560,13 @@ export function CourseDetailPage() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle={course.name} showBackButton>
+    <DashboardLayout welcomeSubtitle={course.name}>
       <div className="course-detail-page">
-        {/* Back link */}
-        <button className="course-detail-back" onClick={() => navigate('/courses')}>
-          &larr; Back to Classes
-        </button>
+        <Breadcrumb items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Classes', to: '/courses' },
+          { label: course?.name || 'Course' },
+        ]} />
 
         {/* Course header */}
         <div className="course-detail-header">
