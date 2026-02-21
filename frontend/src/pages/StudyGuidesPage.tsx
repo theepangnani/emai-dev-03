@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
 import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -50,6 +50,7 @@ export function StudyGuidesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isParent = user?.role === 'parent';
   const { confirm, confirmModal } = useConfirm();
 
@@ -65,10 +66,15 @@ export function StudyGuidesPage() {
   // Filters — initialize child from navigation state if parent dashboard passed it
   const [filterChild, setFilterChild] = useState<number | ''>(() => {
     const navState = location.state as { selectedChild?: number | null } | null;
-    return navState?.selectedChild || '';
+    if (navState?.selectedChild) return navState.selectedChild;
+    const stored = sessionStorage.getItem('selectedChildId');
+    return stored ? Number(stored) : '';
   });
-  const [filterCourse, setFilterCourse] = useState<number | ''>('');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterCourse, setFilterCourse] = useState<number | ''>(() => {
+    const course = searchParams.get('course');
+    return course ? Number(course) : '';
+  });
+  const [filterType, setFilterType] = useState<string>(() => searchParams.get('type') || 'all');
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
 
@@ -131,8 +137,14 @@ export function StudyGuidesPage() {
   }, []);
 
   // Reset course filter when child changes (filter cascade fix)
+  const prevFilterChild = useRef(filterChild);
   useEffect(() => {
-    setFilterCourse('');
+    if (prevFilterChild.current !== filterChild) {
+      prevFilterChild.current = filterChild;
+      setFilterCourse('');
+      searchParams.delete('course');
+      setSearchParams(searchParams, { replace: true });
+    }
   }, [filterChild]);
 
   // Reload content when filters change
@@ -599,7 +611,7 @@ export function StudyGuidesPage() {
               <select
                 className="guides-filter-select"
                 value={filterChild}
-                onChange={e => setFilterChild(e.target.value ? Number(e.target.value) : '')}
+                onChange={e => { setFilterChild(e.target.value ? Number(e.target.value) : ''); if (e.target.value) { sessionStorage.setItem('selectedChildId', e.target.value); } else { sessionStorage.removeItem('selectedChildId'); } }}
               >
                 <option value="">All Family</option>
                 {children.map(child => (
@@ -611,7 +623,7 @@ export function StudyGuidesPage() {
               <select
                 className="guides-filter-select"
                 value={filterCourse}
-                onChange={e => setFilterCourse(e.target.value ? Number(e.target.value) : '')}
+                onChange={e => { setFilterCourse(e.target.value ? Number(e.target.value) : ''); if (e.target.value) { searchParams.set('course', e.target.value); } else { searchParams.delete('course'); } setSearchParams(searchParams, { replace: true }); }}
               >
                 <option value="">All Classes</option>
                 {visibleCourses.map(c => (
@@ -634,7 +646,7 @@ export function StudyGuidesPage() {
             <button
               key={tab.key}
               className={`guides-filter-btn${filterType === tab.key ? ' active' : ''}`}
-              onClick={() => setFilterType(tab.key)}
+              onClick={() => { setFilterType(tab.key); if (tab.key === 'all') { searchParams.delete('type'); } else { searchParams.set('type', tab.key); } setSearchParams(searchParams, { replace: true }); }}
             >
               {tab.label}
               {typeCounts[tab.key] > 0 && <span className="filter-count">{typeCounts[tab.key]}</span>}

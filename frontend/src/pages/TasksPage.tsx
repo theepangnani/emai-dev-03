@@ -21,8 +21,14 @@ export function TasksPage() {
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [filterPriority, setFilterPriority] = useState<FilterPriority>('all');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>(() => {
+    const status = searchParams.get('status');
+    return (status === 'pending' || status === 'completed' || status === 'archived') ? status : 'all';
+  });
+  const [filterPriority, setFilterPriority] = useState<FilterPriority>(() => {
+    const priority = searchParams.get('priority');
+    return (priority === 'low' || priority === 'medium' || priority === 'high') ? priority : 'all';
+  });
   const [filterDue, setFilterDue] = useState<FilterDue>(() => {
     const due = searchParams.get('due');
     return (due === 'overdue' || due === 'today' || due === 'week') ? due : 'all';
@@ -248,7 +254,7 @@ export function TasksPage() {
         <div className="tasks-filters">
           <div className="tasks-filter-group">
             <label>Status:</label>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as FilterStatus)} className="form-input">
+            <select value={filterStatus} onChange={e => { const v = e.target.value as FilterStatus; setFilterStatus(v); if (v === 'all') { searchParams.delete('status'); } else { searchParams.set('status', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
               <option value="all">Active</option>
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
@@ -257,7 +263,7 @@ export function TasksPage() {
           </div>
           <div className="tasks-filter-group">
             <label>Priority:</label>
-            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as FilterPriority)} className="form-input">
+            <select value={filterPriority} onChange={e => { const v = e.target.value as FilterPriority; setFilterPriority(v); if (v === 'all') { searchParams.delete('priority'); } else { searchParams.set('priority', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
               <option value="all">All</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
@@ -276,7 +282,7 @@ export function TasksPage() {
           {assignableUsers.length > 0 && (
             <div className="tasks-filter-group">
               <label>Assignee:</label>
-              <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="form-input">
+              <select value={filterAssignee} onChange={e => { const v = e.target.value; if (v === 'all') { setFilterAssignee('all'); searchParams.delete('assignee'); } else { setFilterAssignee(Number(v)); searchParams.set('assignee', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
                 <option value="all">All</option>
                 {assignableUsers.map(u => (
                   <option key={u.user_id} value={u.user_id}>{u.name}</option>

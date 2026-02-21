@@ -34,7 +34,7 @@ const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
 
 export function CoursesPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { confirm, confirmModal } = useConfirm();
   const isParent = user?.role === 'parent';
@@ -44,9 +44,12 @@ export function CoursesPage() {
   // Student self-enrollment state
   const [enrolledCourses, setEnrolledCourses] = useState<CourseItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<CourseItem[]>([]);
-  const [studentTab, setStudentTab] = useState<'enrolled' | 'browse'>('enrolled');
+  const [studentTab, setStudentTab] = useState<'enrolled' | 'browse'>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'browse' ? 'browse' : 'enrolled';
+  });
   const [enrollingId, setEnrollingId] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
 
   // Parent-specific state
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -105,6 +108,27 @@ export function CoursesPage() {
     }
   }, [selectedChild]);
 
+  // Persist selected child to sessionStorage for cross-page consistency
+  useEffect(() => {
+    if (selectedChild && children.length > 0) {
+      const child = children.find(c => c.student_id === selectedChild);
+      if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
+    }
+  }, [selectedChild, children]);
+
+  // Debounced search term sync to URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm) {
+        searchParams.set('q', searchTerm);
+      } else {
+        searchParams.delete('q');
+      }
+      setSearchParams(searchParams, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const loadData = async () => {
     setLoadError(false);
     try {
@@ -118,7 +142,13 @@ export function CoursesPage() {
         if (childrenData.length > 0) {
           const urlSid = urlStudentId ? Number(urlStudentId) : null;
           const match = urlSid ? childrenData.find(c => c.student_id === urlSid) : null;
-          setSelectedChild(match ? match.student_id : childrenData[0].student_id);
+          if (match) {
+            setSelectedChild(match.student_id);
+          } else {
+            const storedUserId = sessionStorage.getItem('selectedChildId');
+            const storedMatch = storedUserId ? childrenData.find(c => c.user_id === Number(storedUserId)) : null;
+            setSelectedChild(storedMatch ? storedMatch.student_id : childrenData[0].student_id);
+          }
         }
         try {
           const status = await googleApi.getStatus();
@@ -537,13 +567,13 @@ export function CoursesPage() {
             <div className="courses-tabs">
               <button
                 className={`courses-tab ${studentTab === 'enrolled' ? 'active' : ''}`}
-                onClick={() => setStudentTab('enrolled')}
+                onClick={() => { setStudentTab('enrolled'); searchParams.delete('tab'); setSearchParams(searchParams, { replace: true }); }}
               >
                 My Classes ({enrolledCourses.length})
               </button>
               <button
                 className={`courses-tab ${studentTab === 'browse' ? 'active' : ''}`}
-                onClick={() => setStudentTab('browse')}
+                onClick={() => { setStudentTab('browse'); searchParams.set('tab', 'browse'); setSearchParams(searchParams, { replace: true }); }}
               >
                 Browse Classes ({availableCourses.length})
               </button>
