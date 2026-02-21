@@ -340,7 +340,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
   text-align: center;
   white-space: nowrap;
   position: relative;
@@ -349,6 +349,11 @@
 .ps-nav-item:hover {
   background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
+  transform: translateX(2px);
+}
+
+.ps-nav-item:active {
+  transform: translateX(0) scale(0.97);
 }
 
 .ps-nav-item.active {
@@ -445,7 +450,8 @@
   font-size: 22px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              background 0.2s, color 0.2s;
 }
 .ps-fab-toggle:hover {
   background: var(--color-accent);
@@ -456,6 +462,11 @@
   color: white;
   transform: rotate(45deg);
 }
+.ps-fab-toggle:active,
+.ps-action-item:active {
+  transform: scale(0.96);
+}
+
 .ps-fab-icon {
   line-height: 1;
 }
@@ -542,7 +553,7 @@
 .section-chevron {
   display: inline-block;
   font-size: 10px;
-  transition: transform 0.2s;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--color-ink-muted);
 }
 .section-chevron.expanded {
@@ -762,6 +773,12 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   border: 1px solid var(--color-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .card-icon {
@@ -902,6 +919,12 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: overlayFadeIn 0.15s ease;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal {
@@ -913,6 +936,12 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modal h2 {
@@ -1944,4 +1973,13 @@
 .dashboard-footer-divider {
   margin: 0 8px;
   color: var(--color-border);
+}
+
+/* ── Reduced motion: accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
