@@ -334,13 +334,13 @@ export function TasksPage() {
                       <span
                         className="task-row-link clickable"
                         onClick={(e) => { e.stopPropagation(); const route = getLinkedEntityRoute(task); if (route) navigate(route); }}
-                        title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'course' : 'course'}`}
+                        title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'material' : 'class'}`}
                       >
                         {task.study_guide_title
                           ? `${task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}: ${task.study_guide_title}`
                           : task.course_content_title
                             ? `Content: ${task.course_content_title}`
-                            : `Course: ${task.course_name}`}
+                            : `Class: ${task.course_name}`}
                       </span>
                     )}
                   </div>

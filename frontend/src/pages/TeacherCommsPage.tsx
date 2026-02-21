@@ -254,7 +254,7 @@ export function TeacherCommsPage() {
                     {selected.sender_email && ` <${selected.sender_email}>`}
                   </span>
                   {selected.course_name && (
-                    <span className="detail-course">Course: {selected.course_name}</span>
+                    <span className="detail-course">Class: {selected.course_name}</span>
                   )}
                   {selected.received_at && (
                     <span className="detail-date">

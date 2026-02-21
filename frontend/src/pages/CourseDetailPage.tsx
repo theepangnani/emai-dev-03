@@ -607,7 +607,7 @@ export function CourseDetailPage() {
               <button className="courses-btn secondary" onClick={() => setTaskModalContext({
                 courseId: courseId,
                 title: `Task for ${course.name}`,
-                label: `Course: ${course.name}`,
+                label: `Class: ${course.name}`,
               })}>+ Create Task</button>
             </div>
           )}
@@ -791,7 +791,7 @@ export function CourseDetailPage() {
       {showEditModal && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit Course</h2>
+            <h2>Edit Class</h2>
             <div className="modal-form">
               <label>
                 Class Name *
@@ -826,7 +826,7 @@ export function CourseDetailPage() {
         <div className="modal-overlay" onClick={closeContentModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>{editingContent ? 'Edit Content' : 'Add Content'}</h2>
-            <p className="modal-desc">Add a reference link or resource to this course.</p>
+            <p className="modal-desc">Add a reference link or resource to this class.</p>
             <div className="modal-form">
               <label>
                 Title *
@@ -956,7 +956,7 @@ export function CourseDetailPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowUploadModal(false)} disabled={uploading}>Cancel</button>
               <button className="generate-btn" onClick={handleUploadDocument} disabled={uploading || !selectedFile || !uploadTitle.trim() || extracting}>
-                {uploading ? (generateAfterUpload ? 'Saving & Generating...' : 'Saving...') : (generateAfterUpload ? 'Save & Generate' : 'Save to Course')}
+                {uploading ? (generateAfterUpload ? 'Saving & Generating...' : 'Saving...') : (generateAfterUpload ? 'Save & Generate' : 'Save to Class')}
               </button>
             </div>
           </div>

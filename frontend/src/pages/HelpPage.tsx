@@ -39,7 +39,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         question: 'How do I create a study guide from class materials?',
         answer:
-          'Navigate to "Class Materials," select a course, and click "Generate Study Guide." ClassBridge uses AI to create a structured study guide from your course content. You can also upload your own files (PDFs, documents) to generate guides from.',
+          'Navigate to "Class Materials," select a class, and click "Generate Study Guide." ClassBridge uses AI to create a structured study guide from your class content. You can also upload your own files (PDFs, documents) to generate guides from.',
       },
       {
         question: 'How do I take a quiz or use flashcards?',

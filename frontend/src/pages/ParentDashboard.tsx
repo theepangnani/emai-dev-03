@@ -1220,7 +1220,7 @@ export function ParentDashboard() {
                       </p>
                     ) : (
                       <p className="modal-desc">
-                        Found {discoveredChildren.length} student{discoveredChildren.length !== 1 ? 's' : ''} across {coursesSearched} course{coursesSearched !== 1 ? 's' : ''}. Select the children you want to link:
+                        Found {discoveredChildren.length} student{discoveredChildren.length !== 1 ? 's' : ''} across {coursesSearched} class{coursesSearched !== 1 ? 'es' : ''}. Select the children you want to link:
                       </p>
                     )}
                     <div className="discovered-list">
@@ -1256,7 +1256,7 @@ export function ParentDashboard() {
                   <div className="google-connect-prompt">
                     <div className="google-icon">📭</div>
                     <h3>No Matching Students Found</h3>
-                    <p>We searched {coursesSearched} Google Classroom course{coursesSearched !== 1 ? 's' : ''} but didn't find any matching student accounts.</p>
+                    <p>We searched {coursesSearched} Google Classroom class{coursesSearched !== 1 ? 'es' : ''} but didn't find any matching student accounts.</p>
                     <button className="link-tab-switch" onClick={() => { setLinkTab('email'); setDiscoveryState('idle'); }}>Try linking by email instead</button>
                     <div className="modal-actions">
                       <button className="cancel-btn" onClick={closeLinkModal}>Close</button>
@@ -1416,7 +1416,7 @@ export function ParentDashboard() {
                           <span className="day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
                         </div>
                         <div className="day-modal-item-actions">
-                          {a.courseId > 0 && <button className="day-modal-action-btn" onClick={() => { closeDayModal(); handleGoToCourse(a.courseId); }}>Course</button>}
+                          {a.courseId > 0 && <button className="day-modal-action-btn" onClick={() => { closeDayModal(); handleGoToCourse(a.courseId); }}>Class</button>}
                           <button className="day-modal-study-btn" disabled={generatingStudyId === a.id} onClick={() => { closeDayModal(); handleOneClickStudy(a); }}>{generatingStudyId === a.id ? 'Checking...' : 'Study'}</button>
                         </div>
                       </div>
@@ -1536,7 +1536,7 @@ export function ParentDashboard() {
                 )}
                 {taskDetailModal.course_name && (
                   <div className="task-detail-row">
-                    <span className="task-detail-label">Course</span>
+                    <span className="task-detail-label">Class</span>
                     <span>{taskDetailModal.course_name}</span>
                   </div>
                 )}

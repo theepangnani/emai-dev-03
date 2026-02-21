@@ -533,7 +533,7 @@ export function MyKidsPage() {
             {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
             <span className="child-tab-detail">
               {child.school_name && <>{child.school_name} · </>}
-              {child.course_count} {child.course_count === 1 ? 'course' : 'courses'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
+              {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
             </span>
           </button>
         ))}
@@ -766,7 +766,7 @@ export function MyKidsPage() {
                   <div key={`course-${c.id}`} className="mykids-teacher-row">
                     <div className="mykids-teacher-info">
                       <span className="mykids-teacher-name">{c.teacher_name}</span>
-                      <span className="mykids-teacher-email">{c.teacher_email || c.name} (via course)</span>
+                      <span className="mykids-teacher-email">{c.teacher_email || c.name} (via class)</span>
                     </div>
                     {c.teacher_id && (
                       <button
@@ -875,8 +875,8 @@ export function MyKidsPage() {
       {reassignContent && (
         <div className="modal-overlay" onClick={() => setReassignContent(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Move to Course</h2>
-            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a course.</p>
+            <h2>Move to Class</h2>
+            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a class.</p>
             <div className="modal-form">
               <input
                 type="text"
@@ -974,7 +974,7 @@ export function MyKidsPage() {
             <h2>Add Class</h2>
             {selectedChild && (
               <p className="modal-desc">
-                This course will be automatically assigned to <strong>{children.find(c => c.student_id === selectedChild)?.full_name}</strong>.
+                This class will be automatically assigned to <strong>{children.find(c => c.student_id === selectedChild)?.full_name}</strong>.
               </p>
             )}
             <div className="modal-form">
