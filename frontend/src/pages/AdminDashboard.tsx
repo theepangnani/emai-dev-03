@@ -263,34 +263,42 @@ export function AdminDashboard() {
         </section>
 
         {/* Recent Activity Feed */}
-        {recentActivity.length > 0 && (
-          <section className="section admin-recent-activity-section">
-            <div className="admin-recent-activity-header">
-              <h3>Recent Activity</h3>
-            </div>
-            <div className="admin-recent-activity-list">
-              {recentActivity.map((entry) => (
-                <div key={entry.id} className="admin-activity-item">
-                  <div className="admin-activity-dot" />
-                  <div className="admin-activity-content">
-                    <div className="admin-activity-action">
-                      {entry.user_name && <span className="admin-activity-actor">{entry.user_name}</span>}
-                      {' '}<span className="admin-activity-verb">{entry.action}</span>
-                      {entry.resource_type && <span className="admin-activity-target"> {entry.resource_type}{entry.resource_id ? ` #${entry.resource_id}` : ''}</span>}
-                    </div>
-                    {entry.details && <div className="admin-activity-details">{entry.details}</div>}
-                    <div className="admin-activity-time">
-                      {new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        <section className="section admin-recent-activity-section">
+          <div className="admin-recent-activity-header">
+            <h3>Recent Activity</h3>
+          </div>
+          {recentActivity.length > 0 ? (
+            <>
+              <div className="admin-recent-activity-list">
+                {recentActivity.map((entry) => (
+                  <div key={entry.id} className="admin-activity-item">
+                    <div className="admin-activity-dot" />
+                    <div className="admin-activity-content">
+                      <div className="admin-activity-action">
+                        {entry.user_name && <span className="admin-activity-actor">{entry.user_name}</span>}
+                        {' '}<span className="admin-activity-verb">{entry.action}</span>
+                        {entry.resource_type && <span className="admin-activity-target"> {entry.resource_type}{entry.resource_id ? ` #${entry.resource_id}` : ''}</span>}
+                      </div>
+                      {entry.details && <div className="admin-activity-details">{entry.details}</div>}
+                      <div className="admin-activity-time">
+                        {new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <button className="admin-activity-view-all" onClick={() => navigate('/admin/audit-log')}>
+                View Full Audit Log &rarr;
+              </button>
+            </>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">📊</div>
+              <h3 className="empty-state-title">No recent activity</h3>
+              <p className="empty-state-text">System activity will appear here.</p>
             </div>
-            <button className="admin-activity-view-all" onClick={() => navigate('/admin/audit-log')}>
-              View Full Audit Log &rarr;
-            </button>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Broadcast History */}
         <section className="section" style={{ marginBottom: '16px' }}>
@@ -301,7 +309,12 @@ export function AdminDashboard() {
           {showBroadcastHistory && (
             <div className="admin-broadcast-history">
               {broadcasts.length === 0 ? (
-                <p style={{ color: '#999', padding: '12px 0' }}>No broadcasts sent yet.</p>
+                <div className="empty-state">
+                  <div className="empty-state-icon">📢</div>
+                  <h3 className="empty-state-title">No broadcasts sent yet</h3>
+                  <p className="empty-state-text">Send a broadcast to reach all users at once.</p>
+                  <button className="empty-state-cta" onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}>Send Broadcast</button>
+                </div>
               ) : (
                 <table className="admin-users-table">
                   <thead>
@@ -407,8 +420,13 @@ export function AdminDashboard() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#999' }}>
-                        No users found
+                      <td colSpan={6}>
+                        <div className="empty-state">
+                          <div className="empty-state-icon">👤</div>
+                          <h3 className="empty-state-title">No users match your search</h3>
+                          <p className="empty-state-text">Try adjusting your filters or search terms.</p>
+                          <button className="empty-state-cta" onClick={() => { setSearch(''); setRoleFilter(''); setPage(0); }}>Clear Filters</button>
+                        </div>
                       </td>
                     </tr>
                   )}

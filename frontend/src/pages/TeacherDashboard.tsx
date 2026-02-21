@@ -480,60 +480,74 @@ export function TeacherDashboard() {
       </div>
 
       {/* Activity Summary */}
-      {(recentConversations.length > 0 || upcomingAssignments.length > 0) && (
-        <div className="teacher-activity-summary">
-          {recentConversations.length > 0 && (
-            <div className="teacher-activity-card">
-              <div className="teacher-activity-card-header">
-                <h4>Recent Messages</h4>
-                <button className="teacher-activity-view-all" onClick={() => navigate('/messages')}>View All</button>
-              </div>
-              <div className="teacher-activity-list">
-                {recentConversations.map((conv) => (
-                  <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
-                    <div className="teacher-activity-item-info">
-                      <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
-                      <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
-                    </div>
-                    <div className="teacher-activity-item-meta">
-                      {conv.unread_count > 0 && (
-                        <span className="teacher-activity-unread-badge">{conv.unread_count}</span>
-                      )}
-                      {conv.last_message_at && (
-                        <span className="teacher-activity-item-time">
-                          {new Date(conv.last_message_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
+      <div className="teacher-activity-summary">
+        <div className="teacher-activity-card">
+          <div className="teacher-activity-card-header">
+            <h4>Recent Messages</h4>
+            {recentConversations.length > 0 && (
+              <button className="teacher-activity-view-all" onClick={() => navigate('/messages')}>View All</button>
+            )}
+          </div>
+          {recentConversations.length > 0 ? (
+            <div className="teacher-activity-list">
+              {recentConversations.map((conv) => (
+                <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
+                  <div className="teacher-activity-item-info">
+                    <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
+                    <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
                   </div>
-                ))}
-              </div>
+                  <div className="teacher-activity-item-meta">
+                    {conv.unread_count > 0 && (
+                      <span className="teacher-activity-unread-badge">{conv.unread_count}</span>
+                    )}
+                    {conv.last_message_at && (
+                      <span className="teacher-activity-item-time">
+                        {new Date(conv.last_message_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-
-          {upcomingAssignments.length > 0 && (
-            <div className="teacher-activity-card">
-              <div className="teacher-activity-card-header">
-                <h4>Upcoming Deadlines</h4>
-                <span className="teacher-activity-subtitle">Next 7 days</span>
-              </div>
-              <div className="teacher-activity-list">
-                {upcomingAssignments.slice(0, 5).map((assignment) => (
-                  <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate(`/courses`)}>
-                    <div className="teacher-activity-item-info">
-                      <span className="teacher-activity-item-name">{assignment.title}</span>
-                      <span className="teacher-activity-item-preview">{assignment.course_name}</span>
-                    </div>
-                    <span className="teacher-activity-item-time">
-                      {new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">📊</div>
+              <h3 className="empty-state-title">No recent activity</h3>
+              <p className="empty-state-text">Activity will appear here as students interact with your classes.</p>
             </div>
           )}
         </div>
-      )}
+
+        <div className="teacher-activity-card">
+          <div className="teacher-activity-card-header">
+            <h4>Upcoming Deadlines</h4>
+            {upcomingAssignments.length > 0 && (
+              <span className="teacher-activity-subtitle">Next 7 days</span>
+            )}
+          </div>
+          {upcomingAssignments.length > 0 ? (
+            <div className="teacher-activity-list">
+              {upcomingAssignments.slice(0, 5).map((assignment) => (
+                <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate(`/courses`)}>
+                  <div className="teacher-activity-item-info">
+                    <span className="teacher-activity-item-name">{assignment.title}</span>
+                    <span className="teacher-activity-item-preview">{assignment.course_name}</span>
+                  </div>
+                  <span className="teacher-activity-item-time">
+                    {new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">✅</div>
+              <h3 className="empty-state-title">No upcoming deadlines</h3>
+              <p className="empty-state-text">All caught up!</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="dashboard-sections">
         <section className="section teacher-courses-section">
@@ -598,22 +612,10 @@ export function TeacherDashboard() {
             </div>
           ) : (
             <div className="empty-state">
-              <p>No classes yet</p>
-              <small>
-                Create a class manually{googleConnected
-                  ? ' or click "Sync Classes" to import from Google Classroom'
-                  : ' or connect Google Classroom to sync your classes'}
-              </small>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
-                <button className="connect-button" onClick={() => setShowCreateModal(true)}>
-                  + Create Class
-                </button>
-                {googleConnected && (
-                  <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
-                    {syncing ? 'Syncing...' : 'Sync Classes'}
-                  </button>
-                )}
-              </div>
+              <div className="empty-state-icon">📚</div>
+              <h3 className="empty-state-title">No classes yet</h3>
+              <p className="empty-state-text">Create your first class to start organizing materials and assignments.</p>
+              <button className="empty-state-cta" onClick={() => setShowCreateModal(true)}>Create a Class</button>
             </div>
           )}
           </>
@@ -735,8 +737,9 @@ export function TeacherDashboard() {
               </div>
             ) : googleAccountsExpanded ? (
               <div className="empty-state">
-                <p>No Google accounts linked yet</p>
-                <small>Connect your Google account to sync classes from Google Classroom</small>
+                <div className="empty-state-icon">🔗</div>
+                <h3 className="empty-state-title">No Google accounts linked yet</h3>
+                <p className="empty-state-text">Connect your Google account to sync classes from Google Classroom.</p>
               </div>
             ) : null}
           </section>

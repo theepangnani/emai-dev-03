@@ -645,8 +645,10 @@ export function StudentDashboard() {
             </>
           ) : (
             <div className="empty-state">
-              <p>No assignments yet</p>
-              <small>Sync your Google Classroom to see assignments</small>
+              <div className="empty-state-icon">📋</div>
+              <h3 className="empty-state-title">No assignments yet</h3>
+              <p className="empty-state-text">Sync your Google Classroom to see assignments here.</p>
+              <button className="empty-state-cta" onClick={() => navigate('/courses')}>Browse Classes</button>
             </div>
           )}
         </section>
@@ -760,8 +762,10 @@ export function StudentDashboard() {
             </ul>
           ) : (
             <div className="empty-state">
-              <p>No study materials yet</p>
-              <small>Click "Create Custom" to generate class materials from any content</small>
+              <div className="empty-state-icon">📝</div>
+              <h3 className="empty-state-title">No study materials yet</h3>
+              <p className="empty-state-text">Upload or create study materials from your class content.</p>
+              <button className="empty-state-cta" onClick={() => navigate('/course-materials')}>Upload Materials</button>
             </div>
           )}
         </section>
@@ -786,8 +790,10 @@ export function StudentDashboard() {
             </ul>
           ) : (
             <div className="empty-state">
-              <p>No classes yet</p>
-              <small>Connect Google Classroom to sync your classes</small>
+              <div className="empty-state-icon">📚</div>
+              <h3 className="empty-state-title">No classes yet</h3>
+              <p className="empty-state-text">Connect Google Classroom to sync your classes automatically.</p>
+              <button className="empty-state-cta" onClick={() => navigate('/courses')}>Browse Classes</button>
             </div>
           )}
         </section>

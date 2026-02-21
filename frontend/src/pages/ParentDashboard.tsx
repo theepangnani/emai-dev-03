@@ -984,14 +984,11 @@ export function ParentDashboard() {
           </div>
         </div>
       ) : children.length === 0 ? (
-        <div className="no-children-state">
-          <h3>Get Started</h3>
-          <p>Add your child to start managing their education. No school account required!</p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
-            <button className="link-child-btn" onClick={() => setShowLinkModal(true)}>
-              + Add Child
-            </button>
-          </div>
+        <div className="empty-state">
+          <div className="empty-state-icon">👨‍👩‍👧</div>
+          <h3 className="empty-state-title">No children linked yet</h3>
+          <p className="empty-state-text">Add your child to start managing their education. No school account required!</p>
+          <button className="empty-state-cta" onClick={() => setShowLinkModal(true)}>Link a Child</button>
         </div>
       ) : (
         <>
@@ -1055,6 +1052,12 @@ export function ParentDashboard() {
             <>
               {overviewLoading ? (
                 <PageSkeleton />
+              ) : calendarAssignments.length === 0 && undatedAssignments.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📅</div>
+                  <h3 className="empty-state-title">Calendar is clear</h3>
+                  <p className="empty-state-text">No upcoming assignments or tasks this week.</p>
+                </div>
               ) : (
                 <>
                   <CalendarView
