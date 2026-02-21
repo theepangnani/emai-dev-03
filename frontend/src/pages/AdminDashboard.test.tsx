@@ -107,7 +107,7 @@ describe('AdminDashboard', () => {
     renderWithProviders(<AdminDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('No users found')).toBeInTheDocument()
+      expect(screen.getByText('No users match your search')).toBeInTheDocument()
     })
   })
 
@@ -432,7 +432,7 @@ describe('AdminDashboard', () => {
     await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
-      expect(screen.getByText('No broadcasts sent yet.')).toBeInTheDocument()
+      expect(screen.getByText('No broadcasts sent yet')).toBeInTheDocument()
     })
   })
 
