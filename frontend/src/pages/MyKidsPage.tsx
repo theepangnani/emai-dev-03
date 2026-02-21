@@ -591,22 +591,22 @@ export function MyKidsPage() {
                     <span className="section-icon">&#128218;</span> Unassigned Classes ({unassignedCourses.length})
                   </button>
                   {showUnassignedCourses && (
-                    <div className="mykids-card-grid">
+                    <div className="mykids-list">
                       {unassignedCourses.map(c => (
-                        <div key={c.id} className="mykids-item-card mykids-item-card--material">
-                          <div className="mykids-item-card-actions">
-                            <button
-                              className="mykids-item-action-btn mykids-assign-btn"
-                              title="Assign to child"
-                              onClick={(e) => { e.stopPropagation(); setAssignCourseModal(c); }}
-                            >&#43;</button>
+                        <div key={c.id} className="mykids-list-row">
+                          <div className="mykids-list-body">
+                            <span className="mykids-list-title">{c.name}</span>
+                            <span className="mykids-list-meta">
+                              {c.subject && <span>{c.subject}</span>}
+                              {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
+                              {!c.subject && !c.teacher_name && <span>No child assigned</span>}
+                            </span>
                           </div>
-                          <div className="mykids-item-title">{c.name}</div>
-                          <div className="mykids-item-sub">
-                            {c.subject && <span>{c.subject}</span>}
-                            {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
-                            {!c.subject && !c.teacher_name && <span>No child assigned</span>}
-                          </div>
+                          <button
+                            className="mykids-list-action-btn"
+                            title="Assign to child"
+                            onClick={() => setAssignCourseModal(c)}
+                          >&#43;</button>
                         </div>
                       ))}
                     </div>
@@ -622,21 +622,21 @@ export function MyKidsPage() {
                     <span className="section-icon">&#128196;</span> Unassigned Materials ({unassignedMaterials.length})
                   </button>
                   {showUnassignedMaterials && (
-                    <div className="mykids-card-grid">
+                    <div className="mykids-list">
                       {unassignedMaterials.map(m => (
-                        <div key={m.id} className="mykids-item-card mykids-item-card--material" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                          <div className="mykids-item-card-actions">
-                            <button
-                              className="mykids-item-action-btn"
-                              title="Move to class"
-                              onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
-                            >&#128194;</button>
+                        <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                          <div className="mykids-list-body">
+                            <span className="mykids-list-title">{m.title}</span>
+                            <span className="mykids-list-meta">
+                              <span className="mykids-badge">{m.content_type}</span>
+                              {m.course_name && <span> &middot; {m.course_name}</span>}
+                            </span>
                           </div>
-                          <div className="mykids-item-title">{m.title}</div>
-                          <div className="mykids-item-sub">
-                            <span className="mykids-badge">{m.content_type}</span>
-                            {m.course_name && <span> &middot; {m.course_name}</span>}
-                          </div>
+                          <button
+                            className="mykids-list-action-btn"
+                            title="Move to class"
+                            onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
+                          >&#128194;</button>
                         </div>
                       ))}
                     </div>
@@ -683,14 +683,19 @@ export function MyKidsPage() {
               <span className="section-icon">&#128218;</span> Classes ({overview?.courses.length ?? 0})
             </button>
             {showCourses && overview && (
-              <div className="mykids-card-grid">
+              <div className="mykids-list">
                 {overview.courses.length === 0 ? (
                   <p className="mykids-empty-hint">No classes enrolled.</p>
                 ) : overview.courses.map(c => (
-                  <div key={c.id} className="mykids-item-card" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-item-title">{c.name}</div>
-                    {c.teacher_name && <div className="mykids-item-sub">{c.teacher_name}</div>}
-                    {c.subject && <div className="mykids-item-sub">{c.subject}</div>}
+                  <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
+                    <div className="mykids-list-body">
+                      <span className="mykids-list-title">{c.name}</span>
+                      <span className="mykids-list-meta">
+                        {c.subject && <span>{c.subject}</span>}
+                        {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
+                      </span>
+                    </div>
+                    <span className="mykids-list-chevron">&#8250;</span>
                   </div>
                 ))}
               </div>
@@ -704,23 +709,23 @@ export function MyKidsPage() {
               <span className="section-icon">&#128196;</span> Class Materials ({materials.length})
             </button>
             {showMaterials && (
-              <div className="mykids-card-grid">
+              <div className="mykids-list">
                 {materials.length === 0 ? (
                   <p className="mykids-empty-hint">No class materials yet.</p>
                 ) : materials.map(m => (
-                  <div key={m.id} className="mykids-item-card mykids-item-card--material" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-item-card-actions">
-                      <button
-                        className="mykids-item-action-btn"
-                        title="Move to class"
-                        onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
-                      >&#128194;</button>
+                  <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                    <div className="mykids-list-body">
+                      <span className="mykids-list-title">{m.title}</span>
+                      <span className="mykids-list-meta">
+                        <span className="mykids-badge">{m.content_type}</span>
+                        {m.course_name && <span> &middot; {m.course_name}</span>}
+                      </span>
                     </div>
-                    <div className="mykids-item-title">{m.title}</div>
-                    <div className="mykids-item-sub">
-                      <span className="mykids-badge">{m.content_type}</span>
-                      {m.course_name && <span> &middot; {m.course_name}</span>}
-                    </div>
+                    <button
+                      className="mykids-list-action-btn"
+                      title="Move to class"
+                      onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
+                    >&#128194;</button>
                   </div>
                 ))}
               </div>
