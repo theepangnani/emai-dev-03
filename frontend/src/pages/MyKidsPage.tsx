@@ -191,9 +191,15 @@ export function MyKidsPage() {
   const activeTasks = tasks.filter(t => !t.is_completed);
   const completedTasks = tasks.filter(t => t.is_completed);
 
+  const sidebarActions = [
+    { label: '+ Create Class Material', icon: '\u{1F4DD}', onClick: () => navigate('/course-materials') },
+    { label: '+ Task', icon: '\u2705', onClick: () => navigate('/tasks') },
+    { label: '+ Add Child', icon: '\u{1F476}', onClick: () => setShowAddChildModal(true) },
+  ];
+
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton>
+      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -201,7 +207,7 @@ export function MyKidsPage() {
 
   if (children.length === 0) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton>
+      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
         <div className="mykids-empty">
           <h3>No children linked yet</h3>
           <p>Add your child to start managing their education.</p>
@@ -378,7 +384,7 @@ export function MyKidsPage() {
     }
   };
 
-  const renderAddChildModal = () => (
+  function renderAddChildModal() { return (
     <div className="modal-overlay" onClick={closeAddChildModal}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Add Child</h2>
@@ -495,10 +501,10 @@ export function MyKidsPage() {
         )}
       </div>
     </div>
-  );
+  ); }
 
   return (
-    <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton>
+    <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
       {/* Child Tabs */}
       <div className="child-selector">
         {children.length > 1 && (

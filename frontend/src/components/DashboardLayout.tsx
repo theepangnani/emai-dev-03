@@ -66,6 +66,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
   const [inspiration, setInspiration] = useState<InspirationMessage | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
@@ -135,6 +136,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     // Menu close is intentionally synchronous here to provide immediate feedback on navigation
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMenuOpen(false);
+    setQuickActionsOpen(false);
   }, [location.pathname]);
 
   // Close role switcher on click outside
@@ -347,19 +349,29 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
           {persistentQuickActions.length > 0 && (
             <>
               <div className="ps-divider" />
-              <div className="persistent-sidebar-actions">
-                {persistentQuickActions.map((action, i) => (
-                  <button
-                    key={i}
-                    className="ps-action-item"
-                    onClick={action.onClick}
-                    title={action.label}
-                    aria-label={action.label}
-                  >
-                    <span className="ps-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
-                  </button>
-                ))}
-              </div>
+              <button
+                className={`ps-fab-toggle${quickActionsOpen ? ' open' : ''}`}
+                onClick={() => setQuickActionsOpen(p => !p)}
+                title="Quick Actions"
+                aria-label="Quick Actions"
+              >
+                <span className="ps-fab-icon">+</span>
+              </button>
+              {quickActionsOpen && (
+                <div className="persistent-sidebar-actions">
+                  {persistentQuickActions.map((action, i) => (
+                    <button
+                      key={i}
+                      className="ps-action-item"
+                      onClick={action.onClick}
+                      title={action.label}
+                      aria-label={action.label}
+                    >
+                      <span className="ps-action-icon icon-with-plus">{action.icon || QUICK_ACTION_ICONS[action.label] || ''}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </aside>
