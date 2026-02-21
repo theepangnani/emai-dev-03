@@ -99,6 +99,22 @@ export function CoursesPage() {
   const [childCoursesExpanded, setChildCoursesExpanded] = useState(true);
   const [myCoursesExpanded, setMyCoursesExpanded] = useState(true);
 
+  // Edit course modal
+  const [editCourse, setEditCourse] = useState<CourseItem | null>(null);
+  const [editCourseName, setEditCourseName] = useState('');
+  const [editCourseSubject, setEditCourseSubject] = useState('');
+  const [editCourseDescription, setEditCourseDescription] = useState('');
+  const [editCourseLoading, setEditCourseLoading] = useState(false);
+  const [editCourseError, setEditCourseError] = useState('');
+
+  // Edit content modal
+  const [editContent, setEditContent] = useState<CourseContentItem | null>(null);
+  const [editContentTitle, setEditContentTitle] = useState('');
+  const [editContentDescription, setEditContentDescription] = useState('');
+  const [editContentType, setEditContentType] = useState('');
+  const [editContentLoading, setEditContentLoading] = useState(false);
+  const [editContentError, setEditContentError] = useState('');
+
   useEffect(() => {
     loadData();
     const timeout = setTimeout(() => {
@@ -384,6 +400,116 @@ export function CoursesPage() {
     }
   };
 
+  // ── Edit Course modal handlers ────────────────────────────────
+  const openEditCourse = (course: CourseItem) => {
+    setEditCourse(course);
+    setEditCourseName(course.name);
+    setEditCourseSubject(course.subject || '');
+    setEditCourseDescription(course.description || '');
+    setEditCourseError('');
+  };
+
+  const closeEditCourse = () => {
+    setEditCourse(null);
+    setEditCourseError('');
+  };
+
+  const handleSaveEditCourse = async () => {
+    if (!editCourse || !editCourseName.trim()) return;
+    setEditCourseLoading(true);
+    setEditCourseError('');
+    try {
+      await coursesApi.update(editCourse.id, {
+        name: editCourseName.trim(),
+        subject: editCourseSubject.trim() || undefined,
+        description: editCourseDescription.trim() || undefined,
+      });
+      closeEditCourse();
+      loadData();
+    } catch (err: any) {
+      setEditCourseError(err.response?.data?.detail || 'Failed to update class');
+    } finally {
+      setEditCourseLoading(false);
+    }
+  };
+
+  const handleDeleteCourseFromModal = async () => {
+    if (!editCourse) return;
+    const ok = await confirm({
+      title: 'Delete Class',
+      message: `Are you sure you want to delete "${editCourse.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
+    setEditCourseLoading(true);
+    try {
+      await coursesApi.delete(editCourse.id);
+      closeEditCourse();
+      loadData();
+    } catch (err: any) {
+      setEditCourseError(err.response?.data?.detail || 'Failed to delete class');
+      setEditCourseLoading(false);
+    }
+  };
+
+  // ── Edit Content modal handlers ──────────────────────────────
+  const openEditContent = (item: CourseContentItem) => {
+    setEditContent(item);
+    setEditContentTitle(item.title);
+    setEditContentDescription(item.description || '');
+    setEditContentType(item.content_type);
+    setEditContentError('');
+  };
+
+  const closeEditContent = () => {
+    setEditContent(null);
+    setEditContentError('');
+  };
+
+  const handleSaveEditContent = async () => {
+    if (!editContent || !editContentTitle.trim()) return;
+    setEditContentLoading(true);
+    setEditContentError('');
+    try {
+      await courseContentsApi.update(editContent.id, {
+        title: editContentTitle.trim(),
+        description: editContentDescription.trim() || undefined,
+        content_type: editContentType,
+      });
+      closeEditContent();
+      if (expandedCourseId) {
+        const contents = await courseContentsApi.list(expandedCourseId);
+        setExpandedContents(contents);
+      }
+    } catch (err: any) {
+      setEditContentError(err.response?.data?.detail || 'Failed to update material');
+    } finally {
+      setEditContentLoading(false);
+    }
+  };
+
+  const handleDeleteContentFromModal = async () => {
+    if (!editContent) return;
+    const ok = await confirm({
+      title: 'Delete Material',
+      message: `Are you sure you want to delete "${editContent.title}"?`,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
+    setEditContentLoading(true);
+    try {
+      await courseContentsApi.delete(editContent.id);
+      closeEditContent();
+      if (expandedCourseId) {
+        const contents = await courseContentsApi.list(expandedCourseId);
+        setExpandedContents(contents);
+      }
+    } catch (err: any) {
+      setEditContentError(err.response?.data?.detail || 'Failed to delete material');
+      setEditContentLoading(false);
+    }
+  };
+
   const filteredAvailable = availableCourses.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.subject && c.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -492,41 +618,31 @@ export function CoursesPage() {
                 <CardSkeleton />
               </div>
             ) : childOverview && childOverview.courses.length > 0 ? (
-              <div className="courses-grid">
+              <div className="courses-list">
                 {childOverview.courses.map((course) => (
-                  <div key={course.id} className="course-card-wrapper">
+                  <div key={course.id} className="course-list-item-wrapper">
                     <div
-                      className={`course-card${expandedCourseId === course.id ? ' expanded' : ''}`}
+                      className={`course-list-row${expandedCourseId === course.id ? ' expanded' : ''}`}
                       onClick={() => toggleCourseExpand(course.id)}
                       onKeyDown={(e) => handleKeyDown(e, () => toggleCourseExpand(course.id))}
                       role="button"
                       tabIndex={0}
-                      style={{ cursor: 'pointer' }}
                     >
-                      <div className="course-card-color" style={{ background: getCourseColor(course.id, courseIds) }} />
-                      <div className="course-card-body">
-                        <h4>{course.name} <span className="course-card-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span></h4>
-                        {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                        {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
-                        {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
-                        {course.classroom_type === 'school' && <span className="course-card-badge school">School</span>}
-                        {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
+                      <div className="course-list-color" style={{ background: getCourseColor(course.id, courseIds) }} />
+                      <div className="course-list-body">
+                        <span className="course-list-title">{course.name}</span>
+                        <div className="course-list-meta">
+                          {course.subject && <span className="course-card-subject">{course.subject}</span>}
+                          {course.teacher_name && <span>{course.teacher_name}</span>}
+                          {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                          {course.classroom_type === 'school' && <span className="course-card-badge school">School</span>}
+                          {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
+                        </div>
                       </div>
-                      <div className="course-card-actions">
-                        <button
-                          className="course-card-action-btn edit"
-                          title="View class details"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                        >
-                          &#9998;
-                        </button>
-                        <button
-                          className="course-card-action-btn unassign"
-                          title={`Unassign from ${childName}`}
-                          onClick={(e) => { e.stopPropagation(); handleUnassignCourse(course.id, course.name); }}
-                        >
-                          &#10005;
-                        </button>
+                      <span className="course-list-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span>
+                      <div className="course-list-actions" onClick={(e) => e.stopPropagation()}>
+                        <button className="course-list-btn" title="Edit" onClick={() => openEditCourse(course)}>&#9998;</button>
+                        <button className="course-list-btn danger" title={`Unassign from ${childName}`} onClick={() => handleUnassignCourse(course.id, course.name)}>&#10005;</button>
                       </div>
                     </div>
                     {expandedCourseId === course.id && (
@@ -554,13 +670,14 @@ export function CoursesPage() {
                                   <span className="content-item-title">{item.title}</span>
                                   {item.description && <p className="content-item-desc">{item.description}</p>}
                                 </div>
-                                <div className="content-item-links">
+                                <div className="content-item-actions">
                                   {item.reference_url && (
-                                    <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link" onClick={(e) => e.stopPropagation()}>Link</a>
+                                    <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">Link</a>
                                   )}
                                   {item.google_classroom_url && (
-                                    <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google" onClick={(e) => e.stopPropagation()}>Google</a>
+                                    <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">Google</a>
                                   )}
+                                  <button className="course-list-btn" title="Edit" onClick={(e) => { e.stopPropagation(); openEditContent(item); }}>&#9998;</button>
                                 </div>
                               </div>
                             ))}
@@ -602,39 +719,33 @@ export function CoursesPage() {
             {studentTab === 'enrolled' && (
               <div className="courses-section">
                 {enrolledCourses.length > 0 ? (
-                  <div className="courses-grid">
+                  <div className="courses-list">
                     {enrolledCourses.map((course) => (
-                      <div key={course.id} className="course-card-wrapper">
+                      <div key={course.id} className="course-list-item-wrapper">
                         <div
-                          className={`course-card${expandedCourseId === course.id ? ' expanded' : ''}`}
+                          className={`course-list-row${expandedCourseId === course.id ? ' expanded' : ''}`}
                           onClick={() => toggleCourseExpand(course.id)}
                           onKeyDown={(e) => handleKeyDown(e, () => toggleCourseExpand(course.id))}
                           role="button"
                           tabIndex={0}
-                          style={{ cursor: 'pointer' }}
                         >
-                          <div className="course-card-color" style={{ background: getCourseColor(course.id, enrolledCourses.map(c => c.id)) }} />
-                          <div className="course-card-body">
-                            <h4>{course.name} <span className="course-card-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span></h4>
-                            {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                            {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
+                          <div className="course-list-color" style={{ background: getCourseColor(course.id, enrolledCourses.map(c => c.id)) }} />
+                          <div className="course-list-body">
+                            <span className="course-list-title">{course.name}</span>
+                            <div className="course-list-meta">
+                              {course.subject && <span className="course-card-subject">{course.subject}</span>}
+                              {course.teacher_name && <span>{course.teacher_name}</span>}
+                            </div>
                           </div>
-                          <div className="course-card-actions">
+                          <span className="course-list-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span>
+                          <div className="course-list-actions" onClick={(e) => e.stopPropagation()}>
+                            <button className="course-list-btn" title="Edit" onClick={() => openEditCourse(course)}>&#9998;</button>
                             <button
-                              className="course-card-action-btn edit"
-                              title="View class details"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                            >
-                              &#9998;
-                            </button>
-                            <button
-                              className="course-card-action-btn unassign"
+                              className="course-list-btn danger"
                               title="Unenroll"
-                              onClick={(e) => { e.stopPropagation(); handleUnenroll(course.id, course.name); }}
+                              onClick={() => handleUnenroll(course.id, course.name)}
                               disabled={enrollingId === course.id}
-                            >
-                              &#10005;
-                            </button>
+                            >&#10005;</button>
                           </div>
                         </div>
                         {expandedCourseId === course.id && (
@@ -662,13 +773,14 @@ export function CoursesPage() {
                                       <span className="content-item-title">{item.title}</span>
                                       {item.description && <p className="content-item-desc">{item.description}</p>}
                                     </div>
-                                    <div className="content-item-links">
+                                    <div className="content-item-actions">
                                       {item.reference_url && (
-                                        <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link" onClick={(e) => e.stopPropagation()}>Link</a>
+                                        <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">Link</a>
                                       )}
                                       {item.google_classroom_url && (
-                                        <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google" onClick={(e) => e.stopPropagation()}>Google</a>
+                                        <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">Google</a>
                                       )}
+                                      <button className="course-list-btn" title="Edit" onClick={(e) => { e.stopPropagation(); openEditContent(item); }}>&#9998;</button>
                                     </div>
                                   </div>
                                 ))}
@@ -702,27 +814,25 @@ export function CoursesPage() {
                   />
                 </div>
                 {filteredAvailable.length > 0 ? (
-                  <div className="courses-grid">
+                  <div className="courses-list">
                     {filteredAvailable.map((course) => (
-                      <div key={course.id} className="course-card-wrapper">
-                        <div className="course-card">
-                          <div className="course-card-color" style={{ background: 'var(--color-accent)' }} />
-                          <div className="course-card-body">
-                            <h4>{course.name}</h4>
+                      <div key={course.id} className="course-list-row browse">
+                        <div className="course-list-color" style={{ background: 'var(--color-accent)' }} />
+                        <div className="course-list-body">
+                          <span className="course-list-title">{course.name}</span>
+                          <div className="course-list-meta">
                             {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                            {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
-                            {course.description && <p className="course-card-desc">{course.description}</p>}
-                          </div>
-                          <div style={{ padding: '12px', display: 'flex', alignItems: 'center' }}>
-                            <button
-                              className="courses-btn primary"
-                              onClick={() => handleEnroll(course.id)}
-                              disabled={enrollingId === course.id}
-                            >
-                              {enrollingId === course.id ? (<><span className="btn-spinner" /> Enrolling...</>) : 'Enroll'}
-                            </button>
+                            {course.teacher_name && <span>{course.teacher_name}</span>}
+                            {course.description && <span className="course-list-desc">{course.description}</span>}
                           </div>
                         </div>
+                        <button
+                          className="courses-btn primary"
+                          onClick={() => handleEnroll(course.id)}
+                          disabled={enrollingId === course.id}
+                        >
+                          {enrollingId === course.id ? (<><span className="btn-spinner" /> Enrolling...</>) : 'Enroll'}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -751,46 +861,34 @@ export function CoursesPage() {
             )}
           </div>
           {myCoursesExpanded && myCourses.length > 0 ? (
-            <div className="courses-grid">
+            <div className="courses-list">
               {myCourses.map((course) => (
-                <div key={course.id} className="course-card-wrapper">
-                  <div
-                    className="course-card"
-                    onClick={() => navigate(`/courses/${course.id}`)}
-                    onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
-                    role="button"
-                    tabIndex={0}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="course-card-color" style={{ background: 'var(--color-accent)' }} />
-                    <div className="course-card-body">
-                      <h4>{course.name}</h4>
+                <div
+                  key={course.id}
+                  className="course-list-row"
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                  onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="course-list-color" style={{ background: 'var(--color-accent)' }} />
+                  <div className="course-list-body">
+                    <span className="course-list-title">{course.name}</span>
+                    <div className="course-list-meta">
                       {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                      {course.description && <p className="course-card-desc">{course.description}</p>}
+                      {course.description && <span className="course-list-desc">{course.description}</span>}
                     </div>
-                    <div className="course-card-actions">
-                      {isParent && selectedChild && (() => {
-                        const alreadyAssigned = childOverview?.courses.some(c => c.id === course.id) ?? false;
-                        return !alreadyAssigned ? (
-                          <button
-                            className="course-card-action-btn assign"
-                            title={`Assign to ${childName}`}
-                            onClick={(e) => { e.stopPropagation(); handleQuickAssign(course.id); }}
-                          >
-                            &#10003;
-                          </button>
-                        ) : (
-                          <span className="course-card-assigned-badge" title={`Assigned to ${childName}`}>&#10003;</span>
-                        );
-                      })()}
-                      <button
-                        className="course-card-action-btn edit"
-                        title="Edit class"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                      >
-                        &#9998;
-                      </button>
-                    </div>
+                  </div>
+                  <div className="course-list-actions" onClick={(e) => e.stopPropagation()}>
+                    {isParent && selectedChild && (() => {
+                      const alreadyAssigned = childOverview?.courses.some(c => c.id === course.id) ?? false;
+                      return !alreadyAssigned ? (
+                        <button className="course-list-btn assign" title={`Assign to ${childName}`} onClick={() => handleQuickAssign(course.id)}>&#10003;</button>
+                      ) : (
+                        <span className="course-card-assigned-badge" title={`Assigned to ${childName}`}>&#10003;</span>
+                      );
+                    })()}
+                    <button className="course-list-btn" title="Edit" onClick={() => openEditCourse(course)}>&#9998;</button>
                   </div>
                 </div>
               ))}
@@ -880,6 +978,74 @@ export function CoursesPage() {
           </div>
         </div>
       )}
+      {/* Edit Course Modal */}
+      {editCourse && (
+        <div className="modal-overlay" onClick={closeEditCourse}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Class</h2>
+            <div className="modal-form">
+              <label>
+                Class Name *
+                <input type="text" value={editCourseName} onChange={(e) => setEditCourseName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={editCourseLoading} onKeyDown={(e) => e.key === 'Enter' && handleSaveEditCourse()} />
+              </label>
+              <label>
+                Subject
+                <input type="text" value={editCourseSubject} onChange={(e) => setEditCourseSubject(e.target.value)} placeholder="e.g. Mathematics" disabled={editCourseLoading} />
+              </label>
+              <label>
+                Description
+                <textarea value={editCourseDescription} onChange={(e) => setEditCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={editCourseLoading} />
+              </label>
+              {editCourseError && <p className="link-error">{editCourseError}</p>}
+            </div>
+            <div className="modal-actions">
+              {!editCourse.google_classroom_id && (
+                <button className="cancel-btn danger-text" onClick={handleDeleteCourseFromModal} disabled={editCourseLoading}>Delete Class</button>
+              )}
+              <button className="cancel-btn" onClick={closeEditCourse} disabled={editCourseLoading}>Cancel</button>
+              <button className="generate-btn" onClick={handleSaveEditCourse} disabled={editCourseLoading || !editCourseName.trim()}>
+                {editCourseLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Content Modal */}
+      {editContent && (
+        <div className="modal-overlay" onClick={closeEditContent}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Material</h2>
+            <div className="modal-form">
+              <label>
+                Title *
+                <input type="text" value={editContentTitle} onChange={(e) => setEditContentTitle(e.target.value)} placeholder="Material title" disabled={editContentLoading} onKeyDown={(e) => e.key === 'Enter' && handleSaveEditContent()} />
+              </label>
+              <label>
+                Description
+                <textarea value={editContentDescription} onChange={(e) => setEditContentDescription(e.target.value)} placeholder="Material description..." rows={3} disabled={editContentLoading} />
+              </label>
+              <label>
+                Type
+                <select value={editContentType} onChange={(e) => setEditContentType(e.target.value)} disabled={editContentLoading}>
+                  {Object.entries(CONTENT_TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              {editContentError && <p className="link-error">{editContentError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn danger-text" onClick={handleDeleteContentFromModal} disabled={editContentLoading}>Delete Material</button>
+              <button className="cancel-btn" onClick={closeEditContent} disabled={editContentLoading}>Cancel</button>
+              <button className="generate-btn" onClick={handleSaveEditContent} disabled={editContentLoading || !editContentTitle.trim()}>
+                {editContentLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirmModal}
     </DashboardLayout>
   );
