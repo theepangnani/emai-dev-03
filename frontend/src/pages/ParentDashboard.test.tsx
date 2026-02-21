@@ -184,18 +184,16 @@ describe('ParentDashboard', () => {
   })
 
   // ── No Children State ────────────────────────────────────────
-  it('shows "Get Started" when no children', async () => {
+  it('shows empty state when no children', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({ children: [], child_highlights: [] }),
     )
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Get Started')).toBeInTheDocument()
+      expect(screen.getByText('No children linked yet')).toBeInTheDocument()
     })
-    expect(screen.getByText(/add your child/i)).toBeInTheDocument()
-    // "+ Add Child" appears in both the empty state and sidebar actions
-    expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
   })
 
   // ── Dashboard with Children ──────────────────────────────────
@@ -266,37 +264,38 @@ describe('ParentDashboard', () => {
   })
 
   // ── Calendar ─────────────────────────────────────────────────
-  it('calendar is collapsed by default', async () => {
+  it('calendar section renders toggle button', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Calendar/)).toBeInTheDocument()
+      expect(document.querySelector('.calendar-collapse-label')).toBeInTheDocument()
     })
-    // Calendar is collapsed by default — no calendar-view rendered
-    expect(screen.queryByTestId('calendar-view')).not.toBeInTheDocument()
+    expect(document.querySelector('.calendar-collapse-toggle')).toBeInTheDocument()
   })
 
-  it('toggles calendar expand and collapse', async () => {
+  it('toggles calendar collapse and expand', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Calendar/)).toBeInTheDocument()
+      expect(document.querySelector('.calendar-collapse-toggle')).toBeInTheDocument()
     })
 
-    // Calendar starts collapsed
-    expect(screen.queryByTestId('calendar-view')).not.toBeInTheDocument()
+    // On first visit, calendar starts expanded — shows empty state since no assignments
+    await waitFor(() => {
+      expect(screen.getByText('Calendar is clear')).toBeInTheDocument()
+    })
 
-    // Expand calendar
-    const toggleBtn = screen.getByText(/Calendar/).closest('button')!
+    // Collapse calendar
+    const toggleBtn = document.querySelector('.calendar-collapse-toggle') as HTMLElement
+    await user.click(toggleBtn)
+    expect(screen.queryByText('Calendar is clear')).not.toBeInTheDocument()
+
+    // Expand again
     await user.click(toggleBtn)
     await waitFor(() => {
-      expect(screen.getByTestId('calendar-view')).toBeInTheDocument()
+      expect(screen.getByText('Calendar is clear')).toBeInTheDocument()
     })
-
-    // Collapse again
-    await user.click(toggleBtn)
-    expect(screen.queryByTestId('calendar-view')).not.toBeInTheDocument()
   })
 
   // ── Quick Action Buttons ─────────────────────────────────────
@@ -334,11 +333,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // "+ Add Child" appears in both sidebar actions and empty state
-      expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ add child/i })[0])
+    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Add Child' })).toBeInTheDocument()
@@ -357,10 +355,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ add child/i })[0])
+    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('e.g. Alex Smith')).toBeInTheDocument()
@@ -383,10 +381,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ add child/i })[0])
+    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('e.g. Alex Smith')).toBeInTheDocument()
@@ -412,10 +410,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ add child/i })[0])
+    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('e.g. Alex Smith')).toBeInTheDocument()
@@ -439,10 +437,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ add child/i })[0])
+    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
 
     await waitFor(() => {
       expect(screen.getByText('Link by Email')).toBeInTheDocument()
@@ -467,10 +465,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /\+ add child/i }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('button', { name: /\+ add child/i })[0])
+    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
     await user.click(screen.getByText('Google Classroom'))
 
     await waitFor(() => {
