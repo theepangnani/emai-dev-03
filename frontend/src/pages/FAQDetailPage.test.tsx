@@ -146,7 +146,9 @@ describe('FAQDetailPage', () => {
   it('renders question title and description', async () => {
     renderDetail()
     await waitFor(() => {
-      expect(screen.getByText('How do I connect Google Classroom?')).toBeInTheDocument()
+      // Title appears in both breadcrumb and heading
+      const matches = screen.getAllByText('How do I connect Google Classroom?')
+      expect(matches.length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.getByText('Step by step guide for Google connection')).toBeInTheDocument()
   })
@@ -217,13 +219,13 @@ describe('FAQDetailPage', () => {
   })
 
   it('navigates back on "Back to FAQ" click', async () => {
-    const user = userEvent.setup()
     renderDetail()
     await waitFor(() => {
       expect(screen.getByText(/Back to FAQ/)).toBeInTheDocument()
     })
-    await user.click(screen.getByText(/Back to FAQ/))
-    expect(mockNavigate).toHaveBeenCalledWith('/faq')
+    // Breadcrumb uses <Link to="/faq"> instead of navigate()
+    const backLink = screen.getByText(/Back to FAQ/)
+    expect(backLink.closest('a')).toHaveAttribute('href', '/faq')
   })
 
   it('shows answer form with minimum character warning', async () => {

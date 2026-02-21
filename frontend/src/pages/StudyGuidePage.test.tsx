@@ -105,7 +105,9 @@ describe('StudyGuidePage', () => {
   it('renders guide title and content after loading', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Study Guide: Photosynthesis')).toBeInTheDocument()
+      // Title appears in both breadcrumb and heading
+      const matches = screen.getAllByText('Study Guide: Photosynthesis')
+      expect(matches.length).toBeGreaterThanOrEqual(1)
     })
     // Markdown renderer loads via dynamic import — wait for it
     await waitFor(() => {
@@ -131,7 +133,8 @@ describe('StudyGuidePage', () => {
   it('does not show version badge for version 1', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Study Guide: Photosynthesis')).toBeInTheDocument()
+      const matches = screen.getAllByText('Study Guide: Photosynthesis')
+      expect(matches.length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.queryByText('v1')).not.toBeInTheDocument()
   })
@@ -231,10 +234,11 @@ describe('StudyGuidePage', () => {
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 
-  it('has back link to dashboard', async () => {
+  it('has breadcrumb navigation', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText(/Back to Dashboard/)).toBeInTheDocument()
+      // Breadcrumb replaced the old "Back to Dashboard" link
+      expect(screen.getByText(/Back to Materials/)).toBeInTheDocument()
     })
   })
 })
