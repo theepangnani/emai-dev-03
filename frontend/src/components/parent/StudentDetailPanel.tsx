@@ -22,7 +22,6 @@ export interface CourseMaterial {
 
 export interface StudentDetailPanelProps {
   selectedChildName: string | null; // null = "All Children" mode
-  courses: CourseInfo[];
   courseMaterials: CourseMaterial[];
   tasks: TaskItem[];
   collapsed: boolean;
@@ -125,7 +124,6 @@ function Chevron({ expanded }: { expanded: boolean }) {
 
 export function StudentDetailPanel({
   selectedChildName,
-  courses,
   courseMaterials,
   tasks,
   collapsed,

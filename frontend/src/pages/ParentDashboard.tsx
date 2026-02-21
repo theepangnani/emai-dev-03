@@ -16,7 +16,7 @@ import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import type { StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
-import type { CourseInfo, CourseMaterial } from '../components/parent/StudentDetailPanel';
+import type { CourseMaterial } from '../components/parent/StudentDetailPanel';
 import { QuickActionsBar } from '../components/parent/QuickActionsBar';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import './ParentDashboard.css';
@@ -615,23 +615,6 @@ export function ParentDashboard() {
     return { overdue, dueToday, upcoming };
   }, [filteredTasks]);
 
-  // Courses for StudentDetailPanel (deduplicated across selected children)
-  const panelCourses = useMemo<CourseInfo[]>(() => {
-    if (!dashboardData) return [];
-    const highlights = dashboardData.child_highlights.filter(h => !selectedChild || h.student_id === selectedChild);
-    const seen = new Set<number>();
-    const courses: CourseInfo[] = [];
-    for (const h of highlights) {
-      for (const c of h.courses) {
-        if (!seen.has(c.id)) {
-          seen.add(c.id);
-          courses.push({ id: c.id, name: c.name });
-        }
-      }
-    }
-    return courses;
-  }, [dashboardData, selectedChild]);
-
   const openDayModal = (date: Date) => {
     setDayModalDate(date);
     setNewTaskTitle('');
@@ -1001,7 +984,6 @@ export function ParentDashboard() {
           {/* Student Detail Panel (always shown — aggregated for All Children, specific for selected child) */}
           <StudentDetailPanel
             selectedChildName={selectedChild ? (children.find(c => c.student_id === selectedChild)?.full_name ?? null) : null}
-            courses={panelCourses}
             courseMaterials={courseMaterials}
             tasks={filteredTasks}
             collapsed={detailPanelCollapsed}
