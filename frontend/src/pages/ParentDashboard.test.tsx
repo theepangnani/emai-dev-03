@@ -265,9 +265,16 @@ describe('ParentDashboard', () => {
 
   // ── Calendar moved to TasksPage ──────────────────────────────
 
-  // ── Quick Action Buttons ─────────────────────────────────────
-  it('renders quick actions bar with Upload Documents and Create Task buttons', async () => {
+  // ── Quick Action Buttons (+ popover) ────────────────────────
+  it('renders + button that reveals Upload Documents and Create Task actions', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
@@ -275,9 +282,15 @@ describe('ParentDashboard', () => {
     expect(screen.getByText('Create Task')).toBeInTheDocument()
   })
 
-  it('opens study modal from Upload Documents quick action', async () => {
+  it('opens study modal from Upload Documents in + popover', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
@@ -484,16 +497,21 @@ describe('ParentDashboard', () => {
   // Edit child modal is now accessed from the My Kids page, not the dashboard
 
   // ── Study Tools Modal ────────────────────────────────────────
-  it('opens study tools modal from quick action', async () => {
+  it('opens study tools modal from + popover Upload Documents', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // "Upload Documents" appears in the quick actions bar
-      expect(screen.getByRole('button', { name: /Upload Documents/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /Upload Documents/i }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('Upload Documents'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()

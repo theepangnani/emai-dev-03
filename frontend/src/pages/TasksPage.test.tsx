@@ -179,14 +179,19 @@ describe('TasksPage', () => {
     expect(mockUpdate).toHaveBeenCalledWith(1, { is_completed: true })
   })
 
-  it('opens create modal on "New Task" click', async () => {
+  it('opens create modal via + popover "New Task"', async () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /New Task/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /New Task/ }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('New Task'))
+
     expect(screen.getByRole('heading', { name: 'Create Task' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Task title')).toBeInTheDocument()
   })
@@ -196,10 +201,14 @@ describe('TasksPage', () => {
     mockCreate.mockResolvedValue({})
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /New Task/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /New Task/ }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('New Task'))
     await user.type(screen.getByPlaceholderText('Task title'), 'New task title')
     await user.click(screen.getByRole('button', { name: 'Create Task' }))
 
@@ -214,11 +223,31 @@ describe('TasksPage', () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /New Task/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /New Task/ }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('New Task'))
     expect(screen.getByRole('button', { name: 'Create Task' })).toBeDisabled()
+  })
+
+  it('navigates to course-materials on "Upload Documents" click', async () => {
+    const user = userEvent.setup()
+    renderTasks()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Upload Documents'))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/course-materials')
   })
 
   it('opens edit modal on edit button click', async () => {

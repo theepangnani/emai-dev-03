@@ -11,6 +11,7 @@ import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
+import { AddActionButton } from '../components/AddActionButton';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -372,8 +373,8 @@ export function TasksPage() {
           <h3>Tasks</h3>
         </div>
 
-        {/* Child selector pills (parent only) */}
-        {isParent && children.length > 0 && (
+        {/* Child selector pills (parent only) + add action button */}
+        {isParent && children.length > 0 ? (
           <div className="tasks-child-selector">
             {children.map((child, index) => (
               <button
@@ -386,14 +387,19 @@ export function TasksPage() {
                 {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
               </button>
             ))}
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => navigate('/course-materials') },
+              { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
+            ]} />
+          </div>
+        ) : (
+          <div className="tasks-child-selector">
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => navigate('/course-materials') },
+              { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
+            ]} />
           </div>
         )}
-
-        {/* New Task button (below child selector) */}
-        <button className="tasks-new-btn" onClick={() => setShowCreate(true)}>
-          <span className="tasks-new-btn-icon">{'\u2705'}</span>
-          <span>New Task</span>
-        </button>
 
         {/* Collapsible Calendar Section */}
         {isParent && (

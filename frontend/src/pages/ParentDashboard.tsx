@@ -4,7 +4,7 @@ import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
-import { QuickActionsBar } from '../components/parent/QuickActionsBar';
+import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
@@ -71,17 +71,16 @@ export function ParentDashboard() {
                 {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
               </button>
             ))}
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
+              { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
+            ]} />
           </div>
 
           <AlertBanner
             pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
             onResendInvite={pd.handleResendInvite}
             resendingId={pd.resendingId}
-          />
-
-          <QuickActionsBar
-            onCreateMaterial={() => pd.setShowStudyModal(true)}
-            onCreateTask={() => pd.setShowCreateTaskModal(true)}
           />
 
           <StudentDetailPanel
