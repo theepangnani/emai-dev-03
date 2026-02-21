@@ -3,14 +3,18 @@ import { waitFor, fireEvent } from '@testing-library/react-native';
 import { ChildOverviewScreen } from '../../src/screens/parent/ChildOverviewScreen';
 import { renderWithProviders } from '../helpers';
 
-// Mock route params
-const mockRoute = {
-  params: { studentId: 10, name: 'Alice Doe' },
-  key: 'test-key',
-  name: 'ChildOverview' as const,
-};
-
-const mockNavigation = {} as any;
+// Mock useRoute to provide route params
+jest.mock('@react-navigation/native', () => {
+  const actual = jest.requireActual('@react-navigation/native');
+  return {
+    ...actual,
+    useRoute: () => ({
+      params: { studentId: 10, name: 'Alice Doe' },
+      key: 'test-key',
+      name: 'ChildOverview',
+    }),
+  };
+});
 
 const mockOverview = {
   student_id: 10,
@@ -54,7 +58,7 @@ describe('ChildOverviewScreen', () => {
 
   it('renders stats row with counts', async () => {
     const { getByText, getAllByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getAllByText('2').length).toBeGreaterThanOrEqual(1); // 2 courses and 2 assignments
@@ -66,7 +70,7 @@ describe('ChildOverviewScreen', () => {
 
   it('renders course names', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Math')).toBeTruthy();
@@ -76,7 +80,7 @@ describe('ChildOverviewScreen', () => {
 
   it('renders course subject and teacher when present', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Mathematics')).toBeTruthy();
@@ -86,7 +90,7 @@ describe('ChildOverviewScreen', () => {
 
   it('renders assignment titles', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Homework 1')).toBeTruthy();
@@ -96,7 +100,7 @@ describe('ChildOverviewScreen', () => {
 
   it('shows overdue label for past due assignments', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Overdue')).toBeTruthy();
@@ -105,7 +109,7 @@ describe('ChildOverviewScreen', () => {
 
   it('displays points when present', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('100 pts')).toBeTruthy();
@@ -114,7 +118,7 @@ describe('ChildOverviewScreen', () => {
 
   it('renders task titles', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Study for test')).toBeTruthy();
@@ -124,7 +128,7 @@ describe('ChildOverviewScreen', () => {
 
   it('shows task completion count', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('(1/2 done)')).toBeTruthy();
@@ -133,7 +137,7 @@ describe('ChildOverviewScreen', () => {
 
   it('shows Completed divider between pending and completed tasks', async () => {
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Completed')).toBeTruthy();
@@ -143,7 +147,7 @@ describe('ChildOverviewScreen', () => {
   it('calls toggleComplete when task is pressed', async () => {
     const { tasksApi } = require('../../src/api/tasks');
     const { getByText } = renderWithProviders(
-      <ChildOverviewScreen route={mockRoute} navigation={mockNavigation} />
+      <ChildOverviewScreen />
     );
     await waitFor(() => {
       expect(getByText('Study for test')).toBeTruthy();

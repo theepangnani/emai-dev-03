@@ -106,7 +106,7 @@ export interface ChildOverview {
   study_guides_count: number;
 }
 
-// Parent API — mobile uses read-only subset
+// Parent API
 export const parentApi = {
   getDashboard: async () => {
     const response = await api.get('/api/parent/dashboard');
@@ -123,5 +123,21 @@ export const parentApi = {
       `/api/parent/children/${studentId}/overview`
     );
     return response.data as ChildOverview;
+  },
+
+  createChild: async (fullName: string, relationshipType = 'guardian') => {
+    const response = await api.post('/api/parent/children/create', {
+      full_name: fullName,
+      relationship_type: relationshipType,
+    });
+    return response.data as ChildSummary;
+  },
+
+  linkChild: async (studentEmail: string, relationshipType = 'guardian') => {
+    const response = await api.post('/api/parent/children/link', {
+      student_email: studentEmail,
+      relationship_type: relationshipType,
+    });
+    return response.data as ChildSummary;
   },
 };
