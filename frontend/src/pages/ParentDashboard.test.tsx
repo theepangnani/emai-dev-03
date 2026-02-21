@@ -218,7 +218,7 @@ describe('ParentDashboard', () => {
     expect(screen.getAllByText('Grade 5').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders "All Children" tab when multiple children', async () => {
+  it('renders child tabs when multiple children', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({
         children: [child1, child2],
@@ -227,11 +227,10 @@ describe('ParentDashboard', () => {
     )
     renderWithProviders(<ParentDashboard />)
 
-    await waitFor(() => {
-      expect(screen.getByText('All Children')).toBeInTheDocument()
-    })
     // Names appear in both child tabs and highlight cards
-    expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
+    await waitFor(() => {
+      expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
+    })
     expect(screen.getAllByText('Jamie Smith').length).toBeGreaterThanOrEqual(1)
   })
 
