@@ -10,6 +10,7 @@ import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { AddActionButton } from '../components/AddActionButton';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
@@ -378,7 +379,7 @@ export function CourseMaterialDetailPage() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs + action popover */}
         <div className="cm-tabs">
           {tabs.map(tab => (
             <button
@@ -392,36 +393,39 @@ export function CourseMaterialDetailPage() {
               )}
             </button>
           ))}
+          {activeTab === 'document' && !isEditing && (
+            <AddActionButton actions={[
+              ...(content?.has_file ? [{
+                icon: '\u{1F4E5}',
+                label: downloading ? 'Downloading...' : 'Download',
+                onClick: handleDownload,
+              }] : []),
+              ...(!content.has_file ? [{
+                icon: '\u270F\uFE0F',
+                label: 'Edit Content',
+                onClick: handleStartEdit,
+              }] : []),
+              {
+                icon: '\u{1F4C4}',
+                label: content.has_file ? 'Replace Document' : 'Upload Document',
+                onClick: () => setShowReplaceModal(true),
+              },
+            ]} />
+          )}
         </div>
 
         {/* Tab Content */}
         <div className="cm-tab-content">
           {activeTab === 'document' && (
             <div className="cm-document-tab">
-              <div className="cm-guide-actions">
-                {!isEditing && content?.has_file && (
-                  <button className="cm-action-btn primary" onClick={handleDownload} disabled={downloading}>
-                    {downloading ? 'Downloading...' : `Download${content.original_filename ? ` (${content.original_filename})` : ''}`}
+              {isEditing && (
+                <div className="cm-guide-actions">
+                  <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
+                    {editSaving ? 'Saving...' : 'Save'}
                   </button>
-                )}
-                {!isEditing ? (
-                  <>
-                    {!content.has_file && (
-                      <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
-                    )}
-                    <button className="cm-action-btn" onClick={() => setShowReplaceModal(true)}>
-                      {content.has_file ? 'Replace Document' : 'Upload Document'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
-                      {editSaving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
-                  </>
-                )}
-              </div>
+                  <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
+                </div>
+              )}
               {isEditing ? (
                 <textarea
                   className="cm-edit-textarea"
