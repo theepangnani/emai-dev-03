@@ -542,11 +542,11 @@ export function MyKidsPage() {
       {/* Action Buttons Grid */}
       <div className="mykids-action-grid">
         <button className="mykids-action-btn" onClick={() => setShowAddChildModal(true)}>
-          <span className="mykids-action-icon">{'\u{1F476}'}</span>
+          <span className="mykids-action-icon icon-with-plus">{'\u{1F476}'}</span>
           <span className="mykids-action-label">Add Child</span>
         </button>
         <button className="mykids-action-btn" onClick={() => setShowAddCourseModal(true)}>
-          <span className="mykids-action-icon">{'\u{1F4DA}'}</span>
+          <span className="mykids-action-icon icon-with-plus">{'\u{1F4DA}'}</span>
           <span className="mykids-action-label">Add Class</span>
         </button>
         <button className="mykids-action-btn" onClick={() => navigate('/course-materials')}>

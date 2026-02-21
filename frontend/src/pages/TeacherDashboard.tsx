@@ -48,6 +48,8 @@ export function TeacherDashboard() {
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [resentToastId, setResentToastId] = useState<number | null>(null);
   const [invitesExpanded, setInvitesExpanded] = useState(true);
+  const [coursesExpanded, setCoursesExpanded] = useState(true);
+  const [googleAccountsExpanded, setGoogleAccountsExpanded] = useState(true);
   const [resendError, setResendError] = useState<string | null>(null);
 
   // Course search
@@ -332,7 +334,10 @@ export function TeacherDashboard() {
       <div className="dashboard-sections">
         <section className="section teacher-courses-section">
           <div className="section-header">
-            <h3>Your Classes</h3>
+            <button className="collapse-toggle" onClick={() => setCoursesExpanded(v => !v)}>
+              <span className={`section-chevron${coursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Your Classes ({courses.length})</h3>
+            </button>
             <div className="section-header-actions">
               {googleConnected && (
                 <button className="sync-btn" onClick={handleSyncCourses} disabled={syncing}>
@@ -344,6 +349,8 @@ export function TeacherDashboard() {
               </button>
             </div>
           </div>
+          {coursesExpanded && (
+          <>
           {syncMessage && (
             <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`}>
               {syncMessage}
@@ -405,16 +412,18 @@ export function TeacherDashboard() {
               </div>
             </div>
           )}
+          </>
+          )}
         </section>
 
         {/* Sent Invites Section */}
         {sentInvites.length > 0 && (
           <section className="section sent-invites-section">
-            <div className="section-header section-header-collapsible" onClick={() => setInvitesExpanded(!invitesExpanded)}>
-              <h3>
-                <span className={`collapse-arrow ${invitesExpanded ? 'expanded' : ''}`}>&#9654;</span>
-                {' '}Sent Invites ({sentInvites.length})
-              </h3>
+            <div className="section-header">
+              <button className="collapse-toggle" onClick={() => setInvitesExpanded(!invitesExpanded)}>
+                <span className={`section-chevron${invitesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>Sent Invites ({sentInvites.length})</h3>
+              </button>
             </div>
             {resendError && (
               <div className="resend-error-toast">{resendError}</div>
@@ -469,12 +478,15 @@ export function TeacherDashboard() {
         {googleConnected && (
           <section className="section teacher-google-accounts-section">
             <div className="section-header">
-              <h3>Google Accounts</h3>
+              <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)}>
+                <span className={`section-chevron${googleAccountsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>Google Accounts ({googleAccounts.length})</h3>
+              </button>
               <button className="create-custom-btn" onClick={handleAddGoogleAccount}>
                 + Add Account
               </button>
             </div>
-            {googleAccounts.length > 0 ? (
+            {googleAccountsExpanded && googleAccounts.length > 0 ? (
               <div className="google-accounts-list">
                 {googleAccounts.map((account) => (
                   <div key={account.id} className="google-account-row">
@@ -517,12 +529,12 @@ export function TeacherDashboard() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : googleAccountsExpanded ? (
               <div className="empty-state">
                 <p>No Google accounts linked yet</p>
                 <small>Connect your Google account to sync classes from Google Classroom</small>
               </div>
-            )}
+            ) : null}
           </section>
         )}
       </div>

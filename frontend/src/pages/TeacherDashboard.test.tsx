@@ -200,7 +200,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Your Classes')).toBeInTheDocument()
+      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
     })
 
     // Open modal - use first button (section header) since empty state also has one
@@ -228,7 +228,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Your Classes')).toBeInTheDocument()
+      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
     })
 
     // Open modal - use first button (section header)
@@ -265,7 +265,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Your Classes')).toBeInTheDocument()
+      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
     })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
@@ -287,7 +287,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Your Classes')).toBeInTheDocument()
+      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
     })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
@@ -407,7 +407,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Google Accounts')).toBeInTheDocument()
+      expect(screen.getByText(/Google Accounts/)).toBeInTheDocument()
     })
     expect(screen.getByText('teacher@gmail.com')).toBeInTheDocument()
     expect(screen.getByText('Primary')).toBeInTheDocument()

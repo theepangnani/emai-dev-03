@@ -92,6 +92,9 @@ export function StudyGuidesPage() {
   const [datePromptTasks, setDatePromptTasks] = useState<AutoCreatedTask[]>([]);
   const [datePromptValues, setDatePromptValues] = useState<Record<number, string>>({});
 
+  // Collapsible sections
+  const [materialsExpanded, setMaterialsExpanded] = useState(true);
+
   // Archive section
   const [showArchived, setShowArchived] = useState(false);
   const [archivedContents, setArchivedContents] = useState<CourseContentItem[]>([]);
@@ -641,8 +644,11 @@ export function StudyGuidesPage() {
 
         {/* Course content items */}
         <div className="guides-section">
-          <h3>Class Materials ({filteredContent.length + generatingItems.length})</h3>
-          {filteredContent.length > 0 || generatingItems.length > 0 ? (
+          <button className="collapse-toggle" onClick={() => setMaterialsExpanded(v => !v)}>
+            <span className={`section-chevron${materialsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>Class Materials ({filteredContent.length + generatingItems.length})</h3>
+          </button>
+          {materialsExpanded && (filteredContent.length > 0 || generatingItems.length > 0) ? (
             <div className="guides-list">
               {/* In-progress generation placeholders */}
               {generatingItems.map(item => (
@@ -697,30 +703,20 @@ export function StudyGuidesPage() {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : materialsExpanded ? (
             <div className="guides-empty">
               <p>No class materials yet. Click "+ Create" to generate study materials from your content.</p>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Archive toggle */}
-        <div className="archive-toggle-row">
-          <button
-            className={`archive-toggle-btn${showArchived ? ' active' : ''}`}
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? 'Hide Archive' : 'Show Archive'}
-            {showArchived && (archivedContents.length + archivedGuides.length > 0) && (
-              <span className="filter-count">{archivedContents.length + archivedGuides.length}</span>
-            )}
-          </button>
-        </div>
-
-        {/* Archived items */}
-        {showArchived && (archivedContents.length > 0 || archivedGuides.length > 0) && (
-          <div className="guides-section archived-section">
+        {/* Archive section */}
+        <div className="guides-section archived-section">
+          <button className="collapse-toggle" onClick={() => setShowArchived(!showArchived)}>
+            <span className={`section-chevron${showArchived ? ' expanded' : ''}`}>&#9654;</span>
             <h3>Archived ({archivedContents.length + archivedGuides.length})</h3>
+          </button>
+        {showArchived && (archivedContents.length > 0 || archivedGuides.length > 0) && (
             <div className="guides-list">
               {archivedContents.map(item => (
                 <div key={`ac-${item.id}`} className="guide-row guide-row-archived">
@@ -761,8 +757,8 @@ export function StudyGuidesPage() {
                 </div>
               ))}
             </div>
-          </div>
         )}
+        </div>
 
         {/* Legacy study guides (no course_content_id) */}
         {filteredLegacy.length > 0 && (
