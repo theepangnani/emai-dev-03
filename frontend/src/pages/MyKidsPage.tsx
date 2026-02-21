@@ -80,6 +80,14 @@ export function MyKidsPage() {
   const [addChildError, setAddChildError] = useState('');
   const [addChildInviteLink, setAddChildInviteLink] = useState('');
 
+  // Add Course modal state
+  const [showAddCourseModal, setShowAddCourseModal] = useState(false);
+  const [addCourseName, setAddCourseName] = useState('');
+  const [addCourseDesc, setAddCourseDesc] = useState('');
+  const [addCourseSubject, setAddCourseSubject] = useState('');
+  const [addCourseLoading, setAddCourseLoading] = useState(false);
+  const [addCourseError, setAddCourseError] = useState('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -185,7 +193,7 @@ export function MyKidsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Detailed child profiles, courses, and teacher management" showBackButton>
+      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -322,6 +330,51 @@ export function MyKidsPage() {
       setAddChildError(err.response?.data?.detail || 'Failed to link child');
     } finally {
       setAddChildLoading(false);
+    }
+  };
+
+  const closeAddCourseModal = () => {
+    setShowAddCourseModal(false);
+    setAddCourseName('');
+    setAddCourseDesc('');
+    setAddCourseSubject('');
+    setAddCourseError('');
+  };
+
+  const handleAddCourse = async () => {
+    if (!addCourseName.trim()) return;
+    setAddCourseLoading(true);
+    setAddCourseError('');
+    try {
+      const newCourse = await coursesApi.create({
+        name: addCourseName.trim(),
+        description: addCourseDesc.trim() || undefined,
+        subject: addCourseSubject.trim() || undefined,
+      });
+      setCourses(prev => [...prev, newCourse]);
+      // Auto-assign to the selected child if one is selected
+      if (selectedChild) {
+        await parentApi.assignCoursesToChild(selectedChild, [newCourse.id]);
+        // Update overview courses locally
+        setOverview(prev => prev ? {
+          ...prev,
+          courses: [...prev.courses, { id: newCourse.id, name: newCourse.name, subject: newCourse.subject || null, teacher_name: null, teacher_email: null, teacher_id: null }],
+        } : prev);
+        // Update child's course count locally
+        setChildren(prev => prev.map(c =>
+          c.student_id === selectedChild
+            ? { ...c, course_count: c.course_count + 1 }
+            : c
+        ));
+      } else {
+        // No child selected — add to unassigned courses
+        setUnassignedCourses(prev => [...prev, { id: newCourse.id, name: newCourse.name }]);
+      }
+      closeAddCourseModal();
+    } catch (err: any) {
+      setAddCourseError(err.response?.data?.detail || 'Failed to create course');
+    } finally {
+      setAddCourseLoading(false);
     }
   };
 
@@ -479,9 +532,9 @@ export function MyKidsPage() {
           <span className="mykids-action-icon">{'\u{1F476}'}</span>
           <span className="mykids-action-label">Add Child</span>
         </button>
-        <button className="mykids-action-btn" onClick={() => navigate('/courses')}>
+        <button className="mykids-action-btn" onClick={() => setShowAddCourseModal(true)}>
           <span className="mykids-action-icon">{'\u{1F4DA}'}</span>
-          <span className="mykids-action-label">View Courses</span>
+          <span className="mykids-action-label">Add Course</span>
         </button>
         <button className="mykids-action-btn" onClick={() => navigate('/course-materials')}>
           <span className="mykids-action-icon">{'\u{1F4DD}'}</span>
@@ -897,6 +950,60 @@ export function MyKidsPage() {
             </div>
             <div className="mykids-modal-actions">
               <button onClick={() => setAssignCourseModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add Course Modal */}
+      {showAddCourseModal && (
+        <div className="modal-overlay" onClick={closeAddCourseModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Add Course</h2>
+            {selectedChild && (
+              <p className="modal-desc">
+                This course will be automatically assigned to <strong>{children.find(c => c.student_id === selectedChild)?.full_name}</strong>.
+              </p>
+            )}
+            <div className="modal-form">
+              <label>
+                Course Name *
+                <input
+                  type="text"
+                  value={addCourseName}
+                  onChange={(e) => setAddCourseName(e.target.value)}
+                  placeholder="e.g. Math 101"
+                  disabled={addCourseLoading}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCourse()}
+                  autoFocus
+                />
+              </label>
+              <label>
+                Subject (optional)
+                <input
+                  type="text"
+                  value={addCourseSubject}
+                  onChange={(e) => setAddCourseSubject(e.target.value)}
+                  placeholder="e.g. Mathematics"
+                  disabled={addCourseLoading}
+                />
+              </label>
+              <label>
+                Description (optional)
+                <input
+                  type="text"
+                  value={addCourseDesc}
+                  onChange={(e) => setAddCourseDesc(e.target.value)}
+                  placeholder="Brief description"
+                  disabled={addCourseLoading}
+                />
+              </label>
+              {addCourseError && <p className="link-error">{addCourseError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeAddCourseModal} disabled={addCourseLoading}>Cancel</button>
+              <button className="generate-btn" onClick={handleAddCourse} disabled={addCourseLoading || !addCourseName.trim()}>
+                {addCourseLoading ? 'Creating...' : selectedChild ? 'Create & Assign' : 'Create Course'}
+              </button>
             </div>
           </div>
         </div>

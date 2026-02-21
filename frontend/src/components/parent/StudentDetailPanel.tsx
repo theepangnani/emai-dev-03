@@ -176,7 +176,7 @@ export function StudentDetailPanel({
         <span className="sdp-panel-summary">
           {totalActive} task{totalActive !== 1 ? 's' : ''}
           {urgencyGroups.overdue.length > 0 && (
-            <span className="sdp-panel-overdue"> \u00B7 {urgencyGroups.overdue.length} overdue</span>
+            <span className="sdp-panel-overdue"> &middot; {urgencyGroups.overdue.length} overdue</span>
           )}
         </span>
       </div>
