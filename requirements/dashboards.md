@@ -1,5 +1,7 @@
 ## 7. Role-Based Dashboards - IMPLEMENTED
 
+> **UI/UX Audit:** See [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md) for comprehensive audit of all dashboards with user journey maps, friction points, and prioritized improvements. Epic: #668.
+
 Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx`):
 
 | Dashboard | Key Features | Status |

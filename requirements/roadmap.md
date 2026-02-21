@@ -194,6 +194,41 @@
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
 - [ ] **Parent AI Insights** — Student interest profiling, academic health score, semester reports, engagement analysis (#581)
 
+#### UI/UX Audit — Phase 1 Improvements (#668)
+
+**Audit Report:** [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md)
+
+**Tier 1 — High Impact (Sprint-ready):**
+- [ ] **Student Dashboard: Today's Focus header** — Urgency badges, greeting, inspiration quote (#646)
+- [ ] **Student Dashboard: Assignment urgency sorting** — Color-coded due dates, urgency grouping (#647)
+- [ ] **Teacher Dashboard: Activity summary** — Class activity overview, recent messages, upcoming deadlines (#648)
+- [ ] **Auto-task after study guide generation** — Post-generation task creation prompt with pre-filled dates (#649)
+- [ ] **Teacher Dashboard: Upload Material quick action** — Upload with course/type selection from dashboard (#650)
+- [ ] **Student onboarding card** — Step-by-step guide for material upload from external platforms (#651)
+
+**Tier 2 — Medium Impact (Next sprint):**
+- [ ] **Enhanced empty states with CTAs** — Contextual actions and guidance in all empty states (#652)
+- [ ] **Admin Dashboard: Trend indicators** — "+N this week" badges and recent activity feed (#653)
+- [ ] **Calendar first-visit onboarding** — Expanded by default on first visit with tooltip (#654)
+- [ ] **Filter state URL persistence** — Persist task/material/course filters in URL params (#655)
+- [ ] **Notification center page** — "View All" page with full notification history (#656)
+- [ ] **Refactor ParentDashboard.tsx** — Extract components to <500 LOC (#657)
+- [ ] **Navigation consistency** — Standardize nav items and icons across all roles (#658)
+- [ ] **Loading state consistency** — Inline spinners, last-synced timestamps, retry buttons (#659)
+
+**Tier 3 — Polish (Backlog):**
+- [ ] **Micro-interactions** — Button press, card hover, section collapse animations (#660)
+- [ ] **Breadcrumb navigation** — Hierarchical trail for deep pages (#661)
+- [ ] **Mobile touch improvements** — Touch drag-and-drop, modal scrolling, swipe gestures (#662)
+
+#### Phase 2 — New Feature Requirements (#668)
+
+- [ ] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663)
+- [ ] **Parent-assigned quizzes with complexity levels** — Easy/Medium/Hard difficulty, notification + tracking (#664)
+- [ ] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665)
+- [ ] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666)
+- [ ] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667)
+
 #### 6.28 FAQ / Knowledge Base (Phase 2)
 
 Community-driven help center where users ask questions, provide answers, and admins curate approved content.
