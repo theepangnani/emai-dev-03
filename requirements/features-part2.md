@@ -375,15 +375,16 @@ Course materials and study guides use soft-delete (archive) with retention polic
 
 #### Requirements
 1. **Edit/move/archive icons on course materials list** — Each item in the StudyGuidesPage list has pencil (edit ✏️), folder (move to course 📂), and trash (archive 🗑️) action icons. Move opens a course selector modal allowing reassignment to a different course (with search and create-new-course option)
-2. **Edit + delete on course materials detail page** — Document tab has "Edit Content" toggle for inline text editing; study guide tabs have "Archive" action
-3. **Regeneration prompt after content edit** — When course material `text_content` is modified and linked study guides are archived, a regeneration prompt appears with buttons for Study Guide, Quiz, and Flashcards
-4. **Auto-archive linked study guides** — When a course material's `text_content` field changes, all linked non-archived study guides (`StudyGuide.course_content_id == id`) are automatically archived. A toast notification shows: "Content updated. N linked study material(s) archived."
-5. **Soft delete (archive)** — DELETE endpoints for both course materials and study guides set `archived_at` timestamp instead of hard-deleting
-6. **Archive list with restore and permanent delete** — StudyGuidesPage has "Show Archive" toggle that loads archived course materials and study guides. Each archived item has restore (↺) and permanent delete (🗑) buttons
-7. **On-access auto-archive after 1 year** — When a course material is accessed via GET, if `created_at` is more than 1 year ago and not already archived, it is automatically archived
-8. **On-access permanent delete after 7 years** — When a course material is accessed via GET, if `last_viewed_at` is more than 7 years ago, the item and linked study guides are permanently deleted
-9. **Last-viewed tracking** — `last_viewed_at` is updated on every GET access to a course material
-10. **Toast notifications** — Success messages for archive, restore, delete, and content-save operations
+2. **Edit + delete on course materials detail page** — Document tab actions (Edit Content, Upload/Replace Document, Download) are accessed via a **+ icon popover** inline with the Original Document tab row (#698, PR #699). Save/Cancel buttons during inline editing remain visible (not in popover). Uses shared `AddActionButton` component (32×32px variant in tab bar). Study guide tabs have "Archive" action.
+3. **Back button on detail page** — Course Material Detail page includes a back button (←) in the DashboardLayout header (#696, PR #697)
+4. **Regeneration prompt after content edit** — When course material `text_content` is modified and linked study guides are archived, a regeneration prompt appears with buttons for Study Guide, Quiz, and Flashcards
+5. **Auto-archive linked study guides** — When a course material's `text_content` field changes, all linked non-archived study guides (`StudyGuide.course_content_id == id`) are automatically archived. A toast notification shows: "Content updated. N linked study material(s) archived."
+6. **Soft delete (archive)** — DELETE endpoints for both course materials and study guides set `archived_at` timestamp instead of hard-deleting
+7. **Archive list with restore and permanent delete** — StudyGuidesPage has "Show Archive" toggle that loads archived course materials and study guides. Each archived item has restore (↺) and permanent delete (🗑) buttons
+8. **On-access auto-archive after 1 year** — When a course material is accessed via GET, if `created_at` is more than 1 year ago and not already archived, it is automatically archived
+9. **On-access permanent delete after 7 years** — When a course material is accessed via GET, if `last_viewed_at` is more than 7 years ago, the item and linked study guides are permanently deleted
+10. **Last-viewed tracking** — `last_viewed_at` is updated on every GET access to a course material
+11. **Toast notifications** — Success messages for archive, restore, delete, and content-save operations
 
 #### Technical Implementation
 - **Model changes**: `archived_at` column on `course_contents` and `study_guides` tables; `last_viewed_at` column on `course_contents`

@@ -95,7 +95,6 @@
 /* Tabs */
 .cm-tabs {
   display: flex;
-  align-items: center;
   gap: 0.35rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
@@ -104,10 +103,9 @@
   border-radius: 10px;
 }
 
-.cm-tabs .add-action-trigger {
-  width: 32px;
-  height: 32px;
-  margin-left: 4px;
+/* Document tab actions (+ popover) */
+.cm-document-actions {
+  margin-bottom: 1rem;
 }
 
 .cm-tab {

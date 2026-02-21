@@ -110,6 +110,12 @@
 - [x] **Parent Dashboard v3: Alert banner + child pills** — Unified alert banner (overdue/invites/messages) + single child filter pills replacing redundant tabs and cards (#542) (IMPLEMENTED — PR #545)
 - [x] **Parent Dashboard v3: Quick Actions + Student Detail Panel** — Always-visible action bar (+ Material, + Task, + Child, + Course) + urgency-grouped tasks panel per child (#543) (IMPLEMENTED — PR #545)
 - [x] **Parent Dashboard v3: Calendar default collapsed + cleanup** — Calendar defaults to collapsed; delete dead ParentSidebar/ParentActionBar code; fix #536 (#544) (IMPLEMENTED — PR #545)
+- [x] **Calendar moved to Tasks page** — Calendar section relocated from Parent Dashboard to Tasks page for better contextual relevance (#691, PR `a35a329`) (IMPLEMENTED)
+- [x] **+ icon popover pattern** — Replace standalone action buttons with a shared `AddActionButton` component across Dashboard (#692), Tasks (#692), My Kids (#700), and Course Material Detail (#698) pages (IMPLEMENTED — PRs #693, #699, #701)
+- [x] **Remove "All Kids" from child selector** — Toggle-deselect replaces explicit "All" button (#688) (IMPLEMENTED)
+- [x] **Tasks page layout improvements** — Consistent button layout, vertical filter alignment, edit icon on hover, consolidated edit/delete into modal (#686-#690) (IMPLEMENTED)
+- [x] **Course Material Detail back button** — Add `showBackButton` to DashboardLayout on Course Material Detail page (#696, PR #697) (IMPLEMENTED)
+- [x] **Calendar styles fix on Tasks page** — Copy calendar-collapse CSS from ParentDashboard.css to TasksPage.css after Calendar move (#694, PR #695) (IMPLEMENTED)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)

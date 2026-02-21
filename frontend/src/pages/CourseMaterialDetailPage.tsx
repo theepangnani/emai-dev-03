@@ -379,7 +379,7 @@ export function CourseMaterialDetailPage() {
           </div>
         </div>
 
-        {/* Tabs + action popover */}
+        {/* Tabs */}
         <div className="cm-tabs">
           {tabs.map(tab => (
             <button
@@ -393,37 +393,38 @@ export function CourseMaterialDetailPage() {
               )}
             </button>
           ))}
-          {activeTab === 'document' && !isEditing && (
-            <AddActionButton actions={[
-              ...(content?.has_file ? [{
-                icon: '\u{1F4E5}',
-                label: downloading ? 'Downloading...' : 'Download',
-                onClick: handleDownload,
-              }] : []),
-              ...(!content.has_file ? [{
-                icon: '\u270F\uFE0F',
-                label: 'Edit Content',
-                onClick: handleStartEdit,
-              }] : []),
-              {
-                icon: '\u{1F4C4}',
-                label: content.has_file ? 'Replace Document' : 'Upload Document',
-                onClick: () => setShowReplaceModal(true),
-              },
-            ]} />
-          )}
         </div>
 
         {/* Tab Content */}
         <div className="cm-tab-content">
           {activeTab === 'document' && (
             <div className="cm-document-tab">
-              {isEditing && (
+              {isEditing ? (
                 <div className="cm-guide-actions">
                   <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
                     {editSaving ? 'Saving...' : 'Save'}
                   </button>
                   <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
+                </div>
+              ) : (
+                <div className="cm-document-actions">
+                  <AddActionButton actions={[
+                    ...(content?.has_file ? [{
+                      icon: '\u{1F4E5}',
+                      label: downloading ? 'Downloading...' : 'Download',
+                      onClick: handleDownload,
+                    }] : []),
+                    ...(!content.has_file ? [{
+                      icon: '\u270F\uFE0F',
+                      label: 'Edit Content',
+                      onClick: handleStartEdit,
+                    }] : []),
+                    {
+                      icon: '\u{1F4C4}',
+                      label: content.has_file ? 'Replace Document' : 'Upload Document',
+                      onClick: () => setShowReplaceModal(true),
+                    },
+                  ]} />
                 </div>
               )}
               {isEditing ? (

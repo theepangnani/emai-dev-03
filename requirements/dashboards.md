@@ -6,7 +6,7 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 
 | Dashboard | Key Features | Status |
 |-----------|--------------|--------|
-| **Parent Dashboard** | Icon-only sidebar, child filter pills, Today's Focus header, simplified alert banner, collapsible student detail panel, primary/secondary Quick Actions, collapsible calendar | Implemented (v3 simplification — #540, PR #545; v3.1 UX polish — #557) |
+| **Parent Dashboard** | Icon-only sidebar, child filter pills (no "All Kids" — toggle-deselect instead), Today's Focus header, simplified alert banner, collapsible student detail panel, + icon popover for quick actions (replaces action bar) | Implemented (v3 simplification — #540, PR #545; v3.1 UX polish — #557; v3.2 + popover — #692, PR #693) |
 | **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination), role management, broadcast messaging, individual user messaging | Implemented (messaging planned) |
@@ -33,7 +33,7 @@ The Parent Dashboard uses an **urgency-first, single-hub layout**: icon-only sid
 ┌─────────────────────────────────────────────────────────────┐
 │ Header: Logo | Search (Ctrl+K) | Bell | User ▼ | Sign Out  │
 ├─────┬───────────────────────────────────────────────────────┤
-│ICON │  [Child1] [Child2] [All]   ← Child Filter Pills      │
+│ICON │  [Child1] [Child2] [+]     ← Child Filter Pills + Add │
 │ONLY │───────────────────────────────────────────────────────│
 │SIDE │  TODAY'S FOCUS HEADER                                 │
 │BAR  │  "Good morning, Name!"                                │
@@ -44,9 +44,7 @@ The Parent Dashboard uses an **urgency-first, single-hub layout**: icon-only sid
 │ 📄  │───────────────────────────────────────────────────────│
 │ ✅  │  ⚠ ALERT BANNER (overdue + pending invites only)     │
 │ 💬  │───────────────────────────────────────────────────────│
-│ ❓  │  QUICK ACTIONS (primary/secondary hierarchy)          │
-│     │  [Create Study Material] [Create Task]  ← PRIMARY     │
-│     │  [+ Child] [+ Course]                   ← SECONDARY   │
+│ ❓  │  (Quick actions via [+] popover on child pills row)    │
 │     │───────────────────────────────────────────────────────│
 │     │  STUDENT DETAIL PANEL (collapsible)                   │
 │     │  ┌─ Summary Header (click to collapse) ──────┐       │
@@ -60,8 +58,7 @@ The Parent Dashboard uses an **urgency-first, single-hub layout**: icon-only sid
 │     │  │ Today: Science Lab Report                  │       │
 │     │  │ Next 3 Days: English Essay (Wed)           │       │
 │     │  └────────────────────────────────────────────┘       │
-│     │───────────────────────────────────────────────────────│
-│     │  ▶ Calendar (collapsed by default)                    │
+│     │  (Calendar moved to Tasks page — #691)                 │
 └─────┴───────────────────────────────────────────────────────┘
 ```
 
@@ -87,14 +84,15 @@ The `DashboardLayout` renders an **always icon-only left sidebar** on desktop (�
 - ≥768px: Icon-only sidebar with hover tooltips
 - <768px: Hamburger overlay (existing behavior)
 
-All non-dashboard pages include a back button (←) in the header (#529).
+All non-dashboard pages include a back button (←) in the header (#529, #696). This includes Course Material Detail page (added in PR #697).
 
-#### 2. Child Filter Pills (#542)
+#### 2. Child Filter Pills (#542, #688)
 - Single row of clickable pill buttons at the top of the content area (parent only)
-- "All Children" pill shown when >1 child
-- **Click** a pill → filters everything below (Today's Focus, detail panel, calendar, tasks)
-- **Click again** → deselects back to "All"
+- **No "All Children" button** — removed (#688); click selected child again to deselect (toggle behavior)
+- **Click** a pill → filters everything below (Today's Focus, detail panel, tasks)
+- **Click again** → deselects back to all-children mode
 - Single-child families: child auto-selected, no pills shown
+- A **+ icon button** (circle with dashed border) sits at the end of the pills row, opening a popover with quick actions (#692)
 - Replaces the old child tab bar AND child highlight cards (removed as redundant)
 
 #### 3. Today's Focus Header (#557)
@@ -114,18 +112,19 @@ Replaces the old welcome section and the removed status summary cards. Provides 
 - Hidden when no urgent items
 - **Removed** (v3.1): Blue upcoming deadlines section and unread messages section — these are now covered by Today's Focus header and the notification bell respectively
 
-#### 5. Quick Actions Bar (#543, #557 — redesigned)
-Row of buttons with **primary/secondary visual hierarchy**:
+#### 5. Quick Actions — + Icon Popover (#543, #557, #692 — redesigned)
+Quick actions are now accessed via a **+ icon button** (circle with dashed border) at the end of the child filter pills row. Clicking the + opens a popover with action items:
 
-**Primary actions** (larger, accent-colored buttons):
-- **Create Study Material** → CreateStudyMaterialModal (existing)
-- **Create Task** → CreateTaskModal (reuse from TasksPage)
+- **Upload Documents** → CreateStudyMaterialModal (existing)
+- **New Task** → CreateTaskModal (reuse from TasksPage)
 
-**Secondary actions** (smaller, outlined/subtle buttons):
-- **+ Child** → Link Child modal (existing)
-- **+ Course** → Create Course modal (existing)
+The previous primary/secondary action bar layout was replaced by the compact popover pattern for a cleaner UI (#692, PR #693). The + icon button is a shared `AddActionButton` component reused across Dashboard, Tasks, My Kids, and Course Material Detail pages.
 
-The primary/secondary split reflects usage frequency — parents create study materials and tasks daily, but add children and courses infrequently.
+**AddActionButton component** (`frontend/src/components/AddActionButton.tsx`):
+- Accepts an array of `ActionItem` objects (icon, label, onClick)
+- 40×40px circle button with dashed border
+- Click-outside-to-dismiss popover
+- Reusable across all pages
 
 #### 6. Collapsible Student Detail Panel (#543, #557 — collapsible)
 When a child is selected, shows their world inline with a collapsible interface:
@@ -149,11 +148,13 @@ When a child is selected, shows their world inline with a collapsible interface:
 
 **"All Children" mode** — merges tasks from all children with child-name labels on each item.
 
-#### 7. Calendar Section (#544)
+#### 7. Calendar Section (#544, #691 — moved to Tasks page)
+- **Moved from Parent Dashboard to Tasks page** (#691, PR `a35a329`) — Calendar is no longer on the main dashboard; it lives on the Tasks page (`/tasks`) where it is contextually more relevant alongside task management.
 - **Defaults to collapsed** (localStorage key `calendar-collapsed` defaults to `true`)
 - Collapsed bar shows item count: "Calendar (N items)" with expand chevron
 - When expanded: full calendar with Month/Week/3-Day/Day views (unchanged from v2)
 - Day Detail Modal, drag-and-drop rescheduling, and popovers all preserved
+- Calendar collapse styles are in `TasksPage.css` (moved from `ParentDashboard.css` — #694, PR #695)
 
 #### 8. Edit Child Modal (unchanged from v2)
 - Accessible via child profile actions

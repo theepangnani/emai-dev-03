@@ -114,7 +114,7 @@ Improve the My Kids page visual hierarchy and parent navigation for better disco
 
 ### 6.31b My Kids Visual Overhaul (Phase 2) - IMPLEMENTED
 
-Visual redesign of the My Kids section on the parent dashboard for improved clarity and usability (#301).
+Visual redesign of the My Kids section on the parent dashboard for improved clarity and usability (#301). Action buttons replaced with + icon popover (#700).
 
 **Requirements:**
 1. **Colored child avatars** - IMPLEMENTED
@@ -128,8 +128,11 @@ Visual redesign of the My Kids section on the parent dashboard for improved clar
 3. **Simplified tabs** - IMPLEMENTED
    - Colored dot matching avatar color before each child name
    - Edit button moved from tab to card actions
-4. **Responsive** - Cards single-column on tablet, action buttons horizontal on mobile
-5. **Theme compatible** - Works across light, dark, and focus themes
+4. **+ Icon Popover for actions** - IMPLEMENTED (#700, PR #701)
+   - All four action buttons (Add Child, Add Class, Class Materials, Quiz History) replaced with a single + icon popover at the end of the child selector row
+   - Uses shared `AddActionButton` component (same pattern as Dashboard and Tasks pages)
+5. **Responsive** - Cards single-column on tablet, action buttons horizontal on mobile
+6. **Theme compatible** - Works across light, dark, and focus themes
 
 **Sub-tasks:**
 - [x] Add CHILD_COLORS palette and getInitials helper
@@ -137,6 +140,7 @@ Visual redesign of the My Kids section on the parent dashboard for improved clar
 - [x] Replace child tabs (color dot, remove edit button)
 - [x] Replace child cards with enhanced layout (avatar, progress, deadline, actions)
 - [x] CSS: new card styles, responsive breakpoints
+- [x] Replace action button grid with + icon popover (#700, PR #701)
 
 ### 6.32 Manual Assignment Creation for Teachers (Phase 1) - IMPLEMENTED
 
