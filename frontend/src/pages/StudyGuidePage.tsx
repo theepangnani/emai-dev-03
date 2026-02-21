@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
@@ -13,12 +13,17 @@ import './StudyGuidePage.css';
 export function StudyGuidePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showTaskPrompt, setShowTaskPrompt] = useState(false);
   const { confirm, confirmModal } = useConfirm();
+
+  // Detect first-time guide view from navigation state
+  const isNewGuide = !!(location.state as any)?.newGuide;
 
   useEffect(() => {
     const fetchGuide = async () => {
@@ -26,6 +31,10 @@ export function StudyGuidePage() {
       try {
         const data = await studyApi.getGuide(parseInt(id));
         setGuide(data);
+        // Show task prompt for new/regenerated guides
+        if (isNewGuide) {
+          setShowTaskPrompt(true);
+        }
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
@@ -94,7 +103,7 @@ export function StudyGuidePage() {
                   content: guide.content,
                   regenerate_from_id: guide.id,
                 });
-                navigate(`/study/guide/${result.id}`);
+                navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
               } catch (err) {
                 setError('Failed to regenerate');
                 setFaqCode(extractFaqCode(err));
@@ -107,6 +116,18 @@ export function StudyGuidePage() {
           <button className="print-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
         </div>
       </div>
+
+      {showTaskPrompt && (
+        <div className="task-prompt-banner">
+          <span>Want to create a study task for this guide?</span>
+          <button onClick={() => { setShowTaskModal(true); setShowTaskPrompt(false); }}>
+            Create Task
+          </button>
+          <button className="skip-btn" onClick={() => setShowTaskPrompt(false)}>
+            Skip
+          </button>
+        </div>
+      )}
 
       <ContentCard>
         <h1>{guide.title}</h1>
