@@ -259,7 +259,7 @@ describe('TasksPage', () => {
     })
   })
 
-  it('archives task with confirmation', async () => {
+  it('archives task via edit modal', async () => {
     const user = userEvent.setup()
     mockDeleteTask.mockResolvedValue({})
     renderTasks()
@@ -267,8 +267,15 @@ describe('TasksPage', () => {
       expect(screen.getByText('Review Chapter 5')).toBeInTheDocument()
     })
 
-    const archiveBtns = screen.getAllByTitle('Archive')
-    await user.click(archiveBtns[0])
+    // Open edit modal via the edit button
+    const editBtns = screen.getAllByTitle('Edit')
+    await user.click(editBtns[0])
+
+    // Click Archive button inside edit modal
+    await waitFor(() => {
+      expect(screen.getByTitle('Archive this task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByTitle('Archive this task'))
 
     // Confirm modal
     await waitFor(() => {

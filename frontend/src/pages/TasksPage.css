@@ -386,6 +386,12 @@
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.task-row:hover .task-row-actions {
+  opacity: 1;
 }
 
 .task-row-btn {
@@ -538,6 +544,49 @@
 .tasks-page .modal-cancel:hover {
   border-color: var(--color-ink-muted);
   color: var(--color-ink);
+}
+
+/* Edit modal danger zone */
+.task-modal-danger-zone {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 8px;
+}
+
+.task-modal-archive-btn,
+.task-modal-delete-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.task-modal-archive-btn {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-ink-muted);
+}
+
+.task-modal-archive-btn:hover {
+  border-color: #e65100;
+  color: #e65100;
+  background: rgba(251, 140, 0, 0.06);
+}
+
+.task-modal-delete-btn {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-ink-muted);
+}
+
+.task-modal-delete-btn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: rgba(229, 57, 53, 0.06);
 }
 
 /* Inline button spinner */

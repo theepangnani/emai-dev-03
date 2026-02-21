@@ -488,9 +488,6 @@ export function TasksPage() {
                 ) : isCreator(task) ? (
                   <div className="task-row-actions">
                     <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
-                    <button className="task-row-btn danger" onClick={() => handleDelete(task.id)} title="Archive" aria-label="Archive this task" disabled={loadingTaskId === task.id}>
-                      {loadingTaskId === task.id ? <span className="btn-spinner" /> : <>&times;</>}
-                    </button>
                   </div>
                 ) : null}
               </div>
@@ -607,6 +604,22 @@ export function TasksPage() {
                     </select>
                   </>
                 )}
+              </div>
+              <div className="task-modal-danger-zone">
+                <button
+                  className="task-modal-archive-btn"
+                  onClick={async () => { setEditTask(null); await handleDelete(editTask.id); }}
+                  title="Archive this task"
+                >
+                  Archive
+                </button>
+                <button
+                  className="task-modal-delete-btn"
+                  onClick={async () => { setEditTask(null); await handlePermanentDelete(editTask.id); }}
+                  title="Permanently delete this task"
+                >
+                  Delete Forever
+                </button>
               </div>
               <div className="modal-actions">
                 <button className="modal-cancel" onClick={() => setEditTask(null)}>Cancel</button>
