@@ -184,6 +184,31 @@ Current feature issues are tracked in GitHub:
 ### Phase 1 - Implemented (Feb 18: Dashboard UX Polish — #557)
 - ~~Issue #557: Parent Dashboard UX: Today's Focus header, icon-only sidebar, collapsible detail panel~~ ✅ (removed redundant status cards; simplified AlertBanner to overdue + invites only; added Today's Focus header with urgency badges and "All caught up!" state; converted sidebar to always icon-only with bigger icons and hover tooltips; made StudentDetailPanel collapsible with summary header; redesigned QuickActionsBar with primary/secondary action hierarchy)
 
+### Phase 1 - Implemented (Feb 21: UI/UX Audit — Phase 1 Improvements, #668)
+
+**Round 1 (Parallel Streams A/B/C):**
+- ~~Issue #646: Student Dashboard: Today's Focus header with urgency badges~~ ✅
+- ~~Issue #647: Student Dashboard: Assignment urgency sorting with color-coded due dates~~ ✅
+- ~~Issue #648: Teacher Dashboard: Class activity summary & at-a-glance overview~~ ✅
+- ~~Issue #650: Teacher Dashboard: Upload Material quick action~~ ✅
+- ~~Issue #651: Student onboarding card for material upload workflow~~ ✅
+- ~~Issue #653: Admin Dashboard: Trend indicators & recent activity feed~~ ✅
+
+**Round 2 (Parallel Streams A/B/C):**
+- ~~Issue #649: Auto-create task prompt after study guide generation~~ ✅
+- ~~Issue #652: Enhanced empty states with contextual CTAs across all dashboards~~ ✅
+- ~~Issue #654: Calendar first-visit expanded state with onboarding tooltip~~ ✅
+- ~~Issue #655: Persist filter state in URL query parameters~~ ✅
+- ~~Issue #656: Notification center — "View All" page & persistent history~~ ✅
+- ~~Issue #658: Standardize navigation items & SVG icons across all roles~~ ✅
+- ~~Issue #660: Micro-interactions (button press, card hover, section collapse)~~ ✅
+
+**Round 3 (Parallel Streams A/B/C/D):**
+- ~~Issue #657: Refactor ParentDashboard.tsx — extract useParentDashboard hook + TodaysFocusHeader (1668→544 LOC)~~ ✅
+- ~~Issue #659: Consistent loading states, last-synced timestamps, retry buttons~~ ✅
+- ~~Issue #661: Breadcrumb navigation for all detail pages (desktop trail + mobile back-link)~~ ✅
+- ~~Issue #662: Mobile touch: long-press drag, swipe calendar nav, modal scroll fix~~ ✅
+
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers
@@ -415,7 +440,7 @@ Current feature issues are tracked in GitHub:
 - Issue #127: Split api/client.ts into domain-specific API modules
 - Issue #128: Extract backend domain services from route handlers
 - Issue #129: Introduce repository pattern for data access
-- Issue #130: Split ParentDashboard into sub-components (PARTIAL — AlertBanner, StudentDetailPanel, QuickActionsBar extracted in #540)
+- ~~Issue #130: Split ParentDashboard into sub-components~~ ✅ (AlertBanner, StudentDetailPanel, QuickActionsBar extracted in #540; useParentDashboard hook + TodaysFocusHeader extracted in #657; now 544 LOC)
 - Issue #131: Activate TanStack Query for server state management
 - Issue #132: Reorganize backend into domain modules (DDD bounded contexts)
 - Issue #133: Reorganize frontend into domain modules

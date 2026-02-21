@@ -124,7 +124,7 @@
 - [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
 - [ ] **Extract backend services** — Move business logic from route handlers to domain service layer (#128)
 - [ ] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129)
-- [x] **Split ParentDashboard** — Break 1222-LOC component into composable sub-components (#130) (PARTIAL — extracted AlertBanner, StudentDetailPanel, QuickActionsBar; ~1494 LOC remains in ParentDashboard but logic is delegated to sub-components)
+- [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
 - [ ] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
 - [ ] **Frontend DDD modules** — Reorganize into domain directories (#133)
@@ -199,27 +199,27 @@
 **Audit Report:** [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md)
 
 **Tier 1 — High Impact (Sprint-ready):**
-- [ ] **Student Dashboard: Today's Focus header** — Urgency badges, greeting, inspiration quote (#646)
-- [ ] **Student Dashboard: Assignment urgency sorting** — Color-coded due dates, urgency grouping (#647)
-- [ ] **Teacher Dashboard: Activity summary** — Class activity overview, recent messages, upcoming deadlines (#648)
-- [ ] **Auto-task after study guide generation** — Post-generation task creation prompt with pre-filled dates (#649)
-- [ ] **Teacher Dashboard: Upload Material quick action** — Upload with course/type selection from dashboard (#650)
-- [ ] **Student onboarding card** — Step-by-step guide for material upload from external platforms (#651)
+- [x] **Student Dashboard: Today's Focus header** — Urgency badges, greeting, inspiration quote (#646) ✅
+- [x] **Student Dashboard: Assignment urgency sorting** — Color-coded due dates, urgency grouping (#647) ✅
+- [x] **Teacher Dashboard: Activity summary** — Class activity overview, recent messages, upcoming deadlines (#648) ✅
+- [x] **Auto-task after study guide generation** — Post-generation task creation prompt with pre-filled dates (#649) ✅
+- [x] **Teacher Dashboard: Upload Material quick action** — Upload with course/type selection from dashboard (#650) ✅
+- [x] **Student onboarding card** — Step-by-step guide for material upload from external platforms (#651) ✅
 
 **Tier 2 — Medium Impact (Next sprint):**
-- [ ] **Enhanced empty states with CTAs** — Contextual actions and guidance in all empty states (#652)
-- [ ] **Admin Dashboard: Trend indicators** — "+N this week" badges and recent activity feed (#653)
-- [ ] **Calendar first-visit onboarding** — Expanded by default on first visit with tooltip (#654)
-- [ ] **Filter state URL persistence** — Persist task/material/course filters in URL params (#655)
-- [ ] **Notification center page** — "View All" page with full notification history (#656)
-- [ ] **Refactor ParentDashboard.tsx** — Extract components to <500 LOC (#657)
-- [ ] **Navigation consistency** — Standardize nav items and icons across all roles (#658)
-- [ ] **Loading state consistency** — Inline spinners, last-synced timestamps, retry buttons (#659)
+- [x] **Enhanced empty states with CTAs** — Contextual actions and guidance in all empty states (#652) ✅
+- [x] **Admin Dashboard: Trend indicators** — "+N this week" badges and recent activity feed (#653) ✅
+- [x] **Calendar first-visit onboarding** — Expanded by default on first visit with tooltip (#654) ✅
+- [x] **Filter state URL persistence** — Persist task/material/course filters in URL params (#655) ✅
+- [x] **Notification center page** — "View All" page with full notification history (#656) ✅
+- [x] **Refactor ParentDashboard.tsx** — Extract hook + components, 1668→544 LOC (#657) ✅
+- [x] **Navigation consistency** — Standardize nav items and SVG icons across all roles (#658) ✅
+- [x] **Loading state consistency** — Inline spinners, last-synced timestamps, retry buttons (#659) ✅
 
 **Tier 3 — Polish (Backlog):**
-- [ ] **Micro-interactions** — Button press, card hover, section collapse animations (#660)
-- [ ] **Breadcrumb navigation** — Hierarchical trail for deep pages (#661)
-- [ ] **Mobile touch improvements** — Touch drag-and-drop, modal scrolling, swipe gestures (#662)
+- [x] **Micro-interactions** — Button press, card hover, section collapse animations with prefers-reduced-motion (#660) ✅
+- [x] **Breadcrumb navigation** — Hierarchical trail for deep pages, mobile back-link (#661) ✅
+- [x] **Mobile touch improvements** — Long-press drag, swipe navigation, modal scrolling (#662) ✅
 
 #### Phase 2 — New Feature Requirements (#668)
 
