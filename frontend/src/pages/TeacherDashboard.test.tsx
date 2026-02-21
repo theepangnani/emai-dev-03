@@ -50,6 +50,13 @@ vi.mock('../api/client', () => ({
   },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
+    listConversations: vi.fn().mockResolvedValue([]),
+  },
+  assignmentsApi: {
+    list: vi.fn().mockResolvedValue([]),
+  },
+  courseContentsApi: {
+    uploadFile: vi.fn().mockResolvedValue({}),
   },
   inspirationApi: {
     getRandom: vi.fn().mockRejectedValue(new Error('none')),
