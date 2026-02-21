@@ -296,8 +296,8 @@
   .persistent-sidebar {
     display: flex;
     flex-direction: column;
-    width: 64px;
-    min-width: 64px;
+    width: 80px;
+    min-width: 80px;
     background: var(--color-surface);
     border-right: 1px solid var(--color-border);
     position: sticky;
@@ -305,7 +305,7 @@
     height: calc(100vh - 50px);
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 12px 8px;
+    padding: 12px 4px;
     z-index: 5;
     transition: width 0.2s ease;
     flex-shrink: 0;
@@ -328,10 +328,11 @@
 
 .ps-nav-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 10px 8px;
+  gap: 2px;
+  padding: 8px 4px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -351,8 +352,9 @@
 }
 
 .ps-nav-item.active {
-  background: var(--color-accent);
-  color: white;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+  border-left: 3px solid var(--color-accent);
 }
 
 .ps-nav-item:focus {
@@ -361,16 +363,30 @@
 }
 
 .ps-nav-icon {
-  font-size: 24px;
+  font-size: 22px;
   flex-shrink: 0;
   width: 28px;
   text-align: center;
   line-height: 1;
 }
 
-/* Labels always hidden — icon-only sidebar */
+/* Labels below icons in persistent sidebar */
 .ps-nav-label {
   display: none;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 72px;
+}
+
+@media (min-width: 768px) {
+  .ps-nav-label {
+    display: block;
+  }
 }
 
 .ps-nav-badge {
@@ -389,7 +405,7 @@
 }
 
 .ps-nav-item.active .ps-nav-badge {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-accent);
   color: white;
 }
 

@@ -845,6 +845,25 @@ export function ParentDashboard() {
     return name?.split(' ')[0] ?? null;
   }, [selectedChild, children]);
 
+  // Per-child overdue counts for "All Children" breakdown
+  const perChildOverdue = useMemo(() => {
+    if (selectedChild || children.length <= 1) return [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return children.map(child => {
+      const childUserId = child.user_id;
+      const childTasks = allTasks.filter(t =>
+        t.assigned_to_user_id === childUserId || t.created_by_user_id === childUserId
+      );
+      let overdue = 0;
+      for (const t of childTasks) {
+        if (t.is_completed || t.archived_at || !t.due_date) continue;
+        if (new Date(t.due_date) < todayStart) overdue++;
+      }
+      return { name: child.full_name.split(' ')[0], overdue };
+    }).filter(c => c.overdue > 0);
+  }, [selectedChild, children, allTasks]);
+
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
     if (focusDismissed) {
       return null;
@@ -855,44 +874,68 @@ export function ParentDashboard() {
     const allClear = overdue === 0 && dueToday === 0 && upcoming === 0 && inviteCount === 0;
     const childLabel = selectedChildFirstName ?? (children.length === 1 ? children[0]?.full_name?.split(' ')[0] : null);
 
+    // Build hero headline
+    const allChildNames = children.map(c => c.full_name.split(' ')[0]);
+    let heroHeadline: React.ReactNode;
+    let heroClass = 'hero-headline';
+
+    if (allClear) {
+      heroClass += ' hero-clear';
+      if (childLabel) {
+        heroHeadline = `All caught up! ${childLabel} is on track.`;
+      } else if (allChildNames.length > 0) {
+        heroHeadline = `All caught up! ${allChildNames.join(' and ')} are on track.`;
+      } else {
+        heroHeadline = 'All caught up!';
+      }
+    } else if (overdue > 0) {
+      heroClass += ' hero-overdue';
+      if (childLabel) {
+        heroHeadline = <>{childLabel} has <span className="hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
+      } else {
+        heroHeadline = <>Your kids have <span className="hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
+      }
+    } else {
+      if (childLabel) {
+        heroHeadline = `${childLabel}'s Focus`;
+      } else {
+        heroHeadline = "Today's Focus";
+      }
+    }
+
     return (
       <div className="today-focus-header">
         <div className="today-focus-main">
-          {allClear ? (
-            <div className="today-focus-status all-clear">
-              <span className="today-focus-icon">{'\u2705'}</span>
-              <div>
-                <div className="today-focus-title">All caught up!</div>
-                <div className="today-focus-subtitle">
-                  {childLabel ? `${childLabel} has no urgent tasks.` : 'No urgent tasks right now.'}
-                  {' '}Great time to create study materials.
+          <div className="today-focus-status">
+            <div>
+              <div className={heroClass}>{heroHeadline}</div>
+              {/* Per-child breakdown when "All Children" is selected and there are overdue tasks */}
+              {!selectedChild && children.length > 1 && perChildOverdue.length > 0 && (
+                <div className="hero-breakdown">
+                  {perChildOverdue.map((c, i) => (
+                    <span key={c.name}>
+                      {i > 0 && ' \u00B7 '}
+                      {c.name}: {c.overdue}
+                    </span>
+                  ))}
                 </div>
+              )}
+              <div className="today-focus-items">
+                {overdue > 0 && (
+                  <button type="button" className="focus-tag overdue" onClick={() => navigate('/tasks?due=overdue')}>{overdue} overdue</button>
+                )}
+                {dueToday > 0 && (
+                  <button type="button" className="focus-tag today" onClick={() => navigate('/tasks?due=today')}>{dueToday} due today</button>
+                )}
+                {upcoming > 0 && (
+                  <button type="button" className="focus-tag upcoming" onClick={() => navigate('/tasks?due=week')}>{upcoming} next 3 days</button>
+                )}
+                {inviteCount > 0 && (
+                  <button type="button" className="focus-tag invites" onClick={() => navigate('/my-kids')}>{inviteCount} pending invite{inviteCount !== 1 ? 's' : ''}</button>
+                )}
               </div>
             </div>
-          ) : (
-            <div className="today-focus-status">
-              <span className="today-focus-icon">{overdue > 0 ? '\u{1F525}' : '\u{1F4CB}'}</span>
-              <div>
-                <div className="today-focus-title">
-                  {childLabel ? `${childLabel}'s Focus` : "Today's Focus"}
-                </div>
-                <div className="today-focus-items">
-                  {overdue > 0 && (
-                    <button type="button" className="focus-tag overdue" onClick={() => navigate('/tasks?due=overdue')}>{overdue} overdue</button>
-                  )}
-                  {dueToday > 0 && (
-                    <button type="button" className="focus-tag today" onClick={() => navigate('/tasks?due=today')}>{dueToday} due today</button>
-                  )}
-                  {upcoming > 0 && (
-                    <button type="button" className="focus-tag upcoming" onClick={() => navigate('/tasks?due=week')}>{upcoming} next 3 days</button>
-                  )}
-                  {inviteCount > 0 && (
-                    <button type="button" className="focus-tag invites" onClick={() => navigate('/my-kids')}>{inviteCount} pending invite{inviteCount !== 1 ? 's' : ''}</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
         {inspiration && (
           <div className="today-focus-inspiration">

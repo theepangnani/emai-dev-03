@@ -339,6 +339,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
                 aria-label={item.label}
               >
                 <span className="ps-nav-icon">{NAV_ICONS[item.label] || ''}</span>
+                <span className="ps-nav-label">{item.label}</span>
                 {item.path === '/messages' && unreadCount > 0 && (
                   <span className="ps-nav-badge">{unreadCount}</span>
                 )}
