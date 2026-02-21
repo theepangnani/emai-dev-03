@@ -985,9 +985,8 @@ export function ParentDashboard() {
             ))}
           </div>
 
-          {/* Alert Banner (overdue + pending invites only) */}
+          {/* Alert Banner (pending invites only) */}
           <AlertBanner
-            overdueCount={taskCounts.overdue}
             pendingInvites={pendingInvites.map(i => ({ id: i.id, email: i.email }))}
             onResendInvite={handleResendInvite}
             resendingId={resendingId}

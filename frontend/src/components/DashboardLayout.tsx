@@ -33,8 +33,8 @@ interface DashboardLayoutProps {
 
 // Icon map for nav items (unicode emojis per project convention)
 const NAV_ICONS: Record<string, string> = {
-  'Overview': '\u{1F3E0}',
-  'Child Profiles': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
+  'Home': '\u{1F3E0}',
+  'My Kids': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
   'Courses': '\u{1F4DA}',
   'Class Materials': '\u{1F4DD}',
   'Quiz History': '\u{1F4CA}',
@@ -85,8 +85,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
   const navItems = useMemo(() => {
     if (user?.role === 'parent') {
       return [
-        { label: 'Overview', path: '/dashboard' },
-        { label: 'Child Profiles', path: '/my-kids' },
+        { label: 'Home', path: '/dashboard' },
+        { label: 'My Kids', path: '/my-kids' },
         { label: 'Courses', path: '/courses' },
         { label: 'Class Materials', path: '/course-materials' },
         { label: 'Quiz History', path: '/quiz-history' },
@@ -172,19 +172,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
   const persistentQuickActions = useMemo(() => {
     if (user?.role !== 'parent') return sidebarActions || [];
     const actions: SidebarAction[] = [];
-    // + Class Material (sidebarActions[1] if exists)
-    if (sidebarActions && sidebarActions.length > 1) {
-      actions.push({ label: '+ Class Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
-    }
-    // + Task
-    if (onCreateTask) {
-      actions.push({ label: '+ Task', icon: '\u2705', onClick: onCreateTask });
-    }
-    // + Child (sidebarActions[0] if exists)
+    // + Child (under My Kids)
     if (sidebarActions && sidebarActions.length > 0) {
       actions.push({ label: '+ Child', icon: '\u{1F476}', onClick: sidebarActions[0].onClick });
     }
-    // + Course (placeholder - will be wired by integration session)
+    // + Class Material (under Class Materials)
+    if (sidebarActions && sidebarActions.length > 1) {
+      actions.push({ label: '+ Class Material', icon: '\u{1F4DD}', onClick: sidebarActions[1].onClick });
+    }
+    // + Task (under Tasks)
+    if (onCreateTask) {
+      actions.push({ label: '+ Task', icon: '\u2705', onClick: onCreateTask });
+    }
     return actions;
   }, [user?.role, sidebarActions, onCreateTask]);
 

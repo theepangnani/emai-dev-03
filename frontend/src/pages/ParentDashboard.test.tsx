@@ -253,7 +253,7 @@ describe('ParentDashboard', () => {
   })
 
   // ── Alert Banner Navigation ─────────────────────────────────
-  it('shows overdue alert banner with View link', async () => {
+  it('does not show overdue alert banner (overdue shown in Today Focus only)', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({
         children: [child1],
@@ -264,7 +264,7 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/overdue item/i)).toBeInTheDocument()
+      expect(screen.queryByText(/overdue item/i)).not.toBeInTheDocument()
     })
   })
 
