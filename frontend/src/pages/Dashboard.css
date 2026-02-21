@@ -509,6 +509,36 @@
   font-family: system-ui, sans-serif;
 }
 
+/* ── Shared collapsible section chevron ─────────────────── */
+.section-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+  color: var(--color-ink-muted);
+}
+.section-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+/* Shared collapse-toggle button (used in section headers) */
+.collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.collapse-toggle:hover {
+  opacity: 0.8;
+}
+.collapse-toggle h3 {
+  margin: 0;
+}
+
 /* Tooltip on hover for icon-only sidebar (all screen sizes >=768px) */
 @media (min-width: 768px) {
   .ps-nav-item[title]:hover::after,

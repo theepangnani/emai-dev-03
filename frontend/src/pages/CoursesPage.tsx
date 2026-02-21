@@ -82,6 +82,10 @@ export function CoursesPage() {
   const [selectedCoursesForAssign, setSelectedCoursesForAssign] = useState<Set<number>>(new Set());
   const [assignLoading, setAssignLoading] = useState(false);
 
+  // Collapsible sections
+  const [childCoursesExpanded, setChildCoursesExpanded] = useState(true);
+  const [myCoursesExpanded, setMyCoursesExpanded] = useState(true);
+
   useEffect(() => {
     loadData();
     const timeout = setTimeout(() => {
@@ -373,7 +377,10 @@ export function CoursesPage() {
         {isParent && (
           <div className="courses-section">
             <div className="courses-section-header">
-              <h3>{childName ? `${childName}'s Classes` : 'Classes'}</h3>
+              <button className="collapse-toggle" onClick={() => setChildCoursesExpanded(v => !v)}>
+                <span className={`section-chevron${childCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>{childName ? `${childName}'s Classes` : 'Classes'} ({childOverview?.courses.length ?? 0})</h3>
+              </button>
               <div className="courses-header-actions">
                 <button className="generate-btn" onClick={() => setShowCreateModal(true)}>
                   + Create Class
@@ -390,6 +397,8 @@ export function CoursesPage() {
                 )}
               </div>
             </div>
+            {childCoursesExpanded && (
+            <>
             {syncMessage && (
               <div className={`courses-sync-msg ${syncState === 'error' ? 'error' : ''}`}>{syncMessage}</div>
             )}
@@ -483,6 +492,8 @@ export function CoursesPage() {
               <div className="courses-empty">
                 <p>No classes yet. Create a class or sync from Google Classroom.</p>
               </div>
+            )}
+            </>
             )}
           </div>
         )}
@@ -646,14 +657,17 @@ export function CoursesPage() {
         {!isStudent && (
         <div className="courses-section">
           <div className="courses-section-header">
-            <h3>{isParent ? 'My Created Classes' : 'Classes'}</h3>
+            <button className="collapse-toggle" onClick={() => setMyCoursesExpanded(v => !v)}>
+              <span className={`section-chevron${myCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>{isParent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
+            </button>
             {!isParent && (
               <button className="generate-btn" onClick={() => setShowCreateModal(true)}>
                 + Create Class
               </button>
             )}
           </div>
-          {myCourses.length > 0 ? (
+          {myCoursesExpanded && myCourses.length > 0 ? (
             <div className="courses-grid">
               {myCourses.map((course) => (
                 <div key={course.id} className="course-card-wrapper">
@@ -698,11 +712,11 @@ export function CoursesPage() {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : myCoursesExpanded ? (
             <div className="courses-empty">
               <p>{isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}</p>
             </div>
-          )}
+          ) : null}
         </div>
         )}
       </div>

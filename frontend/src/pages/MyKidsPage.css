@@ -199,16 +199,6 @@
   background: var(--color-surface-alt);
 }
 
-.section-chevron {
-  display: inline-block;
-  font-size: 10px;
-  transition: transform 0.2s;
-  color: var(--color-ink-muted);
-}
-.section-chevron.expanded {
-  transform: rotate(90deg);
-}
-
 /* Card grid for courses / materials */
 .mykids-card-grid {
   display: grid;

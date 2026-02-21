@@ -33,6 +33,7 @@ export function AdminDashboard() {
   const [broadcastResult, setBroadcastResult] = useState('');
   const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
   const [showBroadcastHistory, setShowBroadcastHistory] = useState(false);
+  const [usersExpanded, setUsersExpanded] = useState(true);
 
   // Individual message state
   const [messageUser, setMessageUser] = useState<AdminUserItem | null>(null);
@@ -214,11 +215,9 @@ export function AdminDashboard() {
 
         {/* Broadcast History */}
         <section className="section" style={{ marginBottom: '16px' }}>
-          <button
-            className="admin-toggle-history"
-            onClick={handleToggleBroadcastHistory}
-          >
-            {showBroadcastHistory ? 'Hide' : 'Show'} Broadcast History
+          <button className="collapse-toggle" onClick={handleToggleBroadcastHistory}>
+            <span className={`section-chevron${showBroadcastHistory ? ' expanded' : ''}`}>&#9654;</span>
+            <h3 style={{ margin: 0, fontSize: '14px' }}>Broadcast History ({broadcasts.length})</h3>
           </button>
           {showBroadcastHistory && (
             <div className="admin-broadcast-history">
@@ -251,8 +250,13 @@ export function AdminDashboard() {
         </section>
 
         <section className="section admin-users-section">
-          <h3>User Management</h3>
+          <button className="collapse-toggle" onClick={() => setUsersExpanded(v => !v)}>
+            <span className={`section-chevron${usersExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>User Management ({totalUsers})</h3>
+          </button>
 
+          {usersExpanded && (
+          <>
           <div className="admin-filters">
             <select
               value={roleFilter}
@@ -348,6 +352,8 @@ export function AdminDashboard() {
                 </div>
               )}
             </>
+          )}
+          </>
           )}
         </section>
       </div>

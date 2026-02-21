@@ -402,7 +402,7 @@ describe('AdminDashboard', () => {
     })
 
     // Show history
-    await user.click(screen.getByText('Show Broadcast History'))
+    await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
       expect(mockGetBroadcasts).toHaveBeenCalled()
@@ -412,7 +412,7 @@ describe('AdminDashboard', () => {
     })
 
     // Hide history
-    await user.click(screen.getByText('Hide Broadcast History'))
+    await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
       expect(screen.queryByText('Welcome!')).not.toBeInTheDocument()
@@ -428,7 +428,7 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('Total Users')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Show Broadcast History'))
+    await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
       expect(screen.getByText('No broadcasts sent yet.')).toBeInTheDocument()
