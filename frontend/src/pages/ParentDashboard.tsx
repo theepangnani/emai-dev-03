@@ -46,19 +46,33 @@ export function ParentDashboard() {
   // Dashboard summary data (from single API call)
   const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
 
-  // Collapsible calendar (default expanded; user can collapse and preference is saved)
+  // Collapsible calendar with first-visit onboarding
+  const calendarVisitedKey = 'calendar-visited';
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
     try {
+      // First visit: expand calendar to onboard user
+      if (!localStorage.getItem(calendarVisitedKey)) return false;
       const saved = localStorage.getItem('calendar_collapsed');
       return saved !== '0';
     } catch { return false; }
   });
+  const [showCalendarTooltip, setShowCalendarTooltip] = useState(() => {
+    try { return !localStorage.getItem(calendarVisitedKey); } catch { return false; }
+  });
+  const dismissCalendarTooltip = () => {
+    setShowCalendarTooltip(false);
+    try { localStorage.setItem(calendarVisitedKey, '1'); } catch { /* ignore */ }
+  };
   const toggleCalendar = () => {
     setCalendarCollapsed(prev => {
       const next = !prev;
-      try { localStorage.setItem('calendar_collapsed', next ? '1' : '0'); } catch { /* ignore */ }
+      try {
+        localStorage.setItem('calendar_collapsed', next ? '1' : '0');
+        localStorage.setItem(calendarVisitedKey, '1');
+      } catch { /* ignore */ }
       return next;
     });
+    setShowCalendarTooltip(false);
   };
 
   // Link child modal state
@@ -1040,13 +1054,19 @@ export function ParentDashboard() {
           <div className="calendar-collapse-section">
             <button className="calendar-collapse-toggle" onClick={toggleCalendar}>
               <span className={`calendar-collapse-chevron${calendarCollapsed ? '' : ' expanded'}`}>&#9654;</span>
-              <span className="calendar-collapse-label">
-                {calendarCollapsed
-                  ? `Calendar (${calendarAssignments.length} items)`
-                  : 'Calendar'}
-              </span>
+              <span className="calendar-collapse-label">Calendar</span>
+              {calendarCollapsed && calendarAssignments.length > 0 && (
+                <span className="calendar-badge">{calendarAssignments.length} item{calendarAssignments.length !== 1 ? 's' : ''}</span>
+              )}
             </button>
           </div>
+
+          {showCalendarTooltip && !calendarCollapsed && (
+            <div className="calendar-tooltip">
+              <span>Your calendar shows all assignments and tasks. Click dates to see details.</span>
+              <button onClick={dismissCalendarTooltip}>Got it</button>
+            </div>
+          )}
 
           {!calendarCollapsed && (
             <>
