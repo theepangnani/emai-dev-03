@@ -98,28 +98,95 @@
   min-width: 140px;
 }
 
-/* Filter bar (count + New Task button) */
+/* Filter bar (count + toggle button) */
 .tasks-filter-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
 .tasks-count {
   font-size: 13px;
   color: var(--color-ink-muted);
-  margin-right: auto;
 }
 
-/* Filter chips */
-.tasks-filters-chips {
+.tasks-active-filters {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.tasks-active-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+}
+
+.tasks-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.tasks-filter-toggle:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.tasks-filter-toggle.expanded {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.tasks-filter-toggle-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.tasks-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Collapsible filter panel */
+.tasks-filters-panel {
   display: flex;
   gap: 16px;
   margin-bottom: 16px;
   flex-wrap: wrap;
   align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .tasks-chip-group {
@@ -502,9 +569,10 @@
     gap: 8px;
   }
 
-  .tasks-filters-chips {
+  .tasks-filters-panel {
     flex-direction: column;
     gap: 10px;
+    padding: 12px;
   }
 
   .tasks-chip-group {

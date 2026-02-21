@@ -327,6 +327,9 @@ describe('TasksPage', () => {
         expect(screen.getByText('3 tasks')).toBeInTheDocument()
       })
 
+      // Expand the filters panel first
+      await user.click(screen.getByRole('button', { name: /Filters/i }))
+
       // Click the "High" chip button in the Priority filter group
       const chipButtons = screen.getAllByRole('button', { name: 'High' })
       await user.click(chipButtons[0])
@@ -343,6 +346,9 @@ describe('TasksPage', () => {
       await waitFor(() => {
         expect(screen.getByText('3 tasks')).toBeInTheDocument()
       })
+
+      // Expand the filters panel first
+      await user.click(screen.getByRole('button', { name: /Filters/i }))
 
       // Click the "Low" chip button in the Priority filter group
       const chipButtons = screen.getAllByRole('button', { name: 'Low' })
