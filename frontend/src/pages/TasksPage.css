@@ -179,10 +179,9 @@
 /* Collapsible filter panel */
 .tasks-filters-panel {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 16px;
-  flex-wrap: wrap;
-  align-items: flex-start;
   padding: 14px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -202,6 +201,8 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-right: 2px;
+  min-width: 68px;
+  flex-shrink: 0;
 }
 
 .tasks-chip-row {
