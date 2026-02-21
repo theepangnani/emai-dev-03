@@ -364,7 +364,14 @@ export function MyKidsPage() {
         // Update overview courses locally
         setOverview(prev => prev ? {
           ...prev,
-          courses: [...prev.courses, { id: newCourse.id, name: newCourse.name, subject: newCourse.subject || null, teacher_name: null, teacher_email: null, teacher_id: null }],
+          courses: [...prev.courses, {
+            id: newCourse.id, name: newCourse.name,
+            description: newCourse.description || null,
+            subject: newCourse.subject || null,
+            google_classroom_id: null, teacher_id: null,
+            created_at: new Date().toISOString(),
+            teacher_name: null, teacher_email: null,
+          }],
         } : prev);
         // Update child's course count locally
         setChildren(prev => prev.map(c =>
