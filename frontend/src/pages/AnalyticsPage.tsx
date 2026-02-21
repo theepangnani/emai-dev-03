@@ -248,7 +248,7 @@ export function AnalyticsPage() {
               value={trendCourseFilter ?? ''}
               onChange={(e) => setTrendCourseFilter(e.target.value ? Number(e.target.value) : undefined)}
             >
-              <option value="">All Courses</option>
+              <option value="">All Classes</option>
               {courseOptions.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -284,7 +284,7 @@ export function AnalyticsPage() {
       {/* Course Averages Bar Chart */}
       {courseBarData.length > 0 && (
         <div className="analytics-chart-section">
-          <h2>Course Averages</h2>
+          <h2>Class Averages</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={courseBarData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -325,7 +325,7 @@ export function AnalyticsPage() {
             <thead>
               <tr>
                 <th>Assignment</th>
-                <th>Course</th>
+                <th>Class</th>
                 <th>Grade</th>
                 <th>Due Date</th>
               </tr>

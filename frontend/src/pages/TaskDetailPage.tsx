@@ -192,7 +192,7 @@ export function TaskDetailPage() {
   };
 
   const linkTypeLabel: Record<LinkType, string> = {
-    course: 'Course',
+    course: 'Class',
     course_content: 'Class Material',
     study_guide: 'Study Guide',
   };
@@ -382,7 +382,7 @@ export function TaskDetailPage() {
             <h3>Linked Resources</h3>
             <div className="td-link-buttons">
               {!task.course_id && (
-                <button className="td-link-icon-btn" title="Link Course" onClick={() => openLinkModal('course')}>
+                <button className="td-link-icon-btn" title="Link Class" onClick={() => openLinkModal('course')}>
                   &#127891;
                 </button>
               )}
@@ -438,12 +438,12 @@ export function TaskDetailPage() {
                   <Link to={`/courses/${task.course_id}`} className="td-resource-card">
                     <span className="td-resource-icon">{'\uD83D\uDCDA'}</span>
                     <div className="td-resource-info">
-                      <span className="td-resource-type">Course</span>
-                      <span className="td-resource-title">{task.course_name || 'View Course'}</span>
+                      <span className="td-resource-type">Class</span>
+                      <span className="td-resource-title">{task.course_name || 'View Class'}</span>
                     </div>
                     <span className="td-resource-arrow">&rarr;</span>
                   </Link>
-                  <button className="td-unlink-btn" title="Unlink course" onClick={() => handleUnlink('course')}>
+                  <button className="td-unlink-btn" title="Unlink class" onClick={() => handleUnlink('course')}>
                     &#10005;
                   </button>
                 </div>
@@ -453,8 +453,8 @@ export function TaskDetailPage() {
             <div className="td-empty-resources">
               <p>No class materials linked to this task.</p>
               <div className="td-empty-link-actions">
-                <button className="td-empty-link-btn" onClick={() => openLinkModal('course')} title="Link Course">
-                  &#127891; Course
+                <button className="td-empty-link-btn" onClick={() => openLinkModal('course')} title="Link Class">
+                  &#127891; Class
                 </button>
                 <button className="td-empty-link-btn" onClick={() => openLinkModal('course_content')} title="Link Class Material">
                   &#128196; Material
@@ -490,7 +490,7 @@ export function TaskDetailPage() {
             <input
               type="text"
               className="td-link-search"
-              placeholder={`Search ${linkTypeLabel[linkType].toLowerCase()}s...`}
+              placeholder={`Search ${linkType === 'course' ? 'classes' : linkTypeLabel[linkType].toLowerCase() + 's'}...`}
               value={linkSearch}
               onChange={(e) => setLinkSearch(e.target.value)}
               autoFocus
@@ -505,7 +505,7 @@ export function TaskDetailPage() {
                     <span className="td-link-item-icon">&#127891;</span>
                     <span className="td-link-item-title">{c.name}</span>
                   </button>
-                )) : <div className="td-link-empty">No courses found</div>
+                )) : <div className="td-link-empty">No classes found</div>
               ) : linkType === 'course_content' ? (
                 filteredContents.length > 0 ? filteredContents.map(c => (
                   <button key={c.id} className="td-link-item" onClick={() => handleLink(c.id)}>

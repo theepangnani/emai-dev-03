@@ -58,7 +58,7 @@ describe('HelpPage', () => {
   it('renders all FAQ questions', () => {
     renderHelp()
     expect(screen.getByText('How do I connect my Google Classroom account?')).toBeInTheDocument()
-    expect(screen.getByText('How do I sync my courses and assignments?')).toBeInTheDocument()
+    expect(screen.getByText('How do I sync my classes and assignments?')).toBeInTheDocument()
     expect(screen.getByText("How do I link my child's account (for parents)?")).toBeInTheDocument()
     expect(screen.getByText('How do I create a study guide from class materials?')).toBeInTheDocument()
     expect(screen.getByText('How do I take a quiz or use flashcards?')).toBeInTheDocument()

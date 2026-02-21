@@ -34,7 +34,7 @@ interface DashboardLayoutProps {
 const NAV_ICONS: Record<string, string> = {
   'Home': '\u{1F3E0}',
   'My Kids': '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}',
-  'Courses': '\u{1F4DA}',
+  'Classes': '\u{1F4DA}',
   'Class Materials': '\u{1F4DD}',
   'Quiz History': '\u{1F4CA}',
   'Tasks': '\u2705',
@@ -51,8 +51,8 @@ const QUICK_ACTION_ICONS: Record<string, string> = {
   '+ Task': '\u2705',
   '+ Child': '\u{1F476}',
   '+ Add Child': '\u{1F476}',
-  '+ Course': '\u{1F4DA}',
-  '+ Add Course': '\u{1F4DA}',
+  '+ Class': '\u{1F4DA}',
+  '+ Add Class': '\u{1F4DA}',
   '+ Create Study Material': '\u{1F4DD}',
 };
 
@@ -95,7 +95,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
 
     const items: Array<{ label: string; path: string }> = [
       { label: 'Dashboard', path: '/dashboard' },
-      { label: 'Courses', path: '/courses' },
+      { label: 'Classes', path: '/courses' },
       { label: 'Class Materials', path: '/course-materials' },
       { label: 'Quiz History', path: '/quiz-history' },
       { label: 'Tasks', path: '/tasks' },

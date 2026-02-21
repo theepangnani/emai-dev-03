@@ -189,7 +189,7 @@ export function CourseDetailPage() {
         setAddStudentSuccess(result.message);
       } else {
         setStudents(prev => [...prev, result]);
-        setAddStudentSuccess(`${result.full_name} has been added to the course.`);
+        setAddStudentSuccess(`${result.full_name} has been added to the class.`);
       }
       setAddStudentEmail('');
     } catch (err: any) {
@@ -200,7 +200,7 @@ export function CourseDetailPage() {
   };
 
   const handleRemoveStudent = async (studentId: number, name: string) => {
-    const ok = await confirm({ title: 'Remove Student', message: `Remove ${name} from this course?`, variant: 'danger' });
+    const ok = await confirm({ title: 'Remove Student', message: `Remove ${name} from this class?`, variant: 'danger' });
     if (!ok) return;
     try {
       await coursesApi.removeStudent(courseId, studentId);
@@ -541,7 +541,7 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Course details" showBackButton>
+      <DashboardLayout welcomeSubtitle="Class details" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -549,10 +549,10 @@ export function CourseDetailPage() {
 
   if (!course) {
     return (
-      <DashboardLayout welcomeSubtitle="Course not found" showBackButton>
+      <DashboardLayout welcomeSubtitle="Class not found" showBackButton>
         <div className="course-detail-empty">
-          <p>Course not found or you don't have access.</p>
-          <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Courses</button>
+          <p>Class not found or you don't have access.</p>
+          <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Classes</button>
         </div>
       </DashboardLayout>
     );
@@ -563,7 +563,7 @@ export function CourseDetailPage() {
       <div className="course-detail-page">
         {/* Back link */}
         <button className="course-detail-back" onClick={() => navigate('/courses')}>
-          &larr; Back to Courses
+          &larr; Back to Classes
         </button>
 
         {/* Course header */}
@@ -794,7 +794,7 @@ export function CourseDetailPage() {
             <h2>Edit Course</h2>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={editSaving} onKeyDown={(e) => e.key === 'Enter' && handleEditCourse()} />
               </label>
               <label>
@@ -803,7 +803,7 @@ export function CourseDetailPage() {
               </label>
               <label>
                 Description
-                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Course details..." rows={3} disabled={editSaving} />
+                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={editSaving} />
               </label>
               <label>
                 Teacher Email (optional)

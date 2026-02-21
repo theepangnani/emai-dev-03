@@ -141,7 +141,7 @@ export function TeacherDashboard() {
       const coursesData = await coursesApi.teachingList();
       setCourses(coursesData);
     } catch (err: any) {
-      setCreateError(err.response?.data?.detail || 'Failed to create course');
+      setCreateError(err.response?.data?.detail || 'Failed to create class');
     } finally {
       setCreateLoading(false);
     }
@@ -280,9 +280,9 @@ export function TeacherDashboard() {
       <div className="dashboard-grid">
         <div className="dashboard-card">
           <div className="card-icon">📚</div>
-          <h3>Courses</h3>
+          <h3>Classes</h3>
           <p className="card-value">{courses.length}</p>
-          <p className="card-label">Courses teaching</p>
+          <p className="card-label">Classes teaching</p>
         </div>
 
         <div className="dashboard-card clickable" onClick={() => navigate('/messages')}>
@@ -323,7 +323,7 @@ export function TeacherDashboard() {
             </button>
           ) : (
             <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
-              {syncing ? 'Syncing...' : 'Sync Courses'}
+              {syncing ? 'Syncing...' : 'Sync Classes'}
             </button>
           )}
         </div>
@@ -332,15 +332,15 @@ export function TeacherDashboard() {
       <div className="dashboard-sections">
         <section className="section teacher-courses-section">
           <div className="section-header">
-            <h3>Your Courses</h3>
+            <h3>Your Classes</h3>
             <div className="section-header-actions">
               {googleConnected && (
                 <button className="sync-btn" onClick={handleSyncCourses} disabled={syncing}>
-                  {syncing ? 'Syncing...' : 'Sync Courses'}
+                  {syncing ? 'Syncing...' : 'Sync Classes'}
                 </button>
               )}
               <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
-                + Create Course
+                + Create Class
               </button>
             </div>
           </div>
@@ -353,7 +353,7 @@ export function TeacherDashboard() {
             <input
               type="text"
               className="courses-search-input"
-              placeholder="Search courses by name or subject..."
+              placeholder="Search classes by name or subject..."
               value={courseSearch}
               onChange={(e) => setCourseSearch(e.target.value)}
               style={{ marginBottom: 16 }}
@@ -387,19 +387,19 @@ export function TeacherDashboard() {
             </div>
           ) : (
             <div className="empty-state">
-              <p>No courses yet</p>
+              <p>No classes yet</p>
               <small>
-                Create a course manually{googleConnected
-                  ? ' or click "Sync Courses" to import from Google Classroom'
-                  : ' or connect Google Classroom to sync your courses'}
+                Create a class manually{googleConnected
+                  ? ' or click "Sync Classes" to import from Google Classroom'
+                  : ' or connect Google Classroom to sync your classes'}
               </small>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
                 <button className="connect-button" onClick={() => setShowCreateModal(true)}>
-                  + Create Course
+                  + Create Class
                 </button>
                 {googleConnected && (
                   <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
-                    {syncing ? 'Syncing...' : 'Sync Courses'}
+                    {syncing ? 'Syncing...' : 'Sync Classes'}
                   </button>
                 )}
               </div>
@@ -520,7 +520,7 @@ export function TeacherDashboard() {
             ) : (
               <div className="empty-state">
                 <p>No Google accounts linked yet</p>
-                <small>Connect your Google account to sync courses from Google Classroom</small>
+                <small>Connect your Google account to sync classes from Google Classroom</small>
               </div>
             )}
           </section>
@@ -531,10 +531,10 @@ export function TeacherDashboard() {
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Course</h2>
+            <h2>Create Class</h2>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input
                   type="text"
                   value={courseName}
@@ -559,7 +559,7 @@ export function TeacherDashboard() {
                 <textarea
                   value={courseDescription}
                   onChange={(e) => setCourseDescription(e.target.value)}
-                  placeholder="Brief description of the course..."
+                  placeholder="Brief description of the class..."
                   rows={3}
                   disabled={createLoading}
                 />
@@ -575,7 +575,7 @@ export function TeacherDashboard() {
                 onClick={handleCreateCourse}
                 disabled={createLoading || !courseName.trim()}
               >
-                {createLoading ? 'Creating...' : 'Create Course'}
+                {createLoading ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>
@@ -625,17 +625,17 @@ export function TeacherDashboard() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Send Announcement</h2>
             <p className="modal-desc">
-              Send a message to all parents of students in a course.
+              Send a message to all parents of students in a class.
             </p>
             <div className="modal-form">
               <label>
-                Course *
+                Class *
                 <select
                   value={announceCourseId}
                   onChange={(e) => { setAnnounceCourseId(e.target.value ? Number(e.target.value) : ''); setAnnounceError(''); }}
                   disabled={announceSending}
                 >
-                  <option value="">Select a course...</option>
+                  <option value="">Select a class...</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}

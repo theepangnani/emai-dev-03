@@ -610,7 +610,7 @@ export function StudyGuidesPage() {
                 value={filterCourse}
                 onChange={e => setFilterCourse(e.target.value ? Number(e.target.value) : '')}
               >
-                <option value="">All Courses</option>
+                <option value="">All Classes</option>
                 {visibleCourses.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -691,7 +691,7 @@ export function StudyGuidesPage() {
                   </div>
                   <div className="guide-row-actions">
                     <button className="guide-convert-btn" title="Edit" onClick={() => navigateToContent(item)}>&#9998;</button>
-                    <button className="guide-convert-btn" title="Move to course" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
+                    <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
                     <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
                   </div>
                 </div>
@@ -809,7 +809,7 @@ export function StudyGuidesPage() {
                     </button>
                     <button
                       className="guide-convert-btn"
-                      title="Move to course"
+                      title="Move to class"
                       onClick={() => { setCategorizeGuide(guide); setCategorizeCourseId(''); }}
                     >
                       &#128194;
@@ -878,12 +878,12 @@ export function StudyGuidesPage() {
       {categorizeGuide && (
         <div className="modal-overlay" onClick={() => setCategorizeGuide(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Move to Course</h2>
-            <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a course.</p>
+            <h2>Move to Class</h2>
+            <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a class.</p>
             <div className="modal-form">
               <input
                 type="text"
-                placeholder="Search courses or type a new name..."
+                placeholder="Search classes or type a new name..."
                 value={categorizeSearch}
                 onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
                 autoFocus
@@ -910,7 +910,7 @@ export function StudyGuidesPage() {
                   </div>
                 )}
                 {categorizeSearch && courses.filter(c => c.name.toLowerCase().includes(categorizeSearch.toLowerCase())).length === 0 && !categorizeSearch.trim() && (
-                  <div className="categorize-empty">No courses found</div>
+                  <div className="categorize-empty">No classes found</div>
                 )}
               </div>
             </div>
@@ -931,12 +931,12 @@ export function StudyGuidesPage() {
       {reassignContent && (
         <div className="modal-overlay" onClick={() => setReassignContent(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Move to Course</h2>
-            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a course.</p>
+            <h2>Move to Class</h2>
+            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a class.</p>
             <div className="modal-form">
               <input
                 type="text"
-                placeholder="Search courses or type a new name..."
+                placeholder="Search classes or type a new name..."
                 value={categorizeSearch}
                 onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
                 autoFocus

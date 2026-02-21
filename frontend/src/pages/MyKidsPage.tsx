@@ -385,7 +385,7 @@ export function MyKidsPage() {
       }
       closeAddCourseModal();
     } catch (err: any) {
-      setAddCourseError(err.response?.data?.detail || 'Failed to create course');
+      setAddCourseError(err.response?.data?.detail || 'Failed to create class');
     } finally {
       setAddCourseLoading(false);
     }
@@ -547,7 +547,7 @@ export function MyKidsPage() {
         </button>
         <button className="mykids-action-btn" onClick={() => setShowAddCourseModal(true)}>
           <span className="mykids-action-icon">{'\u{1F4DA}'}</span>
-          <span className="mykids-action-label">Add Course</span>
+          <span className="mykids-action-label">Add Class</span>
         </button>
         <button className="mykids-action-btn" onClick={() => navigate('/course-materials')}>
           <span className="mykids-action-icon">{'\u{1F4DD}'}</span>
@@ -572,7 +572,7 @@ export function MyKidsPage() {
                 <div className="mykids-section">
                   <button className="mykids-section-header" onClick={() => setShowUnassignedCourses(p => !p)}>
                     <span className={`section-chevron${showUnassignedCourses ? ' expanded' : ''}`}>&#9654;</span>
-                    <span className="section-icon">&#128218;</span> Unassigned Courses ({unassignedCourses.length})
+                    <span className="section-icon">&#128218;</span> Unassigned Classes ({unassignedCourses.length})
                   </button>
                   {showUnassignedCourses && (
                     <div className="mykids-card-grid">
@@ -612,7 +612,7 @@ export function MyKidsPage() {
                           <div className="mykids-item-card-actions">
                             <button
                               className="mykids-item-action-btn"
-                              title="Move to course"
+                              title="Move to class"
                               onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                             >&#128194;</button>
                           </div>
@@ -664,12 +664,12 @@ export function MyKidsPage() {
           <div className="mykids-section">
             <button className="mykids-section-header" onClick={() => setShowCourses(p => !p)}>
               <span className={`section-chevron${showCourses ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon">&#128218;</span> Courses ({overview?.courses.length ?? 0})
+              <span className="section-icon">&#128218;</span> Classes ({overview?.courses.length ?? 0})
             </button>
             {showCourses && overview && (
               <div className="mykids-card-grid">
                 {overview.courses.length === 0 ? (
-                  <p className="mykids-empty-hint">No courses enrolled.</p>
+                  <p className="mykids-empty-hint">No classes enrolled.</p>
                 ) : overview.courses.map(c => (
                   <div key={c.id} className="mykids-item-card" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-item-title">{c.name}</div>
@@ -696,7 +696,7 @@ export function MyKidsPage() {
                     <div className="mykids-item-card-actions">
                       <button
                         className="mykids-item-action-btn"
-                        title="Move to course"
+                        title="Move to class"
                         onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                       >&#128194;</button>
                     </div>
@@ -880,7 +880,7 @@ export function MyKidsPage() {
             <div className="modal-form">
               <input
                 type="text"
-                placeholder="Search courses or type a new name..."
+                placeholder="Search classes or type a new name..."
                 value={categorizeSearch}
                 onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
                 autoFocus
@@ -925,7 +925,7 @@ export function MyKidsPage() {
       {assignCourseModal && (
         <div className="mykids-modal-overlay" onClick={() => setAssignCourseModal(null)}>
           <div className="mykids-modal" onClick={e => e.stopPropagation()}>
-            <h3>Assign Course to Child</h3>
+            <h3>Assign Class to Child</h3>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               Select a child to assign &ldquo;{assignCourseModal.name}&rdquo; to.
             </p>
@@ -971,7 +971,7 @@ export function MyKidsPage() {
       {showAddCourseModal && (
         <div className="modal-overlay" onClick={closeAddCourseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Add Course</h2>
+            <h2>Add Class</h2>
             {selectedChild && (
               <p className="modal-desc">
                 This course will be automatically assigned to <strong>{children.find(c => c.student_id === selectedChild)?.full_name}</strong>.
@@ -979,7 +979,7 @@ export function MyKidsPage() {
             )}
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input
                   type="text"
                   value={addCourseName}
@@ -1015,7 +1015,7 @@ export function MyKidsPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={closeAddCourseModal} disabled={addCourseLoading}>Cancel</button>
               <button className="generate-btn" onClick={handleAddCourse} disabled={addCourseLoading || !addCourseName.trim()}>
-                {addCourseLoading ? 'Creating...' : selectedChild ? 'Create & Assign' : 'Create Course'}
+                {addCourseLoading ? 'Creating...' : selectedChild ? 'Create & Assign' : 'Create Class'}
               </button>
             </div>
           </div>
