@@ -5,6 +5,7 @@ import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTe
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton } from '../components/Skeleton';
+import { AddActionButton } from '../components/AddActionButton';
 import { isValidEmail } from '../utils/validation';
 import './MyKidsPage.css';
 
@@ -553,26 +554,12 @@ export function MyKidsPage() {
             </span>
           </button>
         ))}
-      </div>
-
-      {/* Action Buttons Grid */}
-      <div className="mykids-action-grid">
-        <button className="mykids-action-btn" onClick={() => setShowAddChildModal(true)}>
-          <span className="mykids-action-icon icon-with-plus">{'\u{1F476}'}</span>
-          <span className="mykids-action-label">Add Child</span>
-        </button>
-        <button className="mykids-action-btn" onClick={() => setShowAddCourseModal(true)}>
-          <span className="mykids-action-icon icon-with-plus">{'\u{1F4DA}'}</span>
-          <span className="mykids-action-label">Add Class</span>
-        </button>
-        <button className="mykids-action-btn" onClick={() => navigate('/course-materials')}>
-          <span className="mykids-action-icon">{'\u{1F4DD}'}</span>
-          <span className="mykids-action-label">Class Materials</span>
-        </button>
-        <button className="mykids-action-btn" onClick={() => navigate('/quiz-history')}>
-          <span className="mykids-action-icon">{'\u{1F4CA}'}</span>
-          <span className="mykids-action-label">Quiz History</span>
-        </button>
+        <AddActionButton actions={[
+          { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true) },
+          { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true) },
+          { icon: '\u{1F4DD}', label: 'Class Materials', onClick: () => navigate('/course-materials') },
+          { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
+        ]} />
       </div>
 
       {!selectedChild ? (
