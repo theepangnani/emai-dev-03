@@ -620,8 +620,6 @@ export function CourseDetailPage() {
           )}
         </div>
 
-      </div>
-
       {/* Class Materials Panel */}
       <div className="course-section-panel">
         <div className="course-section-header">
@@ -659,7 +657,7 @@ export function CourseDetailPage() {
               <div className="course-detail-content-list">
                 {contents.map((item) => (
                   <div key={item.id} className="cd-content-item">
-                    <div className="cd-content-item-info">
+                    <div className="cd-content-item-info" onClick={() => navigate(`/course-materials/${item.id}`)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate(`/course-materials/${item.id}`)}>
                       <div className="cd-content-item-top">
                         <span className={`content-type-badge ${item.content_type}`}>
                           {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
@@ -808,6 +806,8 @@ export function CourseDetailPage() {
           )}
         </div>
       )}
+
+      </div>
 
       {/* Add Student Modal */}
       {showAddStudentModal && (

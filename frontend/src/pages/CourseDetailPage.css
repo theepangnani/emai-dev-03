@@ -327,6 +327,7 @@
 
 .cd-content-item-info {
   flex: 1;
+  cursor: pointer;
   min-width: 0;
 }
 
