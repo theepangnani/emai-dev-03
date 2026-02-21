@@ -71,6 +71,9 @@ export function StudentDashboard() {
 
   const { user } = useAuth();
   const [focusDismissed, setFocusDismissed] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() =>
+    localStorage.getItem('student-upload-onboarding-dismissed') === 'true'
+  );
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -647,6 +650,29 @@ export function StudentDashboard() {
             </div>
           )}
         </section>
+
+        {!onboardingDismissed && studyGuides.length < 3 && (
+          <div className="student-onboarding-card">
+            <div className="student-onboarding-content">
+              <h4 className="student-onboarding-title">How to add your class materials</h4>
+              <ol className="student-onboarding-steps">
+                <li>Open Google Classroom (or TeachAssist, Edsby)</li>
+                <li>Download your course materials</li>
+                <li>Upload them here</li>
+                <li>ClassBridge generates study tools</li>
+              </ol>
+            </div>
+            <button
+              className="student-onboarding-dismiss"
+              onClick={() => {
+                localStorage.setItem('student-upload-onboarding-dismissed', 'true');
+                setOnboardingDismissed(true);
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        )}
 
         <section className="section">
           <div className="section-header">
