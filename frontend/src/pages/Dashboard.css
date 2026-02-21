@@ -352,8 +352,9 @@
 }
 
 .ps-nav-item.active {
-  background: var(--color-accent);
-  color: white;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+  border-left: 3px solid var(--color-accent);
 }
 
 .ps-nav-item:focus {
@@ -404,7 +405,7 @@
 }
 
 .ps-nav-item.active .ps-nav-badge {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-accent);
   color: white;
 }
 
