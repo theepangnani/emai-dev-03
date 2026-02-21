@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { notificationsApi } from '../api/client';
 import type { NotificationResponse } from '../api/client';
 import './NotificationBell.css';
@@ -214,6 +214,9 @@ export function NotificationBell() {
                 </div>
               ))
             )}
+            <Link to="/notifications" className="notif-view-all" onClick={() => setIsOpen(false)}>
+              View All Notifications
+            </Link>
           </div>
         </div>
       )}

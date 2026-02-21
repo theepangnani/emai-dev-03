@@ -301,6 +301,20 @@
   opacity: 0.9;
 }
 
+.notif-view-all {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent);
+  border-top: 1px solid var(--color-border);
+  text-decoration: none;
+}
+.notif-view-all:hover {
+  background: var(--color-surface-alt);
+}
+
 @media (max-width: 768px) {
   .notification-dropdown {
     width: 300px;
