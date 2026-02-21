@@ -242,9 +242,6 @@ export function TasksPage() {
         {/* Header */}
         <div className="tasks-header">
           <h3>Tasks</h3>
-          <button className="generate-btn" onClick={() => setShowCreate(true)}>
-            + New Task
-          </button>
         </div>
 
         {/* Filters */}
@@ -288,6 +285,9 @@ export function TasksPage() {
             </div>
           )}
           <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
+          <button className="generate-btn" onClick={() => setShowCreate(true)}>
+            + New Task
+          </button>
         </div>
 
         {/* Task list */}
