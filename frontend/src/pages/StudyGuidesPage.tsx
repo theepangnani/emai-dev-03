@@ -619,8 +619,8 @@ export function StudyGuidesPage() {
                 ))}
               </select>
             )}
+            <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
           </div>
-          <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
         </div>
 
         {/* Guide type filter tabs with counts */}
