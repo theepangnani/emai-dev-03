@@ -169,4 +169,11 @@ export const parentApi = {
     const response = await api.delete(`/api/parent/children/${studentId}/teachers/${linkId}`);
     return response.data;
   },
+
+  resetChildPassword: async (studentId: number, newPassword?: string) => {
+    const response = await api.post(`/api/parent/children/${studentId}/reset-password`, {
+      ...(newPassword ? { new_password: newPassword } : {}),
+    });
+    return response.data as { message: string };
+  },
 };

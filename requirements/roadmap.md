@@ -81,6 +81,7 @@
 - [x] **Security hardening Phase 2** — Rate limiting, security headers, LIKE injection fix (#140, #141, #184) (IMPLEMENTED)
 - [x] **Task reminders** — Daily in-app notifications for upcoming task due dates (#112) (IMPLEMENTED)
 - [x] **Password reset flow** — Email-based JWT token reset with forgot-password UI (#143) (IMPLEMENTED)
+- [x] **Enhanced password management** — OAuth/invite users can use forgot-password; parents can reset child passwords from My Kids (#673) (IMPLEMENTED)
 - [x] **Course materials lifecycle** — Soft delete, archive, retention policies, auto-archive (#212) (IMPLEMENTED)
 - [x] **Message email notifications** — Email on new message with dedup (#213) (IMPLEMENTED)
 - [x] **Parent-to-teacher linking** — Manual link via MyKidsPage, email notifications (#219-#224, #234, #235) (IMPLEMENTED)

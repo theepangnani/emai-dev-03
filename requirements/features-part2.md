@@ -431,3 +431,33 @@ Users can reset forgotten passwords via email-based JWT token flow.
 - `app/templates/password_reset.html` — email template
 - `frontend/src/pages/ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`
 
+#### 6.26.1 Enhanced Password Management (Phase 1) - IMPLEMENTED
+
+Extended password reset capabilities for all user types and parent-managed child accounts.
+
+**Enhancements:**
+- **OAuth/invite-only users:** `forgot-password` now sends reset emails to ALL users with an email address, including those who registered via Google OAuth or were created by a parent. Previously these users were silently skipped.
+- **Parent-managed child password reset:** Parents can reset or set passwords for linked children from the My Kids page.
+  - **Send reset email** — sends password reset link to child's email (if child has email)
+  - **Set directly** — parent enters a password for the child (works even when child has no email)
+
+**Endpoint:**
+- `POST /api/parent/children/{student_id}/reset-password` — body: `{ "new_password": "optional" }`. If `new_password` provided, sets directly. If omitted, sends reset email to child.
+
+**Frontend:**
+- "Reset Password" button in My Kids per-child Teachers section header
+- Modal with method toggle (Send Reset Email / Set Directly) when child has email; direct-only when child has no email
+- Password + confirm fields with strength validation for direct set
+
+**Security:**
+- Rate limited: 5/min for parent child password reset
+- Parent-child relationship verified via `parent_students` join table
+- Password strength validation for direct-set method
+- Audit logging for all password reset actions (method, target user, initiating parent)
+
+**Key files:**
+- `app/api/routes/parent.py` — `reset_child_password` endpoint
+- `app/schemas/parent.py` — `ChildResetPasswordRequest` schema
+- `frontend/src/pages/MyKidsPage.tsx` — Reset Password modal
+- `frontend/src/api/parent.ts` — `resetChildPassword` API method
+

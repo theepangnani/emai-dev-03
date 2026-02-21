@@ -106,6 +106,10 @@ class ChildHighlight(BaseModel):
     due_today_items: list[dict] = []
 
 
+class ChildResetPasswordRequest(BaseModel):
+    new_password: str | None = None
+
+
 class LinkTeacherRequest(BaseModel):
     teacher_email: EmailStr
     teacher_name: str | None = None

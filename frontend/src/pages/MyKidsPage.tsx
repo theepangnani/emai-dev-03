@@ -62,6 +62,15 @@ export function MyKidsPage() {
   const [addTeacherError, setAddTeacherError] = useState('');
   const [addTeacherLoading, setAddTeacherLoading] = useState(false);
 
+  // Reset password modal
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetPwMethod, setResetPwMethod] = useState<'email' | 'direct'>('direct');
+  const [resetPwValue, setResetPwValue] = useState('');
+  const [resetPwConfirm, setResetPwConfirm] = useState('');
+  const [resetPwLoading, setResetPwLoading] = useState(false);
+  const [resetPwError, setResetPwError] = useState('');
+  const [resetPwSuccess, setResetPwSuccess] = useState('');
+
   // All-children view: unassigned courses/materials
   const [unassignedCourses, setUnassignedCourses] = useState<Array<{ id: number; name: string; description?: string | null; subject?: string | null; teacher_name?: string | null }>>([]);
   const [unassignedMaterials, setUnassignedMaterials] = useState<CourseContentItem[]>([]);
@@ -744,12 +753,25 @@ export function MyKidsPage() {
                 <span className={`section-chevron${showTeachers ? ' expanded' : ''}`}>&#9654;</span>
                 <span className="section-icon">&#128105;&#8205;&#127979;</span> Teachers ({(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length})
               </button>
-              <button
-                className="mykids-add-teacher-btn"
-                onClick={() => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
-              >
-                + Add Teacher
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="mykids-add-teacher-btn"
+                  onClick={() => {
+                    setShowResetPassword(true);
+                    const child = children.find(c => c.student_id === selectedChild);
+                    setResetPwMethod(child?.email ? 'email' : 'direct');
+                    setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
+                  }}
+                >
+                  Reset Password
+                </button>
+                <button
+                  className="mykids-add-teacher-btn"
+                  onClick={() => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
+                >
+                  + Add Teacher
+                </button>
+              </div>
             </div>
             {showTeachers && (
               <div className="mykids-task-list">
@@ -859,6 +881,100 @@ export function MyKidsPage() {
               >
                 {addTeacherLoading ? 'Adding...' : 'Add Teacher'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Reset Password Modal */}
+      {showResetPassword && selectedChild && (
+        <div className="mykids-modal-overlay" onClick={() => setShowResetPassword(false)}>
+          <div className="mykids-modal" onClick={e => e.stopPropagation()}>
+            <h3>Reset Password</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              {children.find(c => c.student_id === selectedChild)?.full_name}
+            </p>
+            {resetPwSuccess ? (
+              <div style={{ padding: '12px 16px', background: 'var(--success-bg, #ecfdf5)', color: 'var(--success, #059669)', borderRadius: 8, fontSize: 14 }}>
+                {resetPwSuccess}
+              </div>
+            ) : (
+              <>
+                {children.find(c => c.student_id === selectedChild)?.email && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <button
+                      className={`mykids-tab-btn${resetPwMethod === 'email' ? ' active' : ''}`}
+                      onClick={() => setResetPwMethod('email')}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: resetPwMethod === 'email' ? 'var(--accent)' : 'transparent', color: resetPwMethod === 'email' ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      Send Reset Email
+                    </button>
+                    <button
+                      className={`mykids-tab-btn${resetPwMethod === 'direct' ? ' active' : ''}`}
+                      onClick={() => setResetPwMethod('direct')}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: resetPwMethod === 'direct' ? 'var(--accent)' : 'transparent', color: resetPwMethod === 'direct' ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      Set Directly
+                    </button>
+                  </div>
+                )}
+                {resetPwError && <div className="mykids-modal-error">{resetPwError}</div>}
+                {resetPwMethod === 'direct' ? (
+                  <>
+                    <label>New Password</label>
+                    <input
+                      type="password"
+                      placeholder="Min 8 chars, upper, lower, digit, special"
+                      value={resetPwValue}
+                      onChange={e => setResetPwValue(e.target.value)}
+                    />
+                    <label style={{ marginTop: 8 }}>Confirm Password</label>
+                    <input
+                      type="password"
+                      placeholder="Confirm password"
+                      value={resetPwConfirm}
+                      onChange={e => setResetPwConfirm(e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    A password reset link will be sent to <strong>{children.find(c => c.student_id === selectedChild)?.email}</strong>.
+                  </p>
+                )}
+              </>
+            )}
+            <div className="mykids-modal-actions">
+              <button onClick={() => setShowResetPassword(false)}>
+                {resetPwSuccess ? 'Close' : 'Cancel'}
+              </button>
+              {!resetPwSuccess && (
+                <button
+                  className="mykids-modal-submit generate-btn"
+                  disabled={resetPwLoading || (resetPwMethod === 'direct' && !resetPwValue.trim())}
+                  onClick={async () => {
+                    if (resetPwMethod === 'direct') {
+                      if (resetPwValue !== resetPwConfirm) {
+                        setResetPwError('Passwords do not match');
+                        return;
+                      }
+                    }
+                    setResetPwLoading(true);
+                    setResetPwError('');
+                    try {
+                      const result = await parentApi.resetChildPassword(
+                        selectedChild,
+                        resetPwMethod === 'direct' ? resetPwValue : undefined,
+                      );
+                      setResetPwSuccess(result.message);
+                    } catch (err: any) {
+                      setResetPwError(err?.response?.data?.detail || 'Failed to reset password');
+                    } finally {
+                      setResetPwLoading(false);
+                    }
+                  }}
+                >
+                  {resetPwLoading ? 'Processing...' : resetPwMethod === 'email' ? 'Send Reset Email' : 'Set Password'}
+                </button>
+              )}
             </div>
           </div>
         </div>

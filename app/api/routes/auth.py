@@ -518,8 +518,8 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
 
     if not user:
         _logger.warning("pwd_reset: no account found for requested email")
-    elif not user.hashed_password or user.hashed_password == UNUSABLE_PASSWORD_HASH:
-        _logger.warning(f"pwd_reset: user {user.id} has unusable password (invite/OAuth-only), skipping email")
+    elif not user.email:
+        _logger.warning(f"pwd_reset: user {user.id} has no email address, cannot send reset link")
     else:
         token = create_password_reset_token(user.email)
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"

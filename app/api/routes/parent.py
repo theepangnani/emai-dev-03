@@ -2,7 +2,7 @@ import logging
 import secrets
 from datetime import datetime, timedelta, date, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import insert, or_, and_, func as sa_func
 
@@ -20,12 +20,13 @@ from app.api.deps import require_role
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
-from app.core.security import UNUSABLE_PASSWORD_HASH
+from app.core.security import UNUSABLE_PASSWORD_HASH, validate_password_strength, get_password_hash, create_password_reset_token
+from app.core.rate_limit import limiter
 from app.schemas.parent import (
     ChildSummary, ChildOverview, LinkChildRequest, CreateChildRequest,
-    ChildUpdateRequest, DiscoveredChild, DiscoverChildrenResponse,
-    LinkChildrenBulkRequest, ChildHighlight, ParentDashboardResponse,
-    LinkTeacherRequest, LinkedTeacher,
+    ChildUpdateRequest, ChildResetPasswordRequest, DiscoveredChild,
+    DiscoverChildrenResponse, LinkChildrenBulkRequest, ChildHighlight,
+    ParentDashboardResponse, LinkTeacherRequest, LinkedTeacher,
 )
 from app.schemas.course import CourseResponse
 from app.schemas.assignment import AssignmentResponse
@@ -1425,3 +1426,77 @@ def unlink_teacher_from_child(
     db.commit()
 
     return {"message": "Teacher unlinked from student"}
+
+
+@router.post("/children/{student_id}/reset-password")
+@limiter.limit("5/minute")
+def reset_child_password(
+    student_id: int,
+    body: ChildResetPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Reset or set a child's password. Parent must be linked to the child."""
+    # Verify parent-child link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    user = db.query(User).filter(User.id == student.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Student account not found")
+
+    if body.new_password:
+        # Direct password set
+        pw_error = validate_password_strength(body.new_password)
+        if pw_error:
+            raise HTTPException(status_code=400, detail=pw_error)
+        user.hashed_password = get_password_hash(body.new_password)
+        log_action(db, user_id=current_user.id, action="parent_reset_child_password",
+                   resource_type="user", resource_id=user.id,
+                   details={"student_id": student_id, "method": "direct"},
+                   ip_address=request.client.host if request.client else None)
+        db.commit()
+        return {"message": f"Password set successfully for {user.full_name or 'student'}."}
+    else:
+        # Send reset email
+        if not user.email:
+            raise HTTPException(
+                status_code=400,
+                detail="This child has no email address. Please set a password directly.",
+            )
+        token = create_password_reset_token(user.email)
+        reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+        html = (
+            f'<h2 style="color:#1a1a1a;">Set Your Password</h2>'
+            f'<p>Hi {user.full_name or "there"},</p>'
+            f'<p>Your parent has requested a password reset for your ClassBridge account.</p>'
+            f'<p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>'
+            f'<p style="text-align:center;margin:24px 0;">'
+            f'<a href="{reset_url}" style="display:inline-block;background:#4f46e5;color:white;'
+            f'text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Set Password</a></p>'
+            f'<p style="color:#666;font-size:13px;">If you didn\'t expect this, you can safely ignore this email.</p>'
+            f'<p style="color:#999;font-size:12px;">Or copy this link: {reset_url}</p>'
+        )
+        html = add_inspiration_to_email(html, db, user.role)
+        sent = send_email_sync(to_email=user.email, subject="ClassBridge — Set Your Password", html_content=html)
+        log_action(db, user_id=current_user.id, action="parent_reset_child_password",
+                   resource_type="user", resource_id=user.id,
+                   details={"student_id": student_id, "method": "email", "email_sent": sent},
+                   ip_address=request.client.host if request.client else None)
+        db.commit()
+        if sent:
+            return {"message": f"Password reset email sent to {user.email}."}
+        return {"message": "Failed to send email. Please try setting the password directly."}
