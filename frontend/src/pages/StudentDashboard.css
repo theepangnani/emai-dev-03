@@ -319,6 +319,29 @@
   transform: translateY(-1px);
 }
 
+/* Inline button spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btnSpin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Last synced timestamp */
+.last-synced {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
 @media (max-width: 640px) {
   .student-focus-header {
     flex-direction: column;

@@ -57,6 +57,7 @@ export function TasksPage() {
   const [editPriority, setEditPriority] = useState('medium');
   const [editAssignee, setEditAssignee] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
+  const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
   const { confirm, confirmModal } = useConfirm();
 
   useEffect(() => {
@@ -126,22 +127,28 @@ export function TasksPage() {
   };
 
   const handleToggle = async (task: TaskItem) => {
+    setLoadingTaskId(task.id);
     try {
       await tasksApi.update(task.id, { is_completed: !task.is_completed });
       loadTasks();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update task');
+    } finally {
+      setLoadingTaskId(null);
     }
   };
 
   const handleDelete = async (taskId: number) => {
     const ok = await confirm({ title: 'Archive Task', message: 'Archive this task? You can restore it later.', confirmLabel: 'Archive' });
     if (!ok) return;
+    setLoadingTaskId(taskId);
     try {
       await tasksApi.delete(taskId);
       loadTasks();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete task');
+    } finally {
+      setLoadingTaskId(null);
     }
   };
 
@@ -313,13 +320,17 @@ export function TasksPage() {
           <div className="tasks-list">
             {filteredTasks.map(task => (
               <div key={task.id} className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={task.is_completed}
-                  onChange={() => handleToggle(task)}
-                  className="task-row-checkbox"
-                  disabled={!!task.archived_at}
-                />
+                {loadingTaskId === task.id ? (
+                  <span className="btn-spinner task-row-spinner" />
+                ) : (
+                  <input
+                    type="checkbox"
+                    checked={task.is_completed}
+                    onChange={() => handleToggle(task)}
+                    className="task-row-checkbox"
+                    disabled={!!task.archived_at}
+                  />
+                )}
                 <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
                   <div className="task-row-title">{task.title}</div>
                   <div className="task-row-meta">
@@ -359,7 +370,9 @@ export function TasksPage() {
                 ) : isCreator(task) ? (
                   <div className="task-row-actions">
                     <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
-                    <button className="task-row-btn danger" onClick={() => handleDelete(task.id)} title="Archive" aria-label="Archive this task">&times;</button>
+                    <button className="task-row-btn danger" onClick={() => handleDelete(task.id)} title="Archive" aria-label="Archive this task" disabled={loadingTaskId === task.id}>
+                      {loadingTaskId === task.id ? <span className="btn-spinner" /> : <>&times;</>}
+                    </button>
                   </div>
                 ) : null}
               </div>

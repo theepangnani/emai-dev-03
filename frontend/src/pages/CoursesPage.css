@@ -510,6 +510,58 @@
   color: var(--color-ink-muted);
 }
 
+/* Inline button spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btnSpin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Last synced timestamp */
+.last-synced {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+/* Sync error with retry */
+.sync-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(220, 38, 38, 0.08);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-danger);
+  margin-bottom: 12px;
+}
+
+.retry-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: none;
+  border: 1px solid var(--color-danger);
+  border-radius: 4px;
+  color: var(--color-danger);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.retry-btn:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
 @media (max-width: 600px) {
   .courses-section-header {
     flex-direction: column;

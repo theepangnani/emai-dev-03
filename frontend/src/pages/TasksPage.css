@@ -364,6 +364,28 @@
   color: var(--color-ink);
 }
 
+/* Inline button spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btnSpin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+.task-row-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 600px) {
   .tasks-header {
     flex-direction: column;
