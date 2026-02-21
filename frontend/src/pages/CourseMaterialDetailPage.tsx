@@ -338,9 +338,9 @@ export function CourseMaterialDetailPage() {
     setQuizSaveError(null);
   };
 
-  if (loading) return <DashboardLayout><DetailSkeleton /></DashboardLayout>;
+  if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
-    <DashboardLayout>
+    <DashboardLayout showBackButton>
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
@@ -357,7 +357,7 @@ export function CourseMaterialDetailPage() {
   ];
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showBackButton>
       <div className="cm-detail-page">
         <Breadcrumb items={[
           { label: 'Home', to: '/dashboard' },
