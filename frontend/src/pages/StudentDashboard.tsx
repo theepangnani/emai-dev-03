@@ -16,6 +16,15 @@ import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
 
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 interface Course {
   id: number;
   name: string;
@@ -38,6 +47,8 @@ export function StudentDashboard() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
@@ -225,12 +236,15 @@ export function StudentDashboard() {
   };
 
   const handleDisconnectGoogle = async () => {
+    setDisconnecting(true);
     try {
       await googleApi.disconnect();
       setGoogleConnected(false);
       setStatusMessage({ type: 'success', text: 'Google Classroom disconnected' });
     } catch {
       setStatusMessage({ type: 'error', text: 'Failed to disconnect Google Classroom' });
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -240,6 +254,7 @@ export function StudentDashboard() {
     try {
       const result = await googleApi.syncCourses();
       setStatusMessage({ type: 'success', text: result.message || 'Classes synced successfully' });
+      setLastSynced(new Date());
       loadCourses();
       loadAssignments();
     } catch (err) {
@@ -590,11 +605,14 @@ export function StudentDashboard() {
           {googleConnected ? (
             <div className="card-buttons">
               <button className="connect-button" onClick={handleSyncCourses} disabled={isSyncing}>
-                {isSyncing ? 'Syncing...' : 'Sync Classes'}
+                {isSyncing ? (<><span className="btn-spinner" /> Syncing...</>) : 'Sync Classes'}
               </button>
-              <button className="disconnect-button" onClick={handleDisconnectGoogle}>
-                Disconnect
+              <button className="disconnect-button" onClick={handleDisconnectGoogle} disabled={disconnecting}>
+                {disconnecting ? 'Disconnecting...' : 'Disconnect'}
               </button>
+              {lastSynced && (
+                <span className="last-synced">Last synced: {formatTimeAgo(lastSynced)}</span>
+              )}
             </div>
           ) : (
             <button className="connect-button" onClick={handleConnectGoogle} disabled={isConnecting}>

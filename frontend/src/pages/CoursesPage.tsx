@@ -24,6 +24,15 @@ interface CourseItem {
 
 type SyncState = 'idle' | 'syncing' | 'done' | 'error';
 
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 // Helper for keyboard accessibility
 const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
@@ -59,6 +68,7 @@ export function CoursesPage() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [syncMessage, setSyncMessage] = useState('');
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
 
   // Shared state
   const [myCourses, setMyCourses] = useState<CourseItem[]>([]);
@@ -299,12 +309,12 @@ export function CoursesPage() {
       const result = await parentApi.syncChildCourses(selectedChild);
       setSyncMessage(result.message);
       setSyncState('done');
+      setLastSynced(new Date());
       loadChildOverview(selectedChild);
       setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
     } catch (err: any) {
       setSyncMessage(err.response?.data?.detail || 'Failed to sync classes');
       setSyncState('error');
-      setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
     }
   };
 
@@ -454,17 +464,27 @@ export function CoursesPage() {
                   </button>
                 )}
                 {googleConnected && childOverview?.google_connected && (
-                  <button className="courses-btn secondary" onClick={handleSyncCourses} disabled={syncState === 'syncing'}>
-                    {syncState === 'syncing' ? 'Syncing...' : 'Sync Google'}
-                  </button>
+                  <>
+                    <button className="courses-btn secondary" onClick={handleSyncCourses} disabled={syncState === 'syncing'}>
+                      {syncState === 'syncing' ? (<><span className="btn-spinner" /> Syncing...</>) : 'Sync Google'}
+                    </button>
+                    {lastSynced && syncState !== 'error' && (
+                      <span className="last-synced">Last synced: {formatTimeAgo(lastSynced)}</span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
             {childCoursesExpanded && (
             <>
-            {syncMessage && (
-              <div className={`courses-sync-msg ${syncState === 'error' ? 'error' : ''}`}>{syncMessage}</div>
-            )}
+            {syncState === 'error' ? (
+              <div className="sync-error">
+                <span>{syncMessage || 'Sync failed'}</span>
+                <button onClick={handleSyncCourses} className="retry-btn">Retry</button>
+              </div>
+            ) : syncMessage ? (
+              <div className="courses-sync-msg">{syncMessage}</div>
+            ) : null}
             {overviewLoading ? (
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <CardSkeleton />
@@ -699,7 +719,7 @@ export function CoursesPage() {
                               onClick={() => handleEnroll(course.id)}
                               disabled={enrollingId === course.id}
                             >
-                              {enrollingId === course.id ? 'Enrolling...' : 'Enroll'}
+                              {enrollingId === course.id ? (<><span className="btn-spinner" /> Enrolling...</>) : 'Enroll'}
                             </button>
                           </div>
                         </div>
