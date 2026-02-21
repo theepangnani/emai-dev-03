@@ -53,8 +53,8 @@ describe('DashboardLayout', () => {
   it('shows parent nav items for parent role', () => {
     renderLayout('parent')
     // Nav items appear in both slide-out menu and persistent sidebar
-    expect(screen.getAllByText('Overview').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Child Profiles').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('My Kids').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Courses').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Class Materials').length).toBeGreaterThanOrEqual(1)
   })
