@@ -115,6 +115,11 @@ export function CourseDetailPage() {
   const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards' | 'other'>('study_guide');
   const [customPrompt, setCustomPrompt] = useState('');
 
+  // Collapsible sections
+  const [materialsExpanded, setMaterialsExpanded] = useState(true);
+  const [assignmentsExpanded, setAssignmentsExpanded] = useState(true);
+  const [rosterExpanded, setRosterExpanded] = useState(true);
+
   // Create task modal context
   const [taskModalContext, setTaskModalContext] = useState<{
     courseId?: number;
@@ -237,6 +242,22 @@ export function CourseDetailPage() {
       setEditError(err.response?.data?.detail || 'Failed to update course');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    const ok = await confirm({
+      title: 'Delete Class',
+      message: `Permanently delete "${course?.name}"? All class materials, assignments, and enrollments will be removed. This cannot be undone.`,
+      variant: 'danger',
+      confirmLabel: 'Delete Class',
+    });
+    if (!ok) return;
+    try {
+      await coursesApi.delete(courseId);
+      navigate('/courses');
+    } catch (err: any) {
+      setEditError(err.response?.data?.detail || 'Failed to delete course');
     }
   };
 
@@ -542,7 +563,7 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Class details">
+      <DashboardLayout welcomeSubtitle="Class details" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -550,7 +571,7 @@ export function CourseDetailPage() {
 
   if (!course) {
     return (
-      <DashboardLayout welcomeSubtitle="Class not found">
+      <DashboardLayout welcomeSubtitle="Class not found" showBackButton>
         <div className="course-detail-empty">
           <p>Class not found or you don't have access.</p>
           <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Classes</button>
@@ -560,7 +581,7 @@ export function CourseDetailPage() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle={course.name}>
+    <DashboardLayout welcomeSubtitle={course.name} showBackButton>
       <div className="course-detail-page">
         <Breadcrumb items={[
           { label: 'Home', to: '/dashboard' },
@@ -599,161 +620,191 @@ export function CourseDetailPage() {
           )}
         </div>
 
-        {/* Action bar */}
-        <div className="course-detail-actions">
-          <h3>Class Materials</h3>
+      </div>
+
+      {/* Class Materials Panel */}
+      <div className="course-section-panel">
+        <div className="course-section-header">
+          <button className="collapse-toggle" onClick={() => setMaterialsExpanded(v => !v)}>
+            <span className={`section-chevron${materialsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>Class Materials ({contents.length})</h3>
+          </button>
           {canEdit && (
             <div className="course-detail-action-btns">
-              <button className="courses-btn secondary" onClick={openAddContentModal}>+ Add Content</button>
-              <button className="courses-btn secondary" onClick={openUploadModal}>+ Upload Document</button>
-              <button className="courses-btn secondary" onClick={() => setTaskModalContext({
+              <button className="courses-btn secondary action-icon-btn" onClick={openAddContentModal}>
+                <span className="action-icon">&#128221;</span> Add Class Details
+              </button>
+              <button className="courses-btn secondary action-icon-btn" onClick={openUploadModal}>
+                <span className="action-icon">&#128228;</span> Upload Document
+              </button>
+              <button className="courses-btn secondary action-icon-btn" onClick={() => setTaskModalContext({
                 courseId: courseId,
                 title: `Task for ${course.name}`,
                 label: `Class: ${course.name}`,
-              })}>+ Create Task</button>
+              })}>
+                <span className="action-icon">&#9745;</span> Add to Task
+              </button>
             </div>
           )}
         </div>
-
-        {/* Content list */}
-        {contentsLoading ? (
-          <ListSkeleton rows={3} />
-        ) : contents.length === 0 ? (
-          <div className="course-detail-empty-content">
-            <p>{canEdit ? 'No class materials yet. Add notes, links, resources, or upload documents.' : 'No class materials available yet.'}</p>
-          </div>
-        ) : (
-          <div className="course-detail-content-list">
-            {contents.map((item) => (
-              <div key={item.id} className="cd-content-item">
-                <div className="cd-content-item-info">
-                  <div className="cd-content-item-top">
-                    <span className={`content-type-badge ${item.content_type}`}>
-                      {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
-                    </span>
-                    {item.google_classroom_material_id && (
-                      <span className="course-detail-badge google">Google Classroom</span>
-                    )}
-                    <span className="cd-content-item-title">{item.title}</span>
-                  </div>
-                  {item.description && <p className="cd-content-item-desc">{item.description}</p>}
-                  {item.text_content && (
-                    <p className="cd-content-item-text-preview">
-                      {item.text_content.substring(0, 200)}{item.text_content.length > 200 ? '...' : ''}
-                    </p>
-                  )}
-                  <div className="cd-content-item-links">
-                    {item.reference_url && (
-                      <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">
-                        Reference Link
-                      </a>
-                    )}
-                    {item.google_classroom_url && (
-                      <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">
-                        Google Classroom
-                      </a>
-                    )}
-                  </div>
-                </div>
-                <div className="cd-content-item-actions">
-                  <button
-                    className="content-icon-btn"
-                    title={generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
-                    aria-label="Generate Study Guide"
-                    onClick={() => handleGenerateStudyGuide(item)}
-                    disabled={generatingContentId === item.id}
-                  >
-                    {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
-                  </button>
-                  <button
-                    className="content-icon-btn"
-                    title="Create task"
-                    aria-label="Create task from this content"
-                    onClick={() => setTaskModalContext({
-                      courseId: courseId,
-                      courseContentId: item.id,
-                      title: `Review: ${item.title}`,
-                      label: `${item.title} (${course.name})`,
-                    })}
-                  >
-                    &#128203;
-                  </button>
-                  {item.created_by_user_id === user?.id && (
-                    <>
-                      <button className="content-icon-btn" title="Edit" aria-label="Edit this content" onClick={() => openEditContentModal(item)}>&#9998;</button>
-                      <button className="content-icon-btn danger" title="Archive" aria-label="Archive this content" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
-                    </>
-                  )}
-                </div>
+        {materialsExpanded && (
+          <>
+            {contentsLoading ? (
+              <ListSkeleton rows={3} />
+            ) : contents.length === 0 ? (
+              <div className="course-detail-empty-content">
+                <p>{canEdit ? 'No class materials yet. Add notes, links, resources, or upload documents.' : 'No class materials available yet.'}</p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="course-detail-content-list">
+                {contents.map((item) => (
+                  <div key={item.id} className="cd-content-item">
+                    <div className="cd-content-item-info">
+                      <div className="cd-content-item-top">
+                        <span className={`content-type-badge ${item.content_type}`}>
+                          {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
+                        </span>
+                        {item.google_classroom_material_id && (
+                          <span className="course-detail-badge google">Google Classroom</span>
+                        )}
+                        <span className="cd-content-item-title">{item.title}</span>
+                      </div>
+                      {item.description && <p className="cd-content-item-desc">{item.description}</p>}
+                      {item.text_content && (
+                        <p className="cd-content-item-text-preview">
+                          {item.text_content.substring(0, 200)}{item.text_content.length > 200 ? '...' : ''}
+                        </p>
+                      )}
+                      <div className="cd-content-item-links">
+                        {item.reference_url && (
+                          <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">
+                            Reference Link
+                          </a>
+                        )}
+                        {item.google_classroom_url && (
+                          <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">
+                            Google Classroom
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <div className="cd-content-item-actions">
+                      <button
+                        className="content-icon-btn"
+                        title={generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
+                        aria-label="Generate Study Guide"
+                        onClick={() => handleGenerateStudyGuide(item)}
+                        disabled={generatingContentId === item.id}
+                      >
+                        {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
+                      </button>
+                      <button
+                        className="content-icon-btn"
+                        title="Create task"
+                        aria-label="Create task from this content"
+                        onClick={() => setTaskModalContext({
+                          courseId: courseId,
+                          courseContentId: item.id,
+                          title: `Review: ${item.title}`,
+                          label: `${item.title} (${course.name})`,
+                        })}
+                      >
+                        &#128203;
+                      </button>
+                      {item.created_by_user_id === user?.id && (
+                        <>
+                          <button className="content-icon-btn" title="Edit" aria-label="Edit this content" onClick={() => openEditContentModal(item)}>&#9998;</button>
+                          <button className="content-icon-btn danger" title="Archive" aria-label="Archive this content" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Assignments */}
-      <div className="course-assignments-section">
-        <div className="course-assignments-header">
-          <h3>Assignments ({assignments.length})</h3>
+      <div className="course-section-panel">
+        <div className="course-section-header">
+          <button className="collapse-toggle" onClick={() => setAssignmentsExpanded(v => !v)}>
+            <span className={`section-chevron${assignmentsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>Assignments ({assignments.length})</h3>
+          </button>
           {canManageRoster && (
-            <button className="courses-btn secondary" onClick={openAddAssignment}>+ Add Assignment</button>
+            <button className="courses-btn secondary action-icon-btn" onClick={openAddAssignment}>
+              <span className="action-icon">+</span> Add Assignment
+            </button>
           )}
         </div>
-        {assignments.length === 0 ? (
-          <p className="course-roster-empty">No assignments yet.</p>
-        ) : (
-          <div className="course-assignments-list">
-            {assignments.map(a => (
-              <div key={a.id} className="course-assignment-row">
-                <div className="course-assignment-info">
-                  <span className="course-assignment-title">{a.title}</span>
-                  {a.description && <span className="course-assignment-desc">{a.description}</span>}
-                </div>
-                <div className="course-assignment-meta">
-                  {a.due_date && (
-                    <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
-                      Due {new Date(a.due_date).toLocaleDateString()}
-                    </span>
-                  )}
-                  {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
-                  {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
-                </div>
-                {canManageRoster && !a.google_classroom_id && (
-                  <div className="course-assignment-actions">
-                    <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
-                    <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+        {assignmentsExpanded && (
+          <>
+            {assignments.length === 0 ? (
+              <p className="course-roster-empty">No assignments yet.</p>
+            ) : (
+              <div className="course-assignments-list">
+                {assignments.map(a => (
+                  <div key={a.id} className="course-assignment-row">
+                    <div className="course-assignment-info">
+                      <span className="course-assignment-title">{a.title}</span>
+                      {a.description && <span className="course-assignment-desc">{a.description}</span>}
+                    </div>
+                    <div className="course-assignment-meta">
+                      {a.due_date && (
+                        <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
+                          Due {new Date(a.due_date).toLocaleDateString()}
+                        </span>
+                      )}
+                      {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
+                      {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
+                    </div>
+                    {canManageRoster && !a.google_classroom_id && (
+                      <div className="course-assignment-actions">
+                        <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
+                        <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Student Roster */}
       {canManageRoster && (
-        <div className="course-roster-section">
-          <div className="course-roster-header">
-            <h3>Enrolled Students ({students.length})</h3>
-            <button className="courses-btn secondary" onClick={() => { setAddStudentEmail(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
-              + Add Student
+        <div className="course-section-panel">
+          <div className="course-section-header">
+            <button className="collapse-toggle" onClick={() => setRosterExpanded(v => !v)}>
+              <span className={`section-chevron${rosterExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Enrolled Students ({students.length})</h3>
+            </button>
+            <button className="courses-btn secondary action-icon-btn" onClick={() => { setAddStudentEmail(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
+              <span className="action-icon">+</span> Add Student
             </button>
           </div>
-          {students.length === 0 ? (
-            <p className="course-roster-empty">No students enrolled yet.</p>
-          ) : (
-            <div className="course-roster-list">
-              {students.map(s => (
-                <div key={s.student_id} className="course-roster-row">
-                  <div className="course-roster-info">
-                    <span className="course-roster-name">{s.full_name}</span>
-                    <span className="course-roster-email">{s.email}</span>
-                  </div>
-                  {s.grade_level != null && <span className="grade-badge">Grade {s.grade_level}</span>}
-                  <button className="course-roster-remove" onClick={() => handleRemoveStudent(s.student_id, s.full_name)}>Remove</button>
+          {rosterExpanded && (
+            <>
+              {students.length === 0 ? (
+                <p className="course-roster-empty">No students enrolled yet.</p>
+              ) : (
+                <div className="course-roster-list">
+                  {students.map(s => (
+                    <div key={s.student_id} className="course-roster-row">
+                      <div className="course-roster-info">
+                        <span className="course-roster-name">{s.full_name}</span>
+                        <span className="course-roster-email">{s.email}</span>
+                      </div>
+                      {s.grade_level != null && <span className="grade-badge">Grade {s.grade_level}</span>}
+                      <button className="course-roster-remove" onClick={() => handleRemoveStudent(s.student_id, s.full_name)}>Remove</button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -814,6 +865,11 @@ export function CourseDetailPage() {
               {editError && <p className="link-error">{editError}</p>}
             </div>
             <div className="modal-actions">
+              {!course?.google_classroom_id && (
+                <button className="cancel-btn danger-text" onClick={handleDeleteCourse} disabled={editSaving}>
+                  Delete Class
+                </button>
+              )}
               <button className="cancel-btn" onClick={() => setShowEditModal(false)} disabled={editSaving}>Cancel</button>
               <button className="generate-btn" onClick={handleEditCourse} disabled={editSaving || !editName.trim()}>
                 {editSaving ? 'Saving...' : 'Save Changes'}
@@ -827,7 +883,7 @@ export function CourseDetailPage() {
       {showContentModal && (
         <div className="modal-overlay" onClick={closeContentModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingContent ? 'Edit Content' : 'Add Content'}</h2>
+            <h2>{editingContent ? 'Edit Class Details' : 'Add Class Details'}</h2>
             <p className="modal-desc">Add a reference link or resource to this class.</p>
             <div className="modal-form">
               <label>

@@ -251,6 +251,36 @@ def update_course(
     return course
 
 
+@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
+def delete_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a course. Only the creator or an admin can delete."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+    if course.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the course creator or an admin can delete this course",
+        )
+    if course.google_classroom_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete a Google Classroom synced course",
+        )
+
+    log_action(db, user_id=current_user.id, action="delete", resource_type="course", resource_id=course_id, details={"name": course.name})
+    db.delete(course)
+    db.commit()
+    return {"message": f"Course '{course.name}' has been deleted"}
+
+
 @router.post("/{course_id}/enroll", status_code=status.HTTP_200_OK)
 def enroll_in_course(
     course_id: int,

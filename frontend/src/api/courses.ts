@@ -67,6 +67,11 @@ export const coursesApi = {
     return response.data;
   },
 
+  delete: async (id: number) => {
+    const response = await api.delete(`/api/courses/${id}`);
+    return response.data;
+  },
+
   createdByMe: async () => {
     const response = await api.get('/api/courses/created/me');
     return response.data;

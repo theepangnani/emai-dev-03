@@ -159,6 +159,15 @@
   cursor: not-allowed;
 }
 
+/* Danger text button (delete in modals) */
+.cancel-btn.danger-text {
+  color: var(--color-danger);
+  margin-right: auto;
+}
+.cancel-btn.danger-text:hover {
+  background: var(--color-danger-light);
+}
+
 /* Content action buttons (text - legacy) */
 .content-action-btn {
   font-size: 12px;
@@ -229,24 +238,50 @@
   color: #4285f4;
 }
 
-/* Action bar */
-.course-detail-actions {
+/* Unified section panel (consistent across all sections) */
+.course-section-panel {
+  margin-top: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+}
+
+.course-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
 }
 
-.course-detail-actions h3 {
+.course-section-header h3 {
   margin: 0;
-  font-size: 18px;
-  font-family: var(--font-display);
+  font-size: 16px;
   color: var(--color-ink);
 }
 
 .course-detail-action-btns {
   display: flex;
   gap: 8px;
+}
+
+.action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Content list top margin inside panels */
+.course-section-panel .course-detail-content-list,
+.course-section-panel .course-assignments-list,
+.course-section-panel .course-roster-list,
+.course-section-panel .course-detail-empty-content,
+.course-section-panel .course-roster-empty {
+  margin-top: 12px;
 }
 
 /* Empty state */
@@ -434,26 +469,6 @@
 .content-type-badge.assignments { background: rgba(244, 67, 54, 0.12); color: var(--badge-assignments); }
 
 /* Student Roster */
-.course-roster-section {
-  margin-top: 28px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 20px 24px;
-}
-
-.course-roster-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.course-roster-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: var(--color-ink);
-}
 
 .course-roster-empty {
   color: var(--color-ink-muted);
@@ -520,26 +535,6 @@
 }
 
 /* Assignments */
-.course-assignments-section {
-  margin-top: 28px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 20px 24px;
-}
-
-.course-assignments-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.course-assignments-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: var(--color-ink);
-}
 
 .course-assignments-list {
   display: flex;
@@ -619,10 +614,18 @@
     padding: 18px 16px;
   }
 
-  .course-detail-actions {
+  .course-section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .course-section-panel {
+    padding: 16px;
+  }
+
+  .course-detail-action-btns {
+    flex-wrap: wrap;
   }
 
   .cd-content-item {
