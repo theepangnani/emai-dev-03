@@ -39,37 +39,87 @@
   min-width: 140px;
 }
 
-/* Filters */
-.tasks-filters {
+/* Filter bar (count + New Task button) */
+.tasks-filter-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.tasks-filter-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tasks-filter-group label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink-muted);
-}
-
-.tasks-filter-group .form-input {
-  padding: 4px 8px;
-  font-size: 13px;
-  min-width: 100px;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .tasks-count {
   font-size: 13px;
   color: var(--color-ink-muted);
-  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Filter chips */
+.tasks-filters-chips {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.tasks-chip-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tasks-chip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 2px;
+}
+
+.tasks-chip-row {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.tasks-chip {
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tasks-chip:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
+}
+
+.tasks-chip.active {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* Action icon button (shared with CourseDetailPage) */
+.action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-icon {
+  font-size: 15px;
+  line-height: 1;
 }
 
 /* Task list */
@@ -391,6 +441,21 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .tasks-filters-chips {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tasks-chip-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .tasks-chip-row {
+    flex-wrap: wrap;
   }
 
   .tasks-create-row {

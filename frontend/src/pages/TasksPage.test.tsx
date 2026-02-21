@@ -172,14 +172,14 @@ describe('TasksPage', () => {
     expect(mockUpdate).toHaveBeenCalledWith(1, { is_completed: true })
   })
 
-  it('opens create modal on "+ New Task" click', async () => {
+  it('opens create modal on "New Task" click', async () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByText('+ New Task')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /New Task/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('+ New Task'))
+    await user.click(screen.getByRole('button', { name: /New Task/ }))
     expect(screen.getByRole('heading', { name: 'Create Task' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Task title')).toBeInTheDocument()
   })
@@ -189,10 +189,10 @@ describe('TasksPage', () => {
     mockCreate.mockResolvedValue({})
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByText('+ New Task')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /New Task/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('+ New Task'))
+    await user.click(screen.getByRole('button', { name: /New Task/ }))
     await user.type(screen.getByPlaceholderText('Task title'), 'New task title')
     await user.click(screen.getByRole('button', { name: 'Create Task' }))
 
@@ -207,10 +207,10 @@ describe('TasksPage', () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByText('+ New Task')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /New Task/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('+ New Task'))
+    await user.click(screen.getByRole('button', { name: /New Task/ }))
     expect(screen.getByRole('button', { name: 'Create Task' })).toBeDisabled()
   })
 
@@ -320,8 +320,9 @@ describe('TasksPage', () => {
         expect(screen.getByText('3 tasks')).toBeInTheDocument()
       })
 
-      const prioritySelect = screen.getAllByRole('combobox')[1] // Priority is second select
-      await user.selectOptions(prioritySelect, 'high')
+      // Click the "High" chip button in the Priority filter group
+      const chipButtons = screen.getAllByRole('button', { name: 'High' })
+      await user.click(chipButtons[0])
 
       // Only high priority task should be visible
       expect(screen.getByText('1 task')).toBeInTheDocument()
@@ -336,8 +337,9 @@ describe('TasksPage', () => {
         expect(screen.getByText('3 tasks')).toBeInTheDocument()
       })
 
-      const prioritySelect = screen.getAllByRole('combobox')[1]
-      await user.selectOptions(prioritySelect, 'low')
+      // Click the "Low" chip button in the Priority filter group
+      const chipButtons = screen.getAllByRole('button', { name: 'Low' })
+      await user.click(chipButtons[0])
 
       expect(screen.getByText('1 task')).toBeInTheDocument()
     })

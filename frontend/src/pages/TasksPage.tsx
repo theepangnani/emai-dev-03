@@ -257,50 +257,102 @@ export function TasksPage() {
           <h3>Tasks</h3>
         </div>
 
-        {/* Filters */}
-        <div className="tasks-filters">
-          <div className="tasks-filter-group">
-            <label>Status:</label>
-            <select value={filterStatus} onChange={e => { const v = e.target.value as FilterStatus; setFilterStatus(v); if (v === 'all') { searchParams.delete('status'); } else { searchParams.set('status', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
-              <option value="all">Active</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="archived">Archived</option>
-            </select>
+        {/* Filter bar header with count + New Task */}
+        <div className="tasks-filter-bar">
+          <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
+          <button className="generate-btn action-icon-btn" onClick={() => setShowCreate(true)}>
+            <span className="action-icon">&#9745;</span> New Task
+          </button>
+        </div>
+
+        {/* Filter chips */}
+        <div className="tasks-filters-chips">
+          {/* Status */}
+          <div className="tasks-chip-group">
+            <span className="tasks-chip-label">Status</span>
+            <div className="tasks-chip-row">
+              {([
+                { key: 'all', label: 'Active' },
+                { key: 'pending', label: 'Pending' },
+                { key: 'completed', label: 'Completed' },
+                { key: 'archived', label: 'Archived' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  className={`tasks-chip${filterStatus === opt.key ? ' active' : ''}`}
+                  onClick={() => { setFilterStatus(opt.key); if (opt.key === 'all') { searchParams.delete('status'); } else { searchParams.set('status', opt.key); } setSearchParams(searchParams, { replace: true }); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="tasks-filter-group">
-            <label>Priority:</label>
-            <select value={filterPriority} onChange={e => { const v = e.target.value as FilterPriority; setFilterPriority(v); if (v === 'all') { searchParams.delete('priority'); } else { searchParams.set('priority', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
-              <option value="all">All</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+
+          {/* Priority */}
+          <div className="tasks-chip-group">
+            <span className="tasks-chip-label">Priority</span>
+            <div className="tasks-chip-row">
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'high', label: 'High' },
+                { key: 'medium', label: 'Medium' },
+                { key: 'low', label: 'Low' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  className={`tasks-chip${filterPriority === opt.key ? ' active' : ''}`}
+                  onClick={() => { setFilterPriority(opt.key); if (opt.key === 'all') { searchParams.delete('priority'); } else { searchParams.set('priority', opt.key); } setSearchParams(searchParams, { replace: true }); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="tasks-filter-group">
-            <label>Due:</label>
-            <select value={filterDue} onChange={e => { const v = e.target.value as FilterDue; setFilterDue(v); if (v === 'all') { searchParams.delete('due'); } else { searchParams.set('due', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
-              <option value="all">All</option>
-              <option value="overdue">Overdue</option>
-              <option value="today">Due Today</option>
-              <option value="week">This Week</option>
-            </select>
+
+          {/* Due */}
+          <div className="tasks-chip-group">
+            <span className="tasks-chip-label">Due</span>
+            <div className="tasks-chip-row">
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'overdue', label: 'Overdue' },
+                { key: 'today', label: 'Today' },
+                { key: 'week', label: 'This Week' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  className={`tasks-chip${filterDue === opt.key ? ' active' : ''}`}
+                  onClick={() => { setFilterDue(opt.key); if (opt.key === 'all') { searchParams.delete('due'); } else { searchParams.set('due', opt.key); } setSearchParams(searchParams, { replace: true }); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Assignee (kids) */}
           {assignableUsers.length > 0 && (
-            <div className="tasks-filter-group">
-              <label>Assignee:</label>
-              <select value={filterAssignee} onChange={e => { const v = e.target.value; if (v === 'all') { setFilterAssignee('all'); searchParams.delete('assignee'); } else { setFilterAssignee(Number(v)); searchParams.set('assignee', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
-                <option value="all">All</option>
+            <div className="tasks-chip-group">
+              <span className="tasks-chip-label">Assignee</span>
+              <div className="tasks-chip-row">
+                <button
+                  className={`tasks-chip${filterAssignee === 'all' ? ' active' : ''}`}
+                  onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); }}
+                >
+                  All
+                </button>
                 {assignableUsers.map(u => (
-                  <option key={u.user_id} value={u.user_id}>{u.name}</option>
+                  <button
+                    key={u.user_id}
+                    className={`tasks-chip${filterAssignee === u.user_id ? ' active' : ''}`}
+                    onClick={() => { setFilterAssignee(u.user_id); searchParams.set('assignee', String(u.user_id)); setSearchParams(searchParams, { replace: true }); }}
+                  >
+                    {u.name}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
-          <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
-          <button className="generate-btn" onClick={() => setShowCreate(true)}>
-            + New Task
-          </button>
         </div>
 
         {/* Task list */}
@@ -314,7 +366,7 @@ export function TasksPage() {
         ) : filteredTasks.length === 0 ? (
           <div className="tasks-empty">
             <p>No tasks found.</p>
-            <p>Click "+ New Task" to create one.</p>
+            <p>Click "New Task" to create one.</p>
           </div>
         ) : (
           <div className="tasks-list">
