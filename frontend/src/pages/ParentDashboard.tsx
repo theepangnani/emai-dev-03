@@ -61,6 +61,7 @@ function DashboardSkeleton() {
 export function ParentDashboard() {
   const pd = useParentDashboard();
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [comingUpDismissed, setComingUpDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
 
   // Arrow key navigation for child selector tabs (ARIA tab pattern)
@@ -205,13 +206,16 @@ export function ParentDashboard() {
           />
 
           {/* Coming Up Timeline */}
-          <ComingUpTimeline
-            calendarAssignments={pd.calendarAssignments}
-            filteredTasks={pd.filteredTasks}
-            selectedChild={pd.selectedChild}
-            onToggleTask={pd.handleToggleTask}
-            onNavigateStudy={pd.handleOneClickStudy}
-          />
+          {!comingUpDismissed && (
+            <ComingUpTimeline
+              calendarAssignments={pd.calendarAssignments}
+              filteredTasks={pd.filteredTasks}
+              selectedChild={pd.selectedChild}
+              onToggleTask={pd.handleToggleTask}
+              onNavigateStudy={pd.handleOneClickStudy}
+              onDismiss={() => setComingUpDismissed(true)}
+            />
+          )}
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
             <div className="pd-onboard-tip" role="status">
