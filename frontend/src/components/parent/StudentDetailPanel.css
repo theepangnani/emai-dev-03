@@ -322,3 +322,16 @@
   padding: 8px;
   font-style: italic;
 }
+
+/* ============================================
+   Mobile Responsiveness: Touch Targets (#742)
+   ============================================ */
+
+@media (max-width: 768px) {
+  .sdp-task-checkbox {
+    min-width: 44px;
+    min-height: 44px;
+    margin: -13px;
+    padding: 13px;
+  }
+}
