@@ -26,45 +26,50 @@ interface DocumentTabProps {
   onReloadData: () => Promise<void>;
 }
 
+function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] } | { type: 'flashcards'; data: FlashcardItem[] } | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('[')) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    if (parsed[0].question && parsed[0].options) return { type: 'quiz', data: parsed as QuizItem[] };
+    if (parsed[0].front && parsed[0].back) return { type: 'flashcards', data: parsed as FlashcardItem[] };
+  } catch { /* not JSON */ }
+  return null;
+}
+
 function FormattedContent({ textContent }: { textContent: string }) {
-  const trimmed = textContent.trim();
-  if (trimmed.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        if (parsed[0].question && parsed[0].options) {
-          return (
-            <div className="cm-formatted-quiz">
-              {(parsed as QuizItem[]).map((q, i) => (
-                <div key={i} className="cm-fq-item">
-                  <p className="cm-fq-question"><strong>Q{i + 1}:</strong> {q.question}</p>
-                  <ul className="cm-fq-options">
-                    {Object.entries(q.options || {}).map(([k, v]) => (
-                      <li key={k} className={k === q.correct_answer ? 'cm-fq-correct' : ''}>
-                        <strong>{k}.</strong> {v}
-                      </li>
-                    ))}
-                  </ul>
-                  {q.explanation && <p className="cm-fq-explanation"><em>{q.explanation}</em></p>}
-                </div>
+  const formatted = parseFormattedContent(textContent);
+  if (formatted?.type === 'quiz') {
+    return (
+      <div className="cm-formatted-quiz">
+        {formatted.data.map((q, i) => (
+          <div key={i} className="cm-fq-item">
+            <p className="cm-fq-question"><strong>Q{i + 1}:</strong> {q.question}</p>
+            <ul className="cm-fq-options">
+              {Object.entries(q.options || {}).map(([k, v]) => (
+                <li key={k} className={k === q.correct_answer ? 'cm-fq-correct' : ''}>
+                  <strong>{k}.</strong> {v}
+                </li>
               ))}
-            </div>
-          );
-        }
-        if (parsed[0].front && parsed[0].back) {
-          return (
-            <div className="cm-formatted-cards">
-              {(parsed as FlashcardItem[]).map((c, i) => (
-                <div key={i} className="cm-fc-item">
-                  <strong>{c.front}</strong>
-                  <span> &mdash; {c.back}</span>
-                </div>
-              ))}
-            </div>
-          );
-        }
-      }
-    } catch { /* not JSON, fall through to markdown */ }
+            </ul>
+            {q.explanation && <p className="cm-fq-explanation"><em>{q.explanation}</em></p>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (formatted?.type === 'flashcards') {
+    return (
+      <div className="cm-formatted-cards">
+        {formatted.data.map((c, i) => (
+          <div key={i} className="cm-fc-item">
+            <strong>{c.front}</strong>
+            <span> &mdash; {c.back}</span>
+          </div>
+        ))}
+      </div>
+    );
   }
   return (
     <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
