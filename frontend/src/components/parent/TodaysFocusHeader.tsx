@@ -8,8 +8,8 @@ interface TodaysFocusHeaderProps {
   taskCounts: { overdue: number; dueToday: number; upcoming: number };
   pendingInviteCount: number;
   perChildOverdue: { name: string; overdue: number }[];
-  focusDismissed: boolean;
-  onDismiss: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onNavigate: (path: string) => void;
 }
 
@@ -20,16 +20,43 @@ export function TodaysFocusHeader({
   taskCounts,
   pendingInviteCount,
   perChildOverdue,
-  focusDismissed,
-  onDismiss,
+  collapsed,
+  onToggleCollapse,
   onNavigate,
 }: TodaysFocusHeaderProps) {
   return (inspiration: InspirationData | null) => {
-    if (focusDismissed) return null;
-
     const { overdue, dueToday, upcoming } = taskCounts;
     const inviteCount = pendingInviteCount;
     const allClear = overdue === 0 && dueToday === 0 && upcoming === 0 && inviteCount === 0;
+
+    // Collapsed state: thin summary bar
+    if (collapsed) {
+      const counts: React.ReactNode[] = [];
+      if (overdue > 0) counts.push(<span key="o" className="pd-focus-count-item overdue">{overdue} overdue</span>);
+      if (dueToday > 0) counts.push(<span key="t" className="pd-focus-count-item today">{dueToday} due today</span>);
+      if (upcoming > 0) counts.push(<span key="u" className="pd-focus-count-item upcoming">{upcoming} upcoming</span>);
+      if (inviteCount > 0) counts.push(<span key="i" className="pd-focus-count-item">{inviteCount} invite{inviteCount !== 1 ? 's' : ''}</span>);
+      if (allClear) counts.push(<span key="c" className="pd-focus-count-item">All clear</span>);
+
+      return (
+        <div className="pd-today-focus-header pd-focus-collapsed" onClick={onToggleCollapse} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleCollapse(); } }}>
+          <div className="pd-focus-collapsed-content">
+            <span className="pd-focus-collapsed-label">Today's Focus</span>
+            <div className="pd-focus-collapsed-counts">
+              {counts.map((node, i) => (
+                <span key={i}>
+                  {i > 0 && <span className="pd-focus-separator"> {'\u00B7'} </span>}
+                  {node}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button className="pd-focus-expand-btn" aria-label="Expand Today's Focus">{'\u25BC'}</button>
+        </div>
+      );
+    }
+
+    // Expanded state: full header
     const childLabel = selectedChildFirstName ?? (childList.length === 1 ? childList[0]?.full_name?.split(' ')[0] : null);
 
     const allChildNames = childList.map(c => c.full_name.split(' ')[0]);
@@ -103,10 +130,10 @@ export function TodaysFocusHeader({
         )}
         <button
           className="pd-today-focus-close"
-          onClick={onDismiss}
-          aria-label="Close Today's Focus"
+          onClick={onToggleCollapse}
+          aria-label="Collapse Today's Focus"
         >
-          {'\u00D7'}
+          {'\u25B2'}
         </button>
       </div>
     );
