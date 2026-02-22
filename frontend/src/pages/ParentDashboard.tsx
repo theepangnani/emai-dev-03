@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { PageSkeleton } from '../components/Skeleton';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
@@ -14,6 +13,50 @@ import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import './ParentDashboard.css';
+
+/** Section-specific skeleton that matches the Parent Dashboard layout. */
+function DashboardSkeleton() {
+  return (
+    <div className="pd-skeleton" aria-busy="true" aria-label="Loading dashboard">
+      {/* Today's Focus skeleton */}
+      <div className="pd-skeleton-focus">
+        <div className="skeleton pd-skeleton-headline" />
+        <div className="pd-skeleton-tags">
+          <div className="skeleton pd-skeleton-tag" />
+          <div className="skeleton pd-skeleton-tag" />
+          <div className="skeleton pd-skeleton-tag" style={{ width: 100 }} />
+        </div>
+      </div>
+
+      {/* Child selector skeleton */}
+      <div className="pd-skeleton-child-selector">
+        <div className="skeleton pd-skeleton-pill" />
+        <div className="skeleton pd-skeleton-pill" />
+        <div className="skeleton pd-skeleton-pill" style={{ width: 100 }} />
+      </div>
+
+      {/* Timeline skeleton */}
+      <div className="pd-skeleton-timeline">
+        { [70, 55, 80, 60].map((w, i) => (
+          <div className="pd-skeleton-timeline-item" key={i}>
+            <div className="skeleton pd-skeleton-timeline-dot" />
+            <div className="pd-skeleton-timeline-content">
+              <div className="skeleton pd-skeleton-timeline-row" style={{ width: `${w}%` }} />
+              <div className="skeleton pd-skeleton-timeline-row-sm" style={{ width: `${w - 20}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Detail panel skeleton */}
+      <div className="pd-skeleton-detail">
+        <div className="skeleton pd-skeleton-detail-header" />
+        <div className="skeleton pd-skeleton-detail-row" />
+        <div className="skeleton pd-skeleton-detail-row" style={{ width: '50%' }} />
+      </div>
+    </div>
+  );
+}
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
@@ -69,7 +112,7 @@ export function ParentDashboard() {
   if (pd.loading) {
     return (
       <DashboardLayout welcomeSubtitle="At-a-glance monitoring, calendar, and quick actions">
-        <PageSkeleton />
+        <DashboardSkeleton />
       </DashboardLayout>
     );
   }
