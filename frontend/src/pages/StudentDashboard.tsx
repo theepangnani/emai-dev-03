@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
+import { notificationsApi, type NotificationResponse } from '../api/notifications';
+import { tasksApi, type TaskItem } from '../api/tasks';
 import { invitesApi } from '../api/invites';
 import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../api/client';
-import { StudyToolsButton } from '../components/StudyToolsButton';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { useConfirm } from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
-import type { InspirationData } from '../components/DashboardLayout';
 import { logger } from '../utils/logger';
 import './StudentDashboard.css';
 
@@ -25,9 +25,27 @@ function formatTimeAgo(date: Date): string {
   return `${hours}h ago`;
 }
 
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const dayAfterTomorrow = new Date(todayStart);
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+  if (date < todayStart) return 'Overdue';
+  if (date < tomorrowStart) {
+    return `Today${date.getHours() ? ` at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`;
+  }
+  if (date < dayAfterTomorrow) return 'Tomorrow';
+  return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 interface Course {
   id: number;
   name: string;
+  subject?: string;
   google_classroom_id?: string;
 }
 
@@ -36,7 +54,36 @@ interface Assignment {
   title: string;
   description: string | null;
   course_id: number;
+  course_name?: string | null;
   due_date: string | null;
+}
+
+type UrgencyTier = 'overdue' | 'today' | 'week' | 'later';
+
+interface TimelineItem {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  type: 'assignment' | 'task';
+  urgency: UrgencyTier;
+  courseName?: string;
+  sourceId: number;
+  priority?: string;
+}
+
+function getUrgencyTier(dueDate: string | null): UrgencyTier {
+  if (!dueDate) return 'later';
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+  const weekEnd = new Date(todayStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const due = new Date(dueDate);
+  if (due < todayStart) return 'overdue';
+  if (due < todayEnd) return 'today';
+  if (due < weekEnd) return 'week';
+  return 'later';
 }
 
 export function StudentDashboard() {
@@ -51,7 +98,9 @@ export function StudentDashboard() {
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
 
@@ -67,10 +116,15 @@ export function StudentDashboard() {
   const [uploadMode, setUploadMode] = useState<'text' | 'file'>('text');
   const [isDragging, setIsDragging] = useState(false);
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
-  const [courseFilter, setCourseFilter] = useState<number | ''>('');
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { confirm, confirmModal } = useConfirm();
+
+  // Create course modal
+  const [showCreateCourseModal, setShowCreateCourseModal] = useState(false);
+  const [newCourseName, setNewCourseName] = useState('');
+  const [newCourseSubject, setNewCourseSubject] = useState('');
+  const [isCreatingCourse, setIsCreatingCourse] = useState(false);
 
   // Invite teacher state
   const [showInviteTeacherModal, setShowInviteTeacherModal] = useState(false);
@@ -81,7 +135,6 @@ export function StudentDashboard() {
   const justRegistered = searchParams.get('just_registered') === 'true';
 
   const { user } = useAuth();
-  const [focusDismissed, setFocusDismissed] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() =>
     localStorage.getItem('student-upload-onboarding-dismissed') === 'true'
   );
@@ -89,74 +142,99 @@ export function StudentDashboard() {
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     const firstName = user?.full_name?.split(' ')[0] || 'there';
-    if (hour < 12) return `Good morning, ${firstName}!`;
-    if (hour < 17) return `Good afternoon, ${firstName}!`;
-    return `Good evening, ${firstName}!`;
+    if (hour < 12) return `Good morning, ${firstName}`;
+    if (hour < 17) return `Good afternoon, ${firstName}`;
+    return `Good evening, ${firstName}`;
   }, [user?.full_name]);
 
-  const urgencyCounts = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-    const weekEnd = new Date(todayStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
+  const calculateStreak = (guides: StudyGuide[]): number => {
+    if (!guides.length) return 0;
+    const uniqueDates = Array.from(
+      new Set(guides.map(g => new Date(g.created_at).toDateString()))
+    ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak = 0;
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const expected = new Date(today);
+      expected.setDate(expected.getDate() - i);
+      if (new Date(uniqueDates[i]).toDateString() !== expected.toDateString()) break;
+      streak++;
+    }
+    return streak;
+  };
 
+  // Build unified timeline from assignments + tasks
+  const timelineItems = useMemo(() => {
+    const items: TimelineItem[] = [];
+
+    for (const a of assignments) {
+      items.push({
+        id: `assignment-${a.id}`,
+        title: a.title,
+        dueDate: a.due_date,
+        type: 'assignment',
+        urgency: getUrgencyTier(a.due_date),
+        courseName: a.course_name ?? undefined,
+        sourceId: a.id,
+      });
+    }
+
+    for (const t of tasks) {
+      if (t.is_completed) continue;
+      items.push({
+        id: `task-${t.id}`,
+        title: t.title,
+        dueDate: t.due_date,
+        type: 'task',
+        urgency: getUrgencyTier(t.due_date),
+        courseName: t.course_name ?? undefined,
+        sourceId: t.id,
+        priority: t.priority || undefined,
+      });
+    }
+
+    // Sort: overdue first, then today, week, later. Within each tier, nearest due first
+    const tierOrder: Record<UrgencyTier, number> = { overdue: 0, today: 1, week: 2, later: 3 };
+    items.sort((a, b) => {
+      const tierDiff = tierOrder[a.urgency] - tierOrder[b.urgency];
+      if (tierDiff !== 0) return tierDiff;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    });
+
+    return items;
+  }, [assignments, tasks]);
+
+  const urgencyCounts = useMemo(() => {
     let overdue = 0;
     let dueToday = 0;
     let upcoming = 0;
-
-    for (const a of assignments) {
-      if (!a.due_date) continue;
-      const due = new Date(a.due_date);
-      if (due < todayStart) overdue++;
-      else if (due < todayEnd) dueToday++;
-      else if (due < weekEnd) upcoming++;
+    for (const item of timelineItems) {
+      if (item.urgency === 'overdue') overdue++;
+      else if (item.urgency === 'today') dueToday++;
+      else if (item.urgency === 'week') upcoming++;
     }
     return { overdue, dueToday, upcoming };
-  }, [assignments]);
+  }, [timelineItems]);
 
-  type UrgencyTier = 'overdue' | 'today' | 'week' | 'later';
+  // Actionable notifications (unread, from parents/teachers)
+  const actionableNotifications = useMemo(() => {
+    return notifications.filter(n =>
+      !n.read && (
+        n.type === 'parent_request' ||
+        n.type === 'assessment_upcoming' ||
+        n.type === 'assignment_due' ||
+        n.type === 'task_due' ||
+        (n.requires_ack && !n.acked_at)
+      )
+    ).slice(0, 5);
+  }, [notifications]);
 
-  const getUrgencyTier = (dueDate: string | null): UrgencyTier => {
-    if (!dueDate) return 'later';
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-    const weekEnd = new Date(todayStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const due = new Date(dueDate);
-    if (due < todayStart) return 'overdue';
-    if (due < todayEnd) return 'today';
-    if (due < weekEnd) return 'week';
-    return 'later';
-  };
+  const streak = useMemo(() => calculateStreak(studyGuides), [studyGuides]);
 
-  const groupedAssignments = useMemo(() => {
-    const groups: Record<UrgencyTier, Assignment[]> = {
-      overdue: [], today: [], week: [], later: [],
-    };
-    for (const a of assignments) {
-      groups[getUrgencyTier(a.due_date)].push(a);
-    }
-    // Sort within each group by due date (nearest first)
-    for (const tier of Object.keys(groups) as UrgencyTier[]) {
-      groups[tier].sort((a, b) => {
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-      });
-    }
-    return groups;
-  }, [assignments]);
-
-  const dueThisWeekCount = groupedAssignments.overdue.length + groupedAssignments.today.length + groupedAssignments.week.length;
-
-  const TIER_LABELS: Record<UrgencyTier, string> = {
-    overdue: 'Overdue', today: 'Due Today', week: 'This Week', later: 'Later',
-  };
-
+  // ── Data Loading ──────────────────────────────────────────────
   useEffect(() => {
     const checkGoogleStatus = async () => {
       try {
@@ -173,13 +251,11 @@ export function StudentDashboard() {
     if (connected === 'true') {
       setGoogleConnected(true);
       setStatusMessage({ type: 'success', text: 'Google Classroom connected successfully!' });
-      // Auto-sync courses after Google connection
       googleApi.syncCourses().then((result) => {
         setStatusMessage({ type: 'success', text: result.message || 'Classes synced!' });
         loadCourses();
         loadAssignments();
       }).catch(() => {});
-      // Clear the param but keep just_registered if present
       const newParams: Record<string, string> = {};
       if (searchParams.get('just_registered')) newParams.just_registered = 'true';
       setSearchParams(newParams);
@@ -189,8 +265,14 @@ export function StudentDashboard() {
       setSearchParams({});
     }
 
-    Promise.all([checkGoogleStatus(), loadCourses(), loadAssignments(), loadStudyGuides()])
-      .finally(() => setInitialLoading(false));
+    Promise.all([
+      checkGoogleStatus(),
+      loadCourses(),
+      loadAssignments(),
+      loadStudyGuides(),
+      loadTasks(),
+      loadNotifications(),
+    ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
   const loadCourses = async () => {
@@ -212,17 +294,34 @@ export function StudentDashboard() {
     }
   };
 
-  const loadStudyGuides = async (filterCourseId?: number) => {
+  const loadStudyGuides = async () => {
     try {
-      const params: { course_id?: number } = {};
-      if (filterCourseId) params.course_id = filterCourseId;
-      const data = await studyApi.listGuides(params);
+      const data = await studyApi.listGuides({});
       setStudyGuides(data);
     } catch {
       // Study guides not loaded
     }
   };
 
+  const loadTasks = async () => {
+    try {
+      const data = await tasksApi.list({ is_completed: false });
+      setTasks(data);
+    } catch {
+      // Tasks not loaded
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const data = await notificationsApi.list(0, 20, true);
+      setNotifications(data);
+    } catch {
+      // Notifications not loaded
+    }
+  };
+
+  // ── Google Actions ────────────────────────────────────────────
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
     try {
@@ -265,6 +364,7 @@ export function StudentDashboard() {
     }
   };
 
+  // ── Status message auto-dismiss ───────────────────────────────
   useEffect(() => {
     if (statusMessage) {
       const timer = setTimeout(() => { setStatusMessage(null); setFaqCode(null); }, 5000);
@@ -272,12 +372,14 @@ export function StudentDashboard() {
     }
   }, [statusMessage]);
 
+  // ── Load supported formats when modal opens ───────────────────
   useEffect(() => {
     if (showCreateModal && !supportedFormats) {
       studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
     }
   }, [showCreateModal, supportedFormats]);
 
+  // ── File Upload Handlers ──────────────────────────────────────
   const handleFileSelect = (file: File) => {
     const fileSizeMB = file.size / (1024 * 1024);
     logger.info('File selected for upload', { filename: file.name, sizeMB: fileSizeMB.toFixed(2) });
@@ -295,51 +397,33 @@ export function StudentDashboard() {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFileSelect(file);
-    }
+    if (file) handleFileSelect(file);
   };
-
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
+    if (file) handleFileSelect(file);
   };
-
   const clearFileSelection = () => {
     setSelectedFile(null);
     setUploadMode('text');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
-
   const resetModal = () => {
     setShowCreateModal(false);
     setCustomTitle('');
     setCustomContent('');
     setSelectedFile(null);
     setUploadMode('text');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // ── Generate Study Material ───────────────────────────────────
   const handleCreateCustom = async () => {
     if (uploadMode === 'file') {
       if (!selectedFile) {
@@ -369,7 +453,6 @@ export function StudentDashboard() {
       contentLength: customContent.length,
     });
 
-    // Check for duplicates before generating (skip for file uploads)
     if (uploadMode === 'text' && !duplicateCheck) {
       try {
         const dupResult = await studyApi.checkDuplicate({
@@ -442,6 +525,28 @@ export function StudentDashboard() {
     }
   };
 
+  // ── Create Course ─────────────────────────────────────────────
+  const handleCreateCourse = async () => {
+    if (!newCourseName.trim()) return;
+    setIsCreatingCourse(true);
+    try {
+      await coursesApi.create({
+        name: newCourseName.trim(),
+        subject: newCourseSubject.trim() || undefined,
+      });
+      setStatusMessage({ type: 'success', text: `Course "${newCourseName}" created!` });
+      setShowCreateCourseModal(false);
+      setNewCourseName('');
+      setNewCourseSubject('');
+      loadCourses();
+    } catch {
+      setStatusMessage({ type: 'error', text: 'Failed to create course' });
+    } finally {
+      setIsCreatingCourse(false);
+    }
+  };
+
+  // ── Invite Teacher ────────────────────────────────────────────
   const handleInviteTeacher = async () => {
     if (!inviteTeacherEmail.trim()) return;
     setInviteTeacherLoading(true);
@@ -461,74 +566,49 @@ export function StudentDashboard() {
     }
   };
 
-  const calculateStreak = (guides: StudyGuide[]): number => {
-    if (!guides.length) return 0;
-    const uniqueDates = Array.from(
-      new Set(guides.map(g => new Date(g.created_at).toDateString()))
-    ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let streak = 0;
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const expected = new Date(today);
-      expected.setDate(expected.getDate() - i);
-      if (new Date(uniqueDates[i]).toDateString() !== expected.toDateString()) break;
-      streak++;
+  // ── Notification Actions ──────────────────────────────────────
+  const handleNotificationClick = async (n: NotificationResponse) => {
+    try {
+      await notificationsApi.markAsRead(n.id);
+      setNotifications(prev => prev.filter(x => x.id !== n.id));
+    } catch { /* ignore */ }
+    if (n.link) navigate(n.link);
+  };
+
+  const handleDismissNotification = async (e: React.MouseEvent, n: NotificationResponse) => {
+    e.stopPropagation();
+    try {
+      if (n.requires_ack) {
+        await notificationsApi.ack(n.id);
+      } else {
+        await notificationsApi.markAsRead(n.id);
+      }
+      setNotifications(prev => prev.filter(x => x.id !== n.id));
+    } catch { /* ignore */ }
+  };
+
+  // ── Icon helpers ──────────────────────────────────────────────
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'parent_request': return '\u{1F4E9}';
+      case 'assessment_upcoming': return '\u{1F4DD}';
+      case 'assignment_due': return '\u{1F4DA}';
+      case 'task_due': return '\u2705';
+      default: return '\u{1F514}';
     }
-    return streak;
   };
 
-  const renderHeaderSlot = (inspiration: InspirationData | null) => {
-    if (focusDismissed) return null;
-
-    const { overdue, dueToday, upcoming } = urgencyCounts;
-    const allClear = overdue === 0 && dueToday === 0 && upcoming === 0;
-
-    return (
-      <div className="student-focus-header">
-        <div className="student-focus-main">
-          <div className="student-focus-greeting">{greeting}</div>
-          {allClear ? (
-            <div className="student-focus-status all-clear">
-              <span className="student-focus-icon">{'\u2705'}</span>
-              <span>All caught up! Keep up the great work.</span>
-            </div>
-          ) : (
-            <div className="student-focus-status">
-              <span className="student-focus-icon">{overdue > 0 ? '\u{1F525}' : '\u{1F4CB}'}</span>
-              <div className="student-focus-items">
-                {overdue > 0 && (
-                  <button type="button" className="student-focus-tag overdue" onClick={() => navigate('/tasks?due=overdue')}>{overdue} overdue</button>
-                )}
-                {dueToday > 0 && (
-                  <button type="button" className="student-focus-tag today" onClick={() => navigate('/tasks?due=today')}>{dueToday} due today</button>
-                )}
-                {upcoming > 0 && (
-                  <button type="button" className="student-focus-tag upcoming" onClick={() => navigate('/tasks?due=week')}>{upcoming} this week</button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        {inspiration && (
-          <div className="student-focus-inspiration">
-            <span className="student-focus-quote">"{inspiration.text}"</span>
-            {inspiration.author && (
-              <span className="student-focus-author"> — {inspiration.author}</span>
-            )}
-          </div>
-        )}
-        <button
-          className="student-focus-close"
-          onClick={() => setFocusDismissed(true)}
-          aria-label="Dismiss"
-        >
-          {'\u00D7'}
-        </button>
-      </div>
-    );
+  const getNotificationLabel = (type: string) => {
+    switch (type) {
+      case 'parent_request': return 'From Parent';
+      case 'assessment_upcoming': return 'From Teacher';
+      case 'assignment_due': return 'Due Soon';
+      case 'task_due': return 'Task Due';
+      default: return 'Alert';
+    }
   };
 
+  // ── Render ────────────────────────────────────────────────────
   if (initialLoading) {
     return (
       <DashboardLayout welcomeSubtitle="Here's your learning overview">
@@ -537,8 +617,12 @@ export function StudentDashboard() {
     );
   }
 
+  const { overdue, dueToday, upcoming } = urgencyCounts;
+  const allClear = overdue === 0 && dueToday === 0 && upcoming === 0;
+  const recentGuides = studyGuides.slice(0, 5);
+
   return (
-    <DashboardLayout welcomeSubtitle="Here's your learning overview" headerSlot={renderHeaderSlot}>
+    <DashboardLayout welcomeSubtitle="Here's your learning overview">
       {statusMessage && (
         <div className={`status-message status-${statusMessage.type}`}>
           {statusMessage.text}
@@ -546,278 +630,316 @@ export function StudentDashboard() {
         </div>
       )}
 
+      {/* ── Hero Section ─────────────────────────────────── */}
+      <section className="sd-hero">
+        <div className="sd-hero-text">
+          <h1 className="sd-greeting">{greeting}</h1>
+          {allClear ? (
+            <p className="sd-hero-subtitle sd-all-clear">You're all caught up. Keep it going!</p>
+          ) : (
+            <p className="sd-hero-subtitle">
+              {overdue > 0 && <span className="sd-urgency-pill overdue">{overdue} overdue</span>}
+              {dueToday > 0 && <span className="sd-urgency-pill today">{dueToday} due today</span>}
+              {upcoming > 0 && <span className="sd-urgency-pill week">{upcoming} this week</span>}
+            </p>
+          )}
+        </div>
+        <div className="sd-hero-stats">
+          {streak > 0 && (
+            <div className="sd-stat-chip streak">
+              <span className="sd-stat-icon">{'\u{1F525}'}</span>
+              <span>{streak} day{streak !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          <div className="sd-stat-chip">
+            <span className="sd-stat-icon">{'\u{1F4DA}'}</span>
+            <span>{courses.length} class{courses.length !== 1 ? 'es' : ''}</span>
+          </div>
+          <div className="sd-stat-chip">
+            <span className="sd-stat-icon">{'\u{1F4DD}'}</span>
+            <span>{studyGuides.length} material{studyGuides.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Notification Alerts ──────────────────────────── */}
+      {actionableNotifications.length > 0 && (
+        <section className="sd-alerts">
+          <h2 className="sd-section-label">Needs Your Attention</h2>
+          <div className="sd-alerts-list">
+            {actionableNotifications.map(n => (
+              <div
+                key={n.id}
+                className={`sd-alert-card ${n.type}`}
+                onClick={() => handleNotificationClick(n)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleNotificationClick(n); }}
+              >
+                <span className="sd-alert-icon">{getNotificationIcon(n.type)}</span>
+                <div className="sd-alert-body">
+                  <span className="sd-alert-label">{getNotificationLabel(n.type)}</span>
+                  <span className="sd-alert-title">{n.title}</span>
+                </div>
+                <button
+                  className="sd-alert-dismiss"
+                  onClick={(e) => handleDismissNotification(e, n)}
+                  aria-label="Dismiss"
+                >{'\u00D7'}</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Google Classroom Banner ──────────────────────── */}
       {!googleConnected && (
-        <div className={`onboarding-banner ${justRegistered ? 'welcome' : 'standard'}`}>
-          <div className="onboarding-icon">🔗</div>
-          <div className="onboarding-text">
-            <strong className="onboarding-title">
+        <div className={`sd-google-banner ${justRegistered ? 'welcome' : ''}`}>
+          <div className="sd-google-icon">{'\u{1F517}'}</div>
+          <div className="sd-google-text">
+            <strong>
               {justRegistered ? 'Welcome! Connect your Google Classroom' : 'Connect Google Classroom'}
             </strong>
-            <p className="onboarding-subtitle">
+            <p>
               {justRegistered
-                ? 'Your parent invited you to EMAI. Connect Google Classroom so they can see your classes and teachers.'
-                : 'Connect your Google Classroom so your parent can see your classes and track your progress.'}
+                ? 'Your parent invited you to ClassBridge. Connect Google Classroom so they can see your classes and teachers.'
+                : 'Sync your classes and assignments automatically.'}
             </p>
           </div>
-          <button
-            className="connect-button onboarding-action"
-            onClick={handleConnectGoogle}
-            disabled={isConnecting}
-          >
+          <button className="sd-google-btn" onClick={handleConnectGoogle} disabled={isConnecting}>
             {isConnecting ? 'Connecting...' : 'Connect Now'}
           </button>
         </div>
       )}
 
-      <div className="dashboard-grid">
-        <div className="dashboard-card">
-          <div className="card-icon">📚</div>
-          <h3>Classes</h3>
-          <p className="card-value">{courses.length || '--'}</p>
-          <p className="card-label">Active classes</p>
+      {/* ── Onboarding Tip ───────────────────────────────── */}
+      {!onboardingDismissed && studyGuides.length < 3 && (
+        <div className="sd-onboarding">
+          <div className="sd-onboarding-content">
+            <h3>How to add your class materials</h3>
+            <ol>
+              <li>Download materials from Google Classroom, TeachAssist, or Edsby</li>
+              <li>Upload them here using the upload action below</li>
+              <li>ClassBridge generates study guides, quizzes, and flashcards automatically</li>
+            </ol>
+          </div>
+          <button
+            className="sd-onboarding-dismiss"
+            onClick={() => {
+              localStorage.setItem('student-upload-onboarding-dismissed', 'true');
+              setOnboardingDismissed(true);
+            }}
+          >Got it</button>
         </div>
+      )}
 
-        <div className="dashboard-card">
-          <div className="card-icon">📝</div>
-          <h3>Assignments</h3>
-          <p className="card-value">{assignments.length || '--'}</p>
-          <p className="card-label">Total assignments</p>
-        </div>
+      {/* ── Quick Actions ────────────────────────────────── */}
+      <section className="sd-actions">
+        <button className="sd-action-card upload" onClick={() => { setUploadMode('file'); setShowCreateModal(true); }}>
+          <div className="sd-action-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div className="sd-action-text">
+            <span className="sd-action-title">Upload Materials</span>
+            <span className="sd-action-desc">From Classroom, TeachAssist...</span>
+          </div>
+        </button>
 
-        <div className="dashboard-card">
-          <div className="card-icon">📖</div>
-          <h3>Study Materials</h3>
-          <p className="card-value">{studyGuides.length || '--'}</p>
-          <p className="card-label">Guides, quizzes & flashcards</p>
-        </div>
+        <button className="sd-action-card course" onClick={() => setShowCreateCourseModal(true)}>
+          <div className="sd-action-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="12" y1="6" x2="12" y2="14"/><line x1="8" y1="10" x2="16" y2="10"/></svg>
+          </div>
+          <div className="sd-action-text">
+            <span className="sd-action-title">New Course</span>
+            <span className="sd-action-desc">Create a subject</span>
+          </div>
+        </button>
 
-        <div className="dashboard-card streak-card">
-          <div className="card-icon">🔥</div>
-          <h3>Study Streak</h3>
-          <p className="card-value">{calculateStreak(studyGuides)}</p>
-          <p className="card-label">{calculateStreak(studyGuides) === 1 ? 'day' : 'days'} in a row</p>
-        </div>
+        <button className="sd-action-card study" onClick={() => { setUploadMode('text'); setShowCreateModal(true); }}>
+          <div className="sd-action-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div className="sd-action-text">
+            <span className="sd-action-title">Study Guide</span>
+            <span className="sd-action-desc">Generate from your notes</span>
+          </div>
+        </button>
 
-        <div className="dashboard-card">
-          <div className="card-icon">🔗</div>
-          <h3>Google Classroom</h3>
-          <p className="card-value">{googleConnected ? 'Connected' : 'Not Connected'}</p>
-          {googleConnected ? (
-            <div className="card-buttons">
-              <button className="connect-button" onClick={handleSyncCourses} disabled={isSyncing}>
-                {isSyncing ? (<><span className="btn-spinner" /> Syncing...</>) : 'Sync Classes'}
-              </button>
-              <button className="disconnect-button" onClick={handleDisconnectGoogle} disabled={disconnecting}>
-                {disconnecting ? 'Disconnecting...' : 'Disconnect'}
-              </button>
-              {lastSynced && (
-                <span className="last-synced">Last synced: {formatTimeAgo(lastSynced)}</span>
+        {googleConnected ? (
+          <button className="sd-action-card sync" onClick={handleSyncCourses} disabled={isSyncing}>
+            <div className="sd-action-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'sd-spin' : ''}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            </div>
+            <div className="sd-action-text">
+              <span className="sd-action-title">{isSyncing ? 'Syncing...' : 'Sync Classes'}</span>
+              <span className="sd-action-desc">
+                {lastSynced ? `Last: ${formatTimeAgo(lastSynced)}` : 'Google Classroom'}
+              </span>
+            </div>
+          </button>
+        ) : (
+          <button className="sd-action-card connect" onClick={handleConnectGoogle} disabled={isConnecting}>
+            <div className="sd-action-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <div className="sd-action-text">
+              <span className="sd-action-title">Connect Classroom</span>
+              <span className="sd-action-desc">Link Google account</span>
+            </div>
+          </button>
+        )}
+      </section>
+
+      {/* ── Main Content Grid ────────────────────────────── */}
+      <div className="sd-main-grid">
+        {/* Coming Up */}
+        <section className="sd-panel sd-coming-up">
+          <div className="sd-panel-header">
+            <h2>Coming Up</h2>
+            <Link to="/tasks" className="sd-see-all">All tasks</Link>
+          </div>
+          {timelineItems.length > 0 ? (
+            <div className="sd-timeline">
+              {timelineItems.slice(0, 8).map(item => (
+                <div
+                  key={item.id}
+                  className={`sd-timeline-item ${item.urgency}`}
+                  onClick={() => {
+                    if (item.type === 'task') navigate(`/tasks/${item.sourceId}`);
+                  }}
+                  role={item.type === 'task' ? 'button' : undefined}
+                  tabIndex={item.type === 'task' ? 0 : undefined}
+                >
+                  <div className="sd-timeline-dot" />
+                  <div className="sd-timeline-content">
+                    <span className="sd-timeline-title">{item.title}</span>
+                    <div className="sd-timeline-meta">
+                      {item.dueDate && (
+                        <span className={`sd-timeline-date ${item.urgency}`}>
+                          {formatRelativeDate(item.dueDate)}
+                        </span>
+                      )}
+                      {item.courseName && (
+                        <span className="sd-timeline-course">{item.courseName}</span>
+                      )}
+                      <span className={`sd-timeline-type ${item.type}`}>
+                        {item.type === 'assignment' ? 'Assignment' : 'Task'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {timelineItems.length > 8 && (
+                <Link to="/tasks" className="sd-timeline-more">
+                  +{timelineItems.length - 8} more items
+                </Link>
               )}
             </div>
           ) : (
-            <button className="connect-button" onClick={handleConnectGoogle} disabled={isConnecting}>
-              {isConnecting ? 'Connecting...' : 'Connect'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="dashboard-sections">
-        <section className="section">
-          <h3>Your Assignments</h3>
-          {assignments.length > 0 ? (
-            <>
-              {dueThisWeekCount > 0 && (
-                <div className="student-assignments-summary">
-                  <span className="student-due-week-count">{dueThisWeekCount} due this week</span>
-                </div>
-              )}
-              <ul className="assignments-list">
-                {(['overdue', 'today', 'week', 'later'] as UrgencyTier[]).map(tier => {
-                  const items = groupedAssignments[tier];
-                  if (items.length === 0) return null;
-                  return (
-                    <li key={tier} className="student-assignment-group">
-                      <div className={`student-assignment-group-header ${tier}`}>
-                        {TIER_LABELS[tier]} ({items.length})
-                      </div>
-                      <ul className="student-assignment-group-list">
-                        {items.map((assignment) => (
-                          <li key={assignment.id} className="assignment-item">
-                            <div className="assignment-info">
-                              <span className="assignment-title">{assignment.title}</span>
-                              <span className={`student-due-badge ${tier}`}>
-                                {assignment.due_date
-                                  ? new Date(assignment.due_date).toLocaleDateString()
-                                  : 'No due date'}
-                              </span>
-                            </div>
-                            <StudyToolsButton assignmentId={assignment.id} assignmentTitle={assignment.title} />
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📋</div>
-              <h3 className="empty-state-title">No assignments yet</h3>
-              <p className="empty-state-text">Sync your Google Classroom to see assignments here.</p>
-              <button className="empty-state-cta" onClick={() => navigate('/courses')}>Browse Classes</button>
+            <div className="sd-empty">
+              <div className="sd-empty-icon">{'\u{1F389}'}</div>
+              <p className="sd-empty-title">Nothing coming up</p>
+              <p className="sd-empty-text">You're all clear! Create a course or upload materials to get started.</p>
             </div>
           )}
         </section>
 
-        {!onboardingDismissed && studyGuides.length < 3 && (
-          <div className="student-onboarding-card">
-            <div className="student-onboarding-content">
-              <h4 className="student-onboarding-title">How to add your class materials</h4>
-              <ol className="student-onboarding-steps">
-                <li>Open Google Classroom (or TeachAssist, Edsby)</li>
-                <li>Download your course materials</li>
-                <li>Upload them here</li>
-                <li>ClassBridge generates study tools</li>
-              </ol>
+        {/* Recent Study Materials */}
+        <section className="sd-panel sd-materials">
+          <div className="sd-panel-header">
+            <h2>Study Materials</h2>
+            <Link to="/course-materials" className="sd-see-all">See all</Link>
+          </div>
+          {recentGuides.length > 0 ? (
+            <div className="sd-materials-list">
+              {recentGuides.map(guide => (
+                <Link
+                  key={guide.id}
+                  to={
+                    guide.guide_type === 'quiz'
+                      ? `/study/quiz/${guide.id}`
+                      : guide.guide_type === 'flashcards'
+                      ? `/study/flashcards/${guide.id}`
+                      : `/study/guide/${guide.id}`
+                  }
+                  className="sd-material-row"
+                >
+                  <span className="sd-material-icon">
+                    {guide.guide_type === 'quiz' ? '\u{2753}' : guide.guide_type === 'flashcards' ? '\u{1F0CF}' : '\u{1F4D6}'}
+                  </span>
+                  <div className="sd-material-info">
+                    <span className="sd-material-title">{guide.title}</span>
+                    <span className="sd-material-meta">
+                      {guide.guide_type.replace('_', ' ')}
+                      {guide.version > 1 && ` \u00B7 v${guide.version}`}
+                    </span>
+                  </div>
+                  <span className="sd-material-date">
+                    {new Date(guide.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </span>
+                </Link>
+              ))}
             </div>
-            <button
-              className="student-onboarding-dismiss"
-              onClick={() => {
-                localStorage.setItem('student-upload-onboarding-dismissed', 'true');
-                setOnboardingDismissed(true);
-              }}
-            >
-              Got it
+          ) : (
+            <div className="sd-empty">
+              <div className="sd-empty-icon">{'\u{1F4DD}'}</div>
+              <p className="sd-empty-title">No study materials yet</p>
+              <p className="sd-empty-text">Upload class materials or paste your notes to generate study guides.</p>
+              <button className="sd-empty-cta" onClick={() => setShowCreateModal(true)}>Create Study Material</button>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ── Courses Section ──────────────────────────────── */}
+      <section className="sd-panel sd-courses">
+        <div className="sd-panel-header">
+          <h2>Your Courses</h2>
+          <div className="sd-courses-actions">
+            {googleConnected && (
+              <button className="sd-text-btn" onClick={handleSyncCourses} disabled={isSyncing}>
+                {isSyncing ? 'Syncing...' : 'Sync'}
+              </button>
+            )}
+            {googleConnected && (
+              <button className="sd-text-btn danger" onClick={handleDisconnectGoogle} disabled={disconnecting}>
+                {disconnecting ? '...' : 'Disconnect'}
+              </button>
+            )}
+            <button className="sd-text-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
+              Invite Teacher
             </button>
+          </div>
+        </div>
+        {courses.length > 0 ? (
+          <div className="sd-course-chips">
+            {courses.map(course => (
+              <Link key={course.id} to={`/courses`} className="sd-course-chip">
+                <span className="sd-course-name">{course.name}</span>
+                {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
+              </Link>
+            ))}
+            <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
+              + Add Course
+            </button>
+          </div>
+        ) : (
+          <div className="sd-empty compact">
+            <p className="sd-empty-title">No courses yet</p>
+            <p className="sd-empty-text">Create a course or connect Google Classroom to get started.</p>
+            <div className="sd-empty-actions">
+              <button className="sd-empty-cta" onClick={() => setShowCreateCourseModal(true)}>Create Course</button>
+              {!googleConnected && (
+                <button className="sd-empty-cta secondary" onClick={handleConnectGoogle} disabled={isConnecting}>
+                  Connect Classroom
+                </button>
+              )}
+            </div>
           </div>
         )}
+      </section>
 
-        <section className="section">
-          <div className="section-header">
-            <h3>Your Study Materials</h3>
-            <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
-              + Create Custom
-            </button>
-          </div>
-          {courses.length > 0 && (
-            <div className="course-filter">
-              <select
-                value={courseFilter}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : '';
-                  setCourseFilter(val);
-                  loadStudyGuides(val || undefined);
-                }}
-              >
-                <option value="">All Classes</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {studyGuides.length > 0 ? (
-            <ul className="study-guides-list">
-              {studyGuides.map((guide) => (
-                <li key={guide.id} className="study-guide-item">
-                  <Link
-                    to={
-                      guide.guide_type === 'quiz'
-                        ? `/study/quiz/${guide.id}`
-                        : guide.guide_type === 'flashcards'
-                        ? `/study/flashcards/${guide.id}`
-                        : `/study/guide/${guide.id}`
-                    }
-                    className="study-guide-link"
-                  >
-                    <span className="guide-icon">
-                      {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '🃏' : '📖'}
-                    </span>
-                    <span className="guide-title">{guide.title}</span>
-                    {guide.version > 1 && (
-                      <span className="version-badge">v{guide.version}</span>
-                    )}
-                    <span className="guide-date">
-                      {new Date(guide.created_at).toLocaleDateString()}
-                    </span>
-                  </Link>
-                  {courses.length > 0 && (
-                    <select
-                      className="inline-course-select"
-                      title="Assign to class"
-                      value={guide.course_id ?? ''}
-                      onClick={(e) => e.preventDefault()}
-                      onChange={async (e) => {
-                        e.preventDefault();
-                        const newCourseId = e.target.value === '' ? null : parseInt(e.target.value);
-                        try {
-                          await studyApi.updateGuide(guide.id, { course_id: newCourseId });
-                          setStudyGuides(prev => prev.map(g => g.id === guide.id ? { ...g, course_id: newCourseId } : g));
-                        } catch { /* ignore */ }
-                      }}
-                    >
-                      <option value="">No class</option>
-                      {courses.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  <button
-                    className="delete-guide-btn"
-                    title="Delete"
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      await studyApi.deleteGuide(guide.id);
-                      setStudyGuides(prev => prev.filter(g => g.id !== guide.id));
-                    }}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📝</div>
-              <h3 className="empty-state-title">No study materials yet</h3>
-              <p className="empty-state-text">Upload or create study materials from your class content.</p>
-              <button className="empty-state-cta" onClick={() => navigate('/course-materials')}>Upload Materials</button>
-            </div>
-          )}
-        </section>
-
-        <section className="section">
-          <div className="section-header">
-            <h3>Your Classes</h3>
-            <button className="create-custom-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
-              + Invite Teacher
-            </button>
-          </div>
-          {courses.length > 0 ? (
-            <ul className="courses-list">
-              {courses.map((course) => (
-                <li key={course.id} className="course-item">
-                  <span className="course-name">{course.name}</span>
-                  {course.google_classroom_id && (
-                    <span className="google-badge">Google</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📚</div>
-              <h3 className="empty-state-title">No classes yet</h3>
-              <p className="empty-state-text">Connect Google Classroom to sync your classes automatically.</p>
-              <button className="empty-state-cta" onClick={() => navigate('/courses')}>Browse Classes</button>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Create Custom Study Material Modal */}
+      {/* ── Create Study Material Modal ──────────────────── */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => resetModal()}>
           <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
@@ -828,16 +950,12 @@ export function StudentDashboard() {
                 className={`mode-btn ${uploadMode === 'text' ? 'active' : ''}`}
                 onClick={() => setUploadMode('text')}
                 disabled={isGenerating}
-              >
-                Paste Text
-              </button>
+              >Paste Text</button>
               <button
                 className={`mode-btn ${uploadMode === 'file' ? 'active' : ''}`}
                 onClick={() => setUploadMode('file')}
                 disabled={isGenerating}
-              >
-                Upload File
-              </button>
+              >Upload File</button>
             </div>
 
             <div className="modal-form">
@@ -873,7 +991,6 @@ export function StudentDashboard() {
                     style={{ display: 'none' }}
                     disabled={isGenerating}
                   />
-
                   <div
                     className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`}
                     onDragOver={handleDragOver}
@@ -883,32 +1000,24 @@ export function StudentDashboard() {
                   >
                     {selectedFile ? (
                       <div className="selected-file">
-                        <span className="file-icon">📄</span>
+                        <span className="file-icon">{'\u{1F4C4}'}</span>
                         <div className="file-info">
                           <span className="file-name">{selectedFile.name}</span>
-                          <span className="file-size">
-                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                          </span>
+                          <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
                         <button
                           className="clear-file-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            clearFileSelection();
-                          }}
+                          onClick={(e) => { e.stopPropagation(); clearFileSelection(); }}
                           disabled={isGenerating}
-                        >
-                          x
-                        </button>
+                        >x</button>
                       </div>
                     ) : (
                       <div className="drop-zone-content">
-                        <span className="upload-icon">📁</span>
+                        <span className="upload-icon">{'\u{1F4C1}'}</span>
                         <p>Drag & drop a file here, or click to browse</p>
                         <small>
                           Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP
-                          <br />
-                          Max size: {MAX_FILE_SIZE_MB} MB
+                          <br />Max size: {MAX_FILE_SIZE_MB} MB
                         </small>
                       </div>
                     )}
@@ -945,15 +1054,9 @@ export function StudentDashboard() {
                           : `/study/guide/${guide.id}`
                       );
                     }}
-                  >
-                    View Existing
-                  </button>
-                  <button className="generate-btn" onClick={handleCreateCustom}>
-                    Regenerate (New Version)
-                  </button>
-                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>
-                    Cancel
-                  </button>
+                  >View Existing</button>
+                  <button className="generate-btn" onClick={handleCreateCustom}>Regenerate (New Version)</button>
+                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
                 </div>
               </div>
             )}
@@ -973,7 +1076,47 @@ export function StudentDashboard() {
           </div>
         </div>
       )}
-      {/* Invite Teacher Modal */}
+
+      {/* ── Create Course Modal ──────────────────────────── */}
+      {showCreateCourseModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateCourseModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Create a Course</h2>
+            <p className="modal-desc">Add a course or subject to organize your materials.</p>
+            <div className="modal-form">
+              <label>
+                Course Name *
+                <input
+                  type="text"
+                  value={newCourseName}
+                  onChange={(e) => setNewCourseName(e.target.value)}
+                  placeholder="e.g., Grade 10 Math"
+                  disabled={isCreatingCourse}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()}
+                />
+              </label>
+              <label>
+                Subject (optional)
+                <input
+                  type="text"
+                  value={newCourseSubject}
+                  onChange={(e) => setNewCourseSubject(e.target.value)}
+                  placeholder="e.g., Mathematics"
+                  disabled={isCreatingCourse}
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowCreateCourseModal(false)} disabled={isCreatingCourse}>Cancel</button>
+              <button className="generate-btn" onClick={handleCreateCourse} disabled={isCreatingCourse || !newCourseName.trim()}>
+                {isCreatingCourse ? 'Creating...' : 'Create Course'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Invite Teacher Modal ─────────────────────────── */}
       {showInviteTeacherModal && (
         <div className="modal-overlay" onClick={() => setShowInviteTeacherModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
