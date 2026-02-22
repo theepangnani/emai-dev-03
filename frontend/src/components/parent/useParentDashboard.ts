@@ -210,7 +210,14 @@ export function useParentDashboard() {
   // ============================================
 
   const handleChildTabClick = (studentId: number) => {
+    const isDeselecting = selectedChild === studentId;
     childMgmt.handleChildTabClick(studentId, selectedChild, setSelectedChild, setChildOverview);
+    // Auto-expand detail panel when selecting a child, collapse when deselecting (#740)
+    if (isDeselecting) {
+      setDetailPanelCollapsed(true);
+    } else {
+      setDetailPanelCollapsed(false);
+    }
   };
 
   // ============================================
