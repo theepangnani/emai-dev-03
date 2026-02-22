@@ -1019,3 +1019,373 @@
     text-align: center;
   }
 }
+
+/* ============================================
+   Enhanced Onboarding Wizard (pd-onboard-)
+   ============================================ */
+
+.pd-onboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.pd-onboard-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 8px;
+}
+
+.pd-onboard-subtitle {
+  font-size: 15px;
+  color: var(--color-ink-muted);
+  margin: 0 0 32px;
+}
+
+.pd-onboard-steps {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pd-onboard-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  width: 180px;
+  gap: 8px;
+  animation: pd-onboard-fadeUp 0.5s ease-out both;
+}
+
+@keyframes pd-onboard-fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pd-onboard-card-active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.pd-onboard-card-future {
+  opacity: 0.7;
+}
+
+.pd-onboard-card-step {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+}
+
+.pd-onboard-card-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.pd-onboard-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.pd-onboard-card-desc {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+}
+
+.pd-onboard-cta {
+  padding: 12px 32px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.pd-onboard-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Contextual Upload Tip */
+.pd-onboard-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.08));
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.pd-onboard-tip-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.pd-onboard-tip-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.pd-onboard-tip-action {
+  padding: 6px 16px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.pd-onboard-tip-action:hover {
+  opacity: 0.9;
+}
+
+.pd-onboard-tip-dismiss {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.pd-onboard-tip-dismiss:hover {
+  opacity: 1;
+}
+
+/* ============================================
+   Course Activity Feed (pd-feed-)
+   ============================================ */
+
+.pd-feed-container {
+  margin-top: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.pd-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.pd-feed-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.pd-feed-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-feed-chevron {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  transition: transform 0.2s;
+  display: inline-block;
+}
+
+.pd-feed-chevron.open {
+  transform: rotate(90deg);
+}
+
+.pd-feed-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.pd-feed-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pd-feed-body {
+  padding: 0 16px 14px;
+}
+
+.pd-feed-empty {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-ink-muted);
+  padding: 8px 0;
+  margin: 0;
+}
+
+.pd-feed-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.pd-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.pd-feed-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.pd-feed-item-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.pd-feed-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pd-feed-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-feed-item-course {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-feed-item-time {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.pd-feed-view-all {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 4px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pd-feed-view-all:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-accent);
+}
+
+/* ============================================
+   Responsive: Onboarding & Feed
+   ============================================ */
+
+@media (max-width: 640px) {
+  .pd-onboard-container {
+    padding: 32px 16px;
+  }
+
+  .pd-onboard-steps {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .pd-onboard-card {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .pd-onboard-cta {
+    width: 100%;
+  }
+
+  .pd-onboard-tip {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pd-onboard-tip-text {
+    flex-basis: calc(100% - 44px);
+  }
+
+  .pd-onboard-tip-action {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}

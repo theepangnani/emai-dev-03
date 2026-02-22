@@ -191,9 +191,9 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('No children linked yet')).toBeInTheDocument()
+      expect(screen.getByText('Welcome to ClassBridge!')).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
   })
 
   // ── Dashboard with Children ──────────────────────────────────
@@ -313,10 +313,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
+    await user.click(screen.getByRole('button', { name: /Get Started/ }))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Add Child' })).toBeInTheDocument()
@@ -335,10 +335,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
+    await user.click(screen.getByRole('button', { name: /Get Started/ }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('e.g. Alex Smith')).toBeInTheDocument()
@@ -361,10 +361,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
+    await user.click(screen.getByRole('button', { name: /Get Started/ }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('e.g. Alex Smith')).toBeInTheDocument()
@@ -390,10 +390,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
+    await user.click(screen.getByRole('button', { name: /Get Started/ }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('e.g. Alex Smith')).toBeInTheDocument()
@@ -417,10 +417,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
+    await user.click(screen.getByRole('button', { name: /Get Started/ }))
 
     await waitFor(() => {
       expect(screen.getByText('Link by Email')).toBeInTheDocument()
@@ -445,10 +445,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Link a Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Get Started/ })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Link a Child' }))
+    await user.click(screen.getByRole('button', { name: /Get Started/ }))
     await user.click(screen.getByText('Google Classroom'))
 
     await waitFor(() => {
