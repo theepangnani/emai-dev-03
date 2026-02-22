@@ -204,6 +204,32 @@ export function ParentDashboard() {
             resendingId={pd.resendingId}
           />
 
+          {pd.backgroundGeneration && (
+            <div className={`pd-generation-banner ${pd.backgroundGeneration.status}`}>
+              {pd.backgroundGeneration.status === 'generating' && (
+                <>
+                  <span className="pd-gen-spinner" />
+                  <span>Generating {pd.backgroundGeneration.type}...</span>
+                </>
+              )}
+              {pd.backgroundGeneration.status === 'success' && (
+                <>
+                  <span>{pd.backgroundGeneration.type} ready!</span>
+                  <button className="pd-gen-view-btn" onClick={() => { pd.navigate('/course-materials'); pd.dismissBackgroundGeneration(); }}>
+                    View
+                  </button>
+                  <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
+                </>
+              )}
+              {pd.backgroundGeneration.status === 'error' && (
+                <>
+                  <span>Failed to generate {pd.backgroundGeneration.type}</span>
+                  <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Coming Up Timeline */}
           <ComingUpTimeline
             calendarAssignments={pd.calendarAssignments}
