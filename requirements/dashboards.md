@@ -7,7 +7,7 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 | Dashboard | Key Features | Status |
 |-----------|--------------|--------|
 | **Parent Dashboard** | Icon-only sidebar, child filter pills (no "All Kids" — toggle-deselect instead), Today's Focus header, simplified alert banner, collapsible student detail panel, + icon popover for quick actions (replaces action bar) | Implemented (v3 simplification — #540, PR #545; v3.1 UX polish — #557; v3.2 + popover — #692, PR #693) |
-| **Student Dashboard** | Courses, assignments, study tools, Google Classroom sync, file upload | Implemented |
+| **Student Dashboard** | "Focused Command Center" — hero greeting with urgency pills + stat chips, notification alerts for parent/teacher requests, quick action cards (Upload/Course/Study Guide/Sync), Coming Up timeline (assignments + tasks unified), recent materials, course chips, create course modal | Implemented (v2 redesign — #708, PR #709) |
 | **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
 | **Admin Dashboard** | Platform stats, user management table (search, filter, pagination), role management, broadcast messaging, individual user messaging | Implemented (messaging planned) |
 
@@ -199,6 +199,82 @@ Located in `frontend/src/components/calendar/`:
 - **Task vs Assignment**: Assignments have course color border; tasks have a distinct style (e.g., dashed border or priority-based color)
 - **Responsive**: At < 1024px, left nav collapses to icons; calendar takes full width
 - **Right sidebar removed**: Courses and Study Guides promoted to dedicated pages via left nav
+
+### Student Dashboard Layout (v2 — "Focused Command Center") - IMPLEMENTED
+
+**GitHub Issues:** #708 (redesign) — closed, deployed via PR #709
+
+The Student Dashboard uses a **focused command center layout**: hero greeting with urgency awareness, notification alerts, quick action cards, unified timeline, and course chips. Replaces the v1 stat-card layout.
+
+#### Design Principles
+- **Action-oriented**: Lead with what the student can DO right now (upload, create, study, sync)
+- **Unified timeline**: Merge assignments + tasks into one "Coming Up" view sorted chronologically
+- **Notification-first**: Surface parent/teacher requests as dismissible alert cards
+- **Progressive disclosure**: Show urgency pills in hero, details in timeline below
+- **Quick actions**: Upload Materials, Create Course, Generate Study Guide, Sync Classroom
+
+#### Layout Structure
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Header: Logo | Search (Ctrl+K) | Bell | User ▼ | Sign Out  │
+├─────┬───────────────────────────────────────────────────────┤
+│ICON │  HERO SECTION                                         │
+│ONLY │  "Good morning, Name!"                                │
+│SIDE │  [3 Overdue] [2 Due Today]  ← urgency pills          │
+│BAR  │  📚 5 Courses · 12 Materials · 8 Tasks  ← stat chips │
+│     │───────────────────────────────────────────────────────│
+│ 🏠  │  NOTIFICATION ALERTS (if any)                         │
+│ 📚  │  [Parent assigned: Math HW] [Teacher request: Quiz]   │
+│ 📄  │───────────────────────────────────────────────────────│
+│ ✅  │  QUICK ACTIONS (2×2 grid)                             │
+│ 💬  │  [Upload Materials] [Create Course]                    │
+│ ❓  │  [Generate Study Guide] [Sync Classroom]               │
+│     │───────────────────────────────────────────────────────│
+│     │  COMING UP (timeline — next 7 days)                   │
+│     │  ● Tomorrow — Math HW (Math 101)                      │
+│     │  ● Wed — Science Lab Report                           │
+│     │  ● Fri — English Essay                                │
+│     │───────────────────────────────────────────────────────│
+│     │  RECENT MATERIALS + COURSE CHIPS                      │
+└─────┴───────────────────────────────────────────────────────┘
+```
+
+#### Key Features
+- **Hero**: Greeting + urgency pills (overdue/today counts) + stat chips (courses/materials/tasks)
+- **Notification Alerts**: Dismissible cards for parent_request, assessment_upcoming, etc.
+- **Quick Actions**: 4 action cards with colored left borders and tinted icon backgrounds
+- **Coming Up Timeline**: Unified assignments + tasks, vertical line with color-coded dots
+- **Recent Materials**: Last 5 materials with type icons and course badges
+- **Course Chips**: Horizontal row of enrolled courses
+- **Create Course Modal**: Inline modal for creating new courses
+- **Onboarding Card**: Shown when student has no materials or courses
+- All CSS classes use `sd-` prefix for scoping
+
+### Parent Dashboard Redesign Roadmap (v4 — Planned)
+
+**GitHub Epic:** #710
+
+Design assessment identified these improvement areas for a future Parent Dashboard redesign:
+
+| Issue | Title | Priority | Labels |
+|-------|-------|----------|--------|
+| #711 | Visual refresh with distinctive design language | High | frontend, parent-ux |
+| #712 | Add "Coming Up" timeline for selected child | High | enhancement |
+| #713 | Multi-child comparison cards in All Children mode | Medium | enhancement |
+| #714 | Clean up dead CSS and scope with `pd-` prefix | Medium | frontend, parent-ux |
+| #715 | Refactor useParentDashboard into focused sub-hooks | Medium | frontend, parent-ux |
+| #716 | Enhanced onboarding for first-time parents | Medium | enhancement, parent-ux |
+| #717 | Make urgency overview persistent (non-dismissible) | Low | parent-ux, ux |
+| #718 | Add course activity feed for selected child | Low | enhancement, parent-ux |
+| #719 | Accessibility improvements (ARIA, keyboard, focus) | High | parent-ux, ux |
+
+#### Key Assessment Findings
+1. **Visual Identity Gap**: Flat, generic UI vs. the Student Dashboard's distinctive visual language
+2. **CSS Bloat**: 1851 lines with ~500 lines of dead code from v1/v2 layouts
+3. **Hook Complexity**: `useParentDashboard` at 919 lines managing ~50 state variables
+4. **Missing Insights**: No chronological timeline, multi-child comparison, or activity feed
+5. **Dismissible Focus Header**: Parents lose urgency awareness when header is dismissed
+6. **Accessibility**: Missing ARIA tab pattern, focus trapping, and expanded/collapsed state communication
 
 ### Parent-Student Relationship
 Parents and students have a **many-to-many** relationship via the `parent_students` join table. A student can have multiple parents (mother, father, guardian), and parent linking is optional.
