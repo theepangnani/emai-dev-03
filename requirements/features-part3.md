@@ -1082,3 +1082,27 @@ This section defines the expanded Phase 1 workflow that enables student-initiate
 
 ---
 
+### 6.52 Course Material Detail Page -- Refactor and Polish (Phase 1) - IMPLEMENTED
+
+The Course Material Detail page is the most-used page for parents and students studying. This refactor improves code maintainability, fixes bugs, and polishes the UI.
+
+#### Issues Addressed
+- #732: Flashcard keyboard navigation not implemented
+- #733: Shuffle button resets instead of shuffling
+- #734: UI redesign and visual polish
+- #735: Extract CourseMaterialDetailPage into sub-components
+- #736: Improve focus prompt UX
+
+#### Architecture
+- Orchestrator (CourseMaterialDetailPage.tsx, ~330 lines): Data fetching, shared state, tab switching
+- Sub-components in frontend/src/pages/course-material/:
+  - DocumentTab.tsx: Document viewing, inline editing, formatted JSON detection
+  - StudyGuideTab.tsx: Study guide display with print/regenerate/delete
+  - QuizTab.tsx: Quiz flow with result saving and parent student banner
+  - FlashcardsTab.tsx: Flashcard viewer with shuffle, keyboard nav, a11y
+  - ReplaceDocumentModal.tsx: Drag-and-drop file upload with background upload
+
+#### Verification
+- TypeScript compiles cleanly, all 333 frontend tests pass, no regressions
+
+---
