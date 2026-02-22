@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -6,11 +6,14 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
-import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { AddActionButton } from '../components/AddActionButton';
+import { DocumentTab } from './course-material/DocumentTab';
+import { StudyGuideTab } from './course-material/StudyGuideTab';
+import { QuizTab } from './course-material/QuizTab';
+import { FlashcardsTab } from './course-material/FlashcardsTab';
+import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
@@ -29,46 +32,12 @@ export function CourseMaterialDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('document');
   const [generating, setGenerating] = useState<string | null>(null);
 
-  // Quiz state
-  const [quizIndex, setQuizIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [quizScore, setQuizScore] = useState(0);
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
-  const [quizFinished, setQuizFinished] = useState(false);
-  const [quizSaving, setQuizSaving] = useState(false);
-  const [quizSaveError, setQuizSaveError] = useState<string | null>(null);
-  const quizSavedId = useRef<number | null>(null);
-
-  // Flashcard state
-  const [cardIndex, setCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  // Create task modal
   const [showTaskModal, setShowTaskModal] = useState(false);
-
-  // Document editing
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTextContent, setEditTextContent] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
-
-  // Replace document modal
   const [showReplaceModal, setShowReplaceModal] = useState(false);
-  const [replaceFile, setReplaceFile] = useState<File | null>(null);
-  const [replacing, setReplacing] = useState(false);
-  const [replaceError, setReplaceError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const replacingRef = useRef(false);
-
-  // Resolved student for quiz attribution (parents)
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
-
-  // Focus prompt for AI generation
   const [focusPrompt, setFocusPrompt] = useState('');
 
-  // Toast + regeneration prompt
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
@@ -94,7 +63,6 @@ export function CourseMaterialDetailPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Resolve which student this quiz is for (parents only)
   useEffect(() => {
     if (!isParent || !content?.course_id) return;
     studyApi.resolveStudent({ course_id: content.course_id })
@@ -106,12 +74,12 @@ export function CourseMaterialDetailPage() {
   const quiz = guides.find(g => g.guide_type === 'quiz');
   const flashcardSet = guides.find(g => g.guide_type === 'flashcards');
 
-  const parsedQuiz = quiz ? (() => {
-    try { return JSON.parse(quiz.content); } catch { return []; }
-  })() : [];
-  const parsedCards = flashcardSet ? (() => {
-    try { return JSON.parse(flashcardSet.content); } catch { return []; }
-  })() : [];
+  const hasSourceContent = !!(content?.text_content || content?.description);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
     if (!content) return;
@@ -179,11 +147,6 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
-  };
-
   const handleDownload = async () => {
     if (!content) return;
     setDownloading(true);
@@ -196,147 +159,13 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  const handleStartEdit = () => {
-    setEditTextContent(content?.text_content || '');
-    setIsEditing(true);
-  };
-
-  const handleSaveTextContent = async () => {
-    if (!content) return;
-    setEditSaving(true);
-    try {
-      const result: CourseContentUpdateResponse = await courseContentsApi.update(content.id, {
-        text_content: editTextContent,
-      });
-      setContent(result);
-      setIsEditing(false);
-      if (result.archived_guides_count > 0) {
-        showToast(`Content updated. ${result.archived_guides_count} linked study material(s) archived.`);
-        setShowRegenPrompt(true);
-        await loadData(); // refresh guides list
-      } else {
-        showToast('Content saved');
-      }
-    } catch {
-      setError('Failed to save content');
-    } finally {
-      setEditSaving(false);
-    }
+  const handleContentUpdated = (result: CourseContentUpdateResponse) => {
+    setContent(result);
   };
 
   const handleRegenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
     setShowRegenPrompt(false);
     await handleGenerate(type);
-  };
-
-  // Replace document handlers
-  const MAX_FILE_SIZE_MB = 100;
-
-  const handleFileSelect = (file: File) => {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setReplaceError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
-      return;
-    }
-    setReplaceFile(file);
-    setReplaceError('');
-  };
-
-  const handleReplaceDocument = async () => {
-    if (!replaceFile || !content || replacingRef.current) return;
-    replacingRef.current = true;
-    const fileToUpload = replaceFile;
-    const hadFile = content.has_file;
-
-    // Close modal immediately so user can continue working
-    setShowReplaceModal(false);
-    setReplaceFile(null);
-    setReplaceError('');
-    setReplacing(false);
-    setUploadStatus('uploading');
-
-    try {
-      const result = await courseContentsApi.replaceFile(content.id, fileToUpload);
-      setContent(result);
-      setUploadStatus(null);
-      if (result.archived_guides_count > 0) {
-        showToast(`Document replaced. ${result.archived_guides_count} linked study material(s) archived.`);
-        setShowRegenPrompt(true);
-        await loadData();
-      } else {
-        showToast(hadFile ? 'Document replaced successfully' : 'Document uploaded successfully');
-        await loadData();
-      }
-    } catch (err: any) {
-      setUploadStatus('error');
-      setTimeout(() => setUploadStatus(null), 5000);
-      showToast(err.response?.data?.detail || 'Failed to upload document');
-    } finally {
-      replacingRef.current = false;
-    }
-  };
-
-  const closeReplaceModal = () => {
-    if (replacing) return;
-    setShowReplaceModal(false);
-    setReplaceFile(null);
-    setReplaceError('');
-    setIsDragging(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // Quiz handlers
-  const handleQuizAnswer = (answer: string) => {
-    if (showResult) return;
-    setSelectedAnswer(answer);
-  };
-
-  const handleQuizSubmit = () => {
-    if (!selectedAnswer || !parsedQuiz[quizIndex]) return;
-    const correct = parsedQuiz[quizIndex].correct_answer === selectedAnswer;
-    if (correct) setQuizScore(s => s + 1);
-    setQuizAnswers(prev => ({ ...prev, [quizIndex]: selectedAnswer }));
-    setShowResult(true);
-  };
-
-  const handleQuizNext = () => {
-    if (quizIndex < parsedQuiz.length - 1) {
-      setQuizIndex(i => i + 1);
-      setSelectedAnswer(null);
-      setShowResult(false);
-    } else {
-      setQuizFinished(true);
-    }
-  };
-
-  // Save quiz result when finished
-  useEffect(() => {
-    if (!quizFinished || !quiz || quizSavedId.current !== null) return;
-    setQuizSaving(true);
-    setQuizSaveError(null);
-    studyApi.saveQuizResult({
-      study_guide_id: quiz.id,
-      score: quizScore,
-      total_questions: parsedQuiz.length,
-      answers: quizAnswers,
-      ...(resolvedStudent ? { student_user_id: resolvedStudent.student_user_id } : {}),
-    }).then((result) => {
-      quizSavedId.current = result.id;
-    }).catch(() => {
-      setQuizSaveError('Could not save result');
-    }).finally(() => {
-      setQuizSaving(false);
-    });
-  }, [quizFinished, quiz, quizScore, parsedQuiz.length, quizAnswers]);
-
-  const resetQuiz = () => {
-    setQuizIndex(0);
-    setSelectedAnswer(null);
-    setShowResult(false);
-    setQuizScore(0);
-    setQuizAnswers({});
-    setQuizFinished(false);
-    quizSavedId.current = null;
-    setQuizSaveError(null);
   };
 
   if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
@@ -379,13 +208,14 @@ export function CourseMaterialDetailPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="cm-tabs">
+        <div className="cm-tabs" role="tablist">
           {tabs.map(tab => (
             <button
               key={tab.key}
               className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
               onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
             >
               {tab.label}
               {!tab.hasContent && tab.key !== 'document' && (
@@ -395,345 +225,57 @@ export function CourseMaterialDetailPage() {
           ))}
         </div>
 
-        {/* Tab Content */}
-        <div className="cm-tab-content">
+        <div className="cm-tab-content" role="tabpanel">
           {activeTab === 'document' && (
-            <div className="cm-document-tab">
-              {isEditing ? (
-                <div className="cm-guide-actions">
-                  <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
-                    {editSaving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
-                </div>
-              ) : (
-                <div className="cm-document-actions">
-                  <AddActionButton actions={[
-                    ...(content?.has_file ? [{
-                      icon: '\u{1F4E5}',
-                      label: downloading ? 'Downloading...' : 'Download',
-                      onClick: handleDownload,
-                    }] : []),
-                    ...(!content.has_file ? [{
-                      icon: '\u270F\uFE0F',
-                      label: 'Edit Content',
-                      onClick: handleStartEdit,
-                    }] : []),
-                    {
-                      icon: '\u{1F4C4}',
-                      label: content.has_file ? 'Replace Document' : 'Upload Document',
-                      onClick: () => setShowReplaceModal(true),
-                    },
-                  ]} />
-                </div>
-              )}
-              {isEditing ? (
-                <textarea
-                  className="cm-edit-textarea"
-                  value={editTextContent}
-                  onChange={(e) => setEditTextContent(e.target.value)}
-                  rows={20}
-                  disabled={editSaving}
-                />
-              ) : content.text_content ? (
-                <ContentCard ocrCheckText={content.text_content}>
-                  {(() => {
-                    // Detect JSON quiz/flashcard data and format readably
-                    const trimmed = content.text_content!.trim();
-                    if (trimmed.startsWith('[')) {
-                      try {
-                        const parsed = JSON.parse(trimmed);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                          if (parsed[0].question && parsed[0].options) {
-                            return (
-                              <div className="cm-formatted-quiz">
-                                {parsed.map((q: any, i: number) => (
-                                  <div key={i} className="cm-fq-item">
-                                    <p className="cm-fq-question"><strong>Q{i + 1}:</strong> {q.question}</p>
-                                    <ul className="cm-fq-options">
-                                      {Object.entries(q.options || {}).map(([k, v]) => (
-                                        <li key={k} className={k === q.correct_answer ? 'cm-fq-correct' : ''}>
-                                          <strong>{k}.</strong> {v as string}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    {q.explanation && <p className="cm-fq-explanation"><em>{q.explanation}</em></p>}
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          }
-                          if (parsed[0].front && parsed[0].back) {
-                            return (
-                              <div className="cm-formatted-cards">
-                                {parsed.map((c: any, i: number) => (
-                                  <div key={i} className="cm-fc-item">
-                                    <strong>{c.front}</strong>
-                                    <span> — {c.back}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          }
-                        }
-                      } catch { /* not JSON, fall through to markdown */ }
-                    }
-                    return (
-                      <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                        <MarkdownBody content={content.text_content!} />
-                      </Suspense>
-                    );
-                  })()}
-                </ContentCard>
-              ) : content.has_file ? (
-                <div className="cm-file-info-card">
-                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
-                  <p className="cm-file-info-hint">Use the + button above to download the original file.</p>
-                </div>
-              ) : content.description ? (
-                <p className="cm-document-desc">{content.description}</p>
-              ) : (
-                <p className="cm-empty-message">No document content available.</p>
-              )}
-              {content.reference_url && (
-                <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">
-                  View Original Source
-                </a>
-              )}
-            </div>
+            <DocumentTab
+              content={content}
+              downloading={downloading}
+              onDownload={handleDownload}
+              onShowReplaceModal={() => setShowReplaceModal(true)}
+              onContentUpdated={handleContentUpdated}
+              showToast={showToast}
+              onShowRegenPrompt={() => setShowRegenPrompt(true)}
+              onReloadData={loadData}
+            />
           )}
 
           {activeTab === 'guide' && (
-            <div className="cm-guide-tab">
-              <div className="cm-focus-prompt">
-                <input
-                  type="text"
-                  value={focusPrompt}
-                  onChange={(e) => setFocusPrompt(e.target.value)}
-                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-                  disabled={generating !== null}
-                />
-              </div>
-              {studyGuide ? (
-                <>
-                  <div className="cm-guide-actions">
-                    <button className="cm-action-btn" onClick={() => window.print()} title="Print">Print</button>
-                    <button className="cm-action-btn" onClick={() => handleGenerate('study_guide')} disabled={generating !== null}>Regenerate</button>
-                    <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(studyGuide)}>Delete</button>
-                  </div>
-                  <ContentCard>
-                    <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                      <MarkdownBody content={studyGuide.content} />
-                    </Suspense>
-                  </ContentCard>
-                </>
-              ) : generating === 'study_guide' ? (
-                <div className="cm-inline-generating">
-                  <div className="cm-inline-spinner" />
-                  <p>Generating study guide... This may take a moment.</p>
-                </div>
-              ) : (
-                <div className="cm-empty-tab">
-                  <p>No study guide generated yet.</p>
-                  <button
-                    className="generate-btn"
-                    onClick={() => handleGenerate('study_guide')}
-                    disabled={generating !== null || (!content.text_content && !content.description)}
-                  >
-                    Generate Study Guide
-                  </button>
-                  {!content.text_content && !content.description && (
-                    <p className="cm-hint">Add content or upload a document first to generate a study guide.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <StudyGuideTab
+              studyGuide={studyGuide}
+              generating={generating}
+              focusPrompt={focusPrompt}
+              onFocusPromptChange={setFocusPrompt}
+              onGenerate={() => handleGenerate('study_guide')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+            />
           )}
 
           {activeTab === 'quiz' && (
-            <div className="cm-quiz-tab">
-              {isParent && (
-                <div className={`cm-student-banner ${resolvedStudent ? 'resolved' : 'unresolved'}`}>
-                  {resolvedStudent
-                    ? <>Taking quiz for: <strong>{resolvedStudent.student_name}</strong></>
-                    : 'This quiz is not linked to a student. Results will be saved under your account.'}
-                </div>
-              )}
-              <div className="cm-focus-prompt">
-                <input
-                  type="text"
-                  value={focusPrompt}
-                  onChange={(e) => setFocusPrompt(e.target.value)}
-                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-                  disabled={generating !== null}
-                />
-              </div>
-              {quiz && parsedQuiz.length > 0 ? (
-                <>
-                  <div className="cm-guide-actions">
-                    <button className="cm-action-btn" onClick={resetQuiz}>Reset</button>
-                    <button className="cm-action-btn" onClick={() => handleGenerate('quiz')} disabled={generating !== null}>Regenerate</button>
-                    <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(quiz)}>Delete</button>
-                  </div>
-                  {quizFinished ? (
-                    <div className="cm-quiz-results">
-                      <h3>Quiz Complete!</h3>
-                      <div className="cm-quiz-score">
-                        {quizScore} / {parsedQuiz.length}
-                        <span className="cm-quiz-pct">
-                          ({Math.round((quizScore / parsedQuiz.length) * 100)}%)
-                        </span>
-                      </div>
-                      {quizSaving && <p className="save-status">Saving result...</p>}
-                      {quizSaveError && <p className="save-status save-error">{quizSaveError}</p>}
-                      {quizSavedId.current !== null && !quizSaving && !quizSaveError && (
-                        <p className="save-status save-success">Result saved</p>
-                      )}
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="generate-btn" onClick={resetQuiz}>Try Again</button>
-                        <Link to={`/quiz-history?quiz=${quiz?.id}`} className="generate-btn" style={{ background: '#e3f2fd', color: '#1565c0', textDecoration: 'none', textAlign: 'center' }}>View History</Link>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="cm-quiz-question">
-                      <div className="cm-quiz-progress">
-                        Question {quizIndex + 1} of {parsedQuiz.length}
-                      </div>
-                      <h3>{parsedQuiz[quizIndex].question}</h3>
-                      <div className="cm-quiz-options">
-                        {Object.entries(parsedQuiz[quizIndex].options || {}).map(([key, value]) => (
-                          <button
-                            key={key}
-                            className={`cm-quiz-option${selectedAnswer === key ? ' selected' : ''}${
-                              showResult && key === parsedQuiz[quizIndex].correct_answer ? ' correct' : ''
-                            }${showResult && selectedAnswer === key && key !== parsedQuiz[quizIndex].correct_answer ? ' incorrect' : ''}`}
-                            onClick={() => handleQuizAnswer(key)}
-                            disabled={showResult}
-                          >
-                            <span className="cm-option-key">{key}</span>
-                            <span>{value as string}</span>
-                          </button>
-                        ))}
-                      </div>
-                      {showResult && parsedQuiz[quizIndex].explanation && (
-                        <div className="cm-quiz-explanation">
-                          <strong>Explanation:</strong> {parsedQuiz[quizIndex].explanation}
-                        </div>
-                      )}
-                      <div className="cm-quiz-actions">
-                        {!showResult ? (
-                          <button className="generate-btn" onClick={handleQuizSubmit} disabled={!selectedAnswer}>
-                            Submit Answer
-                          </button>
-                        ) : (
-                          <button className="generate-btn" onClick={handleQuizNext}>
-                            {quizIndex < parsedQuiz.length - 1 ? 'Next Question' : 'See Results'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : generating === 'quiz' ? (
-                <div className="cm-inline-generating">
-                  <div className="cm-inline-spinner" />
-                  <p>Generating quiz... This may take a moment.</p>
-                </div>
-              ) : (
-                <div className="cm-empty-tab">
-                  <p>No quiz generated yet.</p>
-                  <button
-                    className="generate-btn"
-                    onClick={() => handleGenerate('quiz')}
-                    disabled={generating !== null || (!content.text_content && !content.description)}
-                  >
-                    Generate Quiz
-                  </button>
-                  {!content.text_content && !content.description && (
-                    <p className="cm-hint">Add content or upload a document first to generate a quiz.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <QuizTab
+              quiz={quiz}
+              generating={generating}
+              focusPrompt={focusPrompt}
+              onFocusPromptChange={setFocusPrompt}
+              onGenerate={() => handleGenerate('quiz')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+              isParent={isParent}
+              resolvedStudent={resolvedStudent}
+            />
           )}
 
           {activeTab === 'flashcards' && (
-            <div className="cm-flashcards-tab">
-              <div className="cm-focus-prompt">
-                <input
-                  type="text"
-                  value={focusPrompt}
-                  onChange={(e) => setFocusPrompt(e.target.value)}
-                  placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-                  disabled={generating !== null}
-                />
-              </div>
-              {flashcardSet && parsedCards.length > 0 ? (
-                <>
-                  <div className="cm-guide-actions">
-                    <button className="cm-action-btn" onClick={() => { setCardIndex(0); setIsFlipped(false); }}>Reset</button>
-                    <button className="cm-action-btn" onClick={() => {
-                      setCardIndex(0);
-                      setIsFlipped(false);
-                    }}>Shuffle</button>
-                    <button className="cm-action-btn" onClick={() => handleGenerate('flashcards')} disabled={generating !== null}>Regenerate</button>
-                    <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(flashcardSet)}>Delete</button>
-                  </div>
-                  <div className="cm-flashcard-progress">
-                    Card {cardIndex + 1} of {parsedCards.length}
-                  </div>
-                  <div
-                    className={`cm-flashcard${isFlipped ? ' flipped' : ''}`}
-                    onClick={() => setIsFlipped(f => !f)}
-                  >
-                    <div className="cm-flashcard-inner">
-                      <div className="cm-flashcard-front">
-                        <p>{parsedCards[cardIndex]?.front}</p>
-                      </div>
-                      <div className="cm-flashcard-back">
-                        <p>{parsedCards[cardIndex]?.back}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="cm-flashcard-controls">
-                    <button
-                      className="cm-action-btn"
-                      onClick={() => { setCardIndex(i => i - 1); setIsFlipped(false); }}
-                      disabled={cardIndex === 0}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      className="cm-action-btn"
-                      onClick={() => { setCardIndex(i => i + 1); setIsFlipped(false); }}
-                      disabled={cardIndex >= parsedCards.length - 1}
-                    >
-                      Next
-                    </button>
-                  </div>
-                  <p className="cm-hint">Click card to flip. Use arrow keys to navigate.</p>
-                </>
-              ) : generating === 'flashcards' ? (
-                <div className="cm-inline-generating">
-                  <div className="cm-inline-spinner" />
-                  <p>Generating flashcards... This may take a moment.</p>
-                </div>
-              ) : (
-                <div className="cm-empty-tab">
-                  <p>No flashcards generated yet.</p>
-                  <button
-                    className="generate-btn"
-                    onClick={() => handleGenerate('flashcards')}
-                    disabled={generating !== null || (!content.text_content && !content.description)}
-                  >
-                    Generate Flashcards
-                  </button>
-                  {!content.text_content && !content.description && (
-                    <p className="cm-hint">Add content or upload a document first to generate flashcards.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <FlashcardsTab
+              flashcardSet={flashcardSet}
+              generating={generating}
+              focusPrompt={focusPrompt}
+              onFocusPromptChange={setFocusPrompt}
+              onGenerate={() => handleGenerate('flashcards')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+              isActiveTab={activeTab === 'flashcards'}
+            />
           )}
         </div>
 
@@ -760,71 +302,16 @@ export function CourseMaterialDetailPage() {
         </div>
       )}
       {showReplaceModal && (
-        <div className="modal-overlay" onClick={closeReplaceModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-            <h2>{content.has_file ? 'Replace Document' : 'Upload Document'}</h2>
-            <p className="cm-replace-warning">
-              {content.has_file
-                ? 'Uploading a new file will replace the current document and re-extract text.'
-                : 'Upload a file to attach to this content. Text will be extracted automatically.'}
-              {content.has_file && guides.length > 0 && ' Linked study materials will be archived and can be regenerated.'}
-            </p>
-            <div
-              className={`cm-replace-drop-zone${isDragging ? ' dragging' : ''}${replaceFile ? ' has-file' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-                const file = e.dataTransfer.files[0];
-                if (file) handleFileSelect(file);
-              }}
-              onClick={() => !replacing && fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                style={{ display: 'none' }}
-                accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileSelect(file);
-                }}
-              />
-              {replaceFile ? (
-                <div className="cm-replace-file-info">
-                  <span className="cm-replace-file-icon">&#128196;</span>
-                  <div className="cm-replace-file-details">
-                    <span className="cm-replace-file-name">{replaceFile.name}</span>
-                    <span className="cm-replace-file-size">{(replaceFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                  </div>
-                  <button
-                    className="cm-replace-clear-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setReplaceFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                    disabled={replacing}
-                  >&times;</button>
-                </div>
-              ) : (
-                <div className="cm-replace-drop-content">
-                  <span className="cm-replace-upload-icon">&#128193;</span>
-                  <p>Drag & drop a file here, or click to browse</p>
-                  <small>PDF, Word, Excel, PowerPoint, Images, Text, ZIP</small>
-                </div>
-              )}
-            </div>
-            {replaceError && <p className="cm-replace-error">{replaceError}</p>}
-            <div className="cm-replace-actions">
-              <button className="cm-action-btn" onClick={closeReplaceModal} disabled={replacing}>Cancel</button>
-              <button className="generate-btn" onClick={handleReplaceDocument} disabled={!replaceFile || replacing}>
-                {replacing ? (content.has_file ? 'Replacing...' : 'Uploading...') : (content.has_file ? 'Replace Document' : 'Upload Document')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReplaceDocumentModal
+          content={content}
+          guides={guides}
+          onClose={() => setShowReplaceModal(false)}
+          onContentUpdated={handleContentUpdated}
+          showToast={showToast}
+          onShowRegenPrompt={() => setShowRegenPrompt(true)}
+          onReloadData={loadData}
+          onUploadStatusChange={setUploadStatus}
+        />
       )}
       {showRegenPrompt && (
         <div className="cm-regen-prompt">
