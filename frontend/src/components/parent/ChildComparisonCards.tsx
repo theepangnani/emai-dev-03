@@ -88,7 +88,7 @@ function computePerChildStats(
   });
 }
 
-function formatRelative(date: Date, todayStart: Date, todayEnd: Date): string {
+function formatRelative(date: Date, _todayStart: Date, todayEnd: Date): string {
   const tomorrowEnd = new Date(todayEnd);
   tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
 
