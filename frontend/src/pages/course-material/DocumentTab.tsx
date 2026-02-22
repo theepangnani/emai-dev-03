@@ -124,7 +124,7 @@ export function DocumentTab({
         {isEditing ? (
           <>
             <button className="cm-action-btn primary" onClick={handleSaveTextContent} disabled={editSaving}>
-              {editSaving ? 'Saving...' : 'Save'}
+              {editSaving ? 'Saving...' : '\u{1F4BE} Save'}
             </button>
             <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
           </>
@@ -132,14 +132,14 @@ export function DocumentTab({
           <>
             {content.has_file && (
               <button className="cm-action-btn" onClick={onDownload} disabled={downloading}>
-                {downloading ? 'Downloading...' : 'Download'}
+                {downloading ? 'Downloading...' : '\u{1F4E5} Download'}
               </button>
             )}
             {!content.has_file && (
-              <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
+              <button className="cm-action-btn" onClick={handleStartEdit}>{'\u270F\uFE0F'} Edit Content</button>
             )}
             <button className="cm-action-btn" onClick={onShowReplaceModal}>
-              {content.has_file ? 'Replace Document' : 'Upload Document'}
+              {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
             </button>
           </>
         )}

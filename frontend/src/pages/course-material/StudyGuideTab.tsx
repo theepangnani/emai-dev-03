@@ -35,9 +35,9 @@ export function StudyGuideTab({
       {studyGuide ? (
         <>
           <div className="cm-guide-actions">
-            <button className="cm-action-btn" onClick={() => window.print()} title="Print">Print</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>Regenerate</button>
-            <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>Delete</button>
+            <button className="cm-action-btn" onClick={() => window.print()} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <ContentCard>
             <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
