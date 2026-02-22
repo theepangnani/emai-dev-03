@@ -50,25 +50,25 @@ export function ParentDashboard() {
           </div>
         </div>
       ) : pd.children.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">👨‍👩‍👧</div>
-          <h3 className="empty-state-title">No children linked yet</h3>
-          <p className="empty-state-text">Add your child to start managing their education. No school account required!</p>
-          <button className="empty-state-cta" onClick={() => pd.setShowLinkModal(true)}>Link a Child</button>
+        <div className="pd-empty-state">
+          <div className="pd-empty-state-icon">👨‍👩‍👧</div>
+          <h3 className="pd-empty-state-title">No children linked yet</h3>
+          <p className="pd-empty-state-text">Add your child to start managing their education. No school account required!</p>
+          <button className="pd-empty-state-cta" onClick={() => pd.setShowLinkModal(true)}>Link a Child</button>
         </div>
       ) : (
         <>
           {/* Child Filter */}
-          <div className="child-selector">
+          <div className="pd-child-selector">
             {pd.children.map((child, index) => (
               <button
                 key={child.student_id}
-                className={`child-tab ${pd.selectedChild === child.student_id ? 'active' : ''}`}
+                className={`pd-child-tab ${pd.selectedChild === child.student_id ? 'active' : ''}`}
                 onClick={() => pd.handleChildTabClick(child.student_id)}
               >
-                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                <span className="pd-child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}
-                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+                {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
               </button>
             ))}
             <AddActionButton actions={[
@@ -197,17 +197,17 @@ export function ParentDashboard() {
             {pd.linkTab === 'google' && (
               <>
                 {!pd.googleConnected && pd.discoveryState === 'idle' && (
-                  <div className="google-connect-prompt">
-                    <div className="google-icon">🔗</div>
+                  <div className="pd-google-connect-prompt">
+                    <div className="pd-google-icon">🔗</div>
                     <h3>Connect Google Account</h3>
                     <p>Sign in with your Google account to automatically discover your children's student accounts from Google Classroom.</p>
-                    <button className="google-connect-btn" onClick={pd.handleConnectGoogle}>Connect Google Account</button>
+                    <button className="pd-google-connect-btn" onClick={pd.handleConnectGoogle}>Connect Google Account</button>
                     {pd.linkError && <p className="link-error">{pd.linkError}</p>}
                   </div>
                 )}
                 {((pd.googleConnected && pd.discoveryState === 'idle') || pd.discoveryState === 'discovering') && (
-                  <div className="discovery-loading">
-                    <div className="loading-spinner-large" />
+                  <div className="pd-discovery-loading">
+                    <div className="pd-loading-spinner-large" />
                     <p>Searching Google Classroom courses for student accounts...</p>
                   </div>
                 )}
@@ -251,11 +251,11 @@ export function ParentDashboard() {
                   </div>
                 )}
                 {pd.discoveryState === 'no_results' && (
-                  <div className="google-connect-prompt">
-                    <div className="google-icon">📭</div>
+                  <div className="pd-google-connect-prompt">
+                    <div className="pd-google-icon">📭</div>
                     <h3>No Matching Students Found</h3>
                     <p>We searched {pd.coursesSearched} Google Classroom class{pd.coursesSearched !== 1 ? 'es' : ''} but didn't find any matching student accounts.</p>
-                    <button className="link-tab-switch" onClick={() => { pd.setLinkTab('email'); pd.setDiscoveryState('idle'); }}>Try linking by email instead</button>
+                    <button className="pd-link-tab-switch" onClick={() => { pd.setLinkTab('email'); pd.setDiscoveryState('idle'); }}>Try linking by email instead</button>
                     <div className="modal-actions">
                       <button className="cancel-btn" onClick={pd.closeLinkModal}>Close</button>
                       <button className="generate-btn" onClick={pd.triggerDiscovery}>Search Again</button>
@@ -360,19 +360,19 @@ export function ParentDashboard() {
               const dk = dateKey(pd.dayModalDate);
               const dayAssigns = pd.calendarAssignments.filter(a => dateKey(a.dueDate) === dk && a.itemType !== 'task');
               return dayAssigns.length > 0 ? (
-                <div className="day-modal-section">
-                  <div className="day-modal-section-title">Assignments</div>
-                  <div className="day-modal-list">
+                <div className="pd-day-modal-section">
+                  <div className="pd-day-modal-section-title">Assignments</div>
+                  <div className="pd-day-modal-list">
                     {dayAssigns.map(a => (
-                      <div key={a.id} className="day-modal-item">
+                      <div key={a.id} className="pd-day-modal-item">
                         <span className="cal-entry-dot" style={{ background: a.courseColor }} />
-                        <div className="day-modal-item-info">
-                          <span className="day-modal-item-title">{a.title}</span>
-                          <span className="day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
+                        <div className="pd-day-modal-item-info">
+                          <span className="pd-day-modal-item-title">{a.title}</span>
+                          <span className="pd-day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
                         </div>
-                        <div className="day-modal-item-actions">
-                          {a.courseId > 0 && <button className="day-modal-action-btn" onClick={() => { pd.closeDayModal(); pd.handleGoToCourse(a.courseId); }}>Class</button>}
-                          <button className="day-modal-study-btn" disabled={pd.generatingStudyId === a.id} onClick={() => { pd.closeDayModal(); pd.handleOneClickStudy(a); }}>{pd.generatingStudyId === a.id ? 'Checking...' : 'Study'}</button>
+                        <div className="pd-day-modal-item-actions">
+                          {a.courseId > 0 && <button className="pd-day-modal-action-btn" onClick={() => { pd.closeDayModal(); pd.handleGoToCourse(a.courseId); }}>Class</button>}
+                          <button className="pd-day-modal-study-btn" disabled={pd.generatingStudyId === a.id} onClick={() => { pd.closeDayModal(); pd.handleOneClickStudy(a); }}>{pd.generatingStudyId === a.id ? 'Checking...' : 'Study'}</button>
                         </div>
                       </div>
                     ))}
@@ -381,30 +381,30 @@ export function ParentDashboard() {
               ) : null;
             })()}
 
-            <div className="day-modal-section">
-              <div className="day-modal-section-title">Tasks</div>
-              <div className="day-modal-list">
-                {pd.dayTasks.length === 0 && <div className="day-modal-empty">No tasks for this day</div>}
+            <div className="pd-day-modal-section">
+              <div className="pd-day-modal-section-title">Tasks</div>
+              <div className="pd-day-modal-list">
+                {pd.dayTasks.length === 0 && <div className="pd-day-modal-empty">No tasks for this day</div>}
                 {pd.dayTasks.map(task => {
                   const isExpanded = pd.expandedTaskId === task.id;
                   const priorityClass = task.priority || 'medium';
                   return (
-                    <div key={task.id} className={`task-sticky-note ${priorityClass}${task.is_completed ? ' completed' : ''}`} onClick={() => pd.setExpandedTaskId(prev => prev === task.id ? null : task.id)}>
-                      <div className="task-sticky-header">
-                        <input type="checkbox" checked={task.is_completed} onChange={(e) => { e.stopPropagation(); pd.handleToggleTask(task); }} className="task-checkbox" />
-                        <div className="task-sticky-body">
-                          <span className={`task-sticky-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
-                          <span className="task-sticky-meta">
-                            <span className={`task-priority-badge ${priorityClass}`} aria-label={`Priority: ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
-                            {task.assignee_name && <span className="task-sticky-assignee">&rarr; {task.assignee_name}</span>}
+                    <div key={task.id} className={`pd-task-sticky-note ${priorityClass}${task.is_completed ? ' completed' : ''}`} onClick={() => pd.setExpandedTaskId(prev => prev === task.id ? null : task.id)}>
+                      <div className="pd-task-sticky-header">
+                        <input type="checkbox" checked={task.is_completed} onChange={(e) => { e.stopPropagation(); pd.handleToggleTask(task); }} className="pd-task-checkbox" />
+                        <div className="pd-task-sticky-body">
+                          <span className={`pd-task-sticky-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
+                          <span className="pd-task-sticky-meta">
+                            <span className={`pd-task-priority-badge ${priorityClass}`} aria-label={`Priority: ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
+                            {task.assignee_name && <span className="pd-task-sticky-assignee">&rarr; {task.assignee_name}</span>}
                           </span>
                         </div>
-                        <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); pd.handleDeleteTask(task.id); }} title="Archive task" aria-label="Delete this task">&times;</button>
+                        <button className="pd-task-delete-btn" onClick={(e) => { e.stopPropagation(); pd.handleDeleteTask(task.id); }} title="Archive task" aria-label="Delete this task">&times;</button>
                       </div>
                       {isExpanded && (
-                        <div className="task-sticky-detail">
-                          {task.description && <p className="task-sticky-desc">{task.description}</p>}
-                          <div className="task-sticky-detail-row">
+                        <div className="pd-task-sticky-detail">
+                          {task.description && <p className="pd-task-sticky-desc">{task.description}</p>}
+                          <div className="pd-task-sticky-detail-row">
                             {task.due_date && <span>Due: {new Date(task.due_date).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
                             {task.creator_name && <span>Created by: {task.creator_name}</span>}
                             {task.category && <span>Category: {task.category}</span>}
@@ -415,7 +415,7 @@ export function ParentDashboard() {
                   );
                 })}
               </div>
-              <div className="day-modal-add-task">
+              <div className="pd-day-modal-add-task">
                 <input type="text" value={pd.newTaskTitle} onChange={(e) => pd.setNewTaskTitle(e.target.value)} placeholder="Add a task..." onKeyDown={(e) => e.key === 'Enter' && pd.handleCreateDayTask()} disabled={pd.newTaskCreating} />
                 <button onClick={pd.handleCreateDayTask} disabled={pd.newTaskCreating || !pd.newTaskTitle.trim()} className="generate-btn">
                   {pd.newTaskCreating ? '...' : 'Add'}
@@ -435,16 +435,16 @@ export function ParentDashboard() {
         <div className="modal-overlay" onClick={() => pd.setTaskDetailModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>{pd.taskDetailModal.title}</h2>
-            <div className="task-detail-modal-body">
-              {pd.taskDetailModal.description && <p className="task-detail-desc">{pd.taskDetailModal.description}</p>}
-              <div className="task-detail-fields">
-                <div className="task-detail-row"><span className="task-detail-label">Status</span><span className={`sdp-task-badge ${pd.taskDetailModal.is_completed ? 'completed' : 'pending'}`}>{pd.taskDetailModal.is_completed ? 'Completed' : 'Pending'}</span></div>
-                {pd.taskDetailModal.due_date && <div className="task-detail-row"><span className="task-detail-label">Due Date</span><span>{new Date(pd.taskDetailModal.due_date).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>}
-                {pd.taskDetailModal.priority && <div className="task-detail-row"><span className="task-detail-label">Priority</span><span className={`task-priority-badge ${pd.taskDetailModal.priority}`}>{pd.taskDetailModal.priority}</span></div>}
-                {pd.taskDetailModal.assignee_name && <div className="task-detail-row"><span className="task-detail-label">Assigned To</span><span>{pd.taskDetailModal.assignee_name}</span></div>}
-                {pd.taskDetailModal.creator_name && <div className="task-detail-row"><span className="task-detail-label">Created By</span><span>{pd.taskDetailModal.creator_name}</span></div>}
-                {pd.taskDetailModal.course_name && <div className="task-detail-row"><span className="task-detail-label">Class</span><span>{pd.taskDetailModal.course_name}</span></div>}
-                {pd.taskDetailModal.category && <div className="task-detail-row"><span className="task-detail-label">Category</span><span>{pd.taskDetailModal.category}</span></div>}
+            <div className="pd-task-detail-modal-body">
+              {pd.taskDetailModal.description && <p className="pd-task-detail-desc">{pd.taskDetailModal.description}</p>}
+              <div className="pd-task-detail-fields">
+                <div className="pd-task-detail-row"><span className="pd-task-detail-label">Status</span><span className={`sdp-task-badge ${pd.taskDetailModal.is_completed ? 'completed' : 'pending'}`}>{pd.taskDetailModal.is_completed ? 'Completed' : 'Pending'}</span></div>
+                {pd.taskDetailModal.due_date && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Due Date</span><span>{new Date(pd.taskDetailModal.due_date).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>}
+                {pd.taskDetailModal.priority && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Priority</span><span className={`pd-task-priority-badge ${pd.taskDetailModal.priority}`}>{pd.taskDetailModal.priority}</span></div>}
+                {pd.taskDetailModal.assignee_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Assigned To</span><span>{pd.taskDetailModal.assignee_name}</span></div>}
+                {pd.taskDetailModal.creator_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Created By</span><span>{pd.taskDetailModal.creator_name}</span></div>}
+                {pd.taskDetailModal.course_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Class</span><span>{pd.taskDetailModal.course_name}</span></div>}
+                {pd.taskDetailModal.category && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Category</span><span>{pd.taskDetailModal.category}</span></div>}
               </div>
             </div>
             <div className="modal-actions">

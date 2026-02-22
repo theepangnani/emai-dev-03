@@ -34,10 +34,10 @@ export function TodaysFocusHeader({
 
     const allChildNames = childList.map(c => c.full_name.split(' ')[0]);
     let heroHeadline: React.ReactNode;
-    let heroClass = 'hero-headline';
+    let heroClass = 'pd-hero-headline';
 
     if (allClear) {
-      heroClass += ' hero-clear';
+      heroClass += ' pd-hero-clear';
       if (childLabel) {
         heroHeadline = `All caught up! ${childLabel} is on track.`;
       } else if (allChildNames.length > 0) {
@@ -46,11 +46,11 @@ export function TodaysFocusHeader({
         heroHeadline = 'All caught up!';
       }
     } else if (overdue > 0) {
-      heroClass += ' hero-overdue';
+      heroClass += ' pd-hero-overdue';
       if (childLabel) {
-        heroHeadline = <>{childLabel} has <span className="hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
+        heroHeadline = <>{childLabel} has <span className="pd-hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
       } else {
-        heroHeadline = <>Your kids have <span className="hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
+        heroHeadline = <>Your kids have <span className="pd-hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
       }
     } else {
       if (childLabel) {
@@ -61,13 +61,13 @@ export function TodaysFocusHeader({
     }
 
     return (
-      <div className="today-focus-header">
-        <div className="today-focus-main">
-          <div className="today-focus-status">
+      <div className="pd-today-focus-header">
+        <div className="pd-today-focus-main">
+          <div className="pd-today-focus-status">
             <div>
               <div className={heroClass}>{heroHeadline}</div>
               {!selectedChild && childList.length > 1 && perChildOverdue.length > 0 && (
-                <div className="hero-breakdown">
+                <div className="pd-hero-breakdown">
                   {perChildOverdue.map((c, i) => (
                     <span key={c.name}>
                       {i > 0 && ' \u00B7 '}
@@ -76,33 +76,33 @@ export function TodaysFocusHeader({
                   ))}
                 </div>
               )}
-              <div className="today-focus-items">
+              <div className="pd-today-focus-items">
                 {overdue > 0 && (
-                  <button type="button" className="focus-tag overdue" onClick={() => onNavigate('/tasks?due=overdue')}>{overdue} overdue</button>
+                  <button type="button" className="pd-focus-tag overdue" onClick={() => onNavigate('/tasks?due=overdue')}>{overdue} overdue</button>
                 )}
                 {dueToday > 0 && (
-                  <button type="button" className="focus-tag today" onClick={() => onNavigate('/tasks?due=today')}>{dueToday} due today</button>
+                  <button type="button" className="pd-focus-tag today" onClick={() => onNavigate('/tasks?due=today')}>{dueToday} due today</button>
                 )}
                 {upcoming > 0 && (
-                  <button type="button" className="focus-tag upcoming" onClick={() => onNavigate('/tasks?due=week')}>{upcoming} next 3 days</button>
+                  <button type="button" className="pd-focus-tag upcoming" onClick={() => onNavigate('/tasks?due=week')}>{upcoming} next 3 days</button>
                 )}
                 {inviteCount > 0 && (
-                  <button type="button" className="focus-tag invites" onClick={() => onNavigate('/my-kids')}>{inviteCount} pending invite{inviteCount !== 1 ? 's' : ''}</button>
+                  <button type="button" className="pd-focus-tag invites" onClick={() => onNavigate('/my-kids')}>{inviteCount} pending invite{inviteCount !== 1 ? 's' : ''}</button>
                 )}
               </div>
             </div>
           </div>
         </div>
         {inspiration && (
-          <div className="today-focus-inspiration">
-            <span className="today-focus-quote">"{inspiration.text}"</span>
+          <div className="pd-today-focus-inspiration">
+            <span className="pd-today-focus-quote">"{inspiration.text}"</span>
             {inspiration.author && (
-              <span className="today-focus-author"> — {inspiration.author}</span>
+              <span className="pd-today-focus-author"> — {inspiration.author}</span>
             )}
           </div>
         )}
         <button
-          className="today-focus-close"
+          className="pd-today-focus-close"
           onClick={onDismiss}
           aria-label="Close Today's Focus"
         >
