@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { studyApi, type StudyGuide, type ResolvedStudent } from '../../api/client';
 
@@ -40,7 +40,7 @@ export function QuizTab({
   const [quizFinished, setQuizFinished] = useState(false);
   const [quizSaving, setQuizSaving] = useState(false);
   const [quizSaveError, setQuizSaveError] = useState<string | null>(null);
-  const quizSavedId = useRef<number | null>(null);
+  const [quizSavedId, setQuizSavedId] = useState<number | null>(null);
 
   const parsedQuiz: ParsedQuestion[] = quiz ? (() => {
     try { return JSON.parse(quiz.content); } catch { return []; }
@@ -59,6 +59,25 @@ export function QuizTab({
     setShowResult(true);
   };
 
+  const saveQuizResult = (finalScore: number, finalAnswers: Record<number, string>) => {
+    if (!quiz) return;
+    setQuizSaving(true);
+    setQuizSaveError(null);
+    studyApi.saveQuizResult({
+      study_guide_id: quiz.id,
+      score: finalScore,
+      total_questions: parsedQuiz.length,
+      answers: finalAnswers,
+      ...(resolvedStudent ? { student_user_id: resolvedStudent.student_user_id } : {}),
+    }).then((result) => {
+      setQuizSavedId(result.id);
+    }).catch(() => {
+      setQuizSaveError('Could not save result');
+    }).finally(() => {
+      setQuizSaving(false);
+    });
+  };
+
   const handleNext = () => {
     if (quizIndex < parsedQuiz.length - 1) {
       setQuizIndex(i => i + 1);
@@ -66,27 +85,9 @@ export function QuizTab({
       setShowResult(false);
     } else {
       setQuizFinished(true);
+      saveQuizResult(quizScore, quizAnswers);
     }
   };
-
-  useEffect(() => {
-    if (!quizFinished || !quiz || quizSavedId.current !== null) return;
-    setQuizSaving(true);
-    setQuizSaveError(null);
-    studyApi.saveQuizResult({
-      study_guide_id: quiz.id,
-      score: quizScore,
-      total_questions: parsedQuiz.length,
-      answers: quizAnswers,
-      ...(resolvedStudent ? { student_user_id: resolvedStudent.student_user_id } : {}),
-    }).then((result) => {
-      quizSavedId.current = result.id;
-    }).catch(() => {
-      setQuizSaveError('Could not save result');
-    }).finally(() => {
-      setQuizSaving(false);
-    });
-  }, [quizFinished, quiz, quizScore, parsedQuiz.length, quizAnswers, resolvedStudent]);
 
   const resetQuiz = () => {
     setQuizIndex(0);
@@ -95,7 +96,7 @@ export function QuizTab({
     setQuizScore(0);
     setQuizAnswers({});
     setQuizFinished(false);
-    quizSavedId.current = null;
+    setQuizSavedId(null);
     setQuizSaveError(null);
   };
 
@@ -135,7 +136,7 @@ export function QuizTab({
               </div>
               {quizSaving && <p className="save-status">Saving result...</p>}
               {quizSaveError && <p className="save-status save-error">{quizSaveError}</p>}
-              {quizSavedId.current !== null && !quizSaving && !quizSaveError && (
+              {quizSavedId !== null && !quizSaving && !quizSaveError && (
                 <p className="save-status save-success">Result saved</p>
               )}
               <div className="cm-quiz-result-actions">
