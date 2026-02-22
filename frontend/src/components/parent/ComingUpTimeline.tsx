@@ -165,7 +165,7 @@ export function ComingUpTimeline({
   const displayed = timelineItems.slice(0, 10);
 
   return (
-    <section className="pd-timeline-section">
+    <section className="pd-timeline-section" aria-label="Coming up timeline">
       <div className="pd-timeline-header">
         <h3 className="pd-timeline-heading">Coming Up</h3>
         <button
@@ -176,13 +176,14 @@ export function ComingUpTimeline({
         </button>
       </div>
 
-      <div className="pd-timeline">
+      <div className="pd-timeline" role="list">
         {displayed.map(item => (
           <div
             key={`${item.type}-${item.id}`}
+            role="listitem"
             className={`pd-timeline-item ${item.urgency}${item.isCompleted ? ' completed' : ''}`}
           >
-            <div className="pd-timeline-dot" />
+            <div className="pd-timeline-dot" aria-hidden="true" />
             <div className="pd-timeline-content">
               <div className="pd-timeline-row">
                 {item.type === 'task' && (
@@ -190,6 +191,7 @@ export function ComingUpTimeline({
                     type="checkbox"
                     className="pd-timeline-checkbox"
                     checked={item.isCompleted || false}
+                    aria-label={`Mark "${item.title}" as ${item.isCompleted ? 'incomplete' : 'complete'}`}
                     onChange={(e) => {
                       e.stopPropagation();
                       const task = taskMap.get(item.taskId!);
@@ -225,6 +227,7 @@ export function ComingUpTimeline({
                   {item.type === 'assignment' && (
                     <button
                       className="pd-timeline-study-btn"
+                      aria-label={`Study ${item.title}`}
                       onClick={() => {
                         const orig = assignmentMap.get(item.id);
                         if (orig) onNavigateStudy(orig);
