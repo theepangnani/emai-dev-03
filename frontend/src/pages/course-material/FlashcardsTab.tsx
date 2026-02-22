@@ -93,10 +93,10 @@ export function FlashcardsTab({
       {flashcardSet && displayCards.length > 0 ? (
         <>
           <div className="cm-guide-actions">
-            <button className="cm-action-btn" onClick={handleReset}>Reset</button>
-            <button className="cm-action-btn" onClick={handleShuffle}>Shuffle</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>Regenerate</button>
-            <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>Delete</button>
+            <button className="cm-action-btn" onClick={handleReset}>{'\u{1F504}'} Reset</button>
+            <button className="cm-action-btn" onClick={handleShuffle}>{'\u{1F500}'} Shuffle</button>
+            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <div className="cm-flashcard-progress">
             Card {cardIndex + 1} of {displayCards.length}

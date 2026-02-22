@@ -317,9 +317,9 @@ export function CourseMaterialDetailPage() {
         <div className="cm-regen-prompt">
           <p>Source content was modified. Regenerate study materials?</p>
           <div className="cm-regen-buttons">
-            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>Study Guide</button>
-            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>Quiz</button>
-            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>Flashcards</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>{'\u2728'} Study Guide</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>{'\u2728'} Quiz</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>{'\u2728'} Flashcards</button>
             <button className="cm-action-btn" onClick={() => setShowRegenPrompt(false)}>Dismiss</button>
           </div>
         </div>

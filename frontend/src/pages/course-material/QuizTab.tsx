@@ -121,9 +121,9 @@ export function QuizTab({
       {quiz && parsedQuiz.length > 0 ? (
         <>
           <div className="cm-guide-actions">
-            <button className="cm-action-btn" onClick={resetQuiz}>Reset</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>Regenerate</button>
-            <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>Delete</button>
+            <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
+            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           {quizFinished ? (
             <div className="cm-quiz-results">

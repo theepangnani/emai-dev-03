@@ -1,7 +1,6 @@
 import { useState, Suspense } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse } from '../../api/client';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
-import { AddActionButton } from '../../components/AddActionButton';
 
 interface QuizItem {
   question: string;
@@ -121,34 +120,30 @@ export function DocumentTab({
 
   return (
     <div className="cm-document-tab">
-      {isEditing ? (
-        <div className="cm-guide-actions">
-          <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
-            {editSaving ? 'Saving...' : 'Save'}
-          </button>
-          <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
-        </div>
-      ) : (
-        <div className="cm-document-actions">
-          <AddActionButton actions={[
-            ...(content.has_file ? [{
-              icon: '\u{1F4E5}',
-              label: downloading ? 'Downloading...' : 'Download',
-              onClick: onDownload,
-            }] : []),
-            ...(!content.has_file ? [{
-              icon: '\u270F\uFE0F',
-              label: 'Edit Content',
-              onClick: handleStartEdit,
-            }] : []),
-            {
-              icon: '\u{1F4C4}',
-              label: content.has_file ? 'Replace Document' : 'Upload Document',
-              onClick: onShowReplaceModal,
-            },
-          ]} />
-        </div>
-      )}
+      <div className="cm-guide-actions">
+        {isEditing ? (
+          <>
+            <button className="cm-action-btn primary" onClick={handleSaveTextContent} disabled={editSaving}>
+              {editSaving ? 'Saving...' : '\u{1F4BE} Save'}
+            </button>
+            <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
+          </>
+        ) : (
+          <>
+            {content.has_file && (
+              <button className="cm-action-btn" onClick={onDownload} disabled={downloading}>
+                {downloading ? 'Downloading...' : '\u{1F4E5} Download'}
+              </button>
+            )}
+            {!content.has_file && (
+              <button className="cm-action-btn" onClick={handleStartEdit}>{'\u270F\uFE0F'} Edit Content</button>
+            )}
+            <button className="cm-action-btn" onClick={onShowReplaceModal}>
+              {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
+            </button>
+          </>
+        )}
+      </div>
       {isEditing ? (
         <textarea
           className="cm-edit-textarea"
@@ -164,7 +159,7 @@ export function DocumentTab({
       ) : content.has_file ? (
         <div className="cm-file-info-card">
           <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
-          <p className="cm-file-info-hint">Use the + button above to download the original file.</p>
+          <p className="cm-file-info-hint">Use the Download button above to get the original file.</p>
         </div>
       ) : content.description ? (
         <p className="cm-document-desc">{content.description}</p>
