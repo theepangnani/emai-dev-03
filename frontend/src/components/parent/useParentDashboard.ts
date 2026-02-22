@@ -5,7 +5,7 @@ import { courseContentsApi } from '../../api/courses';
 import type { ChildSummary, ChildOverview, ParentDashboardData, TaskItem, InviteResponse } from '../../api/client';
 
 import type { CalendarAssignment } from '../calendar/types';
-import { getCourseColor, dateKey, TASK_PRIORITY_COLORS } from '../calendar/types';
+import { getCourseColor, TASK_PRIORITY_COLORS } from '../calendar/types';
 import { useConfirm } from '../ConfirmModal';
 import type { CourseMaterial } from './StudentDetailPanel';
 
