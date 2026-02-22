@@ -4,6 +4,8 @@ import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
+import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
+import { ChildComparisonCards } from '../components/parent/ChildComparisonCards';
 import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
@@ -77,10 +79,29 @@ export function ParentDashboard() {
             ]} />
           </div>
 
+          {/* Multi-Child Comparison Cards (all-children mode, 2+ children) */}
+          {pd.selectedChild === null && pd.children.length >= 2 && (
+            <ChildComparisonCards
+              children={pd.children}
+              allTasks={pd.filteredTasks}
+              childColors={CHILD_COLORS}
+              onSelectChild={pd.handleChildTabClick}
+            />
+          )}
+
           <AlertBanner
             pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
             onResendInvite={pd.handleResendInvite}
             resendingId={pd.resendingId}
+          />
+
+          {/* Coming Up Timeline */}
+          <ComingUpTimeline
+            calendarAssignments={pd.calendarAssignments}
+            filteredTasks={pd.filteredTasks}
+            selectedChild={pd.selectedChild}
+            onToggleTask={pd.handleToggleTask}
+            onNavigateStudy={pd.handleOneClickStudy}
           />
 
           <StudentDetailPanel
