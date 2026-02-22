@@ -110,11 +110,6 @@
   border-radius: 10px;
 }
 
-/* Document tab actions (+ popover) */
-.cm-document-actions {
-  margin-bottom: 1rem;
-}
-
 .cm-tab {
   padding: 0.5rem 1rem;
   background: none;
