@@ -114,7 +114,7 @@ function dayLabel(dueDateStr: string): string {
 
 function Chevron({ expanded }: { expanded: boolean }) {
   return (
-    <span className={`sdp-chevron${expanded ? ' expanded' : ''}`}>
+    <span className={`sdp-chevron${expanded ? ' expanded' : ''}`} aria-hidden="true">
       {'\u25B6'}
     </span>
   );
@@ -162,6 +162,8 @@ export function StudentDetailPanel({
         onClick={onToggleCollapsed}
         role="button"
         tabIndex={0}
+        aria-expanded={!collapsed}
+        aria-label={selectedChildName ? `${selectedChildName}'s Details` : 'All Children Overview'}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -190,6 +192,8 @@ export function StudentDetailPanel({
           onClick={() => setTasksExpanded((v) => !v)}
           role="button"
           tabIndex={0}
+          aria-expanded={tasksExpanded}
+          aria-label={`Tasks (${totalActive})`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -199,7 +203,7 @@ export function StudentDetailPanel({
         >
           <span>
             Tasks
-            <span className="sdp-count-badge">{totalActive}</span>
+            <span className="sdp-count-badge" aria-hidden="true">{totalActive}</span>
           </span>
           <Chevron expanded={tasksExpanded} />
         </div>
@@ -327,6 +331,8 @@ export function StudentDetailPanel({
           onClick={() => setMaterialsExpanded((v) => !v)}
           role="button"
           tabIndex={0}
+          aria-expanded={materialsExpanded}
+          aria-label={`Class Materials (${courseMaterials.length})`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -336,7 +342,7 @@ export function StudentDetailPanel({
         >
           <span>
             Class Materials
-            <span className="sdp-count-badge">{courseMaterials.length}</span>
+            <span className="sdp-count-badge" aria-hidden="true">{courseMaterials.length}</span>
           </span>
           <Chevron expanded={materialsExpanded} />
         </div>

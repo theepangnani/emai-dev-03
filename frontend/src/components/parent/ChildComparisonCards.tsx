@@ -112,7 +112,7 @@ export function ChildComparisonCards({
   const stats = computePerChildStats(children, allTasks);
 
   return (
-    <section className="pd-compare-section">
+    <section className="pd-compare-section" aria-label="Children comparison">
       <div className="pd-compare-row">
         {stats.map((child, index) => {
           const color = childColors[index % childColors.length];
@@ -125,7 +125,7 @@ export function ChildComparisonCards({
               className={`pd-compare-card${hasOverdue ? ' has-overdue' : ''}`}
             >
               {/* Avatar */}
-              <div className="pd-compare-avatar" style={{ backgroundColor: color }}>
+              <div className="pd-compare-avatar" aria-hidden="true" style={{ backgroundColor: color }}>
                 {getInitial(child.fullName)}
               </div>
 
@@ -149,7 +149,7 @@ export function ChildComparisonCards({
                 )}
                 {allClear && (
                   <span className="pd-compare-stat clear">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }} aria-hidden="true">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                     {' '}All clear
@@ -159,13 +159,20 @@ export function ChildComparisonCards({
 
               {/* Progress bar */}
               <div className="pd-compare-progress-wrap">
-                <div className="pd-compare-progress-bar">
+                <div
+                  className="pd-compare-progress-bar"
+                  role="progressbar"
+                  aria-valuenow={child.completionRate}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${child.fullName} task completion: ${child.completionRate}%`}
+                >
                   <div
                     className="pd-compare-progress-fill"
                     style={{ width: `${child.completionRate}%`, backgroundColor: color }}
                   />
                 </div>
-                <span className="pd-compare-progress-label">{child.completionRate}% done</span>
+                <span className="pd-compare-progress-label" aria-hidden="true">{child.completionRate}% done</span>
               </div>
 
               {/* Next deadline */}
@@ -180,6 +187,7 @@ export function ChildComparisonCards({
               {/* View button */}
               <button
                 className="pd-compare-view-btn"
+                aria-label={`View ${child.fullName}'s details`}
                 onClick={() => onSelectChild(child.studentId)}
               >
                 View

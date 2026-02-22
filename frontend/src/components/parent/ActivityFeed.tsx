@@ -43,9 +43,11 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
         className="pd-feed-header"
         onClick={() => setCollapsed(prev => !prev)}
         type="button"
+        aria-expanded={!collapsed}
+        aria-label={`Recent Activity (${recentItems.length} items)`}
       >
         <span className="pd-feed-header-left">
-          <span className={`pd-feed-chevron ${collapsed ? '' : 'open'}`}>&#9656;</span>
+          <span className={`pd-feed-chevron ${collapsed ? '' : 'open'}`} aria-hidden="true">&#9656;</span>
           <span className="pd-feed-title">Recent Activity</span>
           {recentItems.length > 0 && (
             <span className="pd-feed-count">{recentItems.length}</span>
@@ -67,7 +69,7 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
                     onClick={() => onViewMaterial(item)}
                     type="button"
                   >
-                    <span className="pd-feed-item-icon">{typeIcon(item.content_type)}</span>
+                    <span className="pd-feed-item-icon" aria-hidden="true">{typeIcon(item.content_type)}</span>
                     <span className="pd-feed-item-info">
                       <span className="pd-feed-item-title">{item.title}</span>
                       {item.course_name && (

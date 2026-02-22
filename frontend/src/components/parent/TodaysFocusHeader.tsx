@@ -39,7 +39,7 @@ export function TodaysFocusHeader({
       if (allClear) counts.push(<span key="c" className="pd-focus-count-item">All clear</span>);
 
       return (
-        <div className="pd-today-focus-header pd-focus-collapsed" onClick={onToggleCollapse} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleCollapse(); } }}>
+        <div className="pd-today-focus-header pd-focus-collapsed" onClick={onToggleCollapse} role="button" tabIndex={0} aria-expanded={false} aria-label="Today's Focus (collapsed)" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleCollapse(); } }}>
           <div className="pd-focus-collapsed-content">
             <span className="pd-focus-collapsed-label">Today's Focus</span>
             <div className="pd-focus-collapsed-counts">
@@ -88,7 +88,7 @@ export function TodaysFocusHeader({
     }
 
     return (
-      <div className="pd-today-focus-header">
+      <div className="pd-today-focus-header" aria-expanded={true}>
         <div className="pd-today-focus-main">
           <div className="pd-today-focus-status">
             <div>

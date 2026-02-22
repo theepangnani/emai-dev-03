@@ -21,7 +21,7 @@ export function AlertBanner({
   }
 
   return (
-    <div className="alert-banner">
+    <div className="alert-banner" role="alert" aria-live="polite">
       {hasAmber && (
         <div className="alert-section amber">
           <div className="alert-section-text">

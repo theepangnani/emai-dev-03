@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import { dateKey } from '../components/calendar/types';
@@ -12,11 +12,44 @@ import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import './ParentDashboard.css';
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
   const [tipDismissed, setTipDismissed] = useState(false);
+  const childTabsRef = useRef<HTMLDivElement>(null);
+
+  // Arrow key navigation for child selector tabs (ARIA tab pattern)
+  const handleChildTabKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
+    const tabs = childTabsRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    if (!tabs || tabs.length === 0) return;
+    let nextIndex = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (index + 1) % tabs.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (index - 1 + tabs.length) % tabs.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = tabs.length - 1;
+    }
+    if (nextIndex >= 0) {
+      tabs[nextIndex].focus();
+      pd.handleChildTabClick(pd.children[nextIndex].student_id);
+    }
+  }, [pd]);
+
+  // Focus traps for modals
+  const linkModalRef = useFocusTrap<HTMLDivElement>(!!pd.showLinkModal, pd.closeLinkModal);
+  const inviteModalRef = useFocusTrap<HTMLDivElement>(!!pd.showInviteModal, pd.closeInviteModal);
+  const editChildModalRef = useFocusTrap<HTMLDivElement>(!!pd.showEditChildModal, pd.closeEditChildModal);
+  const dayModalRef = useFocusTrap<HTMLDivElement>(!!pd.dayModalDate, pd.closeDayModal);
+  const taskDetailModalRef = useFocusTrap<HTMLDivElement>(!!pd.taskDetailModal, () => pd.setTaskDetailModal(null));
 
   // Today's Focus header builder
   const renderHeaderSlot = pd.children.length > 0
@@ -59,22 +92,22 @@ export function ParentDashboard() {
           <h2 className="pd-onboard-title">Welcome to ClassBridge!</h2>
           <p className="pd-onboard-subtitle">Your education command center starts here.</p>
 
-          <div className="pd-onboard-steps">
-            <div className="pd-onboard-card pd-onboard-card-active" style={{ animationDelay: '0ms' }}>
+          <div className="pd-onboard-steps" role="list" aria-label="Setup steps">
+            <div className="pd-onboard-card pd-onboard-card-active" role="listitem" style={{ animationDelay: '0ms' }}>
               <span className="pd-onboard-card-step">Step 1</span>
-              <span className="pd-onboard-card-icon">👨‍👩‍👧</span>
+              <span className="pd-onboard-card-icon" aria-hidden="true">👨‍👩‍👧</span>
               <span className="pd-onboard-card-title">Add Your Child</span>
               <span className="pd-onboard-card-desc">Create a profile or link an existing student account</span>
             </div>
-            <div className="pd-onboard-card pd-onboard-card-future" style={{ animationDelay: '100ms' }}>
+            <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '100ms' }}>
               <span className="pd-onboard-card-step">Step 2</span>
-              <span className="pd-onboard-card-icon">🏫</span>
+              <span className="pd-onboard-card-icon" aria-hidden="true">🏫</span>
               <span className="pd-onboard-card-title">Connect School</span>
               <span className="pd-onboard-card-desc">Import classes from Google Classroom automatically</span>
             </div>
-            <div className="pd-onboard-card pd-onboard-card-future" style={{ animationDelay: '200ms' }}>
+            <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '200ms' }}>
               <span className="pd-onboard-card-step">Step 3</span>
-              <span className="pd-onboard-card-icon">📚</span>
+              <span className="pd-onboard-card-icon" aria-hidden="true">📚</span>
               <span className="pd-onboard-card-title">Explore Tools</span>
               <span className="pd-onboard-card-desc">Study guides, tasks &amp; tracking for your child</span>
             </div>
@@ -87,18 +120,25 @@ export function ParentDashboard() {
       ) : (
         <>
           {/* Child Filter */}
-          <div className="pd-child-selector">
-            {pd.children.map((child, index) => (
-              <button
-                key={child.student_id}
-                className={`pd-child-tab ${pd.selectedChild === child.student_id ? 'active' : ''}`}
-                onClick={() => pd.handleChildTabClick(child.student_id)}
-              >
-                <span className="pd-child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                {child.full_name}
-                {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
-              </button>
-            ))}
+          <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={childTabsRef}>
+            {pd.children.map((child, index) => {
+              const isSelected = pd.selectedChild === child.student_id;
+              return (
+                <button
+                  key={child.student_id}
+                  role="tab"
+                  aria-selected={isSelected}
+                  tabIndex={isSelected || (pd.selectedChild === null && index === 0) ? 0 : -1}
+                  className={`pd-child-tab ${isSelected ? 'active' : ''}`}
+                  onClick={() => pd.handleChildTabClick(child.student_id)}
+                  onKeyDown={(e) => handleChildTabKeyDown(e, index)}
+                >
+                  <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                  {child.full_name}
+                  {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
+                </button>
+              );
+            })}
             <AddActionButton actions={[
               { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
               { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
@@ -131,11 +171,11 @@ export function ParentDashboard() {
           />
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
-            <div className="pd-onboard-tip">
-              <span className="pd-onboard-tip-icon">💡</span>
+            <div className="pd-onboard-tip" role="status">
+              <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
               <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
               <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
-              <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)}>&times;</button>
+              <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)} aria-label="Dismiss tip">&times;</button>
             </div>
           )}
 
@@ -169,13 +209,13 @@ export function ParentDashboard() {
       {/* Link Child Modal */}
       {pd.showLinkModal && (
         <div className="modal-overlay" onClick={pd.closeLinkModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Add Child" ref={linkModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Add Child</h2>
 
-            <div className="link-tabs">
-              <button className={`link-tab ${pd.linkTab === 'create' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('create'); pd.setLinkError(''); }}>Create New</button>
-              <button className={`link-tab ${pd.linkTab === 'email' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('email'); pd.setLinkError(''); }}>Link by Email</button>
-              <button className={`link-tab ${pd.linkTab === 'google' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('google'); pd.setLinkError(''); }}>Google Classroom</button>
+            <div className="link-tabs" role="tablist" aria-label="Add child method">
+              <button role="tab" aria-selected={pd.linkTab === 'create'} className={`link-tab ${pd.linkTab === 'create' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('create'); pd.setLinkError(''); }}>Create New</button>
+              <button role="tab" aria-selected={pd.linkTab === 'email'} className={`link-tab ${pd.linkTab === 'email' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('email'); pd.setLinkError(''); }}>Link by Email</button>
+              <button role="tab" aria-selected={pd.linkTab === 'google'} className={`link-tab ${pd.linkTab === 'google' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('google'); pd.setLinkError(''); }}>Google Classroom</button>
             </div>
 
             {pd.linkTab === 'create' && (
@@ -333,7 +373,7 @@ export function ParentDashboard() {
       {/* Invite Student Modal */}
       {pd.showInviteModal && (
         <div className="modal-overlay" onClick={pd.closeInviteModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite Student" ref={inviteModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Invite Student</h2>
             <p className="modal-desc">Send an email invite to create a new student account linked to yours.</p>
             <div className="modal-form">
@@ -368,7 +408,7 @@ export function ParentDashboard() {
       {/* Edit Child Modal */}
       {pd.showEditChildModal && pd.editChild && (
         <div className="modal-overlay" onClick={pd.closeEditChildModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Child" ref={editChildModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Child</h2>
             <p className="modal-desc">Update {pd.editChild.full_name}'s profile information.</p>
             <div className="modal-form">
@@ -415,7 +455,7 @@ export function ParentDashboard() {
       {/* Day Detail Modal */}
       {pd.dayModalDate && (
         <div className="modal-overlay" onClick={pd.closeDayModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label={`Day detail: ${pd.dayModalDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`} ref={dayModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>{pd.dayModalDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
 
             {(() => {
@@ -495,7 +535,7 @@ export function ParentDashboard() {
       {/* Task Detail Modal */}
       {pd.taskDetailModal && (
         <div className="modal-overlay" onClick={() => pd.setTaskDetailModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={`Task: ${pd.taskDetailModal.title}`} ref={taskDetailModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>{pd.taskDetailModal.title}</h2>
             <div className="pd-task-detail-modal-body">
               {pd.taskDetailModal.description && <p className="pd-task-detail-desc">{pd.taskDetailModal.description}</p>}
