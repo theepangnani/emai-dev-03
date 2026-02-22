@@ -44,7 +44,7 @@ export function FlashcardsTab({
   const displayCards = shuffledCards.length > 0 ? shuffledCards : parsedCards;
 
   const handleShuffle = () => {
-    const arr = [...parsedCards];
+    const arr = [...displayCards];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
