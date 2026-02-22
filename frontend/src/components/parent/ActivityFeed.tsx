@@ -52,6 +52,11 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
           {recentItems.length > 0 && (
             <span className="pd-feed-count">{recentItems.length}</span>
           )}
+          {collapsed && recentItems.length > 0 && (
+            <span className="pd-feed-preview">
+              {recentItems[0].title}
+            </span>
+          )}
         </span>
       </button>
 
