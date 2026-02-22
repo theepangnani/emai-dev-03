@@ -538,12 +538,12 @@ export function CourseMaterialDetailPage() {
                   <button
                     className="generate-btn"
                     onClick={() => handleGenerate('study_guide')}
-                    disabled={generating !== null || !content.text_content}
+                    disabled={generating !== null || (!content.text_content && !content.description)}
                   >
                     Generate Study Guide
                   </button>
-                  {!content.text_content && (
-                    <p className="cm-hint">Upload document content first to generate a study guide.</p>
+                  {!content.text_content && !content.description && (
+                    <p className="cm-hint">Add content or upload a document first to generate a study guide.</p>
                   )}
                 </div>
               )}
@@ -645,12 +645,12 @@ export function CourseMaterialDetailPage() {
                   <button
                     className="generate-btn"
                     onClick={() => handleGenerate('quiz')}
-                    disabled={generating !== null || !content.text_content}
+                    disabled={generating !== null || (!content.text_content && !content.description)}
                   >
                     Generate Quiz
                   </button>
-                  {!content.text_content && (
-                    <p className="cm-hint">Upload document content first to generate a quiz.</p>
+                  {!content.text_content && !content.description && (
+                    <p className="cm-hint">Add content or upload a document first to generate a quiz.</p>
                   )}
                 </div>
               )}
@@ -724,12 +724,12 @@ export function CourseMaterialDetailPage() {
                   <button
                     className="generate-btn"
                     onClick={() => handleGenerate('flashcards')}
-                    disabled={generating !== null || !content.text_content}
+                    disabled={generating !== null || (!content.text_content && !content.description)}
                   >
                     Generate Flashcards
                   </button>
-                  {!content.text_content && (
-                    <p className="cm-hint">Upload document content first to generate flashcards.</p>
+                  {!content.text_content && !content.description && (
+                    <p className="cm-hint">Add content or upload a document first to generate flashcards.</p>
                   )}
                 </div>
               )}
