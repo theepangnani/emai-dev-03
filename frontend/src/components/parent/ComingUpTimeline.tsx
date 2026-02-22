@@ -27,6 +27,7 @@ interface ComingUpTimelineProps {
   selectedChild: number | null;
   onToggleTask: (task: TaskItem) => void;
   onNavigateStudy: (assignment: CalendarAssignment) => void;
+  onDismiss?: () => void;
 }
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -67,6 +68,7 @@ export function ComingUpTimeline({
   selectedChild,
   onToggleTask,
   onNavigateStudy,
+  onDismiss,
 }: ComingUpTimelineProps) {
   const navigate = useNavigate();
 
@@ -149,17 +151,7 @@ export function ComingUpTimeline({
   }, [calendarAssignments]);
 
   if (timelineItems.length === 0) {
-    return (
-      <section className="pd-timeline-section">
-        <div className="pd-timeline-header">
-          <h3 className="pd-timeline-heading">Coming Up</h3>
-        </div>
-        <div className="pd-timeline-empty">
-          <span className="pd-timeline-empty-icon">&#127774;</span>
-          <p>Nothing coming up &mdash; enjoy the break!</p>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   const displayed = timelineItems.slice(0, 10);
@@ -174,6 +166,13 @@ export function ComingUpTimeline({
         >
           View All Tasks
         </button>
+        {onDismiss && (
+          <button
+            className="pd-timeline-dismiss"
+            onClick={onDismiss}
+            aria-label="Dismiss coming up section"
+          >&times;</button>
+        )}
       </div>
 
       <div className="pd-timeline" role="list">

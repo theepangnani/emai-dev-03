@@ -30,6 +30,9 @@ interface DashboardLayoutProps {
   headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
 }
 
+// Module-level cache so inspiration persists across DashboardLayout remounts (page navigations)
+let cachedInspiration: InspirationMessage | null = null;
+
 // SVG icon component for nav items (Feather/Lucide style)
 const NAV_SVG: Record<string, React.ReactNode> = {
   Home: (
@@ -117,7 +120,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
-  const [inspiration, setInspiration] = useState<InspirationMessage | null>(null);
+  const [inspiration, setInspiration] = useState<InspirationMessage | null>(cachedInspiration);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
@@ -185,9 +188,13 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
     return () => clearInterval(interval);
   }, []);
 
-  // Load inspirational message once per session
+  // Load inspirational message once per session (cached across remounts)
   useEffect(() => {
-    inspirationApi.getRandom().then(setInspiration).catch(() => {});
+    if (cachedInspiration) return;
+    inspirationApi.getRandom().then((msg) => {
+      cachedInspiration = msg;
+      setInspiration(msg);
+    }).catch(() => {});
   }, []);
 
   // Close menu when route changes
