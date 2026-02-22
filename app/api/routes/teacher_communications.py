@@ -15,7 +15,7 @@ from app.schemas.teacher_communication import (
     EmailMonitoringStatus,
 )
 from app.api.deps import get_current_user
-from app.services.google_classroom import get_email_monitoring_auth_url
+from app.services.google_classroom import get_email_monitoring_auth_url, GMAIL_READONLY_SCOPE
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 
 logger = logging.getLogger(__name__)
@@ -83,9 +83,11 @@ def get_monitoring_status(
         TeacherCommunication.is_read == False,
     ).count()
 
+    has_gmail_scope = current_user.has_google_scope(GMAIL_READONLY_SCOPE)
     return EmailMonitoringStatus(
-        gmail_enabled=bool(current_user.google_access_token),
+        gmail_enabled=bool(current_user.google_access_token) and has_gmail_scope,
         classroom_enabled=bool(current_user.google_access_token),
+        gmail_scope_granted=has_gmail_scope,
         last_gmail_sync=getattr(current_user, "gmail_last_sync", None),
         last_classroom_sync=getattr(current_user, "classroom_last_sync", None),
         total_communications=total,

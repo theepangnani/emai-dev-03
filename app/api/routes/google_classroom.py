@@ -31,6 +31,7 @@ from app.services.google_classroom import (
     get_course_work,
     get_course_work_materials,
     list_course_teachers,
+    GMAIL_READONLY_SCOPE,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,22 @@ def update_user_tokens(user: User, credentials, db: Session):
         if credentials.refresh_token:
             user.google_refresh_token = credentials.refresh_token
         db.commit()
+
+
+def _store_granted_scopes(user: User, granted_scopes_str: str) -> None:
+    """Store the granted OAuth scopes on the user record.
+
+    Google returns scopes as a space-separated string in the token response.
+    We store them as comma-separated for consistency with other CSV columns.
+    If user already has scopes, merge (union) old + new.
+    """
+    if not granted_scopes_str:
+        return
+    new_scopes = set(granted_scopes_str.split())
+    if user.google_granted_scopes:
+        existing = set(user.google_granted_scopes.split(","))
+        new_scopes = existing | new_scopes
+    user.google_granted_scopes = ",".join(sorted(new_scopes))
 
 
 @router.get("/auth")
@@ -175,6 +192,7 @@ def google_callback(
                     user.google_access_token = tokens["access_token"]
                     if tokens.get("refresh_token"):
                         user.google_refresh_token = tokens["refresh_token"]
+                    _store_granted_scopes(user, tokens.get("granted_scopes", ""))
                     db.commit()
                     params = urlencode({"google_connected": "true", "account_added": "true"})
                     return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
@@ -195,6 +213,7 @@ def google_callback(
                 user.google_id = user_info["id"]
                 user.google_access_token = tokens["access_token"]
                 user.google_refresh_token = tokens.get("refresh_token")
+                _store_granted_scopes(user, tokens.get("granted_scopes", ""))
                 db.commit()
 
                 # Redirect to dashboard with success (no tokens in URL)
@@ -228,6 +247,7 @@ def google_callback(
                     user.google_id = user_info["id"]
                     user.google_access_token = tokens["access_token"]
                     user.google_refresh_token = tokens.get("refresh_token")
+            _store_granted_scopes(user, tokens.get("granted_scopes", ""))
             db.commit()
             db.refresh(user)
 
@@ -267,6 +287,7 @@ def google_status(current_user: User = Depends(get_current_user)):
     """Check if user has connected Google Classroom."""
     return {
         "connected": bool(current_user.google_access_token),
+        "gmail_scope_granted": current_user.has_google_scope(GMAIL_READONLY_SCOPE),
         "google_email": None,  # Could fetch from Google if needed
     }
 
@@ -280,6 +301,7 @@ def google_disconnect(
     current_user.google_id = None
     current_user.google_access_token = None
     current_user.google_refresh_token = None
+    current_user.google_granted_scopes = None
     db.commit()
     return {"message": "Google Classroom disconnected"}
 

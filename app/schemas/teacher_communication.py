@@ -35,6 +35,7 @@ class TeacherCommunicationList(BaseModel):
 class EmailMonitoringStatus(BaseModel):
     gmail_enabled: bool
     classroom_enabled: bool
+    gmail_scope_granted: bool = False
     last_gmail_sync: Optional[datetime]
     last_classroom_sync: Optional[datetime]
     total_communications: int
