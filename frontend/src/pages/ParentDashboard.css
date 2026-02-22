@@ -1019,3 +1019,528 @@
     text-align: center;
   }
 }
+
+/* ============================================
+   Coming Up Timeline (#712)
+   ============================================ */
+
+.pd-timeline-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.pd-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.pd-timeline-heading {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.pd-timeline-view-all {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.pd-timeline-view-all:hover {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+/* Timeline vertical line */
+.pd-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  padding-left: 22px;
+}
+
+.pd-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--color-border);
+  border-radius: 1px;
+}
+
+/* Timeline item */
+.pd-timeline-item {
+  position: relative;
+  padding: 10px 12px 10px 0;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.pd-timeline-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.pd-timeline-item.completed {
+  opacity: 0.55;
+}
+
+/* Urgency dots */
+.pd-timeline-dot {
+  position: absolute;
+  left: -18px;
+  top: 16px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-border);
+  border: 2px solid var(--color-surface);
+  z-index: 1;
+}
+
+.pd-timeline-item.overdue .pd-timeline-dot {
+  background: var(--priority-high);
+  box-shadow: 0 0 0 3px var(--priority-high-light);
+}
+
+.pd-timeline-item.today .pd-timeline-dot {
+  background: var(--priority-medium);
+  box-shadow: 0 0 0 3px var(--priority-medium-light);
+}
+
+.pd-timeline-item.upcoming .pd-timeline-dot {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.pd-timeline-item.later .pd-timeline-dot {
+  background: var(--color-ink-muted);
+}
+
+/* Content row */
+.pd-timeline-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-timeline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pd-timeline-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pd-timeline-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-timeline-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-timeline-title.completed {
+  text-decoration: line-through;
+  color: var(--color-ink-muted);
+}
+
+.pd-timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pd-timeline-date {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pd-timeline-date.overdue {
+  color: var(--priority-high);
+}
+
+.pd-timeline-date.today {
+  color: var(--priority-medium);
+}
+
+.pd-timeline-date.upcoming {
+  color: var(--color-accent-strong);
+}
+
+.pd-timeline-date.later {
+  color: var(--color-ink-muted);
+}
+
+.pd-timeline-course {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
+  padding: 1px 8px;
+  border-radius: 8px;
+  border-left: 2px solid var(--color-border);
+}
+
+.pd-timeline-type {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+
+.pd-timeline-type.assignment {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+.pd-timeline-type.task {
+  background: var(--color-purple-light, rgba(124, 58, 237, 0.08));
+  color: var(--color-purple, #7c3aed);
+}
+
+.pd-timeline-child {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* Actions */
+.pd-timeline-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.pd-timeline-study-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.pd-timeline-study-btn:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* More link */
+.pd-timeline-more {
+  display: block;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent);
+  padding: 8px;
+  margin-top: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.pd-timeline-more:hover {
+  background: var(--color-accent-subtle);
+}
+
+/* Empty state */
+.pd-timeline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--color-ink-muted);
+}
+
+.pd-timeline-empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.pd-timeline-empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ============================================
+   Multi-Child Comparison Cards (#713)
+   ============================================ */
+
+.pd-compare-section {
+  margin-bottom: 20px;
+}
+
+.pd-compare-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pd-compare-card {
+  flex: 1 1 220px;
+  max-width: 320px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pd-compare-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.pd-compare-card.has-overdue {
+  border-left: 4px solid var(--priority-high);
+}
+
+/* Avatar */
+.pd-compare-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  flex-shrink: 0;
+}
+
+/* Name / grade */
+.pd-compare-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.pd-compare-grade {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  padding: 1px 10px;
+  background: var(--color-surface-alt);
+  border-radius: 10px;
+}
+
+/* Stats */
+.pd-compare-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.pd-compare-stat {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.pd-compare-stat.overdue {
+  background: var(--priority-high-light);
+  color: var(--priority-high);
+}
+
+.pd-compare-stat.today {
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
+}
+
+.pd-compare-stat.clear {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+/* Progress bar */
+.pd-compare-progress-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pd-compare-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-surface-alt);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pd-compare-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+.pd-compare-progress-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Next deadline */
+.pd-compare-next {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.pd-compare-next-label {
+  color: var(--color-ink-muted);
+  font-weight: 600;
+}
+
+.pd-compare-next-title {
+  color: var(--color-ink);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.pd-compare-next-when {
+  color: var(--color-accent-strong);
+  font-weight: 600;
+  margin-left: auto;
+}
+
+/* View button */
+.pd-compare-view-btn {
+  margin-top: 4px;
+  padding: 6px 24px;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.pd-compare-view-btn:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* ============================================
+   Responsive: Timeline & Comparison Cards
+   ============================================ */
+
+@media (max-width: 768px) {
+  .pd-timeline-section {
+    padding: 16px;
+  }
+
+  .pd-timeline-row {
+    flex-wrap: wrap;
+  }
+
+  .pd-timeline-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  .pd-compare-row {
+    gap: 12px;
+  }
+
+  .pd-compare-card {
+    max-width: none;
+    flex-basis: calc(50% - 6px);
+  }
+}
+
+@media (max-width: 480px) {
+  .pd-compare-card {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .pd-timeline {
+    padding-left: 18px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pd-compare-card,
+  .pd-timeline-item,
+  .pd-timeline-study-btn,
+  .pd-compare-view-btn {
+    transition: none !important;
+  }
+
+  .pd-compare-card:hover {
+    transform: none;
+  }
+}
