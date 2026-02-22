@@ -22,8 +22,8 @@ export function ParentDashboard() {
         taskCounts: pd.taskCounts,
         pendingInviteCount: pd.pendingInvites.length,
         perChildOverdue: pd.perChildOverdue,
-        focusDismissed: pd.focusDismissed,
-        onDismiss: () => pd.setFocusDismissed(true),
+        collapsed: pd.focusCollapsed,
+        onToggleCollapse: () => pd.setFocusCollapsed(prev => !prev),
         onNavigate: (path) => pd.navigate(path),
       })
     : undefined;

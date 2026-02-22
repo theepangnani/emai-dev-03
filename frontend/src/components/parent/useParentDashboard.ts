@@ -74,7 +74,7 @@ export function useParentDashboard() {
   const [detailPanelCollapsed, setDetailPanelCollapsed] = useState(false);
 
   // Today's Focus dismiss state
-  const [focusDismissed, setFocusDismissed] = useState(false);
+  const [focusCollapsed, setFocusCollapsed] = useState(false);
 
   // Class materials for StudentDetailPanel
   const [courseMaterials, setCourseMaterials] = useState<CourseMaterial[]>([]);
@@ -394,7 +394,7 @@ export function useParentDashboard() {
     handleOneClickStudy: studyTools.handleOneClickStudy, handleGoToCourse, handleViewStudyGuides: studyTools.handleViewStudyGuides, handleTaskDrop: tasks.handleTaskDrop,
 
     // Today's Focus
-    focusDismissed, setFocusDismissed, perChildOverdue,
+    focusCollapsed, setFocusCollapsed, perChildOverdue,
 
     // Detail panel
     detailPanelCollapsed, setDetailPanelCollapsed,
