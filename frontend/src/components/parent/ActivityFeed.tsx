@@ -32,9 +32,7 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
   const [collapsed, setCollapsed] = useState(false);
 
   const recentItems = useMemo(() => {
-    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
-    return courseMaterials
-      .filter(m => new Date(m.created_at).getTime() >= cutoff)
+    return [...courseMaterials]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10);
   }, [courseMaterials]);
