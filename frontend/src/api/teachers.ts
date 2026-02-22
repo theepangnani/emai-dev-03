@@ -28,6 +28,7 @@ export interface TeacherCommunicationList {
 export interface EmailMonitoringStatus {
   gmail_enabled: boolean;
   classroom_enabled: boolean;
+  gmail_scope_granted: boolean;
   last_gmail_sync: string | null;
   last_classroom_sync: string | null;
   total_communications: number;

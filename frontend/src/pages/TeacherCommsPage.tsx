@@ -97,6 +97,15 @@ export function TeacherCommsPage() {
     }
   };
 
+  const handleEnableEmailMonitoring = async () => {
+    try {
+      const { authorization_url } = await teacherCommsApi.getEmailMonitoringAuthUrl();
+      window.location.href = authorization_url;
+    } catch {
+      setError('Failed to start email monitoring setup. Please try again.');
+    }
+  };
+
   const selectCommunication = async (comm: TeacherCommunication) => {
     setSelected(comm);
     setShowReply(false);
@@ -193,11 +202,20 @@ export function TeacherCommsPage() {
         </div>
       )}
 
-      {status && !status.gmail_enabled && (
+      {status && !status.classroom_enabled && (
         <div className="connect-banner">
           <p>Connect your Google account to monitor teacher emails and announcements.</p>
           <button onClick={() => navigate('/dashboard')}>
             Go to Dashboard to Connect
+          </button>
+        </div>
+      )}
+
+      {status && status.classroom_enabled && !status.gmail_scope_granted && (
+        <div className="connect-banner">
+          <p>Enable email monitoring to sync teacher emails from Gmail. Classroom announcements are already available.</p>
+          <button onClick={handleEnableEmailMonitoring}>
+            Enable Email Monitoring
           </button>
         </div>
       )}

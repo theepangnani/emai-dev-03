@@ -570,6 +570,17 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
 
+    # ── users.google_granted_scopes column (#727) ────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "google_granted_scopes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN google_granted_scopes VARCHAR(1024)"))
+                logger.info("Added 'google_granted_scopes' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # One-time data fix: correct known invalid email (#408)
     try:
         conn.execute(text(

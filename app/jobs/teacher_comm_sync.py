@@ -10,6 +10,7 @@ from app.models.notification import Notification, NotificationType
 from app.services.gmail_monitor import fetch_teacher_emails
 from app.services.classroom_monitor import fetch_classroom_announcements
 from app.services.ai_service import summarize_teacher_communication
+from app.services.google_classroom import GMAIL_READONLY_SCOPE
 
 logger = logging.getLogger(__name__)
 
@@ -22,69 +23,72 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
 
     new_count = 0
 
-    # 1. Sync Gmail
-    try:
-        emails, creds = fetch_teacher_emails(
-            user.google_access_token,
-            user.google_refresh_token,
-            after_timestamp=user.gmail_last_sync,
-        )
+    # 1. Sync Gmail (only if user has gmail.readonly scope)
+    if not user.has_google_scope(GMAIL_READONLY_SCOPE):
+        logger.debug(f"Skipping Gmail sync for user {user.id}: gmail.readonly scope not granted")
+    else:
+        try:
+            emails, creds = fetch_teacher_emails(
+                user.google_access_token,
+                user.google_refresh_token,
+                after_timestamp=user.gmail_last_sync,
+            )
 
-        # Update tokens if refreshed
-        if creds.token != user.google_access_token:
-            user.google_access_token = creds.token
-            if creds.refresh_token:
-                user.google_refresh_token = creds.refresh_token
+            # Update tokens if refreshed
+            if creds.token != user.google_access_token:
+                user.google_access_token = creds.token
+                if creds.refresh_token:
+                    user.google_refresh_token = creds.refresh_token
 
-        for email_data in emails:
-            existing = db.query(TeacherCommunication).filter(
-                TeacherCommunication.user_id == user.id,
-                TeacherCommunication.source_id == email_data["source_id"],
-            ).first()
+            for email_data in emails:
+                existing = db.query(TeacherCommunication).filter(
+                    TeacherCommunication.user_id == user.id,
+                    TeacherCommunication.source_id == email_data["source_id"],
+                ).first()
 
-            if existing:
-                continue
+                if existing:
+                    continue
 
-            # Generate AI summary
-            summary = None
-            try:
-                summary = await summarize_teacher_communication(
-                    subject=email_data.get("subject", ""),
-                    body=email_data.get("body", ""),
-                    sender_name=email_data.get("sender_name", ""),
-                    comm_type="email",
+                # Generate AI summary
+                summary = None
+                try:
+                    summary = await summarize_teacher_communication(
+                        subject=email_data.get("subject", ""),
+                        body=email_data.get("body", ""),
+                        sender_name=email_data.get("sender_name", ""),
+                        comm_type="email",
+                    )
+                except Exception as e:
+                    logger.warning(f"AI summary failed for email: {e}")
+
+                comm = TeacherCommunication(
+                    user_id=user.id,
+                    type=CommunicationType.EMAIL,
+                    source_id=email_data["source_id"],
+                    sender_name=email_data.get("sender_name"),
+                    sender_email=email_data.get("sender_email"),
+                    subject=email_data.get("subject"),
+                    body=email_data.get("body"),
+                    snippet=email_data.get("snippet"),
+                    ai_summary=summary,
+                    received_at=email_data.get("received_at"),
                 )
-            except Exception as e:
-                logger.warning(f"AI summary failed for email: {e}")
+                db.add(comm)
+                new_count += 1
 
-            comm = TeacherCommunication(
-                user_id=user.id,
-                type=CommunicationType.EMAIL,
-                source_id=email_data["source_id"],
-                sender_name=email_data.get("sender_name"),
-                sender_email=email_data.get("sender_email"),
-                subject=email_data.get("subject"),
-                body=email_data.get("body"),
-                snippet=email_data.get("snippet"),
-                ai_summary=summary,
-                received_at=email_data.get("received_at"),
-            )
-            db.add(comm)
-            new_count += 1
+                notif = Notification(
+                    user_id=user.id,
+                    type=NotificationType.MESSAGE,
+                    title=f"Email from {email_data.get('sender_name', 'Teacher')}",
+                    content=email_data.get("subject", "New email"),
+                    link="/teacher-communications",
+                )
+                db.add(notif)
 
-            notif = Notification(
-                user_id=user.id,
-                type=NotificationType.MESSAGE,
-                title=f"Email from {email_data.get('sender_name', 'Teacher')}",
-                content=email_data.get("subject", "New email"),
-                link="/teacher-communications",
-            )
-            db.add(notif)
+            user.gmail_last_sync = datetime.now(timezone.utc)
 
-        user.gmail_last_sync = datetime.now(timezone.utc)
-
-    except Exception as e:
-        logger.error(f"Gmail sync failed for user {user.id}: {e}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Gmail sync failed for user {user.id}: {e}", exc_info=True)
 
     # 2. Sync Classroom announcements
     try:

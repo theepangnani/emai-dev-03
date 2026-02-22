@@ -31,6 +31,7 @@ class User(Base):
     google_id = Column(String(255), unique=True, nullable=True)
     google_access_token = Column(String(512), nullable=True)
     google_refresh_token = Column(String(512), nullable=True)
+    google_granted_scopes = Column(String(1024), nullable=True)  # comma-separated granted scopes
 
     # Notification preferences
     email_notifications = Column(Boolean, default=True)
@@ -43,6 +44,12 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    def has_google_scope(self, scope: str) -> bool:
+        """Check if user has been granted a specific Google OAuth scope."""
+        if not self.google_granted_scopes:
+            return False
+        return scope in self.google_granted_scopes.split(",")
 
     def has_role(self, role: "UserRole") -> bool:
         """Check if user holds a specific role (across ALL their roles, not just active)."""

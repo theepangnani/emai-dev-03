@@ -5,21 +5,31 @@ from googleapiclient.discovery import build
 
 from app.core.config import settings
 
-SCOPES = [
+# Phase 1 — requested at initial Google connect (sensitive, not restricted)
+BASE_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/classroom.courses.readonly",
     "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
     "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
     "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
     "https://www.googleapis.com/auth/classroom.announcements.readonly",
     "https://www.googleapis.com/auth/classroom.rosters.readonly",
-    "https://www.googleapis.com/auth/gmail.readonly",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
-    "openid",
 ]
 
+# Phase 2 — requested only when teacher enables email monitoring (restricted)
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 
-def get_google_auth_flow() -> Flow:
+# Combined for backward compat (used by credentials that already have gmail)
+ALL_SCOPES = BASE_SCOPES + GMAIL_SCOPES
+
+GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+
+
+def get_google_auth_flow(scopes: list[str] | None = None) -> Flow:
     """Create OAuth flow for Google Classroom."""
     client_config = {
         "web": {
@@ -30,7 +40,7 @@ def get_google_auth_flow() -> Flow:
             "redirect_uris": [settings.google_redirect_uri],
         }
     }
-    flow = Flow.from_client_config(client_config, scopes=SCOPES)
+    flow = Flow.from_client_config(client_config, scopes=scopes or BASE_SCOPES)
     flow.redirect_uri = settings.google_redirect_uri
     return flow
 
@@ -67,11 +77,12 @@ def exchange_code_for_tokens(code: str) -> dict:
     return {
         "access_token": tokens["access_token"],
         "refresh_token": tokens.get("refresh_token"),
+        "granted_scopes": tokens.get("scope", ""),
         "expiry": None,
     }
 
 
-def get_credentials(access_token: str, refresh_token: str | None = None) -> Credentials:
+def get_credentials(access_token: str, refresh_token: str | None = None, scopes: list[str] | None = None) -> Credentials:
     """Get Google credentials with automatic refresh capability."""
     credentials = Credentials(
         token=access_token,
@@ -79,7 +90,7 @@ def get_credentials(access_token: str, refresh_token: str | None = None) -> Cred
         token_uri="https://oauth2.googleapis.com/token",
         client_id=settings.google_client_id,
         client_secret=settings.google_client_secret,
-        scopes=SCOPES,
+        scopes=scopes or BASE_SCOPES,
     )
     return credentials
 
@@ -112,8 +123,11 @@ def get_classroom_service(access_token: str, refresh_token: str | None = None):
 
 
 def get_gmail_service(access_token: str, refresh_token: str | None = None):
-    """Build Gmail API service with auto-refresh."""
-    credentials = get_credentials(access_token, refresh_token)
+    """Build Gmail API service with auto-refresh.
+
+    Uses ALL_SCOPES since gmail.readonly is required for this service.
+    """
+    credentials = get_credentials(access_token, refresh_token, scopes=ALL_SCOPES)
 
     if credentials.refresh_token:
         try:
@@ -125,8 +139,12 @@ def get_gmail_service(access_token: str, refresh_token: str | None = None):
 
 
 def get_email_monitoring_auth_url(state: str | None = None) -> tuple[str, str]:
-    """Get OAuth URL for granting email monitoring permissions (re-consent)."""
-    flow = get_google_auth_flow()
+    """Get OAuth URL for granting email monitoring permissions (re-consent).
+
+    Requests ALL_SCOPES (base + gmail.readonly) with include_granted_scopes
+    so existing Classroom scopes are preserved while adding Gmail access.
+    """
+    flow = get_google_auth_flow(scopes=ALL_SCOPES)
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
