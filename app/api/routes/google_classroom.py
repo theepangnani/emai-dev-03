@@ -165,7 +165,13 @@ def google_callback(
                         )
                         db.add(new_acct)
                     # Also update User-level tokens for backward compat
-                    user.google_id = user_info["id"]
+                    # (only if no other user owns this google_id)
+                    existing_owner = db.query(User).filter(
+                        User.google_id == user_info["id"],
+                        User.id != user.id,
+                    ).first()
+                    if not existing_owner:
+                        user.google_id = user_info["id"]
                     user.google_access_token = tokens["access_token"]
                     if tokens.get("refresh_token"):
                         user.google_refresh_token = tokens["refresh_token"]
@@ -177,6 +183,15 @@ def google_callback(
         if state_data["purpose"] in ("connect", "add_account") and state_data.get("user_id"):
             user = db.query(User).filter(User.id == state_data["user_id"]).first()
             if user:
+                # Check if another user already owns this google_id
+                existing_owner = db.query(User).filter(
+                    User.google_id == user_info["id"],
+                    User.id != user.id,
+                ).first()
+                if existing_owner:
+                    params = urlencode({"error": "This Google account is already linked to another user."})
+                    return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
+
                 user.google_id = user_info["id"]
                 user.google_access_token = tokens["access_token"]
                 user.google_refresh_token = tokens.get("refresh_token")
@@ -186,16 +201,33 @@ def google_callback(
                 params = urlencode({"google_connected": "true"})
                 return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
 
-        # Find existing user by Google ID or email
+        # Find existing user by Google ID first, then by email
         user = db.query(User).filter(User.google_id == user_info["id"]).first()
+        found_by_google_id = user is not None
         if not user:
             user = db.query(User).filter(User.email == user_info["email"]).first()
 
         if user:
-            # Update existing user with Google tokens
-            user.google_id = user_info["id"]
-            user.google_access_token = tokens["access_token"]
-            user.google_refresh_token = tokens.get("refresh_token")
+            if found_by_google_id:
+                # google_id already matches — just refresh tokens
+                user.google_access_token = tokens["access_token"]
+                if tokens.get("refresh_token"):
+                    user.google_refresh_token = tokens["refresh_token"]
+            else:
+                # Found by email — check for google_id conflict before linking
+                existing_owner = db.query(User).filter(
+                    User.google_id == user_info["id"],
+                ).first()
+                if existing_owner:
+                    # google_id belongs to a different user — use that user instead
+                    user = existing_owner
+                    user.google_access_token = tokens["access_token"]
+                    if tokens.get("refresh_token"):
+                        user.google_refresh_token = tokens["refresh_token"]
+                else:
+                    user.google_id = user_info["id"]
+                    user.google_access_token = tokens["access_token"]
+                    user.google_refresh_token = tokens.get("refresh_token")
             db.commit()
             db.refresh(user)
 
