@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
+import { ActivityFeed } from '../components/parent/ActivityFeed';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { ChildComparisonCards } from '../components/parent/ChildComparisonCards';
 import { AddActionButton } from '../components/AddActionButton';
@@ -14,6 +16,7 @@ import './ParentDashboard.css';
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
+  const [tipDismissed, setTipDismissed] = useState(false);
 
   // Today's Focus header builder
   const renderHeaderSlot = pd.children.length > 0
@@ -52,11 +55,34 @@ export function ParentDashboard() {
           </div>
         </div>
       ) : pd.children.length === 0 ? (
-        <div className="pd-empty-state">
-          <div className="pd-empty-state-icon">👨‍👩‍👧</div>
-          <h3 className="pd-empty-state-title">No children linked yet</h3>
-          <p className="pd-empty-state-text">Add your child to start managing their education. No school account required!</p>
-          <button className="pd-empty-state-cta" onClick={() => pd.setShowLinkModal(true)}>Link a Child</button>
+        <div className="pd-onboard-container">
+          <h2 className="pd-onboard-title">Welcome to ClassBridge!</h2>
+          <p className="pd-onboard-subtitle">Your education command center starts here.</p>
+
+          <div className="pd-onboard-steps">
+            <div className="pd-onboard-card pd-onboard-card-active" style={{ animationDelay: '0ms' }}>
+              <span className="pd-onboard-card-step">Step 1</span>
+              <span className="pd-onboard-card-icon">👨‍👩‍👧</span>
+              <span className="pd-onboard-card-title">Add Your Child</span>
+              <span className="pd-onboard-card-desc">Create a profile or link an existing student account</span>
+            </div>
+            <div className="pd-onboard-card pd-onboard-card-future" style={{ animationDelay: '100ms' }}>
+              <span className="pd-onboard-card-step">Step 2</span>
+              <span className="pd-onboard-card-icon">🏫</span>
+              <span className="pd-onboard-card-title">Connect School</span>
+              <span className="pd-onboard-card-desc">Import classes from Google Classroom automatically</span>
+            </div>
+            <div className="pd-onboard-card pd-onboard-card-future" style={{ animationDelay: '200ms' }}>
+              <span className="pd-onboard-card-step">Step 3</span>
+              <span className="pd-onboard-card-icon">📚</span>
+              <span className="pd-onboard-card-title">Explore Tools</span>
+              <span className="pd-onboard-card-desc">Study guides, tasks &amp; tracking for your child</span>
+            </div>
+          </div>
+
+          <button className="pd-onboard-cta" onClick={() => pd.setShowLinkModal(true)}>
+            Get Started &mdash; Add Your First Child
+          </button>
         </div>
       ) : (
         <>
@@ -104,6 +130,15 @@ export function ParentDashboard() {
             onNavigateStudy={pd.handleOneClickStudy}
           />
 
+          {!tipDismissed && pd.courseMaterials.length === 0 && (
+            <div className="pd-onboard-tip">
+              <span className="pd-onboard-tip-icon">💡</span>
+              <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
+              <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
+              <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)}>&times;</button>
+            </div>
+          )}
+
           <StudentDetailPanel
             selectedChildName={pd.selectedChild ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? null) : null}
             courseMaterials={pd.courseMaterials}
@@ -115,6 +150,12 @@ export function ParentDashboard() {
             onTaskClick={(task) => pd.setTaskDetailModal(task)}
             onViewAllTasks={() => pd.navigate('/tasks', { state: { selectedChild: pd.selectedChildUserId } })}
             onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
+          />
+
+          <ActivityFeed
+            courseMaterials={pd.courseMaterials}
+            onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
+            onViewAllMaterials={() => pd.navigate('/course-materials')}
           />
 
           {/* Calendar moved to Tasks page */}
