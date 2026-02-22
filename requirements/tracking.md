@@ -209,6 +209,21 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #661: Breadcrumb navigation for all detail pages (desktop trail + mobile back-link)~~ ✅
 - ~~Issue #662: Mobile touch: long-press drag, swipe calendar nav, modal scroll fix~~ ✅
 
+### Phase 1 - Implemented (Feb 21: Student Dashboard Redesign — #708, PR #709)
+- ~~Issue #708: Student Dashboard: "Focused Command Center" redesign~~ ✅ (hero greeting with urgency pills + stat chips, notification alerts for parent/teacher requests, quick action cards, Coming Up timeline merging assignments + tasks, recent materials, course chips, create course modal, onboarding card, `sd-` CSS prefix scoping, 27 tests updated)
+
+### Phase 1 - Open (Parent Dashboard Redesign — Epic #710)
+- Issue #710: Epic: Parent Dashboard Visual Redesign
+- Issue #711: Parent Dashboard: Visual refresh with distinctive design language
+- Issue #712: Parent Dashboard: Add "Coming Up" timeline for selected child
+- Issue #713: Parent Dashboard: Multi-child comparison cards in All Children mode
+- Issue #714: Parent Dashboard: Clean up dead CSS and scope with `pd-` prefix
+- Issue #715: Parent Dashboard: Refactor useParentDashboard into focused sub-hooks
+- Issue #716: Parent Dashboard: Enhanced onboarding for first-time parents
+- Issue #717: Parent Dashboard: Make urgency overview persistent (non-dismissible)
+- Issue #718: Parent Dashboard: Add course activity feed for selected child
+- Issue #719: Parent Dashboard: Accessibility improvements (ARIA, keyboard, focus)
+
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
 - Issue #42: Manual course creation for teachers
