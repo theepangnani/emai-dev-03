@@ -63,7 +63,17 @@ export function TodaysFocusHeader({
     let heroHeadline: React.ReactNode;
     let heroClass = 'pd-hero-headline';
 
-    if (allClear) {
+    if (overdue > 0) {
+      heroClass += ' pd-hero-overdue';
+      if (childLabel) {
+        heroHeadline = <>{childLabel} has <span className="pd-hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
+      } else {
+        heroHeadline = <>Your kids have <span className="pd-hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
+      }
+    } else if (allClear) {
+      heroClass += ' pd-hero-clear';
+      heroHeadline = 'All caught up! Great job staying on top of things.';
+    } else {
       heroClass += ' pd-hero-clear';
       if (childLabel) {
         heroHeadline = `All caught up! ${childLabel} is on track.`;
@@ -71,19 +81,6 @@ export function TodaysFocusHeader({
         heroHeadline = `All caught up! ${allChildNames.join(' and ')} are on track.`;
       } else {
         heroHeadline = 'All caught up!';
-      }
-    } else if (overdue > 0) {
-      heroClass += ' pd-hero-overdue';
-      if (childLabel) {
-        heroHeadline = <>{childLabel} has <span className="pd-hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
-      } else {
-        heroHeadline = <>Your kids have <span className="pd-hero-count">{overdue}</span> overdue task{overdue !== 1 ? 's' : ''}.</>;
-      }
-    } else {
-      if (childLabel) {
-        heroHeadline = `${childLabel}'s Focus`;
-      } else {
-        heroHeadline = "Today's Focus";
       }
     }
 
