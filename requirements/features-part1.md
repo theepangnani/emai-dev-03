@@ -62,6 +62,12 @@ All UI navigation and buttons use "Course Material(s)" terminology. The specific
 - **Tab 3: Quiz** — shows the generated quiz, or a "Generate Quiz" button if none exists. During generation, an inline spinner + pulsing message replaces the empty state
 - **Tab 4: Flashcards** — shows the generated flashcards, or a "Generate Flashcards" button if none exists. During generation, an inline spinner + pulsing message replaces the empty state
 
+**Print & PDF Export** (All tabs) — IMPLEMENTED (#764):
+- **Print**: Each tab has a Print button that opens a clean print dialog in a new window with formatted content (no sidebar, navigation, or UI controls). Uses embedded print-specific CSS for clean typography
+- **Download PDF**: Each tab has a Download PDF button that generates and downloads a formatted A4 PDF using `html2pdf.js` (dynamically imported to minimize initial bundle size). Shows "Exporting..." loading state during generation
+- **Static print views**: Quiz prints all questions with correct answers marked (not the interactive stepper). Flashcards print all cards as a numbered front/back list (not the flip-card UI). Document and Study Guide print the rendered content directly
+- **Implementation**: Shared utility `exportUtils.ts` with `printElement()` and `downloadAsPdf()` functions
+
 **Filtering:**
 - Parents can filter by **child** (shows materials from that child's courses)
 - All roles can filter by **course**
