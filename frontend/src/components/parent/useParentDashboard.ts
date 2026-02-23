@@ -378,6 +378,24 @@ export function useParentDashboard() {
     }).filter(c => c.overdue > 0);
   }, [selectedChild, children, allTasks]);
 
+  // Per-child overdue counts for pill badges (always available)
+  const childOverdueCounts = useMemo(() => {
+    const map = new Map<number, number>();
+    if (children.length === 0) return map;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    for (const child of children) {
+      let overdue = 0;
+      for (const t of allTasks) {
+        if (t.assigned_to_user_id !== child.user_id && t.created_by_user_id !== child.user_id) continue;
+        if (t.is_completed || t.archived_at || !t.due_date) continue;
+        if (new Date(t.due_date) < todayStart) overdue++;
+      }
+      if (overdue > 0) map.set(child.student_id, overdue);
+    }
+    return map;
+  }, [children, allTasks]);
+
   // ============================================
   // Return the EXACT same API surface
   // ============================================
@@ -401,7 +419,7 @@ export function useParentDashboard() {
     handleOneClickStudy: studyTools.handleOneClickStudy, handleGoToCourse, handleViewStudyGuides: studyTools.handleViewStudyGuides, handleTaskDrop: tasks.handleTaskDrop,
 
     // Today's Focus
-    focusCollapsed, setFocusCollapsed, perChildOverdue,
+    focusCollapsed, setFocusCollapsed, perChildOverdue, childOverdueCounts,
 
     // Detail panel
     detailPanelCollapsed, setDetailPanelCollapsed,

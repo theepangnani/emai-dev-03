@@ -341,6 +341,26 @@
   color: var(--color-ink-muted);
 }
 
+.pd-overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--priority-high);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pd-child-tab.active .pd-overdue-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
 /* Empty States */
 .pd-empty-state {
   display: flex;
@@ -1462,193 +1482,7 @@
 }
 
 /* ============================================
-   Multi-Child Comparison Cards (#713)
-   ============================================ */
-
-.pd-compare-section {
-  margin-bottom: 20px;
-}
-
-.pd-compare-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.pd-compare-card {
-  flex: 1 1 220px;
-  max-width: 320px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 8px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.pd-compare-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-}
-
-.pd-compare-card.has-overdue {
-  border-left: 4px solid var(--priority-high);
-}
-
-/* Avatar */
-.pd-compare-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 20px;
-  font-weight: 700;
-  font-family: var(--font-display);
-  flex-shrink: 0;
-}
-
-/* Name / grade */
-.pd-compare-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-ink);
-}
-
-.pd-compare-grade {
-  font-size: 12px;
-  color: var(--color-ink-muted);
-  padding: 1px 10px;
-  background: var(--color-surface-alt);
-  border-radius: 10px;
-}
-
-/* Stats */
-.pd-compare-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-top: 4px;
-}
-
-.pd-compare-stat {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 12px;
-  white-space: nowrap;
-}
-
-.pd-compare-stat.overdue {
-  background: var(--priority-high-light);
-  color: var(--priority-high);
-}
-
-.pd-compare-stat.today {
-  background: var(--priority-medium-light);
-  color: var(--priority-medium);
-}
-
-.pd-compare-stat.clear {
-  background: var(--color-success-light);
-  color: var(--color-success);
-}
-
-/* Progress bar */
-.pd-compare-progress-wrap {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.pd-compare-progress-bar {
-  flex: 1;
-  height: 6px;
-  background: var(--color-surface-alt);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.pd-compare-progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s ease;
-  min-width: 2px;
-}
-
-.pd-compare-progress-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-ink-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Next deadline */
-.pd-compare-next {
-  width: 100%;
-  padding: 8px 10px;
-  background: var(--color-surface-alt);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  text-align: left;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: baseline;
-}
-
-.pd-compare-next-label {
-  color: var(--color-ink-muted);
-  font-weight: 600;
-}
-
-.pd-compare-next-title {
-  color: var(--color-ink);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
-
-.pd-compare-next-when {
-  color: var(--color-accent-strong);
-  font-weight: 600;
-  margin-left: auto;
-}
-
-/* View button */
-.pd-compare-view-btn {
-  margin-top: 4px;
-  padding: 6px 24px;
-  border: 1px solid var(--color-accent);
-  background: transparent;
-  color: var(--color-accent);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
-}
-
-.pd-compare-view-btn:hover {
-  background: var(--color-accent);
-  color: white;
-}
-
-/* ============================================
-   Responsive: Timeline & Comparison Cards
+   Responsive: Timeline
    ============================================ */
 
 @media (max-width: 768px) {
@@ -1665,23 +1499,9 @@
     justify-content: flex-end;
     margin-top: 4px;
   }
-
-  .pd-compare-row {
-    gap: 12px;
-  }
-
-  .pd-compare-card {
-    max-width: none;
-    flex-basis: calc(50% - 6px);
-  }
 }
 
 @media (max-width: 480px) {
-  .pd-compare-card {
-    flex-basis: 100%;
-    max-width: none;
-  }
-
   .pd-timeline {
     padding-left: 18px;
   }
@@ -1689,15 +1509,9 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .pd-compare-card,
   .pd-timeline-item,
-  .pd-timeline-study-btn,
-  .pd-compare-view-btn {
+  .pd-timeline-study-btn {
     transition: none !important;
-  }
-
-  .pd-compare-card:hover {
-    transform: none;
   }
 }
 
@@ -2134,19 +1948,7 @@
   }
 }
 
-/* -- C. 640px breakpoint for comparison cards -- */
-@media (max-width: 640px) {
-  .pd-compare-row {
-    gap: 12px;
-  }
-
-  .pd-compare-card {
-    flex-basis: 100%;
-    max-width: none;
-  }
-}
-
-/* -- D. Child tab horizontal scroll at medium widths (481-768px) -- */
+/* -- C. Child tab horizontal scroll at medium widths (481-768px) -- */
 @media (min-width: 481px) and (max-width: 768px) {
   .pd-child-selector {
     overflow-x: auto;
