@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { studyApi, type StudyGuide, type ResolvedStudent } from '../../api/client';
+import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 
 interface ParsedQuestion {
   question: string;
@@ -41,6 +42,8 @@ export function QuizTab({
   const [quizSaving, setQuizSaving] = useState(false);
   const [quizSaveError, setQuizSaveError] = useState<string | null>(null);
   const [quizSavedId, setQuizSavedId] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const parsedQuiz: ParsedQuestion[] = quiz ? (() => {
     try { return JSON.parse(quiz.content); } catch { return []; }
@@ -100,6 +103,21 @@ export function QuizTab({
     setQuizSaveError(null);
   };
 
+  const handlePrint = () => {
+    if (printRef.current) printElement(printRef.current, quiz?.title || 'Quiz');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setExporting(true);
+    try {
+      const filename = (quiz?.title || 'Quiz').replace(/[^a-zA-Z0-9 _-]/g, '');
+      await downloadAsPdf(printRef.current, filename);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="cm-quiz-tab">
       {isParent && (
@@ -121,9 +139,29 @@ export function QuizTab({
       {quiz && parsedQuiz.length > 0 ? (
         <>
           <div className="cm-guide-actions">
+            <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
             <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+          </div>
+          {/* Hidden print-ready view with all questions */}
+          <div ref={printRef} className="cm-print-view">
+            <h1 className="print-title">{quiz.title}</h1>
+            <p className="print-subtitle">Practice Quiz &middot; {parsedQuiz.length} questions</p>
+            {parsedQuiz.map((q, i) => (
+              <div key={i} className="print-quiz-item">
+                <p className="print-quiz-question">Q{i + 1}. {q.question}</p>
+                <ul className="print-quiz-options">
+                  {Object.entries(q.options || {}).map(([k, v]) => (
+                    <li key={k} className={k === q.correct_answer ? 'correct' : ''}>
+                      <strong>{k}.</strong> {v as string}
+                    </li>
+                  ))}
+                </ul>
+                {q.explanation && <p className="print-quiz-explanation">{q.explanation}</p>}
+              </div>
+            ))}
           </div>
           {quizFinished ? (
             <div className="cm-quiz-results">

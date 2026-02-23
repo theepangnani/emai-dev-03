@@ -1,6 +1,7 @@
-import { useState, Suspense } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse } from '../../api/client';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
+import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 
 interface QuizItem {
   question: string;
@@ -90,6 +91,8 @@ export function DocumentTab({
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const handleStartEdit = () => {
     setEditTextContent(content.text_content || '');
@@ -118,6 +121,23 @@ export function DocumentTab({
     }
   };
 
+  const hasContent = !!(content.text_content || content.description);
+
+  const handlePrint = () => {
+    if (printRef.current) printElement(printRef.current, content.title || 'Document');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setExporting(true);
+    try {
+      const filename = (content.title || 'Document').replace(/[^a-zA-Z0-9 _-]/g, '');
+      await downloadAsPdf(printRef.current, filename);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="cm-document-tab">
       <div className="cm-guide-actions">
@@ -130,9 +150,15 @@ export function DocumentTab({
           </>
         ) : (
           <>
+            {hasContent && (
+              <>
+                <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+                <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
+              </>
+            )}
             {content.has_file && (
               <button className="cm-action-btn" onClick={onDownload} disabled={downloading}>
-                {downloading ? 'Downloading...' : '\u{1F4E5} Download'}
+                {downloading ? 'Downloading...' : '\u{1F4CB} Download Original'}
               </button>
             )}
             {!content.has_file && (
@@ -152,19 +178,23 @@ export function DocumentTab({
           rows={20}
           disabled={editSaving}
         />
-      ) : content.text_content ? (
-        <ContentCard ocrCheckText={content.text_content}>
-          <FormattedContent textContent={content.text_content} />
-        </ContentCard>
-      ) : content.has_file ? (
-        <div className="cm-file-info-card">
-          <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
-          <p className="cm-file-info-hint">Use the Download button above to get the original file.</p>
-        </div>
-      ) : content.description ? (
-        <p className="cm-document-desc">{content.description}</p>
       ) : (
-        <p className="cm-empty-message">No document content available.</p>
+        <div ref={printRef}>
+          {content.text_content ? (
+            <ContentCard ocrCheckText={content.text_content}>
+              <FormattedContent textContent={content.text_content} />
+            </ContentCard>
+          ) : content.has_file ? (
+            <div className="cm-file-info-card">
+              <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
+              <p className="cm-file-info-hint">Use the Download button above to get the original file.</p>
+            </div>
+          ) : content.description ? (
+            <p className="cm-document-desc">{content.description}</p>
+          ) : (
+            <p className="cm-empty-message">No document content available.</p>
+          )}
+        </div>
       )}
       {content.reference_url && (
         <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">

@@ -735,6 +735,89 @@
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Hidden print-ready views (off-screen but in DOM for PDF capture) */
+.cm-print-view {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 700px;
+  background: #fff;
+  color: #1a1a2e;
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+}
+
+.cm-print-view .print-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.2em;
+}
+
+.cm-print-view .print-subtitle {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1.5em;
+}
+
+.cm-print-view .print-quiz-item {
+  margin-bottom: 1.2em;
+  padding-bottom: 0.8em;
+  border-bottom: 1px solid #eee;
+}
+
+.cm-print-view .print-quiz-question {
+  font-weight: 600;
+  margin-bottom: 0.3em;
+}
+
+.cm-print-view .print-quiz-options {
+  list-style: none;
+  padding-left: 0.5em;
+  margin: 0.3em 0;
+}
+
+.cm-print-view .print-quiz-options li {
+  padding: 0.2em 0.4em;
+  margin: 0.15em 0;
+  border-radius: 4px;
+}
+
+.cm-print-view .print-quiz-options li.correct {
+  background: #e8f5e9;
+  font-weight: 500;
+}
+
+.cm-print-view .print-quiz-explanation {
+  color: #555;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 0.3em;
+}
+
+.cm-print-view .print-fc-item {
+  display: flex;
+  gap: 0.75em;
+  padding: 0.5em 0;
+  border-bottom: 1px solid #eee;
+  line-height: 1.5;
+}
+
+.cm-print-view .print-fc-num {
+  font-weight: 700;
+  color: #6c3eb8;
+  min-width: 2em;
+}
+
+.cm-print-view .print-fc-front {
+  font-weight: 600;
+  min-width: 35%;
+}
+
+.cm-print-view .print-fc-back {
+  color: #444;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .cm-detail-header {
