@@ -212,6 +212,9 @@ Current feature issues are tracked in GitHub:
 ### Phase 1 - Implemented (Feb 21: Student Dashboard Redesign — #708, PR #709)
 - ~~Issue #708: Student Dashboard: "Focused Command Center" redesign~~ ✅ (hero greeting with urgency pills + stat chips, notification alerts for parent/teacher requests, quick action cards, Coming Up timeline merging assignments + tasks, recent materials, course chips, create course modal, onboarding card, `sd-` CSS prefix scoping, 27 tests updated)
 
+### Phase 1 - Implemented (Feb 22: Print & PDF Export — #764, PR #763)
+- ~~Issue #764: Print and Download PDF for study materials~~ ✅ (Print + Download PDF buttons on all 4 Course Material Detail tabs; html2pdf.js dynamic import; static print views for quiz all-questions and flashcards all-cards; shared `exportUtils.ts` utility)
+
 ### Phase 1 - Open (Parent Dashboard Redesign — Epic #710)
 - Issue #710: Epic: Parent Dashboard Visual Redesign
 - Issue #711: Parent Dashboard: Visual refresh with distinctive design language
