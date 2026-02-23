@@ -451,6 +451,7 @@ export function useParentDashboard() {
     studyModalInitialTitle: studyTools.studyModalInitialTitle, studyModalInitialContent: studyTools.studyModalInitialContent,
     duplicateCheck: studyTools.duplicateCheck, setDuplicateCheck: studyTools.setDuplicateCheck,
     resetStudyModal: studyTools.resetStudyModal, handleGenerateFromModal: studyTools.handleGenerateFromModal,
+    backgroundGeneration: studyTools.backgroundGeneration, dismissBackgroundGeneration: studyTools.dismissBackgroundGeneration,
 
     // Create Task Modal
     showCreateTaskModal: tasks.showCreateTaskModal, setShowCreateTaskModal: tasks.setShowCreateTaskModal, loadDashboard,

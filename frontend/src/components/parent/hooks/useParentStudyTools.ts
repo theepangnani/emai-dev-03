@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { studyApi } from '../../../api/client';
 import { courseContentsApi, coursesApi } from '../../../api/courses';
-import { queueStudyGeneration } from '../../../pages/StudyGuidesPage';
 import type { DuplicateCheckResponse } from '../../../api/client';
 import type { StudyMaterialGenerateParams } from '../../CreateStudyMaterialModal';
 import type { CalendarAssignment } from '../../calendar/types';
@@ -25,11 +24,89 @@ export function useParentStudyTools({
   // One-click study generation state
   const [generatingStudyId, setGeneratingStudyId] = useState<number | null>(null);
 
+  // Background generation tracking
+  const [backgroundGeneration, setBackgroundGeneration] = useState<{
+    status: 'generating' | 'success' | 'error';
+    type: string;
+    resultId?: number;
+    error?: string;
+  } | null>(null);
+
   const resetStudyModal = () => {
     setShowStudyModal(false);
     setDuplicateCheck(null);
     setStudyModalInitialTitle('');
     setStudyModalInitialContent('');
+  };
+
+  const dismissBackgroundGeneration = () => setBackgroundGeneration(null);
+
+  const runGenerationInBackground = (params: {
+    title: string;
+    content: string;
+    type: 'study_guide' | 'quiz' | 'flashcards';
+    focusPrompt?: string;
+    mode: string;
+    file?: File;
+    pastedImages?: File[];
+    regenerateId?: number;
+  }) => {
+    const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
+    setBackgroundGeneration({ status: 'generating', type: typeLabel });
+
+    (async () => {
+      try {
+        let result: any;
+        if (params.mode === 'file' && params.file) {
+          result = await studyApi.generateFromFile({
+            file: params.file,
+            title: params.title || undefined,
+            guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.pastedImages && params.pastedImages.length > 0) {
+          result = await studyApi.generateFromTextAndImages({
+            content: params.content || '',
+            images: params.pastedImages,
+            title: params.title || undefined,
+            guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.type === 'study_guide') {
+          result = await studyApi.generateGuide({
+            title: params.title || undefined,
+            content: params.content || undefined,
+            regenerate_from_id: params.regenerateId,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.type === 'quiz') {
+          result = await studyApi.generateQuiz({
+            topic: params.title || undefined,
+            content: params.content || undefined,
+            num_questions: 10,
+            regenerate_from_id: params.regenerateId,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.type === 'flashcards') {
+          result = await studyApi.generateFlashcards({
+            topic: params.title || undefined,
+            content: params.content || undefined,
+            num_cards: 15,
+            regenerate_from_id: params.regenerateId,
+            focus_prompt: params.focusPrompt,
+          });
+        }
+
+        const resultId = result?.id || result?.course_content_id;
+        setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
+      } catch (err: any) {
+        setBackgroundGeneration({ status: 'error', type: typeLabel, error: err?.message || 'Generation failed' });
+      }
+    })();
   };
 
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
@@ -66,8 +143,9 @@ export function useParentStudyTools({
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* Continue */ }
       }
+
       for (const type of modalParams.types) {
-        queueStudyGeneration({
+        runGenerationInBackground({
           title: modalParams.title,
           content: modalParams.content,
           type,
@@ -80,7 +158,7 @@ export function useParentStudyTools({
       }
       setDuplicateCheck(null);
       resetStudyModal();
-      navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+      // Don't navigate — user stays on dashboard
     } finally {
       setIsGenerating(false);
     }
@@ -108,13 +186,13 @@ export function useParentStudyTools({
         setShowStudyModal(true);
         return;
       }
-      queueStudyGeneration({
+      runGenerationInBackground({
         title: assignment.title,
         content: assignment.description,
         type: 'study_guide',
         mode: 'text',
       });
-      navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+      // Don't navigate — user stays on dashboard
     } catch {
       setStudyModalInitialTitle(assignment.title);
       setStudyModalInitialContent(assignment.description || '');
@@ -135,5 +213,7 @@ export function useParentStudyTools({
     duplicateCheck, setDuplicateCheck,
     resetStudyModal, handleGenerateFromModal,
     generatingStudyId, handleOneClickStudy, handleViewStudyGuides,
+    // Background generation
+    backgroundGeneration, dismissBackgroundGeneration,
   };
 }
