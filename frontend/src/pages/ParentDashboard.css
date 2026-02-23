@@ -1911,7 +1911,7 @@
 }
 
 .pd-feed-chevron {
-  font-size: 14px;
+  font-size: 10px;
   color: var(--color-ink-muted);
   transition: transform 0.2s;
   display: inline-block;

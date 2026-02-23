@@ -47,7 +47,7 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
         aria-label={`Recent Activity (${recentItems.length} items)`}
       >
         <span className="pd-feed-header-left">
-          <span className={`pd-feed-chevron ${collapsed ? '' : 'open'}`} aria-hidden="true">&#9656;</span>
+          <span className={`pd-feed-chevron ${collapsed ? '' : 'open'}`} aria-hidden="true">{'\u25B6'}</span>
           <span className="pd-feed-title">Recent Activity</span>
           {recentItems.length > 0 && (
             <span className="pd-feed-count">{recentItems.length}</span>
