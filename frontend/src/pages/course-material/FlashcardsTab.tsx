@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { StudyGuide } from '../../api/client';
+import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 
 interface FlashcardItem {
   front: string;
@@ -30,6 +31,8 @@ export function FlashcardsTab({
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [shuffledCards, setShuffledCards] = useState<FlashcardItem[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const parsedCards: FlashcardItem[] = flashcardSet ? (() => {
     try { return JSON.parse(flashcardSet.content); } catch { return []; }
@@ -58,6 +61,21 @@ export function FlashcardsTab({
     setShuffledCards(parsedCards);
     setCardIndex(0);
     setIsFlipped(false);
+  };
+
+  const handlePrint = () => {
+    if (printRef.current) printElement(printRef.current, flashcardSet?.title || 'Flashcards');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setExporting(true);
+    try {
+      const filename = (flashcardSet?.title || 'Flashcards').replace(/[^a-zA-Z0-9 _-]/g, '');
+      await downloadAsPdf(printRef.current, filename);
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Keyboard navigation (#732)
@@ -93,10 +111,24 @@ export function FlashcardsTab({
       {flashcardSet && displayCards.length > 0 ? (
         <>
           <div className="cm-guide-actions">
+            <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
             <button className="cm-action-btn" onClick={handleReset}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={handleShuffle}>{'\u{1F500}'} Shuffle</button>
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+          </div>
+          {/* Hidden print-ready view with all flashcards */}
+          <div ref={printRef} className="cm-print-view">
+            <h1 className="print-title">{flashcardSet.title}</h1>
+            <p className="print-subtitle">Flashcards &middot; {parsedCards.length} cards</p>
+            {parsedCards.map((card, i) => (
+              <div key={i} className="print-fc-item">
+                <span className="print-fc-num">{i + 1}.</span>
+                <span className="print-fc-front">{card.front}</span>
+                <span className="print-fc-back">&mdash; {card.back}</span>
+              </div>
+            ))}
           </div>
           <div className="cm-flashcard-progress">
             Card {cardIndex + 1} of {displayCards.length}

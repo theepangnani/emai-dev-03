@@ -1,6 +1,7 @@
-import { Suspense } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import type { StudyGuide } from '../../api/client';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
+import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 
 interface StudyGuideTabProps {
   studyGuide: StudyGuide | undefined;
@@ -21,6 +22,24 @@ export function StudyGuideTab({
   onDelete,
   hasSourceContent,
 }: StudyGuideTabProps) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handlePrint = () => {
+    if (printRef.current) printElement(printRef.current, studyGuide?.title || 'Study Guide');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setExporting(true);
+    try {
+      const filename = (studyGuide?.title || 'Study Guide').replace(/[^a-zA-Z0-9 _-]/g, '');
+      await downloadAsPdf(printRef.current, filename);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="cm-guide-tab">
       <div className="cm-focus-prompt">
@@ -35,15 +54,18 @@ export function StudyGuideTab({
       {studyGuide ? (
         <>
           <div className="cm-guide-actions">
-            <button className="cm-action-btn" onClick={() => window.print()} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+            <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
-          <ContentCard>
-            <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-              <MarkdownBody content={studyGuide.content} />
-            </Suspense>
-          </ContentCard>
+          <div ref={printRef}>
+            <ContentCard>
+              <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+                <MarkdownBody content={studyGuide.content} />
+              </Suspense>
+            </ContentCard>
+          </div>
         </>
       ) : generating === 'study_guide' ? (
         <div className="cm-inline-generating">
