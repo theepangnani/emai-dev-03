@@ -6,7 +6,6 @@ import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
 import { ActivityFeed } from '../components/parent/ActivityFeed';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
-import { ChildComparisonCards } from '../components/parent/ChildComparisonCards';
 import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
@@ -167,6 +166,7 @@ export function ParentDashboard() {
           <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={childTabsRef}>
             {pd.children.map((child, index) => {
               const isSelected = pd.selectedChild === child.student_id;
+              const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
               return (
                 <button
                   key={child.student_id}
@@ -180,6 +180,7 @@ export function ParentDashboard() {
                   <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                   {child.full_name}
                   {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
+                  {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
                 </button>
               );
             })}
@@ -188,16 +189,6 @@ export function ParentDashboard() {
               { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
             ]} />
           </div>
-
-          {/* Multi-Child Comparison Cards (all-children mode, 2+ children) */}
-          {pd.selectedChild === null && pd.children.length >= 2 && (
-            <ChildComparisonCards
-              children={pd.children}
-              allTasks={pd.filteredTasks}
-              childColors={CHILD_COLORS}
-              onSelectChild={pd.handleChildTabClick}
-            />
-          )}
 
           <AlertBanner
             pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
