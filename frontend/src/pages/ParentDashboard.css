@@ -263,6 +263,10 @@
     gap: 12px;
   }
 
+  .pd-hero-headline {
+    font-size: 22px;
+  }
+
   .pd-today-focus-header.pd-focus-collapsed {
     flex-direction: row;
     gap: 10px;
