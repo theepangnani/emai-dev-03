@@ -491,6 +491,26 @@ Current feature issues are tracked in GitHub:
 ### UX / Navigation
 - Issue #811: Replace header back button with unified PageNav component
 
+### UI/UX HCD Assessment — Phase 2 Improvements (Epic #827)
+
+**Tier 1 — Critical (Next 2 sprints):**
+- Issue #828: Unify design tokens (replace hard-coded CSS values with CSS variables)
+- Issue #829: Fix WCAG 2.1 AA accessibility gaps across all roles
+- Issue #830: Add explicit "All Children" tab and mobile scroll indicators in parent child selector
+- Issue #831: Standardize responsive breakpoints to 3 tiers (480/768/1024px)
+- Issue #832: Simplify parent dashboard with progressive disclosure for new users
+
+**Tier 2 — Important (Next 4 sprints):**
+- Issue #833: Teacher dashboard enhancement (SVG icons, dynamic counts, announcement preview)
+- Issue #834: Student engagement (streak celebrations, spaced repetition, continue studying)
+- Issue #835: Standardize empty states with shared EmptyState component
+- Issue #836: Add message search and communication improvements
+- Issue #837: Unify quick action paradigm across Parent, Student, and Teacher roles
+
+**Tier 3 — Backlog:**
+- Issue #838: Grade integration: display grades from Google Classroom for parents and students
+- Issue #839: Assignment submission: allow students to submit work through the platform
+
 ### Observability & Quality
 - Issue #70: Populate request.state.user_id for request logs
 - ~~Issue #71: Add baseline test suite (auth, RBAC, core routes)~~ ✅
