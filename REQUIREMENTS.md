@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-02-21
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -19,6 +19,7 @@ This requirements document is split into multiple files for easier navigation an
 | [requirements/features-part3.md](requirements/features-part3.md) | 6.27-6.50 | Extended features: Messaging, Teacher Linking, Roster, My Kids, Assignments, Enrollment, Invites, Security Phase 2, Reminders, Infrastructure, Admin, Onboarding, Verification, Course Planning, Emails |
 | [requirements/dashboards.md](requirements/dashboards.md) | 7 | Role-Based Dashboards (Parent, Student, Teacher, Admin) |
 | [design/UI_AUDIT_REPORT.md](design/UI_AUDIT_REPORT.md) | — | UI/UX Audit Report: User journeys, friction points, Phase 1 improvements, Phase 2 features (#668) |
+| [docs/ClassBridge_UI_UX_Assessment_Report.docx](docs/ClassBridge_UI_UX_Assessment_Report.docx) | — | Comprehensive HCD Assessment Report: Design system audit, role-specific evaluation, accessibility, responsive, user journeys, risk register (#827) |
 | [requirements/roadmap.md](requirements/roadmap.md) | 8 | Phased Roadmap (Phase 1-5) with progress checklists |
 | [requirements/mobile.md](requirements/mobile.md) | 9 | Mobile App Development (Expo SDK 54, React Native) |
 | [requirements/technical.md](requirements/technical.md) | 10-11 | Technical Architecture, API Endpoints, NFRs, KPIs |
