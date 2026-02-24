@@ -201,11 +201,11 @@ export function StudentDetailPanel({
             }
           }}
         >
+          <Chevron expanded={tasksExpanded} />
           <span>
             Tasks
             <span className="sdp-count-badge" aria-hidden="true">{totalActive}</span>
           </span>
-          <Chevron expanded={tasksExpanded} />
         </div>
 
         {tasksExpanded && (
@@ -340,11 +340,11 @@ export function StudentDetailPanel({
             }
           }}
         >
+          <Chevron expanded={materialsExpanded} />
           <span>
             Class Materials
             <span className="sdp-count-badge" aria-hidden="true">{courseMaterials.length}</span>
           </span>
-          <Chevron expanded={materialsExpanded} />
         </div>
 
         {materialsExpanded && (
