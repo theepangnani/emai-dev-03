@@ -792,7 +792,7 @@ export function StudyGuidesPage() {
             </div>
           ) : materialsExpanded ? (
             <div className="guides-empty">
-              <p>No class materials yet. Click "+ Create" to generate study materials from your content.</p>
+              <p>No class materials yet. Use "+ Create Study Material" from the sidebar to get started.</p>
             </div>
           ) : null}
         </div>
