@@ -815,11 +815,38 @@
 }
 
 .pd-task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
   width: 18px;
   height: 18px;
-  accent-color: var(--color-accent);
+  border: 2px solid var(--color-muted-border, #c5c5c5);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
   cursor: pointer;
   flex-shrink: 0;
+  position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pd-task-checkbox:checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.pd-task-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pd-task-checkbox:hover {
+  border-color: var(--color-accent);
 }
 
 .pd-task-delete-btn {

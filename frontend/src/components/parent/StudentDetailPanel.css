@@ -230,11 +230,38 @@
 }
 
 .sdp-task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  accent-color: var(--color-accent);
+  border: 2px solid var(--color-muted-border, #c5c5c5);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
   cursor: pointer;
   flex-shrink: 0;
+  position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sdp-task-checkbox:checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.sdp-task-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.sdp-task-checkbox:hover {
+  border-color: var(--color-accent);
 }
 
 .sdp-task-title {
@@ -329,9 +356,16 @@
 
 @media (max-width: 768px) {
   .sdp-task-checkbox {
-    min-width: 44px;
-    min-height: 44px;
-    margin: -13px;
-    padding: 13px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .sdp-task-checkbox::before {
+    content: '';
+    position: absolute;
+    top: -13px;
+    left: -13px;
+    right: -13px;
+    bottom: -13px;
   }
 }
