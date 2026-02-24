@@ -113,7 +113,8 @@ const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Create Study Material': NAV_SVG.Materials,
 };
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton: _showBackButton, headerSlot }: DashboardLayoutProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
