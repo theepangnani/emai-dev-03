@@ -8,6 +8,7 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
+import { EditMaterialModal } from '../components/EditMaterialModal';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -275,13 +276,6 @@ export function CourseDetailPage() {
 
   const openEditContentModal = (item: CourseContentItem) => {
     setEditingContent(item);
-    setContentTitle(item.title);
-    setContentDescription(item.description || '');
-    setContentType(item.content_type);
-    setReferenceUrl(item.reference_url || '');
-    setGoogleClassroomUrl(item.google_classroom_url || '');
-    setContentError('');
-    setShowContentModal(true);
   };
 
   const closeContentModal = () => {
@@ -879,11 +873,20 @@ export function CourseDetailPage() {
         </div>
       )}
 
-      {/* Add/Edit Content Modal */}
+      {/* Edit Material Modal (standard shared component) */}
+      {editingContent && !showContentModal && (
+        <EditMaterialModal
+          material={editingContent}
+          onClose={() => setEditingContent(null)}
+          onSaved={() => { setEditingContent(null); loadContents(); }}
+        />
+      )}
+
+      {/* Add Content Modal */}
       {showContentModal && (
         <div className="modal-overlay" onClick={closeContentModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingContent ? 'Edit Class Details' : 'Add Class Details'}</h2>
+            <h2>Add Class Details</h2>
             <p className="modal-desc">Add a reference link or resource to this class.</p>
             <div className="modal-form">
               <label>
@@ -913,7 +916,7 @@ export function CourseDetailPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={closeContentModal} disabled={contentSaving}>Cancel</button>
               <button className="generate-btn" onClick={handleSaveContent} disabled={contentSaving || !contentTitle.trim()}>
-                {contentSaving ? 'Saving...' : editingContent ? 'Save Changes' : 'Add Content'}
+                {contentSaving ? 'Saving...' : 'Add Content'}
               </button>
             </div>
           </div>
