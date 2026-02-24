@@ -226,10 +226,12 @@ export function useParentDashboard() {
 
   useEffect(() => {
     if (loading) return;
+    let ignore = false;
     const params: { student_user_id?: number } = {};
     if (selectedChildUserId) params.student_user_id = selectedChildUserId;
     courseContentsApi.listAll(params)
       .then(items => {
+        if (ignore) return;
         setCourseMaterials(
           items
             .filter(item => !item.archived_at)
@@ -243,6 +245,7 @@ export function useParentDashboard() {
         );
       })
       .catch(() => {});
+    return () => { ignore = true; };
   }, [loading, selectedChildUserId]);
 
   // ============================================
