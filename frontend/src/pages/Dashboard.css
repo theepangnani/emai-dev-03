@@ -1585,11 +1585,35 @@
   .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 14px;
+    gap: 8px;
+    padding: 4px 12px;
+  }
+
+  .header-left {
+    gap: 8px;
+  }
+
+  .header-logo {
+    height: 44px;
+    margin: -4px 0;
+  }
+
+  .logo {
+    font-size: 16px;
   }
 
   .header-right {
     flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .user-name {
+    font-size: 13px;
+  }
+
+  .logout-button {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 
   .dashboard-main-full {

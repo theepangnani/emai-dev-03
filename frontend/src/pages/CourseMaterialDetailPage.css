@@ -2,6 +2,7 @@
   max-width: 900px;
   margin: 0 auto;
   animation: cm-page-in 0.3s ease-out;
+  overflow-x: hidden;
 }
 
 @keyframes cm-page-in {
@@ -49,6 +50,9 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.6rem;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .cm-course-badge {
@@ -821,7 +825,10 @@
 /* Responsive */
 @media (max-width: 600px) {
   .cm-detail-header {
-    padding: 16px 18px;
+    padding: 16px 12px;
+  }
+  .cm-detail-title-row h2 {
+    font-size: 1.2rem;
   }
   .cm-tabs {
     gap: 0.25rem;
@@ -843,5 +850,12 @@
   }
   .cm-flashcard {
     height: 200px;
+  }
+  .cm-guide-actions {
+    gap: 0.35rem;
+  }
+  .cm-action-btn {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }
