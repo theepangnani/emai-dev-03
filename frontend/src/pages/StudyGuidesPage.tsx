@@ -8,6 +8,9 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
+import { AddActionButton } from '../components/AddActionButton';
+import { PageNav } from '../components/PageNav';
+import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import './StudyGuidesPage.css';
 
@@ -106,6 +109,11 @@ export function StudyGuidesPage() {
   const [archivedContents, setArchivedContents] = useState<CourseContentItem[]>([]);
   const [archivedGuides, setArchivedGuides] = useState<StudyGuide[]>([]);
 
+  // Course search
+  const [courseSearchQuery, setCourseSearchQuery] = useState('');
+  const [courseSearchOpen, setCourseSearchOpen] = useState(false);
+  const courseSearchRef = useRef<HTMLDivElement>(null);
+
   // Toast notification
   const [toast, setToast] = useState<string | null>(null);
 
@@ -151,6 +159,14 @@ export function StudyGuidesPage() {
   useEffect(() => {
     loadContentItems();
   }, [filterChild, filterCourse]);
+
+  // Sync course search query with selected course name
+  useEffect(() => {
+    if (filterCourse && courses.length > 0) {
+      const selected = courses.find(c => c.id === filterCourse);
+      if (selected) setCourseSearchQuery(selected.name);
+    }
+  }, [courses, filterCourse]);
 
   // Load materials for modal course selection
   useEffect(() => {
@@ -226,6 +242,18 @@ export function StudyGuidesPage() {
   useEffect(() => {
     if (showArchived) loadArchived();
   }, [showArchived]);
+
+  // Close course search dropdown on outside click
+  useEffect(() => {
+    if (!courseSearchOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (courseSearchRef.current && !courseSearchRef.current.contains(e.target as Node)) {
+        setCourseSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [courseSearchOpen]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -543,6 +571,12 @@ export function StudyGuidesPage() {
     return courses.filter(c => courseIdsInContent.has(c.id));
   }, [courses, contentItems]);
 
+  // Filtered courses for search dropdown
+  const searchFilteredCourses = useMemo(() => {
+    if (!courseSearchQuery.trim()) return visibleCourses;
+    return visibleCourses.filter(c => c.name.toLowerCase().includes(courseSearchQuery.toLowerCase()));
+  }, [visibleCourses, courseSearchQuery]);
+
   // Apply course + type filters
   const filteredContent = contentItems.filter(c => {
     if (filterCourse && c.course_id !== filterCourse) return false;
@@ -604,33 +638,74 @@ export function StudyGuidesPage() {
       ]}
     >
       <div className="guides-page">
-        {/* Header with filters + create button */}
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Class Materials' },
+        ]} />
+
+        {/* Child selector pills (parent only) + add action button */}
+        {isParent && children.length > 0 && (
+          <div className="guides-child-selector">
+            {children.map((child, index) => (
+              <button
+                key={child.user_id}
+                className={`child-tab${filterChild === child.user_id ? ' active' : ''}`}
+                onClick={() => { setFilterChild(child.user_id); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
+              >
+                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                {child.full_name}
+                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+              </button>
+            ))}
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Document', onClick: () => setShowModal(true) },
+            ]} />
+          </div>
+        )}
+
+        {/* Course search box + Create button */}
         <div className="guides-header">
           <div className="guides-filters-row">
-            {isParent && children.length > 0 && (
-              <select
-                className="guides-filter-select"
-                value={filterChild}
-                onChange={e => { setFilterChild(e.target.value ? Number(e.target.value) : ''); if (e.target.value) { sessionStorage.setItem('selectedChildId', e.target.value); } else { sessionStorage.removeItem('selectedChildId'); } }}
-              >
-                <option value="">All Family</option>
-                {children.map(child => (
-                  <option key={child.user_id} value={child.user_id}>{child.full_name}</option>
-                ))}
-              </select>
-            )}
-            {visibleCourses.length > 0 && (
-              <select
-                className="guides-filter-select"
-                value={filterCourse}
-                onChange={e => { setFilterCourse(e.target.value ? Number(e.target.value) : ''); if (e.target.value) { searchParams.set('course', e.target.value); } else { searchParams.delete('course'); } setSearchParams(searchParams, { replace: true }); }}
-              >
-                <option value="">All Classes</option>
-                {visibleCourses.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            )}
+            <div className="guides-course-search" ref={courseSearchRef}>
+              <input
+                type="text"
+                className="guides-course-search-input"
+                placeholder="Search classes..."
+                value={courseSearchQuery}
+                onChange={e => { setCourseSearchQuery(e.target.value); setCourseSearchOpen(true); }}
+                onFocus={() => setCourseSearchOpen(true)}
+              />
+              {filterCourse && (
+                <button
+                  className="guides-course-search-clear"
+                  onClick={() => { setFilterCourse(''); setCourseSearchQuery(''); searchParams.delete('course'); setSearchParams(searchParams, { replace: true }); }}
+                  aria-label="Clear filter"
+                >
+                  &times;
+                </button>
+              )}
+              {courseSearchOpen && searchFilteredCourses.length > 0 && (
+                <div className="guides-course-dropdown">
+                  {filterCourse && (
+                    <div
+                      className="guides-course-dropdown-item all"
+                      onClick={() => { setFilterCourse(''); setCourseSearchQuery(''); searchParams.delete('course'); setSearchParams(searchParams, { replace: true }); setCourseSearchOpen(false); }}
+                    >
+                      All Classes
+                    </div>
+                  )}
+                  {searchFilteredCourses.map(c => (
+                    <div
+                      key={c.id}
+                      className={`guides-course-dropdown-item${filterCourse === c.id ? ' active' : ''}`}
+                      onClick={() => { setFilterCourse(c.id); setCourseSearchQuery(c.name); searchParams.set('course', String(c.id)); setSearchParams(searchParams, { replace: true }); setCourseSearchOpen(false); }}
+                    >
+                      {c.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
           </div>
         </div>
