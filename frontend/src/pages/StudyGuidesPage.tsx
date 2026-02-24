@@ -12,6 +12,7 @@ import { AddActionButton } from '../components/AddActionButton';
 import { PageNav } from '../components/PageNav';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
+import { EditMaterialModal } from '../components/EditMaterialModal';
 import './StudyGuidesPage.css';
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
@@ -126,6 +127,9 @@ export function StudyGuidesPage() {
 
   // Reassign course content to different course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
+
+  // Edit material modal
+  const [editContent, setEditContent] = useState<CourseContentItem | null>(null);
 
   useEffect(() => {
     loadData();
@@ -782,7 +786,7 @@ export function StudyGuidesPage() {
                     </div>
                   </div>
                   <div className="guide-row-actions">
-                    <button className="guide-convert-btn" title="Edit" onClick={() => navigateToContent(item)}>&#9998;</button>
+                    <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
                     <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
                     <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
                   </div>
@@ -1008,6 +1012,15 @@ export function StudyGuidesPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* Edit material modal */}
+      {editContent && (
+        <EditMaterialModal
+          material={editContent}
+          courses={courses}
+          onClose={() => setEditContent(null)}
+          onSaved={() => { setEditContent(null); loadData(); showToast('Material updated'); }}
+        />
       )}
       {/* Reassign content to course modal */}
       {reassignContent && (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -14,12 +14,14 @@ import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
+import { EditMaterialModal } from '../components/EditMaterialModal';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
 
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { confirm, confirmModal } = useConfirm();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
@@ -35,6 +37,7 @@ export function CourseMaterialDetailPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [focusPrompt, setFocusPrompt] = useState('');
 
@@ -147,6 +150,22 @@ export function CourseMaterialDetailPage() {
     }
   };
 
+  const handleArchiveContent = async () => {
+    if (!content) return;
+    const ok = await confirm({
+      title: 'Archive Material',
+      message: `Archive "${content.title}"? You can restore it later from the archive.`,
+      confirmLabel: 'Archive',
+    });
+    if (!ok) return;
+    try {
+      await courseContentsApi.delete(content.id);
+      navigate('/course-materials');
+    } catch {
+      setError('Failed to archive material');
+    }
+  };
+
   const handleDownload = async () => {
     if (!content) return;
     setDownloading(true);
@@ -204,7 +223,9 @@ export function CourseMaterialDetailPage() {
           <div className="cm-detail-meta">
             <span className="cm-type-badge">{content.content_type}</span>
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
-            <button className="cm-header-task-btn" onClick={() => setShowTaskModal(true)}>+ Create Task</button>
+            <button className="cm-header-task-btn" onClick={() => setShowTaskModal(true)}>+ &#9998; Task</button>
+            <button className="cm-header-edit-btn" onClick={() => setShowEditModal(true)}>&#9998; Edit</button>
+            <button className="cm-header-archive-btn" onClick={handleArchiveContent}>&#128230; Archive</button>
           </div>
         </div>
 
@@ -288,6 +309,13 @@ export function CourseMaterialDetailPage() {
         courseContentId={content.id}
         linkedEntityLabel={`${content.title}${content.course_name ? ` (${content.course_name})` : ''}`}
       />
+      {showEditModal && content && (
+        <EditMaterialModal
+          material={content}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updated) => { setContent(updated); setShowEditModal(false); showToast('Material updated'); }}
+        />
+      )}
       {confirmModal}
       {toast && <div className="toast-notification">{toast}</div>}
       {uploadStatus === 'uploading' && (
