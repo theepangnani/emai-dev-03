@@ -706,7 +706,6 @@ export function StudyGuidesPage() {
                 </div>
               )}
             </div>
-            <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
           </div>
         </div>
 
