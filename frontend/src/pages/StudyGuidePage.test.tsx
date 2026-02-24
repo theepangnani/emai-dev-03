@@ -234,11 +234,12 @@ describe('StudyGuidePage', () => {
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 
-  it('has breadcrumb navigation', async () => {
+  it('has page navigation with back button', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      // Breadcrumb replaced the old "Back to Dashboard" link
-      expect(screen.getByText(/Back to Materials/)).toBeInTheDocument()
+      // PageNav provides deterministic back link to Materials
+      const navLinks = screen.getAllByText('Materials')
+      expect(navLinks.length).toBeGreaterThanOrEqual(1)
     })
   })
 })

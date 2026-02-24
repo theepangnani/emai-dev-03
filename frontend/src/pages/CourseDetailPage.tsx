@@ -7,7 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { PageNav } from '../components/PageNav';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -583,7 +583,7 @@ export function CourseDetailPage() {
   return (
     <DashboardLayout welcomeSubtitle={course.name} showBackButton>
       <div className="course-detail-page">
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Classes', to: '/courses' },
           { label: course?.name || 'Course' },

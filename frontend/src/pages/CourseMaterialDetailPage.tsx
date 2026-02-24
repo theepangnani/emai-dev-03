@@ -8,7 +8,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { PageNav } from '../components/PageNav';
 import { DocumentTab } from './course-material/DocumentTab';
 import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
@@ -189,7 +189,7 @@ export function CourseMaterialDetailPage() {
   return (
     <DashboardLayout showBackButton>
       <div className="cm-detail-page">
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Materials', to: '/course-materials' },
           { label: content?.title || 'Material' },

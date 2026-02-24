@@ -5,7 +5,7 @@ import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { PageNav } from '../components/PageNav';
 import './QuizPage.css';
 
 export function QuizPage() {
@@ -124,7 +124,7 @@ export function QuizPage() {
     return (
       <div className="quiz-page">
         <div className="error">{error || 'Quiz not found'}</div>
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Materials', to: '/course-materials' },
           { label: 'Quiz' },
@@ -138,7 +138,7 @@ export function QuizPage() {
   return (
     <div className="quiz-page">
       <div className="quiz-header">
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Materials', to: '/course-materials' },
           { label: 'Quiz' },

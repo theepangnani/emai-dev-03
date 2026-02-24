@@ -4,7 +4,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { faqApi, type FAQQuestionDetail, type FAQAnswerItem } from '../api/client';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { PageNav } from '../components/PageNav';
 import './FAQDetailPage.css';
 
 export function FAQDetailPage() {
@@ -124,7 +124,7 @@ export function FAQDetailPage() {
   return (
     <DashboardLayout welcomeSubtitle="FAQ">
       <div className="faq-detail">
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'FAQ', to: '/faq' },
           { label: question?.title || 'Question' },

@@ -4,7 +4,7 @@ import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { PageNav } from '../components/PageNav';
 import './FlashcardsPage.css';
 
 type CardDifficulty = 'mastered' | 'learning';
@@ -207,7 +207,7 @@ export function FlashcardsPage() {
     return (
       <div className="flashcards-page">
         <div className="error">{error || 'Flashcards not found'}</div>
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Materials', to: '/course-materials' },
           { label: 'Flashcards' },
@@ -221,7 +221,7 @@ export function FlashcardsPage() {
     return (
       <div className="flashcards-page">
         <div className="flashcards-header">
-          <Breadcrumb items={[
+          <PageNav items={[
             { label: 'Home', to: '/dashboard' },
             { label: 'Materials', to: '/course-materials' },
             { label: 'Flashcards' },
@@ -270,7 +270,7 @@ export function FlashcardsPage() {
   return (
     <div className="flashcards-page">
       <div className="flashcards-header">
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Materials', to: '/course-materials' },
           { label: 'Flashcards' },
