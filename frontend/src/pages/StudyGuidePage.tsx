@@ -8,7 +8,7 @@ import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { PageNav } from '../components/PageNav';
 import './StudyGuidePage.css';
 
 export function StudyGuidePage() {
@@ -87,7 +87,7 @@ export function StudyGuidePage() {
   return (
     <div className="study-guide-page">
       <div className="study-guide-header">
-        <Breadcrumb items={[
+        <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Materials', to: '/course-materials' },
           { label: guide?.title || 'Study Guide' },

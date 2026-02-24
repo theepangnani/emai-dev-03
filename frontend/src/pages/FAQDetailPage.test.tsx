@@ -211,21 +211,25 @@ describe('FAQDetailPage', () => {
     expect(screen.queryByText('Approve')).not.toBeInTheDocument()
   })
 
-  it('renders "Back to FAQ" button', async () => {
+  it('renders back navigation to FAQ', async () => {
     renderDetail()
     await waitFor(() => {
-      expect(screen.getByText(/Back to FAQ/)).toBeInTheDocument()
+      // PageNav renders FAQ in both the back button and breadcrumb trail
+      const faqLinks = screen.getAllByText('FAQ')
+      expect(faqLinks.length).toBeGreaterThanOrEqual(1)
     })
   })
 
-  it('navigates back on "Back to FAQ" click', async () => {
+  it('navigates back to /faq via PageNav link', async () => {
     renderDetail()
     await waitFor(() => {
-      expect(screen.getByText(/Back to FAQ/)).toBeInTheDocument()
+      const faqLinks = screen.getAllByText('FAQ')
+      expect(faqLinks.length).toBeGreaterThanOrEqual(1)
     })
-    // Breadcrumb uses <Link to="/faq"> instead of navigate()
-    const backLink = screen.getByText(/Back to FAQ/)
-    expect(backLink.closest('a')).toHaveAttribute('href', '/faq')
+    // PageNav back button uses <Link to="/faq"> for deterministic navigation
+    const faqLinks = screen.getAllByText('FAQ')
+    const backAnchor = faqLinks.map(el => el.closest('a')).find(a => a?.getAttribute('href') === '/faq')
+    expect(backAnchor).toBeTruthy()
   })
 
   it('shows answer form with minimum character warning', async () => {

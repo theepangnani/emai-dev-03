@@ -488,6 +488,9 @@ Current feature issues are tracked in GitHub:
 - Issue #488: Mobile: Remove gradient from login button and use solid theme colors
 - Issue #489: Add gradient/flat style toggle to theme system (low priority)
 
+### UX / Navigation
+- Issue #811: Replace header back button with unified PageNav component
+
 ### Observability & Quality
 - Issue #70: Populate request.state.user_id for request logs
 - ~~Issue #71: Add baseline test suite (auth, RBAC, core routes)~~ ✅

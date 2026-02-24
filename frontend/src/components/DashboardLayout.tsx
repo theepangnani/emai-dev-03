@@ -25,6 +25,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
+  /** @deprecated Use <PageNav> inside page content instead. Kept for backward compat. */
   showBackButton?: boolean;
   /** When provided, replaces the default welcome section. Receives inspiration data. */
   headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
@@ -112,7 +113,7 @@ const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Create Study Material': NAV_SVG.Materials,
 };
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton, headerSlot }: DashboardLayoutProps) {
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, showBackButton: _showBackButton, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -279,11 +280,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, sho
       <div className="dashboard">
         <header className="dashboard-header">
         <div className="header-left">
-          {showBackButton && location.pathname !== '/dashboard' && (
-            <button className="layout-back-button" onClick={() => navigate(-1)} aria-label="Go back">
-              &larr;
-            </button>
-          )}
           <button
             className={`hamburger-btn${menuOpen ? ' open' : ''}`}
             onClick={() => setMenuOpen(!menuOpen)}
