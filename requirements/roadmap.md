@@ -41,7 +41,7 @@
 - [x] **Calendar sticky notes** — Priority-colored task cards with expandable details in Day Detail Modal (IMPLEMENTED)
 - [x] **Study guide formatting** — Markdown rendering with GFM support for study guide view (IMPLEMENTED)
 - [x] **Task status filters fix** — Task dropdown filters on Tasks page working correctly (IMPLEMENTED)
-- [x] **Calendar drag-and-drop** — Drag tasks to reschedule due dates in month/week views with optimistic UI (IMPLEMENTED)
+- [x] **Calendar drag-and-drop** — Drag tasks to reschedule due dates in month/week views with optimistic UI; touch DnD in week/3-day views (#859) (IMPLEMENTED)
 - [x] **Calendar child filter fix** — Tasks now properly filtered by selected child in calendar view (IMPLEMENTED)
 - [x] **Course page CTA** — Create Course entry point added to Courses page (IMPLEMENTED)
 - [x] **Tasks page modal** — Create New Task converted to well-formatted modal (IMPLEMENTED)
@@ -158,7 +158,8 @@
 - [ ] **Token refresh** — JWT tokens expire without refresh mechanism; users lose work and get silently redirected to login (#149)
 - [x] **Loading skeletons** — Reusable Skeleton components (Page, Card, List, Detail) replace Loading... text across 12 pages (#150) ✅
 - [x] **Accessibility (A11Y)** — ARIA labels on icon buttons, keyboard navigation for interactive elements, skip-to-content link, focus indicators (#151, #247) ✅ (IMPLEMENTED - Feb 2026, commit 120e065)
-- [ ] **Mobile responsiveness** — Calendar not optimized for mobile; tables don't scroll; modals overflow on small screens; no touch drag-drop (#152)
+- [x] **Accessibility Phase 2 (WCAG 2.1 AA)** — Priority indicator shapes, focus traps on 25+ modals, emoji aria-hidden, sr-only labels, 44px touch targets, 4.5:1 contrast (#829) ✅
+- [ ] **Mobile responsiveness** — Calendar not optimized for mobile; tables don't scroll; modals overflow on small screens (#152)
 - [x] **FlashcardsPage stale closure bug** — Fixed with useRef-based stable keyboard event handler (#153) ✅
 
 #### Testing Gaps (Tier 1)
@@ -236,6 +237,28 @@
 - [ ] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665)
 - [ ] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666)
 - [ ] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667)
+
+#### UI/UX HCD Assessment — Phase 2 Improvements (#827)
+
+**Assessment Report:** [docs/ClassBridge_UI_UX_Assessment_Report.docx](../docs/ClassBridge_UI_UX_Assessment_Report.docx)
+
+**Tier 1 — Critical:** ✅ COMPLETE
+- [x] **Design tokens** — Expanded CSS variable system (shadows, radii, z-index, status colors for all 3 themes), replaced 150+ hard-coded values across 30 files (#828) ✅
+- [x] **WCAG 2.1 AA accessibility** — Priority indicator shapes, focus traps on 25+ modals, emoji aria-hidden, sr-only labels, 44px touch targets, 4.5:1 contrast (#829) ✅
+- [x] **All Children tab** — SVG group icon tab in parent child selector, mobile scroll indicators with ResizeObserver (#830) ✅
+- [x] **Responsive breakpoints** — Standardized 33 breakpoints across 22 CSS files to 480/768/1024px tiers (#831) ✅
+- [x] **Progressive disclosure** — CollapsibleSection component with smooth animation, Simplified/Full view toggle, localStorage persistence (#832) ✅
+
+**Tier 2 — Important:**
+- [x] **Empty states** — Shared EmptyState component (default/compact variants), replaced 22 inline empty states across 10 pages (#835) ✅
+- [ ] **Teacher dashboard enhancement** — SVG icons, dynamic counts, announcement preview (#833)
+- [ ] **Student engagement** — Streak celebrations, spaced repetition, continue studying (#834)
+- [ ] **Message search** — Search and communication improvements (#836)
+- [ ] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837)
+
+**Tier 3 — Backlog:**
+- [ ] **Grade integration** — Display grades from Google Classroom (#838)
+- [ ] **Assignment submission** — Allow students to submit work (#839)
 
 #### 6.28 FAQ / Knowledge Base (Phase 2)
 
