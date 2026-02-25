@@ -130,7 +130,7 @@
 }
 
 .cal-day-cell.outside-month {
-  background: rgba(0,0,0,0.02);
+  background: var(--color-surface-alt);
 }
 
 .cal-day-cell.outside-month .cal-day-number {
@@ -138,7 +138,7 @@
 }
 
 .cal-day-cell.today {
-  background: rgba(73, 184, 192, 0.04);
+  background: var(--color-accent-subtle);
 }
 
 .cal-day-number {
@@ -238,7 +238,7 @@
 }
 
 .cal-entry-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .cal-entry-title {
@@ -369,7 +369,7 @@
   z-index: 100;
   background: var(--color-surface);
   border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-lg);
   border: 1px solid var(--color-border);
   padding: 16px;
   width: 300px;
@@ -568,7 +568,7 @@
 /* Legacy touch ghost (kept for compatibility) */
 .cal-touch-ghost {
   background: var(--color-accent, #3b82f6);
-  color: #fff;
+  color: var(--color-surface);
   padding: 6px 14px;
   border-radius: 8px;
   font-size: 13px;

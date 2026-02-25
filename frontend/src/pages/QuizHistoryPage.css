@@ -27,7 +27,7 @@
 
 .clear-filter {
   font-size: 0.85rem;
-  color: #1565c0;
+  color: var(--color-info);
   text-decoration: none;
 }
 
@@ -42,9 +42,9 @@
 }
 
 .quiz-history-error {
-  color: #c62828;
+  color: var(--color-danger);
   padding: 16px;
-  background: #fce4ec;
+  background: var(--color-danger-light);
   border-radius: 8px;
 }
 
@@ -181,29 +181,29 @@
   font-size: 0.8rem;
   padding: 4px 12px;
   border-radius: 6px;
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--color-info-bg);
+  color: var(--color-info);
   text-decoration: none;
   font-weight: 500;
 }
 
 .qh-retry-btn:hover {
-  background: #bbdefb;
+  background: var(--color-info-border);
 }
 
 .qh-delete-btn {
   background: none;
   border: none;
   font-size: 1.1rem;
-  color: #999;
+  color: var(--color-muted);
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .qh-delete-btn:hover {
-  background: #fce4ec;
-  color: #c62828;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Empty State */
@@ -229,15 +229,15 @@
 .qh-cta-btn {
   display: inline-block;
   padding: 8px 20px;
-  background: #1565c0;
-  color: #fff;
+  background: var(--color-info);
+  color: var(--color-surface);
   border-radius: 8px;
   text-decoration: none;
   font-weight: 500;
 }
 
 .qh-cta-btn:hover {
-  background: #0d47a1;
+  background: var(--color-blue-dark);
 }
 
 /* Save status in QuizPage */
@@ -247,10 +247,10 @@
   text-align: center;
 }
 .save-error {
-  color: #c62828;
+  color: var(--color-danger);
 }
 .save-success {
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 /* Responsive */

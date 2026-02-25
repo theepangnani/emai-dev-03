@@ -254,11 +254,11 @@
 }
 
 .admin-role-error {
-  color: #c00;
+  color: var(--color-danger);
   font-size: 13px;
   margin-bottom: 8px;
   padding: 8px 12px;
-  background: #fee;
+  background: var(--color-danger-light);
   border-radius: 6px;
 }
 
@@ -348,8 +348,8 @@
 }
 
 .admin-msg-result.error {
-  background: #fee;
-  color: #c00;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Submit button for admin modals */
@@ -440,7 +440,7 @@
   padding: 3px 10px;
   border-radius: 12px;
   background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 /* Recent Activity Feed */

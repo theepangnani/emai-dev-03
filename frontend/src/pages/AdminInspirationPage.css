@@ -29,7 +29,7 @@
 .admin-insp-add-btn {
   padding: 6px 14px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -52,7 +52,7 @@
   color: var(--color-ink);
 }
 .admin-insp-error {
-  color: #c00;
+  color: var(--color-danger);
   font-size: 13px;
   margin-bottom: 8px;
 }
@@ -98,7 +98,7 @@
 }
 .admin-insp-save-btn {
   background: var(--color-accent) !important;
-  color: #fff !important;
+  color: var(--color-surface) !important;
   border: none !important;
 }
 
@@ -158,19 +158,19 @@
   color: var(--color-ink-muted);
 }
 .admin-insp-toggle.active {
-  background: #e8f5e9;
-  color: #2a7d5f;
-  border-color: #2a7d5f;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success);
 }
 .admin-insp-edit:hover {
-  background: #e3f2fd;
-  color: #1565c0;
-  border-color: #1565c0;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  border-color: var(--color-info);
 }
 .admin-insp-delete:hover {
-  background: #fee;
-  color: #c00;
-  border-color: #c00;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 .admin-insp-empty {
   text-align: center;

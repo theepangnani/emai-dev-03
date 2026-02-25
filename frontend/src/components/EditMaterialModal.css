@@ -7,14 +7,14 @@
   padding-bottom: 8px;
 }
 .edit-mat-error {
-  color: #c0392b;
+  color: var(--color-danger);
   font-size: 0.85rem;
   margin: 0;
   padding: 0 24px;
 }
 .edit-mat-course-current {
   font-size: 0.88rem;
-  color: #333;
+  color: var(--color-ink);
   padding: 5px 0;
 }
 .edit-mat-course-list {

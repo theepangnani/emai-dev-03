@@ -1263,7 +1263,7 @@
 .tour-next-btn {
   padding: 6px 16px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -1652,7 +1652,7 @@
   color: var(--color-accent);
   cursor: pointer;
 }
-.btn-sm:hover { background: var(--color-accent); color: #fff; }
+.btn-sm:hover { background: var(--color-accent); color: var(--color-surface); }
 .btn-sm:disabled { opacity: 0.5; cursor: default; }
 
 /* ── Email verification banner ──────────────────── */
@@ -1661,15 +1661,15 @@
   align-items: center;
   gap: 12px;
   padding: 10px 24px;
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
   font-size: 14px;
-  border-bottom: 1px solid #fcd34d;
+  border-bottom: 1px solid var(--color-warning-border);
 }
 .verify-email-banner__resend {
   background: none;
   border: none;
-  color: #92400e;
+  color: var(--color-warning-text);
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
@@ -1678,7 +1678,7 @@
   padding: 0;
 }
 .verify-email-banner__resend:hover {
-  color: #78350f;
+  color: var(--color-warning-text);
 }
 .verify-email-banner__status {
   font-weight: 500;
@@ -1688,7 +1688,7 @@
   margin-left: auto;
   background: none;
   border: none;
-  color: #92400e;
+  color: var(--color-warning-text);
   font-size: 20px;
   cursor: pointer;
   padding: 0 4px;
@@ -1822,7 +1822,7 @@
 .drop-zone:hover,
 .drop-zone.dragging {
   border-color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.05);
+  background: var(--color-accent-subtle);
 }
 
 .drop-zone.has-file {

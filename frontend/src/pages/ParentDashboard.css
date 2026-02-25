@@ -125,7 +125,7 @@
 
 .pd-focus-tag.invites {
   background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  color: var(--color-accent-strong);
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
 }
 
@@ -2160,15 +2160,15 @@
 }
 
 .pd-generation-banner.success {
-  background: #e6f9e6;
-  color: #1a7a1a;
-  border: 1px solid #4caf50;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
 }
 
 .pd-generation-banner.error {
-  background: #fde8e8;
-  color: #c62828;
-  border: 1px solid #ef5350;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border: 1px solid var(--priority-high);
 }
 
 .pd-gen-spinner {

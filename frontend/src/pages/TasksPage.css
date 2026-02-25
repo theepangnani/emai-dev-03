@@ -687,8 +687,8 @@
 }
 
 .task-modal-archive-btn:hover {
-  border-color: #e65100;
-  color: #e65100;
+  border-color: var(--color-warning-text);
+  color: var(--color-warning-text);
   background: rgba(251, 140, 0, 0.06);
 }
 

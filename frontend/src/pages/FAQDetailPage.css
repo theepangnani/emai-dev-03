@@ -252,7 +252,7 @@
 
 .btn-success {
   background: var(--color-success) !important;
-  color: #fff !important;
+  color: var(--color-surface) !important;
   border-color: var(--color-success) !important;
 }
 
@@ -262,7 +262,7 @@
 
 .btn-danger {
   background: var(--color-danger) !important;
-  color: #fff !important;
+  color: var(--color-surface) !important;
   border-color: var(--color-danger) !important;
 }
 

@@ -213,7 +213,7 @@
 }
 
 .sdp-urgency-group[data-urgency="upcoming"] .sdp-task-item {
-  border-left-color: rgba(73, 184, 192, 0.35);
+  border-left-color: var(--color-accent);
 }
 
 .sdp-task-item.clickable {

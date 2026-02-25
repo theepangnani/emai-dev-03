@@ -118,7 +118,7 @@
 }
 
 .notification-item.requires-ack {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid var(--color-warning);
 }
 
 .notification-icon {
@@ -149,8 +149,8 @@
 .ack-badge {
   font-size: 10px;
   font-weight: 700;
-  color: #92400e;
-  background: #fef3c7;
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
   padding: 1px 6px;
   border-radius: 4px;
   flex-shrink: 0;
@@ -254,7 +254,7 @@
 }
 
 .notif-modal-ack-btn {
-  background: #16a34a;
+  background: var(--color-success);
   color: white;
   border: none;
   padding: 10px 20px;

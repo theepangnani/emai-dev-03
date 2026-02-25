@@ -86,14 +86,37 @@
   --color-muted-light: #aaa;
   --color-muted-border: #d1d5db;
 
+  /* Status backgrounds (banners, badges) */
+  --color-success-bg: #e8f5e9;
+  --color-success-border: #c8e6c9;
+  --color-warning-bg: #fff3e0;
+  --color-warning-border: #ffe0b2;
+  --color-info: #1565c0;
+  --color-info-bg: #e3f2fd;
+  --color-info-border: #bbdefb;
+
   /* Shadows */
+  --shadow-xs: 0 1px 3px rgba(19, 27, 46, 0.06);
+  --shadow-sm: 0 2px 8px rgba(19, 27, 46, 0.08);
   --shadow-soft: 0 8px 24px rgba(19, 27, 46, 0.08);
+  --shadow-md: 0 4px 16px rgba(19, 27, 46, 0.10);
+  --shadow-lg: 0 8px 30px rgba(19, 27, 46, 0.15);
   --shadow-lift: 0 12px 30px rgba(19, 27, 46, 0.12);
+  --shadow-xl: 0 20px 40px rgba(19, 27, 46, 0.18);
 
   /* Radii */
-  --radius-lg: 18px;
-  --radius-md: 12px;
+  --radius-xs: 4px;
   --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* Z-index layers */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 1000;
+  --z-toast: 10000;
 
   /* Background patterns */
   --bg-dot-color: rgba(12, 18, 34, 0.05);
@@ -178,8 +201,21 @@
   --color-muted-light: #71717a;
   --color-muted-border: #52525b;
 
+  --color-success-bg: rgba(110, 231, 183, 0.12);
+  --color-success-border: rgba(110, 231, 183, 0.25);
+  --color-warning-bg: rgba(253, 230, 138, 0.12);
+  --color-warning-border: rgba(253, 230, 138, 0.25);
+  --color-info: #7dd3fc;
+  --color-info-bg: rgba(125, 211, 252, 0.12);
+  --color-info-border: rgba(125, 211, 252, 0.25);
+
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.30);
   --shadow-soft: 0 2px 16px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);
   --shadow-lift: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.50);
 
   --bg-dot-color: rgba(161, 161, 170, 0.06);
   --bg-dot-opacity: 0.2;
@@ -253,8 +289,21 @@
   --color-muted-light: #a09a95;
   --color-muted-border: #ccc5bb;
 
+  --color-success-bg: rgba(74, 138, 74, 0.10);
+  --color-success-border: rgba(74, 138, 74, 0.20);
+  --color-warning-bg: rgba(201, 148, 58, 0.10);
+  --color-warning-border: rgba(201, 148, 58, 0.20);
+  --color-info: #4a7c9e;
+  --color-info-bg: rgba(74, 124, 158, 0.10);
+  --color-info-border: rgba(74, 124, 158, 0.20);
+
+  --shadow-xs: 0 1px 3px rgba(44, 42, 38, 0.04);
+  --shadow-sm: 0 2px 8px rgba(44, 42, 38, 0.05);
   --shadow-soft: 0 8px 24px rgba(44, 42, 38, 0.06);
+  --shadow-md: 0 4px 16px rgba(44, 42, 38, 0.08);
+  --shadow-lg: 0 8px 30px rgba(44, 42, 38, 0.10);
   --shadow-lift: 0 12px 30px rgba(44, 42, 38, 0.10);
+  --shadow-xl: 0 20px 40px rgba(44, 42, 38, 0.12);
 
   --bg-dot-color: rgba(44, 42, 38, 0.04);
   --bg-dot-opacity: 0.25;

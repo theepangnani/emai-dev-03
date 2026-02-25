@@ -336,7 +336,7 @@
 .course-card-edit:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.06);
+  background: var(--color-accent-subtle);
 }
 
 .course-card-color {
@@ -388,13 +388,13 @@
 }
 
 .course-card-badge.school {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .course-card-badge.private-gc {
-  background: #f0fdf4;
-  color: #166534;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .course-card-desc {
@@ -498,7 +498,7 @@
   border-radius: 4px;
   font-weight: 600;
   margin-right: 6px;
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   text-transform: capitalize;
 }
@@ -540,7 +540,7 @@
 }
 
 .content-link.google {
-  color: #4285f4;
+  color: var(--brand-google);
 }
 
 .content-item-actions {

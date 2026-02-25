@@ -73,7 +73,7 @@
   margin-top: 16px;
   padding: 10px 24px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -88,7 +88,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 700;
   font-size: 18px;
   flex-shrink: 0;
@@ -313,15 +313,15 @@
 }
 .mykids-task-row .task-priority-badge.high {
   background: rgba(229, 57, 53, 0.12);
-  color: #c62828;
+  color: var(--priority-high);
 }
 .mykids-task-row .task-priority-badge.medium {
   background: rgba(251, 140, 0, 0.12);
-  color: #e65100;
+  color: var(--color-warning-text);
 }
 .mykids-task-row .task-priority-badge.low {
   background: rgba(67, 160, 71, 0.12);
-  color: #2e7d32;
+  color: var(--color-success);
 }
 .mykids-task-title {
   flex: 1;
@@ -363,7 +363,7 @@
   padding: 4px 12px;
   font-size: 13px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -408,7 +408,7 @@
 }
 .mykids-message-btn:hover {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .mykids-remove-btn {
@@ -421,9 +421,9 @@
   color: var(--color-ink-muted);
 }
 .mykids-remove-btn:hover {
-  background: #fee;
-  color: #c00;
-  border-color: #c00;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 /* Add teacher modal */
@@ -488,11 +488,11 @@
 }
 .mykids-modal-actions .mykids-modal-submit {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
 }
 .mykids-modal-error {
-  color: #c00;
+  color: var(--color-danger);
   font-size: 13px;
   margin-bottom: 8px;
 }

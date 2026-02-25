@@ -405,7 +405,7 @@
 .reply-btn {
   padding: 10px 20px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -470,7 +470,7 @@
 .send-reply-btn {
   padding: 8px 20px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 6px;
   cursor: pointer;

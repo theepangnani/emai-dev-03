@@ -50,7 +50,7 @@
 
 .teacher-focus-badge.messages {
   background: rgba(59, 130, 246, 0.12);
-  color: #2563eb;
+  color: var(--color-blue);
   cursor: pointer;
 }
 
@@ -60,7 +60,7 @@
 
 .teacher-focus-badge.deadlines {
   background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
+  color: var(--color-warning-text);
   cursor: pointer;
 }
 
@@ -69,7 +69,7 @@
 }
 
 .teacher-focus-badge.classes {
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
 }
 
@@ -360,12 +360,12 @@
 
 .course-source-badge.source-google {
   background: rgba(66, 133, 244, 0.12);
-  color: #1a73e8;
+  color: var(--color-blue);
 }
 
 .course-source-badge.source-manual {
   background: rgba(139, 92, 246, 0.12);
-  color: #7c3aed;
+  color: var(--color-purple);
 }
 
 .course-subject-tag {
@@ -373,7 +373,7 @@
   font-size: 12px;
   padding: 2px 10px;
   border-radius: 10px;
-  background: rgba(73, 184, 192, 0.16);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   font-weight: 500;
   margin-bottom: 8px;
@@ -442,13 +442,13 @@
 .sync-message.sync-success {
   background: rgba(34, 197, 94, 0.08);
   border: 1px solid rgba(34, 197, 94, 0.2);
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .sync-message.sync-error {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .loading-state {
@@ -511,7 +511,7 @@
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   font-weight: 500;
 }
@@ -548,7 +548,7 @@
 }
 
 .text-btn:hover {
-  background: rgba(73, 184, 192, 0.1);
+  background: var(--color-accent-light);
 }
 
 .text-btn.danger {
@@ -630,17 +630,17 @@
 
 .badge-student {
   background: rgba(59, 130, 246, 0.12);
-  color: #2563eb;
+  color: var(--color-blue);
 }
 
 .badge-teacher {
   background: rgba(139, 92, 246, 0.12);
-  color: #7c3aed;
+  color: var(--color-purple);
 }
 
 .badge-parent {
   background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
+  color: var(--color-warning-text);
 }
 
 .sent-invite-status-badge {
@@ -653,17 +653,17 @@
 
 .status-pending {
   background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
+  color: var(--color-warning-text);
 }
 
 .status-accepted {
   background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .status-expired {
   background: rgba(156, 163, 175, 0.16);
-  color: #6b7280;
+  color: var(--color-ink-muted);
 }
 
 .sent-invite-meta {
@@ -686,7 +686,7 @@
 
 .resent-toast {
   font-size: 13px;
-  color: #16a34a;
+  color: var(--color-success);
   font-weight: 600;
   padding: 4px 8px;
 }
@@ -694,7 +694,7 @@
 .resend-error-toast {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #dc2626;
+  color: var(--color-danger);
   font-size: 13px;
   padding: 8px 14px;
   border-radius: 8px;
