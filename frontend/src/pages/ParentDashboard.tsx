@@ -379,6 +379,7 @@ export function ParentDashboard() {
           {/* Student Detail (#832 - collapsible) */}
           <CollapsibleSection
             title={pd.selectedChild ? `${pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? ''}'s Details` : 'Student Detail'}
+            badge={pd.filteredTasks.filter(t => !t.archived_at).length}
             expanded={sectionStates.studentDetail}
             onToggle={() => updateSection('studentDetail', !sectionStates.studentDetail)}
           >
@@ -386,8 +387,6 @@ export function ParentDashboard() {
               selectedChildName={pd.selectedChild ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? null) : null}
               courseMaterials={pd.courseMaterials}
               tasks={pd.filteredTasks}
-              collapsed={false}
-              onToggleCollapsed={() => updateSection('studentDetail', !sectionStates.studentDetail)}
               onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
               onToggleTask={pd.handleToggleTask}
               onTaskClick={(task) => pd.setTaskDetailModal(task)}

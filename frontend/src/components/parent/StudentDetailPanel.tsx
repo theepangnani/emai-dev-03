@@ -24,8 +24,6 @@ export interface StudentDetailPanelProps {
   selectedChildName: string | null; // null = "All Children" mode
   courseMaterials: CourseMaterial[];
   tasks: TaskItem[];
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
   onViewMaterial: (material: CourseMaterial) => void;
   onToggleTask: (task: TaskItem) => void;
   onTaskClick?: (task: TaskItem) => void;
@@ -120,8 +118,6 @@ export function StudentDetailPanel({
   selectedChildName,
   courseMaterials,
   tasks,
-  collapsed,
-  onToggleCollapsed,
   onViewMaterial,
   onToggleTask,
   onTaskClick,
@@ -150,35 +146,6 @@ export function StudentDetailPanel({
 
   return (
     <div className="student-detail-panel">
-      {/* Collapse/expand header */}
-      <div
-        className="sdp-panel-header"
-        onClick={onToggleCollapsed}
-        role="button"
-        tabIndex={0}
-        aria-expanded={!collapsed}
-        aria-label={selectedChildName ? `${selectedChildName}'s Details` : 'All Children Overview'}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggleCollapsed();
-          }
-        }}
-      >
-        <Chevron expanded={!collapsed} />
-        <span className="sdp-panel-title">
-          {selectedChildName ? `${selectedChildName}'s Details` : 'All Children Overview'}
-        </span>
-        <span className="sdp-panel-summary">
-          {totalActive} task{totalActive !== 1 ? 's' : ''}
-          {urgencyGroups.overdue.length > 0 && (
-            <span className="sdp-panel-overdue"> &middot; {urgencyGroups.overdue.length} overdue</span>
-          )}
-        </span>
-      </div>
-
-      {!collapsed && (
-      <>
       {/* ── Tasks by Urgency Section (first) ─────────────── */}
       <div className="sdp-section">
         <div
@@ -384,9 +351,6 @@ export function StudentDetailPanel({
           </div>
         )}
       </div>
-
-      </>
-      )}
     </div>
   );
 }
