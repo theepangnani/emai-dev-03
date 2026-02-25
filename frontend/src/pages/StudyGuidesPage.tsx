@@ -790,11 +790,11 @@ export function StudyGuidesPage() {
                         {item.course_name && (
                           <span className="guide-course-badge">{item.course_name}</span>
                         )}
-                        <span className="guide-type-label">
-                          {contentGuideMap[item.id]
-                            ? contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')
-                            : item.content_type}
-                        </span>
+                        {contentGuideMap[item.id] && (
+                          <span className="guide-type-label">
+                            {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
+                          </span>
+                        )}
                         <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
                       </span>
                     </div>
