@@ -42,12 +42,6 @@ const CONTENT_TYPE_ICONS: Record<string, string> = {
   topic: '\uD83D\uDCC1',         // file folder
 };
 
-const CONTENT_TYPE_LABELS: Record<string, string> = {
-  material: 'Material',
-  assignment: 'Assignment',
-  announcement: 'Announcement',
-  topic: 'Topic',
-};
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -371,9 +365,11 @@ export function StudentDetailPanel({
                       {CONTENT_TYPE_ICONS[mat.content_type] || '\uD83D\uDCC4'}
                     </span>
                     <span className="sdp-material-title">{mat.title}</span>
-                    <span className="sdp-material-type-badge">
-                      {CONTENT_TYPE_LABELS[mat.content_type] || mat.content_type}
-                    </span>
+                    {mat.course_name && (
+                      <span className="sdp-material-type-badge">
+                        {mat.course_name}
+                      </span>
+                    )}
                   </div>
                 ))}
                 <button
