@@ -4,7 +4,7 @@ import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
-import { ActivityFeed } from '../components/parent/ActivityFeed';
+import { ActivityFeed, useActivityCount } from '../components/parent/ActivityFeed';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -91,6 +91,7 @@ function loadViewMode(): 'simplified' | 'full' {
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
+  const activityCount = useActivityCount(pd.courseMaterials);
   const [tipDismissed, setTipDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
@@ -398,6 +399,7 @@ export function ParentDashboard() {
           {/* Activity Feed (#832 - collapsible) */}
           <CollapsibleSection
             title="Recent Activity"
+            badge={activityCount}
             expanded={sectionStates.activityFeed}
             onToggle={() => updateSection('activityFeed', !sectionStates.activityFeed)}
           >
