@@ -33,7 +33,7 @@ function getMonday(d: Date): Date {
 }
 
 export function CalendarView({ assignments, onCreateStudyGuide, onDayClick: externalDayClick, onTaskDrop, onGoToCourse, onViewStudyGuides, generatingStudyId }: CalendarViewProps) {
-  const nav = useCalendarNav('month');
+  const nav = useCalendarNav('3day');
   const [popover, setPopover] = useState<{ assignment: CalendarAssignment; rect: DOMRect } | null>(null);
   const touchDrag = useTouchDrag(onTaskDrop);
 
@@ -166,6 +166,7 @@ export function CalendarView({ assignments, onCreateStudyGuide, onDayClick: exte
             assignments={visibleAssignments}
             onAssignmentClick={handleAssignmentClick}
             onTaskDrop={onTaskDrop}
+            touchDrag={touchDrag}
           />
         )}
 

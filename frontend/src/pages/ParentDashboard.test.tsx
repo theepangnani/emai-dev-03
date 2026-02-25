@@ -272,10 +272,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add Child' }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
@@ -288,10 +288,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add Child' }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
@@ -503,10 +503,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add Child' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add Child' }))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()

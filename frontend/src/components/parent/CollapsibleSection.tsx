@@ -3,12 +3,13 @@ import './CollapsibleSection.css';
 
 interface CollapsibleSectionProps {
   title: string;
+  badge?: number | null;
   expanded: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }
 
-export function CollapsibleSection({ title, expanded, onToggle, children }: CollapsibleSectionProps) {
+export function CollapsibleSection({ title, badge, expanded, onToggle, children }: CollapsibleSectionProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState<string>(expanded ? 'none' : '0px');
 
@@ -49,6 +50,7 @@ export function CollapsibleSection({ title, expanded, onToggle, children }: Coll
           {'\u25B6'}
         </span>
         <span className="pd-collapsible-title">{title}</span>
+        {badge != null && badge > 0 && <span className="pd-collapsible-badge">{badge}</span>}
       </button>
       <div
         ref={contentRef}
