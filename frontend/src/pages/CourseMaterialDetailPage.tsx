@@ -221,7 +221,7 @@ export function CourseMaterialDetailPage() {
             )}
           </div>
           <div className="cm-detail-meta">
-            <span className="cm-type-badge">{content.content_type}</span>
+            {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
             <div className="cm-header-icon-actions">
               <button className="cm-icon-btn cm-icon-btn-task" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
