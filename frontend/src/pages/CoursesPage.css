@@ -689,7 +689,7 @@
   background: var(--color-danger-light);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .courses-section-header {
     flex-direction: column;
     align-items: flex-start;

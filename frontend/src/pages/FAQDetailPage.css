@@ -270,7 +270,7 @@
   opacity: 0.9;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .faq-question-card {
     padding: 16px;
   }

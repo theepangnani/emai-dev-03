@@ -5,6 +5,11 @@
 }
 
 :root, [data-theme="light"] {
+  /* Responsive breakpoints (documentation — CSS can't use vars in media queries)
+     Mobile:  480px   — small phone, single column
+     Tablet:  768px   — sidebar toggle, layout shift
+     Desktop: 1024px  — full-width, multi-column */
+
   --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
 

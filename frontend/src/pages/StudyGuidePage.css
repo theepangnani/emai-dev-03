@@ -115,7 +115,7 @@
 }
 
 /* Mobile responsive */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .study-guide-page {
     max-width: 100%;
     padding: 1rem;

@@ -272,7 +272,7 @@
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .teacher-focus-header {
     padding: 14px 36px 14px 14px;
   }

@@ -609,7 +609,7 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .course-detail-header {
     flex-direction: column;
     padding: 18px 16px;

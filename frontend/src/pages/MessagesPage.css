@@ -541,7 +541,7 @@
 }
 
 /* Responsive — tablet */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .messages-container {
     flex-direction: column;
   }
@@ -560,7 +560,7 @@
 }
 
 /* Responsive — mobile: list/detail toggle */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .mobile-back-btn {
     display: block;
   }

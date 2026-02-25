@@ -264,7 +264,7 @@
   justify-content: flex-end;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .admin-faq-header {
     flex-direction: column;
     align-items: flex-start;

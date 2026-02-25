@@ -257,7 +257,7 @@
   background: var(--color-accent-subtle);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pd-today-focus-header {
     flex-direction: column;
     gap: 12px;
@@ -1921,7 +1921,7 @@
    Responsive: Onboarding & Feed
    ============================================ */
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pd-onboard-container {
     padding: 32px 16px;
   }
@@ -1984,7 +1984,7 @@
 }
 
 /* -- B. 640px breakpoint for timeline -- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pd-timeline-section {
     padding: 16px;
   }

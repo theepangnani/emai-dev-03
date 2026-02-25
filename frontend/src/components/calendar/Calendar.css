@@ -618,7 +618,7 @@
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 480px) {
   .cal-month-grid,
   .cal-week-grid {
     font-size: 11px;

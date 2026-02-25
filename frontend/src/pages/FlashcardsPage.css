@@ -336,7 +336,7 @@
   opacity: 0.85;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .flashcard {
     height: 250px;
   }

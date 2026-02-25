@@ -185,7 +185,7 @@
 }
 
 /* Mobile */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .admin-insp-header {
     flex-direction: column;
     align-items: stretch;

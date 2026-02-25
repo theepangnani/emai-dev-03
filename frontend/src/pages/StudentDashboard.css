@@ -923,7 +923,7 @@
 }
 
 /* ── Responsive ──────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .sd-actions {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -933,7 +933,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 480px) {
   .sd-hero {
     flex-direction: column;
     padding: 20px;

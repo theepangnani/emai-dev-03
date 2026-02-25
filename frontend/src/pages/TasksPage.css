@@ -726,7 +726,7 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .task-row-checkbox::before {
     content: '';
     position: absolute;

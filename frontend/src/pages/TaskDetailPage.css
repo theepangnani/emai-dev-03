@@ -242,7 +242,7 @@
   gap: 12px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .td-edit-row {
     flex-direction: column;
   }
@@ -538,7 +538,7 @@
   font-size: 14px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .td-meta {
     grid-template-columns: 1fr;
   }

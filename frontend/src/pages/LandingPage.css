@@ -267,7 +267,7 @@
 }
 
 /* Mobile */
-@media (max-width: 640px) {
+@media (max-width: 480px) {
   .landing-nav {
     padding: 4px 12px;
   }
