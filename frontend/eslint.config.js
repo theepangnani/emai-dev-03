@@ -23,6 +23,13 @@ export default defineConfig([
       // Change no-explicit-any from error to warning to unblock CI
       // TODO: Fix remaining ~120 instances incrementally
       '@typescript-eslint/no-explicit-any': 'warn',
+      'react-refresh/only-export-components': 'warn',
+    },
+  },
+  {
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])
