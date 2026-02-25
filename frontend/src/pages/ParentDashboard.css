@@ -284,8 +284,8 @@
 .pd-child-selector {
   display: flex;
   gap: 8px;
-  margin-bottom: 24px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .pd-child-tab {
@@ -359,6 +359,95 @@
 .pd-child-tab.active .pd-overdue-badge {
   background: rgba(255, 255, 255, 0.25);
   color: white;
+}
+
+/* "All" tab (#830) */
+.pd-child-tab-all {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.pd-child-tab-all.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+/* ============================================
+   Child Selector Scroll Wrapper (#830)
+   ============================================ */
+
+.pd-child-selector-wrapper {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+/* Gradient fade indicators for horizontal scroll on mobile (#830) */
+.pd-child-selector-wrapper::before,
+.pd-child-selector-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.pd-child-selector-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-background, #fff) 0%, transparent 100%);
+  border-radius: 8px 0 0 8px;
+}
+
+.pd-child-selector-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-background, #fff) 0%, transparent 100%);
+  border-radius: 0 8px 8px 0;
+}
+
+.pd-child-selector-wrapper.can-scroll-left::before {
+  opacity: 1;
+}
+
+.pd-child-selector-wrapper.can-scroll-right::after {
+  opacity: 1;
+}
+
+/* ============================================
+   View Mode Toggle (#832)
+   ============================================ */
+
+.pd-view-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.pd-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  padding: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 0;
+}
+
+.pd-view-toggle-option {
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: var(--color-ink-muted);
+}
+
+.pd-view-toggle-option.active {
+  background: var(--color-accent);
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Empty States */
@@ -1103,9 +1192,12 @@
 
 @media (max-width: 768px) {
   /* Child selector: ensure wrapping with smaller buttons */
+  .pd-child-selector-wrapper {
+    margin-bottom: 16px;
+  }
+
   .pd-child-selector {
     gap: 6px;
-    margin-bottom: 16px;
   }
 
   .pd-child-tab {

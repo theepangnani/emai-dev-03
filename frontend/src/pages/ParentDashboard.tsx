@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
@@ -9,6 +9,7 @@ import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
+import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import './ParentDashboard.css';
@@ -57,13 +58,98 @@ function DashboardSkeleton() {
   );
 }
 
+// localStorage key for section collapse states
+const SECTION_STATES_KEY = 'pd-section-states';
+const VIEW_MODE_KEY = 'pd-view-mode';
+
+interface SectionStates {
+  comingUp: boolean;
+  studentDetail: boolean;
+  activityFeed: boolean;
+}
+
+function loadSectionStates(): SectionStates {
+  try {
+    const saved = localStorage.getItem(SECTION_STATES_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  // First-time defaults: Coming Up expanded, Student Detail collapsed, Activity Feed collapsed
+  return { comingUp: true, studentDetail: false, activityFeed: false };
+}
+
+function saveSectionStates(states: SectionStates) {
+  try { localStorage.setItem(SECTION_STATES_KEY, JSON.stringify(states)); } catch { /* ignore */ }
+}
+
+function loadViewMode(): 'simplified' | 'full' {
+  try {
+    const saved = localStorage.getItem(VIEW_MODE_KEY);
+    if (saved === 'simplified' || saved === 'full') return saved;
+  } catch { /* ignore */ }
+  return 'full';
+}
+
 export function ParentDashboard() {
   const pd = useParentDashboard();
   const [tipDismissed, setTipDismissed] = useState(false);
-  const [comingUpDismissed, setComingUpDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
+  const childScrollRef = useRef<HTMLDivElement>(null);
+
+  // Collapsible section states (#832)
+  const [sectionStates, setSectionStates] = useState<SectionStates>(loadSectionStates);
+  const [viewMode, setViewMode] = useState<'simplified' | 'full'>(loadViewMode);
+
+  // Scroll indicator state for child selector (#830)
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollIndicators = useCallback(() => {
+    const el = childScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = childScrollRef.current;
+    if (!el) return;
+    updateScrollIndicators();
+    el.addEventListener('scroll', updateScrollIndicators, { passive: true });
+    const ro = new ResizeObserver(updateScrollIndicators);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateScrollIndicators);
+      ro.disconnect();
+    };
+  }, [updateScrollIndicators, pd.children.length]);
+
+  const updateSection = useCallback((key: keyof SectionStates, value: boolean) => {
+    setSectionStates(prev => {
+      const next = { ...prev, [key]: value };
+      saveSectionStates(next);
+      return next;
+    });
+  }, []);
+
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode(prev => {
+      const next = prev === 'full' ? 'simplified' : 'full';
+      try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
+      if (next === 'simplified') {
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false, activityFeed: false };
+        setSectionStates(collapsed);
+        saveSectionStates(collapsed);
+      } else {
+        const expanded: SectionStates = { comingUp: true, studentDetail: true, activityFeed: true };
+        setSectionStates(expanded);
+        saveSectionStates(expanded);
+      }
+      return next;
+    });
+  }, []);
 
   // Arrow key navigation for child selector tabs (ARIA tab pattern)
+  // Index 0 = "All" tab, index 1..N = individual children
   const handleChildTabKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     const tabs = childTabsRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
     if (!tabs || tabs.length === 0) return;
@@ -83,7 +169,12 @@ export function ParentDashboard() {
     }
     if (nextIndex >= 0) {
       tabs[nextIndex].focus();
-      pd.handleChildTabClick(pd.children[nextIndex].student_id);
+      if (nextIndex === 0) {
+        // "All" tab
+        pd.handleAllChildrenClick();
+      } else {
+        pd.handleChildTabClick(pd.children[nextIndex - 1].student_id);
+      }
     }
   }, [pd]);
 
@@ -162,32 +253,65 @@ export function ParentDashboard() {
         </div>
       ) : (
         <>
-          {/* Child Filter */}
-          <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={childTabsRef}>
-            {pd.children.map((child, index) => {
-              const isSelected = pd.selectedChild === child.student_id;
-              const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
-              return (
+          {/* View Mode Toggle (#832) */}
+          <div className="pd-view-toggle-row">
+            <button
+              className="pd-view-toggle"
+              onClick={handleToggleViewMode}
+              aria-label={viewMode === 'full' ? 'Switch to simplified view' : 'Switch to full view'}
+              type="button"
+            >
+              <span className={`pd-view-toggle-option ${viewMode === 'simplified' ? 'active' : ''}`}>Simplified</span>
+              <span className={`pd-view-toggle-option ${viewMode === 'full' ? 'active' : ''}`}>Full</span>
+            </button>
+          </div>
+
+          {/* Child Filter (#830) */}
+          <div className={`pd-child-selector-wrapper${canScrollLeft ? ' can-scroll-left' : ''}${canScrollRight ? ' can-scroll-right' : ''}`}>
+            <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={(el) => { (childTabsRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (childScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}>
+              {/* "All" tab — always first (#830) */}
+              {pd.children.length > 1 && (
                 <button
-                  key={child.student_id}
                   role="tab"
-                  aria-selected={isSelected}
-                  tabIndex={isSelected || (pd.selectedChild === null && index === 0) ? 0 : -1}
-                  className={`pd-child-tab ${isSelected ? 'active' : ''}`}
-                  onClick={() => pd.handleChildTabClick(child.student_id)}
-                  onKeyDown={(e) => handleChildTabKeyDown(e, index)}
+                  aria-selected={pd.selectedChild === null}
+                  tabIndex={pd.selectedChild === null ? 0 : -1}
+                  className={`pd-child-tab pd-child-tab-all ${pd.selectedChild === null ? 'active' : ''}`}
+                  onClick={() => pd.handleAllChildrenClick()}
+                  onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
                 >
-                  <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                  {child.full_name}
-                  {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
-                  {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
+                  All
                 </button>
-              );
-            })}
-            <AddActionButton actions={[
-              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
-              { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
-            ]} />
+              )}
+              {pd.children.map((child, index) => {
+                const isSelected = pd.selectedChild === child.student_id;
+                const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
+                // When "All" tab is present, keyboard index is offset by 1
+                const tabKeyIndex = pd.children.length > 1 ? index + 1 : index;
+                return (
+                  <button
+                    key={child.student_id}
+                    role="tab"
+                    aria-selected={isSelected}
+                    tabIndex={isSelected || (pd.selectedChild === null && pd.children.length <= 1 && index === 0) ? 0 : -1}
+                    className={`pd-child-tab ${isSelected ? 'active' : ''}`}
+                    onClick={() => pd.handleChildTabClick(child.student_id)}
+                    onKeyDown={(e) => handleChildTabKeyDown(e, tabKeyIndex)}
+                  >
+                    <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                    {child.full_name}
+                    {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
+                    {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
+                  </button>
+                );
+              })}
+              <AddActionButton
+                actions={[
+                  { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
+                  { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
+                ]}
+                showLabel="Add Child"
+              />
+            </div>
           </div>
 
           <AlertBanner
@@ -222,17 +346,20 @@ export function ParentDashboard() {
             </div>
           )}
 
-          {/* Coming Up Timeline */}
-          {!comingUpDismissed && (
+          {/* Coming Up Timeline (#832 - collapsible) */}
+          <CollapsibleSection
+            title="Coming Up"
+            expanded={sectionStates.comingUp}
+            onToggle={() => updateSection('comingUp', !sectionStates.comingUp)}
+          >
             <ComingUpTimeline
               calendarAssignments={pd.calendarAssignments}
               filteredTasks={pd.filteredTasks}
               selectedChild={pd.selectedChild}
               onToggleTask={pd.handleToggleTask}
               onNavigateStudy={pd.handleOneClickStudy}
-              onDismiss={() => setComingUpDismissed(true)}
             />
-          )}
+          </CollapsibleSection>
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
             <div className="pd-onboard-tip" role="status">
@@ -243,24 +370,38 @@ export function ParentDashboard() {
             </div>
           )}
 
-          <StudentDetailPanel
-            selectedChildName={pd.selectedChild ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? null) : null}
-            courseMaterials={pd.courseMaterials}
-            tasks={pd.filteredTasks}
-            collapsed={pd.detailPanelCollapsed}
-            onToggleCollapsed={() => pd.setDetailPanelCollapsed(v => !v)}
-            onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
-            onToggleTask={pd.handleToggleTask}
-            onTaskClick={(task) => pd.setTaskDetailModal(task)}
-            onViewAllTasks={() => pd.navigate('/tasks', { state: { selectedChild: pd.selectedChildUserId } })}
-            onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
-          />
+          {/* Student Detail (#832 - collapsible) */}
+          <CollapsibleSection
+            title={pd.selectedChild ? `${pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? ''}'s Details` : 'Student Detail'}
+            expanded={sectionStates.studentDetail}
+            onToggle={() => updateSection('studentDetail', !sectionStates.studentDetail)}
+          >
+            <StudentDetailPanel
+              selectedChildName={pd.selectedChild ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? null) : null}
+              courseMaterials={pd.courseMaterials}
+              tasks={pd.filteredTasks}
+              collapsed={false}
+              onToggleCollapsed={() => updateSection('studentDetail', !sectionStates.studentDetail)}
+              onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
+              onToggleTask={pd.handleToggleTask}
+              onTaskClick={(task) => pd.setTaskDetailModal(task)}
+              onViewAllTasks={() => pd.navigate('/tasks', { state: { selectedChild: pd.selectedChildUserId } })}
+              onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
+            />
+          </CollapsibleSection>
 
-          <ActivityFeed
-            courseMaterials={pd.courseMaterials}
-            onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
-            onViewAllMaterials={() => pd.navigate('/course-materials')}
-          />
+          {/* Activity Feed (#832 - collapsible) */}
+          <CollapsibleSection
+            title="Recent Activity"
+            expanded={sectionStates.activityFeed}
+            onToggle={() => updateSection('activityFeed', !sectionStates.activityFeed)}
+          >
+            <ActivityFeed
+              courseMaterials={pd.courseMaterials}
+              onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
+              onViewAllMaterials={() => pd.navigate('/course-materials')}
+            />
+          </CollapsibleSection>
 
           {/* Calendar moved to Tasks page */}
         </>
