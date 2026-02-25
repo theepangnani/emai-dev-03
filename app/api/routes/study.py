@@ -249,11 +249,20 @@ def auto_create_tasks_from_dates(
     logger = get_logger(__name__)
 
     created_tasks = []
+    now = datetime.now()
+    one_year_ago = now - timedelta(days=365)
+
     for d in dates:
         try:
             due_date = datetime.strptime(d["date"], "%Y-%m-%d")
         except (ValueError, TypeError):
             logger.warning(f"Skipping invalid date in auto-task creation: {d.get('date')}")
+            continue
+
+        # Reject dates more than 1 year in the past — likely extracted from
+        # article content rather than actual student deadlines (#841)
+        if due_date < one_year_ago:
+            logger.warning(f"Skipping historical date in auto-task creation: {d.get('date')} '{d.get('title')}'")
             continue
 
         # Determine who the task should be assigned to
