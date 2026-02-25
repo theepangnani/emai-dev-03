@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
-import { ActivityFeed, useActivityCount } from '../components/parent/ActivityFeed';
+import { ActivityFeed } from '../components/parent/ActivityFeed';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -91,7 +91,7 @@ function loadViewMode(): 'simplified' | 'full' {
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
-  const activityCount = useActivityCount(pd.courseMaterials);
+  const activityCount = useMemo(() => Math.min(pd.courseMaterials.length, 10), [pd.courseMaterials]);
   const [tipDismissed, setTipDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);

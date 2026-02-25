@@ -70,13 +70,3 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
     </div>
   );
 }
-
-/** Returns the count of recent items (for use as a badge). */
-export function useActivityCount(courseMaterials: CourseMaterial[]): number {
-  return useMemo(() => {
-    return [...courseMaterials]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 10)
-      .length;
-  }, [courseMaterials]);
-}
