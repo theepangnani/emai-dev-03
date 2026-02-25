@@ -11,6 +11,12 @@ import { extractFaqCode } from '../utils/faqUtils';
 import { PageNav } from '../components/PageNav';
 import './StudyGuidePage.css';
 
+const GUIDE_TYPE_LABELS: Record<string, string> = {
+  study_guide: 'Study Guide',
+  quiz: 'Quiz',
+  flashcards: 'Flashcards',
+};
+
 export function StudyGuidePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -63,6 +69,21 @@ export function StudyGuidePage() {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!guide) return;
+    try {
+      const result = await studyApi.generateGuide({
+        title: guide.title.replace(/^Study Guide: /, ''),
+        content: guide.content,
+        regenerate_from_id: guide.id,
+      });
+      navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
+    } catch (err) {
+      setError('Failed to regenerate');
+      setFaqCode(extractFaqCode(err));
+    }
+  };
+
   if (loading) {
     return (
       <div className="study-guide-page">
@@ -84,41 +105,43 @@ export function StudyGuidePage() {
     );
   }
 
+  const guideTypeLabel = GUIDE_TYPE_LABELS[guide.guide_type] || guide.guide_type;
+
   return (
     <div className="study-guide-page">
-      <div className="study-guide-header">
-        <PageNav items={[
-          { label: 'Home', to: '/dashboard' },
-          { label: 'Materials', to: '/course-materials' },
-          { label: guide?.title || 'Study Guide' },
-        ]} />
-        <div className="header-actions">
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'Materials', to: '/course-materials' },
+        { label: guide?.title || 'Study Guide' },
+      ]} />
+
+      {/* Header card */}
+      <div className="sg-detail-header">
+        <div className="sg-title-row">
+          <h2>{guide.title}</h2>
           <CourseAssignSelect
             guideId={guide.id}
             currentCourseId={guide.course_id}
             onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
           />
-          <button className="print-btn" onClick={() => window.print()}>Print</button>
-          <button
-            className="print-btn"
-            onClick={async () => {
-              try {
-                const result = await studyApi.generateGuide({
-                  title: guide.title.replace(/^Study Guide: /, ''),
-                  content: guide.content,
-                  regenerate_from_id: guide.id,
-                });
-                navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
-              } catch (err) {
-                setError('Failed to regenerate');
-                setFaqCode(extractFaqCode(err));
-              }
-            }}
-          >
-            Regenerate
-          </button>
-          <button className="delete-btn" onClick={handleDelete}>Delete</button>
-          <button className="print-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
+        </div>
+        <div className="sg-meta-row">
+          <span className="sg-type-badge">{guideTypeLabel}</span>
+          {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
+          <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
+          <div className="sg-icon-actions">
+            <button className="sg-icon-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+                <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
+                <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </button>
+            <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
+            <button className="sg-icon-btn" title="Print" aria-label="Print study guide" onClick={() => window.print()}>&#128424;</button>
+            <button className="sg-icon-btn sg-icon-btn-danger" title="Delete" aria-label="Delete study guide" onClick={handleDelete}>&#128465;</button>
+          </div>
         </div>
       </div>
 
@@ -135,11 +158,6 @@ export function StudyGuidePage() {
       )}
 
       <ContentCard>
-        <h1>{guide.title}</h1>
-        <p className="guide-meta">
-          {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.85rem', marginRight: '0.5rem' }}>v{guide.version}</span>}
-          Created: {new Date(guide.created_at).toLocaleDateString()}
-        </p>
         <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
           <MarkdownBody content={guide.content} />
         </Suspense>
