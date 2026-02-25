@@ -363,8 +363,14 @@
 
 /* "All" tab (#830) */
 .pd-child-tab-all {
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+}
+
+.pd-child-tab-all svg {
+  flex-shrink: 0;
 }
 
 .pd-child-tab-all.active {
