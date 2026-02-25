@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import { faqApi, type FAQQuestionItem } from '../api/client';
 import './FAQPage.css';
 
@@ -100,9 +101,11 @@ export function FAQPage() {
         {loading ? (
           <ListSkeleton rows={6} />
         ) : questions.length === 0 ? (
-          <div className="faq-empty">
-            No questions found. Be the first to ask!
-          </div>
+          <EmptyState
+            title="No questions found"
+            description="Be the first to ask!"
+            action={{ label: 'Ask a Question', onClick: () => setShowModal(true) }}
+          />
         ) : (
           <div className="faq-list">
             {questions.map((q) => (

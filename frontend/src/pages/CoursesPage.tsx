@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './CoursesPage.css';
 
 interface CourseItem {
@@ -689,9 +690,11 @@ export function CoursesPage() {
                 ))}
               </div>
             ) : (
-              <div className="courses-empty">
-                <p>No classes yet. Create a class or sync from Google Classroom.</p>
-              </div>
+              <EmptyState
+                title="No classes yet"
+                description="Create a class or sync from Google Classroom."
+                variant="compact"
+              />
             )}
             </>
             )}
@@ -792,12 +795,11 @@ export function CoursesPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="courses-empty">
-                    <p>Not enrolled in any classes yet.</p>
-                    <button className="courses-btn primary" style={{ marginTop: 12 }} onClick={() => setStudentTab('browse')}>
-                      Browse Classes
-                    </button>
-                  </div>
+                  <EmptyState
+                    title="Not enrolled in any classes yet"
+                    action={{ label: 'Browse Classes', onClick: () => setStudentTab('browse') }}
+                    variant="compact"
+                  />
                 )}
               </div>
             )}
@@ -837,9 +839,10 @@ export function CoursesPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="courses-empty">
-                    <p>{searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}</p>
-                  </div>
+                  <EmptyState
+                    title={searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}
+                    variant="compact"
+                  />
                 )}
               </div>
             )}
@@ -894,9 +897,10 @@ export function CoursesPage() {
               ))}
             </div>
           ) : myCoursesExpanded ? (
-            <div className="courses-empty">
-              <p>{isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}</p>
-            </div>
+            <EmptyState
+              title={isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}
+              variant="compact"
+            />
           ) : null}
         </div>
         )}
@@ -947,10 +951,11 @@ export function CoursesPage() {
             <p className="modal-desc">Select classes to assign to your child.</p>
             <div className="modal-form">
               {myCourses.length === 0 ? (
-                <div className="empty-state">
-                  <p>No classes created yet</p>
-                  <button className="link-child-btn-small" onClick={() => { setShowAssignModal(false); setShowCreateModal(true); }}>+ Create Class</button>
-                </div>
+                <EmptyState
+                  title="No classes created yet"
+                  action={{ label: '+ Create Class', onClick: () => { setShowAssignModal(false); setShowCreateModal(true); } }}
+                  variant="compact"
+                />
               ) : (
                 <div className="discovered-list">
                   {myCourses.map((course) => {

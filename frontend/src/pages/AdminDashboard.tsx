@@ -5,6 +5,7 @@ import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useDebounce } from '../utils/useDebounce';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './AdminDashboard.css';
 
 const PAGE_SIZE = 10;
@@ -292,11 +293,11 @@ export function AdminDashboard() {
               </button>
             </>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📊</div>
-              <h3 className="empty-state-title">No recent activity</h3>
-              <p className="empty-state-text">System activity will appear here.</p>
-            </div>
+            <EmptyState
+              icon="📊"
+              title="No recent activity"
+              description="System activity will appear here."
+            />
           )}
         </section>
 
@@ -309,12 +310,12 @@ export function AdminDashboard() {
           {showBroadcastHistory && (
             <div className="admin-broadcast-history">
               {broadcasts.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">📢</div>
-                  <h3 className="empty-state-title">No broadcasts sent yet</h3>
-                  <p className="empty-state-text">Send a broadcast to reach all users at once.</p>
-                  <button className="empty-state-cta" onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}>Send Broadcast</button>
-                </div>
+                <EmptyState
+                  icon="📢"
+                  title="No broadcasts sent yet"
+                  description="Send a broadcast to reach all users at once."
+                  action={{ label: 'Send Broadcast', onClick: () => { setShowBroadcastModal(true); setBroadcastResult(''); } }}
+                />
               ) : (
                 <table className="admin-users-table">
                   <thead>
@@ -421,12 +422,12 @@ export function AdminDashboard() {
                   {users.length === 0 && (
                     <tr>
                       <td colSpan={6}>
-                        <div className="empty-state">
-                          <div className="empty-state-icon">👤</div>
-                          <h3 className="empty-state-title">No users match your search</h3>
-                          <p className="empty-state-text">Try adjusting your filters or search terms.</p>
-                          <button className="empty-state-cta" onClick={() => { setSearch(''); setRoleFilter(''); setPage(0); }}>Clear Filters</button>
-                        </div>
+                        <EmptyState
+                          icon="👤"
+                          title="No users match your search"
+                          description="Try adjusting your filters or search terms."
+                          action={{ label: 'Clear Filters', onClick: () => { setSearch(''); setRoleFilter(''); setPage(0); } }}
+                        />
                       </td>
                     </tr>
                   )}

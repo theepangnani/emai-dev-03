@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import type { InspirationData } from '../components/DashboardLayout';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -510,11 +511,11 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📊</div>
-              <h3 className="empty-state-title">No recent activity</h3>
-              <p className="empty-state-text">Activity will appear here as students interact with your classes.</p>
-            </div>
+            <EmptyState
+              icon="📊"
+              title="No recent activity"
+              description="Activity will appear here as students interact with your classes."
+            />
           )}
         </div>
 
@@ -540,11 +541,11 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">✅</div>
-              <h3 className="empty-state-title">No upcoming deadlines</h3>
-              <p className="empty-state-text">All caught up!</p>
-            </div>
+            <EmptyState
+              icon="✅"
+              title="No upcoming deadlines"
+              description="All caught up!"
+            />
           )}
         </div>
       </div>
@@ -611,12 +612,12 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📚</div>
-              <h3 className="empty-state-title">No classes yet</h3>
-              <p className="empty-state-text">Create your first class to start organizing materials and assignments.</p>
-              <button className="empty-state-cta" onClick={() => setShowCreateModal(true)}>Create a Class</button>
-            </div>
+            <EmptyState
+              icon="📚"
+              title="No classes yet"
+              description="Create your first class to start organizing materials and assignments."
+              action={{ label: 'Create a Class', onClick: () => setShowCreateModal(true) }}
+            />
           )}
           </>
           )}
@@ -736,11 +737,11 @@ export function TeacherDashboard() {
                 ))}
               </div>
             ) : googleAccountsExpanded ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">🔗</div>
-                <h3 className="empty-state-title">No Google accounts linked yet</h3>
-                <p className="empty-state-text">Connect your Google account to sync classes from Google Classroom.</p>
-              </div>
+              <EmptyState
+                icon="🔗"
+                title="No Google accounts linked yet"
+                description="Connect your Google account to sync classes from Google Classroom."
+              />
             ) : null}
           </section>
         )}

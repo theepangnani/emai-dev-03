@@ -12,6 +12,7 @@ import { extractFaqCode } from '../utils/faqUtils';
 import { useConfirm } from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
+import EmptyState from '../components/EmptyState';
 import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -836,11 +837,12 @@ export function StudentDashboard() {
               )}
             </div>
           ) : (
-            <div className="sd-empty">
-              <div className="sd-empty-icon">{'\u{1F389}'}</div>
-              <p className="sd-empty-title">Nothing coming up</p>
-              <p className="sd-empty-text">You're all clear! Create a course or upload materials to get started.</p>
-            </div>
+            <EmptyState
+              icon={'\u{1F389}'}
+              title="Nothing coming up"
+              description="You're all clear! Create a course or upload materials to get started."
+              className="sd-empty"
+            />
           )}
         </section>
 
@@ -881,12 +883,13 @@ export function StudentDashboard() {
               ))}
             </div>
           ) : (
-            <div className="sd-empty">
-              <div className="sd-empty-icon">{'\u{1F4DD}'}</div>
-              <p className="sd-empty-title">No study materials yet</p>
-              <p className="sd-empty-text">Upload class materials or paste your notes to generate study guides.</p>
-              <button className="sd-empty-cta" onClick={() => setShowCreateModal(true)}>Create Study Material</button>
-            </div>
+            <EmptyState
+              icon={'\u{1F4DD}'}
+              title="No study materials yet"
+              description="Upload class materials or paste your notes to generate study guides."
+              action={{ label: 'Create Study Material', onClick: () => setShowCreateModal(true) }}
+              className="sd-empty"
+            />
           )}
         </section>
       </div>
@@ -924,18 +927,16 @@ export function StudentDashboard() {
             </button>
           </div>
         ) : (
-          <div className="sd-empty compact">
-            <p className="sd-empty-title">No courses yet</p>
-            <p className="sd-empty-text">Create a course or connect Google Classroom to get started.</p>
-            <div className="sd-empty-actions">
-              <button className="sd-empty-cta" onClick={() => setShowCreateCourseModal(true)}>Create Course</button>
-              {!googleConnected && (
-                <button className="sd-empty-cta secondary" onClick={handleConnectGoogle} disabled={isConnecting}>
-                  Connect Classroom
-                </button>
-              )}
-            </div>
-          </div>
+          <EmptyState
+            title="No courses yet"
+            description="Create a course or connect Google Classroom to get started."
+            variant="compact"
+            className="sd-empty"
+            actions={[
+              { label: 'Create Course', onClick: () => setShowCreateCourseModal(true) },
+              ...(!googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
+            ]}
+          />
         )}
       </section>
 

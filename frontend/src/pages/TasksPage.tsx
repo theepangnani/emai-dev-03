@@ -12,6 +12,7 @@ import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
+import EmptyState from '../components/EmptyState';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -416,11 +417,12 @@ export function TasksPage() {
 
             {!calendarCollapsed && (
               calendarAssignments.length === 0 ? (
-                <div className="empty-state" style={{ marginBottom: 16 }}>
-                  <div className="empty-state-icon">{'\uD83D\uDCC5'}</div>
-                  <h3 className="empty-state-title">Calendar is clear</h3>
-                  <p className="empty-state-text">No upcoming assignments or tasks this week.</p>
-                </div>
+                <EmptyState
+                  icon={'\uD83D\uDCC5'}
+                  title="Calendar is clear"
+                  description="No upcoming assignments or tasks this week."
+                  className="tasks-calendar-empty"
+                />
               ) : (
                 <CalendarView
                   assignments={calendarAssignments}
@@ -565,10 +567,11 @@ export function TasksPage() {
             <button className="generate-btn" onClick={loadTasks}>Retry</button>
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="tasks-empty">
-            <p>No tasks found.</p>
-            <p>Click "New Task" to create one.</p>
-          </div>
+          <EmptyState
+            title="No tasks found"
+            description={'Click "New Task" to create one.'}
+            action={{ label: 'New Task', onClick: () => setShowCreate(true) }}
+          />
         ) : (
           <div className="tasks-list">
             {filteredTasks.map(task => (

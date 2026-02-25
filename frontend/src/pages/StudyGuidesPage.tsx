@@ -13,6 +13,7 @@ import { PageNav } from '../components/PageNav';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
+import EmptyState from '../components/EmptyState';
 import './StudyGuidesPage.css';
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
@@ -801,9 +802,11 @@ export function StudyGuidesPage() {
               ))}
             </div>
           ) : materialsExpanded ? (
-            <div className="guides-empty">
-              <p>No class materials yet. Use "+ Create Study Material" from the sidebar to get started.</p>
-            </div>
+            <EmptyState
+              title="No class materials yet"
+              description={'Use "+ Create Study Material" from the sidebar to get started.'}
+              variant="compact"
+            />
           ) : null}
         </div>
 

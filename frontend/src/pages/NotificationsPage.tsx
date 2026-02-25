@@ -4,6 +4,7 @@ import { notificationsApi } from '../api/client';
 import type { NotificationResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './NotificationsPage.css';
 
 type FilterTab = 'all' | 'unread' | 'read';
@@ -152,10 +153,11 @@ export function NotificationsPage() {
         {loading ? (
           <ListSkeleton rows={6} />
         ) : filtered.length === 0 ? (
-          <div className="notif-empty">
-            <span className="notif-empty-icon">{'\u2713'}</span>
-            <p>You're all caught up!</p>
-          </div>
+          <EmptyState
+            icon={'\u2713'}
+            title="You're all caught up!"
+            className="notif-empty"
+          />
         ) : (
           <div className="notif-groups">
             {grouped.map(group => (

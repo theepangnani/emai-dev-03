@@ -9,6 +9,7 @@ import type {
 } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { logger } from '../utils/logger';
+import EmptyState from '../components/EmptyState';
 import './MessagesPage.css';
 
 export function MessagesPage() {
@@ -260,10 +261,11 @@ export function MessagesPage() {
             </button>
           </div>
           {conversations.length === 0 ? (
-            <div className="empty-state">
-              <p>No conversations yet</p>
-              <small>Start a new message to begin</small>
-            </div>
+            <EmptyState
+              title="No conversations yet"
+              description="Start a new message to begin"
+              variant="compact"
+            />
           ) : (
             <div className="conversations">
               {conversations.map((conv) => (
