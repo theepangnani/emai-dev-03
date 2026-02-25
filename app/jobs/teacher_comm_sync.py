@@ -34,11 +34,14 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
                 after_timestamp=user.gmail_last_sync,
             )
 
-            # Update tokens if refreshed
+            # Commit token updates immediately to release User row lock before
+            # slow AI summarization calls below (#866).
             if creds.token != user.google_access_token:
                 user.google_access_token = creds.token
                 if creds.refresh_token:
                     user.google_refresh_token = creds.refresh_token
+            user.gmail_last_sync = datetime.now(timezone.utc)
+            db.commit()
 
             for email_data in emails:
                 existing = db.query(TeacherCommunication).filter(
@@ -49,7 +52,7 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
                 if existing:
                     continue
 
-                # Generate AI summary
+                # Generate AI summary (slow — runs outside User row lock)
                 summary = None
                 try:
                     summary = await summarize_teacher_communication(
@@ -74,7 +77,6 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
                     received_at=email_data.get("received_at"),
                 )
                 db.add(comm)
-                new_count += 1
 
                 notif = Notification(
                     user_id=user.id,
@@ -84,11 +86,12 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
                     link="/teacher-communications",
                 )
                 db.add(notif)
-
-            user.gmail_last_sync = datetime.now(timezone.utc)
+                db.commit()
+                new_count += 1
 
         except Exception as e:
             logger.error(f"Gmail sync failed for user {user.id}: {e}", exc_info=True)
+            db.rollback()
 
     # 2. Sync Classroom announcements
     try:
@@ -97,10 +100,13 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
             user.google_refresh_token,
         )
 
+        # Commit token updates immediately (#866)
         if creds.token != user.google_access_token:
             user.google_access_token = creds.token
             if creds.refresh_token:
                 user.google_refresh_token = creds.refresh_token
+        user.classroom_last_sync = datetime.now(timezone.utc)
+        db.commit()
 
         for ann_data in announcements:
             existing = db.query(TeacherCommunication).filter(
@@ -136,7 +142,6 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
                 received_at=ann_data.get("received_at"),
             )
             db.add(comm)
-            new_count += 1
 
             notif = Notification(
                 user_id=user.id,
@@ -146,13 +151,13 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
                 link="/teacher-communications",
             )
             db.add(notif)
-
-        user.classroom_last_sync = datetime.now(timezone.utc)
+            db.commit()
+            new_count += 1
 
     except Exception as e:
         logger.error(f"Classroom sync failed for user {user.id}: {e}", exc_info=True)
+        db.rollback()
 
-    db.commit()
     return {"synced": new_count}
 
 

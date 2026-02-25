@@ -44,7 +44,7 @@ export const authApi = {
   },
 
   resetPassword: async (token: string, new_password: string) => {
-    const response = await api.post('/api/auth/reset-password', { token, new_password });
+    const response = await api.post('/api/auth/reset-password', { token, new_password }, { timeout: 15000 });
     return response.data as { message: string };
   },
 
