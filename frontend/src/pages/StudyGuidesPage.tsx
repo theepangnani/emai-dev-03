@@ -581,10 +581,17 @@ export function StudyGuidesPage() {
     return visibleCourses.filter(c => c.name.toLowerCase().includes(courseSearchQuery.toLowerCase()));
   }, [visibleCourses, courseSearchQuery]);
 
-  // Apply course + type filters
+  // Apply course + type + text search filters
+  const materialSearchQuery = courseSearchQuery.trim().toLowerCase();
   const filteredContent = contentItems.filter(c => {
     if (filterCourse && c.course_id !== filterCourse) return false;
     if (filterType !== 'all' && !contentGuideMap[c.id]?.includes(filterType)) return false;
+    // When text is entered but no specific course selected, filter by title or course name
+    if (materialSearchQuery && !filterCourse) {
+      const matchesTitle = c.title.toLowerCase().includes(materialSearchQuery);
+      const matchesCourse = (c.course_name || '').toLowerCase().includes(materialSearchQuery);
+      if (!matchesTitle && !matchesCourse) return false;
+    }
     return true;
   });
 
@@ -674,12 +681,12 @@ export function StudyGuidesPage() {
               <input
                 type="text"
                 className="guides-course-search-input"
-                placeholder="Search classes..."
+                placeholder="Search classes and materials..."
                 value={courseSearchQuery}
                 onChange={e => { setCourseSearchQuery(e.target.value); setCourseSearchOpen(true); }}
                 onFocus={() => setCourseSearchOpen(true)}
               />
-              {filterCourse && (
+              {(filterCourse || courseSearchQuery) && (
                 <button
                   className="guides-course-search-clear"
                   onClick={() => { setFilterCourse(''); setCourseSearchQuery(''); searchParams.delete('course'); setSearchParams(searchParams, { replace: true }); }}

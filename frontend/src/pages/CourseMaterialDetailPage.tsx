@@ -223,9 +223,11 @@ export function CourseMaterialDetailPage() {
           <div className="cm-detail-meta">
             <span className="cm-type-badge">{content.content_type}</span>
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
-            <button className="cm-header-task-btn" onClick={() => setShowTaskModal(true)}>+ &#9998; Task</button>
-            <button className="cm-header-edit-btn" onClick={() => setShowEditModal(true)}>&#9998; Edit</button>
-            <button className="cm-header-archive-btn" onClick={handleArchiveContent}>&#128230; Archive</button>
+            <button className="cm-header-task-btn" onClick={() => setShowTaskModal(true)}>+ Create Task</button>
+            <div className="cm-header-icon-actions">
+              <button className="cm-icon-btn" title="Edit" aria-label="Edit material" onClick={() => setShowEditModal(true)}>&#9998;</button>
+              <button className="cm-icon-btn" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>&#128465;</button>
+            </div>
           </div>
         </div>
 
