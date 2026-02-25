@@ -86,22 +86,6 @@
   text-transform: capitalize;
 }
 
-.cm-header-task-btn {
-  margin-left: auto;
-  padding: 5px 14px;
-  border: 1px solid var(--color-accent);
-  background: var(--color-accent-subtle);
-  color: var(--color-accent-strong);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 600;
-  transition: background 0.15s, color 0.15s;
-}
-.cm-header-task-btn:hover {
-  background: var(--color-accent-light);
-  color: var(--color-accent-strong);
-}
 .cm-header-icon-actions {
   display: flex;
   align-items: center;
@@ -124,6 +108,11 @@
 .cm-icon-btn.danger:hover {
   border-color: var(--color-danger);
   background: rgba(214, 69, 69, 0.06);
+}
+.cm-icon-task {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-accent-strong, #2a9fa8);
 }
 
 /* Tabs */
@@ -866,10 +855,6 @@
   }
   .cm-detail-meta {
     flex-wrap: wrap;
-  }
-  .cm-header-task-btn {
-    margin-left: 0;
-    margin-top: 4px;
   }
   .cm-header-icon-actions {
     margin-top: 4px;
