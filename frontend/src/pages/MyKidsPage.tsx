@@ -4,6 +4,7 @@ import { parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/clien
 import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import { isValidEmail } from '../utils/validation';
@@ -97,6 +98,12 @@ export function MyKidsPage() {
   const [addCourseSubject, setAddCourseSubject] = useState('');
   const [addCourseLoading, setAddCourseLoading] = useState(false);
   const [addCourseError, setAddCourseError] = useState('');
+
+  // Focus traps for modals
+  const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
+  const addCourseModalRef = useFocusTrap<HTMLDivElement>(showAddCourseModal);
+  const assignCourseModalRef = useFocusTrap<HTMLDivElement>(!!assignCourseModal, () => setAssignCourseModal(null));
+  const reassignContentModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
 
   useEffect(() => {
     (async () => {
@@ -410,7 +417,7 @@ export function MyKidsPage() {
 
   function renderAddChildModal() { return (
     <div className="modal-overlay" onClick={closeAddChildModal}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label="Add Child" ref={addChildModalRef} onClick={(e) => e.stopPropagation()}>
         <h2>Add Child</h2>
 
         <div className="link-tabs">
@@ -575,7 +582,7 @@ export function MyKidsPage() {
                 <div className="mykids-section">
                   <button className="mykids-section-header" onClick={() => setShowUnassignedCourses(p => !p)}>
                     <span className={`section-chevron${showUnassignedCourses ? ' expanded' : ''}`}>&#9654;</span>
-                    <span className="section-icon">&#128218;</span> Unassigned Classes ({unassignedCourses.length})
+                    <span className="section-icon" aria-hidden="true">&#128218;</span> Unassigned Classes ({unassignedCourses.length})
                   </button>
                   {showUnassignedCourses && (
                     <div className="mykids-list">
@@ -606,7 +613,7 @@ export function MyKidsPage() {
                 <div className="mykids-section">
                   <button className="mykids-section-header" onClick={() => setShowUnassignedMaterials(p => !p)}>
                     <span className={`section-chevron${showUnassignedMaterials ? ' expanded' : ''}`}>&#9654;</span>
-                    <span className="section-icon">&#128196;</span> Unassigned Materials ({unassignedMaterials.length})
+                    <span className="section-icon" aria-hidden="true">&#128196;</span> Unassigned Materials ({unassignedMaterials.length})
                   </button>
                   {showUnassignedMaterials && (
                     <div className="mykids-list">
@@ -667,7 +674,7 @@ export function MyKidsPage() {
           <div className="mykids-section">
             <button className="mykids-section-header" onClick={() => setShowCourses(p => !p)}>
               <span className={`section-chevron${showCourses ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon">&#128218;</span> Classes ({overview?.courses.length ?? 0})
+              <span className="section-icon" aria-hidden="true">&#128218;</span> Classes ({overview?.courses.length ?? 0})
             </button>
             {showCourses && overview && (
               <div className="mykids-list">
@@ -693,7 +700,7 @@ export function MyKidsPage() {
           <div className="mykids-section">
             <button className="mykids-section-header" onClick={() => setShowMaterials(p => !p)}>
               <span className={`section-chevron${showMaterials ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon">&#128196;</span> Class Materials ({materials.length})
+              <span className="section-icon" aria-hidden="true">&#128196;</span> Class Materials ({materials.length})
             </button>
             {showMaterials && (
               <div className="mykids-list">
@@ -723,7 +730,7 @@ export function MyKidsPage() {
           <div className="mykids-section">
             <button className="mykids-section-header" onClick={() => setShowTasks(p => !p)}>
               <span className={`section-chevron${showTasks ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon">&#9989;</span> Tasks ({activeTasks.length} active{completedTasks.length > 0 ? `, ${completedTasks.length} done` : ''})
+              <span className="section-icon" aria-hidden="true">&#9989;</span> Tasks ({activeTasks.length} active{completedTasks.length > 0 ? `, ${completedTasks.length} done` : ''})
             </button>
             {showTasks && (
               <div className="mykids-task-list">
@@ -758,7 +765,7 @@ export function MyKidsPage() {
             <div className="mykids-section-header-row">
               <button className="mykids-section-toggle" onClick={() => setShowTeachers(p => !p)}>
                 <span className={`section-chevron${showTeachers ? ' expanded' : ''}`}>&#9654;</span>
-                <span className="section-icon">&#128105;&#8205;&#127979;</span> Teachers ({(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length})
+                <span className="section-icon" aria-hidden="true">&#128105;&#8205;&#127979;</span> Teachers ({(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length})
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -989,7 +996,7 @@ export function MyKidsPage() {
       {/* Reassign class material to course modal */}
       {reassignContent && (
         <div className="modal-overlay" onClick={() => setReassignContent(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Move to Class" ref={reassignContentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Move to Class</h2>
             <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a class.</p>
             <div className="modal-form">
@@ -1039,7 +1046,7 @@ export function MyKidsPage() {
       {/* Assign Course to Child Modal */}
       {assignCourseModal && (
         <div className="mykids-modal-overlay" onClick={() => setAssignCourseModal(null)}>
-          <div className="mykids-modal" onClick={e => e.stopPropagation()}>
+          <div className="mykids-modal" role="dialog" aria-modal="true" aria-label="Assign Class to Child" ref={assignCourseModalRef} onClick={e => e.stopPropagation()}>
             <h3>Assign Class to Child</h3>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               Select a child to assign &ldquo;{assignCourseModal.name}&rdquo; to.
@@ -1085,7 +1092,7 @@ export function MyKidsPage() {
       {/* Add Course Modal */}
       {showAddCourseModal && (
         <div className="modal-overlay" onClick={closeAddCourseModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Add Class" ref={addCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Add Class</h2>
             {selectedChild && (
               <p className="modal-desc">

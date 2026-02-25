@@ -5,8 +5,10 @@ import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import type { InspirationData } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -63,7 +65,6 @@ export function TeacherDashboard() {
 
   // Course search
   const [courseSearch, setCourseSearch] = useState('');
-
   // Announcement modal state
   const [showAnnounceModal, setShowAnnounceModal] = useState(false);
   const [announceCourseId, setAnnounceCourseId] = useState<number | ''>('');
@@ -84,6 +85,12 @@ export function TeacherDashboard() {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
+
+  // Focus traps for modals (must be after state declarations they reference)
+  const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => setShowCreateModal(false));
+  const inviteParentModalRef = useFocusTrap<HTMLDivElement>(showInviteParentModal, () => setShowInviteParentModal(false));
+  const announceModalRef = useFocusTrap<HTMLDivElement>(showAnnounceModal, () => setShowAnnounceModal(false));
+  const uploadModalRef = useFocusTrap<HTMLDivElement>(showUploadModal, () => setShowUploadModal(false));
 
   useEffect(() => {
     loadData();
@@ -422,49 +429,49 @@ export function TeacherDashboard() {
     <DashboardLayout welcomeSubtitle="Your classroom overview" headerSlot={renderHeaderSlot}>
       <div className="dashboard-grid">
         <div className="dashboard-card">
-          <div className="card-icon">📚</div>
+          <div className="card-icon" aria-hidden="true">📚</div>
           <h3>Classes</h3>
           <p className="card-value">{courses.length}</p>
           <p className="card-label">Classes teaching</p>
         </div>
 
         <div className="dashboard-card clickable" onClick={() => navigate('/messages')}>
-          <div className="card-icon">💬</div>
+          <div className="card-icon" aria-hidden="true">💬</div>
           <h3>Messages</h3>
           <p className="card-value">View</p>
           <p className="card-label">Parent messages</p>
         </div>
 
         <div className="dashboard-card clickable" onClick={() => navigate('/teacher-communications')}>
-          <div className="card-icon">📧</div>
+          <div className="card-icon" aria-hidden="true">📧</div>
           <h3>Communications</h3>
           <p className="card-value">View</p>
           <p className="card-label">Email monitoring</p>
         </div>
 
         <div className="dashboard-card clickable" onClick={() => setShowAnnounceModal(true)}>
-          <div className="card-icon">📢</div>
+          <div className="card-icon" aria-hidden="true">📢</div>
           <h3>Announcement</h3>
           <p className="card-value">Send</p>
           <p className="card-label">Notify all parents</p>
         </div>
 
         <div className="dashboard-card clickable" onClick={() => setShowInviteParentModal(true)}>
-          <div className="card-icon">👨‍👩‍👧</div>
+          <div className="card-icon" aria-hidden="true">👨‍👩‍👧</div>
           <h3>Invite Parent</h3>
           <p className="card-value">Invite</p>
           <p className="card-label">Connect families</p>
         </div>
 
         <div className="dashboard-card clickable" onClick={() => setShowUploadModal(true)}>
-          <div className="card-icon">📄</div>
+          <div className="card-icon" aria-hidden="true">📄</div>
           <h3>Upload Material</h3>
           <p className="card-value">Upload</p>
           <p className="card-label">Share class content</p>
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">🔗</div>
+          <div className="card-icon" aria-hidden="true">🔗</div>
           <h3>Google Classroom</h3>
           <p className="card-value">{googleConnected ? 'Connected' : 'Not Connected'}</p>
           {!googleConnected ? (
@@ -510,11 +517,11 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📊</div>
-              <h3 className="empty-state-title">No recent activity</h3>
-              <p className="empty-state-text">Activity will appear here as students interact with your classes.</p>
-            </div>
+            <EmptyState
+              icon="📊"
+              title="No recent activity"
+              description="Activity will appear here as students interact with your classes."
+            />
           )}
         </div>
 
@@ -540,11 +547,11 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">✅</div>
-              <h3 className="empty-state-title">No upcoming deadlines</h3>
-              <p className="empty-state-text">All caught up!</p>
-            </div>
+            <EmptyState
+              icon="✅"
+              title="No upcoming deadlines"
+              description="All caught up!"
+            />
           )}
         </div>
       </div>
@@ -575,14 +582,18 @@ export function TeacherDashboard() {
             </div>
           )}
           {courses.length > 3 && (
-            <input
-              type="text"
-              className="courses-search-input"
-              placeholder="Search classes by name or subject..."
-              value={courseSearch}
-              onChange={(e) => setCourseSearch(e.target.value)}
-              style={{ marginBottom: 16 }}
-            />
+            <>
+              <label htmlFor="teacher-course-search" className="sr-only">Search classes</label>
+              <input
+                id="teacher-course-search"
+                type="text"
+                className="courses-search-input"
+                placeholder="Search classes by name or subject..."
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                style={{ marginBottom: 16 }}
+              />
+            </>
           )}
           {courses.length > 0 ? (
             <div className="teacher-courses-grid">
@@ -611,12 +622,12 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📚</div>
-              <h3 className="empty-state-title">No classes yet</h3>
-              <p className="empty-state-text">Create your first class to start organizing materials and assignments.</p>
-              <button className="empty-state-cta" onClick={() => setShowCreateModal(true)}>Create a Class</button>
-            </div>
+            <EmptyState
+              icon="📚"
+              title="No classes yet"
+              description="Create your first class to start organizing materials and assignments."
+              action={{ label: 'Create a Class', onClick: () => setShowCreateModal(true) }}
+            />
           )}
           </>
           )}
@@ -736,11 +747,11 @@ export function TeacherDashboard() {
                 ))}
               </div>
             ) : googleAccountsExpanded ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">🔗</div>
-                <h3 className="empty-state-title">No Google accounts linked yet</h3>
-                <p className="empty-state-text">Connect your Google account to sync classes from Google Classroom.</p>
-              </div>
+              <EmptyState
+                icon="🔗"
+                title="No Google accounts linked yet"
+                description="Connect your Google account to sync classes from Google Classroom."
+              />
             ) : null}
           </section>
         )}
@@ -749,7 +760,7 @@ export function TeacherDashboard() {
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
             <div className="modal-form">
               <label>
@@ -803,7 +814,7 @@ export function TeacherDashboard() {
       {/* Invite Parent Modal */}
       {showInviteParentModal && (
         <div className="modal-overlay" onClick={closeInviteParentModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite Parent" ref={inviteParentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Invite Parent</h2>
             <p className="modal-desc">
               Send an email invitation to a parent to join ClassBridge.
@@ -841,7 +852,7 @@ export function TeacherDashboard() {
       {/* Announcement Modal */}
       {showAnnounceModal && (
         <div className="modal-overlay" onClick={closeAnnounceModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Send Announcement" ref={announceModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Send Announcement</h2>
             <p className="modal-desc">
               Send a message to all parents of students in a class.
@@ -901,7 +912,7 @@ export function TeacherDashboard() {
       {/* Upload Material Modal */}
       {showUploadModal && (
         <div className="modal-overlay" onClick={closeUploadModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Material" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Upload Material</h2>
             <p className="modal-desc">
               Upload class notes, tests, or other materials to a course.

@@ -125,7 +125,7 @@
 
 .pd-focus-tag.invites {
   background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  color: var(--color-accent-strong);
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
 }
 
@@ -257,7 +257,7 @@
   background: var(--color-accent-subtle);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pd-today-focus-header {
     flex-direction: column;
     gap: 12px;
@@ -284,8 +284,8 @@
 .pd-child-selector {
   display: flex;
   gap: 8px;
-  margin-bottom: 24px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .pd-child-tab {
@@ -359,6 +359,101 @@
 .pd-child-tab.active .pd-overdue-badge {
   background: rgba(255, 255, 255, 0.25);
   color: white;
+}
+
+/* "All" tab (#830) */
+.pd-child-tab-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+}
+
+.pd-child-tab-all svg {
+  flex-shrink: 0;
+}
+
+.pd-child-tab-all.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+/* ============================================
+   Child Selector Scroll Wrapper (#830)
+   ============================================ */
+
+.pd-child-selector-wrapper {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+/* Gradient fade indicators for horizontal scroll on mobile (#830) */
+.pd-child-selector-wrapper::before,
+.pd-child-selector-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.pd-child-selector-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-background, #fff) 0%, transparent 100%);
+  border-radius: 8px 0 0 8px;
+}
+
+.pd-child-selector-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-background, #fff) 0%, transparent 100%);
+  border-radius: 0 8px 8px 0;
+}
+
+.pd-child-selector-wrapper.can-scroll-left::before {
+  opacity: 1;
+}
+
+.pd-child-selector-wrapper.can-scroll-right::after {
+  opacity: 1;
+}
+
+/* ============================================
+   View Mode Toggle (#832)
+   ============================================ */
+
+.pd-view-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.pd-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  padding: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 0;
+}
+
+.pd-view-toggle-option {
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: var(--color-ink-muted);
+}
+
+.pd-view-toggle-option.active {
+  background: var(--color-accent);
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Empty States */
@@ -643,7 +738,7 @@
   display: inline-block;
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -780,7 +875,7 @@
   padding: 4px 12px;
   border: 1px solid var(--color-accent);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -860,6 +955,11 @@
   transition: all 0.2s;
   line-height: 1;
   flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pd-task-delete-btn:hover {
@@ -1098,9 +1198,12 @@
 
 @media (max-width: 768px) {
   /* Child selector: ensure wrapping with smaller buttons */
+  .pd-child-selector-wrapper {
+    margin-bottom: 16px;
+  }
+
   .pd-child-selector {
     gap: 6px;
-    margin-bottom: 16px;
   }
 
   .pd-child-tab {
@@ -1237,7 +1340,7 @@
 .pd-timeline-view-all {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   background: none;
   border: none;
   cursor: pointer;
@@ -1477,7 +1580,7 @@
   padding: 4px 14px;
   border: 1px solid var(--color-accent);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -1497,7 +1600,7 @@
   text-align: center;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   padding: 8px;
   margin-top: 4px;
   border: none;
@@ -1734,6 +1837,11 @@
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity 0.15s;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pd-onboard-tip-dismiss:hover {
@@ -1903,7 +2011,7 @@
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -1921,7 +2029,7 @@
    Responsive: Onboarding & Feed
    ============================================ */
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pd-onboard-container {
     padding: 32px 16px;
   }
@@ -1984,7 +2092,7 @@
 }
 
 /* -- B. 640px breakpoint for timeline -- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pd-timeline-section {
     padding: 16px;
   }
@@ -2155,20 +2263,20 @@
 
 .pd-generation-banner.generating {
   background: var(--color-accent-subtle);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border: 1px solid var(--color-accent);
 }
 
 .pd-generation-banner.success {
-  background: #e6f9e6;
-  color: #1a7a1a;
-  border: 1px solid #4caf50;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
 }
 
 .pd-generation-banner.error {
-  background: #fde8e8;
-  color: #c62828;
-  border: 1px solid #ef5350;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border: 1px solid var(--priority-high);
 }
 
 .pd-gen-spinner {
@@ -2205,6 +2313,11 @@
   cursor: pointer;
   opacity: 0.6;
   margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pd-gen-dismiss-btn:hover {

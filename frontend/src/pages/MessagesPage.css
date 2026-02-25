@@ -440,6 +440,11 @@
   font-size: 24px;
   color: var(--color-ink-muted);
   cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-close:hover {
@@ -528,7 +533,7 @@
   display: none;
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -541,7 +546,7 @@
 }
 
 /* Responsive — tablet */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .messages-container {
     flex-direction: column;
   }
@@ -560,7 +565,7 @@
 }
 
 /* Responsive — mobile: list/detail toggle */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .mobile-back-btn {
     display: block;
   }

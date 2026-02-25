@@ -510,8 +510,8 @@
 }
 
 .task-row-btn {
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -592,8 +592,8 @@
 }
 
 .tasks-page .modal-close {
-  width: 30px;
-  height: 30px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -687,8 +687,8 @@
 }
 
 .task-modal-archive-btn:hover {
-  border-color: #e65100;
-  color: #e65100;
+  border-color: var(--color-warning-text);
+  color: var(--color-warning-text);
   background: rgba(251, 140, 0, 0.06);
 }
 
@@ -726,7 +726,7 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .task-row-checkbox::before {
     content: '';
     position: absolute;

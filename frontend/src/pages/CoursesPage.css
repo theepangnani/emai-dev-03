@@ -198,8 +198,8 @@
 }
 
 .course-list-btn {
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -267,8 +267,8 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,8 +316,8 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -336,7 +336,7 @@
 .course-card-edit:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.06);
+  background: var(--color-accent-subtle);
 }
 
 .course-card-color {
@@ -388,13 +388,13 @@
 }
 
 .course-card-badge.school {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .course-card-badge.private-gc {
-  background: #f0fdf4;
-  color: #166534;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .course-card-desc {
@@ -498,7 +498,7 @@
   border-radius: 4px;
   font-weight: 600;
   margin-right: 6px;
-  background: rgba(73, 184, 192, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
   text-transform: capitalize;
 }
@@ -530,7 +530,7 @@
 
 .content-link {
   font-size: 12px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   font-weight: 600;
 }
@@ -540,7 +540,7 @@
 }
 
 .content-link.google {
-  color: #4285f4;
+  color: var(--brand-google);
 }
 
 .content-item-actions {
@@ -689,7 +689,7 @@
   background: var(--color-danger-light);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .courses-section-header {
     flex-direction: column;
     align-items: flex-start;

@@ -36,8 +36,8 @@
 
 .page-nav-back:hover {
   background: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.25);
+  color: var(--color-surface);
+  box-shadow: 0 2px 8px var(--color-accent-light);
 }
 
 .page-nav-back:active {
@@ -109,7 +109,7 @@
 
 /* ── Mobile: collapse trail, enlarge back ── */
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .page-nav {
     padding: 8px 12px;
     margin: -4px -4px 12px;
@@ -137,14 +137,14 @@
 }
 
 [data-theme="dark"] .page-nav-back {
-  background: rgba(73, 184, 192, 0.15);
+  background: var(--color-accent-light);
   color: var(--color-accent);
 }
 
 [data-theme="dark"] .page-nav-back:hover {
   background: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 2px 12px rgba(73, 184, 192, 0.3);
+  color: var(--color-surface);
+  box-shadow: 0 2px 12px var(--color-accent-light);
 }
 
 /* ── Print: hide nav strip ── */

@@ -103,7 +103,7 @@
 }
 .cm-icon-btn:hover {
   border-color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.08);
+  background: var(--color-accent-subtle);
 }
 .cm-icon-btn.danger:hover {
   border-color: var(--color-danger);
@@ -304,13 +304,13 @@
 }
 .cm-action-btn.primary {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border-color: var(--color-accent);
 }
 .cm-action-btn.primary:hover {
   background: var(--color-accent-strong);
   border-color: var(--color-accent-strong);
-  color: #fff;
+  color: var(--color-surface);
 }
 .cm-action-btn.danger {
   color: var(--color-danger);
@@ -330,14 +330,14 @@
   margin-bottom: 12px;
 }
 .cm-student-banner.resolved {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
 }
 .cm-student-banner.unresolved {
-  background: #fff3e0;
-  color: #e65100;
-  border: 1px solid #ffe0b2;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
 }
 
 /* Quiz tab */
@@ -365,15 +365,15 @@
 }
 
 .cm-history-link {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--color-info-bg);
+  color: var(--color-info);
   text-decoration: none;
   text-align: center;
 }
 .cm-history-link:hover {
-  background: #bbdefb;
-  border-color: #1565c0;
-  color: #1565c0;
+  background: var(--color-info-border);
+  border-color: var(--color-info);
+  color: var(--color-info);
 }
 
 .cm-quiz-progress {
@@ -514,7 +514,7 @@
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 .cm-inline-generating p {
   font-weight: 500;
@@ -580,7 +580,7 @@
 .cm-replace-drop-zone:hover,
 .cm-replace-drop-zone.dragging {
   border-color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.04);
+  background: var(--color-accent-subtle);
 }
 
 .cm-replace-drop-zone.has-file {
@@ -758,8 +758,8 @@
   left: -9999px;
   top: -9999px;
   width: 700px;
-  background: #fff;
-  color: #1a1a2e;
+  background: var(--color-surface);
+  color: var(--color-ink);
   padding: 24px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
@@ -772,7 +772,7 @@
 }
 
 .cm-print-view .print-subtitle {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 0.9rem;
   margin-bottom: 1.5em;
 }
@@ -780,7 +780,7 @@
 .cm-print-view .print-quiz-item {
   margin-bottom: 1.2em;
   padding-bottom: 0.8em;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .cm-print-view .print-quiz-question {
@@ -801,12 +801,12 @@
 }
 
 .cm-print-view .print-quiz-options li.correct {
-  background: #e8f5e9;
+  background: var(--color-success-bg);
   font-weight: 500;
 }
 
 .cm-print-view .print-quiz-explanation {
-  color: #555;
+  color: var(--color-ink-muted);
   font-size: 0.9em;
   font-style: italic;
   margin-top: 0.3em;
@@ -816,13 +816,13 @@
   display: flex;
   gap: 0.75em;
   padding: 0.5em 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
   line-height: 1.5;
 }
 
 .cm-print-view .print-fc-num {
   font-weight: 700;
-  color: #6c3eb8;
+  color: var(--color-purple);
   min-width: 2em;
 }
 
@@ -832,7 +832,7 @@
 }
 
 .cm-print-view .print-fc-back {
-  color: #444;
+  color: var(--color-ink-muted);
 }
 
 /* Responsive */

@@ -1,0 +1,59 @@
+/* ============================================
+   Collapsible Section (#832)
+   ============================================ */
+
+.pd-collapsible {
+  margin-bottom: 4px;
+}
+
+.pd-collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  transition: background 0.15s ease, color 0.15s ease;
+  text-align: left;
+}
+
+.pd-collapsible-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.pd-collapsible-header:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.pd-collapsible-chevron {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.pd-collapsible-chevron.open {
+  transform: rotate(90deg);
+}
+
+.pd-collapsible-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-collapsible-content {
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}

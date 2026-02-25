@@ -5,8 +5,10 @@ import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/clie
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './CoursesPage.css';
 
 interface CourseItem {
@@ -114,6 +116,10 @@ export function CoursesPage() {
   const [editContentType, setEditContentType] = useState('');
   const [editContentLoading, setEditContentLoading] = useState(false);
   const [editContentError, setEditContentError] = useState('');
+  const createModalRef = useFocusTrap<HTMLDivElement>(showCreateModal);
+  const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
+  const editCourseModalRef = useFocusTrap<HTMLDivElement>(!!editCourse);
+  const editContentModalRef = useFocusTrap<HTMLDivElement>(!!editContent);
 
   useEffect(() => {
     loadData();
@@ -689,9 +695,11 @@ export function CoursesPage() {
                 ))}
               </div>
             ) : (
-              <div className="courses-empty">
-                <p>No classes yet. Create a class or sync from Google Classroom.</p>
-              </div>
+              <EmptyState
+                title="No classes yet"
+                description="Create a class or sync from Google Classroom."
+                variant="compact"
+              />
             )}
             </>
             )}
@@ -792,12 +800,11 @@ export function CoursesPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="courses-empty">
-                    <p>Not enrolled in any classes yet.</p>
-                    <button className="courses-btn primary" style={{ marginTop: 12 }} onClick={() => setStudentTab('browse')}>
-                      Browse Classes
-                    </button>
-                  </div>
+                  <EmptyState
+                    title="Not enrolled in any classes yet"
+                    action={{ label: 'Browse Classes', onClick: () => setStudentTab('browse') }}
+                    variant="compact"
+                  />
                 )}
               </div>
             )}
@@ -837,9 +844,10 @@ export function CoursesPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="courses-empty">
-                    <p>{searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}</p>
-                  </div>
+                  <EmptyState
+                    title={searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}
+                    variant="compact"
+                  />
                 )}
               </div>
             )}
@@ -894,9 +902,10 @@ export function CoursesPage() {
               ))}
             </div>
           ) : myCoursesExpanded ? (
-            <div className="courses-empty">
-              <p>{isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}</p>
-            </div>
+            <EmptyState
+              title={isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}
+              variant="compact"
+            />
           ) : null}
         </div>
         )}
@@ -905,7 +914,7 @@ export function CoursesPage() {
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
             <p className="modal-desc">Create a new class.</p>
             <div className="modal-form">
@@ -942,15 +951,16 @@ export function CoursesPage() {
       {/* Assign Course to Child Modal (parent only) */}
       {showAssignModal && selectedChild && (
         <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={`Assign Class to ${childName}`} ref={assignModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Assign Class to {childName}</h2>
             <p className="modal-desc">Select classes to assign to your child.</p>
             <div className="modal-form">
               {myCourses.length === 0 ? (
-                <div className="empty-state">
-                  <p>No classes created yet</p>
-                  <button className="link-child-btn-small" onClick={() => { setShowAssignModal(false); setShowCreateModal(true); }}>+ Create Class</button>
-                </div>
+                <EmptyState
+                  title="No classes created yet"
+                  action={{ label: '+ Create Class', onClick: () => { setShowAssignModal(false); setShowCreateModal(true); } }}
+                  variant="compact"
+                />
               ) : (
                 <div className="discovered-list">
                   {myCourses.map((course) => {
@@ -981,7 +991,7 @@ export function CoursesPage() {
       {/* Edit Course Modal */}
       {editCourse && (
         <div className="modal-overlay" onClick={closeEditCourse}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Class" ref={editCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Class</h2>
             <div className="modal-form">
               <label>
@@ -1014,7 +1024,7 @@ export function CoursesPage() {
       {/* Edit Content Modal */}
       {editContent && (
         <div className="modal-overlay" onClick={closeEditContent}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Material" ref={editContentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Material</h2>
             <div className="modal-form">
               <label>

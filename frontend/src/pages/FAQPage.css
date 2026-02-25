@@ -67,7 +67,7 @@
 .faq-cat-pill.active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* FAQ list */
@@ -177,7 +177,7 @@
   border-radius: var(--radius-md);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .faq-header {
     flex-direction: column;
     align-items: flex-start;

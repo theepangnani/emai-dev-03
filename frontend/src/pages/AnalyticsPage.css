@@ -122,7 +122,7 @@
 
 .analytics-chart-filters button.active {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border-color: var(--color-accent);
 }
 
@@ -154,7 +154,7 @@
 .analytics-ai-btn {
   padding: 0.6rem 1.25rem;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;

@@ -6,12 +6,14 @@ import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
+import EmptyState from '../components/EmptyState';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -70,6 +72,8 @@ export function TasksPage() {
   const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const { confirm, confirmModal } = useConfirm();
+  const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
+  const editModalRef = useFocusTrap<HTMLDivElement>(!!editTask, () => setEditTask(null));
 
   // Calendar state
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
@@ -416,11 +420,12 @@ export function TasksPage() {
 
             {!calendarCollapsed && (
               calendarAssignments.length === 0 ? (
-                <div className="empty-state" style={{ marginBottom: 16 }}>
-                  <div className="empty-state-icon">{'\uD83D\uDCC5'}</div>
-                  <h3 className="empty-state-title">Calendar is clear</h3>
-                  <p className="empty-state-text">No upcoming assignments or tasks this week.</p>
-                </div>
+                <EmptyState
+                  icon={'\uD83D\uDCC5'}
+                  title="Calendar is clear"
+                  description="No upcoming assignments or tasks this week."
+                  className="tasks-calendar-empty"
+                />
               ) : (
                 <CalendarView
                   assignments={calendarAssignments}
@@ -565,10 +570,11 @@ export function TasksPage() {
             <button className="generate-btn" onClick={loadTasks}>Retry</button>
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="tasks-empty">
-            <p>No tasks found.</p>
-            <p>Click "New Task" to create one.</p>
-          </div>
+          <EmptyState
+            title="No tasks found"
+            description={'Click "New Task" to create one.'}
+            action={{ label: 'New Task', onClick: () => setShowCreate(true) }}
+          />
         ) : (
           <div className="tasks-list">
             {filteredTasks.map(task => (
@@ -633,7 +639,7 @@ export function TasksPage() {
         {/* Create modal */}
         {showCreate && (
           <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Create Task" ref={createModalRef} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Create Task</h2>
                 <button className="modal-close" onClick={() => setShowCreate(false)}>&times;</button>
@@ -695,7 +701,7 @@ export function TasksPage() {
         {/* Edit modal */}
         {editTask && (
           <div className="modal-overlay" onClick={() => setEditTask(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Task" ref={editModalRef} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Edit Task</h2>
                 <button className="modal-close" onClick={() => setEditTask(null)}>&times;</button>

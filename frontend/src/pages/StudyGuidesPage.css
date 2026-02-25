@@ -163,7 +163,7 @@
 
 .guides-course-dropdown-item.active {
   background: var(--color-accent-subtle);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 600;
 }
 
@@ -363,7 +363,7 @@
 }
 
 .generating-text {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 500;
   animation: generating-pulse 1.5s ease-in-out infinite;
 }
@@ -412,7 +412,7 @@
 }
 
 /* ── Responsive ─────────────────────────────── */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .guides-child-selector {
     gap: 6px;
   }

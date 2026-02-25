@@ -1,0 +1,85 @@
+/* ── Shared EmptyState component ─────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  gap: 8px;
+}
+
+.empty-state--compact {
+  padding: 24px 16px;
+  gap: 4px;
+}
+
+.empty-state-icon {
+  font-size: 2.5rem;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+.empty-state--compact .empty-state-icon {
+  font-size: 1.8rem;
+  margin-bottom: 2px;
+}
+
+.empty-state-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.empty-state--compact .empty-state-title {
+  font-size: 0.95rem;
+}
+
+.empty-state-text {
+  font-size: 0.9rem;
+  color: var(--color-ink-muted);
+  margin: 0;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.empty-state--compact .empty-state-text {
+  font-size: 0.85rem;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.empty-state-cta {
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.empty-state-cta:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.empty-state-cta--secondary {
+  background: transparent;
+  color: var(--color-accent-strong);
+  border: 1px solid var(--color-accent);
+}
+
+.empty-state-cta--secondary:hover {
+  background: var(--color-accent-subtle);
+}
