@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
 import { AddActionButton } from '../components/AddActionButton';
@@ -13,6 +14,7 @@ import { PageNav } from '../components/PageNav';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
+import EmptyState from '../components/EmptyState';
 import './StudyGuidesPage.css';
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
@@ -130,6 +132,11 @@ export function StudyGuidesPage() {
 
   // Edit material modal
   const [editContent, setEditContent] = useState<CourseContentItem | null>(null);
+
+  // Focus traps for modals
+  const categorizeModalRef = useFocusTrap<HTMLDivElement>(!!categorizeGuide, () => setCategorizeGuide(null));
+  const reassignModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
+  const datePromptModalRef = useFocusTrap<HTMLDivElement>(datePromptTasks.length > 0);
 
   useEffect(() => {
     loadData();
@@ -801,9 +808,11 @@ export function StudyGuidesPage() {
               ))}
             </div>
           ) : materialsExpanded ? (
-            <div className="guides-empty">
-              <p>No class materials yet. Use "+ Create Study Material" from the sidebar to get started.</p>
-            </div>
+            <EmptyState
+              title="No class materials yet"
+              description={'Use "+ Create Study Material" from the sidebar to get started.'}
+              variant="compact"
+            />
           ) : null}
         </div>
 
@@ -970,7 +979,7 @@ export function StudyGuidesPage() {
       {/* Categorize modal */}
       {categorizeGuide && (
         <div className="modal-overlay" onClick={() => setCategorizeGuide(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Move to Class" ref={categorizeModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Move to Class</h2>
             <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a class.</p>
             <div className="modal-form">
@@ -1032,7 +1041,7 @@ export function StudyGuidesPage() {
       {/* Reassign content to course modal */}
       {reassignContent && (
         <div className="modal-overlay" onClick={() => setReassignContent(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Move to Class" ref={reassignModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Move to Class</h2>
             <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a class.</p>
             <div className="modal-form">
@@ -1082,7 +1091,7 @@ export function StudyGuidesPage() {
       {/* Date prompt for auto-created tasks */}
       {datePromptTasks.length > 0 && (
         <div className="modal-overlay" onClick={handleDatePromptCancel}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Tasks Created" ref={datePromptModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Tasks Created</h2>
             <p className="modal-desc">
               {datePromptTasks.length === 1

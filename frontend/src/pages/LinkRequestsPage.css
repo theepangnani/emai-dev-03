@@ -49,7 +49,7 @@
 
 .lr-tab-count {
   background: var(--primary-color, #4f46e5);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 12px;
   padding: 1px 7px;
   border-radius: 10px;
@@ -85,7 +85,7 @@
 .lr-status-badge {
   font-size: 11px;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-surface);
   padding: 2px 8px;
   border-radius: 10px;
   text-transform: capitalize;
@@ -148,22 +148,22 @@
 }
 
 .lr-btn-approve {
-  background: #10b981;
-  color: #fff;
+  background: var(--color-success);
+  color: var(--color-surface);
 }
 
 .lr-btn-approve:hover:not(:disabled) {
-  background: #059669;
+  background: var(--color-success-dark);
 }
 
 .lr-btn-reject {
   background: var(--card-bg, #fff);
-  color: #ef4444;
-  border: 1px solid #ef4444;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
 }
 
 .lr-btn-reject:hover:not(:disabled) {
-  background: #fef2f2;
+  background: var(--color-danger-light);
 }
 
 .lr-card-responded {
@@ -183,8 +183,8 @@
 }
 
 .lr-error {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
   padding: 10px 16px;
   border-radius: 8px;
   margin-bottom: 16px;
@@ -192,8 +192,8 @@
 }
 
 .lr-success {
-  background: #f0fdf4;
-  color: #16a34a;
+  background: var(--color-success-light);
+  color: var(--color-success);
   padding: 10px 16px;
   border-radius: 8px;
   margin-bottom: 16px;

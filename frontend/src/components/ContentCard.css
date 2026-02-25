@@ -135,7 +135,7 @@
 }
 
 /* ── Mobile responsive ─────────────────────────────────────── */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .content-card {
     padding: 1rem;
     border-radius: 8px;

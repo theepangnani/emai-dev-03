@@ -9,7 +9,7 @@
 }
 
 .breadcrumb-link {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   transition: color 0.15s;
 }
@@ -35,12 +35,12 @@
   display: none;
   align-items: center;
   gap: 4px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   font-size: 13px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .breadcrumb-full {
     display: none;
   }

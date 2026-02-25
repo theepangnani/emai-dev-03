@@ -220,6 +220,14 @@ export function useParentDashboard() {
     }
   };
 
+  // Explicit "All" tab click (#830)
+  const handleAllChildrenClick = () => {
+    setSelectedChild(null);
+    setChildOverview(null);
+    sessionStorage.removeItem('selectedChildId');
+    setDetailPanelCollapsed(true);
+  };
+
   // ============================================
   // Course materials loading
   // ============================================
@@ -408,7 +416,7 @@ export function useParentDashboard() {
     loading, dashboardError, children, navigate, confirmModal,
 
     // Child selection
-    selectedChild, handleChildTabClick, selectedChildUserId, selectedChildFirstName,
+    selectedChild, handleChildTabClick, handleAllChildrenClick, selectedChildUserId, selectedChildFirstName,
 
     // Overview
     overviewLoading,

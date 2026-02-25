@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import { EditMaterialModal } from '../components/EditMaterialModal';
@@ -120,6 +121,13 @@ export function CourseDetailPage() {
   const [materialsExpanded, setMaterialsExpanded] = useState(true);
   const [assignmentsExpanded, setAssignmentsExpanded] = useState(true);
   const [rosterExpanded, setRosterExpanded] = useState(true);
+
+  // Focus traps for modals
+  const addStudentModalRef = useFocusTrap<HTMLDivElement>(showAddStudentModal, () => setShowAddStudentModal(false));
+  const editCourseModalRef = useFocusTrap<HTMLDivElement>(showEditModal, () => setShowEditModal(false));
+  const contentModalRef = useFocusTrap<HTMLDivElement>(showContentModal);
+  const uploadModalRef = useFocusTrap<HTMLDivElement>(showUploadModal, () => setShowUploadModal(false));
+  const assignmentModalRef = useFocusTrap<HTMLDivElement>(showAssignmentModal, () => setShowAssignmentModal(false));
 
   // Create task modal context
   const [taskModalContext, setTaskModalContext] = useState<{
@@ -806,7 +814,7 @@ export function CourseDetailPage() {
       {/* Add Student Modal */}
       {showAddStudentModal && (
         <div className="modal-overlay" onClick={() => setShowAddStudentModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Add Student" ref={addStudentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Add Student</h2>
             <p className="modal-desc">Enter the student's email address. If they don't have an account, an invitation will be sent.</p>
             <div className="modal-form">
@@ -837,7 +845,7 @@ export function CourseDetailPage() {
       {/* Edit Course Modal */}
       {showEditModal && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Class" ref={editCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Class</h2>
             <div className="modal-form">
               <label>
@@ -885,7 +893,7 @@ export function CourseDetailPage() {
       {/* Add Content Modal */}
       {showContentModal && (
         <div className="modal-overlay" onClick={closeContentModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Add Class Details" ref={contentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Add Class Details</h2>
             <p className="modal-desc">Add a reference link or resource to this class.</p>
             <div className="modal-form">
@@ -926,7 +934,7 @@ export function CourseDetailPage() {
       {/* Upload Document Modal */}
       {showUploadModal && (
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Document" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Upload Document</h2>
             <p className="modal-desc">Upload a document to extract content. Supports PDF, DOCX, PPTX, TXT, and images.</p>
             <div className="modal-form">
@@ -1027,7 +1035,7 @@ export function CourseDetailPage() {
       {/* Assignment Modal */}
       {showAssignmentModal && (
         <div className="modal-overlay" onClick={() => setShowAssignmentModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={editingAssignment ? 'Edit Assignment' : 'Create Assignment'} ref={assignmentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>{editingAssignment ? 'Edit Assignment' : 'Create Assignment'}</h2>
             <div className="modal-form">
               <label>

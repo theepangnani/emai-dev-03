@@ -10,8 +10,10 @@ import { PageSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
+import EmptyState from '../components/EmptyState';
 import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -131,6 +133,9 @@ export function StudentDashboard() {
   const [inviteTeacherEmail, setInviteTeacherEmail] = useState('');
   const [inviteTeacherLoading, setInviteTeacherLoading] = useState(false);
   const [inviteTeacherMsg, setInviteTeacherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const studyModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => resetModal());
+  const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateCourseModal, () => setShowCreateCourseModal(false));
+  const inviteTeacherModalRef = useFocusTrap<HTMLDivElement>(showInviteTeacherModal, () => setShowInviteTeacherModal(false));
 
   const justRegistered = searchParams.get('just_registered') === 'true';
 
@@ -836,11 +841,12 @@ export function StudentDashboard() {
               )}
             </div>
           ) : (
-            <div className="sd-empty">
-              <div className="sd-empty-icon">{'\u{1F389}'}</div>
-              <p className="sd-empty-title">Nothing coming up</p>
-              <p className="sd-empty-text">You're all clear! Create a course or upload materials to get started.</p>
-            </div>
+            <EmptyState
+              icon={'\u{1F389}'}
+              title="Nothing coming up"
+              description="You're all clear! Create a course or upload materials to get started."
+              className="sd-empty"
+            />
           )}
         </section>
 
@@ -881,12 +887,13 @@ export function StudentDashboard() {
               ))}
             </div>
           ) : (
-            <div className="sd-empty">
-              <div className="sd-empty-icon">{'\u{1F4DD}'}</div>
-              <p className="sd-empty-title">No study materials yet</p>
-              <p className="sd-empty-text">Upload class materials or paste your notes to generate study guides.</p>
-              <button className="sd-empty-cta" onClick={() => setShowCreateModal(true)}>Create Study Material</button>
-            </div>
+            <EmptyState
+              icon={'\u{1F4DD}'}
+              title="No study materials yet"
+              description="Upload class materials or paste your notes to generate study guides."
+              action={{ label: 'Create Study Material', onClick: () => setShowCreateModal(true) }}
+              className="sd-empty"
+            />
           )}
         </section>
       </div>
@@ -924,25 +931,23 @@ export function StudentDashboard() {
             </button>
           </div>
         ) : (
-          <div className="sd-empty compact">
-            <p className="sd-empty-title">No courses yet</p>
-            <p className="sd-empty-text">Create a course or connect Google Classroom to get started.</p>
-            <div className="sd-empty-actions">
-              <button className="sd-empty-cta" onClick={() => setShowCreateCourseModal(true)}>Create Course</button>
-              {!googleConnected && (
-                <button className="sd-empty-cta secondary" onClick={handleConnectGoogle} disabled={isConnecting}>
-                  Connect Classroom
-                </button>
-              )}
-            </div>
-          </div>
+          <EmptyState
+            title="No courses yet"
+            description="Create a course or connect Google Classroom to get started."
+            variant="compact"
+            className="sd-empty"
+            actions={[
+              { label: 'Create Course', onClick: () => setShowCreateCourseModal(true) },
+              ...(!googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
+            ]}
+          />
         )}
       </section>
 
       {/* ── Create Study Material Modal ──────────────────── */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => resetModal()}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Study Material" ref={studyModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Study Material</h2>
 
             <div className="mode-toggle">
@@ -1080,7 +1085,7 @@ export function StudentDashboard() {
       {/* ── Create Course Modal ──────────────────────────── */}
       {showCreateCourseModal && (
         <div className="modal-overlay" onClick={() => setShowCreateCourseModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create a Course" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create a Course</h2>
             <p className="modal-desc">Add a course or subject to organize your materials.</p>
             <div className="modal-form">
@@ -1119,7 +1124,7 @@ export function StudentDashboard() {
       {/* ── Invite Teacher Modal ─────────────────────────── */}
       {showInviteTeacherModal && (
         <div className="modal-overlay" onClick={() => setShowInviteTeacherModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite a Teacher" ref={inviteTeacherModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Invite a Teacher</h2>
             <p className="modal-desc">Enter your teacher's email address. If they don't have an account, they'll receive an invitation.</p>
             <div className="modal-form">

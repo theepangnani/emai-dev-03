@@ -9,9 +9,11 @@ export interface ActionItem {
 
 interface AddActionButtonProps {
   actions: ActionItem[];
+  /** Optional label to show alongside the "+" icon on desktop (>768px). On mobile, only "+" is shown. */
+  showLabel?: string;
 }
 
-export function AddActionButton({ actions }: AddActionButtonProps) {
+export function AddActionButton({ actions, showLabel }: AddActionButtonProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,14 +31,15 @@ export function AddActionButton({ actions }: AddActionButtonProps) {
   return (
     <div className="add-action-wrapper" ref={ref}>
       <button
-        className={`add-action-trigger${open ? ' active' : ''}`}
+        className={`add-action-trigger${open ? ' active' : ''}${showLabel ? ' has-label' : ''}`}
         onClick={() => setOpen(v => !v)}
-        aria-label="Add new"
+        aria-label={showLabel || "Add new"}
         aria-expanded={open}
       >
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
           <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
+        {showLabel && <span className="add-action-label">{showLabel}</span>}
       </button>
       {open && (
         <div className="add-action-popover">

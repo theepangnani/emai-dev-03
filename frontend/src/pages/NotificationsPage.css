@@ -189,7 +189,7 @@
   margin-top: 2px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .notif-page-header {
     flex-direction: column;
     align-items: flex-start;

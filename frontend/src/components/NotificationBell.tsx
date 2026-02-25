@@ -198,7 +198,7 @@ export function NotificationBell() {
                   className={`notification-item ${!n.read ? 'unread' : ''} ${n.requires_ack && !n.acked_at ? 'requires-ack' : ''}`}
                   onClick={() => handleNotificationClick(n)}
                 >
-                  <span className="notification-icon">{getTypeIcon(n.type)}</span>
+                  <span className="notification-icon" aria-hidden="true">{getTypeIcon(n.type)}</span>
                   <div className="notification-content">
                     <div className="notification-title-row">
                       <p className="notification-title">{n.title}</p>
@@ -227,7 +227,7 @@ export function NotificationBell() {
       <div className="modal-overlay" onClick={() => setModalNotification(null)}>
         <div className="notif-modal" onClick={(e) => e.stopPropagation()}>
           <div className="notif-modal-header">
-            <span className="notif-modal-icon">{getTypeIcon(modalNotification.type)}</span>
+            <span className="notif-modal-icon" aria-hidden="true">{getTypeIcon(modalNotification.type)}</span>
             <h3>{modalNotification.title}</h3>
             <button className="modal-close" onClick={() => setModalNotification(null)}>
               &times;

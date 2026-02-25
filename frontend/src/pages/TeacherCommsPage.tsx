@@ -5,6 +5,7 @@ import { teacherCommsApi } from '../api/client';
 import type { TeacherCommunication, EmailMonitoringStatus } from '../api/client';
 import { NotificationBell } from '../components/NotificationBell';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import { useDebounce } from '../utils/useDebounce';
 import './TeacherCommsPage.css';
 
@@ -225,10 +226,11 @@ export function TeacherCommsPage() {
           {loading ? (
             <ListSkeleton rows={4} />
           ) : communications.length === 0 ? (
-            <div className="empty-state">
-              <p>No communications yet</p>
-              <small>Sync your account to fetch teacher emails and announcements</small>
-            </div>
+            <EmptyState
+              title="No communications yet"
+              description="Sync your account to fetch teacher emails and announcements"
+              variant="compact"
+            />
           ) : (
             <>
               {communications.map((comm) => (
