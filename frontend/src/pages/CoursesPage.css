@@ -198,8 +198,8 @@
 }
 
 .course-list-btn {
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -267,8 +267,8 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,8 +316,8 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -530,7 +530,7 @@
 
 .content-link {
   font-size: 12px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   font-weight: 600;
 }

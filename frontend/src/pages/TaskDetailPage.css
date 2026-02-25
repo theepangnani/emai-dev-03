@@ -13,7 +13,7 @@
 }
 
 .td-back-link {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -337,8 +337,8 @@
 }
 
 .td-link-icon-btn {
-  width: 32px;
-  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   background: var(--color-surface-alt, #f5f5f5);
   border: 1px solid var(--color-border);
@@ -368,8 +368,8 @@
 }
 
 .td-unlink-btn {
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   background: transparent;
   border: 1px solid transparent;

@@ -8,6 +8,7 @@ import type {
   RecipientOption,
 } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
 import './MessagesPage.css';
@@ -37,6 +38,7 @@ export function MessagesPage() {
   const [newSubject, setNewSubject] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
   const [creatingConversation, setCreatingConversation] = useState(false);
+  const newConvModalRef = useFocusTrap<HTMLDivElement>(showNewModal, () => setShowNewModal(false));
 
   useEffect(() => {
     loadConversations(true);
@@ -394,7 +396,7 @@ export function MessagesPage() {
       {/* New Conversation Modal */}
       {showNewModal && (
         <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="New Message" ref={newConvModalRef} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>New Message</h2>
               <button className="modal-close" onClick={() => setShowNewModal(false)}>

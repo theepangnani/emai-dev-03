@@ -312,7 +312,7 @@
 
 .sdp-show-more {
   font-size: 13px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   cursor: pointer;
   background: none;
   border: none;
@@ -326,7 +326,7 @@
 
 .sdp-view-all {
   font-size: 13px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   cursor: pointer;
   background: none;
   border: none;

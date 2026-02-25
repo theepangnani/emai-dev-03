@@ -25,7 +25,7 @@
 .layout-back-button {
   background: transparent;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -173,7 +173,7 @@
 
 .messages-button.secondary {
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border: 1px solid var(--color-accent-light);
 }
 
@@ -185,7 +185,7 @@
 
 .messages-button .unread-badge {
   background: white;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 6px;
@@ -216,8 +216,8 @@
   flex-direction: column;
   justify-content: center;
   gap: 5px;
-  width: 36px;
-  height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px;
   background: transparent;
   border: 1px solid var(--color-border);
@@ -404,7 +404,7 @@
 
 .ps-nav-badge {
   background: white;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 9px;
   font-weight: 700;
   padding: 0 4px;
@@ -673,7 +673,7 @@
 
 .sidebar-badge {
   background: white;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 11px;
   font-weight: 700;
   padding: 1px 6px;
@@ -1100,7 +1100,7 @@
 
 .view-details-btn.generate-btn {
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border: 1px solid var(--color-accent);
 }
 
@@ -1649,7 +1649,7 @@
   border-radius: 6px;
   border: 1px solid var(--color-accent);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   cursor: pointer;
 }
 .btn-sm:hover { background: var(--color-accent); color: var(--color-surface); }
@@ -1718,7 +1718,7 @@
   font-weight: 600;
   border-left: 3px solid var(--color-accent);
 }
-.categorize-item.create-new { color: var(--color-accent); font-weight: 500; }
+.categorize-item.create-new { color: var(--color-accent-strong); font-weight: 500; }
 .categorize-item.create-new:hover { background: var(--color-accent-subtle); }
 .categorize-item.create-new.selected {
   background: var(--color-accent-light);
@@ -1883,8 +1883,11 @@
   background: var(--color-surface-alt);
   border: none;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   font-size: 14px;
   color: var(--color-ink-muted);

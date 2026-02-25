@@ -271,7 +271,7 @@
 
 .quiz-encouragement {
   font-size: 1.1rem;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 500;
   margin-bottom: 2rem;
   font-style: italic;

@@ -6,6 +6,7 @@ import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { CalendarView } from '../components/calendar/CalendarView';
 import type { CalendarAssignment } from '../components/calendar/types';
@@ -71,6 +72,8 @@ export function TasksPage() {
   const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const { confirm, confirmModal } = useConfirm();
+  const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
+  const editModalRef = useFocusTrap<HTMLDivElement>(!!editTask, () => setEditTask(null));
 
   // Calendar state
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
@@ -636,7 +639,7 @@ export function TasksPage() {
         {/* Create modal */}
         {showCreate && (
           <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Create Task" ref={createModalRef} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Create Task</h2>
                 <button className="modal-close" onClick={() => setShowCreate(false)}>&times;</button>
@@ -698,7 +701,7 @@ export function TasksPage() {
         {/* Edit modal */}
         {editTask && (
           <div className="modal-overlay" onClick={() => setEditTask(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Task" ref={editModalRef} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Edit Task</h2>
                 <button className="modal-close" onClick={() => setEditTask(null)}>&times;</button>

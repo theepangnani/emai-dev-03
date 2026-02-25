@@ -49,7 +49,7 @@
 
 .toast-info .toast-icon {
   background: var(--color-accent-subtle);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .toast-message {

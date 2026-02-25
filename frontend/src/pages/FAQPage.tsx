@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { faqApi, type FAQQuestionItem } from '../api/client';
@@ -29,6 +30,7 @@ export function FAQPage() {
   const [formDesc, setFormDesc] = useState('');
   const [formCat, setFormCat] = useState('other');
   const [saving, setSaving] = useState(false);
+  const faqModalRef = useFocusTrap<HTMLDivElement>(showModal, () => setShowModal(false));
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
@@ -139,7 +141,7 @@ export function FAQPage() {
 
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Ask a Question" ref={faqModalRef} onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Ask a Question</h2>
                 <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>

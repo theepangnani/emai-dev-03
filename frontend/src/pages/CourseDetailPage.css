@@ -5,7 +5,7 @@
 .course-detail-back {
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 14px;
   cursor: pointer;
   padding: 0;
@@ -223,7 +223,7 @@
 /* Content reference links */
 .content-link {
   font-size: 12px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   font-weight: 600;
   transition: color 0.15s;
@@ -425,7 +425,7 @@
 .upload-extracting {
   margin: 8px 0 0;
   font-size: 13px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .upload-preview {

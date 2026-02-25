@@ -90,9 +90,11 @@ export function GlobalSearch() {
   return (
     <div className="global-search" ref={containerRef}>
       <div className="global-search-input-wrap">
-        <span className="global-search-icon">&#128269;</span>
+        <label htmlFor="global-search-input" className="sr-only">Search ClassBridge</label>
+        <span className="global-search-icon" aria-hidden="true">&#128269;</span>
         <input
           ref={inputRef}
+          id="global-search-input"
           type="text"
           className="global-search-input"
           placeholder="Search ClassBridge... (Ctrl+K)"
@@ -123,7 +125,7 @@ export function GlobalSearch() {
                     className="global-search-item"
                     onClick={() => handleResultClick(item.url)}
                   >
-                    <span className="global-search-item-icon">{TYPE_ICONS[item.entity_type] || ''}</span>
+                    <span className="global-search-item-icon" aria-hidden="true">{TYPE_ICONS[item.entity_type] || ''}</span>
                     <div className="global-search-item-text">
                       <span className="global-search-item-title">{item.title}</span>
                       {item.subtitle && (

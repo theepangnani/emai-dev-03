@@ -643,7 +643,7 @@
   display: inline-block;
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -780,7 +780,7 @@
   padding: 4px 12px;
   border: 1px solid var(--color-accent);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -860,6 +860,11 @@
   transition: all 0.2s;
   line-height: 1;
   flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pd-task-delete-btn:hover {
@@ -1237,7 +1242,7 @@
 .pd-timeline-view-all {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   background: none;
   border: none;
   cursor: pointer;
@@ -1477,7 +1482,7 @@
   padding: 4px 14px;
   border: 1px solid var(--color-accent);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -1497,7 +1502,7 @@
   text-align: center;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   padding: 8px;
   margin-top: 4px;
   border: none;
@@ -1734,6 +1739,11 @@
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity 0.15s;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pd-onboard-tip-dismiss:hover {
@@ -1903,7 +1913,7 @@
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -2155,7 +2165,7 @@
 
 .pd-generation-banner.generating {
   background: var(--color-accent-subtle);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border: 1px solid var(--color-accent);
 }
 
@@ -2205,6 +2215,11 @@
   cursor: pointer;
   opacity: 0.6;
   margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pd-gen-dismiss-btn:hover {

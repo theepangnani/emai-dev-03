@@ -364,7 +364,7 @@ export function ParentDashboard() {
               <>
                 {!pd.googleConnected && pd.discoveryState === 'idle' && (
                   <div className="pd-google-connect-prompt">
-                    <div className="pd-google-icon">🔗</div>
+                    <div className="pd-google-icon" aria-hidden="true">🔗</div>
                     <h3>Connect Google Account</h3>
                     <p>Sign in with your Google account to automatically discover your children's student accounts from Google Classroom.</p>
                     <button className="pd-google-connect-btn" onClick={pd.handleConnectGoogle}>Connect Google Account</button>
@@ -418,7 +418,7 @@ export function ParentDashboard() {
                 )}
                 {pd.discoveryState === 'no_results' && (
                   <div className="pd-google-connect-prompt">
-                    <div className="pd-google-icon">📭</div>
+                    <div className="pd-google-icon" aria-hidden="true">📭</div>
                     <h3>No Matching Students Found</h3>
                     <p>We searched {pd.coursesSearched} Google Classroom class{pd.coursesSearched !== 1 ? 'es' : ''} but didn't find any matching student accounts.</p>
                     <button className="pd-link-tab-switch" onClick={() => { pd.setLinkTab('email'); pd.setDiscoveryState('idle'); }}>Try linking by email instead</button>
@@ -582,7 +582,8 @@ export function ParentDashboard() {
                 })}
               </div>
               <div className="pd-day-modal-add-task">
-                <input type="text" value={pd.newTaskTitle} onChange={(e) => pd.setNewTaskTitle(e.target.value)} placeholder="Add a task..." onKeyDown={(e) => e.key === 'Enter' && pd.handleCreateDayTask()} disabled={pd.newTaskCreating} />
+                <label htmlFor="pd-day-add-task" className="sr-only">Add a task</label>
+                <input id="pd-day-add-task" type="text" value={pd.newTaskTitle} onChange={(e) => pd.setNewTaskTitle(e.target.value)} placeholder="Add a task..." onKeyDown={(e) => e.key === 'Enter' && pd.handleCreateDayTask()} disabled={pd.newTaskCreating} />
                 <button onClick={pd.handleCreateDayTask} disabled={pd.newTaskCreating || !pd.newTaskTitle.trim()} className="generate-btn">
                   {pd.newTaskCreating ? '...' : 'Add'}
                 </button>
@@ -606,7 +607,7 @@ export function ParentDashboard() {
               <div className="pd-task-detail-fields">
                 <div className="pd-task-detail-row"><span className="pd-task-detail-label">Status</span><span className={`sdp-task-badge ${pd.taskDetailModal.is_completed ? 'completed' : 'pending'}`}>{pd.taskDetailModal.is_completed ? 'Completed' : 'Pending'}</span></div>
                 {pd.taskDetailModal.due_date && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Due Date</span><span>{new Date(pd.taskDetailModal.due_date).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>}
-                {pd.taskDetailModal.priority && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Priority</span><span className={`pd-task-priority-badge ${pd.taskDetailModal.priority}`}>{pd.taskDetailModal.priority}</span></div>}
+                {pd.taskDetailModal.priority && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Priority</span><span className={`pd-task-priority-badge ${pd.taskDetailModal.priority}`}>{pd.taskDetailModal.priority === 'high' ? '\u25B2 ' : pd.taskDetailModal.priority === 'low' ? '\u25BC ' : '\u25CF '}{pd.taskDetailModal.priority}</span></div>}
                 {pd.taskDetailModal.assignee_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Assigned To</span><span>{pd.taskDetailModal.assignee_name}</span></div>}
                 {pd.taskDetailModal.creator_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Created By</span><span>{pd.taskDetailModal.creator_name}</span></div>}
                 {pd.taskDetailModal.course_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Class</span><span>{pd.taskDetailModal.course_name}</span></div>}

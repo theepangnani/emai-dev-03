@@ -5,6 +5,7 @@ import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/clie
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -115,6 +116,10 @@ export function CoursesPage() {
   const [editContentType, setEditContentType] = useState('');
   const [editContentLoading, setEditContentLoading] = useState(false);
   const [editContentError, setEditContentError] = useState('');
+  const createModalRef = useFocusTrap<HTMLDivElement>(showCreateModal);
+  const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
+  const editCourseModalRef = useFocusTrap<HTMLDivElement>(!!editCourse);
+  const editContentModalRef = useFocusTrap<HTMLDivElement>(!!editContent);
 
   useEffect(() => {
     loadData();
@@ -909,7 +914,7 @@ export function CoursesPage() {
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
             <p className="modal-desc">Create a new class.</p>
             <div className="modal-form">
@@ -946,7 +951,7 @@ export function CoursesPage() {
       {/* Assign Course to Child Modal (parent only) */}
       {showAssignModal && selectedChild && (
         <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={`Assign Class to ${childName}`} ref={assignModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Assign Class to {childName}</h2>
             <p className="modal-desc">Select classes to assign to your child.</p>
             <div className="modal-form">
@@ -986,7 +991,7 @@ export function CoursesPage() {
       {/* Edit Course Modal */}
       {editCourse && (
         <div className="modal-overlay" onClick={closeEditCourse}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Class" ref={editCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Class</h2>
             <div className="modal-form">
               <label>
@@ -1019,7 +1024,7 @@ export function CoursesPage() {
       {/* Edit Content Modal */}
       {editContent && (
         <div className="modal-overlay" onClick={closeEditContent}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Material" ref={editContentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Material</h2>
             <div className="modal-form">
               <label>

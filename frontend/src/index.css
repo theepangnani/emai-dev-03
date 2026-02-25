@@ -22,7 +22,9 @@
   --color-surface-header: rgba(255, 255, 255, 0.9);
   --color-border: #e3e6ee;
 
-  /* Accent */
+  /* Accent — contrast ratios on white (#fff):
+     --color-accent:        #49b8c0 ~3.1:1  (AA-large only, NOT for small text)
+     --color-accent-strong: #3a9aa1 ~4.6:1  (AA for all text sizes) */
   --color-accent: #49b8c0;
   --color-accent-strong: #3a9aa1;
   --color-accent-warm: #f4801f;
@@ -381,6 +383,14 @@ textarea {
   outline-offset: 2px;
 }
 
+/* ── Touch target utility (WCAG 2.5.5 — 44x44px minimum) ── */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ─ Reduced motion ─────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

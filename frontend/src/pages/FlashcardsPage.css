@@ -276,7 +276,7 @@
 
 .fc-summary-encouragement {
   font-size: 1.1rem;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-style: italic;
   margin: 0 0 2rem;
 }

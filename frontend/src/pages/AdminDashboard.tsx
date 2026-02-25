@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useDebounce } from '../utils/useDebounce';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -56,6 +57,11 @@ export function AdminDashboard() {
   const [msgBody, setMsgBody] = useState('');
   const [msgSending, setMsgSending] = useState(false);
   const [msgResult, setMsgResult] = useState('');
+
+  // Focus traps for modals (must be after state declarations they reference)
+  const roleModalRef = useFocusTrap<HTMLDivElement>(!!selectedUser, () => setSelectedUser(null));
+  const broadcastModalRef = useFocusTrap<HTMLDivElement>(showBroadcastModal, () => { if (!broadcastSending) { setShowBroadcastModal(false); setBroadcastResult(''); } });
+  const messageModalRef = useFocusTrap<HTMLDivElement>(!!messageUser, () => { if (!msgSending) { setMessageUser(null); setMsgResult(''); } });
 
   useEffect(() => {
     loadStats();
@@ -206,7 +212,7 @@ export function AdminDashboard() {
     <DashboardLayout welcomeSubtitle="Platform administration">
       <div className="dashboard-grid">
         <div className="dashboard-card">
-          <div className="card-icon">&#128101;</div>
+          <div className="card-icon" aria-hidden="true">&#128101;</div>
           <h3>Total Users</h3>
           <p className="card-value">{stats?.total_users ?? '—'}</p>
           <p className="card-label">Registered users</p>
@@ -216,7 +222,7 @@ export function AdminDashboard() {
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">&#127891;</div>
+          <div className="card-icon" aria-hidden="true">&#127891;</div>
           <h3>Students</h3>
           <p className="card-value">{stats?.users_by_role?.student ?? 0}</p>
           <p className="card-label">Active students</p>
@@ -226,7 +232,7 @@ export function AdminDashboard() {
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">&#128104;&#8205;&#127979;</div>
+          <div className="card-icon" aria-hidden="true">&#128104;&#8205;&#127979;</div>
           <h3>Teachers</h3>
           <p className="card-value">{stats?.users_by_role?.teacher ?? 0}</p>
           <p className="card-label">Active teachers</p>
@@ -236,7 +242,7 @@ export function AdminDashboard() {
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">&#128218;</div>
+          <div className="card-icon" aria-hidden="true">&#128218;</div>
           <h3>Classes</h3>
           <p className="card-value">{stats?.total_courses ?? 0}</p>
           <p className="card-label">Total classes</p>
@@ -351,7 +357,9 @@ export function AdminDashboard() {
           {usersExpanded && (
           <>
           <div className="admin-filters">
+            <label htmlFor="admin-role-filter" className="sr-only">Filter by role</label>
             <select
+              id="admin-role-filter"
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}
             >
@@ -361,7 +369,9 @@ export function AdminDashboard() {
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
             </select>
+            <label htmlFor="admin-user-search" className="sr-only">Search users by name or email</label>
             <input
+              id="admin-user-search"
               type="text"
               placeholder="Search by name or email..."
               value={search}
@@ -459,7 +469,7 @@ export function AdminDashboard() {
       {/* Role Management Modal */}
       {selectedUser && (
         <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
-          <div className="modal admin-role-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal admin-role-modal" role="dialog" aria-modal="true" aria-label="Manage Roles" ref={roleModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Manage Roles</h2>
             <div className="admin-role-user-info">
               <span className="admin-role-user-name">{selectedUser.full_name}</span>
@@ -503,7 +513,7 @@ export function AdminDashboard() {
       {/* Broadcast Modal */}
       {showBroadcastModal && (
         <div className="modal-overlay" onClick={() => { if (!broadcastSending) { setShowBroadcastModal(false); setBroadcastResult(''); } }}>
-          <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal admin-message-modal" role="dialog" aria-modal="true" aria-label="Send Broadcast" ref={broadcastModalRef} onClick={(e) => e.stopPropagation()}>
             {broadcastResult && !broadcastResult.startsWith('Failed') ? (
               <>
                 <div className="admin-msg-sent-confirmation">
@@ -524,14 +534,18 @@ export function AdminDashboard() {
                   This message will be sent to all {stats?.total_users ?? 0} active users as an in-app notification and email.
                 </p>
                 <div className="admin-msg-form">
+                  <label htmlFor="broadcast-subject" className="sr-only">Subject</label>
                   <input
+                    id="broadcast-subject"
                     type="text"
                     placeholder="Subject"
                     value={broadcastSubject}
                     onChange={(e) => setBroadcastSubject(e.target.value)}
                     className="admin-msg-input"
                   />
+                  <label htmlFor="broadcast-body" className="sr-only">Message body</label>
                   <textarea
+                    id="broadcast-body"
                     placeholder="Message body..."
                     value={broadcastBody}
                     onChange={(e) => setBroadcastBody(e.target.value)}
@@ -561,7 +575,7 @@ export function AdminDashboard() {
       {/* Individual Message Modal */}
       {messageUser && (
         <div className="modal-overlay" onClick={() => { if (!msgSending) { setMessageUser(null); setMsgResult(''); } }}>
-          <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal admin-message-modal" role="dialog" aria-modal="true" aria-label="Send Message" ref={messageModalRef} onClick={(e) => e.stopPropagation()}>
             {msgResult && !msgResult.startsWith('Failed') ? (
               <>
                 <div className="admin-msg-sent-confirmation">
@@ -583,14 +597,18 @@ export function AdminDashboard() {
                   <span className="admin-role-user-email">{messageUser.email ?? 'No email'}</span>
                 </div>
                 <div className="admin-msg-form">
+                  <label htmlFor="msg-subject" className="sr-only">Subject</label>
                   <input
+                    id="msg-subject"
                     type="text"
                     placeholder="Subject"
                     value={msgSubject}
                     onChange={(e) => setMsgSubject(e.target.value)}
                     className="admin-msg-input"
                   />
+                  <label htmlFor="msg-body" className="sr-only">Message body</label>
                   <textarea
+                    id="msg-body"
                     placeholder="Message body..."
                     value={msgBody}
                     onChange={(e) => setMsgBody(e.target.value)}

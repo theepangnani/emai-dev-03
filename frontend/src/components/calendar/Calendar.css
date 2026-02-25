@@ -17,8 +17,8 @@
 }
 
 .cal-nav-btn {
-  width: 32px;
-  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -175,7 +175,7 @@
 
 .cal-day-more {
   font-size: 11px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   cursor: pointer;
   padding: 1px 6px;
   font-weight: 500;
@@ -308,7 +308,7 @@
 }
 
 .cal-week-column-header.today {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .cal-week-day-name {
@@ -325,7 +325,7 @@
 }
 
 .cal-week-day-num.today {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .cal-week-column-body {
@@ -440,8 +440,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   background: var(--color-surface-alt, #f5f5f5);
   border: 1px solid var(--color-border);

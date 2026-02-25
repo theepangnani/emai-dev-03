@@ -135,7 +135,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -162,7 +162,7 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
@@ -533,7 +533,7 @@
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
