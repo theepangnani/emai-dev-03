@@ -244,8 +244,8 @@ export function StudyGuidesPage() {
   };
 
   useEffect(() => {
-    if (showArchived) loadArchived();
-  }, [showArchived]);
+    loadArchived();
+  }, [filterChild]);
 
   // Close course search dropdown on outside click
   useEffect(() => {
