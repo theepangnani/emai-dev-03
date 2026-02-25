@@ -109,10 +109,11 @@
   border-color: var(--color-danger);
   background: rgba(214, 69, 69, 0.06);
 }
-.cm-icon-task {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-accent-strong, #2a9fa8);
+.cm-icon-btn-task {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #555);
 }
 
 /* Tabs */
@@ -835,7 +836,7 @@
 }
 
 /* Responsive */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .cm-detail-header {
     padding: 16px 12px;
   }
