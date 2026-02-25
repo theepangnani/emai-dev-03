@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/client';
 import './Auth.css';
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get('token') || '';
 
   const [password, setPassword] = useState('');
@@ -14,6 +15,13 @@ export function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Auto-redirect to login 3 seconds after successful reset
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => navigate('/login'), 3000);
+    return () => clearTimeout(timer);
+  }, [success, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +43,11 @@ export function ResetPasswordPage() {
       setSuccess(true);
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      setError(detail || 'Failed to reset password. The link may have expired.');
+      if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(detail || 'Failed to reset password. The link may have expired.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -50,10 +62,10 @@ export function ResetPasswordPage() {
         {success ? (
           <>
             <p className="auth-subtitle">
-              Your password has been reset successfully.
+              Your password has been reset successfully. Redirecting to sign in...
             </p>
             <Link to="/login" className="auth-button" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-              Sign In
+              Sign In Now
             </Link>
           </>
         ) : (

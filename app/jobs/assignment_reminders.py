@@ -170,6 +170,9 @@ async def check_assignment_reminders():
                     db.add(student_notification)
                     notifications_created += 1
 
+                    # Commit notifications before slow email send (#866)
+                    db.commit()
+
                     # Send email to parent if enabled (for 1-day reminders; 3-day handled by multi-channel)
                     if days < 3 and parent.email_notifications and template:
                         html = _render_template(
@@ -190,8 +193,6 @@ async def check_assignment_reminders():
                         )
                         if sent:
                             emails_sent += 1
-
-        db.commit()
         logger.info(
             f"Assignment reminder check complete | "
             f"notifications={notifications_created} | emails={emails_sent}"

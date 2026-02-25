@@ -98,15 +98,15 @@ async def check_notification_reminders():
             except Exception as e:
                 logger.warning(f"Failed to send reminder for notification {notif.id}: {e}")
 
-            # Update the existing notification row
+            # Update and commit each reminder individually to avoid
+            # holding row locks during slow email sends (#866)
             notif.reminder_count += 1
             if notif.reminder_count >= 3:
                 notif.next_reminder_at = None
             else:
                 notif.next_reminder_at = now + timedelta(hours=24)
+            db.commit()
             reminders_sent += 1
-
-        db.commit()
         logger.info(
             f"Notification reminder check complete | "
             f"checked={len(notifications)} | reminders_sent={reminders_sent}"
