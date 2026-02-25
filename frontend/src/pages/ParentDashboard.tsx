@@ -315,7 +315,6 @@ export function ParentDashboard() {
                   { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
                   { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
                 ]}
-                showLabel="Add Child"
               />
             </div>
           </div>
