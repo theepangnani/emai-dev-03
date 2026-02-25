@@ -117,8 +117,10 @@ describe('StudyGuidePage', () => {
 
   it('shows creation date', async () => {
     renderStudyGuide()
+    // The date is rendered as a formatted date string without "Created:" prefix
+    const expectedDate = new Date('2025-06-15T10:00:00Z').toLocaleDateString()
     await waitFor(() => {
-      expect(screen.getByText(/Created:/)).toBeInTheDocument()
+      expect(screen.getByText(expectedDate)).toBeInTheDocument()
     })
   })
 
@@ -141,11 +143,12 @@ describe('StudyGuidePage', () => {
 
   it('renders action buttons (Print, Regenerate, Delete)', async () => {
     renderStudyGuide()
+    // Action buttons are icon-only with title attributes
     await waitFor(() => {
-      expect(screen.getByText('Print')).toBeInTheDocument()
+      expect(screen.getByTitle('Print')).toBeInTheDocument()
     })
-    expect(screen.getByText('Regenerate')).toBeInTheDocument()
-    expect(screen.getByText('Delete')).toBeInTheDocument()
+    expect(screen.getByTitle('Regenerate')).toBeInTheDocument()
+    expect(screen.getByTitle('Delete')).toBeInTheDocument()
   })
 
   it('deletes guide after confirmation', async () => {
@@ -153,10 +156,10 @@ describe('StudyGuidePage', () => {
     mockDeleteGuide.mockResolvedValue(undefined)
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Delete')).toBeInTheDocument()
+      expect(screen.getByTitle('Delete')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Delete'))
+    await user.click(screen.getByTitle('Delete'))
 
     // Confirm modal should appear
     await waitFor(() => {
@@ -177,10 +180,10 @@ describe('StudyGuidePage', () => {
     const user = userEvent.setup()
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Delete')).toBeInTheDocument()
+      expect(screen.getByTitle('Delete')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Delete'))
+    await user.click(screen.getByTitle('Delete'))
 
     await waitFor(() => {
       expect(screen.getByText('Delete Study Guide')).toBeInTheDocument()
@@ -195,10 +198,10 @@ describe('StudyGuidePage', () => {
     mockGenerateGuide.mockResolvedValue({ id: 99 })
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Regenerate')).toBeInTheDocument()
+      expect(screen.getByTitle('Regenerate')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Regenerate'))
+    await user.click(screen.getByTitle('Regenerate'))
 
     await waitFor(() => {
       expect(mockGenerateGuide).toHaveBeenCalledWith(
@@ -213,10 +216,10 @@ describe('StudyGuidePage', () => {
     mockGenerateGuide.mockRejectedValue(new Error('AI failed'))
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Regenerate')).toBeInTheDocument()
+      expect(screen.getByTitle('Regenerate')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Regenerate'))
+    await user.click(screen.getByTitle('Regenerate'))
 
     await waitFor(() => {
       expect(screen.getByText('Failed to regenerate')).toBeInTheDocument()
@@ -227,10 +230,10 @@ describe('StudyGuidePage', () => {
     const user = userEvent.setup()
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByTitle('Create task')).toBeInTheDocument()
+      expect(screen.getByTitle('Create Task')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByTitle('Create task'))
+    await user.click(screen.getByTitle('Create Task'))
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 

@@ -214,7 +214,8 @@ describe('FAQPage', () => {
     renderFAQ()
 
     await waitFor(() => {
-      expect(screen.getByText('No questions found. Be the first to ask!')).toBeInTheDocument()
+      expect(screen.getByText('No questions found')).toBeInTheDocument()
+      expect(screen.getByText('Be the first to ask!')).toBeInTheDocument()
     })
   })
 })

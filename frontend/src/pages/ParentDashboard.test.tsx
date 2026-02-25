@@ -202,7 +202,8 @@ describe('ParentDashboard', () => {
 
     await waitFor(() => {
       // With 1 child, auto-selects Alex Smith → "Alex Smith's Details"
-      expect(screen.getByText(/Alex Smith's Details/)).toBeInTheDocument()
+      // Text appears in both CollapsibleSection title and StudentDetailPanel header
+      expect(screen.getAllByText(/Alex Smith's Details/).length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -271,10 +272,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await user.click(screen.getByRole('button', { name: 'Add Child' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
@@ -287,10 +288,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await user.click(screen.getByRole('button', { name: 'Add Child' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
@@ -502,10 +503,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Child' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await user.click(screen.getByRole('button', { name: 'Add Child' }))
 
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
