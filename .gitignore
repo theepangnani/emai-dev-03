@@ -60,3 +60,7 @@ ERROR
 WARNING
 =*
 *scratchpad*
+tmp_*.txt
+
+# Claude worktrees
+.claude/worktrees/

@@ -67,8 +67,8 @@
 - [x] **Color theme system: Hardcoded color cleanup** — Converted hardcoded hex/rgba values to CSS variables across all CSS files (IMPLEMENTED)
 - [x] **Color theme system: Dark mode** — Deep dark palette with purple glow in `[data-theme="dark"]`, ThemeContext, ThemeToggle in header (IMPLEMENTED)
 - [x] **Color theme system: Focus mode** — Warm muted tones in `[data-theme="focus"]` for study sessions (IMPLEMENTED)
-- [ ] **Flat (non-gradient) default style** — Replace 30+ gradient declarations across 13 CSS files with solid accent colors; make flat the default, gradient opt-in (#486, #487)
-- [ ] **Mobile: Remove gradient from login button** — Replace expo-linear-gradient with solid colors.primary (#488)
+- [x] **Flat (non-gradient) default style** — Replace 30+ gradient declarations across 13 CSS files with solid accent colors; make flat the default, gradient opt-in (#486, #487) (IMPLEMENTED)
+- [x] **Mobile: Remove gradient from login button** — Replace expo-linear-gradient with solid colors.primary (#488) (IMPLEMENTED)
 - [ ] **Gradient/flat style toggle** — Optional `[data-style="gradient"]` for users who prefer gradients; ThemeContext extension (#489, low priority)
 - [x] **Make student email optional** — parent can create child with name only (no email, no login) (IMPLEMENTED)
 - [x] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional (IMPLEMENTED)
@@ -94,18 +94,18 @@
 - [x] **Backend test expansion** — 288+ route tests (#155) (IMPLEMENTED)
 - [x] **Inspirational messages** — Role-based dashboard greetings with admin CRUD (#230-#233) (IMPLEMENTED)
 - [x] **My Kids visual overhaul** — Colored avatars, task progress bars, next-deadline countdowns, quick action buttons (#301) (IMPLEMENTED)
-- [ ] Manual course creation for teachers
-- [ ] Manual assignment creation for teachers
+- [x] **Manual course creation for teachers** — Teachers can create courses (#42) (IMPLEMENTED)
+- [x] **Manual assignment creation for teachers** — Covered by manual assignment CRUD (#49) (IMPLEMENTED)
 - [ ] Multi-Google account support for teachers
 - [ ] Auto-send invite email to shadow teachers on creation
 - [ ] Teacher Dashboard course management view with source badges
 - [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
 - [x] **Admin individual messaging** — Send message + email to specific user (#259) (IMPLEMENTED)
-- [ ] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260)
+- [x] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260) (IMPLEMENTED)
 - [ ] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412)
 - [ ] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414)
-- [ ] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509)
-- [ ] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510)
+- [x] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509) (IMPLEMENTED)
+- [x] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510) (IMPLEMENTED)
 - [x] **Parent Dashboard v3: Persistent sidebar** — Replace hamburger with always-visible sidebar on desktop (#541) (IMPLEMENTED — PR #545)
 - [x] **Parent Dashboard v3: Alert banner + child pills** — Unified alert banner (overdue/invites/messages) + single child filter pills replacing redundant tabs and cards (#542) (IMPLEMENTED — PR #545)
 - [x] **Parent Dashboard v3: Quick Actions + Student Detail Panel** — Always-visible action bar (+ Material, + Task, + Child, + Course) + urgency-grouped tasks panel per child (#543) (IMPLEMENTED — PR #545)
@@ -129,25 +129,25 @@
 - [ ] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552)
 
 #### Architecture Foundation (Tier 0)
-- [ ] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127)
-- [ ] **Extract backend services** — Move business logic from route handlers to domain service layer (#128)
+- [x] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127) (IMPLEMENTED)
+- [x] **Extract backend services** — Move business logic from route handlers to domain service layer (#128) (IMPLEMENTED)
 - [ ] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129)
 - [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
-- [ ] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131)
+- [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
 - [ ] **Frontend DDD modules** — Reorganize into domain directories (#133)
 - [ ] **Domain events** — Add event system for cross-context communication (#134)
 
 #### Security & Hardening (Tier 0)
-- [ ] **Authorization gaps** — `list_students()` returns ALL students to any auth user; `get_user()` has no permission check; `list_assignments()` not filtered by course access (#139)
-- [ ] **Rate limiting** — No rate limiting on AI generation, auth, or file upload endpoints; risk of brute force and API quota abuse (#140)
+- [x] **Authorization gaps** — `list_students()` returns ALL students to any auth user; `get_user()` has no permission check; `list_assignments()` not filtered by course access (#139) (IMPLEMENTED)
+- [x] **Rate limiting** — No rate limiting on AI generation, auth, or file upload endpoints; risk of brute force and API quota abuse (#140) (IMPLEMENTED)
 - [x] **CORS hardening** — ~~Currently allows `*` origins; tighten to known frontend domains (#64)~~ ✅ Fixed in #177
-- [ ] **Security headers** — Add X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, CSP (#141)
+- [x] **Security headers** — Add X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, CSP (#141) (IMPLEMENTED)
 - [ ] **Input validation** — Missing field length limits, URL validation, and sanitization on multiple endpoints (#142)
 - [x] **Password reset flow** — Forgot Password link + email-based reset (#143) — see §6.26
 
 #### Data Integrity & Performance (Tier 0)
-- [ ] **Missing database indexes** — Add indexes on StudyGuide(assignment_id), StudyGuide(user_id, created_at), Task(created_by_user_id, created_at), Invite(email, expires_at), Message(conversation_id) (#73)
+- [x] **Missing database indexes** — Add indexes on StudyGuide(assignment_id), StudyGuide(user_id, created_at), Task(created_by_user_id, created_at), Invite(email, expires_at), Message(conversation_id) (#73) (IMPLEMENTED in #244)
 - [x] **N+1 query patterns** — ~~`_task_to_response()` does 3-4 extra queries per task; `list_children()` iterates students; assignment reminder job loads all users individually (#144)~~ ✅ Fixed with selectinload/batch-fetch in tasks.py, messages.py, parent.py (#241)
 - [x] **CASCADE delete rules** — ~~Task, StudyGuide, Assignment FKs lack ON DELETE CASCADE/SET NULL; orphaned records possible (#145)~~ ✅ Fixed in #187
 - [x] **Unique constraint on parent_students** — ~~No unique constraint on (parent_id, student_id); duplicate links possible (#146)~~ ✅ Fixed in #187
@@ -155,27 +155,27 @@
 #### Frontend UX Gaps (Tier 1)
 - [x] **Global error boundary** — React ErrorBoundary wraps all routes; catches render errors with Try Again / Reload Page (#147) ✅
 - [x] **Toast notification system** — Global ToastProvider with success/error/info types, auto-dismiss, click-to-dismiss (#148) ✅
-- [ ] **Token refresh** — JWT tokens expire without refresh mechanism; users lose work and get silently redirected to login (#149)
+- [x] **Token refresh** — JWT tokens expire without refresh mechanism; users lose work and get silently redirected to login (#149) (IMPLEMENTED)
 - [x] **Loading skeletons** — Reusable Skeleton components (Page, Card, List, Detail) replace Loading... text across 12 pages (#150) ✅
 - [x] **Accessibility (A11Y)** — ARIA labels on icon buttons, keyboard navigation for interactive elements, skip-to-content link, focus indicators (#151, #247) ✅ (IMPLEMENTED - Feb 2026, commit 120e065)
 - [x] **Accessibility Phase 2 (WCAG 2.1 AA)** — Priority indicator shapes, focus traps on 25+ modals, emoji aria-hidden, sr-only labels, 44px touch targets, 4.5:1 contrast (#829) ✅
-- [ ] **Mobile responsiveness** — Calendar not optimized for mobile; tables don't scroll; modals overflow on small screens (#152)
+- [x] **Mobile responsiveness** — Calendar not optimized for mobile; tables don't scroll; modals overflow on small screens (#152) (IMPLEMENTED)
 - [x] **FlashcardsPage stale closure bug** — Fixed with useRef-based stable keyboard event handler (#153) ✅
 
 #### Testing Gaps (Tier 1)
 - [x] **Frontend unit tests** — 258 tests across 18 files (vitest) (#154) ✅
-- [ ] **Missing route tests** — No tests for: google_classroom, study, messages, notifications, teacher_communications, admin, invites, course_contents routes (#155)
+- [x] **Missing route tests** — No tests for: google_classroom, study, messages, notifications, teacher_communications, admin, invites, course_contents routes (#155) (IMPLEMENTED)
 - [ ] **PostgreSQL test coverage** — Tests run on SQLite only; misses NOT NULL, Enum, and type divergences (e.g., users.email bug) (#156)
 
 ### Phase 1.5 (Calendar Extension, Content, Mobile & School Integration)
-- [ ] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support)
+- [x] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support) (IMPLEMENTED)
 - [ ] Student email identity merging (personal + school email on same account)
 - [ ] School board email integration (when DTAP approved)
-- [ ] Extend calendar to Student and Teacher dashboards with role-aware data
+- [x] Extend calendar to Student and Teacher dashboards with role-aware data (#45) (IMPLEMENTED)
 - [ ] Google Calendar push integration (sync tasks/reminders to Google Calendar)
 - [ ] Central document repository
 - [x] Manual content upload with OCR (enhanced) — #523 ✅
-- [ ] Background periodic Google Classroom course/assignment sync for teachers (opt-in)
+- [x] Background periodic Google Classroom course/assignment sync for teachers (opt-in) (#53) (IMPLEMENTED)
 
 #### Parent UX Simplification (Phase 1.5)
 - [x] Issue #201: Parent UX: Single dashboard API endpoint ✅
@@ -192,7 +192,7 @@
 - [ ] Advanced notifications
 - [ ] Notes & project tracking tools
 - [ ] Data privacy & user rights (account deletion, data export, consent)
-- [ ] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444)
+- [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
 - [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)
 - [ ] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514)
 - [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
@@ -260,7 +260,7 @@
 - [ ] **Grade integration** — Display grades from Google Classroom (#838)
 - [ ] **Assignment submission** — Allow students to submit work (#839)
 
-#### 6.28 FAQ / Knowledge Base (Phase 2)
+#### 6.28 FAQ / Knowledge Base (Phase 2) -- COMPLETE
 
 Community-driven help center where users ask questions, provide answers, and admins curate approved content.
 

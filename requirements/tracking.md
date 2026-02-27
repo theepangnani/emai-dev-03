@@ -1,5 +1,10 @@
 ## 12. GitHub Issues Tracking
 
+**Summary (as of Feb 27, 2026):** 725 total issues — 538 closed (74%), 187 open (26%)
+- **Features built:** 183 enhancements closed
+- **Bugs fixed:** 137 bugs closed
+- **Other closed:** 218 (pilot prep, docs, testing, misc)
+
 Current feature issues are tracked in GitHub:
 
 ### Phase 1 - Completed
@@ -63,7 +68,7 @@ Current feature issues are tracked in GitHub:
 - Issue #108: ~~Calendar sticky note cards — priority-colored, expandable~~ (CLOSED)
 - Issue #115: ~~Study Guide: Improve formatting and readability~~ (CLOSED)
 - Issue #117: ~~Bug: Task status dropdown filters are not working~~ (CLOSED)
-- Issue #118: Calendar: Enable editing task due date via drag-and-drop (IMPLEMENTED)
+- ~~Issue #118: Calendar: Enable editing task due date via drag-and-drop (IMPLEMENTED)~~ ✅
 - Issue #123: ~~Bug: Calendar tasks not filtered by selected child in Calendar view~~ (CLOSED)
 - Issue #124: ~~Course Page: Add Create Course CTA and flow entry point~~ (CLOSED)
 - Issue #125: ~~Tasks Page: Convert Create New Task into a well-formatted modal~~ (CLOSED)
@@ -118,7 +123,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #255-#257: Multi-role support Phase B requirements and issues created~~ (PLANNED)
 - ~~Issue #258: Admin broadcast messaging: send message + email to all users~~ ✅
 - ~~Issue #259: Admin individual messaging: send message + email to a specific user~~ ✅
-- Issue #260: Inspirational messages in emails: add role-based quotes to all outgoing emails (PLANNED)
+- ~~Issue #260: Inspirational messages in emails: add role-based quotes to all outgoing emails (PLANNED)~~ ✅
 - ~~Issue #261: Notification click opens popup modal with full message content~~ ✅
 - ~~Issue #262: Messages page: show all admin messages for every user~~ ✅
 - ~~Issue #263: User-to-admin messaging: any user can message admin, all admins get email~~ ✅
@@ -216,32 +221,32 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #764: Print and Download PDF for study materials~~ ✅ (Print + Download PDF buttons on all 4 Course Material Detail tabs; html2pdf.js dynamic import; static print views for quiz all-questions and flashcards all-cards; shared `exportUtils.ts` utility)
 
 ### Phase 1 - Open (Parent Dashboard Redesign — Epic #710)
-- Issue #710: Epic: Parent Dashboard Visual Redesign
-- Issue #711: Parent Dashboard: Visual refresh with distinctive design language
-- Issue #712: Parent Dashboard: Add "Coming Up" timeline for selected child
-- Issue #713: Parent Dashboard: Multi-child comparison cards in All Children mode
-- Issue #714: Parent Dashboard: Clean up dead CSS and scope with `pd-` prefix
-- Issue #715: Parent Dashboard: Refactor useParentDashboard into focused sub-hooks
-- Issue #716: Parent Dashboard: Enhanced onboarding for first-time parents
-- Issue #717: Parent Dashboard: Make urgency overview persistent (non-dismissible)
-- Issue #718: Parent Dashboard: Add course activity feed for selected child
-- Issue #719: Parent Dashboard: Accessibility improvements (ARIA, keyboard, focus)
+- ~~Issue #710: Epic: Parent Dashboard Visual Redesign~~ ✅
+- ~~Issue #711: Parent Dashboard: Visual refresh with distinctive design language~~ ✅
+- ~~Issue #712: Parent Dashboard: Add "Coming Up" timeline for selected child~~ ✅
+- ~~Issue #713: Parent Dashboard: Multi-child comparison cards in All Children mode~~ ✅
+- ~~Issue #714: Parent Dashboard: Clean up dead CSS and scope with `pd-` prefix~~ ✅
+- ~~Issue #715: Parent Dashboard: Refactor useParentDashboard into focused sub-hooks~~ ✅
+- ~~Issue #716: Parent Dashboard: Enhanced onboarding for first-time parents~~ ✅
+- ~~Issue #717: Parent Dashboard: Make urgency overview persistent (non-dismissible)~~ ✅
+- ~~Issue #718: Parent Dashboard: Add course activity feed for selected child~~ ✅
+- ~~Issue #719: Parent Dashboard: Accessibility improvements (ARIA, keyboard, focus)~~ ✅
 
 ### Phase 1 - Open
 - Issue #41: Multi-Google account support for teachers
-- Issue #42: Manual course creation for teachers
+- ~~Issue #42: Manual course creation for teachers~~ ✅
 - Issue #57: Auto-send invite email to shadow teachers on creation
 - Issue #58: Add is_platform_user flag to Teacher model
 - Issue #59: Teacher Dashboard course management view with source badges
 - Issue #61: Content privacy controls and version history for uploads
 - Issue #62: teacher_google_accounts table for multi-account OAuth
-- Issue #89: Auto-create student account when parent links by email
+- ~~Issue #89: Auto-create student account when parent links by email~~ ✅
 - Issue #109: AI explanation of assignments
 - Issue #110: Add assignment/test to task (link tasks to assignments) — courses, content, and study guides now linkable; assignment linking pending
 - ~~Issue #111: Student self-learn: create and manage personal courses~~ ✅
 - Issue #114: Course materials: file upload and storage (GCS) — upload + text extraction done, GCS pending
 - ~~Issue #116: Courses: Add structured course content types + reference/Google Classroom links~~ ✅
-- Issue #119: Recurring Tasks: Feasibility + implementation proposal
+- ~~Issue #119: Recurring Tasks: Feasibility + implementation proposal~~ ✅
 - ~~Issue #126: Calendar Task Actions: Add quick links beyond Create Study Guide~~ ✅
 - ~~Issue #166: Audit logging: persistent audit trail with admin API and UI~~ ✅
 - ~~Issue #167: Task Detail Page with full task info and actions~~ ✅
@@ -252,10 +257,10 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #175: Global search: frontend search component in DashboardLayout~~ ✅
 - ~~Issue #183: Task Detail Page: link/unlink resources (courses, materials, study guides)~~ ✅
 - ~~Issue #193: Task list: click task row to navigate to task detail page~~ ✅
-- Issue #194: Rename 'Study Guide' to 'Course Material' across UI and navigation
+- ~~Issue #194: Rename 'Study Guide' to 'Course Material' across UI and navigation~~ ✅
 - ~~Issue #420: Frontend: Add show/hide password toggle to all auth pages~~ ✅
-- Issue #509: Send welcome email after user registration
-- Issue #510: Send acknowledgement email after email verification
+- ~~Issue #509: Send welcome email after user registration~~ ✅
+- ~~Issue #510: Send acknowledgement email after email verification~~ ✅
 - ~~Issue #169: Color theme: Clean up hardcoded CSS colors (prerequisite for themes)~~ ✅
 - ~~Issue #170: Color theme: Dark mode (ThemeContext, ThemeToggle, dark palette)~~ ✅
 - ~~Issue #171: Color theme: Focus mode (muted warm tones for study sessions)~~ ✅
@@ -265,13 +270,13 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #175: Global search: frontend search component in DashboardLayout~~ ✅
 - ~~Issue #152: Mobile responsive web: CSS breakpoints for 5+ pages~~ ✅
 - ~~Issue #308: Update ClassBridge logo and favicon assets~~ ✅
-- Issue #195: AI auto-task creation: extract critical dates from generated course materials
+- ~~Issue #195: AI auto-task creation: extract critical dates from generated course materials~~ ✅
 - Issue #96: Student email identity merging (personal + school email)
-- Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)
+- ~~Issue #45: Extend calendar to other roles (student, teacher) with role-aware data (parent calendar done in #97)~~ ✅
 - Issue #46: Google Calendar push integration for tasks
 - ~~Issue #25: Manual Content Upload with OCR (enhanced) — document upload + text extraction done; image OCR for embedded images in .docx~~ ✅ (#523)
 - Issue #28: Central Document Repository
-- Issue #53: Background periodic Google Classroom sync for teachers
+- ~~Issue #53: Background periodic Google Classroom sync for teachers~~ ✅
 - Issue #113: School & School Board model
 - ~~Issue #201: Parent UX: Single dashboard API endpoint~~ ✅
 - ~~Issue #202: Parent UX: Status-first dashboard~~ ✅
@@ -282,7 +287,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #207: Parent Dashboard: Collapsible/expandable calendar (now defaults to collapsed — #544)~~ ✅
 
 ### Phase 2
-- Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)
+- ~~Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)~~ ✅
 - Issue #27: Notes & Project Tracking Tools
 - Issue #29: TeachAssist Integration
 - Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
@@ -300,14 +305,14 @@ Current feature issues are tracked in GitHub:
 - Issue #514: Admin: Broadcast email history with reuse and resend
 
 ### Phase 2 — FAQ / Knowledge Base
-- Issue #437: FAQ: Backend models — FAQQuestion + FAQAnswer tables
-- Issue #438: FAQ: Pydantic schemas for request/response validation
-- Issue #439: FAQ: Backend API routes — CRUD + admin approval workflow
-- Issue #440: FAQ: Integrate FAQ into global search
-- Issue #441: FAQ: Error-to-FAQ reference system
-- Issue #442: FAQ: Frontend pages — FAQ list, detail, and admin management
-- Issue #443: FAQ: Backend + frontend tests
-- Issue #444: FAQ: Seed initial how-to entries for pilot
+- ~~Issue #437: FAQ: Backend models — FAQQuestion + FAQAnswer tables~~ ✅
+- ~~Issue #438: FAQ: Pydantic schemas for request/response validation~~ ✅
+- ~~Issue #439: FAQ: Backend API routes — CRUD + admin approval workflow~~ ✅
+- ~~Issue #440: FAQ: Integrate FAQ into global search~~ ✅
+- ~~Issue #441: FAQ: Error-to-FAQ reference system~~ ✅
+- ~~Issue #442: FAQ: Frontend pages — FAQ list, detail, and admin management~~ ✅
+- ~~Issue #443: FAQ: Backend + frontend tests~~ ✅
+- ~~Issue #444: FAQ: Seed initial how-to entries for pilot~~ ✅
 
 ### March 6 Pilot — Mobile MVP (Completed)
 - ~~Issue #364: Mobile MVP: API client & auth modules (AsyncStorage, refresh tokens)~~ ✅
@@ -339,11 +344,11 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #376: March 6 Pilot Launch: Go-Live Checklist~~ ✅
 
 **Pilot prep subtasks (parallelizable):**
-- Issue #396: Register custom domains with Cloud Run (depends on DNS access)
+- ~~Issue #396: Register custom domains with Cloud Run (depends on DNS access)~~ ✅
 - ~~Issue #397: Update Google OAuth redirect URIs for production domain (depends on #396)~~ ✅
-- Issue #398: Create pilot user accounts and verify login
-- Issue #399: Run smoke-test.py against production with all 4 roles (depends on #398)
-- Issue #400: Verify SendGrid email delivery from production
+- ~~Issue #398: Create pilot user accounts and verify login~~ ✅
+- ~~Issue #399: Run smoke-test.py against production with all 4 roles (depends on #398)~~ ✅
+- ~~Issue #400: Verify SendGrid email delivery from production~~ ✅
 - ~~Issue #388: Launch day: Monitoring and incident response plan~~ ✅
 - ~~Issue #401: Set Cloud Run min-instances=1 to avoid cold starts~~ ✅
 - ~~Issue #402: Prepare Expo Go access instructions for pilot parents~~ ✅
@@ -375,22 +380,22 @@ Current feature issues are tracked in GitHub:
 - Issue #315: Backend: Create DeviceToken Model and Registration Endpoints
 - Issue #316: Backend: Implement Push Notification Service
 - Issue #317: Backend: Integrate Push Notifications with Key Events
-- Issue #318: Backend: Assignment Reminder Background Job
+- ~~Issue #318: Backend: Assignment Reminder Background Job~~ ✅
 - Issue #319: Backend: Profile Picture Upload Endpoint
 - Issue #320: Backend: Assignment File Upload Endpoint
-- Issue #321: Backend: Enhance Health Endpoint with Version Info
-- Issue #322: Backend: Integration Tests for v1 API
+- ~~Issue #321: Backend: Enhance Health Endpoint with Version Info~~ ✅
+- ~~Issue #322: Backend: Integration Tests for v1 API~~ ✅
 
 **Mobile App Screens (#323-#340) — Superseded by pilot MVP issues #364-#374:**
 - Issue #323-#340: Original full mobile plan screens (many superseded by simpler pilot MVP)
 
 **Testing & Deployment (#341-#346):**
-- Issue #340: Testing: Manual Testing - iOS
-- Issue #341: Testing: Manual Testing - Android
+- ~~Issue #340: Testing: Manual Testing - iOS~~ ✅
+- ~~Issue #341: Testing: Manual Testing - Android~~ ✅
 - Issue #343: Deployment: Beta Testing with TestFlight (iOS) — Phase 3+
 - Issue #344: Deployment: Beta Testing with Google Play Internal Testing — Phase 3+
 - Issue #345: Deployment: Prepare App Store Submission - iOS — Phase 4
-- Issue #346: Deployment: Prepare Google Play Submission - Android — Phase 4
+- ~~Issue #346: Deployment: Prepare Google Play Submission - Android — Phase 4~~ ✅
 
 **Documentation (#347-#349) & Risk (#350-#352):**
 - Issue #347-#349: Mobile documentation (deferred)
@@ -430,7 +435,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #148: Add global toast notification system for user feedback~~ ✅
 - ~~Issue #149: Implement JWT token refresh mechanism~~ ✅
 - ~~Issue #150: Add loading skeletons to replace text loading states~~ ✅
-- Issue #151: Accessibility audit: aria labels, keyboard nav, skip-to-content
+- ~~Issue #151: Accessibility audit: aria labels, keyboard nav, skip-to-content~~ ✅
 - ~~Issue #152: Mobile responsive web: CSS breakpoints for 5+ pages~~ ✅
 - ~~Issue #153: Fix FlashcardsPage stale closure bug in keyboard handler~~ ✅
 - ~~Issue #154: Add frontend unit tests (vitest)~~ ✅ (258 frontend tests across 18 files)
@@ -455,55 +460,55 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #191: LOW: Fix audit log silent failure and invite token reuse~~ ✅ (audit SAVEPOINT in #392, invite with_for_update in #392)
 
 ### Architecture & DDD Migration
-- Issue #127: Split api/client.ts into domain-specific API modules
-- Issue #128: Extract backend domain services from route handlers
+- ~~Issue #127: Split api/client.ts into domain-specific API modules~~ ✅
+- ~~Issue #128: Extract backend domain services from route handlers~~ ✅
 - Issue #129: Introduce repository pattern for data access
 - ~~Issue #130: Split ParentDashboard into sub-components~~ ✅ (AlertBanner, StudentDetailPanel, QuickActionsBar extracted in #540; useParentDashboard hook + TodaysFocusHeader extracted in #657; now 544 LOC)
-- Issue #131: Activate TanStack Query for server state management
+- ~~Issue #131: Activate TanStack Query for server state management~~ ✅
 - Issue #132: Reorganize backend into domain modules (DDD bounded contexts)
 - Issue #133: Reorganize frontend into domain modules
 - Issue #134: Add domain events for cross-context communication
 
 ### Infrastructure & DevOps
-- Issue #10: Pytest unit tests
+- ~~Issue #10: Pytest unit tests~~ ✅
 - Issue #11: ~~GitHub Actions CI/CD~~ (CLOSED)
-- Issue #12: PostgreSQL + Alembic migrations
+- ~~Issue #12: PostgreSQL + Alembic migrations~~ ✅
 - Issue #13: ~~Deploy to GCP~~ (CLOSED)
-- Issue #14: Google OAuth verification
-- Issue #24: Register classbridge.ca domain
+- ~~Issue #14: Google OAuth verification~~ ✅
+- ~~Issue #24: Register classbridge.ca domain~~ ✅
 - ~~Issue #353: Infrastructure: Database Backup & Disaster Recovery for Production~~ ✅
 
 ### Security & Hardening
 - ~~Issue #63: Require SECRET_KEY and fail fast if missing~~ ✅ (fixed in #179)
 - ~~Issue #64: Fix CORS configuration for credentials~~ ✅ (fixed in #177)
-- Issue #65: Protect frontend log ingestion endpoints
-- Issue #66: Introduce Alembic migrations and remove create_all on startup
+- ~~Issue #65: Protect frontend log ingestion endpoints~~ ✅
+- ~~Issue #66: Introduce Alembic migrations and remove create_all on startup~~ ✅
 - Issue #67: Prevent duplicate APScheduler jobs in multi-worker deployments
 - Issue #68: Encrypt Google OAuth tokens at rest
 - Issue #69: Revisit JWT storage strategy to reduce XSS risk
 
 ### UI & Theming
-- Issue #486: Flat (non-gradient) UI theme — replace gradients with solid colors (parent tracking)
-- Issue #487: Web: Replace all CSS gradient backgrounds with solid accent colors (13 CSS files)
-- Issue #488: Mobile: Remove gradient from login button and use solid theme colors
+- ~~Issue #486: Flat (non-gradient) UI theme — replace gradients with solid colors (parent tracking)~~ ✅
+- ~~Issue #487: Web: Replace all CSS gradient backgrounds with solid accent colors (13 CSS files)~~ ✅
+- ~~Issue #488: Mobile: Remove gradient from login button and use solid theme colors~~ ✅
 - Issue #489: Add gradient/flat style toggle to theme system (low priority)
 
 ### UX / Navigation
-- Issue #811: Replace header back button with unified PageNav component
+- ~~Issue #811: Replace header back button with unified PageNav component~~ ✅
 
 ### UI/UX HCD Assessment — Phase 2 Improvements (Epic #827)
 
 **Tier 1 — Critical (Next 2 sprints):**
-- Issue #828: Unify design tokens (replace hard-coded CSS values with CSS variables)
-- Issue #829: Fix WCAG 2.1 AA accessibility gaps across all roles
-- Issue #830: Add explicit "All Children" tab and mobile scroll indicators in parent child selector
-- Issue #831: Standardize responsive breakpoints to 3 tiers (480/768/1024px)
-- Issue #832: Simplify parent dashboard with progressive disclosure for new users
+- ~~Issue #828: Unify design tokens (replace hard-coded CSS values with CSS variables)~~ ✅
+- ~~Issue #829: Fix WCAG 2.1 AA accessibility gaps across all roles~~ ✅
+- ~~Issue #830: Add explicit "All Children" tab and mobile scroll indicators in parent child selector~~ ✅
+- ~~Issue #831: Standardize responsive breakpoints to 3 tiers (480/768/1024px)~~ ✅
+- ~~Issue #832: Simplify parent dashboard with progressive disclosure for new users~~ ✅
 
 **Tier 2 — Important (Next 4 sprints):**
 - Issue #833: Teacher dashboard enhancement (SVG icons, dynamic counts, announcement preview)
 - Issue #834: Student engagement (streak celebrations, spaced repetition, continue studying)
-- Issue #835: Standardize empty states with shared EmptyState component
+- ~~Issue #835: Standardize empty states with shared EmptyState component~~ ✅
 - Issue #836: Add message search and communication improvements
 - Issue #837: Unify quick action paradigm across Parent, Student, and Teacher roles
 
@@ -512,11 +517,11 @@ Current feature issues are tracked in GitHub:
 - Issue #839: Assignment submission: allow students to submit work through the platform
 
 ### Observability & Quality
-- Issue #70: Populate request.state.user_id for request logs
+- ~~Issue #70: Populate request.state.user_id for request logs~~ ✅
 - ~~Issue #71: Add baseline test suite (auth, RBAC, core routes)~~ ✅
 - Issue #72: Roll out new design system across remaining pages
 - Issue #73: Add migration for new DB indexes
-- Issue #74: Add pagination for conversations/messages list
+- ~~Issue #74: Add pagination for conversations/messages list~~ ✅
 - Issue #75: Introduce lightweight caching for read-heavy endpoints
 - Issue #76: Document local seed + load testing workflow
 - Issue #77: Design system + perf + local testing tools
@@ -525,6 +530,343 @@ Current feature issues are tracked in GitHub:
 - Issue #78: Manual test scenarios: backend API
 - Issue #79: Manual test scenarios: frontend UX
 - Issue #80: Add E2E smoke tests (Playwright or Cypress)
+
+### Phase 1 - Bugs Fixed (Google Sync & OAuth)
+- ~~Issue #428: Google OAuth Error 400: redirect_uri_mismatch on production~~ ✅
+- ~~Issue #430: Google Classroom course materials not syncing to Course Content~~ ✅
+- ~~Issue #431: Sync Google Classroom courseWorkMaterials to CourseContent~~ ✅
+- ~~Issue #432: Assignment sync does not populate CourseContent for parent/student view~~ ✅
+- ~~Issue #433: Student Google Classroom sync does not pull course materials or assignments~~ ✅
+- ~~Issue #434: No automatic/background sync for Google Classroom updates~~ ✅
+- ~~Issue #436: Google Sync returns 500 on parent sync-courses endpoint~~ ✅
+- ~~Issue #631: Add Child Google Classroom flow repeats for every child~~ ✅
+- ~~Issue #705: Google OAuth sign-in fails with 'Authentication failed'~~ ✅
+
+### Phase 1 - Bugs Fixed (Parent Dashboard & Filtering)
+- ~~Issue #276: Parent dashboard shows empty state - children disappeared after deploy~~ ✅
+- ~~Issue #305: Parent dashboard stat cards not filtering by selected child~~ ✅
+- ~~Issue #306: Course materials not filtering by selected child on parent dashboard~~ ✅
+- ~~Issue #582: Reorder Parent Dashboard sections: Tasks first (collapsible), then Course Materials, then Courses~~ ✅
+- ~~Issue #609: Add 'View Details' button to task detail modal on Parent Dashboard~~ ✅
+- ~~Issue #682: TasksPage: add child selector pills like Dashboard, organize button layout~~ ✅
+- ~~Issue #815: Parent Dashboard: Recent Activity not filtered by selected child~~ ✅
+- ~~Issue #854: bug: Parent Dashboard '+' button shows misleading 'Add Child' label~~ ✅
+- ~~Issue #861: bug: Duplicate 'Recent Activity' header on Parent Dashboard~~ ✅
+- ~~Issue #865: bug: Duplicate 'Student Details' header on Parent Dashboard~~ ✅
+
+### Phase 1 - Bugs Fixed (Course Materials & Content)
+- ~~Issue #421: Second parent cannot see study guides created by first parent for shared child~~ ✅
+- ~~Issue #423: Second parent cannot see tasks/study guides for shared child~~ ✅
+- ~~Issue #426: Header padding too large + course material fails to load for second parent~~ ✅
+- ~~Issue #522: Course material tile missing 'assign to course' option (regression)~~ ✅
+- ~~Issue #525: Create Study Material modal has unstyled upload tabs and drop zone~~ ✅
+- ~~Issue #533: My Kids page should show unassigned courses and materials in All Children view~~ ✅
+- ~~Issue #537: DOCX image/screenshot OCR not extracting math formulas from embedded images~~ ✅
+- ~~Issue #566: Course Materials and Courses pages stuck in loading skeleton~~ ✅
+- ~~Issue #570: Unassigned material stays in list after being reassigned to a course~~ ✅
+- ~~Issue #590: Course Materials student filter not filtering on backend~~ ✅
+- ~~Issue #593: Course Materials section shows study guides instead of course materials and incorrect count when filtered~~ ✅
+- ~~Issue #598: Quick actions bar: rename Study Material, remove Add Child/Course, restyle buttons~~ ✅
+- ~~Issue #615: Add Replace Document button to course material detail page~~ ✅
+- ~~Issue #617: Replace Document button not visible on content without existing file~~ ✅
+- ~~Issue #618: Upload Document modal missing overlay and not properly centered~~ ✅
+- ~~Issue #619: Download serves .txt instead of original document format (.docx)~~ ✅
+- ~~Issue #620: Upload document should run in background with status indicator~~ ✅
+- ~~Issue #622: Hide OCR-extracted text content for uploaded documents~~ ✅
+- ~~Issue #684: MyKidsPage: Classes and Materials still show as tiles instead of list~~ ✅
+- ~~Issue #685: CourseDetailPage: materials not clickable, panel width inconsistency~~ ✅
+- ~~Issue #702: Course Material Detail: + button should be inside Original Document panel, not tab bar~~ ✅
+- ~~Issue #704: Original Document tab shows blank - unable to load existing documents~~ ✅
+- ~~Issue #706: Study guide generation buttons disabled for materials with description-only content~~ ✅
+- ~~Issue #732: fix: flashcard keyboard navigation not implemented~~ ✅
+- ~~Issue #733: fix: shuffle button resets flashcards instead of shuffling~~ ✅
+- ~~Issue #750: Visual defects on CourseMaterialDetailPage after refactor~~ ✅
+- ~~Issue #809: Course Materials page: alignment, child filters, search box, back button~~ ✅
+- ~~Issue #817: Course material detail page: missing PageNav breadcrumb, header cut off~~ ✅
+- ~~Issue #825: Material detail page missing icon buttons (edit, archive, delete)~~ ✅
+- ~~Issue #842: Task creation from course materials should auto-link the course material~~ ✅
+- ~~Issue #845: Archived count always shows (0) on Course Materials page~~ ✅
+- ~~Issue #847: Convert Create Task to icon-only button on material detail page~~ ✅
+- ~~Issue #856: Material detail page shows content_type instead of course name~~ ✅
+
+### Phase 1 - Bugs Fixed (Navigation, Layout & Mobile)
+- ~~Issue #240: UX: Silent API error failures across multiple pages~~ ✅
+- ~~Issue #300: Logo shows white background in dark mode theme~~ ✅
+- ~~Issue #302: Child card quick actions don't filter destination pages by student~~ ✅
+- ~~Issue #303: My Kids page crashes with 'Something went wrong' when student_id param is present~~ ✅
+- ~~Issue #304: Production error on /my-kids page with student_id parameter~~ ✅
+- ~~Issue #419: Landing page: header logo too small and excessive hero padding~~ ✅
+- ~~Issue #422: Landing page: header logo too small, doesn't fill nav bar height~~ ✅
+- ~~Issue #447: Landing page mobile view: oversized logo, nav, and hero elements~~ ✅
+- ~~Issue #484: Mobile app: Use ClassBridge logo and match web theme on login screen~~ ✅
+- ~~Issue #560: Icon inconsistency between sidebar and dashboard quick actions~~ ✅
+- ~~Issue #568: My Kids page: duplicated child CTAs (tabs + cards)~~ ✅
+- ~~Issue #633: My Kids page missing Add Child and Add Course action buttons~~ ✅
+- ~~Issue #640: StudyGuidesPage: + Create button misaligned from filters~~ ✅
+- ~~Issue #642: TasksPage: + New Task button misaligned from header~~ ✅
+- ~~Issue #674: Messaging page missing sidebar nav and logo~~ ✅
+- ~~Issue #679: Course page: missing back nav, delete course, button icons, inconsistent panels~~ ✅
+- ~~Issue #680: Tasks page: replace dropdown filters with chip buttons, consistent New Task button~~ ✅
+- ~~Issue #681: CoursesPage: convert tile grid to clickable list with edit/delete per item~~ ✅
+- ~~Issue #683: Child selector state lost on page refresh across all pages~~ ✅
+- ~~Issue #753: Flash of 'Welcome Rohini' when navigating between pages~~ ✅
+- ~~Issue #808: Mobile responsive defects: content cutoff, checkbox styling, header overflow~~ ✅
+
+### Phase 1 - Bugs Fixed (Production, CI & Auth)
+- ~~Issue #863: fix: ESLint react-refresh rule blocks CI deploy~~ ✅
+- ~~Issue #866: bug: password reset takes too long / hangs on 'Resetting...'~~ ✅
+
+### Phase 1 - Bugs Fixed (Other)
+- ~~Issue #266: Admin broadcast emails render HTML as plain text~~ ✅
+- ~~Issue #267: Edit Child modal missing address and profile detail fields~~ ✅
+- ~~Issue #268: Pending invites still shown after student has accepted and linked~~ ✅
+- ~~Issue #299: Edit Child modal: missing email field + optional fields not collapsible~~ ✅
+- ~~Issue #393: Commit: Frontend bug fix and unit tests (#153, #154)~~ ✅
+- ~~Issue #416: Registration shows generic error instead of actual failure reason~~ ✅
+- ~~Issue #498: Parent cannot see children details~~ ✅
+- ~~Issue #562: All Children Overview panel: chevron doesn't rotate and size inconsistent with calendar~~ ✅
+- ~~Issue #563: Today's Focus task notification labels are not clickable~~ ✅
+- ~~Issue #584: Student filter not working across the application~~ ✅
+- ~~Issue #595: View Task link in reminder emails has missing domain~~ ✅
+- ~~Issue #599: Inspirational message not hidden when Today's Focus is closed~~ ✅
+- ~~Issue #616: Default theme should be light, not auto-detect dark from OS~~ ✅
+- ~~Issue #634: Unicode escape renders as literal text in StudentDetailPanel~~ ✅
+- ~~Issue #637: Student cards still show 'courses' instead of 'classes'~~ ✅
+- ~~Issue #687: Tasks: show edit icon on hover, consolidate edit/delete into modal~~ ✅
+- ~~Issue #689: fix: align Tasks filter panel rows vertically~~ ✅
+- ~~Issue #841: AI auto-task creation extracts historical dates from article content as due dates~~ ✅
+- ~~Issue #858: bug: Calendar default view should be 3-Day, not Week~~ ✅
+
+### Phase 1 - Features Built (UX & UI Polish)
+- ~~Issue #239: UX: Add confirmation dialogs to destructive actions missing them~~ ✅
+- ~~Issue #245: UX: Inconsistent component patterns across pages (child selector, buttons, empty states)~~ ✅
+- ~~Issue #249: Tech debt: Close stale issues and update REQUIREMENTS.md status markers~~ ✅
+- ~~Issue #605: Course Material Detail: Header card redesign & button upgrades~~ ✅
+- ~~Issue #608: Course Material Detail: Integration & responsive polish~~ ✅
+- ~~Issue #635: Rename 'Course' to 'Class' across all UI labels~~ ✅
+- ~~Issue #672: UI Polish: Personal hero headline with overdue task counts~~ ✅
+- ~~Issue #738: Parent Dashboard: Add skeleton loading states for dashboard sections~~ ✅
+- ~~Issue #739: Parent Dashboard: Improve + button affordance with tooltip~~ ✅
+- ~~Issue #740: Parent Dashboard: Auto-expand Student Detail panel when child selected~~ ✅
+- ~~Issue #766: ux: remove redundant ChildComparisonCards on parent dashboard~~ ✅
+- ~~Issue #819: Expand Class Materials search to also search course/material content~~ ✅
+
+### Phase 1 - Features Built (Backend & Notifications)
+- ~~Issue #214: Add email + in-app notification dispatch when a message is sent~~ ✅
+- ~~Issue #215: Create message notification email template~~ ✅
+- ~~Issue #216: Add dedup logic to prevent email spam on rapid-fire messages~~ ✅
+- ~~Issue #244: Performance: Add missing database indexes for frequent queries~~ ✅
+- ~~Issue #254: Send email notification when teacher enrolls existing student in course~~ ✅
+- ~~Issue #417: Email verification for registration (soft gate)~~ ✅
+
+### Phase 1 - Features Built (Testing)
+- ~~Issue #217: Add tests for message email notifications~~ ✅
+- ~~Issue #269: UI Tests: Test utilities & mock factories~~ ✅
+- ~~Issue #270: UI Tests: AuthContext + LoginPage + RegisterPage~~ ✅
+- ~~Issue #271: UI Tests: NotificationBell component~~ ✅
+- ~~Issue #272: UI Tests: MessagesPage~~ ✅
+- ~~Issue #274: UI Tests: TeacherDashboard + AdminDashboard + Dashboard dispatcher~~ ✅
+- ~~Issue #275: UI Tests: ParentDashboard + StudentDashboard (full coverage)~~ ✅
+- ~~Issue #490: Set up mobile testing framework (Jest + React Native Testing Library)~~ ✅
+- ~~Issue #491: Add unit tests for mobile LoginScreen~~ ✅
+- ~~Issue #492: Add unit tests for mobile dashboard screens (ParentDashboard, ChildOverview, Calendar)~~ ✅
+- ~~Issue #493: Add unit tests for mobile messaging screens (MessagesList, Chat)~~ ✅
+- ~~Issue #494: Add unit tests for mobile Notifications, Profile, and Placeholder screens~~ ✅
+- ~~Issue #742: Parent Dashboard: Mobile responsiveness testing and fixes~~ ✅
+
+### Phase 1 - Features Built (Mobile)
+- ~~Issue #248: UX: Mobile responsiveness gaps in 5+ CSS files~~ ✅
+- ~~Issue #338: Mobile: Implement Loading Skeletons~~ ✅
+- ~~Issue #356: Mobile Development: Skill Guide & Quick Reference Created~~ ✅
+
+### Phase 1 - Features Built (Other)
+- ~~Issue #81: Manual Course Enrollment (Student self-enroll)~~ ✅
+- ~~Issue #238: Notify parent when teacher adds their child to a course~~ ✅
+- ~~Issue #253: Resend/re-invite: allow teachers and parents to resend pending invites~~ ✅
+- ~~Issue #424: Web: Add Lottie animation loader for AI study material generation~~ ✅
+- ~~Issue #445: Add static Help/Getting Started page (Phase 1 FAQ)~~ ✅
+- ~~Issue #448: Prep: Create feature/phase-2 branch for Phase 2 development~~ ✅
+- ~~Issue #450: Sync emai-class-bridge repo with emai-dev-03 master~~ ✅
+- ~~Issue #580: Add focus prompt to CourseMaterialDetailPage inline generation~~ ✅
+- ~~Issue #606: Course Material Detail: Pill-style tabs & focus prompt relocation~~ ✅
+- ~~Issue #607: Course Material Detail: Content formatting, typography & OCR handling~~ ✅
+- ~~Issue #675: Enhanced password management: OAuth user reset + parent child password control~~ ✅
+- ~~Issue #741: Parent Dashboard: Add context preview to collapsed Activity Feed~~ ✅
+- ~~Issue #759: Evaluate cost-efficient hosting alternatives to GCP~~ ✅
+
+### March 6 Pilot - Additional Completed Tasks
+- ~~Issue #381: Custom Domain: Complete SSL provisioning for all domains~~ ✅
+- ~~Issue #382: Google OAuth: Update consent screen for custom domain~~ ✅
+- ~~Issue #383: Google OAuth: Add pilot test users~~ ✅
+- ~~Issue #390: Publish Expo Go project for mobile pilot distribution~~ ✅
+- ~~Issue #394: Commit: Mobile MVP app (ClassBridgeMobile/)~~ ✅
+- ~~Issue #403: GoDaddy: Remove parked A records blocking SSL provisioning~~ ✅
+- ~~Issue #404: Add missing A records for clazzbridge.com in GoDaddy~~ ✅
+- ~~Issue #405: Configure domain redirect: clazzbridge.com to classbridge.ca~~ ✅
+- ~~Issue #455: Pilot prep: Run enhanced smoke test against production~~ ✅
+- ~~Issue #456: Create Expo account and Apple Developer Program enrollment~~ ✅
+- ~~Issue #515: Security: Disable Swagger/OpenAPI docs in production~~ ✅
+- ~~Issue #516: Performance: Add GZip compression middleware~~ ✅
+- ~~Issue #585: Create Privacy Policy page at /privacy~~ ✅
+- ~~Issue #586: Create Terms of Service page at /terms~~ ✅
+- ~~Issue #588: Decide: Keep or drop gmail.readonly scope for OAuth verification~~ ✅
+- ~~Issue #726: Rename Google OAuth consent screen from EMAI to ClassBridge~~ ✅
+- ~~Issue #727: Implement incremental OAuth scopes (drop gmail.readonly from initial consent)~~ ✅
+
+### UX Audit - Additional Completed Items
+- ~~Issue #277: Teacher: Add class-wide announcement/broadcast feature~~ ✅
+- ~~Issue #278: Mobile: Fix split-pane layout for Messages and Teacher Comms~~ ✅
+- ~~Issue #279: Student: Add mobile breakpoint to Study Guide page~~ ✅
+- ~~Issue #280: Accessibility: Add focus traps, ARIA roles, and screen reader support to modals~~ ✅
+- ~~Issue #281: Accessibility: Add text/icon labels alongside color-only status indicators~~ ✅
+- ~~Issue #282: Parent: Auto-send invite email when creating/linking a child~~ ✅
+- ~~Issue #283: Student: Add visual progress bar to quiz experience~~ ✅
+- ~~Issue #284: Teacher: Enable email reply in Teacher Communications~~ ✅
+- ~~Issue #285: Parent: Add touch support for calendar drag-and-drop task rescheduling~~ ✅
+- ~~Issue #286: Parent: Consolidate teacher linking and messaging into unified flow~~ ✅
+- ~~Issue #287: All roles: Add first-time onboarding tooltip tour~~ ✅
+- ~~Issue #288: All roles: Add loading spinners during AI generation operations~~ ✅
+- ~~Issue #289: Student: Add gamification elements (streaks, badges, progress tracking)~~ ✅
+- ~~Issue #290: Teacher: Add course search/filter for managing many courses~~ ✅
+- ~~Issue #291: Parent: Clarify Dashboard vs My Kids page purpose and navigation~~ ✅
+- ~~Issue #292: Student: Add spaced repetition and 'mark for review' to flashcards~~ ✅
+- ~~Issue #293: All roles: Replace browser confirm() with styled ConfirmModal everywhere~~ ✅
+- ~~Issue #295: All roles: Add keyboard shortcuts legend (? key)~~ ✅
+- ~~Issue #298: Student: Remove or replace non-functional Average Grade dashboard card~~ ✅
+
+### Other Completed (Misc)
+- ~~Issue #120: Bug: Task status dropdown filters are not working~~ ✅
+- ~~Issue #121: Calendar: Enable editing task due date via drag-and-drop~~ ✅
+- ~~Issue #122: Recurring Tasks: Feasibility + implementation proposal~~ ✅
+- ~~Issue #196: Replace course content list text buttons with icon buttons~~ ✅
+- ~~Issue #197: Add Create Task button to all detail views~~ ✅
+- ~~Issue #220: Backend: Create student_teachers join table~~ ✅
+- ~~Issue #221: Backend: Add endpoint to link teacher to child~~ ✅
+- ~~Issue #222: Backend: Update message recipients to include directly-linked teachers~~ ✅
+- ~~Issue #223: Frontend: Add 'Link Teacher' UI to parent dashboard~~ ✅
+- ~~Issue #228: Role-based inspirational messages on dashboard~~ ✅
+- ~~Issue #229: Admin dashboard: manage inspirational messages~~ ✅
+- ~~Issue #231: Inspiration messages: file-based seed data (parent, teacher, student)~~ ✅
+- ~~Issue #232: Inspiration messages: frontend dashboard integration~~ ✅
+- ~~Issue #307: Fix ESLint errors before re-enabling CI lint check~~ ✅
+- ~~Issue #310: Implement API Versioning (v1)~~ ✅
+- ~~Issue #324: Mobile: Implement Authentication Flow (Login/Register)~~ ✅
+- ~~Issue #325: Mobile: Implement Dashboard Screen (Role-Based)~~ ✅
+- ~~Issue #326: Mobile: Implement Courses Screen with Pagination~~ ✅
+- ~~Issue #330: Mobile: Implement Messages/Chat Screen~~ ✅
+- ~~Issue #331: Mobile: Implement Notifications Screen~~ ✅
+- ~~Issue #332: Mobile: Implement User Profile & Settings Screen~~ ✅
+- ~~Issue #348: Documentation: Create Mobile Development Onboarding Guide~~ ✅
+- ~~Issue #384: Google OAuth: Publish app to production (post-pilot)~~ ✅
+- ~~Issue #391: Cleanup: Delete junk and duplicate files from working directory~~ ✅
+- ~~Issue #395: Commit: Infrastructure, monitoring, docs, and seed data~~ ✅
+- ~~Issue #517: Bug: Invalid /api/* paths return SPA HTML instead of JSON 404~~ ✅
+- ~~Issue #558: Parent dashboard: remove Student Details, add task detail modal, fix child filter for tasks~~ ✅
+- ~~Issue #625: Remove duplicate overdue notification banner from parent dashboard~~ ✅
+- ~~Issue #626: Reorder parent sidebar navigation~~ ✅
+- ~~Issue #628: Remove Courses section from parent dashboard~~ ✅
+- ~~Issue #638: Standardize UI: + icons on add/create buttons & collapsible sections~~ ✅
+- ~~Issue #644: Remove 'All Children' button and add toggle-to-deselect on child filter buttons~~ ✅
+- ~~Issue #676: Improve dark theme color palette for better contrast and visibility~~ ✅
+- ~~Issue #823: feat: soft delete (archive) course materials + button icon improvements~~ ✅
+
+### VASP/DTAP Compliance - Ontario School Board Approval (Open)
+- Issue #779: VASP Compliance: Migrate infrastructure to GCP Canada region (northamerica-northeast2)
+- Issue #780: VASP Compliance: Address OpenAI API data residency (US data transfer risk)
+- Issue #781: VASP Compliance: Update Privacy Policy & ToS for MFIPPA/PIPEDA compliance
+- Issue #782: VASP Compliance: Create Privacy Impact Assessment (PIA) document
+- Issue #783: VASP Compliance: Implement age-based consent mechanism (MFIPPA)
+- Issue #784: VASP Compliance: Implement MFA/2FA support
+- Issue #785: VASP Compliance: Implement SSO/SAML support for school board integration
+- Issue #786: VASP Compliance: WCAG 2.1 AA accessibility audit and remediation
+- Issue #787: VASP Compliance: Implement data export and right to erasure
+- Issue #788: VASP Compliance: Move JWT to httpOnly cookies (XSS mitigation)
+- Issue #789: VASP Compliance: Add dependency vulnerability scanning to CI/CD
+- Issue #790: VASP Compliance: Establish annual penetration testing program
+- Issue #791: VASP Compliance: Begin SOC 2 Type II readiness assessment
+- Issue #792: VASP Compliance: Obtain cyber liability insurance
+- Issue #793: VASP Compliance: Create Data Processing Agreement (DPA) template for school boards
+- Issue #794: VASP Compliance: Implement formal breach notification procedures
+- Issue #795: VASP Compliance: Complete K-12CVAT vendor questionnaire
+- Issue #796: VASP Compliance: Implement account lockout and enhanced brute-force protection
+- Issue #797: VASP Compliance: Implement consent management and cookie disclosure
+- Issue #798: VASP Compliance: Implement formal data retention and automated purging
+- Issue #799: VASP Compliance: Designate privacy officer and establish privacy program
+- Issue #800: VASP Compliance: Enhance audit logging for SOC 2 and VASP requirements
+- Issue #801: VASP Compliance: Evaluate D2L Brightspace integration (Ontario VLE)
+- Issue #802: VASP Compliance: Identify and engage pilot school board partner
+- Issue #803: EPIC: DTAP Compliance - Ontario School Board Digital Technology Approval Process
+- Issue #804: VASP Compliance: Add WAF/DDoS protection (Cloud Armor)
+- Issue #805: VASP Compliance: Add SAST/DAST security scanning to CI/CD
+- Issue #806: VASP Compliance: Create formal data classification and inventory
+- Issue #807: VASP Compliance: Implement comprehensive API rate limiting
+
+### Railway Migration (Open)
+- Issue #769: Add Railway URL to Google OAuth Console
+- Issue #770: Update CI/CD pipeline from GCP Cloud Run to Railway
+- Issue #771: Test core features on Railway deployment
+- Issue #772: Custom domain cutover: point classbridge.ca to Railway
+- Issue #773: Decommission GCP Cloud Run and Cloud SQL
+- Issue #774: Clean up Railway migration temp files (security)
+
+### LMS Abstraction & D2L Brightspace Integration (Open)
+- Issue #768: Research: Brightspace (D2L) API integration
+- Issue #775: Arch: LMS abstraction layer - Adapter Pattern + OneRoster canonical models
+- Issue #776: Refactor: Extract Google Classroom sync into LMSProvider adapter
+- Issue #777: D2L Integration Partner registration & Brightspace sandbox setup
+- Issue #778: Feature: Brightspace integration MVP - courses, assignments, grades sync
+
+### Mobile App Distribution & Testing (Open)
+- Issue #327: Mobile: Implement Course Detail Screen
+- Issue #328: Mobile: Implement Assignments Screen
+- Issue #329: Mobile: Implement Assignment Detail Screen
+- Issue #336: Mobile: Implement Offline Mode with Data Caching
+- Issue #339: Mobile: Write Mobile App Tests
+- Issue #342: Deployment: Beta Testing with TestFlight (iOS)
+- Issue #425: Mobile: Add Lottie animation loader (post-pilot)
+- Issue #457: Build and distribute ClassBridge mobile app via EAS Build
+- Issue #460: Link EAS project and update app.json placeholders
+- Issue #461: Register iOS pilot devices for ad hoc distribution
+- Issue #462: Update pilot docs with real download links after EAS Build
+- Issue #477: Android: Build APK and test on devices
+- Issue #478: iOS: Build IPA and distribute via TestFlight
+- Issue #482: Publish Android app to Google Play Store
+- Issue #483: Publish iOS app to Apple App Store
+
+### UI/UX Polish (Open)
+- Issue #198: UI Layout Redesign: turbo.ai-inspired navigation and content structure
+- Issue #199: UI Layout: Glassmorphism card design and improved dashboard cards
+- Issue #200: UI Layout: Improved information hierarchy and content density
+- Issue #264: Create reusable UI testing package from ClassBridge test infrastructure
+- Issue #669: UI Polish: Mute teal saturation on active sidebar nav items
+- Issue #670: UI Polish: Hide motivational quote on mobile (<640px) to save space
+- Issue #671: UI Polish: Add small labels below sidebar icons (icon+label stacked, ~80px)
+- Issue #678: Add multiple dark theme options for user selection
+- Issue #734: ui: redesign Course Material Detail page layout and polish
+
+### Performance & Scalability (Open)
+- Issue #242: Performance: Add pagination to unbounded list endpoints
+- Issue #243: Performance: Move synchronous email sending to background jobs
+- Issue #294: Teacher: Batch student invites via CSV upload or email list
+- Issue #757: Set up support email for OAuth consent screen
+
+### Business & Marketing (Open)
+- Issue #761: Marketing strategy & monetization plan for 100K users
+- Issue #762: Competitive analysis & market positioning
+
+### Other Open Issues
+- Issue #296: Teacher: Add course content reordering (drag-to-reorder)
+- Issue #297: Teacher: Add draft/publish visibility controls for course content
+- Issue #407: Clean up old Cloud Run URL from Google OAuth console
+- Issue #476: Re-enable Analytics nav link in Phase 2
+- Issue #479: Re-enable FAQ nav link in Phase 2
+- Issue #485: Phase 1 (MVP) Delivery Plan - ClassBridge Launch Readiness
+- Issue #579: Optimize multi-material generation: single API call vs parallel
+- Issue #587: Record Google OAuth demo video for scope verification
+- Issue #589: Submit Google OAuth app for production verification
+- Issue #623: Tag unlinked course materials and streamline parent-to-child assignment
+- Issue #735: refactor: break CourseMaterialDetailPage into sub-components
+- Issue #736: ux: improve focus prompt behavior across tabs
 
 ---
 
