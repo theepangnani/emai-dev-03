@@ -25,7 +25,7 @@ vi.mock('../api/client', () => ({
   messagesApi: {
     listConversations: (...args: unknown[]) => mockListConversations(...args),
     getConversation: (...args: unknown[]) => mockGetConversation(...args),
-    getRecipients: () => mockGetRecipients(),
+    getRecipients: (...args: unknown[]) => mockGetRecipients(...args),
     sendMessage: (...args: unknown[]) => mockSendMessage(...args),
     createConversation: (...args: unknown[]) => mockCreateConversation(...args),
     markAsRead: (...args: unknown[]) => mockMarkAsRead(...args),
@@ -303,13 +303,13 @@ describe('MessagesPage', () => {
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
 
-    // Modal header and form
+    // Modal header and searchable recipient input
     expect(screen.getByRole('heading', { name: /new message/i })).toBeInTheDocument()
     expect(screen.getByText('To:')).toBeInTheDocument()
-    expect(screen.getByText(/select a recipient/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/search for a user/i)).toBeInTheDocument()
   })
 
-  it('loads recipients in new conversation modal', async () => {
+  it('loads recipients in new conversation modal on focus', async () => {
     const recipients = [
       createMockRecipient({ user_id: 10, full_name: 'Mrs. Smith', role: 'teacher' }),
       createMockRecipient({ user_id: 11, full_name: 'Admin Jane', role: 'admin' }),
@@ -326,8 +326,14 @@ describe('MessagesPage', () => {
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
 
-    expect(screen.getByText(/mrs\. smith/i)).toBeInTheDocument()
-    expect(screen.getByText(/admin jane/i)).toBeInTheDocument()
+    // Focus the recipient search input to show dropdown suggestions
+    const recipientInput = screen.getByPlaceholderText(/search for a user/i)
+    await user.click(recipientInput)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mrs. Smith')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Admin Jane')).toBeInTheDocument()
   })
 
   it('creates conversation via modal', async () => {
@@ -353,10 +359,15 @@ describe('MessagesPage', () => {
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
 
-    // Fill form — labels aren't linked via for/id, so query by role
-    const selects = screen.getAllByRole('combobox')
-    const recipientSelect = selects.find(s => s.querySelector('option[value="10"]'))!
-    await user.selectOptions(recipientSelect, '10')
+    // Select recipient via searchable input dropdown
+    const recipientInput = screen.getByPlaceholderText(/search for a user/i)
+    await user.click(recipientInput)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mrs. Smith')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Mrs. Smith'))
+
     await user.type(screen.getByPlaceholderText(/homework question/i), 'Quick question')
     await user.type(screen.getByPlaceholderText(/write your message/i), 'Hello teacher')
     await user.click(screen.getByRole('button', { name: /send message/i }))
@@ -368,7 +379,7 @@ describe('MessagesPage', () => {
     })
   })
 
-  it('shows no recipients message when none available', async () => {
+  it('shows search input even when no pre-loaded recipients', async () => {
     mockGetRecipients.mockResolvedValue([])
     mockListConversations.mockResolvedValue([])
     const user = userEvent.setup()
@@ -381,7 +392,8 @@ describe('MessagesPage', () => {
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
 
-    expect(screen.getByText(/no recipients available/i)).toBeInTheDocument()
+    // Searchable input is always shown (users can search for any ClassBridge user)
+    expect(screen.getByPlaceholderText(/search for a user/i)).toBeInTheDocument()
   })
 
   it('closes modal via cancel button', async () => {
