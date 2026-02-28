@@ -14,6 +14,9 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
+import { StreakMilestone } from '../components/StreakMilestone';
+import { ContinueStudying } from '../components/ContinueStudying';
+import { StreakHistory } from '../components/StreakHistory';
 import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -669,6 +672,8 @@ export function StudentDashboard() {
               <span>{streak} day{streak !== 1 ? 's' : ''}</span>
             </div>
           )}
+          <StreakMilestone streak={streak} />
+          <StreakHistory studyGuides={studyGuides} />
           <div className="sd-stat-chip">
             <span className="sd-stat-icon">{'\u{1F4DA}'}</span>
             <span>{courses.length} class{courses.length !== 1 ? 'es' : ''}</span>
@@ -807,6 +812,9 @@ export function StudentDashboard() {
           </button>
         )}
       </section>
+
+      {/* ── Continue Studying ─────────────────────────────── */}
+      <ContinueStudying studyGuides={studyGuides} courses={courses} />
 
       {/* ── Main Content Grid ────────────────────────────── */}
       <div className="sd-main-grid">

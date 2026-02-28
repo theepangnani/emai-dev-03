@@ -1,0 +1,60 @@
+/* ── Streak History (7-day dots) ─────────── */
+
+.streak-history {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+}
+
+.streak-history-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.streak-history-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.streak-history-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-border);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.streak-history-dot.active {
+  background: var(--color-accent-warm);
+  box-shadow: 0 0 0 2px rgba(244, 128, 31, 0.2);
+}
+
+.streak-history-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── Responsive ──────────────────────────── */
+@media (max-width: 480px) {
+  .streak-history-dots {
+    gap: 6px;
+  }
+
+  .streak-history-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .streak-history-label {
+    font-size: 8px;
+  }
+}
