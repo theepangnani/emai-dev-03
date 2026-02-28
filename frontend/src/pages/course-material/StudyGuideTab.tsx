@@ -1,7 +1,9 @@
 import { Suspense, useRef, useState } from 'react';
 import type { StudyGuide } from '../../api/client';
+import type { TaskItem } from '../../api/tasks';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
+import { LinkedTasksBanner } from './LinkedTasksBanner';
 
 interface StudyGuideTabProps {
   studyGuide: StudyGuide | undefined;
@@ -11,6 +13,7 @@ interface StudyGuideTabProps {
   onGenerate: () => void;
   onDelete: (guide: StudyGuide) => void;
   hasSourceContent: boolean;
+  linkedTasks?: TaskItem[];
 }
 
 export function StudyGuideTab({
@@ -21,6 +24,7 @@ export function StudyGuideTab({
   onGenerate,
   onDelete,
   hasSourceContent,
+  linkedTasks = [],
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -59,6 +63,7 @@ export function StudyGuideTab({
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
+          <LinkedTasksBanner tasks={linkedTasks} />
           <div ref={printRef}>
             <ContentCard>
               <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>

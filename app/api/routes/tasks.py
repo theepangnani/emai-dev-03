@@ -108,6 +108,7 @@ def list_tasks(
     priority: Optional[str] = Query(None),
     include_archived: bool = Query(False),
     course_id: Optional[int] = Query(None),
+    study_guide_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -145,6 +146,8 @@ def list_tasks(
         query = query.filter(Task.priority == _normalize_priority(priority))
     if course_id is not None:
         query = query.filter(Task.course_id == course_id)
+    if study_guide_id is not None:
+        query = query.filter(Task.study_guide_id == study_guide_id)
 
     # Portable NULL handling across DB backends: non-null due dates first, nulls last.
     tasks = query.order_by(
