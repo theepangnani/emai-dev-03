@@ -49,8 +49,22 @@ export interface RecipientOption {
   student_names: string[];
 }
 
+export interface MessageSearchResult {
+  conversation_id: number;
+  conversation_subject: string | null;
+  message_id: number;
+  message_content: string;
+  sender_name: string;
+  sent_at: string;
+}
+
 // Messages API
 export const messagesApi = {
+  search: async (query: string) => {
+    const response = await api.get('/api/messages/search', { params: { q: query } });
+    return response.data as MessageSearchResult[];
+  },
+
   getRecipients: async () => {
     const response = await api.get('/api/messages/recipients');
     return response.data as RecipientOption[];
