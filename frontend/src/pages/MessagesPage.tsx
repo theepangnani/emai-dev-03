@@ -264,8 +264,10 @@ export function MessagesPage() {
           </div>
           {conversations.length === 0 ? (
             <EmptyState
-              title="No conversations yet"
-              description="Start a new message to begin"
+              icon={<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
+              title="No messages yet"
+              description="Start a conversation with your child's teacher."
+              action={{ label: 'New Message', onClick: () => setShowNewModal(true) }}
               variant="compact"
             />
           ) : (

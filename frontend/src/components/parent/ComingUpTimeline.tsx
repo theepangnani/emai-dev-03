@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CalendarAssignment } from '../calendar/types';
 import type { TaskItem } from '../../api/tasks';
+import EmptyState from '../EmptyState';
 
 /* ── Interfaces ──────────────────────────────────────────── */
 
@@ -28,6 +29,8 @@ interface ComingUpTimelineProps {
   onToggleTask: (task: TaskItem) => void;
   onNavigateStudy: (assignment: CalendarAssignment) => void;
   onDismiss?: () => void;
+  onCreateTask?: () => void;
+  onUploadMaterial?: () => void;
 }
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -69,6 +72,8 @@ export function ComingUpTimeline({
   onToggleTask,
   onNavigateStudy,
   onDismiss,
+  onCreateTask,
+  onUploadMaterial,
 }: ComingUpTimelineProps) {
   const navigate = useNavigate();
 
@@ -151,7 +156,17 @@ export function ComingUpTimeline({
   }, [calendarAssignments]);
 
   if (timelineItems.length === 0) {
-    return null;
+    const emptyActions = [];
+    if (onCreateTask) emptyActions.push({ label: 'Create Task', onClick: onCreateTask, variant: 'secondary' as const });
+    if (onUploadMaterial) emptyActions.push({ label: 'Upload Materials', onClick: onUploadMaterial, variant: 'secondary' as const });
+    return (
+      <EmptyState
+        title="No upcoming items"
+        description="Create a task or upload materials to get started."
+        actions={emptyActions}
+        variant="compact"
+      />
+    );
   }
 
   const displayed = timelineItems.slice(0, 10);
