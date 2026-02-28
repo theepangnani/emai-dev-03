@@ -40,6 +40,9 @@ apscheduler>=3.10.0
 # Production server
 gunicorn>=22.0.0
 
+# MCP (Model Context Protocol) server
+fastapi-mcp>=0.4.0
+
 # Utilities
 pydantic[email]>=2.10.0
 pydantic-settings>=2.6.0
