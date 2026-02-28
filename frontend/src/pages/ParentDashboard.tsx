@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
@@ -145,11 +145,11 @@ export function ParentDashboard() {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
       if (next === 'simplified') {
-        const collapsed: SectionStates = { comingUp: false, studentDetail: false, activityFeed: false, grades: false };
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false, grades: false };
         setSectionStates(collapsed);
         saveSectionStates(collapsed);
       } else {
-        const expanded: SectionStates = { comingUp: true, studentDetail: true, activityFeed: true, grades: true };
+        const expanded: SectionStates = { comingUp: true, studentDetail: true, grades: true };
         setSectionStates(expanded);
         saveSectionStates(expanded);
       }
@@ -322,12 +322,17 @@ export function ParentDashboard() {
                   </button>
                 );
               })}
-              <AddActionButton
-                actions={[
-                  { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
-                  { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
-                ]}
-              />
+              {/* "+" add child button */}
+              <button
+                className="pd-child-tab pd-add-child-btn"
+                onClick={() => pd.setShowLinkModal(true)}
+                aria-label="Add child"
+                title="Add child"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -475,20 +480,7 @@ export function ParentDashboard() {
               onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
             />
           </CollapsibleSection>
-
-          {/* Activity Feed (#832 - collapsible) */}
-          <CollapsibleSection
-            title="Recent Activity"
-            badge={activityCount}
-            expanded={sectionStates.activityFeed}
-            onToggle={() => updateSection('activityFeed', !sectionStates.activityFeed)}
-          >
-            <ActivityFeed
-              courseMaterials={pd.courseMaterials}
-              onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
-              onViewAllMaterials={() => pd.navigate('/course-materials')}
-            />
-          </CollapsibleSection>
+
 
           {/* Calendar moved to Tasks page */}
         </>
@@ -834,7 +826,7 @@ export function ParentDashboard() {
               {pd.taskDetailModal.description && <p className="pd-task-detail-desc">{pd.taskDetailModal.description}</p>}
               <div className="pd-task-detail-fields">
                 <div className="pd-task-detail-row"><span className="pd-task-detail-label">Status</span><span className={`sdp-task-badge ${pd.taskDetailModal.is_completed ? 'completed' : 'pending'}`}>{pd.taskDetailModal.is_completed ? 'Completed' : 'Pending'}</span></div>
-                {pd.taskDetailModal.due_date && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Due Date</span><span>{new Date(pd.taskDetailModal.due_date).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>}
+                {pd.taskDetailModal.due_date && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Due Date</span><span>{new Date(pd.taskDetailModal.due_date.includes('T') ? pd.taskDetailModal.due_date : pd.taskDetailModal.due_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>}
                 {pd.taskDetailModal.priority && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Priority</span><span className={`pd-task-priority-badge ${pd.taskDetailModal.priority}`}>{pd.taskDetailModal.priority === 'high' ? '\u25B2 ' : pd.taskDetailModal.priority === 'low' ? '\u25BC ' : '\u25CF '}{pd.taskDetailModal.priority}</span></div>}
                 {pd.taskDetailModal.assignee_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Assigned To</span><span>{pd.taskDetailModal.assignee_name}</span></div>}
                 {pd.taskDetailModal.creator_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Created By</span><span>{pd.taskDetailModal.creator_name}</span></div>}

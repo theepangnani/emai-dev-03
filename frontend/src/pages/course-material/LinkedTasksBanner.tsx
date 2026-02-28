@@ -19,11 +19,16 @@ export function LinkedTasksBanner({ tasks }: LinkedTasksBannerProps) {
             </svg>
           </span>
           <span className="cm-linked-task-title">{task.title}</span>
-          {task.due_date && (
-            <span className={`cm-linked-task-due${new Date(task.due_date) < new Date() && !task.is_completed ? ' overdue' : ''}`}>
-              Due: {new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-          )}
+          {task.due_date && (() => {
+            // Append T00:00:00 to date-only strings so JS parses as local midnight, not UTC
+            const d = new Date(task.due_date.includes('T') ? task.due_date : task.due_date + 'T00:00:00');
+            const isOverdue = d < new Date() && !task.is_completed;
+            return (
+              <span className={`cm-linked-task-due${isOverdue ? ' overdue' : ''}`}>
+                Due: {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            );
+          })()}
           {task.is_completed && <span className="cm-linked-task-done">Done</span>}
         </Link>
       ))}

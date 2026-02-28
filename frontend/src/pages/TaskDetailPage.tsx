@@ -328,13 +328,17 @@ export function TaskDetailPage() {
                   <div className="td-meta-item">
                     <span className="td-meta-label">Due</span>
                     <span className="td-meta-value">
-                      {new Date(task.due_date).toLocaleDateString(undefined, {
+                      {new Date(task.due_date.includes('T') ? task.due_date : task.due_date + 'T00:00:00').toLocaleDateString(undefined, {
                         weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
                       })}
-                      {' at '}
-                      {new Date(task.due_date).toLocaleTimeString(undefined, {
-                        hour: 'numeric', minute: '2-digit',
-                      })}
+                      {task.due_date.includes('T') && (
+                        <>
+                          {' at '}
+                          {new Date(task.due_date).toLocaleTimeString(undefined, {
+                            hour: 'numeric', minute: '2-digit',
+                          })}
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
