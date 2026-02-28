@@ -146,7 +146,7 @@ export function QuizTab({
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
             <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
