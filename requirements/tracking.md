@@ -804,12 +804,15 @@ Current feature issues are tracked in GitHub:
 - Issue #806: VASP Compliance: Create formal data classification and inventory
 - Issue #807: VASP Compliance: Implement comprehensive API rate limiting
 
-### Railway Migration (Open)
-- Issue #769: Add Railway URL to Google OAuth Console
-- Issue #770: Update CI/CD pipeline from GCP Cloud Run to Railway
-- Issue #771: Test core features on Railway deployment
-- Issue #772: Custom domain cutover: point classbridge.ca to Railway
-- Issue #773: Decommission GCP Cloud Run and Cloud SQL
+### Railway Migration — Phase 2 Deployment (Open)
+> **Strategy:** `feature/phase-2` branch deploys to Railway via `clazzbridge.com`. `master` stays on GCP Cloud Run via `classbridge.ca`.
+> **Approach:** Railway auto-deploy with GitHub Actions check suites gating.
+
+- Issue #769: Add Railway URL + clazzbridge.com to Google OAuth Console
+- Issue #770: Create deploy-railway.yml CI workflow for feature/phase-2 branch
+- Issue #771: Test core features (Phase 1 + Phase 2) on Railway deployment
+- Issue #772: Custom domain cutover: point clazzbridge.com to Railway
+- Issue #773: Decommission GCP Cloud Run and Cloud SQL (DEFERRED — after full migration)
 - Issue #774: Clean up Railway migration temp files (security)
 
 ### LMS Abstraction & D2L Brightspace Integration (Open)
