@@ -45,13 +45,9 @@ vi.mock('../components/CreateTaskModal', () => ({
     open ? <div data-testid="create-task-modal">Task Modal</div> : null,
 }))
 
-// Mock react-markdown to avoid lazy-loading complexity in tests
-vi.mock('react-markdown', () => ({
-  default: ({ children }: { children: string }) => <div data-testid="markdown-content">{children}</div>,
-}))
-
-vi.mock('remark-gfm', () => ({
-  default: () => {},
+vi.mock('../components/ContentCard', () => ({
+  ContentCard: ({ children }: { children: React.ReactNode }) => <div data-testid="content-card">{children}</div>,
+  MarkdownBody: ({ content }: { content: string }) => <div data-testid="markdown-content">{content}</div>,
 }))
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -109,7 +105,9 @@ describe('StudyGuidePage', () => {
   it('renders guide title and content after loading', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Study Guide: Photosynthesis')).toBeInTheDocument()
+      // Title appears in both breadcrumb and heading
+      const matches = screen.getAllByText('Study Guide: Photosynthesis')
+      expect(matches.length).toBeGreaterThanOrEqual(1)
     })
     // Markdown renderer loads via dynamic import — wait for it
     await waitFor(() => {
@@ -119,8 +117,10 @@ describe('StudyGuidePage', () => {
 
   it('shows creation date', async () => {
     renderStudyGuide()
+    // The date is rendered as a formatted date string without "Created:" prefix
+    const expectedDate = new Date('2025-06-15T10:00:00Z').toLocaleDateString()
     await waitFor(() => {
-      expect(screen.getByText(/Created:/)).toBeInTheDocument()
+      expect(screen.getByText(expectedDate)).toBeInTheDocument()
     })
   })
 
@@ -135,18 +135,20 @@ describe('StudyGuidePage', () => {
   it('does not show version badge for version 1', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Study Guide: Photosynthesis')).toBeInTheDocument()
+      const matches = screen.getAllByText('Study Guide: Photosynthesis')
+      expect(matches.length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.queryByText('v1')).not.toBeInTheDocument()
   })
 
   it('renders action buttons (Print, Regenerate, Delete)', async () => {
     renderStudyGuide()
+    // Action buttons are icon-only with title attributes
     await waitFor(() => {
-      expect(screen.getByText('Print')).toBeInTheDocument()
+      expect(screen.getByTitle('Print')).toBeInTheDocument()
     })
-    expect(screen.getByText('Regenerate')).toBeInTheDocument()
-    expect(screen.getByText('Delete')).toBeInTheDocument()
+    expect(screen.getByTitle('Regenerate')).toBeInTheDocument()
+    expect(screen.getByTitle('Delete')).toBeInTheDocument()
   })
 
   it('deletes guide after confirmation', async () => {
@@ -154,10 +156,10 @@ describe('StudyGuidePage', () => {
     mockDeleteGuide.mockResolvedValue(undefined)
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Delete')).toBeInTheDocument()
+      expect(screen.getByTitle('Delete')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Delete'))
+    await user.click(screen.getByTitle('Delete'))
 
     // Confirm modal should appear
     await waitFor(() => {
@@ -178,10 +180,10 @@ describe('StudyGuidePage', () => {
     const user = userEvent.setup()
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Delete')).toBeInTheDocument()
+      expect(screen.getByTitle('Delete')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Delete'))
+    await user.click(screen.getByTitle('Delete'))
 
     await waitFor(() => {
       expect(screen.getByText('Delete Study Guide')).toBeInTheDocument()
@@ -196,17 +198,17 @@ describe('StudyGuidePage', () => {
     mockGenerateGuide.mockResolvedValue({ id: 99 })
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Regenerate')).toBeInTheDocument()
+      expect(screen.getByTitle('Regenerate')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Regenerate'))
+    await user.click(screen.getByTitle('Regenerate'))
 
     await waitFor(() => {
       expect(mockGenerateGuide).toHaveBeenCalledWith(
         expect.objectContaining({ regenerate_from_id: 7 }),
       )
     })
-    expect(mockNavigate).toHaveBeenCalledWith('/study/guide/99')
+    expect(mockNavigate).toHaveBeenCalledWith('/study/guide/99', { state: { newGuide: true } })
   })
 
   it('shows error when regenerate fails', async () => {
@@ -214,10 +216,10 @@ describe('StudyGuidePage', () => {
     mockGenerateGuide.mockRejectedValue(new Error('AI failed'))
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText('Regenerate')).toBeInTheDocument()
+      expect(screen.getByTitle('Regenerate')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Regenerate'))
+    await user.click(screen.getByTitle('Regenerate'))
 
     await waitFor(() => {
       expect(screen.getByText('Failed to regenerate')).toBeInTheDocument()
@@ -228,17 +230,19 @@ describe('StudyGuidePage', () => {
     const user = userEvent.setup()
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByTitle('Create task')).toBeInTheDocument()
+      expect(screen.getByTitle('Create Task')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByTitle('Create task'))
+    await user.click(screen.getByTitle('Create Task'))
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 
-  it('has back link to dashboard', async () => {
+  it('has page navigation with back button', async () => {
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByText(/Back to Dashboard/)).toBeInTheDocument()
+      // PageNav provides deterministic back link to Course Materials
+      const navLinks = screen.getAllByText('Course Materials')
+      expect(navLinks.length).toBeGreaterThanOrEqual(1)
     })
   })
 })

@@ -52,20 +52,23 @@ describe('DashboardLayout', () => {
 
   it('shows parent nav items for parent role', () => {
     renderLayout('parent')
-    expect(screen.getByText('Overview')).toBeInTheDocument()
-    expect(screen.getByText('Child Profiles')).toBeInTheDocument()
-    expect(screen.queryByText('Courses')).not.toBeInTheDocument()
+    // Nav items appear in both slide-out menu and persistent sidebar
+    expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('My Kids').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Messages').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Help').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows standard nav items for student role', () => {
     renderLayout('student')
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.getByText('Courses')).toBeInTheDocument()
-    expect(screen.getByText('Course Materials')).toBeInTheDocument()
+    expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Classes').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Materials').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows teacher comms for teacher role', () => {
     renderLayout('teacher')
-    expect(screen.getByText('Teacher Comms')).toBeInTheDocument()
+    expect(screen.getAllByText('Teacher Comms').length).toBeGreaterThanOrEqual(1)
   })
 })

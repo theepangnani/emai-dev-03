@@ -1,0 +1,167 @@
+/* ─────────────────────────────────────────────────────
+   PageNav — Contextual navigation strip
+   Prominent back button + breadcrumb trail
+   ───────────────────────────────────────────────────── */
+
+.page-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  margin: -8px -4px 16px;
+  background: var(--color-surface-alt);
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  min-height: 44px;
+}
+
+/* ── Back button ── */
+
+.page-nav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 8px;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.page-nav-back:hover {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  box-shadow: 0 2px 8px var(--color-accent-light);
+}
+
+.page-nav-back:active {
+  transform: scale(0.97);
+}
+
+.page-nav-back:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.page-nav-back-icon {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.page-nav-back:hover .page-nav-back-icon {
+  transform: translateX(-2px);
+}
+
+.page-nav-back-label {
+  line-height: 1;
+}
+
+/* ── Breadcrumb trail ── */
+
+.page-nav-trail {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.page-nav-trail-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.page-nav-trail-sep {
+  color: var(--color-ink-muted);
+  opacity: 0.4;
+  font-size: 12px;
+  margin: 0 4px;
+  font-weight: 300;
+}
+
+.page-nav-trail-link {
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.page-nav-trail-link:hover {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
+.page-nav-trail-current {
+  color: var(--color-ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Desktop/mobile trail visibility ── */
+
+.page-nav-trail-mobile {
+  display: none;
+}
+
+/* ── Mobile: show truncated trail, enlarge back ── */
+
+@media (max-width: 768px) {
+  .page-nav {
+    padding: 8px 12px;
+    margin: -4px -4px 12px;
+    gap: 8px;
+    border-radius: 8px;
+  }
+
+  .page-nav-trail-desktop {
+    display: none;
+  }
+
+  .page-nav-trail-mobile {
+    display: flex;
+    font-size: 12px;
+  }
+
+  .page-nav-back {
+    font-size: 15px;
+    padding: 8px 16px 8px 10px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ── Dark theme ── */
+
+[data-theme="dark"] .page-nav {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .page-nav-back {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+[data-theme="dark"] .page-nav-back:hover {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  box-shadow: 0 2px 12px var(--color-accent-light);
+}
+
+/* ── Print: hide nav strip ── */
+
+@media print {
+  .page-nav {
+    display: none;
+  }
+}

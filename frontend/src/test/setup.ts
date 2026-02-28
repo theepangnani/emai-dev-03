@@ -1,5 +1,12 @@
 import '@testing-library/jest-dom/vitest'
 
+// Mock ResizeObserver (not available in jsdom)
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {}

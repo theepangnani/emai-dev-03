@@ -1,14 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
-import type { StudyGuide, QuizQuestion } from '../api/client';
+import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { PageNav } from '../components/PageNav';
 import './QuizPage.css';
 
 export function QuizPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
   const [guide, setGuide] = useState<StudyGuide | null>(null);
+  const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -18,6 +23,9 @@ export function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savedResultId = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -36,6 +44,14 @@ export function QuizPage() {
     };
     fetchQuiz();
   }, [id]);
+
+  // Resolve which student this quiz is for (parents only)
+  useEffect(() => {
+    if (!isParent || !guide) return;
+    studyApi.resolveStudent(
+      guide.course_id ? { course_id: guide.course_id } : { study_guide_id: guide.id }
+    ).then(setResolvedStudent).catch(() => {});
+  }, [isParent, guide]);
 
   const handleAnswer = (answer: string) => {
     setSelectedAnswer(answer);
@@ -63,6 +79,26 @@ export function QuizPage() {
 
   const isQuizComplete = currentQuestion === questions.length - 1 && showResult;
 
+  // Save quiz result when complete
+  useEffect(() => {
+    if (!isQuizComplete || !guide || savedResultId.current !== null) return;
+    setSaving(true);
+    setSaveError(null);
+    studyApi.saveQuizResult({
+      study_guide_id: guide.id,
+      score,
+      total_questions: questions.length,
+      answers,
+      ...(resolvedStudent ? { student_user_id: resolvedStudent.student_user_id } : {}),
+    }).then((result) => {
+      savedResultId.current = result.id;
+    }).catch(() => {
+      setSaveError('Could not save result');
+    }).finally(() => {
+      setSaving(false);
+    });
+  }, [isQuizComplete, guide, score, questions.length, answers]);
+
   if (loading) {
     return (
       <div className="quiz-page">
@@ -88,7 +124,14 @@ export function QuizPage() {
     return (
       <div className="quiz-page">
         <div className="error">{error || 'Quiz not found'}</div>
-        <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Course Materials', to: '/course-materials' },
+          ...(guide?.course_content_id
+            ? [{ label: guide.title.replace(/^Quiz:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+            : []),
+          { label: 'Quiz' },
+        ]} />
       </div>
     );
   }
@@ -98,7 +141,14 @@ export function QuizPage() {
   return (
     <div className="quiz-page">
       <div className="quiz-header">
-        <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Course Materials', to: '/course-materials' },
+          ...(guide?.course_content_id
+            ? [{ label: guide.title.replace(/^Quiz:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+            : []),
+          { label: 'Quiz' },
+        ]} />
         <h1>
           {guide.title}
           {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>v{guide.version}</span>}
@@ -109,6 +159,13 @@ export function QuizPage() {
           onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
         />
         <button className="submit-btn" onClick={() => setShowTaskModal(true)} title="Create task" style={{ padding: '6px 12px', fontSize: '13px' }}>&#128203; + Task</button>
+        {isParent && (
+          <div className={`quiz-student-banner ${resolvedStudent ? 'resolved' : 'unresolved'}`}>
+            {resolvedStudent
+              ? <>Taking quiz for: <strong>{resolvedStudent.student_name}</strong></>
+              : 'This quiz is not linked to a student. Results will be saved under your account.'}
+          </div>
+        )}
         <div className="progress">
           Question {currentQuestion + 1} of {questions.length}
         </div>
@@ -199,6 +256,11 @@ export function QuizPage() {
                 return 'Keep studying — every attempt makes you stronger!';
               })()}
             </p>
+            {saving && <p className="save-status">Saving result...</p>}
+            {saveError && <p className="save-status save-error">{saveError}</p>}
+            {savedResultId.current !== null && !saving && !saveError && (
+              <p className="save-status save-success">Result saved</p>
+            )}
             <div className="results-actions">
               <button
                 className="retry-btn"
@@ -208,10 +270,15 @@ export function QuizPage() {
                   setShowResult(false);
                   setScore(0);
                   setAnswers({});
+                  savedResultId.current = null;
+                  setSaveError(null);
                 }}
               >
                 Try Again
               </button>
+              <Link to={`/quiz-history?quiz=${guide.id}`} className="done-btn" style={{ background: '#e3f2fd', color: '#1565c0' }}>
+                View History
+              </Link>
               <Link to="/dashboard" className="done-btn">
                 Done
               </Link>

@@ -26,7 +26,21 @@ export interface TaskItem {
   updated_at: string | null;
 }
 
-// Tasks API — mobile supports list + toggle completion
+export interface AssignableUser {
+  user_id: number;
+  name: string;
+  role: string;
+}
+
+export interface CreateTaskData {
+  title: string;
+  description?: string;
+  due_date?: string;
+  assigned_to_user_id?: number;
+  priority?: string;
+}
+
+// Tasks API
 export const tasksApi = {
   list: async (params?: {
     assigned_to_user_id?: number;
@@ -38,10 +52,35 @@ export const tasksApi = {
     return response.data as TaskItem[];
   },
 
+  create: async (data: CreateTaskData) => {
+    const response = await api.post('/api/tasks/', data);
+    return response.data as TaskItem;
+  },
+
+  update: async (
+    taskId: number,
+    data: {
+      title?: string;
+      description?: string;
+      due_date?: string;
+      is_completed?: boolean;
+      priority?: string;
+      assigned_to_user_id?: number;
+    }
+  ) => {
+    const response = await api.patch(`/api/tasks/${taskId}`, data);
+    return response.data as TaskItem;
+  },
+
   toggleComplete: async (taskId: number, isCompleted: boolean) => {
     const response = await api.patch(`/api/tasks/${taskId}`, {
       is_completed: isCompleted,
     });
     return response.data as TaskItem;
+  },
+
+  getAssignableUsers: async () => {
+    const response = await api.get('/api/tasks/assignable-users');
+    return response.data as AssignableUser[];
   },
 };

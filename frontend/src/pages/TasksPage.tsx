@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { tasksApi } from '../api/client';
-import type { TaskItem, AssignableUser } from '../api/client';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { tasksApi, parentApi } from '../api/client';
+import type { TaskItem, AssignableUser, ChildSummary } from '../api/client';
+import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { CalendarView } from '../components/calendar/CalendarView';
+import type { CalendarAssignment } from '../components/calendar/types';
+import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
+import { AddActionButton } from '../components/AddActionButton';
+import EmptyState from '../components/EmptyState';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -15,20 +23,33 @@ type FilterDue = 'all' | 'overdue' | 'today' | 'week';
 export function TasksPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [children, setChildren] = useState<ChildSummary[]>([]);
+  const isParent = user?.role === 'parent';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [filterPriority, setFilterPriority] = useState<FilterPriority>('all');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>(() => {
+    const status = searchParams.get('status');
+    return (status === 'pending' || status === 'completed' || status === 'archived') ? status : 'all';
+  });
+  const [filterPriority, setFilterPriority] = useState<FilterPriority>(() => {
+    const priority = searchParams.get('priority');
+    return (priority === 'low' || priority === 'medium' || priority === 'high') ? priority : 'all';
+  });
   const [filterDue, setFilterDue] = useState<FilterDue>(() => {
     const due = searchParams.get('due');
     return (due === 'overdue' || due === 'today' || due === 'week') ? due : 'all';
   });
   const [filterAssignee, setFilterAssignee] = useState<number | 'all'>(() => {
+    const navState = location.state as { selectedChild?: number | null } | null;
+    if (navState?.selectedChild) return navState.selectedChild;
     const assignee = searchParams.get('assignee');
-    return assignee ? Number(assignee) : 'all';
+    if (assignee) return Number(assignee);
+    const stored = sessionStorage.getItem('selectedChildId');
+    return stored ? Number(stored) : 'all';
   });
 
   // Create task form
@@ -48,12 +69,44 @@ export function TasksPage() {
   const [editPriority, setEditPriority] = useState('medium');
   const [editAssignee, setEditAssignee] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
+  const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
+  const [remindingTaskId, setRemindingTaskId] = useState<number | null>(null);
+  const [reminderToast, setReminderToast] = useState<string | null>(null);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  // Request completion modal
+  const [requestCompletionTask, setRequestCompletionTask] = useState<TaskItem | null>(null);
+  const [requestCompletionMessage, setRequestCompletionMessage] = useState('');
+  const [requestingCompletion, setRequestingCompletion] = useState(false);
   const { confirm, confirmModal } = useConfirm();
+  const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
+  const editModalRef = useFocusTrap<HTMLDivElement>(!!editTask, () => setEditTask(null));
+
+  // Calendar state
+  const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_collapsed');
+      return saved !== '0';
+    } catch { return true; }
+  });
+  const [overviews, setOverviews] = useState<ChildOverview[]>([]);
 
   useEffect(() => {
     loadTasks();
     loadAssignableUsers();
+    if (isParent) loadChildren();
   }, [filterStatus]);
+
+  // Auto-select first child when children load and no specific child is selected
+  useEffect(() => {
+    if (isParent && children.length > 0 && filterAssignee === 'all') {
+      const first = children[0];
+      setFilterAssignee(first.user_id);
+      searchParams.set('assignee', String(first.user_id));
+      setSearchParams(searchParams, { replace: true });
+      sessionStorage.setItem('selectedChildId', String(first.user_id));
+    }
+  }, [children]);
 
   const loadTasks = async () => {
     try {
@@ -91,6 +144,90 @@ export function TasksPage() {
     }
   };
 
+  const loadChildren = async () => {
+    try {
+      const data = await parentApi.getChildren();
+      setChildren(data);
+    } catch {
+      // silently fail
+    }
+  };
+
+  // Fetch overviews for calendar (parent only)
+  useEffect(() => {
+    if (!isParent || children.length === 0) return;
+    const fetchOverviews = async () => {
+      try {
+        const results = await Promise.all(
+          children.map(c => parentApi.getChildOverview(c.student_id))
+        );
+        setOverviews(results);
+      } catch { /* silently fail */ }
+    };
+    fetchOverviews();
+  }, [children]);
+
+  const toggleCalendar = () => {
+    setCalendarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('calendar_collapsed', next ? '1' : '0'); } catch { /* */ }
+      return next;
+    });
+  };
+
+  // Calendar assignments derived from overviews + tasks
+  const courseIds = useMemo(() => overviews.flatMap(o => o.courses.map(c => c.id)), [overviews]);
+
+  const calendarAssignments: CalendarAssignment[] = useMemo(() => {
+    const assignments = overviews.flatMap(overview =>
+      overview.assignments
+        .filter(a => a.due_date)
+        .map(a => ({
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          courseId: a.course_id,
+          courseName: overview.courses.find(c => c.id === a.course_id)?.name || 'Unknown',
+          courseColor: getCourseColor(a.course_id, courseIds),
+          dueDate: new Date(a.due_date!),
+          childName: children.length > 1 ? overview.full_name : '',
+          maxPoints: a.max_points,
+          itemType: 'assignment' as const,
+        }))
+    );
+    const taskItems: CalendarAssignment[] = tasks
+      .filter(t => t.due_date)
+      .map(t => ({
+        id: t.id + 1_000_000,
+        taskId: t.id,
+        title: t.title,
+        description: t.description,
+        courseId: 0,
+        courseName: '',
+        courseColor: TASK_PRIORITY_COLORS[t.priority || 'medium'],
+        dueDate: new Date(t.due_date!),
+        childName: t.assignee_name || '',
+        maxPoints: null,
+        itemType: 'task' as const,
+        priority: (t.priority || 'medium') as 'low' | 'medium' | 'high',
+        isCompleted: t.is_completed,
+      }));
+    return [...assignments, ...taskItems];
+  }, [overviews, courseIds, children.length, tasks]);
+
+  const handleTaskDrop = async (calendarId: number, newDate: Date) => {
+    const taskId = calendarId - 1_000_000;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newDueDate = newDate.toISOString();
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
+    try {
+      await tasksApi.update(taskId, { due_date: newDueDate });
+    } catch {
+      loadTasks(); // revert on failure
+    }
+  };
+
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     setCreating(true);
@@ -117,22 +254,28 @@ export function TasksPage() {
   };
 
   const handleToggle = async (task: TaskItem) => {
+    setLoadingTaskId(task.id);
     try {
       await tasksApi.update(task.id, { is_completed: !task.is_completed });
       loadTasks();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update task');
+    } finally {
+      setLoadingTaskId(null);
     }
   };
 
   const handleDelete = async (taskId: number) => {
     const ok = await confirm({ title: 'Archive Task', message: 'Archive this task? You can restore it later.', confirmLabel: 'Archive' });
     if (!ok) return;
+    setLoadingTaskId(taskId);
     try {
       await tasksApi.delete(taskId);
       loadTasks();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete task');
+    } finally {
+      setLoadingTaskId(null);
     }
   };
 
@@ -190,6 +333,65 @@ export function TasksPage() {
     }
   };
 
+  const handleRemind = async (task: TaskItem) => {
+    setRemindingTaskId(task.id);
+    try {
+      const result = await tasksApi.remind(task.id);
+      // Update the task's last_reminder_sent_at in local state
+      setTasks(prev => prev.map(t =>
+        t.id === task.id ? { ...t, last_reminder_sent_at: result.reminded_at } : t
+      ));
+      setReminderToast(`Reminder sent to ${result.assignee_name}`);
+      setTimeout(() => setReminderToast(null), 4000);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Failed to send reminder';
+      setReminderToast(detail);
+      setTimeout(() => setReminderToast(null), 4000);
+    } finally {
+      setRemindingTaskId(null);
+    }
+  };
+
+  const getReminderStatus = (task: TaskItem): { canRemind: boolean; label: string } => {
+    if (!task.last_reminder_sent_at) return { canRemind: true, label: 'Send Reminder' };
+    const sentAt = new Date(task.last_reminder_sent_at);
+    const hoursSince = (Date.now() - sentAt.getTime()) / (1000 * 60 * 60);
+    if (hoursSince < 24) {
+      const hoursAgo = Math.floor(hoursSince);
+      return { canRemind: false, label: hoursAgo < 1 ? 'Reminded just now' : `Reminded ${hoursAgo}h ago` };
+    }
+    return { canRemind: true, label: 'Send Reminder' };
+  };
+
+  const handleRequestCompletion = async () => {
+    if (!requestCompletionTask) return;
+    setRequestingCompletion(true);
+    try {
+      // Find the student_id from children based on the task's assigned_to_user_id
+      const child = children.find(c => c.user_id === requestCompletionTask.assigned_to_user_id);
+      if (!child) {
+        setReminderToast('Could not find the linked child for this task');
+        setTimeout(() => setReminderToast(null), 4000);
+        return;
+      }
+      const result = await parentApi.requestCompletion(
+        child.student_id,
+        requestCompletionTask.id,
+        requestCompletionMessage.trim() || undefined,
+      );
+      setReminderToast(result.message);
+      setTimeout(() => setReminderToast(null), 4000);
+      setRequestCompletionTask(null);
+      setRequestCompletionMessage('');
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Failed to send completion request';
+      setReminderToast(detail);
+      setTimeout(() => setReminderToast(null), 4000);
+    } finally {
+      setRequestingCompletion(false);
+    }
+  };
+
   const filteredTasks = tasks.filter(t => {
     if (filterStatus === 'archived') return !!t.archived_at;
     if (filterStatus === 'pending') return !t.is_completed && !t.archived_at;
@@ -234,58 +436,196 @@ export function TasksPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Manage your tasks">
+    <DashboardLayout welcomeSubtitle="Manage your tasks" showBackButton>
       <div className="tasks-page">
-        {/* Header */}
+        {/* Header with title */}
         <div className="tasks-header">
           <h3>Tasks</h3>
-          <button className="generate-btn" onClick={() => setShowCreate(true)}>
-            + New Task
+        </div>
+
+        {/* Child selector pills (parent only) + add action button */}
+        {isParent && children.length > 0 ? (
+          <div className="tasks-child-selector">
+            {children.map((child, index) => (
+              <button
+                key={child.user_id}
+                className={`child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
+                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
+              >
+                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                {child.full_name}
+                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+              </button>
+            ))}
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => navigate('/course-materials') },
+              { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
+            ]} />
+          </div>
+        ) : (
+          <div className="tasks-child-selector">
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => navigate('/course-materials') },
+              { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
+            ]} />
+          </div>
+        )}
+
+        {/* Collapsible Calendar Section */}
+        {isParent && (
+          <>
+            <div className="calendar-collapse-section">
+              <button className="calendar-collapse-toggle" onClick={toggleCalendar}>
+                <span className={`calendar-collapse-chevron${calendarCollapsed ? '' : ' expanded'}`}>&#9654;</span>
+                <span className="calendar-collapse-label">Calendar</span>
+                {calendarCollapsed && calendarAssignments.length > 0 && (
+                  <span className="calendar-badge">{calendarAssignments.length} item{calendarAssignments.length !== 1 ? 's' : ''}</span>
+                )}
+              </button>
+            </div>
+
+            {!calendarCollapsed && (
+              calendarAssignments.length === 0 ? (
+                <EmptyState
+                  icon={'\uD83D\uDCC5'}
+                  title="Calendar is clear"
+                  description="No upcoming assignments or tasks this week."
+                  className="tasks-calendar-empty"
+                />
+              ) : (
+                <CalendarView
+                  assignments={calendarAssignments}
+                  onCreateStudyGuide={() => {}}
+                  onGoToCourse={(courseId) => navigate(`/courses?highlight=${courseId}`)}
+                  onViewStudyGuides={() => navigate('/course-materials')}
+                  onTaskDrop={handleTaskDrop}
+                />
+              )
+            )}
+          </>
+        )}
+
+        {/* Filter bar: count + toggle + active-filter badges */}
+        <div className="tasks-filter-bar">
+          <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
+          {/* Show active non-default filters as inline badges */}
+          {!filtersExpanded && (
+            <div className="tasks-active-filters">
+              {filterStatus !== 'all' && (
+                <span className="tasks-active-badge">{filterStatus === 'pending' ? 'Pending' : filterStatus === 'completed' ? 'Completed' : 'Archived'}</span>
+              )}
+              {filterPriority !== 'all' && (
+                <span className="tasks-active-badge">{filterPriority}</span>
+              )}
+              {filterDue !== 'all' && (
+                <span className="tasks-active-badge">{filterDue === 'overdue' ? 'Overdue' : filterDue === 'today' ? 'Today' : 'This Week'}</span>
+              )}
+            </div>
+          )}
+          <button
+            className={`tasks-filter-toggle${filtersExpanded ? ' expanded' : ''}`}
+            onClick={() => setFiltersExpanded(v => !v)}
+          >
+            <span className="tasks-filter-toggle-icon">{filtersExpanded ? '\u25B2' : '\u25BC'}</span>
+            Filters
+            {(() => {
+              const count = (filterStatus !== 'all' ? 1 : 0) + (filterPriority !== 'all' ? 1 : 0) + (filterDue !== 'all' ? 1 : 0) + (!isParent && filterAssignee !== 'all' ? 1 : 0);
+              return count > 0 ? <span className="tasks-filter-count">{count}</span> : null;
+            })()}
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="tasks-filters">
-          <div className="tasks-filter-group">
-            <label>Status:</label>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as FilterStatus)} className="form-input">
-              <option value="all">Active</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-          <div className="tasks-filter-group">
-            <label>Priority:</label>
-            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as FilterPriority)} className="form-input">
-              <option value="all">All</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <div className="tasks-filter-group">
-            <label>Due:</label>
-            <select value={filterDue} onChange={e => { const v = e.target.value as FilterDue; setFilterDue(v); if (v === 'all') { searchParams.delete('due'); } else { searchParams.set('due', v); } setSearchParams(searchParams, { replace: true }); }} className="form-input">
-              <option value="all">All</option>
-              <option value="overdue">Overdue</option>
-              <option value="today">Due Today</option>
-              <option value="week">This Week</option>
-            </select>
-          </div>
-          {assignableUsers.length > 0 && (
-            <div className="tasks-filter-group">
-              <label>Assignee:</label>
-              <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="form-input">
-                <option value="all">All</option>
-                {assignableUsers.map(u => (
-                  <option key={u.user_id} value={u.user_id}>{u.name}</option>
+        {/* Collapsible filter panel */}
+        {filtersExpanded && (
+          <div className="tasks-filters-panel">
+            {/* Status */}
+            <div className="tasks-chip-group">
+              <span className="tasks-chip-label">Status</span>
+              <div className="tasks-chip-row">
+                {([
+                  { key: 'all', label: 'Active' },
+                  { key: 'pending', label: 'Pending' },
+                  { key: 'completed', label: 'Completed' },
+                  { key: 'archived', label: 'Archived' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.key}
+                    className={`tasks-chip${filterStatus === opt.key ? ' active' : ''}`}
+                    onClick={() => { setFilterStatus(opt.key); if (opt.key === 'all') { searchParams.delete('status'); } else { searchParams.set('status', opt.key); } setSearchParams(searchParams, { replace: true }); }}
+                  >
+                    {opt.label}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
-          )}
-          <span className="tasks-count">{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
-        </div>
+
+            {/* Priority */}
+            <div className="tasks-chip-group">
+              <span className="tasks-chip-label">Priority</span>
+              <div className="tasks-chip-row">
+                {([
+                  { key: 'all', label: 'All' },
+                  { key: 'high', label: 'High' },
+                  { key: 'medium', label: 'Medium' },
+                  { key: 'low', label: 'Low' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.key}
+                    className={`tasks-chip${filterPriority === opt.key ? ' active' : ''}`}
+                    onClick={() => { setFilterPriority(opt.key); if (opt.key === 'all') { searchParams.delete('priority'); } else { searchParams.set('priority', opt.key); } setSearchParams(searchParams, { replace: true }); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Due */}
+            <div className="tasks-chip-group">
+              <span className="tasks-chip-label">Due</span>
+              <div className="tasks-chip-row">
+                {([
+                  { key: 'all', label: 'All' },
+                  { key: 'overdue', label: 'Overdue' },
+                  { key: 'today', label: 'Today' },
+                  { key: 'week', label: 'This Week' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.key}
+                    className={`tasks-chip${filterDue === opt.key ? ' active' : ''}`}
+                    onClick={() => { setFilterDue(opt.key); if (opt.key === 'all') { searchParams.delete('due'); } else { searchParams.set('due', opt.key); } setSearchParams(searchParams, { replace: true }); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Assignee chip filter (non-parent fallback when no children) */}
+            {!isParent && assignableUsers.length > 0 && (
+              <div className="tasks-chip-group">
+                <span className="tasks-chip-label">Assignee</span>
+                <div className="tasks-chip-row">
+                  <button
+                    className={`tasks-chip${filterAssignee === 'all' ? ' active' : ''}`}
+                    onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); }}
+                  >
+                    All
+                  </button>
+                  {assignableUsers.map(u => (
+                    <button
+                      key={u.user_id}
+                      className={`tasks-chip${filterAssignee === u.user_id ? ' active' : ''}`}
+                      onClick={() => { setFilterAssignee(u.user_id); searchParams.set('assignee', String(u.user_id)); setSearchParams(searchParams, { replace: true }); }}
+                    >
+                      {u.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Task list */}
         {loading ? (
@@ -296,21 +636,27 @@ export function TasksPage() {
             <button className="generate-btn" onClick={loadTasks}>Retry</button>
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="tasks-empty">
-            <p>No tasks found.</p>
-            <p>Click "+ New Task" to create one.</p>
-          </div>
+          <EmptyState
+            icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="m9 14 2 2 4-4" /></svg>}
+            title="No tasks yet"
+            description="Create tasks to track assignments and study activities for your children."
+            action={{ label: 'Create Your First Task', onClick: () => setShowCreate(true) }}
+          />
         ) : (
           <div className="tasks-list">
             {filteredTasks.map(task => (
               <div key={task.id} className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={task.is_completed}
-                  onChange={() => handleToggle(task)}
-                  className="task-row-checkbox"
-                  disabled={!!task.archived_at}
-                />
+                {loadingTaskId === task.id ? (
+                  <span className="btn-spinner task-row-spinner" />
+                ) : (
+                  <input
+                    type="checkbox"
+                    checked={task.is_completed}
+                    onChange={() => handleToggle(task)}
+                    className="task-row-checkbox"
+                    disabled={!!task.archived_at}
+                  />
+                )}
                 <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
                   <div className="task-row-title">{task.title}</div>
                   <div className="task-row-meta">
@@ -331,13 +677,13 @@ export function TasksPage() {
                       <span
                         className="task-row-link clickable"
                         onClick={(e) => { e.stopPropagation(); const route = getLinkedEntityRoute(task); if (route) navigate(route); }}
-                        title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'course' : 'course'}`}
+                        title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'material' : 'class'}`}
                       >
                         {task.study_guide_title
                           ? `${task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}: ${task.study_guide_title}`
                           : task.course_content_title
                             ? `Content: ${task.course_content_title}`
-                            : `Course: ${task.course_name}`}
+                            : `Class: ${task.course_name}`}
                       </span>
                     )}
                   </div>
@@ -349,8 +695,31 @@ export function TasksPage() {
                   </div>
                 ) : isCreator(task) ? (
                   <div className="task-row-actions">
+                    {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
+                      const { canRemind, label } = getReminderStatus(task);
+                      return (
+                        <>
+                          <button
+                            className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
+                            disabled={!canRemind || remindingTaskId === task.id}
+                            title={label}
+                            aria-label={label}
+                          >
+                            {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
+                          </button>
+                          <button
+                            className="task-row-btn request-completion"
+                            onClick={(e) => { e.stopPropagation(); setRequestCompletionTask(task); }}
+                            title="Request completion"
+                            aria-label="Request child to complete this task"
+                          >
+                            &#9993;
+                          </button>
+                        </>
+                      );
+                    })()}
                     <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
-                    <button className="task-row-btn danger" onClick={() => handleDelete(task.id)} title="Archive" aria-label="Archive this task">&times;</button>
                   </div>
                 ) : null}
               </div>
@@ -361,7 +730,7 @@ export function TasksPage() {
         {/* Create modal */}
         {showCreate && (
           <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Create Task" ref={createModalRef} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Create Task</h2>
                 <button className="modal-close" onClick={() => setShowCreate(false)}>&times;</button>
@@ -423,7 +792,7 @@ export function TasksPage() {
         {/* Edit modal */}
         {editTask && (
           <div className="modal-overlay" onClick={() => setEditTask(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Task" ref={editModalRef} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Edit Task</h2>
                 <button className="modal-close" onClick={() => setEditTask(null)}>&times;</button>
@@ -468,6 +837,22 @@ export function TasksPage() {
                   </>
                 )}
               </div>
+              <div className="task-modal-danger-zone">
+                <button
+                  className="task-modal-archive-btn"
+                  onClick={async () => { setEditTask(null); await handleDelete(editTask.id); }}
+                  title="Archive this task"
+                >
+                  Archive
+                </button>
+                <button
+                  className="task-modal-delete-btn"
+                  onClick={async () => { setEditTask(null); await handlePermanentDelete(editTask.id); }}
+                  title="Permanently delete this task"
+                >
+                  Delete Forever
+                </button>
+              </div>
               <div className="modal-actions">
                 <button className="modal-cancel" onClick={() => setEditTask(null)}>Cancel</button>
                 <button className="generate-btn" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
@@ -478,7 +863,40 @@ export function TasksPage() {
           </div>
         )}
       </div>
+      {/* Request Completion modal */}
+      {requestCompletionTask && (
+        <div className="modal-overlay" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Request Completion" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Request Completion</h2>
+              <button className="modal-close" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 12px', color: 'var(--text-secondary, #6b7280)', fontSize: '14px' }}>
+                Send a notification to <strong>{requestCompletionTask.assignee_name}</strong> asking them to complete:
+              </p>
+              <p style={{ margin: '0 0 16px', fontWeight: 600 }}>{requestCompletionTask.title}</p>
+              <label className="form-label">Message (optional)</label>
+              <textarea
+                placeholder="Add a note for your child..."
+                value={requestCompletionMessage}
+                onChange={e => setRequestCompletionMessage(e.target.value)}
+                className="form-input"
+                rows={3}
+                maxLength={500}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }} disabled={requestingCompletion}>Cancel</button>
+              <button className="generate-btn" onClick={handleRequestCompletion} disabled={requestingCompletion}>
+                {requestingCompletion ? 'Sending...' : 'Send Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmModal}
+      {reminderToast && <div className="toast-notification">{reminderToast}</div>}
     </DashboardLayout>
   );
 }

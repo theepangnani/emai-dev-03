@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { notificationsApi } from '../api/client';
 import type { NotificationResponse } from '../api/client';
 import './NotificationBell.css';
@@ -99,6 +99,40 @@ export function NotificationBell() {
     }
   };
 
+  const handleAcknowledge = async (notificationOrNull?: NotificationResponse | null) => {
+    const target = notificationOrNull ?? modalNotification;
+    if (!target) return;
+    try {
+      const updated = await notificationsApi.ack(target.id);
+      // Update in both modal and dropdown list
+      if (modalNotification && modalNotification.id === target.id) {
+        setModalNotification(updated);
+      }
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === target.id ? updated : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const handleSuppress = async (notificationOrNull?: NotificationResponse | null) => {
+    const target = notificationOrNull ?? modalNotification;
+    if (!target) return;
+    try {
+      await notificationsApi.suppress(target.id);
+      if (modalNotification && modalNotification.id === target.id) {
+        setModalNotification(null);
+      }
+      // Remove from dropdown list
+      setNotifications((prev) => prev.filter((n) => n.id !== target.id));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // Silently fail
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -120,6 +154,13 @@ export function NotificationBell() {
       case 'grade_posted': return '📊';
       case 'message': return '💬';
       case 'system': return '⚙️';
+      case 'task_due': return '✅';
+      case 'link_request': return '🔗';
+      case 'material_uploaded': return '📤';
+      case 'study_guide_created': return '📚';
+      case 'parent_request': return '👨‍👩‍👧';
+      case 'assessment_upcoming': return '📋';
+      case 'project_due': return '🎯';
       default: return '🔔';
     }
   };
@@ -166,20 +207,57 @@ export function NotificationBell() {
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`notification-item ${!n.read ? 'unread' : ''}`}
+                  className={`notification-item ${!n.read ? 'unread' : ''} ${n.requires_ack && !n.acked_at ? 'requires-ack' : ''} ${n.acked_at ? 'acknowledged' : ''}`}
                   onClick={() => handleNotificationClick(n)}
                 >
-                  <span className="notification-icon">{getTypeIcon(n.type)}</span>
+                  <span className="notification-icon" aria-hidden="true">{getTypeIcon(n.type)}</span>
                   <div className="notification-content">
-                    <p className="notification-title">{n.title}</p>
+                    <div className="notification-title-row">
+                      <p className="notification-title">{n.title}</p>
+                      {n.requires_ack && !n.acked_at && (
+                        <span className="ack-badge">ACK</span>
+                      )}
+                    </div>
                     {n.content && (
                       <p className="notification-text">{n.content}</p>
                     )}
-                    <span className="notification-time">{formatTime(n.created_at)}</span>
+                    <div className="notification-meta-row">
+                      <span className="notification-time">{formatTime(n.created_at)}</span>
+                      <div className="notification-inline-actions" onClick={(e) => e.stopPropagation()}>
+                        {n.requires_ack && !n.acked_at && (
+                          <button
+                            className="inline-ack-btn"
+                            onClick={() => handleAcknowledge(n)}
+                            title="Acknowledge"
+                            aria-label="Acknowledge notification"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </button>
+                        )}
+                        {n.source_type && (
+                          <button
+                            className="inline-suppress-btn"
+                            onClick={() => handleSuppress(n)}
+                            title="Silence future reminders"
+                            aria-label="Silence notification"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                              <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))
             )}
+            <Link to="/notifications" className="notif-view-all" onClick={() => setIsOpen(false)}>
+              View All Notifications
+            </Link>
           </div>
         </div>
       )}
@@ -190,7 +268,7 @@ export function NotificationBell() {
       <div className="modal-overlay" onClick={() => setModalNotification(null)}>
         <div className="notif-modal" onClick={(e) => e.stopPropagation()}>
           <div className="notif-modal-header">
-            <span className="notif-modal-icon">{getTypeIcon(modalNotification.type)}</span>
+            <span className="notif-modal-icon" aria-hidden="true">{getTypeIcon(modalNotification.type)}</span>
             <h3>{modalNotification.title}</h3>
             <button className="modal-close" onClick={() => setModalNotification(null)}>
               &times;
@@ -202,8 +280,18 @@ export function NotificationBell() {
             )}
             <span className="notif-modal-time">{formatTime(modalNotification.created_at)}</span>
           </div>
-          {modalNotification.link && (
-            <div className="notif-modal-footer">
+          <div className="notif-modal-footer">
+            {modalNotification.requires_ack && !modalNotification.acked_at && (
+              <button className="notif-modal-ack-btn" onClick={() => handleAcknowledge()}>
+                Acknowledge
+              </button>
+            )}
+            {modalNotification.source_type && (
+              <button className="notif-modal-silence-btn" onClick={() => handleSuppress()}>
+                Silence
+              </button>
+            )}
+            {modalNotification.link && (
               <button
                 className="notif-modal-action"
                 onClick={() => {
@@ -213,8 +301,8 @@ export function NotificationBell() {
               >
                 Go to {modalNotification.link.replace('/', '')} &rarr;
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>,
       document.body

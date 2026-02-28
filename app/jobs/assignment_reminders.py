@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.notification import Notification, NotificationType
 from app.core.config import settings
 from app.services.email_service import send_email, add_inspiration_to_email
+from app.services.notification_service import send_multi_channel_notification
 
 logger = logging.getLogger(__name__)
 
@@ -127,30 +128,53 @@ async def check_assignment_reminders():
 
                     due_date_str = assignment.due_date.strftime("%B %d, %Y") if assignment.due_date else "Unknown"
 
-                    # Create in-app notification for parent
-                    notification = Notification(
-                        user_id=parent.id,
-                        type=NotificationType.ASSIGNMENT_DUE,
-                        title=f"{assignment.title} due in {days} day{'s' if days != 1 else ''}",
-                        content=f"{student_user.full_name}'s assignment for {course_name} is due on {due_date_str}.",
-                        link="/dashboard",
-                    )
-                    db.add(notification)
-                    notifications_created += 1
+                    notif_title = f"{assignment.title} due in {days} day{'s' if days != 1 else ''}"
+                    parent_content = f"{student_user.full_name}'s assignment for {course_name} is due on {due_date_str}."
 
-                    # Also notify the student
+                    # 3-day reminders: multi-channel with ACK via notification service
+                    if days >= 3:
+                        notif = send_multi_channel_notification(
+                            db=db,
+                            recipient=parent,
+                            sender=None,
+                            title=notif_title,
+                            content=parent_content,
+                            notification_type=NotificationType.ASSIGNMENT_DUE,
+                            link="/dashboard",
+                            requires_ack=True,
+                            source_type="assignment",
+                            source_id=assignment.id,
+                        )
+                        if notif:
+                            notifications_created += 1
+                    else:
+                        # 1-day reminders: simple in-app only
+                        notification = Notification(
+                            user_id=parent.id,
+                            type=NotificationType.ASSIGNMENT_DUE,
+                            title=notif_title,
+                            content=parent_content,
+                            link="/dashboard",
+                        )
+                        db.add(notification)
+                        notifications_created += 1
+
+                    # Also notify the student (always simple in-app)
                     student_notification = Notification(
                         user_id=student.user_id,
                         type=NotificationType.ASSIGNMENT_DUE,
-                        title=f"{assignment.title} due in {days} day{'s' if days != 1 else ''}",
+                        title=notif_title,
                         content=f"Your {course_name} assignment is due on {due_date_str}.",
                         link="/dashboard",
                     )
                     db.add(student_notification)
                     notifications_created += 1
 
-                    # Send email to parent if enabled
-                    if parent.email_notifications and template:
+                    # Commit notifications before slow email send (#866)
+                    db.commit()
+
+                    # Send email to parent if enabled (for 1-day reminders; 3-day handled by multi-channel)
+                    if days < 3 and parent.email_notifications and template:
                         html = _render_template(
                             template,
                             user_name=parent.full_name,
@@ -169,8 +193,6 @@ async def check_assignment_reminders():
                         )
                         if sent:
                             emails_sent += 1
-
-        db.commit()
         logger.info(
             f"Assignment reminder check complete | "
             f"notifications={notifications_created} | emails={emails_sent}"

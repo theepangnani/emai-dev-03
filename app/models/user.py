@@ -17,6 +17,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
+    username = Column(String(100), unique=True, index=True, nullable=True)
     hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth users
     full_name = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=True)  # Nullable for users pending onboarding
@@ -30,11 +31,15 @@ class User(Base):
     google_id = Column(String(255), unique=True, nullable=True)
     google_access_token = Column(String(512), nullable=True)
     google_refresh_token = Column(String(512), nullable=True)
+    google_granted_scopes = Column(String(1024), nullable=True)  # comma-separated granted scopes
 
     # Notification preferences
     email_notifications = Column(Boolean, default=True)
     assignment_reminder_days = Column(String(50), default="1,3")
     task_reminder_days = Column(String(50), default="1,3")
+
+    # Onboarding setup checklist
+    onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
@@ -42,6 +47,12 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    def has_google_scope(self, scope: str) -> bool:
+        """Check if user has been granted a specific Google OAuth scope."""
+        if not self.google_granted_scopes:
+            return False
+        return scope in self.google_granted_scopes.split(",")
 
     def has_role(self, role: "UserRole") -> bool:
         """Check if user holds a specific role (across ALL their roles, not just active)."""

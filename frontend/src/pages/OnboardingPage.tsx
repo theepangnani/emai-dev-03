@@ -80,7 +80,7 @@ export function OnboardingPage() {
           >
             <span className="role-card__icon">&#128218;</span>
             <span className="role-card__label">Teacher</span>
-            <span className="role-card__desc">Manage courses and communicate with parents</span>
+            <span className="role-card__desc">Manage classes and communicate with parents</span>
           </button>
 
           <button

@@ -2,7 +2,7 @@ import logging
 import secrets
 from datetime import datetime, timedelta, date, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import insert, or_, and_, func as sa_func
 
@@ -20,12 +20,13 @@ from app.api.deps import require_role
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
-from app.core.security import UNUSABLE_PASSWORD_HASH
+from app.core.security import UNUSABLE_PASSWORD_HASH, validate_password_strength, get_password_hash, create_password_reset_token
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.schemas.parent import (
     ChildSummary, ChildOverview, LinkChildRequest, CreateChildRequest,
-    ChildUpdateRequest, DiscoveredChild, DiscoverChildrenResponse,
-    LinkChildrenBulkRequest, ChildHighlight, ParentDashboardResponse,
-    LinkTeacherRequest, LinkedTeacher,
+    ChildUpdateRequest, ChildResetPasswordRequest, DiscoveredChild,
+    DiscoverChildrenResponse, LinkChildrenBulkRequest, ChildHighlight,
+    ParentDashboardResponse, LinkTeacherRequest, LinkedTeacher,
 )
 from app.schemas.course import CourseResponse
 from app.schemas.assignment import AssignmentResponse
@@ -38,7 +39,9 @@ router = APIRouter(prefix="/parent", tags=["Parent"])
 
 
 @router.get("/children", response_model=list[ChildSummary])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_children(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -79,9 +82,42 @@ def list_children(
         )
         task_counts = {uid: cnt for uid, cnt in tc_rows}
 
+    # Batch-fetch pending invites for all child emails (for invite_status)
+    child_emails = [s.user.email for s, _ in rows if s.user and s.user.email]
+    invite_map: dict[str, Invite] = {}  # email -> most recent pending invite
+    if child_emails:
+        pending_invites = (
+            db.query(Invite)
+            .filter(
+                Invite.email.in_(child_emails),
+                Invite.invite_type == InviteType.STUDENT,
+                Invite.accepted_at.is_(None),
+            )
+            .order_by(Invite.created_at.desc())
+            .all()
+        )
+        for inv in pending_invites:
+            if inv.email not in invite_map:
+                invite_map[inv.email] = inv
+
     result = []
     for student, rel_type in rows:
         user = student.user
+
+        # Derive invite_status
+        invite_status = "active"
+        invite_id = None
+        if user:
+            pending_invite = invite_map.get(user.email) if user.email else None
+            if pending_invite and not pending_invite.accepted_at:
+                invite_status = "pending"
+                invite_id = pending_invite.id
+            elif user.hashed_password == UNUSABLE_PASSWORD_HASH:
+                # Account created but child hasn't set password yet
+                invite_status = "pending"
+            elif user.email and not user.email_verified:
+                invite_status = "email_unverified"
+
         result.append(ChildSummary(
             student_id=student.id,
             user_id=student.user_id,
@@ -99,6 +135,8 @@ def list_children(
             relationship_type=rel_type.value if rel_type else None,
             course_count=course_counts.get(student.id, 0),
             active_task_count=task_counts.get(student.user_id, 0),
+            invite_status=invite_status,
+            invite_id=invite_id,
         ))
 
     log_action(db, user_id=current_user.id, action="read", resource_type="children", details={"count": len(result)})
@@ -107,7 +145,9 @@ def list_children(
 
 
 @router.get("/dashboard", response_model=ParentDashboardResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_parent_dashboard(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -192,10 +232,41 @@ def get_parent_dashboard(
     for a in _all_assignments:
         _assignments_by_course.setdefault(a.course_id, []).append(a)
 
+    # Batch-fetch pending invites for child emails (for invite_status)
+    _child_emails = [s.user.email for s, _ in child_rows if s.user and s.user.email]
+    _invite_map: dict[str, Invite] = {}
+    if _child_emails:
+        _pending_invites = (
+            db.query(Invite)
+            .filter(
+                Invite.email.in_(_child_emails),
+                Invite.invite_type == InviteType.STUDENT,
+                Invite.accepted_at.is_(None),
+            )
+            .order_by(Invite.created_at.desc())
+            .all()
+        )
+        for inv in _pending_invites:
+            if inv.email not in _invite_map:
+                _invite_map[inv.email] = inv
+
     for student, rel_type in child_rows:
         user = student.user
         courses = _courses_by_student.get(student.id, [])
         course_ids = [c.id for c in courses]
+
+        # Derive invite_status
+        _inv_status = "active"
+        _inv_id = None
+        if user:
+            _pending_inv = _invite_map.get(user.email) if user.email else None
+            if _pending_inv and not _pending_inv.accepted_at:
+                _inv_status = "pending"
+                _inv_id = _pending_inv.id
+            elif user.hashed_password == UNUSABLE_PASSWORD_HASH:
+                _inv_status = "pending"
+            elif user.email and not user.email_verified:
+                _inv_status = "email_unverified"
 
         children.append(ChildSummary(
             student_id=student.id,
@@ -214,6 +285,8 @@ def get_parent_dashboard(
             relationship_type=rel_type.value if rel_type else None,
             course_count=len(courses),
             active_task_count=_task_count_map.get(student.user_id, 0),
+            invite_status=_inv_status,
+            invite_id=_inv_id,
         ))
 
         # Build courses with teacher info (using batch-fetched teacher map)
@@ -372,8 +445,10 @@ def get_parent_dashboard(
 
 
 @router.post("/children/create", response_model=ChildSummary)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_child(
-    request: CreateChildRequest,
+    request: Request,
+    data: CreateChildRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -381,16 +456,16 @@ def create_child(
     invite_link = None
 
     # If email is provided, check it's not already taken by a non-student
-    if request.email:
-        existing_user = db.query(User).filter(User.email == request.email).first()
+    if data.email:
+        existing_user = db.query(User).filter(User.email == data.email).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="An account with this email already exists. Use 'Link Child' instead.")
 
     # Create student user (email may be None)
     student_user = User(
-        email=request.email,
+        email=data.email,
         hashed_password=UNUSABLE_PASSWORD_HASH,
-        full_name=request.full_name,
+        full_name=data.full_name,
         role=UserRole.STUDENT,
         roles=UserRole.STUDENT.value,
     )
@@ -398,15 +473,15 @@ def create_child(
     db.flush()
 
     # Create invite if email is provided so child can set their password
-    if request.email:
+    if data.email:
         token = secrets.token_urlsafe(32)
         invite = Invite(
-            email=request.email,
+            email=data.email,
             invite_type=InviteType.STUDENT,
             token=token,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
-            metadata_json={"relationship_type": request.relationship_type},
+            metadata_json={"relationship_type": data.relationship_type},
         )
         db.add(invite)
         db.flush()
@@ -423,12 +498,12 @@ def create_child(
                 """
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
-                to_email=request.email,
+                to_email=data.email,
                 subject=f"{current_user.full_name} invited you to ClassBridge",
                 html_content=invite_html,
             )
         except Exception as e:
-            logger.warning(f"Failed to send invite email to {request.email}: {e}")
+            logger.warning(f"Failed to send invite email to {data.email}: {e}")
 
     # Create Student record
     student = Student(user_id=student_user.id)
@@ -436,7 +511,7 @@ def create_child(
     db.flush()
 
     # Link parent to student
-    rel_type = RelationshipType(request.relationship_type)
+    rel_type = RelationshipType(data.relationship_type)
     db.execute(
         insert(parent_students).values(
             parent_id=current_user.id,
@@ -459,8 +534,10 @@ def create_child(
 
 
 @router.post("/children/link", response_model=ChildSummary)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def link_child(
-    request: LinkChildRequest,
+    request: Request,
+    data: LinkChildRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -468,7 +545,7 @@ def link_child(
     invite_link = None
 
     # Look for existing user with this email
-    existing_user = db.query(User).filter(User.email == request.student_email).first()
+    existing_user = db.query(User).filter(User.email == data.student_email).first()
 
     if existing_user and existing_user.role != UserRole.STUDENT:
         raise HTTPException(
@@ -476,13 +553,72 @@ def link_child(
             detail="This email belongs to a non-student account",
         )
 
+    # Active student (not placeholder) — require approval via LinkRequest
+    if existing_user and existing_user.hashed_password != UNUSABLE_PASSWORD_HASH:
+        student = db.query(Student).filter(Student.user_id == existing_user.id).first()
+        if not student:
+            student = Student(user_id=existing_user.id)
+            db.add(student)
+            db.flush()
+
+        # Check if already linked
+        existing_link = (
+            db.query(parent_students)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                parent_students.c.student_id == student.id,
+            )
+            .first()
+        )
+        if existing_link:
+            raise HTTPException(status_code=400, detail="This student is already linked to your account")
+
+        from app.models.link_request import LinkRequest, LinkRequestType
+        from app.models.notification import NotificationType
+        from app.services.notification_service import send_multi_channel_notification
+
+        link_req = LinkRequest(
+            request_type=LinkRequestType.PARENT_TO_STUDENT.value,
+            requester_user_id=current_user.id,
+            target_user_id=existing_user.id,
+            student_id=student.id,
+            relationship_type=data.relationship_type,
+            token=secrets.token_urlsafe(32),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        )
+        db.add(link_req)
+        db.flush()
+
+        send_multi_channel_notification(
+            db=db,
+            recipient=existing_user,
+            sender=current_user,
+            title="Parent Link Request",
+            content=f"{current_user.full_name} is requesting to link to your student account.",
+            notification_type=NotificationType.LINK_REQUEST,
+            link="/link-requests",
+        )
+        db.commit()
+
+        return ChildSummary(
+            student_id=student.id,
+            user_id=student.user_id,
+            full_name=existing_user.full_name,
+            email=existing_user.email,
+            grade_level=student.grade_level,
+            school_name=student.school_name,
+            relationship_type=data.relationship_type,
+            invite_link=None,
+            link_request_pending=True,
+        )
+
     if existing_user:
         student_user = existing_user
     else:
         # Auto-create student account (no password — child sets it via invite link)
-        full_name = request.full_name or request.student_email.split("@")[0]
+        full_name = data.full_name or data.student_email.split("@")[0]
         student_user = User(
-            email=request.student_email,
+            email=data.student_email,
             hashed_password=UNUSABLE_PASSWORD_HASH,
             full_name=full_name,
             role=UserRole.STUDENT,
@@ -494,17 +630,17 @@ def link_child(
         # Create invite so child can set their password
         token = secrets.token_urlsafe(32)
         invite = Invite(
-            email=request.student_email,
+            email=data.student_email,
             invite_type=InviteType.STUDENT,
             token=token,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
-            metadata_json={"relationship_type": request.relationship_type},
+            metadata_json={"relationship_type": data.relationship_type},
         )
         db.add(invite)
         db.flush()
         invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
-        logger.info(f"Auto-created student account for {request.student_email}, invite token generated")
+        logger.info(f"Auto-created student account for {data.student_email}, invite token generated")
 
         # Send invite email to the child
         try:
@@ -517,12 +653,12 @@ def link_child(
                 """
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
-                to_email=request.student_email,
+                to_email=data.student_email,
                 subject=f"{current_user.full_name} invited you to ClassBridge",
                 html_content=invite_html,
             )
         except Exception as e:
-            logger.warning(f"Failed to send invite email to {request.student_email}: {e}")
+            logger.warning(f"Failed to send invite email to {data.student_email}: {e}")
 
     # Find or create the Student record
     student = db.query(Student).filter(Student.user_id == student_user.id).first()
@@ -544,7 +680,7 @@ def link_child(
         raise HTTPException(status_code=400, detail="This student is already linked to your account")
 
     # Insert into join table
-    rel_type = RelationshipType(request.relationship_type)
+    rel_type = RelationshipType(data.relationship_type)
     db.execute(
         insert(parent_students).values(
             parent_id=current_user.id,
@@ -567,7 +703,9 @@ def link_child(
 
 
 @router.post("/children/discover-google", response_model=DiscoverChildrenResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def discover_children_google(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -721,15 +859,17 @@ def discover_children_google(
 
 
 @router.post("/children/link-bulk", response_model=list[ChildSummary])
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def link_children_bulk(
-    request: LinkChildrenBulkRequest,
+    request: Request,
+    data: LinkChildrenBulkRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Link multiple students to the current parent."""
-    rel_type = RelationshipType(request.relationship_type)
+    rel_type = RelationshipType(data.relationship_type)
     linked = []
-    for user_id in request.user_ids:
+    for user_id in data.user_ids:
         student_user = (
             db.query(User)
             .filter(User.id == user_id, User.role == UserRole.STUDENT)
@@ -780,7 +920,9 @@ def link_children_bulk(
 
 
 @router.get("/children/{student_id}/overview", response_model=ChildOverview)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_child_overview(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
@@ -878,9 +1020,11 @@ def get_child_overview(
 
 
 @router.patch("/children/{student_id}", response_model=ChildSummary)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_child(
+    request: Request,
     student_id: int,
-    request: ChildUpdateRequest,
+    data: ChildUpdateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -903,32 +1047,32 @@ def update_child(
 
     user = student.user
 
-    if request.full_name is not None and user:
-        user.full_name = request.full_name
-    if request.email is not None and user:
+    if data.full_name is not None and user:
+        user.full_name = data.full_name
+    if data.email is not None and user:
         # Check email uniqueness
-        existing = db.query(User).filter(User.email == request.email, User.id != user.id).first()
+        existing = db.query(User).filter(User.email == data.email, User.id != user.id).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email already in use by another account")
-        user.email = request.email
-    if request.grade_level is not None:
-        student.grade_level = request.grade_level
-    if request.school_name is not None:
-        student.school_name = request.school_name
-    if request.date_of_birth is not None:
-        student.date_of_birth = request.date_of_birth
-    if request.phone is not None:
-        student.phone = request.phone
-    if request.address is not None:
-        student.address = request.address
-    if request.city is not None:
-        student.city = request.city
-    if request.province is not None:
-        student.province = request.province
-    if request.postal_code is not None:
-        student.postal_code = request.postal_code
-    if request.notes is not None:
-        student.notes = request.notes
+        user.email = data.email
+    if data.grade_level is not None:
+        student.grade_level = data.grade_level
+    if data.school_name is not None:
+        student.school_name = data.school_name
+    if data.date_of_birth is not None:
+        student.date_of_birth = data.date_of_birth
+    if data.phone is not None:
+        student.phone = data.phone
+    if data.address is not None:
+        student.address = data.address
+    if data.city is not None:
+        student.city = data.city
+    if data.province is not None:
+        student.province = data.province
+    if data.postal_code is not None:
+        student.postal_code = data.postal_code
+    if data.notes is not None:
+        student.notes = data.notes
 
     db.commit()
     db.refresh(student)
@@ -952,7 +1096,9 @@ def update_child(
 
 
 @router.post("/children/{student_id}/sync-courses")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_child_courses(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
@@ -1012,9 +1158,11 @@ class AssignCoursesRequest(PydanticBaseModel):
 
 
 @router.post("/children/{student_id}/courses")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def assign_courses_to_child(
+    request: Request,
     student_id: int,
-    request: AssignCoursesRequest,
+    data: AssignCoursesRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -1036,7 +1184,7 @@ def assign_courses_to_child(
         raise HTTPException(status_code=404, detail="Student not found")
 
     assigned = []
-    for course_id in request.course_ids:
+    for course_id in data.course_ids:
         course = db.query(Course).filter(Course.id == course_id).first()
         if not course:
             continue
@@ -1070,7 +1218,9 @@ def assign_courses_to_child(
 
 
 @router.delete("/children/{student_id}/courses/{course_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def unassign_course_from_child(
+    request: Request,
     student_id: int,
     course_id: int,
     db: Session = Depends(get_db),
@@ -1112,9 +1262,11 @@ def unassign_course_from_child(
 
 
 @router.post("/children/{student_id}/teachers", response_model=LinkedTeacher)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def link_teacher_to_child(
+    request: Request,
     student_id: int,
-    request: LinkTeacherRequest,
+    data: LinkTeacherRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -1144,9 +1296,9 @@ def link_teacher_to_child(
     child_name = child_user.full_name if child_user else "your child"
 
     # Find teacher user by email
-    teacher_user = db.query(User).filter(User.email == request.teacher_email).first()
+    teacher_user = db.query(User).filter(User.email == data.teacher_email).first()
     teacher_user_id = teacher_user.id if teacher_user else None
-    teacher_name = request.teacher_name
+    teacher_name = data.teacher_name
 
     if teacher_user:
         # If the user exists, use their name unless overridden
@@ -1161,7 +1313,7 @@ def link_teacher_to_child(
         db.query(student_teachers)
         .filter(
             student_teachers.c.student_id == student_id,
-            student_teachers.c.teacher_email == request.teacher_email,
+            student_teachers.c.teacher_email == data.teacher_email,
         )
         .first()
     )
@@ -1173,8 +1325,8 @@ def link_teacher_to_child(
         insert(student_teachers).values(
             student_id=student_id,
             teacher_user_id=teacher_user_id,
-            teacher_name=teacher_name or request.teacher_email.split("@")[0],
-            teacher_email=request.teacher_email,
+            teacher_name=teacher_name or data.teacher_email.split("@")[0],
+            teacher_email=data.teacher_email,
             added_by_user_id=current_user.id,
         )
     )
@@ -1185,13 +1337,13 @@ def link_teacher_to_child(
         db.query(student_teachers)
         .filter(
             student_teachers.c.student_id == student_id,
-            student_teachers.c.teacher_email == request.teacher_email,
+            student_teachers.c.teacher_email == data.teacher_email,
         )
         .first()
     )
 
     log_action(db, user_id=current_user.id, action="create", resource_type="student_teacher_link",
-               details={"student_id": student_id, "teacher_email": request.teacher_email})
+               details={"student_id": student_id, "teacher_email": data.teacher_email})
     db.commit()
 
     # ── Email handling ─────────────────────────────────────────
@@ -1237,7 +1389,7 @@ def link_teacher_to_child(
             existing_invite = (
                 db.query(Invite)
                 .filter(
-                    Invite.email == request.teacher_email,
+                    Invite.email == data.teacher_email,
                     Invite.invite_type == InviteType.TEACHER,
                     Invite.accepted_at.is_(None),
                     Invite.expires_at > datetime.now(timezone.utc),
@@ -1247,7 +1399,7 @@ def link_teacher_to_child(
             if not existing_invite:
                 token = secrets.token_urlsafe(32)
                 invite = Invite(
-                    email=request.teacher_email,
+                    email=data.teacher_email,
                     invite_type=InviteType.TEACHER,
                     token=token,
                     expires_at=datetime.now(timezone.utc) + timedelta(days=30),
@@ -1270,11 +1422,11 @@ def link_teacher_to_child(
                 .replace("{{invite_link}}", invite_link))
             html = add_inspiration_to_email(html, db, "teacher")
             send_email_sync(
-                to_email=request.teacher_email,
+                to_email=data.teacher_email,
                 subject=f"{current_user.full_name} invited you to ClassBridge",
                 html_content=html,
             )
-            logger.info(f"Teacher invite email sent to {request.teacher_email}")
+            logger.info(f"Teacher invite email sent to {data.teacher_email}")
         except Exception as e:
             logger.warning(f"Failed to send teacher invite email: {e}")
 
@@ -1290,7 +1442,9 @@ def link_teacher_to_child(
 
 
 @router.get("/children/{student_id}/teachers", response_model=list[LinkedTeacher])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_linked_teachers(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
@@ -1329,7 +1483,9 @@ def list_linked_teachers(
 
 
 @router.delete("/children/{student_id}/teachers/{link_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def unlink_teacher_from_child(
+    request: Request,
     student_id: int,
     link_id: int,
     db: Session = Depends(get_db),
@@ -1366,3 +1522,162 @@ def unlink_teacher_from_child(
     db.commit()
 
     return {"message": "Teacher unlinked from student"}
+
+
+@router.post("/children/{student_id}/reset-password")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+def reset_child_password(
+    student_id: int,
+    body: ChildResetPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Reset or set a child's password. Parent must be linked to the child."""
+    # Verify parent-child link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    user = db.query(User).filter(User.id == student.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Student account not found")
+
+    if body.new_password:
+        # Direct password set
+        pw_error = validate_password_strength(body.new_password)
+        if pw_error:
+            raise HTTPException(status_code=400, detail=pw_error)
+        user.hashed_password = get_password_hash(body.new_password)
+        log_action(db, user_id=current_user.id, action="parent_reset_child_password",
+                   resource_type="user", resource_id=user.id,
+                   details={"student_id": student_id, "method": "direct"},
+                   ip_address=request.client.host if request.client else None)
+        db.commit()
+        return {"message": f"Password set successfully for {user.full_name or 'student'}."}
+    else:
+        # Send reset email
+        if not user.email:
+            raise HTTPException(
+                status_code=400,
+                detail="This child has no email address. Please set a password directly.",
+            )
+        token = create_password_reset_token(user.email)
+        reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+        html = (
+            f'<h2 style="color:#1a1a1a;">Set Your Password</h2>'
+            f'<p>Hi {user.full_name or "there"},</p>'
+            f'<p>Your parent has requested a password reset for your ClassBridge account.</p>'
+            f'<p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>'
+            f'<p style="text-align:center;margin:24px 0;">'
+            f'<a href="{reset_url}" style="display:inline-block;background:#4f46e5;color:white;'
+            f'text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Set Password</a></p>'
+            f'<p style="color:#666;font-size:13px;">If you didn\'t expect this, you can safely ignore this email.</p>'
+            f'<p style="color:#999;font-size:12px;">Or copy this link: {reset_url}</p>'
+        )
+        html = add_inspiration_to_email(html, db, user.role)
+        sent = send_email_sync(to_email=user.email, subject="ClassBridge — Set Your Password", html_content=html)
+        log_action(db, user_id=current_user.id, action="parent_reset_child_password",
+                   resource_type="user", resource_id=user.id,
+                   details={"student_id": student_id, "method": "email", "email_sent": sent},
+                   ip_address=request.client.host if request.client else None)
+        db.commit()
+        if sent:
+            return {"message": f"Password reset email sent to {user.email}."}
+        return {"message": "Failed to send email. Please try setting the password directly."}
+
+
+class _RequestCompletionBody(PydanticBaseModel):
+    task_id: int
+    message: str | None = None
+
+
+@router.post("/children/{student_id}/request-completion")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def request_task_completion(
+    request: Request,
+    student_id: int,
+    body: _RequestCompletionBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Parent requests a child to complete a specific task.
+
+    Creates an in-app notification for the student with the task title
+    and an optional custom message from the parent.
+    """
+    from app.models.notification import NotificationType
+    from app.services.notification_service import send_multi_channel_notification
+
+    # Verify parent-child link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    # Resolve student user
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    student_user = db.query(User).filter(User.id == student.user_id).first()
+    if not student_user:
+        raise HTTPException(status_code=404, detail="Student account not found")
+
+    # Verify task exists and is assigned to this student
+    task = db.query(Task).filter(Task.id == body.task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.assigned_to_user_id != student.user_id:
+        raise HTTPException(status_code=400, detail="This task is not assigned to this student")
+
+    if task.is_completed:
+        raise HTTPException(status_code=400, detail="This task is already completed")
+
+    # Build notification content
+    content = f"Your parent requests you complete: {task.title}"
+    if body.message:
+        content += f"\n\nMessage from {current_user.full_name}: {body.message}"
+
+    send_multi_channel_notification(
+        db=db,
+        recipient=student_user,
+        sender=current_user,
+        title="Parent Completion Request",
+        content=content,
+        notification_type=NotificationType.PARENT_REQUEST,
+        link=f"/tasks/{task.id}",
+        channels=["app_notification", "email"],
+        source_type="task",
+        source_id=task.id,
+    )
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="request_completion",
+        resource_type="task",
+        resource_id=task.id,
+        details={"student_id": student_id, "task_title": task.title},
+    )
+    db.commit()
+
+    return {"message": f"Completion request sent to {student_user.full_name} for \"{task.title}\""}

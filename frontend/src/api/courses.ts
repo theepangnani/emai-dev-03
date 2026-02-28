@@ -13,6 +13,10 @@ export interface CourseContentItem {
   google_classroom_url: string | null;
   created_by_user_id: number | null;
   google_classroom_material_id: string | null;
+  has_file: boolean;
+  original_filename: string | null;
+  file_size: number | null;
+  mime_type: string | null;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -60,6 +64,11 @@ export const coursesApi = {
 
   update: async (id: number, data: { name?: string; description?: string; subject?: string; teacher_email?: string }) => {
     const response = await api.patch(`/api/courses/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    const response = await api.delete(`/api/courses/${id}`);
     return response.data;
   },
 
@@ -141,6 +150,18 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('course_id', String(courseId));
+    if (title) formData.append('title', title);
+    if (contentType) formData.append('content_type', contentType);
+    const response = await api.post('/api/course-contents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as CourseContentItem;
+  },
+
   update: async (id: number, data: {
     title?: string;
     description?: string;
@@ -151,6 +172,15 @@ export const courseContentsApi = {
     course_id?: number;
   }) => {
     const response = await api.patch(`/api/course-contents/${id}`, data);
+    return response.data as CourseContentUpdateResponse;
+  },
+
+  replaceFile: async (id: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.put(`/api/course-contents/${id}/replace-file`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data as CourseContentUpdateResponse;
   },
 
@@ -166,7 +196,57 @@ export const courseContentsApi = {
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
   },
+
+  download: async (id: number, originalFilename?: string) => {
+    const response = await api.get(`/api/course-contents/${id}/download`, {
+      responseType: 'blob',
+    });
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = originalFilename || `document-${id}`;
+    if (contentDisposition) {
+      // Try filename*=UTF-8'' first (RFC 5987), then standard filename=
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+      const stdMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (utf8Match) filename = decodeURIComponent(utf8Match[1]);
+      else if (stdMatch) filename = stdMatch[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
+
+// Submission Types (#839)
+export interface SubmissionResponse {
+  id: number;
+  student_id: number;
+  assignment_id: number;
+  status: string;
+  submitted_at: string | null;
+  grade: number | null;
+  submission_file_name: string | null;
+  submission_notes: string | null;
+  is_late: boolean;
+  assignment_title: string | null;
+  course_name: string | null;
+  student_name: string | null;
+  has_file: boolean;
+}
+
+export interface SubmissionListItem {
+  student_id: number;
+  student_name: string;
+  status: string;
+  submitted_at: string | null;
+  is_late: boolean;
+  grade: number | null;
+  has_file: boolean;
+}
 
 // Assignments API
 export const assignmentsApi = {
@@ -193,5 +273,47 @@ export const assignmentsApi = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/api/assignments/${id}`);
+  },
+
+  // Submission endpoints (#839)
+  submit: async (assignmentId: number, formData: FormData): Promise<SubmissionResponse> => {
+    const response = await api.post(`/api/assignments/${assignmentId}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  getSubmission: async (assignmentId: number): Promise<SubmissionResponse> => {
+    const response = await api.get(`/api/assignments/${assignmentId}/submission`);
+    return response.data;
+  },
+
+  listSubmissions: async (assignmentId: number): Promise<SubmissionListItem[]> => {
+    const response = await api.get(`/api/assignments/${assignmentId}/submissions`);
+    return response.data;
+  },
+
+  downloadSubmission: async (assignmentId: number, studentId?: number) => {
+    const params = studentId ? { student_id: studentId } : {};
+    const response = await api.get(`/api/assignments/${assignmentId}/submission/download`, {
+      responseType: 'blob',
+      params,
+    });
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `submission-${assignmentId}`;
+    if (contentDisposition) {
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+      const stdMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (utf8Match) filename = decodeURIComponent(utf8Match[1]);
+      else if (stdMatch) filename = stdMatch[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };

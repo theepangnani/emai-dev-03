@@ -3,7 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { tasksApi, coursesApi, studyApi, courseContentsApi, type TaskItem, type StudyGuide, type CourseContentItem, type AssignableUser } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { DetailSkeleton, ListSkeleton } from '../components/Skeleton';
+import { PageNav } from '../components/PageNav';
 import './TaskDetailPage.css';
 
 interface CourseOption { id: number; name: string; }
@@ -38,6 +40,8 @@ export function TaskDetailPage() {
   const [contents, setContents] = useState<ContentOption[]>([]);
   const [guides, setGuides] = useState<GuideOption[]>([]);
   const [linkLoading, setLinkLoading] = useState(false);
+
+  const linkModalRef = useFocusTrap<HTMLDivElement>(linkModalOpen, () => setLinkModalOpen(false));
 
   const taskId = parseInt(id || '0');
 
@@ -186,14 +190,14 @@ export function TaskDetailPage() {
   };
 
   const priorityLabel = (p: string | null) => {
-    if (p === 'high') return 'High';
-    if (p === 'low') return 'Low';
-    return 'Medium';
+    if (p === 'high') return '\u25B2 High';
+    if (p === 'low') return '\u25BC Low';
+    return '\u25CF Medium';
   };
 
   const linkTypeLabel: Record<LinkType, string> = {
-    course: 'Course',
-    course_content: 'Course Material',
+    course: 'Class',
+    course_content: 'Class Material',
     study_guide: 'Study Guide',
   };
 
@@ -224,9 +228,11 @@ export function TaskDetailPage() {
   return (
     <DashboardLayout>
       <div className="td-page">
-        <div className="td-header">
-          <Link to="/tasks" className="td-back-link">&larr; Back to Tasks</Link>
-        </div>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Tasks', to: '/tasks' },
+          { label: task?.title || 'Task' },
+        ]} />
 
         {/* Task Info Card */}
         <div className="td-card">
@@ -306,8 +312,9 @@ export function TaskDetailPage() {
                   className={`td-check${task.is_completed ? ' checked' : ''}`}
                   onClick={handleToggleComplete}
                   title={task.is_completed ? 'Mark incomplete' : 'Mark complete'}
+                  aria-label={task.is_completed ? 'Mark incomplete' : 'Mark complete'}
                 >
-                  {task.is_completed ? '\u2705' : '\u2B1C'}
+                  <span aria-hidden="true">{task.is_completed ? '\u2705' : '\u2B1C'}</span>
                 </button>
                 <h2 className={task.is_completed ? 'td-completed' : ''}>{task.title}</h2>
               </div>
@@ -321,13 +328,17 @@ export function TaskDetailPage() {
                   <div className="td-meta-item">
                     <span className="td-meta-label">Due</span>
                     <span className="td-meta-value">
-                      {new Date(task.due_date).toLocaleDateString(undefined, {
+                      {new Date(task.due_date.includes('T') ? task.due_date : task.due_date + 'T00:00:00').toLocaleDateString(undefined, {
                         weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
                       })}
-                      {' at '}
-                      {new Date(task.due_date).toLocaleTimeString(undefined, {
-                        hour: 'numeric', minute: '2-digit',
-                      })}
+                      {task.due_date.includes('T') && (
+                        <>
+                          {' at '}
+                          {new Date(task.due_date).toLocaleTimeString(undefined, {
+                            hour: 'numeric', minute: '2-digit',
+                          })}
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
@@ -382,12 +393,12 @@ export function TaskDetailPage() {
             <h3>Linked Resources</h3>
             <div className="td-link-buttons">
               {!task.course_id && (
-                <button className="td-link-icon-btn" title="Link Course" onClick={() => openLinkModal('course')}>
+                <button className="td-link-icon-btn" title="Link Class" onClick={() => openLinkModal('course')}>
                   &#127891;
                 </button>
               )}
               {!task.course_content_id && (
-                <button className="td-link-icon-btn" title="Link Course Material" onClick={() => openLinkModal('course_content')}>
+                <button className="td-link-icon-btn" title="Link Class Material" onClick={() => openLinkModal('course_content')}>
                   &#128196;
                 </button>
               )}
@@ -404,7 +415,7 @@ export function TaskDetailPage() {
               {task.study_guide_id && studyGuideRoute && (
                 <div className="td-resource-row">
                   <Link to={studyGuideRoute} className="td-resource-card">
-                    <span className="td-resource-icon">{guideTypeIcon(task.study_guide_type)}</span>
+                    <span className="td-resource-icon" aria-hidden="true">{guideTypeIcon(task.study_guide_type)}</span>
                     <div className="td-resource-info">
                       <span className="td-resource-type">
                         {task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}
@@ -421,14 +432,14 @@ export function TaskDetailPage() {
               {task.course_content_id && (
                 <div className="td-resource-row">
                   <Link to={`/course-materials/${task.course_content_id}`} className="td-resource-card">
-                    <span className="td-resource-icon">{'\uD83D\uDCC4'}</span>
+                    <span className="td-resource-icon" aria-hidden="true">{'\uD83D\uDCC4'}</span>
                     <div className="td-resource-info">
-                      <span className="td-resource-type">Course Material</span>
+                      <span className="td-resource-type">Class Material</span>
                       <span className="td-resource-title">{task.course_content_title || 'View Material'}</span>
                     </div>
                     <span className="td-resource-arrow">&rarr;</span>
                   </Link>
-                  <button className="td-unlink-btn" title="Unlink course material" onClick={() => handleUnlink('course_content')}>
+                  <button className="td-unlink-btn" title="Unlink class material" onClick={() => handleUnlink('course_content')}>
                     &#10005;
                   </button>
                 </div>
@@ -436,14 +447,14 @@ export function TaskDetailPage() {
               {task.course_id && (
                 <div className="td-resource-row">
                   <Link to={`/courses/${task.course_id}`} className="td-resource-card">
-                    <span className="td-resource-icon">{'\uD83D\uDCDA'}</span>
+                    <span className="td-resource-icon" aria-hidden="true">{'\uD83D\uDCDA'}</span>
                     <div className="td-resource-info">
-                      <span className="td-resource-type">Course</span>
-                      <span className="td-resource-title">{task.course_name || 'View Course'}</span>
+                      <span className="td-resource-type">Class</span>
+                      <span className="td-resource-title">{task.course_name || 'View Class'}</span>
                     </div>
                     <span className="td-resource-arrow">&rarr;</span>
                   </Link>
-                  <button className="td-unlink-btn" title="Unlink course" onClick={() => handleUnlink('course')}>
+                  <button className="td-unlink-btn" title="Unlink class" onClick={() => handleUnlink('course')}>
                     &#10005;
                   </button>
                 </div>
@@ -451,12 +462,12 @@ export function TaskDetailPage() {
             </div>
           ) : (
             <div className="td-empty-resources">
-              <p>No course materials linked to this task.</p>
+              <p>No class materials linked to this task.</p>
               <div className="td-empty-link-actions">
-                <button className="td-empty-link-btn" onClick={() => openLinkModal('course')} title="Link Course">
-                  &#127891; Course
+                <button className="td-empty-link-btn" onClick={() => openLinkModal('course')} title="Link Class">
+                  &#127891; Class
                 </button>
-                <button className="td-empty-link-btn" onClick={() => openLinkModal('course_content')} title="Link Course Material">
+                <button className="td-empty-link-btn" onClick={() => openLinkModal('course_content')} title="Link Class Material">
                   &#128196; Material
                 </button>
                 <button className="td-empty-link-btn" onClick={() => openLinkModal('study_guide')} title="Link Study Guide">
@@ -471,7 +482,7 @@ export function TaskDetailPage() {
       {/* Link Resource Modal */}
       {linkModalOpen && (
         <div className="modal-overlay" onClick={() => setLinkModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={`Link ${linkTypeLabel[linkType]}`} ref={linkModalRef} onClick={(e) => e.stopPropagation()}>
             <h3>Link {linkTypeLabel[linkType]}</h3>
 
             {/* Tab buttons for switching type */}
@@ -487,10 +498,12 @@ export function TaskDetailPage() {
               ))}
             </div>
 
+            <label htmlFor="td-link-search" className="sr-only">Search resources</label>
             <input
+              id="td-link-search"
               type="text"
               className="td-link-search"
-              placeholder={`Search ${linkTypeLabel[linkType].toLowerCase()}s...`}
+              placeholder={`Search ${linkType === 'course' ? 'classes' : linkTypeLabel[linkType].toLowerCase() + 's'}...`}
               value={linkSearch}
               onChange={(e) => setLinkSearch(e.target.value)}
               autoFocus
@@ -502,24 +515,24 @@ export function TaskDetailPage() {
               ) : linkType === 'course' ? (
                 filteredCourses.length > 0 ? filteredCourses.map(c => (
                   <button key={c.id} className="td-link-item" onClick={() => handleLink(c.id)}>
-                    <span className="td-link-item-icon">&#127891;</span>
+                    <span className="td-link-item-icon" aria-hidden="true">&#127891;</span>
                     <span className="td-link-item-title">{c.name}</span>
                   </button>
-                )) : <div className="td-link-empty">No courses found</div>
+                )) : <div className="td-link-empty">No classes found</div>
               ) : linkType === 'course_content' ? (
                 filteredContents.length > 0 ? filteredContents.map(c => (
                   <button key={c.id} className="td-link-item" onClick={() => handleLink(c.id)}>
-                    <span className="td-link-item-icon">&#128196;</span>
+                    <span className="td-link-item-icon" aria-hidden="true">&#128196;</span>
                     <div className="td-link-item-text">
                       <span className="td-link-item-title">{c.title}</span>
                       <span className="td-link-item-sub">{c.content_type}</span>
                     </div>
                   </button>
-                )) : <div className="td-link-empty">No course materials found</div>
+                )) : <div className="td-link-empty">No class materials found</div>
               ) : (
                 filteredGuides.length > 0 ? filteredGuides.map(g => (
                   <button key={g.id} className="td-link-item" onClick={() => handleLink(g.id)}>
-                    <span className="td-link-item-icon">{guideTypeIcon(g.guide_type)}</span>
+                    <span className="td-link-item-icon" aria-hidden="true">{guideTypeIcon(g.guide_type)}</span>
                     <div className="td-link-item-text">
                       <span className="td-link-item-title">{g.title}</span>
                       <span className="td-link-item-sub">{guideTypeLabel(g.guide_type)}</span>

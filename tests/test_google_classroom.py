@@ -1,18 +1,7 @@
 from unittest.mock import patch, MagicMock
 
 import pytest
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 @pytest.fixture()
@@ -230,7 +219,7 @@ class TestBackgroundGoogleSync:
         mock_coursework.return_value = ([], creds)
 
         # Should not raise
-        asyncio.get_event_loop().run_until_complete(sync_google_classrooms())
+        asyncio.run(sync_google_classrooms())
 
     @patch("app.api.routes.google_classroom.list_courses")
     def test_sync_job_handles_token_failure_gracefully(
@@ -256,4 +245,4 @@ class TestBackgroundGoogleSync:
         mock_courses.side_effect = Exception("Token expired")
 
         # Should not raise — failed users are logged, not propagated
-        asyncio.get_event_loop().run_until_complete(sync_google_classrooms())
+        asyncio.run(sync_google_classrooms())

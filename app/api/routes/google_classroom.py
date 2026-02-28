@@ -4,12 +4,13 @@ import secrets
 import time
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 
 from app.db.database import get_db
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.user import User, UserRole
 from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
@@ -31,6 +32,7 @@ from app.services.google_classroom import (
     get_course_work,
     get_course_work_materials,
     list_course_teachers,
+    GMAIL_READONLY_SCOPE,
 )
 
 logger = logging.getLogger(__name__)
@@ -81,8 +83,25 @@ def update_user_tokens(user: User, credentials, db: Session):
         db.commit()
 
 
+def _store_granted_scopes(user: User, granted_scopes_str: str) -> None:
+    """Store the granted OAuth scopes on the user record.
+
+    Google returns scopes as a space-separated string in the token response.
+    We store them as comma-separated for consistency with other CSV columns.
+    If user already has scopes, merge (union) old + new.
+    """
+    if not granted_scopes_str:
+        return
+    new_scopes = set(granted_scopes_str.split())
+    if user.google_granted_scopes:
+        existing = set(user.google_granted_scopes.split(","))
+        new_scopes = existing | new_scopes
+    user.google_granted_scopes = ",".join(sorted(new_scopes))
+
+
 @router.get("/auth")
-def google_auth(user_id: int | None = None):
+@limiter.limit("10/minute")
+def google_auth(request: Request, user_id: int | None = None):
     """Get Google OAuth authorization URL.
 
     If user_id is provided, it will be included in the state to link
@@ -94,7 +113,9 @@ def google_auth(user_id: int | None = None):
 
 
 @router.get("/connect")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def google_connect(
+    request: Request,
     current_user: User = Depends(get_current_user),
     add_account: bool = Query(False, description="If true, adds as additional teacher Google account"),
 ):
@@ -106,7 +127,9 @@ def google_connect(
 
 
 @router.get("/callback")
+@limiter.limit("10/minute")
 def google_callback(
+    request: Request,
     code: str,
     state: str | None = None,
     error: str | None = None,
@@ -165,10 +188,17 @@ def google_callback(
                         )
                         db.add(new_acct)
                     # Also update User-level tokens for backward compat
-                    user.google_id = user_info["id"]
+                    # (only if no other user owns this google_id)
+                    existing_owner = db.query(User).filter(
+                        User.google_id == user_info["id"],
+                        User.id != user.id,
+                    ).first()
+                    if not existing_owner:
+                        user.google_id = user_info["id"]
                     user.google_access_token = tokens["access_token"]
                     if tokens.get("refresh_token"):
                         user.google_refresh_token = tokens["refresh_token"]
+                    _store_granted_scopes(user, tokens.get("granted_scopes", ""))
                     db.commit()
                     params = urlencode({"google_connected": "true", "account_added": "true"})
                     return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
@@ -177,25 +207,53 @@ def google_callback(
         if state_data["purpose"] in ("connect", "add_account") and state_data.get("user_id"):
             user = db.query(User).filter(User.id == state_data["user_id"]).first()
             if user:
+                # Check if another user already owns this google_id
+                existing_owner = db.query(User).filter(
+                    User.google_id == user_info["id"],
+                    User.id != user.id,
+                ).first()
+                if existing_owner:
+                    params = urlencode({"error": "This Google account is already linked to another user."})
+                    return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
+
                 user.google_id = user_info["id"]
                 user.google_access_token = tokens["access_token"]
                 user.google_refresh_token = tokens.get("refresh_token")
+                _store_granted_scopes(user, tokens.get("granted_scopes", ""))
                 db.commit()
 
                 # Redirect to dashboard with success (no tokens in URL)
                 params = urlencode({"google_connected": "true"})
                 return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
 
-        # Find existing user by Google ID or email
+        # Find existing user by Google ID first, then by email
         user = db.query(User).filter(User.google_id == user_info["id"]).first()
+        found_by_google_id = user is not None
         if not user:
             user = db.query(User).filter(User.email == user_info["email"]).first()
 
         if user:
-            # Update existing user with Google tokens
-            user.google_id = user_info["id"]
-            user.google_access_token = tokens["access_token"]
-            user.google_refresh_token = tokens.get("refresh_token")
+            if found_by_google_id:
+                # google_id already matches — just refresh tokens
+                user.google_access_token = tokens["access_token"]
+                if tokens.get("refresh_token"):
+                    user.google_refresh_token = tokens["refresh_token"]
+            else:
+                # Found by email — check for google_id conflict before linking
+                existing_owner = db.query(User).filter(
+                    User.google_id == user_info["id"],
+                ).first()
+                if existing_owner:
+                    # google_id belongs to a different user — use that user instead
+                    user = existing_owner
+                    user.google_access_token = tokens["access_token"]
+                    if tokens.get("refresh_token"):
+                        user.google_refresh_token = tokens["refresh_token"]
+                else:
+                    user.google_id = user_info["id"]
+                    user.google_access_token = tokens["access_token"]
+                    user.google_refresh_token = tokens.get("refresh_token")
+            _store_granted_scopes(user, tokens.get("granted_scopes", ""))
             db.commit()
             db.refresh(user)
 
@@ -231,16 +289,20 @@ def google_callback(
 
 
 @router.get("/status")
-def google_status(current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def google_status(request: Request, current_user: User = Depends(get_current_user)):
     """Check if user has connected Google Classroom."""
     return {
         "connected": bool(current_user.google_access_token),
+        "gmail_scope_granted": current_user.has_google_scope(GMAIL_READONLY_SCOPE),
         "google_email": None,  # Could fetch from Google if needed
     }
 
 
 @router.delete("/disconnect")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def google_disconnect(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -248,12 +310,15 @@ def google_disconnect(
     current_user.google_id = None
     current_user.google_access_token = None
     current_user.google_refresh_token = None
+    current_user.google_granted_scopes = None
     db.commit()
     return {"message": "Google Classroom disconnected"}
 
 
 @router.get("/courses")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_google_courses(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -351,6 +416,24 @@ def _auto_invite_shadow_teacher(
         logger.warning(f"Failed to send auto-invite to shadow teacher {teacher_email}: {e}")
 
 
+def _set_classroom_type(course: Course, db: Session) -> None:
+    """Set classroom_type based on the course teacher's teacher_type.
+
+    school_teacher → "school", private_tutor or unknown → "private".
+    Does not override if already set.
+    """
+    if course.classroom_type:
+        return
+    if course.teacher_id:
+        teacher = db.query(Teacher).filter(Teacher.id == course.teacher_id).first()
+        if teacher and teacher.teacher_type:
+            from app.models.teacher import TeacherType
+            if teacher.teacher_type == TeacherType.SCHOOL_TEACHER:
+                course.classroom_type = "school"
+                return
+    course.classroom_type = "private"
+
+
 def _resolve_teacher_for_course(
     google_course_id: str,
     user: User,
@@ -415,8 +498,13 @@ def _resolve_teacher_for_course(
     return teacher
 
 
-def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
-    """Shared course sync logic. Returns list of synced course dicts."""
+def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None = None) -> list[dict]:
+    """Shared course sync logic. Returns list of synced course dicts.
+
+    Args:
+        classroom_type: If provided ("school" or "private"), overrides auto-detection
+                        from teacher type and applies to all synced courses.
+    """
     try:
         google_courses, credentials = list_courses(
             user.google_access_token,
@@ -470,6 +558,12 @@ def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
             resolved_teacher = _resolve_teacher_for_course(gc["id"], user, db)
             if resolved_teacher:
                 course.teacher_id = resolved_teacher.id
+
+        # Set classroom_type: explicit parameter overrides auto-detection
+        if classroom_type in ("school", "private"):
+            course.classroom_type = classroom_type
+        else:
+            _set_classroom_type(course, db)
 
         # Link student to course
         if student:
@@ -622,18 +716,29 @@ def _sync_assignments_for_course(course: Course, user: User, db: Session) -> int
 
 
 @router.post("/courses/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_courses(
+    request: Request,
+    classroom_type: str | None = Query(
+        None,
+        description='Override classroom type for synced courses: "school" or "private"',
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Sync Google Classroom courses to local database."""
+    """Sync Google Classroom courses to local database.
+
+    Optional query parameter `classroom_type` overrides auto-detection:
+    - "school" — school classroom (students cannot download documents)
+    - "private" — private/tutor classroom (full access)
+    """
     if not current_user.google_access_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not connected to Google Classroom",
         )
 
-    result = _sync_courses_for_user(current_user, db)
+    result = _sync_courses_for_user(current_user, db, classroom_type=classroom_type)
 
     log_action(db, user_id=current_user.id, action="sync", resource_type="google_classroom")
     db.commit()
@@ -657,7 +762,9 @@ def sync_google_courses(
 
 
 @router.get("/courses/{course_id}/assignments")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_google_assignments(
+    request: Request,
     course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -682,7 +789,9 @@ def get_google_assignments(
 
 
 @router.post("/courses/{google_course_id}/assignments/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_assignments(
+    request: Request,
     google_course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -756,7 +865,9 @@ def sync_google_assignments(
 
 
 @router.post("/courses/{google_course_id}/materials/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_materials(
+    request: Request,
     google_course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -794,7 +905,9 @@ def sync_google_materials(
 # ── Teacher Google Accounts ──────────────────────────────────────────
 
 @router.get("/teacher/accounts")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_teacher_google_accounts(
+    request: Request,
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
@@ -823,7 +936,9 @@ def list_teacher_google_accounts(
 
 
 @router.patch("/teacher/accounts/{account_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_teacher_google_account(
+    request: Request,
     account_id: int,
     label: str | None = Query(None),
     set_primary: bool = Query(False),
@@ -853,8 +968,64 @@ def update_teacher_google_account(
     return {"status": "ok"}
 
 
+@router.post("/sync-grades/{course_id}")
+def sync_grades_for_course(
+    course_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sync grades from Google Classroom for a specific course.
+
+    Fetches student submissions and updates StudentAssignment grades
+    and GradeRecord analytics rows.
+    """
+    if not current_user.google_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google Classroom not connected. Please connect your Google account first.",
+        )
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+
+    if not course.google_classroom_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This course is not linked to Google Classroom",
+        )
+
+    # Verify user has access to this course
+    from app.api.deps import can_access_course
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this course",
+        )
+
+    from app.services.grade_sync_service import sync_grades_for_course as _sync_grades
+    result = _sync_grades(current_user, course, db)
+
+    synced = result["synced"]
+    errors = result["errors"]
+    if errors:
+        message = f"Synced {synced} grade(s) with {errors} error(s)"
+    else:
+        message = f"Synced {synced} grade(s) from Google Classroom"
+
+    log_action(db, user_id=current_user.id, action="sync", resource_type="grades", resource_id=course_id)
+    db.commit()
+
+    return {"synced": synced, "errors": errors, "message": message}
+
+
 @router.delete("/teacher/accounts/{account_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def remove_teacher_google_account(
+    request: Request,
     account_id: int,
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),

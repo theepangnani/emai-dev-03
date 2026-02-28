@@ -78,7 +78,7 @@
   color: var(--color-ink-muted);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .help-container {
     gap: 16px;
   }

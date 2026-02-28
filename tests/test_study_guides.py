@@ -1,16 +1,5 @@
 import pytest
-
-PASSWORD = "Password123!"
-
-
-def _login(client, email):
-    resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["access_token"]
-
-
-def _auth(client, email):
-    return {"Authorization": f"Bearer {_login(client, email)}"}
+from conftest import PASSWORD, _login, _auth
 
 
 @pytest.fixture()
@@ -239,6 +228,29 @@ class TestDeleteStudyGuide:
         resp = client.delete(f"/api/study/guides/{users['parent_guide'].id}", headers=headers)
         assert resp.status_code == 404
 
+    def test_parent_archives_childs_guide(self, client, users, db_session):
+        """Regression #924: parent must be able to archive a guide created by their child."""
+        from app.models.study_guide import StudyGuide
+
+        guide = StudyGuide(
+            user_id=users["student"].id, title="Child Disposable",
+            content="# Delete Me", guide_type="study_guide", version=1,
+            course_id=users["course"].id,
+        )
+        db_session.add(guide)
+        db_session.commit()
+        db_session.refresh(guide)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.delete(f"/api/study/guides/{guide.id}", headers=headers)
+        assert resp.status_code == 204
+
+    def test_unlinked_parent_cannot_archive_childs_guide(self, client, users, db_session):
+        """An unrelated parent should NOT be able to archive another child's guide."""
+        headers = _auth(client, users["outsider"].email)
+        resp = client.delete(f"/api/study/guides/{users['child_guide'].id}", headers=headers)
+        assert resp.status_code == 404
+
 
 # ── Duplicate check ──────────────────────────────────────────
 
@@ -361,3 +373,212 @@ class TestArchiveLifecycle:
         list_resp = client.get("/api/study/guides?include_archived=true", headers=headers)
         ids = [g["id"] for g in list_resp.json()]
         assert guide.id not in ids
+
+
+# ── Auto-task creation from study guide (#902) ────────────────
+
+class TestAutoTaskCreationFromStudyGuide:
+    """Regression tests for #902: tasks must be auto-created when generating study material."""
+
+    def test_auto_create_tasks_sets_parent_id(self, db_session, users):
+        """auto_create_tasks_from_dates must set parent_id on created tasks."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+
+        parent = users["parent"]
+        student = users["student"]
+
+        # Create a dummy study guide to link against
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Auto-task test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        dates = [{"date": "2026-03-15", "title": "Test Deadline", "priority": "high"}]
+        created = auto_create_tasks_from_dates(
+            db_session, dates, parent, guide.id, None, None,
+        )
+
+        assert len(created) == 1
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        assert task is not None
+        assert task.parent_id == parent.id, "parent_id must be set on auto-created tasks"
+        assert task.created_by_user_id == parent.id
+        assert task.assigned_to_user_id == student.id, "should be assigned to linked child"
+
+        # Cleanup
+        db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_auto_create_tasks_sets_student_id(self, db_session, users):
+        """auto_create_tasks_from_dates must set legacy student_id FK."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+
+        parent = users["parent"]
+        student_rec = users["student_rec"]
+
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Student-id test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        dates = [{"date": "2026-04-01", "title": "Student ID Check", "priority": "medium"}]
+        created = auto_create_tasks_from_dates(
+            db_session, dates, parent, guide.id, None, None,
+        )
+
+        assert len(created) == 1
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        assert task.student_id == student_rec.id, "legacy student_id must be set"
+
+        # Cleanup
+        db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_auto_create_tasks_fallback_review_task(self, db_session, users):
+        """When AI returns no critical dates, a fallback 'Review:' task should be created."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+        from datetime import datetime, timezone
+
+        parent = users["parent"]
+
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Fallback test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        # Simulate the fallback that the endpoint creates
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        fallback_dates = [{"date": today_str, "title": "Review: Fallback test", "priority": "medium"}]
+
+        created = auto_create_tasks_from_dates(
+            db_session, fallback_dates, parent, guide.id, None, None,
+        )
+
+        assert len(created) == 1
+        assert created[0]["title"] == "Review: Fallback test"
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        assert task is not None
+        assert task.parent_id == parent.id
+
+        # Cleanup
+        db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_auto_task_visible_in_task_list(self, client, db_session, users):
+        """Auto-created tasks must appear in the task list for the creating parent."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+
+        parent = users["parent"]
+
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Visibility test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        dates = [{"date": "2026-05-01", "title": "Visible Task", "priority": "low"}]
+        created = auto_create_tasks_from_dates(
+            db_session, dates, parent, guide.id, None, None,
+        )
+        db_session.commit()
+
+        headers = _auth(client, parent.email)
+        resp = client.get("/api/tasks/", headers=headers)
+        assert resp.status_code == 200
+        task_titles = [t["title"] for t in resp.json()]
+        assert "Visible Task" in task_titles, "auto-created task must be visible in parent's task list"
+
+        # Cleanup
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        if task:
+            db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+
+class TestAIDateContext:
+    """Regression: AI prompts must include today's date for year inference (#902)."""
+
+    def test_study_guide_prompt_includes_today(self):
+        """generate_study_guide prompt must contain today's date."""
+        import inspect
+        from app.services.ai_service import generate_study_guide
+        source = inspect.getsource(generate_study_guide)
+        assert "Today's date is" in source, "AI prompt must include today's date for year inference"
+
+    def test_quiz_prompt_includes_today(self):
+        """generate_quiz prompt must contain today's date."""
+        import inspect
+        from app.services.ai_service import generate_quiz
+        source = inspect.getsource(generate_quiz)
+        assert "Today's date is" in source, "AI prompt must include today's date for year inference"
+
+    def test_flashcards_prompt_includes_today(self):
+        """generate_flashcards prompt must contain today's date."""
+        import inspect
+        from app.services.ai_service import generate_flashcards
+        source = inspect.getsource(generate_flashcards)
+        assert "Today's date is" in source, "AI prompt must include today's date for year inference"
+
+
+class TestScanContentForDates:
+    """Regression tests for scan_content_for_dates() fallback (#925)."""
+
+    def test_due_mar_3_extracts_march(self):
+        """'Due Mar 3' in content should extract March 3 date."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Assignment summary\nDue Mar 3\nPlease review", "My Assignment")
+        assert len(result) == 1
+        assert result[0]["date"].endswith("-03-03")
+
+    def test_due_colon_format(self):
+        """'Due: March 15' should be recognised."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Due: March 15", "Homework")
+        assert len(result) == 1
+        assert "-03-15" in result[0]["date"]
+
+    def test_due_date_with_year(self):
+        """'Due Jan 10, 2027' should use the explicit year."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Due Jan 10, 2027", "Report")
+        assert len(result) == 1
+        assert result[0]["date"] == "2027-01-10"
+
+    def test_no_dates_returns_empty(self):
+        """Content without date patterns returns empty list."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Just a normal paragraph with no dates", "Notes")
+        assert result == []
+
+    def test_due_by_format(self):
+        """'Due by Apr 1' should be recognised."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Due by Apr 1", "Project")
+        assert len(result) == 1
+        assert "-04-01" in result[0]["date"]
+
+    def test_multiple_dates(self):
+        """Multiple due date patterns should all be extracted."""
+        from app.api.routes.study import scan_content_for_dates
+        text = "Part A Due Mar 3\nPart B Due: April 10"
+        result = scan_content_for_dates(text, "Multi-part")
+        assert len(result) == 2

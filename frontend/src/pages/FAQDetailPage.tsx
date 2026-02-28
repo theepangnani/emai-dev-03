@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { faqApi, type FAQQuestionDetail, type FAQAnswerItem } from '../api/client';
+import { PageNav } from '../components/PageNav';
 import './FAQDetailPage.css';
 
 export function FAQDetailPage() {
@@ -123,9 +124,11 @@ export function FAQDetailPage() {
   return (
     <DashboardLayout welcomeSubtitle="FAQ">
       <div className="faq-detail">
-        <button className="faq-back-btn" onClick={() => navigate('/faq')}>
-          &larr; Back to FAQ
-        </button>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'FAQ', to: '/faq' },
+          { label: question?.title || 'Question' },
+        ]} />
 
         {/* Question card */}
         <div className="faq-question-card">

@@ -132,6 +132,11 @@ export function createMockNotification(
     link: null,
     read: false,
     created_at: '2026-02-14T12:00:00Z',
+    requires_ack: false,
+    acked_at: null,
+    source_type: null,
+    source_id: null,
+    reminder_count: 0,
     ...overrides,
   }
 }
@@ -201,6 +206,8 @@ export function createMockChild(
     notes: null,
     relationship_type: 'guardian',
     invite_link: null,
+    invite_status: 'active',
+    invite_id: null,
     course_count: 2,
     active_task_count: 3,
     ...overrides,

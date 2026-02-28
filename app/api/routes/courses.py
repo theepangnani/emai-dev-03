@@ -3,12 +3,13 @@ import secrets
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
 
 from app.db.database import get_db
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.course import Course, student_courses
 from app.models.user import User, UserRole
 from app.models.teacher import Teacher
@@ -102,7 +103,9 @@ def _resolve_teacher_by_email(db: Session, email: str, inviter: User, course: Co
 
 
 @router.post("/", response_model=CourseResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_course(
+    request: Request,
     course_data: CourseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -142,7 +145,9 @@ def create_course(
 
 
 @router.get("/", response_model=list[CourseResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_courses(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -152,7 +157,9 @@ def list_courses(
 
 
 @router.get("/teaching", response_model=list[CourseResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_teaching_courses(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
@@ -162,7 +169,9 @@ def list_teaching_courses(
 
 
 @router.get("/created/me", response_model=list[CourseResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_my_created_courses(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -171,7 +180,9 @@ def list_my_created_courses(
 
 
 @router.get("/enrolled/me", response_model=list[CourseResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_my_enrolled_courses(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
@@ -181,7 +192,9 @@ def list_my_enrolled_courses(
 
 
 @router.get("/default", response_model=CourseResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_default_course(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -190,7 +203,9 @@ def get_default_course(
 
 
 @router.get("/{course_id}", response_model=CourseResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_course(
+    request: Request,
     course_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -210,7 +225,9 @@ def get_course(
 
 
 @router.patch("/{course_id}", response_model=CourseResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_course(
+    request: Request,
     course_id: int,
     data: CourseUpdate,
     db: Session = Depends(get_db),
@@ -251,8 +268,42 @@ def update_course(
     return course
 
 
+@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_course(
+    request: Request,
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a course. Only the creator or an admin can delete."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+    if course.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the course creator or an admin can delete this course",
+        )
+    if course.google_classroom_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete a Google Classroom synced course",
+        )
+
+    log_action(db, user_id=current_user.id, action="delete", resource_type="course", resource_id=course_id, details={"name": course.name})
+    db.delete(course)
+    db.commit()
+    return {"message": f"Course '{course.name}' has been deleted"}
+
+
 @router.post("/{course_id}/enroll", status_code=status.HTTP_200_OK)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def enroll_in_course(
+    request: Request,
     course_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
@@ -292,7 +343,9 @@ def enroll_in_course(
 
 
 @router.delete("/{course_id}/enroll", status_code=status.HTTP_200_OK)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def unenroll_from_course(
+    request: Request,
     course_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
@@ -332,7 +385,9 @@ def _require_course_manager(db: Session, current_user: User, course: Course):
 
 
 @router.get("/{course_id}/students")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_course_students(
+    request: Request,
     course_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -356,7 +411,9 @@ def list_course_students(
 
 
 @router.post("/{course_id}/students")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def add_student_to_course(
+    request: Request,
     course_id: int,
     body: AddStudentRequest,
     db: Session = Depends(get_db),
@@ -488,8 +545,26 @@ def add_student_to_course(
     return {"invited": True, "message": f"Invitation sent to {email}"}
 
 
+@router.post("/{course_id}/invite-student")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def invite_student_to_course(
+    request: Request,
+    course_id: int,
+    body: AddStudentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Invite a student to a course (alias for add_student_to_course).
+
+    Teacher-friendly endpoint name for the invite flow.
+    """
+    return add_student_to_course(request, course_id, body, db, current_user)
+
+
 @router.delete("/{course_id}/students/{student_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def remove_student_from_course(
+    request: Request,
     course_id: int,
     student_id: int,
     db: Session = Depends(get_db),
@@ -544,7 +619,9 @@ def _get_or_create_conversation(db: Session, user_a_id: int, user_b_id: int, sub
 
 
 @router.post("/{course_id}/announce")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
 def send_course_announcement(
+    request: Request,
     course_id: int,
     data: AnnouncementRequest,
     db: Session = Depends(get_db),

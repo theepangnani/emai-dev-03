@@ -1,0 +1,22 @@
+.edit-material-modal {
+  max-width: 500px;
+}
+.edit-mat-form {
+  overflow-y: auto;
+  max-height: calc(90vh - 160px);
+  padding-bottom: 8px;
+}
+.edit-mat-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0 24px;
+}
+.edit-mat-course-current {
+  font-size: 0.88rem;
+  color: var(--color-ink);
+  padding: 5px 0;
+}
+.edit-mat-course-list {
+  max-height: 150px;
+}

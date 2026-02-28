@@ -1,9 +1,10 @@
 import logging
 from pydantic import BaseModel as PydanticBaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.core.utils import escape_like
 
 from app.db.database import get_db
@@ -15,7 +16,7 @@ from app.schemas.teacher_communication import (
     EmailMonitoringStatus,
 )
 from app.api.deps import get_current_user
-from app.services.google_classroom import get_email_monitoring_auth_url
+from app.services.google_classroom import get_email_monitoring_auth_url, GMAIL_READONLY_SCOPE
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/teacher-communications", tags=["Teacher Communicatio
 
 
 @router.get("/", response_model=TeacherCommunicationList)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_communications(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     type: CommunicationType | None = None,
@@ -69,7 +72,9 @@ def list_communications(
 
 
 @router.get("/status", response_model=EmailMonitoringStatus)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_monitoring_status(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -83,9 +88,11 @@ def get_monitoring_status(
         TeacherCommunication.is_read == False,
     ).count()
 
+    has_gmail_scope = current_user.has_google_scope(GMAIL_READONLY_SCOPE)
     return EmailMonitoringStatus(
-        gmail_enabled=bool(current_user.google_access_token),
+        gmail_enabled=bool(current_user.google_access_token) and has_gmail_scope,
         classroom_enabled=bool(current_user.google_access_token),
+        gmail_scope_granted=has_gmail_scope,
         last_gmail_sync=getattr(current_user, "gmail_last_sync", None),
         last_classroom_sync=getattr(current_user, "classroom_last_sync", None),
         total_communications=total,
@@ -94,7 +101,9 @@ def get_monitoring_status(
 
 
 @router.get("/auth/email-monitoring")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_email_monitoring_auth(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """Get OAuth URL for granting email monitoring permissions."""
@@ -104,7 +113,9 @@ def get_email_monitoring_auth(
 
 
 @router.get("/{comm_id}", response_model=TeacherCommunicationResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_communication(
+    request: Request,
     comm_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -127,7 +138,9 @@ def get_communication(
 
 
 @router.put("/{comm_id}/read")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def mark_as_read(
+    request: Request,
     comm_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -145,7 +158,9 @@ def mark_as_read(
 
 
 @router.post("/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def trigger_sync(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -163,9 +178,11 @@ class ReplyRequest(PydanticBaseModel):
 
 
 @router.post("/{comm_id}/reply")
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def reply_to_communication(
+    request: Request,
     comm_id: int,
-    request: ReplyRequest,
+    data: ReplyRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -178,12 +195,12 @@ def reply_to_communication(
         raise HTTPException(status_code=404, detail="Communication not found")
     if not comm.sender_email:
         raise HTTPException(status_code=400, detail="No sender email to reply to")
-    if not request.body.strip():
+    if not data.body.strip():
         raise HTTPException(status_code=400, detail="Reply body cannot be empty")
 
     subject = f"Re: {comm.subject}" if comm.subject else "Reply from ClassBridge"
     reply_html = f"""
-        <p>{request.body.replace(chr(10), '<br>')}</p>
+        <p>{data.body.replace(chr(10), '<br>')}</p>
         <hr style="border:none;border-top:1px solid #ddd;margin:20px 0;" />
         <p style="color:#888;font-size:13px;">
             Sent by <strong>{current_user.full_name}</strong> via ClassBridge

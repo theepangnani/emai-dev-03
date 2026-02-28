@@ -22,6 +22,7 @@ export interface TaskItem {
   course_content_title: string | null;
   study_guide_title: string | null;
   study_guide_type: string | null;
+  last_reminder_sent_at: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -39,7 +40,7 @@ export const tasksApi = {
     return response.data as TaskItem;
   },
 
-  list: async (params?: { assigned_to_user_id?: number; is_completed?: boolean; priority?: string; include_archived?: boolean; course_id?: number }) => {
+  list: async (params?: { assigned_to_user_id?: number; is_completed?: boolean; priority?: string; include_archived?: boolean; course_id?: number; study_guide_id?: number }) => {
     const response = await api.get('/api/tasks/', { params });
     return response.data as TaskItem[];
   },
@@ -70,5 +71,10 @@ export const tasksApi = {
   getAssignableUsers: async () => {
     const response = await api.get('/api/tasks/assignable-users');
     return response.data as AssignableUser[];
+  },
+
+  remind: async (taskId: number) => {
+    const response = await api.post(`/api/tasks/${taskId}/remind`);
+    return response.data as { success: boolean; reminded_at: string; assignee_name: string };
   },
 };

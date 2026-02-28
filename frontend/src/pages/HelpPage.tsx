@@ -19,17 +19,17 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         question: 'How do I connect my Google Classroom account?',
         answer:
-          'Go to your Dashboard and click the "Connect Google Classroom" button. You\'ll be redirected to Google to sign in and grant ClassBridge permission to access your Classroom data. Once connected, your courses and assignments will sync automatically.',
+          'Go to your Dashboard and click the "Connect Google Classroom" button. You\'ll be redirected to Google to sign in and grant ClassBridge permission to access your Classroom data. Once connected, your classes and assignments will sync automatically.',
       },
       {
-        question: 'How do I sync my courses and assignments?',
+        question: 'How do I sync my classes and assignments?',
         answer:
-          'After connecting Google Classroom, your courses sync automatically. To manually refresh, click the sync button on your Dashboard or Courses page. Assignments, due dates, and course materials will be pulled from Google Classroom.',
+          'After connecting Google Classroom, your classes sync automatically. To manually refresh, click the sync button on your Dashboard or Classes page. Assignments, due dates, and class materials will be pulled from Google Classroom.',
       },
       {
         question: 'How do I link my child\'s account (for parents)?',
         answer:
-          'From your Dashboard, go to "Child Profiles" and click "Invite Child." Enter your child\'s email address to send them an invitation. Once they accept and create their account, you\'ll be able to view their courses, assignments, and progress.',
+          'From your Dashboard, go to "Child Profiles" and click "Invite Child." Enter your child\'s email address to send them an invitation. Once they accept and create their account, you\'ll be able to view their classes, assignments, and progress.',
       },
     ],
   },
@@ -37,9 +37,9 @@ const FAQ_SECTIONS: FaqSection[] = [
     title: 'Study Tools',
     items: [
       {
-        question: 'How do I create a study guide from course materials?',
+        question: 'How do I create a study guide from class materials?',
         answer:
-          'Navigate to "Course Materials," select a course, and click "Generate Study Guide." ClassBridge uses AI to create a structured study guide from your course content. You can also upload your own files (PDFs, documents) to generate guides from.',
+          'Navigate to "Class Materials," select a class, and click "Generate Study Guide." ClassBridge uses AI to create a structured study guide from your class content. You can also upload your own files (PDFs, documents) to generate guides from.',
       },
       {
         question: 'How do I take a quiz or use flashcards?',
@@ -49,7 +49,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         question: 'How do I upload files for study guide generation?',
         answer:
-          'On the "Course Materials" page, click "Upload Material." You can upload PDFs, Word documents, and other text files. ClassBridge will process the content and let you generate AI-powered study guides, quizzes, and flashcards from them.',
+          'On the "Class Materials" page, click "Upload Material." You can upload PDFs, Word documents, and other text files. ClassBridge will process the content and let you generate AI-powered study guides, quizzes, and flashcards from them.',
       },
     ],
   },
@@ -87,9 +87,9 @@ const FAQ_SECTIONS: FaqSection[] = [
           'To disconnect Google Classroom, go to your Dashboard and look for the Google Classroom connection section. Click "Disconnect" to remove the link. You can reconnect at any time by clicking "Connect Google Classroom" again.',
       },
       {
-        question: 'How do I view my child\'s courses and assignments?',
+        question: 'How do I view my child\'s classes and assignments?',
         answer:
-          'As a parent, go to "Child Profiles" and select your child. You\'ll see their linked courses, upcoming assignments, and any study materials they\'ve created. This gives you visibility into their academic progress.',
+          'As a parent, go to "Child Profiles" and select your child. You\'ll see their linked classes, upcoming assignments, and any study materials they\'ve created. This gives you visibility into their academic progress.',
       },
       {
         question: 'How do I change my password or update my profile?',
@@ -123,7 +123,7 @@ export function HelpPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Find answers to common questions">
+    <DashboardLayout welcomeSubtitle="Find answers to common questions" showBackButton>
       <div className="help-container">
         {FAQ_SECTIONS.map((section, sIdx) => (
           <div key={section.title} className="help-section">

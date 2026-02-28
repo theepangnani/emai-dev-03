@@ -5,8 +5,11 @@ import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/clie
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import './CoursesPage.css';
 
 interface CourseItem {
@@ -16,12 +19,22 @@ interface CourseItem {
   subject: string | null;
   created_at: string;
   google_classroom_id?: string | null;
+  classroom_type?: string | null;
   teacher_name?: string | null;
   teacher_id?: number | null;
   is_private?: boolean;
 }
 
 type SyncState = 'idle' | 'syncing' | 'done' | 'error';
+
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
 
 // Helper for keyboard accessibility
 const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
@@ -33,7 +46,7 @@ const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
 
 export function CoursesPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { confirm, confirmModal } = useConfirm();
   const isParent = user?.role === 'parent';
@@ -43,9 +56,12 @@ export function CoursesPage() {
   // Student self-enrollment state
   const [enrolledCourses, setEnrolledCourses] = useState<CourseItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<CourseItem[]>([]);
-  const [studentTab, setStudentTab] = useState<'enrolled' | 'browse'>('enrolled');
+  const [studentTab, setStudentTab] = useState<'enrolled' | 'browse'>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'browse' ? 'browse' : 'enrolled';
+  });
   const [enrollingId, setEnrollingId] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
 
   // Parent-specific state
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -55,10 +71,12 @@ export function CoursesPage() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [syncMessage, setSyncMessage] = useState('');
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
 
   // Shared state
   const [myCourses, setMyCourses] = useState<CourseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState('');
 
   // Inline course content expansion
@@ -80,15 +98,72 @@ export function CoursesPage() {
   const [selectedCoursesForAssign, setSelectedCoursesForAssign] = useState<Set<number>>(new Set());
   const [assignLoading, setAssignLoading] = useState(false);
 
+  // Collapsible sections
+  const [childCoursesExpanded, setChildCoursesExpanded] = useState(true);
+  const [myCoursesExpanded, setMyCoursesExpanded] = useState(true);
+
+  // Edit course modal
+  const [editCourse, setEditCourse] = useState<CourseItem | null>(null);
+  const [editCourseName, setEditCourseName] = useState('');
+  const [editCourseSubject, setEditCourseSubject] = useState('');
+  const [editCourseDescription, setEditCourseDescription] = useState('');
+  const [editCourseLoading, setEditCourseLoading] = useState(false);
+  const [editCourseError, setEditCourseError] = useState('');
+
+  // Edit content modal
+  const [editContent, setEditContent] = useState<CourseContentItem | null>(null);
+  const [editContentTitle, setEditContentTitle] = useState('');
+  const [editContentDescription, setEditContentDescription] = useState('');
+  const [editContentType, setEditContentType] = useState('');
+  const [editContentLoading, setEditContentLoading] = useState(false);
+  const [editContentError, setEditContentError] = useState('');
+  const createModalRef = useFocusTrap<HTMLDivElement>(showCreateModal);
+  const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
+  const editCourseModalRef = useFocusTrap<HTMLDivElement>(!!editCourse);
+  const editContentModalRef = useFocusTrap<HTMLDivElement>(!!editContent);
+
   useEffect(() => {
     loadData();
+    const timeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) setLoadError(true);
+        return false;
+      });
+    }, 15000);
+    return () => clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
-    if (selectedChild) loadChildOverview(selectedChild);
+    if (selectedChild) {
+      loadChildOverview(selectedChild);
+    } else if (children.length > 0) {
+      loadAllChildrenCourses();
+    }
   }, [selectedChild]);
 
+  // Persist selected child to sessionStorage for cross-page consistency
+  useEffect(() => {
+    if (selectedChild && children.length > 0) {
+      const child = children.find(c => c.student_id === selectedChild);
+      if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
+    }
+  }, [selectedChild, children]);
+
+  // Debounced search term sync to URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm) {
+        searchParams.set('q', searchTerm);
+      } else {
+        searchParams.delete('q');
+      }
+      setSearchParams(searchParams, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const loadData = async () => {
+    setLoadError(false);
     try {
       if (isParent) {
         const [childrenData, courses] = await Promise.all([
@@ -100,7 +175,13 @@ export function CoursesPage() {
         if (childrenData.length > 0) {
           const urlSid = urlStudentId ? Number(urlStudentId) : null;
           const match = urlSid ? childrenData.find(c => c.student_id === urlSid) : null;
-          setSelectedChild(match ? match.student_id : childrenData[0].student_id);
+          if (match) {
+            setSelectedChild(match.student_id);
+          } else {
+            const storedUserId = sessionStorage.getItem('selectedChildId');
+            const storedMatch = storedUserId ? childrenData.find(c => c.user_id === Number(storedUserId)) : null;
+            setSelectedChild(storedMatch ? storedMatch.student_id : childrenData[0].student_id);
+          }
         }
         try {
           const status = await googleApi.getStatus();
@@ -120,7 +201,9 @@ export function CoursesPage() {
         const courses = await coursesApi.list();
         setMyCourses(courses);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -130,6 +213,35 @@ export function CoursesPage() {
     try {
       const data = await parentApi.getChildOverview(studentId);
       setChildOverview(data);
+    } catch {
+      setChildOverview(null);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  const loadAllChildrenCourses = async () => {
+    setOverviewLoading(true);
+    try {
+      const overviews = await Promise.all(
+        children.map(c => parentApi.getChildOverview(c.student_id))
+      );
+      const seen = new Set<number>();
+      const allCourses = overviews.flatMap(o => o.courses).filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
+      setChildOverview({
+        student_id: 0,
+        user_id: 0,
+        full_name: '',
+        grade_level: null,
+        google_connected: false,
+        courses: allCourses,
+        assignments: [],
+        study_guides_count: 0,
+      });
     } catch {
       setChildOverview(null);
     } finally {
@@ -182,7 +294,7 @@ export function CoursesPage() {
       // Navigate to the new course detail page
       navigate(`/courses/${newCourse.id}`);
     } catch (err: any) {
-      setCreateError(err.response?.data?.detail || 'Failed to create course');
+      setCreateError(err.response?.data?.detail || 'Failed to create class');
     } finally {
       setCreateLoading(false);
     }
@@ -206,7 +318,7 @@ export function CoursesPage() {
       setSelectedCoursesForAssign(new Set());
       loadChildOverview(selectedChild);
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to assign courses');
+      setActionError(err.response?.data?.detail || 'Failed to assign classes');
     } finally {
       setAssignLoading(false);
     }
@@ -220,19 +332,19 @@ export function CoursesPage() {
       const result = await parentApi.syncChildCourses(selectedChild);
       setSyncMessage(result.message);
       setSyncState('done');
+      setLastSynced(new Date());
       loadChildOverview(selectedChild);
       setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
     } catch (err: any) {
-      setSyncMessage(err.response?.data?.detail || 'Failed to sync courses');
+      setSyncMessage(err.response?.data?.detail || 'Failed to sync classes');
       setSyncState('error');
-      setTimeout(() => { setSyncState('idle'); setSyncMessage(''); }, 4000);
     }
   };
 
   const handleUnassignCourse = async (courseId: number, courseName: string) => {
     if (!selectedChild) return;
     const ok = await confirm({
-      title: 'Unassign Course',
+      title: 'Unassign Class',
       message: `Remove "${courseName}" from ${childName}?`,
       confirmLabel: 'Unassign',
     });
@@ -241,7 +353,7 @@ export function CoursesPage() {
       await parentApi.unassignCourseFromChild(selectedChild, courseId);
       loadChildOverview(selectedChild);
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to unassign course');
+      setActionError(err.response?.data?.detail || 'Failed to unassign class');
     }
   };
 
@@ -251,7 +363,7 @@ export function CoursesPage() {
       await parentApi.assignCoursesToChild(selectedChild, [courseId]);
       loadChildOverview(selectedChild);
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to assign course');
+      setActionError(err.response?.data?.detail || 'Failed to assign class');
     }
   };
 
@@ -274,7 +386,7 @@ export function CoursesPage() {
 
   const handleUnenroll = async (courseId: number, courseName: string) => {
     const ok = await confirm({
-      title: 'Unenroll from Course',
+      title: 'Unenroll from Class',
       message: `Are you sure you want to unenroll from "${courseName}"?`,
       confirmLabel: 'Unenroll',
     });
@@ -295,6 +407,116 @@ export function CoursesPage() {
     }
   };
 
+  // ── Edit Course modal handlers ────────────────────────────────
+  const openEditCourse = (course: CourseItem) => {
+    setEditCourse(course);
+    setEditCourseName(course.name);
+    setEditCourseSubject(course.subject || '');
+    setEditCourseDescription(course.description || '');
+    setEditCourseError('');
+  };
+
+  const closeEditCourse = () => {
+    setEditCourse(null);
+    setEditCourseError('');
+  };
+
+  const handleSaveEditCourse = async () => {
+    if (!editCourse || !editCourseName.trim()) return;
+    setEditCourseLoading(true);
+    setEditCourseError('');
+    try {
+      await coursesApi.update(editCourse.id, {
+        name: editCourseName.trim(),
+        subject: editCourseSubject.trim() || undefined,
+        description: editCourseDescription.trim() || undefined,
+      });
+      closeEditCourse();
+      loadData();
+    } catch (err: any) {
+      setEditCourseError(err.response?.data?.detail || 'Failed to update class');
+    } finally {
+      setEditCourseLoading(false);
+    }
+  };
+
+  const handleDeleteCourseFromModal = async () => {
+    if (!editCourse) return;
+    const ok = await confirm({
+      title: 'Delete Class',
+      message: `Are you sure you want to delete "${editCourse.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
+    setEditCourseLoading(true);
+    try {
+      await coursesApi.delete(editCourse.id);
+      closeEditCourse();
+      loadData();
+    } catch (err: any) {
+      setEditCourseError(err.response?.data?.detail || 'Failed to delete class');
+      setEditCourseLoading(false);
+    }
+  };
+
+  // ── Edit Content modal handlers ──────────────────────────────
+  const openEditContent = (item: CourseContentItem) => {
+    setEditContent(item);
+    setEditContentTitle(item.title);
+    setEditContentDescription(item.description || '');
+    setEditContentType(item.content_type);
+    setEditContentError('');
+  };
+
+  const closeEditContent = () => {
+    setEditContent(null);
+    setEditContentError('');
+  };
+
+  const handleSaveEditContent = async () => {
+    if (!editContent || !editContentTitle.trim()) return;
+    setEditContentLoading(true);
+    setEditContentError('');
+    try {
+      await courseContentsApi.update(editContent.id, {
+        title: editContentTitle.trim(),
+        description: editContentDescription.trim() || undefined,
+        content_type: editContentType,
+      });
+      closeEditContent();
+      if (expandedCourseId) {
+        const contents = await courseContentsApi.list(expandedCourseId);
+        setExpandedContents(contents);
+      }
+    } catch (err: any) {
+      setEditContentError(err.response?.data?.detail || 'Failed to update material');
+    } finally {
+      setEditContentLoading(false);
+    }
+  };
+
+  const handleDeleteContentFromModal = async () => {
+    if (!editContent) return;
+    const ok = await confirm({
+      title: 'Delete Material',
+      message: `Are you sure you want to delete "${editContent.title}"?`,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
+    setEditContentLoading(true);
+    try {
+      await courseContentsApi.delete(editContent.id);
+      closeEditContent();
+      if (expandedCourseId) {
+        const contents = await courseContentsApi.list(expandedCourseId);
+        setExpandedContents(contents);
+      }
+    } catch (err: any) {
+      setEditContentError(err.response?.data?.detail || 'Failed to delete material');
+      setEditContentLoading(false);
+    }
+  };
+
   const filteredAvailable = availableCourses.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.subject && c.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -304,19 +526,35 @@ export function CoursesPage() {
   const childName = childOverview?.full_name || children.find(c => c.student_id === selectedChild)?.full_name || '';
   const courseIds = (childOverview?.courses || []).map(c => c.id);
 
-  if (loading) {
+  if (loading || loadError) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage courses">
-        <PageSkeleton />
+      <DashboardLayout welcomeSubtitle="Manage classes" showBackButton>
+        {loadError ? (
+          <div className="no-children-state">
+            <h3>Unable to Load Classes</h3>
+            <p>Something went wrong while loading your classes. Please try again.</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+              <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
+                Retry
+              </button>
+              <button className="cancel-btn" onClick={() => window.location.reload()}>
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        ) : (
+          <PageSkeleton />
+        )}
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout
-      welcomeSubtitle="Manage courses"
+      welcomeSubtitle="Manage classes"
+      showBackButton
       sidebarActions={[
-        { label: '+ Add Course', onClick: () => setShowCreateModal(true) },
+        { label: '+ Add Class', onClick: () => setShowCreateModal(true) },
       ]}
     >
       <div className="courses-page">
@@ -333,7 +571,7 @@ export function CoursesPage() {
               <button
                 key={child.student_id}
                 className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-                onClick={() => setSelectedChild(child.student_id)}
+                onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
               >
                 {child.full_name}
               </button>
@@ -345,26 +583,41 @@ export function CoursesPage() {
         {isParent && (
           <div className="courses-section">
             <div className="courses-section-header">
-              <h3>{childName ? `${childName}'s Courses` : 'Courses'}</h3>
+              <button className="collapse-toggle" onClick={() => setChildCoursesExpanded(v => !v)}>
+                <span className={`section-chevron${childCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>{childName ? `${childName}'s Classes` : 'Classes'} ({childOverview?.courses.length ?? 0})</h3>
+              </button>
               <div className="courses-header-actions">
                 <button className="generate-btn" onClick={() => setShowCreateModal(true)}>
-                  + Create Course
+                  + Create Class
                 </button>
                 {myCourses.length > 0 && selectedChild && (
                   <button className="courses-btn secondary" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
-                    Assign Course
+                    Assign Class
                   </button>
                 )}
                 {googleConnected && childOverview?.google_connected && (
-                  <button className="courses-btn secondary" onClick={handleSyncCourses} disabled={syncState === 'syncing'}>
-                    {syncState === 'syncing' ? 'Syncing...' : 'Sync Google'}
-                  </button>
+                  <>
+                    <button className="courses-btn secondary" onClick={handleSyncCourses} disabled={syncState === 'syncing'}>
+                      {syncState === 'syncing' ? (<><span className="btn-spinner" /> Syncing...</>) : 'Sync Google'}
+                    </button>
+                    {lastSynced && syncState !== 'error' && (
+                      <span className="last-synced">Last synced: {formatTimeAgo(lastSynced)}</span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
-            {syncMessage && (
-              <div className={`courses-sync-msg ${syncState === 'error' ? 'error' : ''}`}>{syncMessage}</div>
-            )}
+            {childCoursesExpanded && (
+            <>
+            {syncState === 'error' ? (
+              <div className="sync-error">
+                <span>{syncMessage || 'Sync failed'}</span>
+                <button onClick={handleSyncCourses} className="retry-btn">Retry</button>
+              </div>
+            ) : syncMessage ? (
+              <div className="courses-sync-msg">{syncMessage}</div>
+            ) : null}
             {overviewLoading ? (
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <CardSkeleton />
@@ -372,45 +625,37 @@ export function CoursesPage() {
                 <CardSkeleton />
               </div>
             ) : childOverview && childOverview.courses.length > 0 ? (
-              <div className="courses-grid">
+              <div className="courses-list">
                 {childOverview.courses.map((course) => (
-                  <div key={course.id} className="course-card-wrapper">
+                  <div key={course.id} className="course-list-item-wrapper">
                     <div
-                      className={`course-card${expandedCourseId === course.id ? ' expanded' : ''}`}
+                      className={`course-list-row${expandedCourseId === course.id ? ' expanded' : ''}`}
                       onClick={() => toggleCourseExpand(course.id)}
                       onKeyDown={(e) => handleKeyDown(e, () => toggleCourseExpand(course.id))}
                       role="button"
                       tabIndex={0}
-                      style={{ cursor: 'pointer' }}
                     >
-                      <div className="course-card-color" style={{ background: getCourseColor(course.id, courseIds) }} />
-                      <div className="course-card-body">
-                        <h4>{course.name} <span className="course-card-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span></h4>
-                        {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                        {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
-                        {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                      <div className="course-list-color" style={{ background: getCourseColor(course.id, courseIds) }} />
+                      <div className="course-list-body">
+                        <span className="course-list-title">{course.name}</span>
+                        <div className="course-list-meta">
+                          {course.subject && <span className="course-card-subject">{course.subject}</span>}
+                          {course.teacher_name && <span>{course.teacher_name}</span>}
+                          {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                          {course.classroom_type === 'school' && <span className="course-card-badge school">School</span>}
+                          {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
+                        </div>
                       </div>
-                      <div className="course-card-actions">
-                        <button
-                          className="course-card-action-btn edit"
-                          title="View course details"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                        >
-                          &#9998;
-                        </button>
-                        <button
-                          className="course-card-action-btn unassign"
-                          title={`Unassign from ${childName}`}
-                          onClick={(e) => { e.stopPropagation(); handleUnassignCourse(course.id, course.name); }}
-                        >
-                          &#10005;
-                        </button>
+                      <span className="course-list-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span>
+                      <div className="course-list-actions" onClick={(e) => e.stopPropagation()}>
+                        <button className="course-list-btn" title="Edit" onClick={() => openEditCourse(course)}>&#9998;</button>
+                        <button className="course-list-btn danger" title={`Unassign from ${childName}`} onClick={() => handleUnassignCourse(course.id, course.name)}>&#10005;</button>
                       </div>
                     </div>
                     {expandedCourseId === course.id && (
                       <div className="course-content-panel">
                         <div className="course-content-header">
-                          <h5>Course Materials</h5>
+                          <h5>Class Materials</h5>
                           <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
                             View Details &rarr;
                           </button>
@@ -432,13 +677,14 @@ export function CoursesPage() {
                                   <span className="content-item-title">{item.title}</span>
                                   {item.description && <p className="content-item-desc">{item.description}</p>}
                                 </div>
-                                <div className="content-item-links">
+                                <div className="content-item-actions">
                                   {item.reference_url && (
-                                    <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link" onClick={(e) => e.stopPropagation()}>Link</a>
+                                    <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">Link</a>
                                   )}
                                   {item.google_classroom_url && (
-                                    <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google" onClick={(e) => e.stopPropagation()}>Google</a>
+                                    <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">Google</a>
                                   )}
+                                  <button className="course-list-btn" title="Edit" onClick={(e) => { e.stopPropagation(); openEditContent(item); }}>&#9998;</button>
                                 </div>
                               </div>
                             ))}
@@ -450,9 +696,13 @@ export function CoursesPage() {
                 ))}
               </div>
             ) : (
-              <div className="courses-empty">
-                <p>No courses yet. Create a course or sync from Google Classroom.</p>
-              </div>
+              <GoogleClassroomPrompt
+                childName={childName || 'your child'}
+                childStudentId={selectedChild ?? 0}
+                onAddManually={() => setShowCreateModal(true)}
+              />
+            )}
+            </>
             )}
           </div>
         )}
@@ -463,60 +713,54 @@ export function CoursesPage() {
             <div className="courses-tabs">
               <button
                 className={`courses-tab ${studentTab === 'enrolled' ? 'active' : ''}`}
-                onClick={() => setStudentTab('enrolled')}
+                onClick={() => { setStudentTab('enrolled'); searchParams.delete('tab'); setSearchParams(searchParams, { replace: true }); }}
               >
-                My Courses ({enrolledCourses.length})
+                My Classes ({enrolledCourses.length})
               </button>
               <button
                 className={`courses-tab ${studentTab === 'browse' ? 'active' : ''}`}
-                onClick={() => setStudentTab('browse')}
+                onClick={() => { setStudentTab('browse'); searchParams.set('tab', 'browse'); setSearchParams(searchParams, { replace: true }); }}
               >
-                Browse Courses ({availableCourses.length})
+                Browse Classes ({availableCourses.length})
               </button>
             </div>
 
             {studentTab === 'enrolled' && (
               <div className="courses-section">
                 {enrolledCourses.length > 0 ? (
-                  <div className="courses-grid">
+                  <div className="courses-list">
                     {enrolledCourses.map((course) => (
-                      <div key={course.id} className="course-card-wrapper">
+                      <div key={course.id} className="course-list-item-wrapper">
                         <div
-                          className={`course-card${expandedCourseId === course.id ? ' expanded' : ''}`}
+                          className={`course-list-row${expandedCourseId === course.id ? ' expanded' : ''}`}
                           onClick={() => toggleCourseExpand(course.id)}
                           onKeyDown={(e) => handleKeyDown(e, () => toggleCourseExpand(course.id))}
                           role="button"
                           tabIndex={0}
-                          style={{ cursor: 'pointer' }}
                         >
-                          <div className="course-card-color" style={{ background: getCourseColor(course.id, enrolledCourses.map(c => c.id)) }} />
-                          <div className="course-card-body">
-                            <h4>{course.name} <span className="course-card-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span></h4>
-                            {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                            {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
+                          <div className="course-list-color" style={{ background: getCourseColor(course.id, enrolledCourses.map(c => c.id)) }} />
+                          <div className="course-list-body">
+                            <span className="course-list-title">{course.name}</span>
+                            <div className="course-list-meta">
+                              {course.subject && <span className="course-card-subject">{course.subject}</span>}
+                              {course.teacher_name && <span>{course.teacher_name}</span>}
+                            </div>
                           </div>
-                          <div className="course-card-actions">
+                          <span className="course-list-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span>
+                          <div className="course-list-actions" onClick={(e) => e.stopPropagation()}>
+                            <button className="course-list-btn" title="Edit" onClick={() => openEditCourse(course)}>&#9998;</button>
                             <button
-                              className="course-card-action-btn edit"
-                              title="View course details"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                            >
-                              &#9998;
-                            </button>
-                            <button
-                              className="course-card-action-btn unassign"
+                              className="course-list-btn danger"
                               title="Unenroll"
-                              onClick={(e) => { e.stopPropagation(); handleUnenroll(course.id, course.name); }}
+                              onClick={() => handleUnenroll(course.id, course.name)}
                               disabled={enrollingId === course.id}
-                            >
-                              &#10005;
-                            </button>
+                            >&#10005;</button>
                           </div>
                         </div>
                         {expandedCourseId === course.id && (
                           <div className="course-content-panel">
                             <div className="course-content-header">
-                              <h5>Course Materials</h5>
+                              <h5>Class Materials</h5>
                               <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
                                 View Details &rarr;
                               </button>
@@ -538,13 +782,14 @@ export function CoursesPage() {
                                       <span className="content-item-title">{item.title}</span>
                                       {item.description && <p className="content-item-desc">{item.description}</p>}
                                     </div>
-                                    <div className="content-item-links">
+                                    <div className="content-item-actions">
                                       {item.reference_url && (
-                                        <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link" onClick={(e) => e.stopPropagation()}>Link</a>
+                                        <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">Link</a>
                                       )}
                                       {item.google_classroom_url && (
-                                        <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google" onClick={(e) => e.stopPropagation()}>Google</a>
+                                        <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">Google</a>
                                       )}
+                                      <button className="course-list-btn" title="Edit" onClick={(e) => { e.stopPropagation(); openEditContent(item); }}>&#9998;</button>
                                     </div>
                                   </div>
                                 ))}
@@ -556,12 +801,11 @@ export function CoursesPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="courses-empty">
-                    <p>Not enrolled in any courses yet.</p>
-                    <button className="courses-btn primary" style={{ marginTop: 12 }} onClick={() => setStudentTab('browse')}>
-                      Browse Courses
-                    </button>
-                  </div>
+                  <EmptyState
+                    title="Not enrolled in any classes yet"
+                    action={{ label: 'Browse Classes', onClick: () => setStudentTab('browse') }}
+                    variant="compact"
+                  />
                 )}
               </div>
             )}
@@ -571,41 +815,40 @@ export function CoursesPage() {
                 <div className="courses-search">
                   <input
                     type="text"
-                    placeholder="Search courses by name, subject, or teacher..."
+                    placeholder="Search classes by name, subject, or teacher..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="courses-search-input"
                   />
                 </div>
                 {filteredAvailable.length > 0 ? (
-                  <div className="courses-grid">
+                  <div className="courses-list">
                     {filteredAvailable.map((course) => (
-                      <div key={course.id} className="course-card-wrapper">
-                        <div className="course-card">
-                          <div className="course-card-color" style={{ background: 'var(--color-accent)' }} />
-                          <div className="course-card-body">
-                            <h4>{course.name}</h4>
+                      <div key={course.id} className="course-list-row browse">
+                        <div className="course-list-color" style={{ background: 'var(--color-accent)' }} />
+                        <div className="course-list-body">
+                          <span className="course-list-title">{course.name}</span>
+                          <div className="course-list-meta">
                             {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                            {course.teacher_name && <span className="course-card-teacher">{course.teacher_name}</span>}
-                            {course.description && <p className="course-card-desc">{course.description}</p>}
-                          </div>
-                          <div style={{ padding: '12px', display: 'flex', alignItems: 'center' }}>
-                            <button
-                              className="courses-btn primary"
-                              onClick={() => handleEnroll(course.id)}
-                              disabled={enrollingId === course.id}
-                            >
-                              {enrollingId === course.id ? 'Enrolling...' : 'Enroll'}
-                            </button>
+                            {course.teacher_name && <span>{course.teacher_name}</span>}
+                            {course.description && <span className="course-list-desc">{course.description}</span>}
                           </div>
                         </div>
+                        <button
+                          className="courses-btn primary"
+                          onClick={() => handleEnroll(course.id)}
+                          disabled={enrollingId === course.id}
+                        >
+                          {enrollingId === course.id ? (<><span className="btn-spinner" /> Enrolling...</>) : 'Enroll'}
+                        </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="courses-empty">
-                    <p>{searchTerm ? 'No courses match your search.' : 'No available courses to browse.'}</p>
-                  </div>
+                  <EmptyState
+                    title={searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}
+                    variant="compact"
+                  />
                 )}
               </div>
             )}
@@ -616,63 +859,55 @@ export function CoursesPage() {
         {!isStudent && (
         <div className="courses-section">
           <div className="courses-section-header">
-            <h3>{isParent ? 'My Created Courses' : 'Courses'}</h3>
+            <button className="collapse-toggle" onClick={() => setMyCoursesExpanded(v => !v)}>
+              <span className={`section-chevron${myCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>{isParent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
+            </button>
             {!isParent && (
               <button className="generate-btn" onClick={() => setShowCreateModal(true)}>
-                + Create Course
+                + Create Class
               </button>
             )}
           </div>
-          {myCourses.length > 0 ? (
-            <div className="courses-grid">
+          {myCoursesExpanded && myCourses.length > 0 ? (
+            <div className="courses-list">
               {myCourses.map((course) => (
-                <div key={course.id} className="course-card-wrapper">
-                  <div
-                    className="course-card"
-                    onClick={() => navigate(`/courses/${course.id}`)}
-                    onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
-                    role="button"
-                    tabIndex={0}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="course-card-color" style={{ background: 'var(--color-accent)' }} />
-                    <div className="course-card-body">
-                      <h4>{course.name}</h4>
+                <div
+                  key={course.id}
+                  className="course-list-row"
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                  onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="course-list-color" style={{ background: 'var(--color-accent)' }} />
+                  <div className="course-list-body">
+                    <span className="course-list-title">{course.name}</span>
+                    <div className="course-list-meta">
                       {course.subject && <span className="course-card-subject">{course.subject}</span>}
-                      {course.description && <p className="course-card-desc">{course.description}</p>}
+                      {course.description && <span className="course-list-desc">{course.description}</span>}
                     </div>
-                    <div className="course-card-actions">
-                      {isParent && selectedChild && (() => {
-                        const alreadyAssigned = childOverview?.courses.some(c => c.id === course.id) ?? false;
-                        return !alreadyAssigned ? (
-                          <button
-                            className="course-card-action-btn assign"
-                            title={`Assign to ${childName}`}
-                            onClick={(e) => { e.stopPropagation(); handleQuickAssign(course.id); }}
-                          >
-                            &#10003;
-                          </button>
-                        ) : (
-                          <span className="course-card-assigned-badge" title={`Assigned to ${childName}`}>&#10003;</span>
-                        );
-                      })()}
-                      <button
-                        className="course-card-action-btn edit"
-                        title="Edit course"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                      >
-                        &#9998;
-                      </button>
-                    </div>
+                  </div>
+                  <div className="course-list-actions" onClick={(e) => e.stopPropagation()}>
+                    {isParent && selectedChild && (() => {
+                      const alreadyAssigned = childOverview?.courses.some(c => c.id === course.id) ?? false;
+                      return !alreadyAssigned ? (
+                        <button className="course-list-btn assign" title={`Assign to ${childName}`} onClick={() => handleQuickAssign(course.id)}>&#10003;</button>
+                      ) : (
+                        <span className="course-card-assigned-badge" title={`Assigned to ${childName}`}>&#10003;</span>
+                      );
+                    })()}
+                    <button className="course-list-btn" title="Edit" onClick={() => openEditCourse(course)}>&#9998;</button>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="courses-empty">
-              <p>{isParent ? 'No courses created yet.' : 'No courses available. Create one to get started.'}</p>
-            </div>
-          )}
+          ) : myCoursesExpanded ? (
+            <EmptyState
+              title={isParent ? 'No classes created yet.' : 'No classes available. Create one to get started.'}
+              variant="compact"
+            />
+          ) : null}
         </div>
         )}
       </div>
@@ -680,12 +915,12 @@ export function CoursesPage() {
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Course</h2>
-            <p className="modal-desc">Create a new course.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create Class</h2>
+            <p className="modal-desc">Create a new class.</p>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input type="text" value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={createLoading} onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()} />
               </label>
               <label>
@@ -694,7 +929,7 @@ export function CoursesPage() {
               </label>
               <label>
                 Description (optional)
-                <textarea value={courseDescription} onChange={(e) => setCourseDescription(e.target.value)} placeholder="Course details..." rows={3} disabled={createLoading} />
+                <textarea value={courseDescription} onChange={(e) => setCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={createLoading} />
               </label>
               {user?.role !== 'teacher' && (
                 <label>
@@ -707,7 +942,7 @@ export function CoursesPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={closeCreateModal} disabled={createLoading}>Cancel</button>
               <button className="generate-btn" onClick={handleCreateCourse} disabled={createLoading || !courseName.trim()}>
-                {createLoading ? 'Creating...' : 'Create Course'}
+                {createLoading ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>
@@ -717,15 +952,16 @@ export function CoursesPage() {
       {/* Assign Course to Child Modal (parent only) */}
       {showAssignModal && selectedChild && (
         <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Assign Course to {childName}</h2>
-            <p className="modal-desc">Select courses to assign to your child.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={`Assign Class to ${childName}`} ref={assignModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Assign Class to {childName}</h2>
+            <p className="modal-desc">Select classes to assign to your child.</p>
             <div className="modal-form">
               {myCourses.length === 0 ? (
-                <div className="empty-state">
-                  <p>No courses created yet</p>
-                  <button className="link-child-btn-small" onClick={() => { setShowAssignModal(false); setShowCreateModal(true); }}>+ Create Course</button>
-                </div>
+                <EmptyState
+                  title="No classes created yet"
+                  action={{ label: '+ Create Class', onClick: () => { setShowAssignModal(false); setShowCreateModal(true); } }}
+                  variant="compact"
+                />
               ) : (
                 <div className="discovered-list">
                   {myCourses.map((course) => {
@@ -747,12 +983,80 @@ export function CoursesPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowAssignModal(false)} disabled={assignLoading}>Cancel</button>
               <button className="generate-btn" onClick={handleAssignCourses} disabled={assignLoading || selectedCoursesForAssign.size === 0}>
-                {assignLoading ? 'Assigning...' : `Assign ${selectedCoursesForAssign.size} Course${selectedCoursesForAssign.size !== 1 ? 's' : ''}`}
+                {assignLoading ? 'Assigning...' : `Assign ${selectedCoursesForAssign.size} Class${selectedCoursesForAssign.size !== 1 ? 'es' : ''}`}
               </button>
             </div>
           </div>
         </div>
       )}
+      {/* Edit Course Modal */}
+      {editCourse && (
+        <div className="modal-overlay" onClick={closeEditCourse}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Class" ref={editCourseModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Class</h2>
+            <div className="modal-form">
+              <label>
+                Class Name *
+                <input type="text" value={editCourseName} onChange={(e) => setEditCourseName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={editCourseLoading} onKeyDown={(e) => e.key === 'Enter' && handleSaveEditCourse()} />
+              </label>
+              <label>
+                Subject
+                <input type="text" value={editCourseSubject} onChange={(e) => setEditCourseSubject(e.target.value)} placeholder="e.g. Mathematics" disabled={editCourseLoading} />
+              </label>
+              <label>
+                Description
+                <textarea value={editCourseDescription} onChange={(e) => setEditCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={editCourseLoading} />
+              </label>
+              {editCourseError && <p className="link-error">{editCourseError}</p>}
+            </div>
+            <div className="modal-actions">
+              {!editCourse.google_classroom_id && (
+                <button className="cancel-btn danger-text" onClick={handleDeleteCourseFromModal} disabled={editCourseLoading}>Delete Class</button>
+              )}
+              <button className="cancel-btn" onClick={closeEditCourse} disabled={editCourseLoading}>Cancel</button>
+              <button className="generate-btn" onClick={handleSaveEditCourse} disabled={editCourseLoading || !editCourseName.trim()}>
+                {editCourseLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Content Modal */}
+      {editContent && (
+        <div className="modal-overlay" onClick={closeEditContent}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Material" ref={editContentModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Material</h2>
+            <div className="modal-form">
+              <label>
+                Title *
+                <input type="text" value={editContentTitle} onChange={(e) => setEditContentTitle(e.target.value)} placeholder="Material title" disabled={editContentLoading} onKeyDown={(e) => e.key === 'Enter' && handleSaveEditContent()} />
+              </label>
+              <label>
+                Description
+                <textarea value={editContentDescription} onChange={(e) => setEditContentDescription(e.target.value)} placeholder="Material description..." rows={3} disabled={editContentLoading} />
+              </label>
+              <label>
+                Type
+                <select value={editContentType} onChange={(e) => setEditContentType(e.target.value)} disabled={editContentLoading}>
+                  {Object.entries(CONTENT_TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              {editContentError && <p className="link-error">{editContentError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn danger-text" onClick={handleDeleteContentFromModal} disabled={editContentLoading}>Delete Material</button>
+              <button className="cancel-btn" onClick={closeEditContent} disabled={editContentLoading}>Cancel</button>
+              <button className="generate-btn" onClick={handleSaveEditContent} disabled={editContentLoading || !editContentTitle.trim()}>
+                {editContentLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirmModal}
     </DashboardLayout>
   );

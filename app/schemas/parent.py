@@ -34,8 +34,11 @@ class ChildSummary(BaseModel):
     notes: Optional[str] = None
     relationship_type: str | None = None
     invite_link: str | None = None
+    link_request_pending: bool = False
     course_count: int = 0
     active_task_count: int = 0
+    invite_status: str | None = None  # "active", "pending", or "email_unverified"
+    invite_id: int | None = None  # ID of pending invite (for resend)
 
     class Config:
         from_attributes = True
@@ -103,6 +106,10 @@ class ChildHighlight(BaseModel):
     courses: list[CourseWithTeacher] = []
     overdue_items: list[dict] = []
     due_today_items: list[dict] = []
+
+
+class ChildResetPasswordRequest(BaseModel):
+    new_password: str | None = None
 
 
 class LinkTeacherRequest(BaseModel):

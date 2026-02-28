@@ -1,0 +1,396 @@
+import { useState, useMemo } from 'react';
+import type { TaskItem } from '../../api/tasks';
+import './StudentDetailPanel.css';
+
+/* ── Interfaces ────────────────────────────────────────────── */
+
+export type { TaskItem };
+
+export interface CourseInfo {
+  id: number;
+  name: string;
+  google_classroom_id?: string;
+}
+
+export interface CourseMaterial {
+  id: number;
+  title: string;
+  content_type: string;
+  course_name: string | null;
+  created_at: string;
+}
+
+export interface StudentDetailPanelProps {
+  selectedChildName: string | null; // null = "All Children" mode
+  courseMaterials: CourseMaterial[];
+  tasks: TaskItem[];
+  onViewMaterial: (material: CourseMaterial) => void;
+  onToggleTask: (task: TaskItem) => void;
+  onTaskClick?: (task: TaskItem) => void;
+  onViewAllTasks: () => void;
+  onViewAllMaterials: () => void;
+}
+
+/* ── Constants ─────────────────────────────────────────────── */
+
+const CONTENT_TYPE_ICONS: Record<string, string> = {
+  material: '\uD83D\uDCC4',      // page facing up
+  assignment: '\uD83D\uDCDD',    // memo
+  announcement: '\uD83D\uDCE2',  // loudspeaker
+  topic: '\uD83D\uDCC1',         // file folder
+};
+
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const MAX_RECENT_MATERIALS = 10;
+
+/* ── Helpers ───────────────────────────────────────────────── */
+
+interface UrgencyGroups {
+  overdue: TaskItem[];
+  today: TaskItem[];
+  upcoming: TaskItem[];
+  other: TaskItem[];
+}
+
+function categorizeTasks(tasks: TaskItem[]): UrgencyGroups {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+  const threeDaysEnd = new Date(todayStart);
+  threeDaysEnd.setDate(threeDaysEnd.getDate() + 4);
+
+  const groups: UrgencyGroups = { overdue: [], today: [], upcoming: [], other: [] };
+
+  for (const task of tasks) {
+    // Filter out archived tasks
+    if (task.archived_at) continue;
+
+    if (!task.due_date) {
+      groups.other.push(task);
+      continue;
+    }
+
+    const due = new Date(task.due_date);
+
+    if (due < todayStart && !task.is_completed) {
+      groups.overdue.push(task);
+    } else if (due >= todayStart && due < todayEnd) {
+      groups.today.push(task);
+    } else if (due >= todayEnd && due < threeDaysEnd) {
+      groups.upcoming.push(task);
+    } else {
+      groups.other.push(task);
+    }
+  }
+
+  return groups;
+}
+
+function daysOverdue(dueDateStr: string): number {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const due = new Date(dueDateStr);
+  const diff = todayStart.getTime() - due.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function dayLabel(dueDateStr: string): string {
+  const due = new Date(dueDateStr);
+  return DAY_NAMES[due.getDay()];
+}
+
+/* ── Chevron sub-component ─────────────────────────────────── */
+
+function Chevron({ expanded }: { expanded: boolean }) {
+  return (
+    <span className={`sdp-chevron${expanded ? ' expanded' : ''}`} aria-hidden="true">
+      {'\u25B6'}
+    </span>
+  );
+}
+
+/* ── Component ─────────────────────────────────────────────── */
+
+export function StudentDetailPanel({
+  selectedChildName,
+  courseMaterials,
+  tasks,
+  onViewMaterial,
+  onToggleTask,
+  onTaskClick,
+  onViewAllTasks,
+  onViewAllMaterials,
+}: StudentDetailPanelProps) {
+  const [materialsExpanded, setMaterialsExpanded] = useState(false);
+  const [tasksExpanded, setTasksExpanded] = useState(true);
+  const [showOtherTasks, setShowOtherTasks] = useState(false);
+
+  const isAllChildren = selectedChildName === null;
+
+  const recentMaterials = useMemo(
+    () =>
+      [...courseMaterials]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, MAX_RECENT_MATERIALS),
+    [courseMaterials],
+  );
+
+  const urgencyGroups = useMemo(() => categorizeTasks(tasks), [tasks]);
+
+  const totalActive = tasks.filter(t => !t.archived_at).length;
+
+  /* ── Render ──────────────────────────────────────────────── */
+
+  return (
+    <div className="student-detail-panel">
+      {/* ── Tasks by Urgency Section (first) ─────────────── */}
+      <div className="sdp-section">
+        <div
+          className="sdp-section-header"
+          onClick={() => setTasksExpanded((v) => !v)}
+          role="button"
+          tabIndex={0}
+          aria-expanded={tasksExpanded}
+          aria-label={`Tasks (${totalActive})`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setTasksExpanded((v) => !v);
+            }
+          }}
+        >
+          <Chevron expanded={tasksExpanded} />
+          <span>
+            Tasks
+            <span className="sdp-count-badge" aria-hidden="true">{totalActive}</span>
+          </span>
+        </div>
+
+        {tasksExpanded && (
+        <div className="sdp-section-body">
+          {/* Overdue */}
+          {urgencyGroups.overdue.length > 0 && (
+            <div className="sdp-urgency-group" data-urgency="overdue">
+              <div className="sdp-urgency-header overdue">
+                Overdue ({urgencyGroups.overdue.length})
+              </div>
+              {urgencyGroups.overdue.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  urgency="overdue"
+                  badge={`${daysOverdue(task.due_date!)} days overdue`}
+                  showChildName={isAllChildren}
+                  onToggle={onToggleTask}
+                  onClick={onTaskClick}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Due Today */}
+          {urgencyGroups.today.length > 0 && (
+            <div className="sdp-urgency-group" data-urgency="today">
+              <div className="sdp-urgency-header today">
+                Due Today ({urgencyGroups.today.length})
+              </div>
+              {urgencyGroups.today.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  urgency="today"
+                  badge="Today"
+                  showChildName={isAllChildren}
+                  onToggle={onToggleTask}
+                  onClick={onTaskClick}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Next 3 Days */}
+          {urgencyGroups.upcoming.length > 0 && (
+            <div className="sdp-urgency-group" data-urgency="upcoming">
+              <div className="sdp-urgency-header upcoming">
+                Next 3 Days ({urgencyGroups.upcoming.length})
+              </div>
+              {urgencyGroups.upcoming.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  urgency="upcoming"
+                  badge={task.due_date ? dayLabel(task.due_date) : ''}
+                  showChildName={isAllChildren}
+                  onToggle={onToggleTask}
+                  onClick={onTaskClick}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Other */}
+          {urgencyGroups.other.length > 0 && (
+            <div className="sdp-urgency-group">
+              {!showOtherTasks ? (
+                <button
+                  className="sdp-show-more"
+                  onClick={() => setShowOtherTasks(true)}
+                  type="button"
+                >
+                  Show {urgencyGroups.other.length} more
+                </button>
+              ) : (
+                <>
+                  {urgencyGroups.other.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      urgency={null}
+                      badge={null}
+                      showChildName={isAllChildren}
+                      onToggle={onToggleTask}
+                    />
+                  ))}
+                  <button
+                    className="sdp-show-more"
+                    onClick={() => setShowOtherTasks(false)}
+                    type="button"
+                  >
+                    Show less
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Empty state — no tasks at all */}
+          {urgencyGroups.overdue.length === 0 &&
+            urgencyGroups.today.length === 0 &&
+            urgencyGroups.upcoming.length === 0 &&
+            urgencyGroups.other.length === 0 && (
+              <div className="sdp-empty">No tasks</div>
+            )}
+
+          <button
+            className="sdp-view-all"
+            onClick={onViewAllTasks}
+            type="button"
+          >
+            View All Tasks
+          </button>
+        </div>
+        )}
+      </div>
+
+      {/* ── Class Materials Section ──────────────────────── */}
+      <div className="sdp-section">
+        <div
+          className="sdp-section-header"
+          onClick={() => setMaterialsExpanded((v) => !v)}
+          role="button"
+          tabIndex={0}
+          aria-expanded={materialsExpanded}
+          aria-label={`Class Materials (${courseMaterials.length})`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setMaterialsExpanded((v) => !v);
+            }
+          }}
+        >
+          <Chevron expanded={materialsExpanded} />
+          <span>
+            Class Materials
+            <span className="sdp-count-badge" aria-hidden="true">{courseMaterials.length}</span>
+          </span>
+        </div>
+
+        {materialsExpanded && (
+          <div className="sdp-section-body">
+            {courseMaterials.length === 0 ? (
+              <div className="sdp-empty">No class materials yet</div>
+            ) : (
+              <>
+                {recentMaterials.map((mat) => (
+                  <div
+                    key={mat.id}
+                    className="sdp-material-item"
+                    onClick={() => onViewMaterial(mat)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onViewMaterial(mat);
+                      }
+                    }}
+                  >
+                    <span className="sdp-material-icon">
+                      {CONTENT_TYPE_ICONS[mat.content_type] || '\uD83D\uDCC4'}
+                    </span>
+                    <span className="sdp-material-title">{mat.title}</span>
+                    {mat.course_name && (
+                      <span className="sdp-material-type-badge">
+                        {mat.course_name}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                <button
+                  className="sdp-view-all"
+                  onClick={onViewAllMaterials}
+                  type="button"
+                >
+                  View All
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── TaskRow sub-component ─────────────────────────────────── */
+
+interface TaskRowProps {
+  task: TaskItem;
+  urgency: 'overdue' | 'today' | 'upcoming' | null;
+  badge: string | null;
+  showChildName: boolean;
+  onToggle: (task: TaskItem) => void;
+  onClick?: (task: TaskItem) => void;
+}
+
+function TaskRow({ task, urgency, badge, showChildName, onToggle, onClick }: TaskRowProps) {
+  return (
+    <div
+      className={`sdp-task-item${onClick ? ' clickable' : ''}${task.is_completed ? ' completed' : ''}`}
+      onClick={onClick ? () => onClick(task) : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(task); } } : undefined}
+    >
+      <input
+        type="checkbox"
+        className="sdp-task-checkbox"
+        checked={task.is_completed}
+        onChange={(e) => { e.stopPropagation(); onToggle(task); }}
+        aria-label={`Mark "${task.title}" as ${task.is_completed ? 'incomplete' : 'complete'}`}
+      />
+      <span className={`sdp-task-title${task.is_completed ? ' completed' : ''}`}>
+        {task.title}
+      </span>
+      {showChildName && task.assignee_name && (
+        <span className="sdp-child-label">{task.assignee_name}</span>
+      )}
+      {badge && urgency && (
+        <span className={`sdp-task-badge ${urgency}`}>{badge}</span>
+      )}
+    </div>
+  );
+}

@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 import './Legal.css';
 
 export function PrivacyPolicy() {
+  const navigate = useNavigate();
+
   return (
     <div className="auth-container">
       <div className="auth-card legal-card">
@@ -68,7 +70,7 @@ export function PrivacyPolicy() {
             <h2>3. How We Use Your Information</h2>
             <ul>
               <li><strong>Provide the Service:</strong> Display dashboards, assignments, messages, and notifications</li>
-              <li><strong>AI Study Tools:</strong> Generate study guides, quizzes, and flashcards from course materials using OpenAI</li>
+              <li><strong>AI Study Tools:</strong> Generate study guides, quizzes, and flashcards from class materials using OpenAI</li>
               <li><strong>Communication:</strong> Facilitate parent-teacher messaging and deliver email notifications via SendGrid</li>
               <li><strong>Security:</strong> Detect unauthorized access, prevent abuse, and maintain audit logs</li>
               <li><strong>Improvement:</strong> Understand usage patterns to improve the Service</li>
@@ -164,7 +166,7 @@ export function PrivacyPolicy() {
         <div className="legal-footer">
           <Link to="/terms">Terms of Service</Link>
           <span className="legal-divider">|</span>
-          <Link to="/login">Back to Sign In</Link>
+          <button className="legal-back-btn" onClick={() => navigate(-1)}>&larr; Back</button>
         </div>
       </div>
     </div>

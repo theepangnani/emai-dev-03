@@ -27,6 +27,8 @@ class Course(Base):
     # Google Classroom integration
     google_classroom_id = Column(String(255), unique=True, nullable=True)
 
+    classroom_type = Column(String(20), nullable=True)  # "school" or "private"
+
     teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)
 
     # Parent-first platform: track who created the course and visibility

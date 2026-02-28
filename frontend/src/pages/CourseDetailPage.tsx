@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { coursesApi, courseContentsApi, studyApi, assignmentsApi } from '../api/client';
-import type { CourseContentItem, AssignmentItem } from '../api/client';
+import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionListItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
+import { PageNav } from '../components/PageNav';
+import { EditMaterialModal } from '../components/EditMaterialModal';
+import { AssignmentSubmission } from '../components/AssignmentSubmission';
+import '../components/AssignmentSubmission.css';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -33,6 +38,7 @@ interface CourseDetail {
   is_private: boolean;
   created_at: string;
   google_classroom_id: string | null;
+  classroom_type: string | null;
 }
 
 interface RosterStudent {
@@ -58,6 +64,7 @@ export function CourseDetailPage() {
   const [students, setStudents] = useState<RosterStudent[]>([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [addStudentEmail, setAddStudentEmail] = useState('');
+  const [addStudentMessage, setAddStudentMessage] = useState('');
   const [addStudentLoading, setAddStudentLoading] = useState(false);
   const [addStudentError, setAddStudentError] = useState('');
   const [addStudentSuccess, setAddStudentSuccess] = useState('');
@@ -72,6 +79,12 @@ export function CourseDetailPage() {
   const [assignMaxPoints, setAssignMaxPoints] = useState('');
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState('');
+
+  // Submission state (#839)
+  const [submissionMap, setSubmissionMap] = useState<Record<number, SubmissionResponse>>({});
+  const [submissionListMap, setSubmissionListMap] = useState<Record<number, SubmissionListItem[]>>({});
+  const [submittingAssignmentId, setSubmittingAssignmentId] = useState<number | null>(null);
+  const [expandedSubmissionsId, setExpandedSubmissionsId] = useState<number | null>(null);
 
   // Edit course modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -110,7 +123,20 @@ export function CourseDetailPage() {
 
   // Upload: optional study guide generation
   const [generateAfterUpload, setGenerateAfterUpload] = useState(false);
-  const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
+  const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards' | 'other'>('study_guide');
+  const [customPrompt, setCustomPrompt] = useState('');
+
+  // Collapsible sections
+  const [materialsExpanded, setMaterialsExpanded] = useState(true);
+  const [assignmentsExpanded, setAssignmentsExpanded] = useState(true);
+  const [rosterExpanded, setRosterExpanded] = useState(true);
+
+  // Focus traps for modals
+  const addStudentModalRef = useFocusTrap<HTMLDivElement>(showAddStudentModal, () => setShowAddStudentModal(false));
+  const editCourseModalRef = useFocusTrap<HTMLDivElement>(showEditModal, () => setShowEditModal(false));
+  const contentModalRef = useFocusTrap<HTMLDivElement>(showContentModal);
+  const uploadModalRef = useFocusTrap<HTMLDivElement>(showUploadModal, () => setShowUploadModal(false));
+  const assignmentModalRef = useFocusTrap<HTMLDivElement>(showAssignmentModal, () => setShowAssignmentModal(false));
 
   // Create task modal context
   const [taskModalContext, setTaskModalContext] = useState<{
@@ -141,11 +167,23 @@ export function CourseDetailPage() {
       } catch {
         setContents([]);
       }
+      let loadedAssignments: AssignmentItem[] = [];
       try {
-        const assignData = await assignmentsApi.list(courseId);
-        setAssignments(assignData);
+        loadedAssignments = await assignmentsApi.list(courseId);
+        setAssignments(loadedAssignments);
       } catch {
         setAssignments([]);
+      }
+      // Load submissions for student users (#839)
+      if (user?.role === 'student' && loadedAssignments.length > 0) {
+        const subs: Record<number, SubmissionResponse> = {};
+        for (const a of loadedAssignments) {
+          try {
+            const sub = await assignmentsApi.getSubmission(a.id);
+            subs[a.id] = sub;
+          } catch { /* no submission yet */ }
+        }
+        setSubmissionMap(subs);
       }
       try {
         const roster = await coursesApi.listStudents(courseId);
@@ -187,7 +225,7 @@ export function CourseDetailPage() {
         setAddStudentSuccess(result.message);
       } else {
         setStudents(prev => [...prev, result]);
-        setAddStudentSuccess(`${result.full_name} has been added to the course.`);
+        setAddStudentSuccess(`${result.full_name} has been added to the class.`);
       }
       setAddStudentEmail('');
     } catch (err: any) {
@@ -198,7 +236,7 @@ export function CourseDetailPage() {
   };
 
   const handleRemoveStudent = async (studentId: number, name: string) => {
-    const ok = await confirm({ title: 'Remove Student', message: `Remove ${name} from this course?`, variant: 'danger' });
+    const ok = await confirm({ title: 'Remove Student', message: `Remove ${name} from this class?`, variant: 'danger' });
     if (!ok) return;
     try {
       await coursesApi.removeStudent(courseId, studentId);
@@ -237,6 +275,22 @@ export function CourseDetailPage() {
     }
   };
 
+  const handleDeleteCourse = async () => {
+    const ok = await confirm({
+      title: 'Delete Class',
+      message: `Permanently delete "${course?.name}"? All class materials, assignments, and enrollments will be removed. This cannot be undone.`,
+      variant: 'danger',
+      confirmLabel: 'Delete Class',
+    });
+    if (!ok) return;
+    try {
+      await coursesApi.delete(courseId);
+      navigate('/courses');
+    } catch (err: any) {
+      setEditError(err.response?.data?.detail || 'Failed to delete course');
+    }
+  };
+
   // Content CRUD handlers
   const openAddContentModal = () => {
     setEditingContent(null);
@@ -251,13 +305,6 @@ export function CourseDetailPage() {
 
   const openEditContentModal = (item: CourseContentItem) => {
     setEditingContent(item);
-    setContentTitle(item.title);
-    setContentDescription(item.description || '');
-    setContentType(item.content_type);
-    setReferenceUrl(item.reference_url || '');
-    setGoogleClassroomUrl(item.google_classroom_url || '');
-    setContentError('');
-    setShowContentModal(true);
   };
 
   const closeContentModal = () => {
@@ -306,7 +353,7 @@ export function CourseDetailPage() {
   const handleDeleteContent = async (contentId: number) => {
     const ok = await confirm({
       title: 'Archive Content',
-      message: 'This will archive the content item. You can restore it later from Course Materials.',
+      message: 'This will archive the content item. You can restore it later from Class Materials.',
       confirmLabel: 'Archive',
     });
     if (!ok) return;
@@ -327,6 +374,7 @@ export function CourseDetailPage() {
     setIsDragging(false);
     setGenerateAfterUpload(false);
     setStudyGuideType('study_guide');
+    setCustomPrompt('');
     setShowUploadModal(true);
   };
 
@@ -408,6 +456,7 @@ export function CourseDetailPage() {
               content: extractedText,
               title: uploadTitle.trim(),
               course_id: courseId,
+              custom_prompt: studyGuideType === 'other' && customPrompt.trim() ? customPrompt.trim() : undefined,
             });
             navigate(`/study/guide/${result.id}`);
           }
@@ -537,7 +586,7 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Course details">
+      <DashboardLayout welcomeSubtitle="Class details" showBackButton>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -545,22 +594,23 @@ export function CourseDetailPage() {
 
   if (!course) {
     return (
-      <DashboardLayout welcomeSubtitle="Course not found">
+      <DashboardLayout welcomeSubtitle="Class not found" showBackButton>
         <div className="course-detail-empty">
-          <p>Course not found or you don't have access.</p>
-          <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Courses</button>
+          <p>Class not found or you don't have access.</p>
+          <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Classes</button>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout welcomeSubtitle={course.name}>
+    <DashboardLayout welcomeSubtitle={course.name} showBackButton>
       <div className="course-detail-page">
-        {/* Back link */}
-        <button className="course-detail-back" onClick={() => navigate('/courses')}>
-          &larr; Back to Courses
-        </button>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Classes', to: '/courses' },
+          { label: course?.name || 'Course' },
+        ]} />
 
         {/* Course header */}
         <div className="course-detail-header">
@@ -569,6 +619,8 @@ export function CourseDetailPage() {
             <div className="course-detail-meta">
               {course.subject && <span className="course-detail-subject">{course.subject}</span>}
               {course.google_classroom_id && <span className="course-detail-badge google">Google Classroom</span>}
+              {course.classroom_type === 'school' && <span className="course-detail-badge school">School</span>}
+              {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-detail-badge private-gc">Private</span>}
               {course.is_private && <span className="course-detail-badge private">Private</span>}
             </div>
             {course.description && <p className="course-detail-desc">{course.description}</p>}
@@ -580,176 +632,324 @@ export function CourseDetailPage() {
             <span className="course-detail-date">
               Created {new Date(course.created_at).toLocaleDateString()}
             </span>
+            {course.classroom_type === 'school' && (
+              <div className="dtap-disclaimer">
+                Document downloads are restricted for school courses. DTAP approval is required for school board connections.
+              </div>
+            )}
           </div>
           {canEdit && (
             <button className="courses-btn secondary" onClick={openEditModal}>&#9998; Edit</button>
           )}
         </div>
 
-        {/* Action bar */}
-        <div className="course-detail-actions">
-          <h3>Course Materials</h3>
+      {/* Class Materials Panel */}
+      <div className="course-section-panel">
+        <div className="course-section-header">
+          <button className="collapse-toggle" onClick={() => setMaterialsExpanded(v => !v)}>
+            <span className={`section-chevron${materialsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>Class Materials ({contents.length})</h3>
+          </button>
           {canEdit && (
             <div className="course-detail-action-btns">
-              <button className="courses-btn secondary" onClick={openAddContentModal}>+ Add Content</button>
-              <button className="courses-btn secondary" onClick={openUploadModal}>+ Upload Document</button>
-              <button className="courses-btn secondary" onClick={() => setTaskModalContext({
+              <button className="courses-btn secondary action-icon-btn" onClick={openAddContentModal}>
+                <span className="action-icon">&#128221;</span> Add Class Details
+              </button>
+              <button className="courses-btn secondary action-icon-btn" onClick={openUploadModal}>
+                <span className="action-icon">&#128228;</span> Upload Document
+              </button>
+              <button className="courses-btn secondary action-icon-btn" onClick={() => setTaskModalContext({
                 courseId: courseId,
                 title: `Task for ${course.name}`,
-                label: `Course: ${course.name}`,
-              })}>+ Create Task</button>
+                label: `Class: ${course.name}`,
+              })}>
+                <span className="action-icon">&#9745;</span> Add to Task
+              </button>
             </div>
           )}
         </div>
-
-        {/* Content list */}
-        {contentsLoading ? (
-          <ListSkeleton rows={3} />
-        ) : contents.length === 0 ? (
-          <div className="course-detail-empty-content">
-            <p>{canEdit ? 'No course materials yet. Add notes, links, resources, or upload documents.' : 'No course materials available yet.'}</p>
-          </div>
-        ) : (
-          <div className="course-detail-content-list">
-            {contents.map((item) => (
-              <div key={item.id} className="cd-content-item">
-                <div className="cd-content-item-info">
-                  <div className="cd-content-item-top">
-                    <span className={`content-type-badge ${item.content_type}`}>
-                      {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
-                    </span>
-                    {item.google_classroom_material_id && (
-                      <span className="course-detail-badge google">Google Classroom</span>
-                    )}
-                    <span className="cd-content-item-title">{item.title}</span>
-                  </div>
-                  {item.description && <p className="cd-content-item-desc">{item.description}</p>}
-                  {item.text_content && (
-                    <p className="cd-content-item-text-preview">
-                      {item.text_content.substring(0, 200)}{item.text_content.length > 200 ? '...' : ''}
-                    </p>
-                  )}
-                  <div className="cd-content-item-links">
-                    {item.reference_url && (
-                      <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">
-                        Reference Link
-                      </a>
-                    )}
-                    {item.google_classroom_url && (
-                      <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">
-                        Google Classroom
-                      </a>
-                    )}
-                  </div>
-                </div>
-                <div className="cd-content-item-actions">
-                  <button
-                    className="content-icon-btn"
-                    title={generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
-                    aria-label="Generate Study Guide"
-                    onClick={() => handleGenerateStudyGuide(item)}
-                    disabled={generatingContentId === item.id}
-                  >
-                    {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
-                  </button>
-                  <button
-                    className="content-icon-btn"
-                    title="Create task"
-                    aria-label="Create task from this content"
-                    onClick={() => setTaskModalContext({
-                      courseId: courseId,
-                      courseContentId: item.id,
-                      title: `Review: ${item.title}`,
-                      label: `${item.title} (${course.name})`,
-                    })}
-                  >
-                    &#128203;
-                  </button>
-                  {item.created_by_user_id === user?.id && (
-                    <>
-                      <button className="content-icon-btn" title="Edit" aria-label="Edit this content" onClick={() => openEditContentModal(item)}>&#9998;</button>
-                      <button className="content-icon-btn danger" title="Archive" aria-label="Archive this content" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
-                    </>
-                  )}
-                </div>
+        {materialsExpanded && (
+          <>
+            {contentsLoading ? (
+              <ListSkeleton rows={3} />
+            ) : contents.length === 0 ? (
+              <div className="course-detail-empty-content">
+                <p>{canEdit ? 'No class materials yet. Add notes, links, resources, or upload documents.' : 'No class materials available yet.'}</p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="course-detail-content-list">
+                {contents.map((item) => (
+                  <div key={item.id} className="cd-content-item">
+                    <div className="cd-content-item-info" onClick={() => navigate(`/course-materials/${item.id}`)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate(`/course-materials/${item.id}`)}>
+                      <div className="cd-content-item-top">
+                        <span className={`content-type-badge ${item.content_type}`}>
+                          {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
+                        </span>
+                        {item.google_classroom_material_id && (
+                          <span className="course-detail-badge google">Google Classroom</span>
+                        )}
+                        <span className="cd-content-item-title">{item.title}</span>
+                      </div>
+                      {item.description && <p className="cd-content-item-desc">{item.description}</p>}
+                      {item.text_content && (
+                        <p className="cd-content-item-text-preview">
+                          {item.text_content.substring(0, 200)}{item.text_content.length > 200 ? '...' : ''}
+                        </p>
+                      )}
+                      <div className="cd-content-item-links">
+                        {item.reference_url && (
+                          <a href={item.reference_url} target="_blank" rel="noopener noreferrer" className="content-link">
+                            Reference Link
+                          </a>
+                        )}
+                        {item.google_classroom_url && (
+                          <a href={item.google_classroom_url} target="_blank" rel="noopener noreferrer" className="content-link google">
+                            Google Classroom
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <div className="cd-content-item-actions">
+                      <button
+                        className="content-icon-btn"
+                        title={generatingContentId === item.id ? 'Generating...' : 'Generate Study Guide'}
+                        aria-label="Generate Study Guide"
+                        onClick={() => handleGenerateStudyGuide(item)}
+                        disabled={generatingContentId === item.id}
+                      >
+                        {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
+                      </button>
+                      <button
+                        className="content-icon-btn"
+                        title="Create task"
+                        aria-label="Create task from this content"
+                        onClick={() => setTaskModalContext({
+                          courseId: courseId,
+                          courseContentId: item.id,
+                          title: `Review: ${item.title}`,
+                          label: `${item.title} (${course.name})`,
+                        })}
+                      >
+                        &#128203;
+                      </button>
+                      {item.created_by_user_id === user?.id && (
+                        <>
+                          <button className="content-icon-btn" title="Edit" aria-label="Edit this content" onClick={() => openEditContentModal(item)}>&#9998;</button>
+                          <button className="content-icon-btn danger" title="Archive" aria-label="Archive this content" onClick={() => handleDeleteContent(item.id)}>&#128465;</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Assignments */}
-      <div className="course-assignments-section">
-        <div className="course-assignments-header">
-          <h3>Assignments ({assignments.length})</h3>
+      <div className="course-section-panel">
+        <div className="course-section-header">
+          <button className="collapse-toggle" onClick={() => setAssignmentsExpanded(v => !v)}>
+            <span className={`section-chevron${assignmentsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>Assignments ({assignments.length})</h3>
+          </button>
           {canManageRoster && (
-            <button className="courses-btn secondary" onClick={openAddAssignment}>+ Add Assignment</button>
+            <button className="courses-btn secondary action-icon-btn" onClick={openAddAssignment}>
+              <span className="action-icon">+</span> Add Assignment
+            </button>
           )}
         </div>
-        {assignments.length === 0 ? (
-          <p className="course-roster-empty">No assignments yet.</p>
-        ) : (
-          <div className="course-assignments-list">
-            {assignments.map(a => (
-              <div key={a.id} className="course-assignment-row">
-                <div className="course-assignment-info">
-                  <span className="course-assignment-title">{a.title}</span>
-                  {a.description && <span className="course-assignment-desc">{a.description}</span>}
-                </div>
-                <div className="course-assignment-meta">
-                  {a.due_date && (
-                    <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
-                      Due {new Date(a.due_date).toLocaleDateString()}
-                    </span>
-                  )}
-                  {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
-                  {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
-                </div>
-                {canManageRoster && !a.google_classroom_id && (
-                  <div className="course-assignment-actions">
-                    <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
-                    <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
-                  </div>
-                )}
+        {assignmentsExpanded && (
+          <>
+            {assignments.length === 0 ? (
+              <p className="course-roster-empty">No assignments yet.</p>
+            ) : (
+              <div className="course-assignments-list">
+                {assignments.map(a => {
+                  const sub = submissionMap[a.id];
+                  const isStudent = user?.role === 'student';
+                  return (
+                    <div key={a.id}>
+                      <div className="course-assignment-row">
+                        <div className="course-assignment-info">
+                          <span className="course-assignment-title">{a.title}</span>
+                          {a.description && <span className="course-assignment-desc">{a.description}</span>}
+                        </div>
+                        <div className="course-assignment-meta">
+                          {a.due_date && (
+                            <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
+                              Due {new Date(a.due_date).toLocaleDateString()}
+                            </span>
+                          )}
+                          {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
+                          {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
+                          {/* Student submission status badge (#839) */}
+                          {isStudent && sub && sub.status === 'graded' && (
+                            <span className="submission-badge graded">Graded: {sub.grade ?? '—'}</span>
+                          )}
+                          {isStudent && sub && sub.status === 'submitted' && (
+                            <span className={`submission-badge submitted${sub.is_late ? ' late' : ''}`}>
+                              Submitted{sub.is_late ? ' (Late)' : ''}
+                            </span>
+                          )}
+                          {isStudent && (!sub || sub.status === 'pending') && (
+                            <span className="submission-badge not-submitted">Not Submitted</span>
+                          )}
+                        </div>
+                        {/* Student submit button (#839) */}
+                        {isStudent && (
+                          <div className="course-assignment-actions">
+                            <button
+                              className="courses-btn secondary"
+                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              onClick={() => setSubmittingAssignmentId(submittingAssignmentId === a.id ? null : a.id)}
+                            >
+                              {sub && (sub.status === 'submitted' || sub.status === 'graded') ? 'Resubmit' : 'Submit'}
+                            </button>
+                          </div>
+                        )}
+                        {/* Teacher view: show submissions count (#839) */}
+                        {canManageRoster && !isStudent && (
+                          <div className="course-assignment-actions">
+                            <button
+                              className="courses-btn secondary"
+                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              onClick={() => {
+                                if (expandedSubmissionsId === a.id) {
+                                  setExpandedSubmissionsId(null);
+                                } else {
+                                  setExpandedSubmissionsId(a.id);
+                                  // Load submissions for this assignment
+                                  assignmentsApi.listSubmissions(a.id).then(subs => {
+                                    setSubmissionListMap(prev => ({ ...prev, [a.id]: subs }));
+                                  }).catch(() => {});
+                                }
+                              }}
+                            >
+                              Submissions
+                            </button>
+                            {!a.google_classroom_id && (
+                              <>
+                                <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
+                                <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* Inline submission form for students (#839) */}
+                      {isStudent && submittingAssignmentId === a.id && (
+                        <AssignmentSubmission
+                          assignmentId={a.id}
+                          assignmentTitle={a.title}
+                          dueDate={a.due_date}
+                          submission={sub || null}
+                          onSubmitted={(result) => {
+                            setSubmissionMap(prev => ({ ...prev, [a.id]: result }));
+                            setSubmittingAssignmentId(null);
+                          }}
+                          onClose={() => setSubmittingAssignmentId(null)}
+                        />
+                      )}
+                      {/* Teacher submissions list (#839) */}
+                      {canManageRoster && !isStudent && expandedSubmissionsId === a.id && (
+                        <div className="submission-panel" style={{ marginTop: '8px' }}>
+                          <div className="submission-header">
+                            <h4>Submissions for: {a.title}</h4>
+                            <button className="submission-close-btn" onClick={() => setExpandedSubmissionsId(null)} aria-label="Close">&times;</button>
+                          </div>
+                          {submissionListMap[a.id] ? (
+                            submissionListMap[a.id].length === 0 ? (
+                              <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>No submissions yet.</p>
+                            ) : (
+                              <div className="course-roster-list" style={{ marginTop: '8px' }}>
+                                {submissionListMap[a.id].map(s => (
+                                  <div key={s.student_id} className="course-roster-row" style={{ padding: '8px 0' }}>
+                                    <div className="course-roster-info">
+                                      <span className="course-roster-name">{s.student_name}</span>
+                                      <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>
+                                        {s.status === 'submitted' && s.submitted_at
+                                          ? `Submitted ${new Date(s.submitted_at).toLocaleDateString()}`
+                                          : s.status === 'graded'
+                                            ? `Graded: ${s.grade ?? '—'}`
+                                            : 'Not submitted'}
+                                      </span>
+                                    </div>
+                                    {s.is_late && <span className="submission-badge late">Late</span>}
+                                    {s.status !== 'pending' && (
+                                      <span className={`submission-badge ${s.status}`}>
+                                        {s.status === 'submitted' ? 'Submitted' : s.status === 'graded' ? 'Graded' : s.status}
+                                      </span>
+                                    )}
+                                    {s.has_file && (
+                                      <button
+                                        className="content-action-btn"
+                                        onClick={() => assignmentsApi.downloadSubmission(a.id, s.student_id).catch(() => {})}
+                                      >
+                                        Download
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          ) : (
+                            <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)' }}>Loading...</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Student Roster */}
       {canManageRoster && (
-        <div className="course-roster-section">
-          <div className="course-roster-header">
-            <h3>Enrolled Students ({students.length})</h3>
-            <button className="courses-btn secondary" onClick={() => { setAddStudentEmail(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
-              + Add Student
+        <div className="course-section-panel">
+          <div className="course-section-header">
+            <button className="collapse-toggle" onClick={() => setRosterExpanded(v => !v)}>
+              <span className={`section-chevron${rosterExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Enrolled Students ({students.length})</h3>
+            </button>
+            <button className="courses-btn secondary action-icon-btn" onClick={() => { setAddStudentEmail(''); setAddStudentMessage(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
+              <span className="action-icon">+</span> Invite Student
             </button>
           </div>
-          {students.length === 0 ? (
-            <p className="course-roster-empty">No students enrolled yet.</p>
-          ) : (
-            <div className="course-roster-list">
-              {students.map(s => (
-                <div key={s.student_id} className="course-roster-row">
-                  <div className="course-roster-info">
-                    <span className="course-roster-name">{s.full_name}</span>
-                    <span className="course-roster-email">{s.email}</span>
-                  </div>
-                  {s.grade_level != null && <span className="grade-badge">Grade {s.grade_level}</span>}
-                  <button className="course-roster-remove" onClick={() => handleRemoveStudent(s.student_id, s.full_name)}>Remove</button>
+          {rosterExpanded && (
+            <>
+              {students.length === 0 ? (
+                <p className="course-roster-empty">No students enrolled yet.</p>
+              ) : (
+                <div className="course-roster-list">
+                  {students.map(s => (
+                    <div key={s.student_id} className="course-roster-row">
+                      <div className="course-roster-info">
+                        <span className="course-roster-name">{s.full_name}</span>
+                        <span className="course-roster-email">{s.email}</span>
+                      </div>
+                      {s.grade_level != null && <span className="grade-badge">Grade {s.grade_level}</span>}
+                      <button className="course-roster-remove" onClick={() => handleRemoveStudent(s.student_id, s.full_name)}>Remove</button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}
 
-      {/* Add Student Modal */}
+      </div>
+
+      {/* Add/Invite Student Modal (#551) */}
       {showAddStudentModal && (
         <div className="modal-overlay" onClick={() => setShowAddStudentModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Add Student</h2>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite Student" ref={addStudentModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Invite Student</h2>
             <p className="modal-desc">Enter the student's email address. If they don't have an account, an invitation will be sent.</p>
             <div className="modal-form">
               <label>
@@ -763,13 +963,23 @@ export function CourseDetailPage() {
                   onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
                 />
               </label>
+              <label>
+                Message (optional)
+                <input
+                  type="text"
+                  value={addStudentMessage}
+                  onChange={(e) => setAddStudentMessage(e.target.value)}
+                  placeholder="e.g., Welcome to the class!"
+                  disabled={addStudentLoading}
+                />
+              </label>
               {addStudentError && <p className="link-error">{addStudentError}</p>}
               {addStudentSuccess && <p className="link-success">{addStudentSuccess}</p>}
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowAddStudentModal(false)} disabled={addStudentLoading}>Close</button>
               <button className="generate-btn" onClick={handleAddStudent} disabled={addStudentLoading || !addStudentEmail.trim()}>
-                {addStudentLoading ? 'Adding...' : 'Add Student'}
+                {addStudentLoading ? 'Sending...' : 'Invite Student'}
               </button>
             </div>
           </div>
@@ -779,11 +989,11 @@ export function CourseDetailPage() {
       {/* Edit Course Modal */}
       {showEditModal && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit Course</h2>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Class" ref={editCourseModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Class</h2>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={editSaving} onKeyDown={(e) => e.key === 'Enter' && handleEditCourse()} />
               </label>
               <label>
@@ -792,7 +1002,7 @@ export function CourseDetailPage() {
               </label>
               <label>
                 Description
-                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Course details..." rows={3} disabled={editSaving} />
+                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={editSaving} />
               </label>
               <label>
                 Teacher Email (optional)
@@ -801,6 +1011,11 @@ export function CourseDetailPage() {
               {editError && <p className="link-error">{editError}</p>}
             </div>
             <div className="modal-actions">
+              {!course?.google_classroom_id && (
+                <button className="cancel-btn danger-text" onClick={handleDeleteCourse} disabled={editSaving}>
+                  Delete Class
+                </button>
+              )}
               <button className="cancel-btn" onClick={() => setShowEditModal(false)} disabled={editSaving}>Cancel</button>
               <button className="generate-btn" onClick={handleEditCourse} disabled={editSaving || !editName.trim()}>
                 {editSaving ? 'Saving...' : 'Save Changes'}
@@ -810,12 +1025,21 @@ export function CourseDetailPage() {
         </div>
       )}
 
-      {/* Add/Edit Content Modal */}
+      {/* Edit Material Modal (standard shared component) */}
+      {editingContent && !showContentModal && (
+        <EditMaterialModal
+          material={editingContent}
+          onClose={() => setEditingContent(null)}
+          onSaved={() => { setEditingContent(null); loadContents(); }}
+        />
+      )}
+
+      {/* Add Content Modal */}
       {showContentModal && (
         <div className="modal-overlay" onClick={closeContentModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingContent ? 'Edit Content' : 'Add Content'}</h2>
-            <p className="modal-desc">Add a reference link or resource to this course.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Add Class Details" ref={contentModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Add Class Details</h2>
+            <p className="modal-desc">Add a reference link or resource to this class.</p>
             <div className="modal-form">
               <label>
                 Title *
@@ -844,7 +1068,7 @@ export function CourseDetailPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={closeContentModal} disabled={contentSaving}>Cancel</button>
               <button className="generate-btn" onClick={handleSaveContent} disabled={contentSaving || !contentTitle.trim()}>
-                {contentSaving ? 'Saving...' : editingContent ? 'Save Changes' : 'Add Content'}
+                {contentSaving ? 'Saving...' : 'Add Content'}
               </button>
             </div>
           </div>
@@ -854,7 +1078,7 @@ export function CourseDetailPage() {
       {/* Upload Document Modal */}
       {showUploadModal && (
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Document" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Upload Document</h2>
             <p className="modal-desc">Upload a document to extract content. Supports PDF, DOCX, PPTX, TXT, and images.</p>
             <div className="modal-form">
@@ -911,21 +1135,47 @@ export function CourseDetailPage() {
                 Generate study material from this document
               </label>
               {generateAfterUpload && (
-                <label>
-                  Study Material Type
-                  <select value={studyGuideType} onChange={(e) => setStudyGuideType(e.target.value as any)} disabled={uploading}>
-                    <option value="study_guide">Study Guide</option>
-                    <option value="quiz">Quiz</option>
-                    <option value="flashcards">Flashcards</option>
-                  </select>
-                </label>
+                <>
+                  <label>
+                    AI Help Type
+                    <select value={studyGuideType} onChange={(e) => setStudyGuideType(e.target.value as any)} disabled={uploading}>
+                      <option value="study_guide">Study Guide</option>
+                      <option value="quiz">Quiz</option>
+                      <option value="flashcards">Flashcards</option>
+                      <option value="other">Other (Custom Prompt)</option>
+                    </select>
+                  </label>
+                  {studyGuideType === 'other' && (
+                    <label>
+                      Custom AI Prompt
+                      <textarea
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        placeholder="Describe what you want the AI to do with this content, e.g. 'Summarize the key themes' or 'Create a timeline of events'"
+                        rows={3}
+                        disabled={uploading}
+                      />
+                    </label>
+                  )}
+                </>
+              )}
+              {course?.classroom_type === 'school' && (
+                <div className="dtap-disclaimer" style={{ marginTop: 8 }}>
+                  For school Google Classroom courses, download documents from Google Classroom first, then upload them here to generate study materials.
+                </div>
               )}
               {uploadError && <p className="link-error">{uploadError}</p>}
+              {/* Parent notification note for students (#552) */}
+              {user?.role === 'student' && (
+                <p className="modal-info-note">
+                  Your parent will be notified about this upload.
+                </p>
+              )}
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowUploadModal(false)} disabled={uploading}>Cancel</button>
               <button className="generate-btn" onClick={handleUploadDocument} disabled={uploading || !selectedFile || !uploadTitle.trim() || extracting}>
-                {uploading ? (generateAfterUpload ? 'Saving & Generating...' : 'Saving...') : (generateAfterUpload ? 'Save & Generate' : 'Save to Course')}
+                {uploading ? (generateAfterUpload ? 'Saving & Generating...' : 'Saving...') : (generateAfterUpload ? 'Save & Generate' : 'Save to Class')}
               </button>
             </div>
           </div>
@@ -935,7 +1185,7 @@ export function CourseDetailPage() {
       {/* Assignment Modal */}
       {showAssignmentModal && (
         <div className="modal-overlay" onClick={() => setShowAssignmentModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={editingAssignment ? 'Edit Assignment' : 'Create Assignment'} ref={assignmentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>{editingAssignment ? 'Edit Assignment' : 'Create Assignment'}</h2>
             <div className="modal-form">
               <label>

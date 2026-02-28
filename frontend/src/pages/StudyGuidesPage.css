@@ -2,15 +2,178 @@
   max-width: 900px;
 }
 
+/* ── Child selector pills ───────────────────── */
+.guides-child-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.guides-child-selector .child-tab {
+  padding: 10px 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guides-child-selector .child-tab:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+}
+
+.guides-child-selector .child-tab.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: white;
+  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+}
+
+.guides-child-selector .child-tab.active .grade-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.guides-child-selector .child-color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.guides-child-selector .child-tab.active .child-color-dot {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.guides-child-selector .grade-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+/* ── Header with course search + create ─────── */
 .guides-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   gap: 12px;
   flex-wrap: wrap;
 }
 
+.guides-filters-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* ── Course search box ──────────────────────── */
+.guides-course-search {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
+}
+
+.guides-course-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.guides-course-search-input::placeholder {
+  color: var(--color-ink-muted);
+}
+
+.guides-course-search-input:hover {
+  border-color: var(--color-accent);
+}
+
+.guides-course-search-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+.guides-course-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.guides-course-search-clear:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
+}
+
+.guides-course-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.guides-course-dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.guides-course-dropdown-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.guides-course-dropdown-item.active {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+.guides-course-dropdown-item.all {
+  color: var(--color-ink-muted);
+  font-style: italic;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ── Type filter tabs ───────────────────────── */
 .guides-filter {
   display: flex;
   gap: 4px;
@@ -63,6 +226,7 @@
   color: white;
 }
 
+/* ── Collapsible sections ───────────────────── */
 .guides-section {
   margin-bottom: 32px;
 }
@@ -71,9 +235,18 @@
   font-size: 18px;
   font-family: var(--font-display);
   color: var(--color-ink);
-  margin: 0 0 16px 0;
+  margin: 0;
 }
 
+.guides-section .collapse-toggle {
+  margin-bottom: 16px;
+}
+
+.guides-section .collapse-toggle h3 {
+  margin: 0;
+}
+
+/* ── Content list ───────────────────────────── */
 .guides-list {
   display: flex;
   flex-direction: column;
@@ -190,7 +363,7 @@
 }
 
 .generating-text {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 500;
   animation: generating-pulse 1.5s ease-in-out infinite;
 }
@@ -223,41 +396,6 @@
   margin: 0;
 }
 
-/* Filter select dropdowns */
-.guides-filters-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.guides-filter-select {
-  padding: 8px 28px 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink);
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.guides-filter-select:hover {
-  border-color: var(--color-accent);
-}
-
-.guides-filter-select:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-focus-ring);
-}
-
 /* Course badge in row meta */
 .guide-course-badge {
   background: var(--color-purple-bg);
@@ -273,7 +411,21 @@
   text-transform: capitalize;
 }
 
-@media (max-width: 600px) {
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 480px) {
+  .guides-child-selector {
+    gap: 6px;
+  }
+
+  .guides-child-selector .child-tab {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .guides-course-search {
+    max-width: none;
+  }
+
   .guides-filter {
     width: 100%;
   }
@@ -294,51 +446,7 @@
   }
 }
 
-/* Categorize modal - searchable course list */
-.categorize-list {
-  max-height: 220px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  margin-top: 8px;
-}
-
-.categorize-item {
-  padding: 10px 14px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--color-ink);
-  transition: background 0.15s;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.categorize-item:last-child {
-  border-bottom: none;
-}
-
-.categorize-item:hover {
-  background: var(--color-surface-alt);
-}
-
-.categorize-item.selected {
-  background: var(--color-surface-alt);
-  font-weight: 600;
-  border-left: 3px solid var(--color-accent);
-}
-
-.categorize-item.create-new {
-  color: var(--color-accent);
-  font-weight: 500;
-}
-
-.categorize-item.create-new:hover {
-  background: var(--color-accent-subtle);
-}
-
-.categorize-item.create-new.selected {
-  background: var(--color-accent-light);
-  border-left-color: var(--color-accent-warm);
-}
+/* Categorize modal styles are in Dashboard.css (shared) */
 
 .categorize-empty {
   padding: 16px;

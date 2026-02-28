@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -15,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -32,7 +33,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
@@ -224,6 +225,18 @@ with engine.connect() as conn:
             except Exception:
                 pass  # Already nullable or not applicable
         conn.commit()
+    # ── tasks: last_reminder_sent_at column (#876) ──────────
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "last_reminder_sent_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE tasks ADD COLUMN last_reminder_sent_at {col_type}"))
+                logger.info("Added 'last_reminder_sent_at' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # Make users.email nullable for students created without email (by parent)
     if "users" in inspector.get_table_names():
         if "sqlite" not in settings.database_url:
@@ -277,6 +290,21 @@ with engine.connect() as conn:
                 logger.info("Added 'google_classroom_material_id' column to course_contents")
             except Exception:
                 conn.rollback()
+        conn.commit()
+        # File storage columns (#572)
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        for col_name, col_type in [
+            ("file_path", "VARCHAR(500)"),
+            ("original_filename", "VARCHAR(500)"),
+            ("file_size", "INTEGER"),
+            ("mime_type", "VARCHAR(100)"),
+        ]:
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(text(f"ALTER TABLE course_contents ADD COLUMN {col_name} {col_type}"))
+                    logger.info("Added '%s' column to course_contents", col_name)
+                except Exception:
+                    conn.rollback()
         conn.commit()
     if "study_guides" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
@@ -454,6 +482,164 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── Phase 1 New Workflow: users.username column ─────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "username" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                logger.info("Added 'username' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: students.parent_email column ────
+    if "students" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "parent_email" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN parent_email VARCHAR(255)"))
+                logger.info("Added 'parent_email' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: courses.classroom_type column ───
+    if "courses" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("courses")}
+        if "classroom_type" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE courses ADD COLUMN classroom_type VARCHAR(20)"))
+                logger.info("Added 'classroom_type' column to courses")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: notifications ACK columns ───────
+    if "notifications" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("notifications")}
+
+        if "requires_ack" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN requires_ack BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'requires_ack' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "acked_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE notifications ADD COLUMN acked_at {col_type}"))
+                logger.info("Added 'acked_at' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "source_type" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN source_type VARCHAR(50)"))
+                logger.info("Added 'source_type' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "source_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN source_id INTEGER"))
+                logger.info("Added 'source_id' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "next_reminder_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE notifications ADD COLUMN next_reminder_at {col_type}"))
+                logger.info("Added 'next_reminder_at' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "reminder_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN reminder_count INTEGER DEFAULT 0"))
+                logger.info("Added 'reminder_count' column to notifications")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Phase 1 New Workflow: notification enum types (PostgreSQL) ──
+    if is_pg:
+        new_notif_types = [
+            "LINK_REQUEST", "MATERIAL_UPLOADED", "STUDY_GUIDE_CREATED",
+            "PARENT_REQUEST", "ASSESSMENT_UPCOMING", "PROJECT_DUE",
+        ]
+        for ntype in new_notif_types:
+            try:
+                conn.execute(text(f"ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS '{ntype}'"))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+    # ── users.google_granted_scopes column (#727) ────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "google_granted_scopes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN google_granted_scopes VARCHAR(1024)"))
+                logger.info("Added 'google_granted_scopes' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── users.onboarding_dismissed_at column (#869) ─────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "onboarding_dismissed_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN onboarding_dismissed_at {col_type}"))
+                logger.info("Added 'onboarding_dismissed_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── student_assignments: submission fields (#839) ──────────
+    if "student_assignments" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("student_assignments")}
+        if "submission_file_path" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE student_assignments ADD COLUMN submission_file_path VARCHAR(500)"))
+                logger.info("Added 'submission_file_path' column to student_assignments")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "submission_file_name" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE student_assignments ADD COLUMN submission_file_name VARCHAR(255)"))
+                logger.info("Added 'submission_file_name' column to student_assignments")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "submission_notes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE student_assignments ADD COLUMN submission_notes TEXT"))
+                logger.info("Added 'submission_notes' column to student_assignments")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "is_late" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE student_assignments ADD COLUMN is_late BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'is_late' column to student_assignments")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # One-time data fix: correct known invalid email (#408)
     try:
         conn.execute(text(
@@ -467,10 +653,15 @@ with engine.connect() as conn:
         conn.rollback()
 
 
+_is_prod = "sqlite" not in settings.database_url
+
 app = FastAPI(
     title=settings.app_name,
     description="AI-powered education management platform",
     version="0.1.0",
+    docs_url=None if _is_prod else "/api/docs",
+    redoc_url=None if _is_prod else "/api/redoc",
+    openapi_url=None if _is_prod else "/api/openapi.json",
 )
 
 # Rate limiting
@@ -544,6 +735,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["Content-Disposition"],
 )
 
 # Security headers middleware
@@ -552,6 +744,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Domain redirect middleware (301 non-canonical → canonical)
 # No-ops when canonical_domain is empty; always registered, checks at runtime
 app.add_middleware(DomainRedirectMiddleware)
+
+# GZip compression — compress responses > 500 bytes (#516)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Include all API routers at /api prefix
 # NOTE: Mobile apps will use these same endpoints initially.
@@ -576,6 +771,10 @@ app.include_router(search.router, prefix="/api")
 app.include_router(inspiration.router, prefix="/api")
 app.include_router(faq.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
+app.include_router(link_requests.router, prefix="/api")
+app.include_router(quiz_results.router, prefix="/api")
+app.include_router(onboarding.router, prefix="/api")
+app.include_router(grades.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -612,9 +811,20 @@ FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
 if FRONTEND_DIR.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static-assets")
 
+    # Long-lived cache for hashed static assets (#516)
+    @app.middleware("http")
+    async def cache_hashed_assets(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve frontend SPA — returns index.html for all non-API routes."""
+        # Return JSON 404 for unmatched /api/* paths (#517)
+        if full_path.startswith("api/"):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
         file_path = FRONTEND_DIR / full_path
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
@@ -634,6 +844,7 @@ async def startup_event():
     from app.services.scheduler import scheduler, start_scheduler
     from app.jobs.assignment_reminders import check_assignment_reminders
     from app.jobs.task_reminders import check_task_reminders
+    from app.jobs.notification_reminders import check_notification_reminders
     from app.services.inspiration_service import seed_messages
     from app.services.faq_seed_service import seed_faq
     from app.services.grade_seed_service import seed_grades
@@ -657,6 +868,12 @@ async def startup_event():
         check_task_reminders,
         CronTrigger(hour=8, minute=15),
         id="task_reminders",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        check_notification_reminders,
+        CronTrigger(hour="*/6"),
+        id="notification_reminders",
         replace_existing=True,
     )
 

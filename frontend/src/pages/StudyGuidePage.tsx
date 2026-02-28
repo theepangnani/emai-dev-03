@@ -1,76 +1,36 @@
-import { useState, useEffect } from 'react';
-import type { ReactElement } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import type { Components } from 'react-markdown';
-import type { PluggableList } from 'unified';
+import { useState, useEffect, Suspense } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
+import { PageNav } from '../components/PageNav';
 import './StudyGuidePage.css';
 
-function normalizeGuideContent(content: string) {
-  return content
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-type MarkdownRenderer = (props: {
-  children: string;
-  remarkPlugins?: PluggableList;
-  components?: Components;
-}) => ReactElement;
-
-function MarkdownGuideBody({ content }: { content: string }) {
-  const [Renderer, setRenderer] = useState<MarkdownRenderer | null>(null);
-  const [gfmPlugin, setGfmPlugin] = useState<PluggableList | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadMarkdown = async () => {
-      const [{ default: ReactMarkdown }, { default: remarkGfm }] = await Promise.all([
-        import('react-markdown'),
-        import('remark-gfm'),
-      ]);
-
-      if (!isMounted) return;
-
-      setRenderer(() => ReactMarkdown as MarkdownRenderer);
-      setGfmPlugin([remarkGfm] as PluggableList);
-    };
-
-    loadMarkdown().catch((err) => {
-      console.error('Failed to load markdown renderer', err);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const normalized = normalizeGuideContent(content);
-
-  if (!Renderer || !gfmPlugin) {
-    return <div className="guide-render-loading">Formatting study guide...</div>;
-  }
-
-  return <Renderer remarkPlugins={gfmPlugin}>{normalized}</Renderer>;
-}
+const GUIDE_TYPE_LABELS: Record<string, string> = {
+  study_guide: 'Study Guide',
+  quiz: 'Quiz',
+  flashcards: 'Flashcards',
+};
 
 export function StudyGuidePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showTaskPrompt, setShowTaskPrompt] = useState(false);
   const { confirm, confirmModal } = useConfirm();
+
+  // Detect first-time guide view from navigation state
+  const isNewGuide = !!(location.state as any)?.newGuide;
 
   useEffect(() => {
     const fetchGuide = async () => {
@@ -78,6 +38,10 @@ export function StudyGuidePage() {
       try {
         const data = await studyApi.getGuide(parseInt(id));
         setGuide(data);
+        // Show task prompt for new/regenerated guides
+        if (isNewGuide) {
+          setShowTaskPrompt(true);
+        }
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
@@ -105,6 +69,21 @@ export function StudyGuidePage() {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!guide) return;
+    try {
+      const result = await studyApi.generateGuide({
+        title: guide.title.replace(/^Study Guide: /, ''),
+        content: guide.content,
+        regenerate_from_id: guide.id,
+      });
+      navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
+    } catch (err) {
+      setError('Failed to regenerate');
+      setFaqCode(extractFaqCode(err));
+    }
+  };
+
   if (loading) {
     return (
       <div className="study-guide-page">
@@ -126,50 +105,66 @@ export function StudyGuidePage() {
     );
   }
 
+  const guideTypeLabel = GUIDE_TYPE_LABELS[guide.guide_type] || guide.guide_type;
+
   return (
     <div className="study-guide-page">
-      <div className="study-guide-header">
-        <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
-        <div className="header-actions">
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'Course Materials', to: '/course-materials' },
+        ...(guide?.course_content_id
+          ? [{ label: guide.title.replace(/^Study Guide:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+          : []),
+        { label: 'Study Guide' },
+      ]} />
+
+      {/* Header card */}
+      <div className="sg-detail-header">
+        <div className="sg-title-row">
+          <h2>{guide.title}</h2>
           <CourseAssignSelect
             guideId={guide.id}
             currentCourseId={guide.course_id}
             onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
           />
-          <button className="print-btn" onClick={() => window.print()}>Print</button>
-          <button
-            className="print-btn"
-            onClick={async () => {
-              try {
-                const result = await studyApi.generateGuide({
-                  title: guide.title.replace(/^Study Guide: /, ''),
-                  content: guide.content,
-                  regenerate_from_id: guide.id,
-                });
-                navigate(`/study/guide/${result.id}`);
-              } catch (err) {
-                setError('Failed to regenerate');
-                setFaqCode(extractFaqCode(err));
-              }
-            }}
-          >
-            Regenerate
-          </button>
-          <button className="delete-btn" onClick={handleDelete}>Delete</button>
-          <button className="print-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
+        </div>
+        <div className="sg-meta-row">
+          <span className="sg-type-badge">{guideTypeLabel}</span>
+          {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
+          <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
+          <div className="sg-icon-actions">
+            <button className="sg-icon-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+                <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
+                <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </button>
+            <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
+            <button className="sg-icon-btn" title="Print" aria-label="Print study guide" onClick={() => window.print()}>&#128424;</button>
+            <button className="sg-icon-btn sg-icon-btn-danger" title="Delete" aria-label="Delete study guide" onClick={handleDelete}>&#128465;</button>
+          </div>
         </div>
       </div>
 
-      <div className="study-guide-content">
-        <h1>{guide.title}</h1>
-        <p className="guide-meta">
-          {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.85rem', marginRight: '0.5rem' }}>v{guide.version}</span>}
-          Created: {new Date(guide.created_at).toLocaleDateString()}
-        </p>
-        <div className="guide-body">
-          <MarkdownGuideBody content={guide.content} />
+      {showTaskPrompt && (
+        <div className="task-prompt-banner">
+          <span>Want to create a study task for this guide?</span>
+          <button onClick={() => { setShowTaskModal(true); setShowTaskPrompt(false); }}>
+            Create Task
+          </button>
+          <button className="skip-btn" onClick={() => setShowTaskPrompt(false)}>
+            Skip
+          </button>
         </div>
-      </div>
+      )}
+
+      <ContentCard>
+        <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
+          <MarkdownBody content={guide.content} />
+        </Suspense>
+      </ContentCard>
       <CreateTaskModal
         open={showTaskModal}
         onClose={() => setShowTaskModal(false)}

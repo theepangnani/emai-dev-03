@@ -52,7 +52,9 @@ export function AnalyticsPage() {
     parentApi.getChildren().then((kids) => {
       setChildren(kids);
       if (kids.length > 0 && !selectedStudentId) {
-        setSelectedStudentId(kids[0].student_id);
+        const storedUserId = sessionStorage.getItem('selectedChildId');
+        const storedMatch = storedUserId ? kids.find(k => k.user_id === Number(storedUserId)) : null;
+        setSelectedStudentId(storedMatch ? storedMatch.student_id : kids[0].student_id);
       }
     }).catch(() => { /* handled by main load */ });
   }, [isParent]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -194,7 +196,7 @@ export function AnalyticsPage() {
           <label>Student:</label>
           <select
             value={selectedStudentId ?? ''}
-            onChange={(e) => setSelectedStudentId(Number(e.target.value))}
+            onChange={(e) => { const sid = Number(e.target.value); setSelectedStudentId(sid); const child = children.find(c => c.student_id === sid); if (child) sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
           >
             {children.map((child) => (
               <option key={child.student_id} value={child.student_id}>
@@ -248,7 +250,7 @@ export function AnalyticsPage() {
               value={trendCourseFilter ?? ''}
               onChange={(e) => setTrendCourseFilter(e.target.value ? Number(e.target.value) : undefined)}
             >
-              <option value="">All Courses</option>
+              <option value="">All Classes</option>
               {courseOptions.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -284,7 +286,7 @@ export function AnalyticsPage() {
       {/* Course Averages Bar Chart */}
       {courseBarData.length > 0 && (
         <div className="analytics-chart-section">
-          <h2>Course Averages</h2>
+          <h2>Class Averages</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={courseBarData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -325,7 +327,7 @@ export function AnalyticsPage() {
             <thead>
               <tr>
                 <th>Assignment</th>
-                <th>Course</th>
+                <th>Class</th>
                 <th>Grade</th>
                 <th>Due Date</th>
               </tr>

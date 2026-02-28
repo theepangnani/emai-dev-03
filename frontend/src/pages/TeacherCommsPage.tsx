@@ -5,6 +5,7 @@ import { teacherCommsApi } from '../api/client';
 import type { TeacherCommunication, EmailMonitoringStatus } from '../api/client';
 import { NotificationBell } from '../components/NotificationBell';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import { useDebounce } from '../utils/useDebounce';
 import './TeacherCommsPage.css';
 
@@ -94,6 +95,15 @@ export function TeacherCommsPage() {
       setError(err.response?.data?.detail || 'Failed to send reply');
     } finally {
       setReplySending(false);
+    }
+  };
+
+  const handleEnableEmailMonitoring = async () => {
+    try {
+      const { authorization_url } = await teacherCommsApi.getEmailMonitoringAuthUrl();
+      window.location.href = authorization_url;
+    } catch {
+      setError('Failed to start email monitoring setup. Please try again.');
     }
   };
 
@@ -193,11 +203,20 @@ export function TeacherCommsPage() {
         </div>
       )}
 
-      {status && !status.gmail_enabled && (
+      {status && !status.classroom_enabled && (
         <div className="connect-banner">
           <p>Connect your Google account to monitor teacher emails and announcements.</p>
           <button onClick={() => navigate('/dashboard')}>
             Go to Dashboard to Connect
+          </button>
+        </div>
+      )}
+
+      {status && status.classroom_enabled && !status.gmail_scope_granted && (
+        <div className="connect-banner">
+          <p>Enable email monitoring to sync teacher emails from Gmail. Classroom announcements are already available.</p>
+          <button onClick={handleEnableEmailMonitoring}>
+            Enable Email Monitoring
           </button>
         </div>
       )}
@@ -207,10 +226,11 @@ export function TeacherCommsPage() {
           {loading ? (
             <ListSkeleton rows={4} />
           ) : communications.length === 0 ? (
-            <div className="empty-state">
-              <p>No communications yet</p>
-              <small>Sync your account to fetch teacher emails and announcements</small>
-            </div>
+            <EmptyState
+              title="No communications yet"
+              description="Sync your account to fetch teacher emails and announcements"
+              variant="compact"
+            />
           ) : (
             <>
               {communications.map((comm) => (
@@ -254,7 +274,7 @@ export function TeacherCommsPage() {
                     {selected.sender_email && ` <${selected.sender_email}>`}
                   </span>
                   {selected.course_name && (
-                    <span className="detail-course">Course: {selected.course_name}</span>
+                    <span className="detail-course">Class: {selected.course_name}</span>
                   )}
                   {selected.received_at && (
                     <span className="detail-date">

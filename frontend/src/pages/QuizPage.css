@@ -13,6 +13,23 @@
   color: var(--color-ink);
 }
 
+.quiz-student-banner {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+.quiz-student-banner.resolved {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+.quiz-student-banner.unresolved {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+}
+
 .progress {
   color: var(--color-ink-muted);
   font-size: 0.9rem;
@@ -254,7 +271,7 @@
 
 .quiz-encouragement {
   font-size: 1.1rem;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 500;
   margin-bottom: 2rem;
   font-style: italic;
@@ -306,7 +323,7 @@
 }
 
 /* Mobile responsive */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .quiz-page {
     max-width: 100%;
     padding: 1rem;

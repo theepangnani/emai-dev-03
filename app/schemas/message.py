@@ -95,3 +95,15 @@ class RecipientOption(BaseModel):
 
 class UnreadCountResponse(BaseModel):
     total_unread: int
+
+
+class MessageSearchResult(BaseModel):
+    conversation_id: int
+    conversation_subject: Optional[str]
+    message_id: int
+    message_content: str
+    sender_name: str
+    sent_at: datetime
+
+    class Config:
+        from_attributes = True

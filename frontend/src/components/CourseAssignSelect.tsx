@@ -48,7 +48,7 @@ export function CourseAssignSelect({ guideId, currentCourseId, onCourseChanged }
       value={selectedCourseId ?? ''}
       onChange={(e) => handleChange(e.target.value)}
       disabled={saving}
-      title="Assign to course"
+      title="Assign to class"
       style={{
         padding: '4px 8px',
         borderRadius: '6px',
@@ -58,7 +58,7 @@ export function CourseAssignSelect({ guideId, currentCourseId, onCourseChanged }
         opacity: saving ? 0.6 : 1,
       }}
     >
-      <option value="">No course</option>
+      <option value="">No class</option>
       {courses.map((c) => (
         <option key={c.id} value={c.id}>{c.name}</option>
       ))}

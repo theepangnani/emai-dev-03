@@ -135,7 +135,7 @@ export const PARENT_TOUR_STEPS: TourStep[] = [
   {
     target: '.sidebar-nav .sidebar-link:nth-child(2)',
     title: 'Child Profiles',
-    content: 'View detailed profiles for each child including courses, teachers, and study materials.',
+    content: 'View detailed profiles for each child including classes, teachers, and study materials.',
     position: 'right',
   },
   {
@@ -150,13 +150,13 @@ export const PARENT_TOUR_STEPS: TourStep[] = [
 export const STUDENT_TOUR_STEPS: TourStep[] = [
   {
     target: '.sidebar-nav .sidebar-link:nth-child(2)',
-    title: 'Your Courses',
-    content: 'View all your courses from Google Classroom. Connect your account to sync automatically.',
+    title: 'Your Classes',
+    content: 'View all your classes from Google Classroom. Connect your account to sync automatically.',
     position: 'right',
   },
   {
     target: '.sidebar-nav .sidebar-link:nth-child(3)',
-    title: 'Course Materials',
+    title: 'Class Materials',
     content: 'Access study guides, quizzes, and flashcards generated from your assignments.',
     position: 'right',
   },
@@ -172,8 +172,8 @@ export const STUDENT_TOUR_STEPS: TourStep[] = [
 export const TEACHER_TOUR_STEPS: TourStep[] = [
   {
     target: '.sidebar-nav .sidebar-link:nth-child(2)',
-    title: 'Courses',
-    content: 'Create courses or sync from Google Classroom. Manage students and assignments here.',
+    title: 'Classes',
+    content: 'Create classes or sync from Google Classroom. Manage students and assignments here.',
     position: 'right',
   },
   {

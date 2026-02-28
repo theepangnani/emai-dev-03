@@ -10,7 +10,7 @@ export interface ChildHighlight {
   due_today_count: number;
   upcoming_count: number;
   completed_today_count: number;
-  courses: Array<{ id: number; name: string; description: string | null; subject: string | null; google_classroom_id: string | null; teacher_id: number | null; created_at: string; teacher_name: string | null; teacher_email: string | null }>;
+  courses: Array<{ id: number; name: string; description: string | null; subject: string | null; google_classroom_id: string | null; classroom_type?: string | null; teacher_id: number | null; created_at: string; teacher_name: string | null; teacher_email: string | null }>;
   overdue_items: Array<{ title: string; type: string; course_name: string; due_date: string }>;
   due_today_items: Array<{ title: string; type: string; course_name: string; due_date: string }>;
 }
@@ -45,6 +45,8 @@ export interface ChildSummary {
   invite_link: string | null;
   course_count: number;
   active_task_count: number;
+  invite_status: 'active' | 'pending' | 'email_unverified' | null;
+  invite_id: number | null;
 }
 
 export interface ChildOverview {
@@ -53,7 +55,7 @@ export interface ChildOverview {
   full_name: string;
   grade_level: number | null;
   google_connected: boolean;
-  courses: Array<{ id: number; name: string; description: string | null; subject: string | null; google_classroom_id: string | null; teacher_id: number | null; created_at: string; teacher_name: string | null; teacher_email: string | null }>;
+  courses: Array<{ id: number; name: string; description: string | null; subject: string | null; google_classroom_id: string | null; classroom_type?: string | null; teacher_id: number | null; created_at: string; teacher_name: string | null; teacher_email: string | null }>;
   assignments: Array<{ id: number; title: string; description: string | null; course_id: number; google_classroom_id: string | null; due_date: string | null; max_points: number | null; created_at: string }>;
   study_guides_count: number;
 }
@@ -168,5 +170,20 @@ export const parentApi = {
   unlinkTeacher: async (studentId: number, linkId: number) => {
     const response = await api.delete(`/api/parent/children/${studentId}/teachers/${linkId}`);
     return response.data;
+  },
+
+  resetChildPassword: async (studentId: number, newPassword?: string) => {
+    const response = await api.post(`/api/parent/children/${studentId}/reset-password`, {
+      ...(newPassword ? { new_password: newPassword } : {}),
+    });
+    return response.data as { message: string };
+  },
+
+  requestCompletion: async (studentId: number, taskId: number, message?: string) => {
+    const response = await api.post(`/api/parent/children/${studentId}/request-completion`, {
+      task_id: taskId,
+      ...(message ? { message } : {}),
+    });
+    return response.data as { message: string };
   },
 };

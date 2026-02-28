@@ -1,16 +1,26 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
-import type { AdminStats, AdminUserItem, BroadcastItem } from '../api/client';
+import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useDebounce } from '../utils/useDebounce';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import './AdminDashboard.css';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES = ['parent', 'student', 'teacher', 'admin'] as const;
 
+interface TrendCounts {
+  total: number;
+  student: number;
+  teacher: number;
+  classes: number;
+}
+
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -19,6 +29,12 @@ export function AdminDashboard() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const debouncedSearch = useDebounce(search, 400);
+
+  // Trend indicators
+  const [trends, setTrends] = useState<TrendCounts>({ total: 0, student: 0, teacher: 0, classes: 0 });
+
+  // Recent activity
+  const [recentActivity, setRecentActivity] = useState<AuditLogItem[]>([]);
 
   // Role management modal
   const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
@@ -33,6 +49,7 @@ export function AdminDashboard() {
   const [broadcastResult, setBroadcastResult] = useState('');
   const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
   const [showBroadcastHistory, setShowBroadcastHistory] = useState(false);
+  const [usersExpanded, setUsersExpanded] = useState(true);
 
   // Individual message state
   const [messageUser, setMessageUser] = useState<AdminUserItem | null>(null);
@@ -40,6 +57,11 @@ export function AdminDashboard() {
   const [msgBody, setMsgBody] = useState('');
   const [msgSending, setMsgSending] = useState(false);
   const [msgResult, setMsgResult] = useState('');
+
+  // Focus traps for modals (must be after state declarations they reference)
+  const roleModalRef = useFocusTrap<HTMLDivElement>(!!selectedUser, () => setSelectedUser(null));
+  const broadcastModalRef = useFocusTrap<HTMLDivElement>(showBroadcastModal, () => { if (!broadcastSending) { setShowBroadcastModal(false); setBroadcastResult(''); } });
+  const messageModalRef = useFocusTrap<HTMLDivElement>(!!messageUser, () => { if (!msgSending) { setMessageUser(null); setMsgResult(''); } });
 
   useEffect(() => {
     loadStats();
@@ -51,8 +73,34 @@ export function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const data = await adminApi.getStats();
-      setStats(data);
+      const [statsData, allUsersData, auditData] = await Promise.allSettled([
+        adminApi.getStats(),
+        adminApi.getUsers({ limit: 5000 }),
+        adminApi.getAuditLogs({ limit: 5 }),
+      ]);
+
+      if (statsData.status === 'fulfilled') {
+        setStats(statsData.value);
+      }
+
+      // Compute trend counts from user creation dates
+      if (allUsersData.status === 'fulfilled') {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const recentUsers = allUsersData.value.users.filter(
+          (u: AdminUserItem) => new Date(u.created_at) >= oneWeekAgo
+        );
+        setTrends({
+          total: recentUsers.length,
+          student: recentUsers.filter((u: AdminUserItem) => u.roles.includes('student')).length,
+          teacher: recentUsers.filter((u: AdminUserItem) => u.roles.includes('teacher')).length,
+          classes: 0, // courses don't have creation dates in the stats API
+        });
+      }
+
+      if (auditData.status === 'fulfilled') {
+        setRecentActivity(auditData.value.items);
+      }
     } catch {
       // Failed to load stats
     }
@@ -164,31 +212,40 @@ export function AdminDashboard() {
     <DashboardLayout welcomeSubtitle="Platform administration">
       <div className="dashboard-grid">
         <div className="dashboard-card">
-          <div className="card-icon">&#128101;</div>
+          <div className="card-icon" aria-hidden="true">&#128101;</div>
           <h3>Total Users</h3>
           <p className="card-value">{stats?.total_users ?? '—'}</p>
           <p className="card-label">Registered users</p>
+          {trends.total > 0 && (
+            <span className="admin-trend-badge">+{trends.total} this week</span>
+          )}
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">&#127891;</div>
+          <div className="card-icon" aria-hidden="true">&#127891;</div>
           <h3>Students</h3>
           <p className="card-value">{stats?.users_by_role?.student ?? 0}</p>
           <p className="card-label">Active students</p>
+          {trends.student > 0 && (
+            <span className="admin-trend-badge">+{trends.student} this week</span>
+          )}
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">&#128104;&#8205;&#127979;</div>
+          <div className="card-icon" aria-hidden="true">&#128104;&#8205;&#127979;</div>
           <h3>Teachers</h3>
           <p className="card-value">{stats?.users_by_role?.teacher ?? 0}</p>
           <p className="card-label">Active teachers</p>
+          {trends.teacher > 0 && (
+            <span className="admin-trend-badge">+{trends.teacher} this week</span>
+          )}
         </div>
 
         <div className="dashboard-card">
-          <div className="card-icon">&#128218;</div>
-          <h3>Courses</h3>
+          <div className="card-icon" aria-hidden="true">&#128218;</div>
+          <h3>Classes</h3>
           <p className="card-value">{stats?.total_courses ?? 0}</p>
-          <p className="card-label">Total courses</p>
+          <p className="card-label">Total classes</p>
         </div>
       </div>
 
@@ -212,18 +269,59 @@ export function AdminDashboard() {
           </button>
         </section>
 
+        {/* Recent Activity Feed */}
+        <section className="section admin-recent-activity-section">
+          <div className="admin-recent-activity-header">
+            <h3>Recent Activity</h3>
+          </div>
+          {recentActivity.length > 0 ? (
+            <>
+              <div className="admin-recent-activity-list">
+                {recentActivity.map((entry) => (
+                  <div key={entry.id} className="admin-activity-item">
+                    <div className="admin-activity-dot" />
+                    <div className="admin-activity-content">
+                      <div className="admin-activity-action">
+                        {entry.user_name && <span className="admin-activity-actor">{entry.user_name}</span>}
+                        {' '}<span className="admin-activity-verb">{entry.action}</span>
+                        {entry.resource_type && <span className="admin-activity-target"> {entry.resource_type}{entry.resource_id ? ` #${entry.resource_id}` : ''}</span>}
+                      </div>
+                      {entry.details && <div className="admin-activity-details">{entry.details}</div>}
+                      <div className="admin-activity-time">
+                        {new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="admin-activity-view-all" onClick={() => navigate('/admin/audit-log')}>
+                View Full Audit Log &rarr;
+              </button>
+            </>
+          ) : (
+            <EmptyState
+              icon="📊"
+              title="No recent activity"
+              description="System activity will appear here."
+            />
+          )}
+        </section>
+
         {/* Broadcast History */}
         <section className="section" style={{ marginBottom: '16px' }}>
-          <button
-            className="admin-toggle-history"
-            onClick={handleToggleBroadcastHistory}
-          >
-            {showBroadcastHistory ? 'Hide' : 'Show'} Broadcast History
+          <button className="collapse-toggle" onClick={handleToggleBroadcastHistory}>
+            <span className={`section-chevron${showBroadcastHistory ? ' expanded' : ''}`}>&#9654;</span>
+            <h3 style={{ margin: 0, fontSize: '14px' }}>Broadcast History ({broadcasts.length})</h3>
           </button>
           {showBroadcastHistory && (
             <div className="admin-broadcast-history">
               {broadcasts.length === 0 ? (
-                <p style={{ color: '#999', padding: '12px 0' }}>No broadcasts sent yet.</p>
+                <EmptyState
+                  icon="📢"
+                  title="No broadcasts sent yet"
+                  description="Send a broadcast to reach all users at once."
+                  action={{ label: 'Send Broadcast', onClick: () => { setShowBroadcastModal(true); setBroadcastResult(''); } }}
+                />
               ) : (
                 <table className="admin-users-table">
                   <thead>
@@ -251,10 +349,17 @@ export function AdminDashboard() {
         </section>
 
         <section className="section admin-users-section">
-          <h3>User Management</h3>
+          <button className="collapse-toggle" onClick={() => setUsersExpanded(v => !v)}>
+            <span className={`section-chevron${usersExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>User Management ({totalUsers})</h3>
+          </button>
 
+          {usersExpanded && (
+          <>
           <div className="admin-filters">
+            <label htmlFor="admin-role-filter" className="sr-only">Filter by role</label>
             <select
+              id="admin-role-filter"
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}
             >
@@ -264,7 +369,9 @@ export function AdminDashboard() {
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
             </select>
+            <label htmlFor="admin-user-search" className="sr-only">Search users by name or email</label>
             <input
+              id="admin-user-search"
               type="text"
               placeholder="Search by name or email..."
               value={search}
@@ -324,8 +431,13 @@ export function AdminDashboard() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#999' }}>
-                        No users found
+                      <td colSpan={6}>
+                        <EmptyState
+                          icon="👤"
+                          title="No users match your search"
+                          description="Try adjusting your filters or search terms."
+                          action={{ label: 'Clear Filters', onClick: () => { setSearch(''); setRoleFilter(''); setPage(0); } }}
+                        />
                       </td>
                     </tr>
                   )}
@@ -349,13 +461,15 @@ export function AdminDashboard() {
               )}
             </>
           )}
+          </>
+          )}
         </section>
       </div>
 
       {/* Role Management Modal */}
       {selectedUser && (
         <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
-          <div className="modal admin-role-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal admin-role-modal" role="dialog" aria-modal="true" aria-label="Manage Roles" ref={roleModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Manage Roles</h2>
             <div className="admin-role-user-info">
               <span className="admin-role-user-name">{selectedUser.full_name}</span>
@@ -399,7 +513,7 @@ export function AdminDashboard() {
       {/* Broadcast Modal */}
       {showBroadcastModal && (
         <div className="modal-overlay" onClick={() => { if (!broadcastSending) { setShowBroadcastModal(false); setBroadcastResult(''); } }}>
-          <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal admin-message-modal" role="dialog" aria-modal="true" aria-label="Send Broadcast" ref={broadcastModalRef} onClick={(e) => e.stopPropagation()}>
             {broadcastResult && !broadcastResult.startsWith('Failed') ? (
               <>
                 <div className="admin-msg-sent-confirmation">
@@ -420,14 +534,18 @@ export function AdminDashboard() {
                   This message will be sent to all {stats?.total_users ?? 0} active users as an in-app notification and email.
                 </p>
                 <div className="admin-msg-form">
+                  <label htmlFor="broadcast-subject" className="sr-only">Subject</label>
                   <input
+                    id="broadcast-subject"
                     type="text"
                     placeholder="Subject"
                     value={broadcastSubject}
                     onChange={(e) => setBroadcastSubject(e.target.value)}
                     className="admin-msg-input"
                   />
+                  <label htmlFor="broadcast-body" className="sr-only">Message body</label>
                   <textarea
+                    id="broadcast-body"
                     placeholder="Message body..."
                     value={broadcastBody}
                     onChange={(e) => setBroadcastBody(e.target.value)}
@@ -457,7 +575,7 @@ export function AdminDashboard() {
       {/* Individual Message Modal */}
       {messageUser && (
         <div className="modal-overlay" onClick={() => { if (!msgSending) { setMessageUser(null); setMsgResult(''); } }}>
-          <div className="modal admin-message-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal admin-message-modal" role="dialog" aria-modal="true" aria-label="Send Message" ref={messageModalRef} onClick={(e) => e.stopPropagation()}>
             {msgResult && !msgResult.startsWith('Failed') ? (
               <>
                 <div className="admin-msg-sent-confirmation">
@@ -479,14 +597,18 @@ export function AdminDashboard() {
                   <span className="admin-role-user-email">{messageUser.email ?? 'No email'}</span>
                 </div>
                 <div className="admin-msg-form">
+                  <label htmlFor="msg-subject" className="sr-only">Subject</label>
                   <input
+                    id="msg-subject"
                     type="text"
                     placeholder="Subject"
                     value={msgSubject}
                     onChange={(e) => setMsgSubject(e.target.value)}
                     className="admin-msg-input"
                   />
+                  <label htmlFor="msg-body" className="sr-only">Message body</label>
                   <textarea
+                    id="msg-body"
                     placeholder="Message body..."
                     value={msgBody}
                     onChange={(e) => setMsgBody(e.target.value)}

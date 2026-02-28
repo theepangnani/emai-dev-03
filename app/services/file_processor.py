@@ -3,6 +3,7 @@ File processor service for extracting text from various document formats.
 Supports: PDF, Word, Excel, PowerPoint, Images (OCR), Text, and ZIP archives.
 """
 
+import base64
 import io
 import os
 import zipfile
@@ -25,6 +26,13 @@ try:
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
+
+# Vision-based OCR via Anthropic Claude (preferred for math/formulas)
+try:
+    import anthropic
+    VISION_OCR_AVAILABLE = True
+except ImportError:
+    VISION_OCR_AVAILABLE = False
 
 # PDF-to-image conversion (optional - requires poppler-utils)
 try:
@@ -110,22 +118,211 @@ def extract_text_from_pdf(file_content: bytes) -> str:
         raise FileProcessingError(f"Failed to extract text from PDF: {str(e)}")
 
 
+def _extract_text_from_docx_textboxes(doc) -> list[str]:
+    """Extract text from text boxes and shapes in a Word document via XML."""
+    text_parts = []
+    nsmap = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    for txbx in doc.element.body.iter(
+        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}txbxContent"
+    ):
+        for paragraph in txbx.findall(".//w:p", nsmap):
+            runs = paragraph.findall(".//w:r/w:t", nsmap)
+            para_text = "".join(r.text or "" for r in runs)
+            if para_text.strip():
+                text_parts.append(para_text.strip())
+    return text_parts
+
+
+def _extract_images_from_docx(file_content: bytes) -> list[bytes]:
+    """Extract embedded images from a .docx file (which is a ZIP archive)."""
+    images = []
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as zf:
+            for name in zf.namelist():
+                if name.startswith("word/media/") and Path(name).suffix.lower() in IMAGE_EXTENSIONS:
+                    images.append(zf.read(name))
+    except Exception as e:
+        logger.debug(f"Failed to extract images from docx: {e}")
+    return images
+
+
+def _get_image_media_type(img_bytes: bytes) -> str:
+    """Detect image media type from file header bytes."""
+    if img_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+        return "image/png"
+    if img_bytes[:2] == b'\xff\xd8':
+        return "image/jpeg"
+    if img_bytes[:4] == b'GIF8':
+        return "image/gif"
+    if img_bytes[:2] in (b'BM',):
+        return "image/bmp"
+    # Default to png for unknown
+    return "image/png"
+
+
+def _ocr_images_with_vision(images: list[bytes], batch_size: int = 10) -> list[str]:
+    """
+    Use Claude Vision API to extract text from images (much better for math/formulas).
+
+    Batches images into groups to minimize API calls while staying within limits.
+    Falls back gracefully if the API is unavailable or fails.
+    """
+    from app.core.config import settings
+
+    if not VISION_OCR_AVAILABLE or not settings.anthropic_api_key:
+        logger.debug("Vision OCR not available (no API key or anthropic not installed)")
+        return []
+
+    # Filter out very small images (likely icons/decorators, < 1KB)
+    meaningful_images = [(i, img) for i, img in enumerate(images) if len(img) > 1024]
+    if not meaningful_images:
+        return []
+
+    logger.info(
+        f"Vision OCR: processing {len(meaningful_images)}/{len(images)} images "
+        f"(skipped {len(images) - len(meaningful_images)} tiny images)"
+    )
+
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    # Use Haiku for OCR — fast, cheap, and accurate enough for text extraction
+    ocr_model = "claude-haiku-4-5-20251001"
+    all_ocr_parts = []
+
+    # Process in batches
+    for batch_start in range(0, len(meaningful_images), batch_size):
+        batch = meaningful_images[batch_start:batch_start + batch_size]
+        content_blocks = []
+
+        content_blocks.append({
+            "type": "text",
+            "text": (
+                "Extract ALL text from the following image(s). These are from an educational document "
+                "and may contain math formulas, equations, graphs, diagrams with labels, or handwritten notes.\n\n"
+                "IMPORTANT instructions:\n"
+                "- For math formulas, use clear notation: √ for square roots, ² for squared, "
+                "x₁ for subscripts, fractions as (a/b), etc.\n"
+                "- Preserve the structure and order of the content\n"
+                "- If an image is a graph or diagram, describe what it shows and include any visible labels/values\n"
+                "- If an image contains no meaningful text (e.g., a decorative element or icon), respond with [no text]\n"
+                "- Separate content from different images with a blank line\n"
+                "- Output ONLY the extracted text, no commentary"
+            ),
+        })
+
+        for idx, img_bytes in batch:
+            media_type = _get_image_media_type(img_bytes)
+            b64_data = base64.b64encode(img_bytes).decode("utf-8")
+            content_blocks.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": b64_data,
+                },
+            })
+
+        try:
+            response = client.messages.create(
+                model=ocr_model,
+                max_tokens=4096,
+                messages=[{"role": "user", "content": content_blocks}],
+                temperature=0.0,
+            )
+            result_text = response.content[0].text.strip()
+            if result_text and result_text != "[no text]":
+                all_ocr_parts.append(result_text)
+            logger.debug(
+                f"Vision OCR batch {batch_start // batch_size + 1}: "
+                f"extracted {len(result_text)} chars from {len(batch)} images"
+            )
+        except Exception as e:
+            logger.warning(f"Vision OCR batch failed: {e}")
+            # Don't abort — continue with remaining batches
+
+    return all_ocr_parts
+
+
 def extract_text_from_docx(file_content: bytes) -> str:
-    """Extract text from Word document (.docx)."""
+    """Extract text from Word document (.docx).
+
+    Extracts from paragraphs, tables, text boxes/shapes, and headers/footers.
+    Falls back to OCR on embedded images if insufficient text is found.
+    """
     try:
         doc = WordDocument(io.BytesIO(file_content))
         text_parts = []
+
+        # 1. Extract from paragraphs
         for paragraph in doc.paragraphs:
             if paragraph.text.strip():
                 text_parts.append(paragraph.text)
-        # Also extract from tables
+
+        # 2. Extract from tables
         for table in doc.tables:
             for row in table.rows:
                 row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
                 if row_text:
                     text_parts.append(" | ".join(row_text))
+
+        # 3. Extract from text boxes / shapes (common in docs with images)
+        try:
+            textbox_parts = _extract_text_from_docx_textboxes(doc)
+            text_parts.extend(textbox_parts)
+            if textbox_parts:
+                logger.debug(f"Extracted {len(textbox_parts)} text segments from text boxes")
+        except Exception as e:
+            logger.debug(f"Text box extraction skipped: {e}")
+
+        # 4. Extract from headers and footers
+        for section in doc.sections:
+            for header in [section.header, section.first_page_header, section.even_page_header]:
+                if header and header.is_linked_to_previous is False:
+                    for p in header.paragraphs:
+                        if p.text.strip():
+                            text_parts.append(p.text)
+            for footer in [section.footer, section.first_page_footer, section.even_page_footer]:
+                if footer and footer.is_linked_to_previous is False:
+                    for p in footer.paragraphs:
+                        if p.text.strip():
+                            text_parts.append(p.text)
+
+        # 5. OCR on all embedded images
+        # Always OCR embedded images — screenshots often contain the real content
+        # (e.g., math problems, diagrams with text, scanned worksheets)
+        images = _extract_images_from_docx(file_content)
+        if images:
+            total_text_len = sum(len(t) for t in text_parts)
+            logger.info(
+                f"Docx has {len(images)} embedded images ({total_text_len} chars text)"
+            )
+
+            # Prefer Vision OCR (Claude) — much better at math, formulas, diagrams
+            vision_parts = _ocr_images_with_vision(images)
+            if vision_parts:
+                logger.info(f"Vision OCR extracted {len(vision_parts)} text segments from images")
+                text_parts.extend(vision_parts)
+            elif OCR_AVAILABLE:
+                # Fallback to Tesseract if Vision OCR unavailable/failed
+                logger.info("Falling back to Tesseract OCR for embedded images")
+                ocr_parts = []
+                for i, img_bytes in enumerate(images):
+                    try:
+                        img = Image.open(io.BytesIO(img_bytes))
+                        if img.mode in ("RGBA", "LA", "P"):
+                            img = img.convert("RGB")
+                        ocr_text = pytesseract.image_to_string(img)
+                        if ocr_text.strip():
+                            ocr_parts.append(ocr_text.strip())
+                    except Exception as ocr_err:
+                        logger.debug(f"OCR failed on embedded image {i}: {ocr_err}")
+                if ocr_parts:
+                    logger.info(f"Tesseract OCR extracted text from {len(ocr_parts)}/{len(images)} images")
+                    text_parts.extend(ocr_parts)
+
         return "\n\n".join(text_parts)
     except Exception as e:
+        if isinstance(e, FileProcessingError):
+            raise
         raise FileProcessingError(f"Failed to extract text from Word document: {str(e)}")
 
 
@@ -166,10 +363,17 @@ def extract_text_from_xlsx(file_content: bytes) -> str:
 
 
 def extract_text_from_image(file_content: bytes, filename: str) -> str:
-    """Extract text from image using OCR."""
+    """Extract text from image using Vision OCR (preferred) or Tesseract fallback."""
+    # Try Vision OCR first (much better for math/formulas/diagrams)
+    vision_parts = _ocr_images_with_vision([file_content])
+    if vision_parts:
+        return "\n\n".join(vision_parts)
+
+    # Fallback to Tesseract
     if not OCR_AVAILABLE:
         raise FileProcessingError(
-            "OCR is not available. Please install Tesseract and pytesseract."
+            "OCR is not available. Please install Tesseract and pytesseract, "
+            "or configure ANTHROPIC_API_KEY for Vision OCR."
         )
 
     try:

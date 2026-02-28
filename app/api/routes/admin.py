@@ -9,6 +9,7 @@ from sqlalchemy import and_, func, or_
 
 from app.core.config import settings
 from app.core.utils import escape_like
+from app.core.rate_limit import limiter, get_user_id_or_ip
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -37,7 +38,9 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 @router.get("/users", response_model=AdminUserList)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_users(
+    request: Request,
     role: UserRole | None = None,
     search: str | None = None,
     skip: int = Query(0, ge=0),
@@ -67,7 +70,9 @@ def list_users(
 
 
 @router.get("/stats", response_model=AdminStats)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -99,7 +104,9 @@ def get_stats(
 
 
 @router.get("/audit-logs", response_model=AuditLogList)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_audit_logs(
+    request: Request,
     user_id: int | None = None,
     action: str | None = None,
     resource_type: str | None = None,
@@ -165,6 +172,7 @@ class UpdateUserEmailRequest(BaseModel):
 
 
 @router.patch("/users/{user_id}/email", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_user_email(
     user_id: int,
     data: UpdateUserEmailRequest,
@@ -243,7 +251,9 @@ def update_user_email(
 
 
 @router.post("/users/{user_id}/add-role", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def add_role_to_user(
+    request: Request,
     user_id: int,
     data: AddRoleRequest,
     db: Session = Depends(get_db),
@@ -277,7 +287,9 @@ def add_role_to_user(
 
 
 @router.post("/users/{user_id}/remove-role", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def remove_role_from_user(
+    request: Request,
     user_id: int,
     data: AddRoleRequest,
     db: Session = Depends(get_db),
@@ -363,6 +375,7 @@ def _render_broadcast_email(subject: str, body: str, recipient_name: str) -> str
 
 
 @router.post("/broadcast", response_model=BroadcastResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
 def send_broadcast(
     data: BroadcastCreate,
     request: Request,
@@ -441,7 +454,9 @@ def send_broadcast(
 
 
 @router.get("/broadcasts", response_model=list[BroadcastListItem])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_broadcasts(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -459,6 +474,7 @@ def list_broadcasts(
 
 
 @router.post("/users/{user_id}/message", response_model=AdminMessageResponse)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def send_admin_message(
     user_id: int,
     data: AdminMessageCreate,

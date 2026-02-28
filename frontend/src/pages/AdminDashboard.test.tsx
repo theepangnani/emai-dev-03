@@ -34,6 +34,7 @@ vi.mock('../api/client', () => ({
     sendBroadcast: (...args: any[]) => mockSendBroadcast(...args),
     getBroadcasts: (...args: any[]) => mockGetBroadcasts(...args),
     sendMessage: (...args: any[]) => mockSendMessage(...args),
+    getAuditLogs: vi.fn().mockResolvedValue({ items: [] }),
   },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
@@ -106,7 +107,7 @@ describe('AdminDashboard', () => {
     renderWithProviders(<AdminDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('No users found')).toBeInTheDocument()
+      expect(screen.getByText('No users match your search')).toBeInTheDocument()
     })
   })
 
@@ -402,7 +403,7 @@ describe('AdminDashboard', () => {
     })
 
     // Show history
-    await user.click(screen.getByText('Show Broadcast History'))
+    await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
       expect(mockGetBroadcasts).toHaveBeenCalled()
@@ -412,7 +413,7 @@ describe('AdminDashboard', () => {
     })
 
     // Hide history
-    await user.click(screen.getByText('Hide Broadcast History'))
+    await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
       expect(screen.queryByText('Welcome!')).not.toBeInTheDocument()
@@ -428,10 +429,10 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('Total Users')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Show Broadcast History'))
+    await user.click(screen.getByText(/Broadcast History/))
 
     await waitFor(() => {
-      expect(screen.getByText('No broadcasts sent yet.')).toBeInTheDocument()
+      expect(screen.getByText('No broadcasts sent yet')).toBeInTheDocument()
     })
   })
 

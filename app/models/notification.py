@@ -13,6 +13,12 @@ class NotificationType(str, enum.Enum):
     MESSAGE = "message"
     SYSTEM = "system"
     TASK_DUE = "task_due"
+    LINK_REQUEST = "link_request"
+    MATERIAL_UPLOADED = "material_uploaded"
+    STUDY_GUIDE_CREATED = "study_guide_created"
+    PARENT_REQUEST = "parent_request"
+    ASSESSMENT_UPCOMING = "assessment_upcoming"
+    PROJECT_DUE = "project_due"
 
 
 class Notification(Base):
@@ -26,10 +32,19 @@ class Notification(Base):
     link = Column(String(500), nullable=True)
     read = Column(Boolean, default=False)
 
+    # ACK system for persistent reminders
+    requires_ack = Column(Boolean, default=False)
+    acked_at = Column(DateTime(timezone=True), nullable=True)
+    source_type = Column(String(50), nullable=True)  # "assignment", "task", "course_content"
+    source_id = Column(Integer, nullable=True)
+    next_reminder_at = Column(DateTime(timezone=True), nullable=True)
+    reminder_count = Column(Integer, default=0)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
 
     __table_args__ = (
         Index("ix_notifications_user_read_created", "user_id", "read", "created_at"),
+        Index("ix_notifications_ack_reminder", "requires_ack", "acked_at", "next_reminder_at"),
     )

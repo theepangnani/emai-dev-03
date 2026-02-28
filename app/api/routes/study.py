@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 
 from app.core.config import settings
 from app.core.utils import escape_like
@@ -16,6 +16,7 @@ from app.models.study_guide import StudyGuide
 from app.models.assignment import Assignment
 from app.models.course import Course
 from app.models.course_content import CourseContent
+from app.services.storage_service import save_file
 from app.models.student import Student, parent_students
 from app.models.course import student_courses
 from app.models.task import Task
@@ -37,11 +38,14 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+from app.services.notification_service import notify_parents_of_student
+from app.models.notification import NotificationType
 from app.services.file_processor import (
     process_file,
     get_supported_formats,
     FileProcessingError,
     MAX_FILE_SIZE,
+    _ocr_images_with_vision,
 )
 
 router = APIRouter(prefix="/study", tags=["Study Tools"])
@@ -174,6 +178,27 @@ def ensure_course_and_content(
 
 
 
+def _notify_parents_of_study_material(
+    db: Session, user: User, study_guide_id: int, title: str,
+) -> None:
+    """Notify parents when a student generates study material. Safe to call — never raises."""
+    if user.role != UserRole.STUDENT:
+        return
+    try:
+        notify_parents_of_student(
+            db=db,
+            student_user=user,
+            title=f"New study material: {title}",
+            content=f"{user.full_name} created \"{title}\".",
+            notification_type=NotificationType.STUDY_GUIDE_CREATED,
+            link=f"/study/guides/{study_guide_id}",
+            source_type="study_guide",
+            source_id=study_guide_id,
+        )
+    except Exception:
+        pass  # Never break primary action
+
+
 CRITICAL_DATES_SEPARATOR = "--- CRITICAL_DATES ---"
 
 
@@ -211,6 +236,69 @@ def parse_critical_dates(content: str) -> tuple[str, list[dict]]:
         return clean_content, []
 
 
+# Month name → number mapping for date scanning
+_MONTH_MAP = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2,
+    "mar": 3, "march": 3, "apr": 4, "april": 4,
+    "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+    "aug": 8, "august": 8, "sep": 9, "september": 9, "sept": 9,
+    "oct": 10, "october": 10, "nov": 11, "november": 11,
+    "dec": 12, "december": 12,
+}
+
+# Regex: "Due Mar 3", "Due: March 15", "due date: Feb 25", "Due by Apr 1"
+_DUE_DATE_PATTERN = re.compile(
+    r"(?:due(?:\s+date)?[\s:]*(?:by\s+)?)"
+    r"([A-Za-z]+)\s+(\d{1,2})"
+    r"(?:[,\s]+(\d{4}))?",
+    re.IGNORECASE,
+)
+
+
+def scan_content_for_dates(source_content: str, title: str) -> list[dict]:
+    """Scan source content for common due date patterns as a fallback.
+
+    Returns a list of date dicts compatible with auto_create_tasks_from_dates().
+    Only returns dates that are in the future (from today).
+    """
+    results = []
+    now = datetime.now()
+
+    for match in _DUE_DATE_PATTERN.finditer(source_content):
+        month_str = match.group(1).lower()
+        day = int(match.group(2))
+        year_str = match.group(3)
+
+        month = _MONTH_MAP.get(month_str)
+        if not month or day < 1 or day > 31:
+            continue
+
+        if year_str:
+            year = int(year_str)
+        else:
+            # Infer year: use current year, bump to next year if date is in the past
+            year = now.year
+            try:
+                candidate = datetime(year, month, day)
+            except ValueError:
+                continue
+            if candidate.date() < now.date():
+                year += 1
+
+        try:
+            due = datetime(year, month, day)
+        except ValueError:
+            continue
+
+        results.append({
+            "date": due.strftime("%Y-%m-%d"),
+            "title": f"{title} — due {due.strftime('%b %d')}",
+            "priority": "medium",
+        })
+
+    return results
+
+
 def auto_create_tasks_from_dates(
     db: Session,
     dates: list[dict],
@@ -224,11 +312,20 @@ def auto_create_tasks_from_dates(
     logger = get_logger(__name__)
 
     created_tasks = []
+    now = datetime.now()
+    one_year_ago = now - timedelta(days=365)
+
     for d in dates:
         try:
             due_date = datetime.strptime(d["date"], "%Y-%m-%d")
         except (ValueError, TypeError):
             logger.warning(f"Skipping invalid date in auto-task creation: {d.get('date')}")
+            continue
+
+        # Reject dates more than 1 year in the past — likely extracted from
+        # article content rather than actual student deadlines (#841)
+        if due_date < one_year_ago:
+            logger.warning(f"Skipping historical date in auto-task creation: {d.get('date')} '{d.get('title')}'")
             continue
 
         # Determine who the task should be assigned to
@@ -239,30 +336,43 @@ def auto_create_tasks_from_dates(
             if child_ids:
                 assigned_to = child_ids[0]
 
+        # Resolve legacy student_id from assigned user (required by prod DB schema)
+        legacy_student_id = None
+        if assigned_to:
+            student_rec = db.query(Student).filter(Student.user_id == assigned_to).first()
+            if student_rec:
+                legacy_student_id = student_rec.id
+
         priority = d.get("priority", "medium")
         if priority not in ("low", "medium", "high"):
             priority = "medium"
 
-        task = Task(
-            title=d["title"],
-            description=f"Auto-created from course material generation",
-            due_date=due_date,
-            priority=priority,
-            created_by_user_id=user.id,
-            assigned_to_user_id=assigned_to,
-            study_guide_id=study_guide_id,
-            course_id=course_id,
-            course_content_id=course_content_id,
-        )
-        db.add(task)
-        db.flush()
-        created_tasks.append({
-            "id": task.id,
-            "title": task.title,
-            "due_date": d["date"],
-            "priority": priority,
-        })
-        logger.info(f"Auto-created task '{task.title}' due {d['date']} from study guide {study_guide_id}")
+        try:
+            task = Task(
+                title=d["title"],
+                description=f"Auto-created from class material generation",
+                due_date=due_date,
+                priority=priority,
+                created_by_user_id=user.id,
+                assigned_to_user_id=assigned_to,
+                parent_id=user.id,
+                student_id=legacy_student_id,
+                study_guide_id=study_guide_id,
+                course_id=course_id,
+                course_content_id=course_content_id,
+            )
+            db.add(task)
+            db.flush()
+            created_tasks.append({
+                "id": task.id,
+                "title": task.title,
+                "due_date": d["date"],
+                "priority": priority,
+            })
+            logger.info(f"Auto-created task '{task.title}' due {d['date']} from study guide {study_guide_id}")
+        except Exception:
+            logger.exception(f"Failed to auto-create task '{d.get('title')}' for study guide {study_guide_id}")
+            db.rollback()
 
     return created_tasks
 
@@ -358,6 +468,8 @@ async def generate_study_guide_endpoint(
             assignment_description=description,
             course_name=course_name,
             due_date=due_date,
+            custom_prompt=body.custom_prompt,
+            focus_prompt=body.focus_prompt,
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
@@ -400,7 +512,9 @@ async def generate_study_guide_endpoint(
     db.add(study_guide)
     db.flush()
 
-    # Auto-create tasks from critical dates (or fallback review task)
+    # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(description, title)
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
@@ -413,6 +527,8 @@ async def generate_study_guide_endpoint(
     log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=study_guide.id, details={"guide_type": "study_guide", "auto_tasks": len(created_tasks)})
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
@@ -461,6 +577,7 @@ async def generate_quiz_endpoint(
             topic=topic,
             content=content,
             num_questions=body.num_questions,
+            focus_prompt=body.focus_prompt,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
@@ -507,7 +624,9 @@ async def generate_quiz_endpoint(
     db.add(study_guide)
     db.flush()
 
-    # Auto-create tasks from critical dates (or fallback review task)
+    # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(content, f"Quiz: {topic}")
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: Quiz: {topic}", "priority": "medium"}]
@@ -519,6 +638,8 @@ async def generate_quiz_endpoint(
 
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     return QuizResponse(
         id=study_guide.id,
@@ -574,6 +695,7 @@ async def generate_flashcards_endpoint(
             topic=topic,
             content=content,
             num_cards=body.num_cards,
+            focus_prompt=body.focus_prompt,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_cards, critical_dates = parse_critical_dates(raw_cards)
@@ -620,7 +742,9 @@ async def generate_flashcards_endpoint(
     db.add(study_guide)
     db.flush()
 
-    # Auto-create tasks from critical dates (or fallback review task)
+    # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(content, f"Flashcards: {topic}")
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: Flashcards: {topic}", "priority": "medium"}]
@@ -632,6 +756,8 @@ async def generate_flashcards_endpoint(
 
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     return FlashcardSetResponse(
         id=study_guide.id,
@@ -788,13 +914,18 @@ def delete_study_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Soft-delete (archive) a study guide (owner only)."""
-    guide = db.query(StudyGuide).filter(
-        StudyGuide.id == guide_id,
-        StudyGuide.user_id == current_user.id,
-    ).first()
+    """Soft-delete (archive) a study guide (owner or parent of owner)."""
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
+    # Owner can always archive; parents can archive their children's guides
+    if guide.user_id != current_user.id:
+        if current_user.role == UserRole.PARENT:
+            child_user_ids = get_linked_children_user_ids(db, current_user.id)
+            if guide.user_id not in child_user_ids:
+                raise HTTPException(status_code=404, detail="Study guide not found")
+        else:
+            raise HTTPException(status_code=404, detail="Study guide not found")
     guide.archived_at = datetime.now(timezone.utc)
     log_action(db, user_id=current_user.id, action="archive", resource_type="study_guide", resource_id=guide_id)
     db.commit()
@@ -883,25 +1014,28 @@ def get_upload_formats():
     return get_supported_formats()
 
 
-@router.post("/upload/generate", response_model=StudyGuideResponse)
+@router.post("/generate-with-images", response_model=StudyGuideResponse)
 @limiter.limit("5/minute", key_func=get_user_id_or_ip)
-async def generate_from_file_upload(
+async def generate_from_text_and_images(
     request: Request,
-    file: UploadFile = File(...),
+    content: str = Form(""),
     title: Optional[str] = Form(None),
     guide_type: str = Form("study_guide"),
     num_questions: int = Form(5),
     num_cards: int = Form(10),
     course_id: Optional[int] = Form(None),
     course_content_id: Optional[int] = Form(None),
+    focus_prompt: Optional[str] = Form(None),
+    images: List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Generate study material from an uploaded file.
+    Generate study material from pasted text content combined with pasted images.
+    Images are OCR'd via Vision API and the extracted text is combined with the
+    user's pasted text content for AI generation.
 
-    Supports: PDF, DOCX, PPTX, XLSX, TXT, images (OCR), and ZIP archives.
-    Maximum file size: 100 MB.
+    Maximum 10 images, each up to 10 MB.
     """
     study_service = StudyService(db)
 
@@ -911,33 +1045,48 @@ async def generate_from_file_upload(
             detail="guide_type must be one of: study_guide, quiz, flashcards"
         )
 
-    try:
-        file_content = await file.read()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+    # Validate and read image data
+    if len(images) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 images allowed")
 
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024*1024)} MB"
-        )
+    image_bytes_list = []
+    for img in images:
+        img_data = await img.read()
+        if len(img_data) > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Image '{img.filename}' exceeds 10 MB limit"
+            )
+        if img_data:
+            image_bytes_list.append(img_data)
 
-    try:
-        extracted_text = process_file(file_content, file.filename or "unknown")
-    except FileProcessingError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # OCR images via Vision API
+    ocr_parts = []
+    if image_bytes_list:
+        ocr_parts = _ocr_images_with_vision(image_bytes_list)
+
+    # Combine pasted text + OCR extracted text
+    combined_parts = []
+    if content.strip():
+        combined_parts.append(content.strip())
+    if ocr_parts:
+        combined_parts.append("--- Extracted from images ---")
+        combined_parts.extend(ocr_parts)
+
+    extracted_text = "\n\n".join(combined_parts)
 
     if not extracted_text.strip():
         raise HTTPException(
             status_code=400,
-            detail="No text could be extracted from the uploaded file"
+            detail="No content provided. Please paste text or include images with readable content."
         )
 
     if not title:
-        base_name = file.filename.rsplit('.', 1)[0] if file.filename else "Uploaded File"
-        title = base_name
+        # Generate a sensible default title from the first line of content
+        first_line = content.strip().split('\n')[0][:60] if content.strip() else "Pasted Content"
+        title = first_line if first_line else "Pasted Content"
 
-    # Generate the appropriate study material
+    # Generate the appropriate study material (same pattern as /upload/generate)
     critical_dates = []
     try:
         if guide_type == "quiz":
@@ -945,6 +1094,7 @@ async def generate_from_file_upload(
                 topic=title,
                 content=extracted_text,
                 num_questions=num_questions,
+                focus_prompt=focus_prompt,
             )
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
@@ -964,6 +1114,7 @@ async def generate_from_file_upload(
                 topic=title,
                 content=extracted_text,
                 num_cards=num_cards,
+                focus_prompt=focus_prompt,
             )
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
@@ -982,14 +1133,15 @@ async def generate_from_file_upload(
             raw_content = await generate_study_guide(
                 assignment_title=title,
                 assignment_description=extracted_text,
-                course_name="Uploaded Content",
+                course_name="Pasted Content",
+                focus_prompt=focus_prompt,
             )
-            content, critical_dates = parse_critical_dates(raw_content)
+            content_result, critical_dates = parse_critical_dates(raw_content)
 
             study_guide = StudyGuide(
                 user_id=current_user.id,
                 title=f"Study Guide: {title}",
-                content=content,
+                content=content_result,
                 guide_type="study_guide",
                 content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
             )
@@ -1021,6 +1173,8 @@ async def generate_from_file_upload(
 
     # Auto-create tasks from critical dates (or fallback review task)
     if not critical_dates:
+        critical_dates = scan_content_for_dates(extracted_text, title)
+    if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
 
@@ -1031,6 +1185,181 @@ async def generate_from_file_upload(
 
     db.commit()
     db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
+    resp = StudyGuideResponse.model_validate(study_guide)
+    resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
+    return resp
+
+
+@router.post("/upload/generate", response_model=StudyGuideResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def generate_from_file_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
+    guide_type: str = Form("study_guide"),
+    num_questions: int = Form(5),
+    num_cards: int = Form(10),
+    course_id: Optional[int] = Form(None),
+    course_content_id: Optional[int] = Form(None),
+    focus_prompt: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate study material from an uploaded file.
+
+    Supports: PDF, DOCX, PPTX, XLSX, TXT, images (OCR), and ZIP archives.
+    Maximum file size: 100 MB.
+    """
+    study_service = StudyService(db)
+
+    if guide_type not in ("study_guide", "quiz", "flashcards"):
+        raise HTTPException(
+            status_code=400,
+            detail="guide_type must be one of: study_guide, quiz, flashcards"
+        )
+
+    try:
+        file_content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024*1024)} MB"
+        )
+
+    stored_path = save_file(file_content, file.filename or "unknown")
+
+    try:
+        extracted_text = process_file(file_content, file.filename or "unknown")
+    except FileProcessingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not extracted_text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No text could be extracted from the uploaded file"
+        )
+
+    if not title:
+        base_name = file.filename.rsplit('.', 1)[0] if file.filename else "Uploaded File"
+        title = base_name
+
+    # Generate the appropriate study material
+    critical_dates = []
+    try:
+        if guide_type == "quiz":
+            raw_quiz = await generate_quiz(
+                topic=title,
+                content=extracted_text,
+                num_questions=num_questions,
+                focus_prompt=focus_prompt,
+            )
+            raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
+            quiz_json = strip_json_fences(raw_quiz)
+            questions_data = json.loads(quiz_json)
+            questions = [QuizQuestion(**q) for q in questions_data]
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Quiz: {title}",
+                content=quiz_json,
+                guide_type="quiz",
+                content_hash=study_service.compute_content_hash(f"Quiz: {title}", "quiz"),
+            )
+
+        elif guide_type == "flashcards":
+            raw_cards = await generate_flashcards(
+                topic=title,
+                content=extracted_text,
+                num_cards=num_cards,
+                focus_prompt=focus_prompt,
+            )
+            raw_cards, critical_dates = parse_critical_dates(raw_cards)
+            cards_json = strip_json_fences(raw_cards)
+            cards_data = json.loads(cards_json)
+            cards = [Flashcard(**c) for c in cards_data]
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Flashcards: {title}",
+                content=cards_json,
+                guide_type="flashcards",
+                content_hash=study_service.compute_content_hash(f"Flashcards: {title}", "flashcards"),
+            )
+
+        else:  # study_guide
+            raw_content = await generate_study_guide(
+                assignment_title=title,
+                assignment_description=extracted_text,
+                course_name="Uploaded Content",
+                focus_prompt=focus_prompt,
+            )
+            content, critical_dates = parse_critical_dates(raw_content)
+
+            study_guide = StudyGuide(
+                user_id=current_user.id,
+                title=f"Study Guide: {title}",
+                content=content,
+                guide_type="study_guide",
+                content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
+            )
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse AI response")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Deduplicate: return existing if same hash was created recently
+    if study_guide.content_hash:
+        existing = study_service.find_recent_duplicate(current_user.id, study_guide.content_hash)
+        if existing:
+            return existing
+
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, title, extracted_text,
+        course_id=course_id,
+        course_content_id=course_content_id,
+    )
+    study_guide.course_id = resolved_course_id
+    study_guide.course_content_id = resolved_cc_id
+
+    # Attach file metadata to CourseContent record
+    if resolved_cc_id:
+        cc_rec = db.query(CourseContent).filter(CourseContent.id == resolved_cc_id).first()
+        if cc_rec and not cc_rec.file_path:
+            cc_rec.file_path = stored_path
+            cc_rec.original_filename = file.filename
+            cc_rec.file_size = len(file_content)
+            cc_rec.mime_type = file.content_type
+
+    # Enforce limit and save to database
+    enforce_study_guide_limit(db, current_user)
+    db.add(study_guide)
+    db.flush()
+
+    # Auto-create tasks from critical dates (or fallback review task)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(extracted_text, title)
+    if not critical_dates:
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        resolved_course_id, resolved_cc_id,
+    )
+
+    db.commit()
+    db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]

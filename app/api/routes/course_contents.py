@@ -1,17 +1,23 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.course_content import CourseContent
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
 from app.api.deps import get_current_user, can_access_course
+from app.models.notification import NotificationType
+from app.services.notification_service import notify_parents_of_student
+from app.services.storage_service import get_file_path, delete_file, save_file
+from app.services.file_processor import process_file, FileProcessingError
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -19,14 +25,74 @@ from app.schemas.course_content import (
     CourseContentUpdateResponse,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 _ONE_YEAR = timedelta(days=365)
 _SEVEN_YEARS = timedelta(days=365 * 7)
 
 router = APIRouter(prefix="/course-contents", tags=["Course Contents"])
 
 
+def _get_school_course_ids(db: Session, course_ids: list[int]) -> set[int]:
+    """Return the subset of course_ids that have classroom_type='school'."""
+    if not course_ids:
+        return set()
+    rows = (
+        db.query(Course.id)
+        .filter(Course.id.in_(course_ids), Course.classroom_type == "school")
+        .all()
+    )
+    return {r[0] for r in rows}
+
+
+def _strip_urls_for_school(
+    items: list, school_ids: set[int]
+) -> list[CourseContentResponse]:
+    """Convert ORM items to Pydantic and strip URLs for school courses.
+
+    For school courses, reference/download URLs are hidden and a
+    `download_restricted` flag is set for the frontend (#550).
+    """
+    results = []
+    for item in items:
+        resp = CourseContentResponse.model_validate(item)
+        if item.course_id in school_ids:
+            resp.reference_url = None
+            resp.google_classroom_url = None
+            resp.download_restricted = True
+        results.append(resp)
+    return results
+
+
+def _can_modify_content(db: Session, user: User, content: CourseContent) -> bool:
+    """Check if user can modify (edit/delete) a content item.
+    Allowed for: the creator, admins, and parents of the creator."""
+    if content.created_by_user_id == user.id:
+        return True
+    if user.has_role(UserRole.ADMIN):
+        return True
+    if user.role == UserRole.PARENT:
+        child_student_ids = [
+            r[0] for r in db.query(parent_students.c.student_id).filter(
+                parent_students.c.parent_id == user.id
+            ).all()
+        ]
+        if child_student_ids:
+            child_user_ids = [
+                r[0] for r in db.query(Student.user_id).filter(
+                    Student.id.in_(child_student_ids)
+                ).all()
+            ]
+            if content.created_by_user_id in child_user_ids:
+                return True
+    return False
+
+
 @router.post("/", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_course_content(
+    request: Request,
     data: CourseContentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -52,11 +118,106 @@ def create_course_content(
     db.add(content)
     db.commit()
     db.refresh(content)
+
+    # Notify parents when a student uploads material
+    if current_user.role == UserRole.STUDENT:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded class material",
+                content=f"{current_user.full_name} uploaded \"{data.title}\" to {course.name}.",
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{data.course_id}",
+                source_type="course_content",
+                source_id=content.id,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to notify parents of student upload: {e}")
+
+    return content
+
+
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+@router.post("/upload", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def upload_course_content_file(
+    request: Request,
+    file: UploadFile = File(...),
+    course_id: int = Form(...),
+    title: str = Form(""),
+    content_type: str = Form("notes"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a file as course content. Saves the original file and extracts text.
+    No AI generation — just stores the material."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    file_content = await file.read()
+    if len(file_content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
+        )
+
+    filename = file.filename or "unknown"
+    stored_path = save_file(file_content, filename)
+
+    # Extract text from uploaded file
+    extracted_text = ""
+    try:
+        extracted_text = process_file(file_content, filename)
+    except FileProcessingError as e:
+        logger.warning("Text extraction failed for %s: %s", filename, e)
+
+    content = CourseContent(
+        course_id=course_id,
+        title=title or filename,
+        content_type=content_type,
+        text_content=extracted_text or None,
+        file_path=stored_path,
+        original_filename=filename,
+        file_size=len(file_content),
+        mime_type=file.content_type,
+        created_by_user_id=current_user.id,
+    )
+    db.add(content)
+    db.commit()
+    db.refresh(content)
+
+    # Notify parents when a student uploads material
+    if current_user.role == UserRole.STUDENT:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded class material",
+                content=f'{current_user.full_name} uploaded "{title or filename}" to {course.name}.',
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{course_id}",
+                source_type="course_content",
+                source_id=content.id,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to notify parents of student upload: %s", e)
+
     return content
 
 
 @router.get("/", response_model=list[CourseContentResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_course_contents(
+    request: Request,
     course_id: Optional[int] = Query(None, description="Filter by course ID"),
     content_type: Optional[str] = Query(None, description="Filter by content type"),
     student_user_id: Optional[int] = Query(None, description="Filter by child (parent only)"),
@@ -80,52 +241,68 @@ def list_course_contents(
 
     if content_type:
         query = query.filter(CourseContent.content_type == content_type.strip().lower())
-    return query.order_by(CourseContent.created_at.desc()).all()
+
+    items = query.order_by(CourseContent.created_at.desc()).all()
+
+    # Strip reference_url and google_classroom_url for students on school courses
+    if current_user.role == UserRole.STUDENT and items:
+        cids = list({item.course_id for item in items})
+        school_ids = _get_school_course_ids(db, cids)
+        if school_ids:
+            return _strip_urls_for_school(items, school_ids)
+
+    return items
 
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
     """Return course IDs visible to the user for cross-course content listing."""
-    # Courses created by the user
-    created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
-    ids = {r[0] for r in created}
 
     if user.role == UserRole.STUDENT:
+        # Courses created by the user + enrolled courses
+        created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+        ids = {r[0] for r in created}
         student = db.query(Student).filter(Student.user_id == user.id).first()
         if student:
             ids.update(c.id for c in student.courses)
+        return list(ids)
 
-    elif user.role == UserRole.PARENT:
-        # Get children's enrolled course IDs
+    if user.role == UserRole.PARENT:
+        # Get children's student IDs
         child_rows = db.query(parent_students.c.student_id).filter(
             parent_students.c.parent_id == user.id
         ).all()
         child_sids = [r[0] for r in child_rows]
 
         if student_user_id:
-            # Filter to a specific child
+            # Specific child selected — only courses this child is enrolled in
             child_student = db.query(Student).filter(
                 Student.user_id == student_user_id,
                 Student.id.in_(child_sids),
             ).first()
-            if child_student:
-                ids.update(c.id for c in child_student.courses)
-                # Also include contents created by this child
-                child_created = db.query(Course.id).filter(Course.created_by_user_id == student_user_id).all()
-                ids.update(r[0] for r in child_created)
-        elif child_sids:
+            if not child_student:
+                return []
+            ids = {c.id for c in child_student.courses}
+            # Also include courses created by this child
+            child_created = db.query(Course.id).filter(Course.created_by_user_id == student_user_id).all()
+            ids.update(r[0] for r in child_created)
+            return list(ids)
+
+        # No child selected — show all children's courses + parent-created courses
+        created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+        ids = {r[0] for r in created}
+        if child_sids:
             enrolled = db.query(student_courses.c.course_id).filter(
                 student_courses.c.student_id.in_(child_sids)
             ).all()
             ids.update(r[0] for r in enrolled)
-            # Also include contents created by children
+            # Also include courses created by children
             child_user_ids = db.query(Student.user_id).filter(Student.id.in_(child_sids)).all()
             child_uids = [r[0] for r in child_user_ids]
             if child_uids:
                 child_created = db.query(Course.id).filter(Course.created_by_user_id.in_(child_uids)).all()
                 ids.update(r[0] for r in child_created)
 
-        # Also include courses created by co-parents (other parents of same children)
-        if child_sids:
+            # Also include courses created by co-parents (other parents of same children)
             co_parent_rows = db.query(parent_students.c.parent_id).filter(
                 parent_students.c.student_id.in_(child_sids),
                 parent_students.c.parent_id != user.id,
@@ -136,8 +313,13 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
                     Course.created_by_user_id.in_(co_parent_uids)
                 ).all()
                 ids.update(r[0] for r in co_created)
+        return list(ids)
 
-    elif user.role == UserRole.TEACHER:
+    # Courses created by the user (teacher fallback)
+    created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+    ids = {r[0] for r in created}
+
+    if user.role == UserRole.TEACHER:
         from app.models.teacher import Teacher
         teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
         if teacher:
@@ -152,7 +334,9 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
 
 
 @router.get("/{content_id}", response_model=CourseContentResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -191,11 +375,67 @@ def get_course_content(
     db.commit()
     db.refresh(content)
 
+    # Strip URLs for students on school courses (#550)
+    if current_user.role == UserRole.STUDENT:
+        school_ids = _get_school_course_ids(db, [content.course_id])
+        if content.course_id in school_ids:
+            resp = CourseContentResponse.model_validate(content)
+            resp.reference_url = None
+            resp.google_classroom_url = None
+            resp.download_restricted = True
+            return resp
+
     return content
 
 
+@router.get("/{content_id}/download")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def download_course_content_file(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download the original uploaded file for a content item.
+
+    Students cannot download files from school-type courses (classroom_type='school').
+    Parents and teachers are not restricted.
+    """
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Restrict downloads for students on school courses (#550)
+    if current_user.role == UserRole.STUDENT:
+        school_ids = _get_school_course_ids(db, [content.course_id])
+        if content.course_id in school_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Downloads are restricted for school classroom content. "
+                       "You can view assignment details but cannot download documents.",
+            )
+
+    if not content.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file attached to this content")
+
+    file_abs = get_file_path(content.file_path)
+    if not file_abs.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
+
+    return FileResponse(
+        path=str(file_abs),
+        filename=content.original_filename or content.file_path,
+        media_type=content.mime_type or "application/octet-stream",
+    )
+
+
 @router.patch("/{content_id}", response_model=CourseContentUpdateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_course_content(
+    request: Request,
     content_id: int,
     data: CourseContentUpdate,
     db: Session = Depends(get_db),
@@ -206,7 +446,7 @@ def update_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can edit content")
 
     update_data = data.model_dump(exclude_unset=True)
@@ -245,8 +485,77 @@ def update_course_content(
     return resp
 
 
+@router.put("/{content_id}/replace-file", response_model=CourseContentUpdateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def replace_course_content_file(
+    request: Request,
+    content_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Replace the file for an existing content item. Re-extracts text and archives linked study guides."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    if not _can_modify_content(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can replace content")
+
+    file_content = await file.read()
+    if len(file_content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
+        )
+
+    # Delete old file from storage
+    if content.file_path:
+        try:
+            delete_file(content.file_path)
+        except Exception as e:
+            logger.warning("Failed to delete old file %s: %s", content.file_path, e)
+
+    # Save new file
+    filename = file.filename or "unknown"
+    stored_path = save_file(file_content, filename)
+
+    # Extract text from new file
+    extracted_text = ""
+    try:
+        extracted_text = process_file(file_content, filename)
+    except FileProcessingError as e:
+        logger.warning("Text extraction failed for %s: %s", filename, e)
+
+    # Update record
+    content.file_path = stored_path
+    content.original_filename = filename
+    content.file_size = len(file_content)
+    content.mime_type = file.content_type
+    content.text_content = extracted_text or None
+
+    # Archive linked study guides since source content changed
+    archived_guides_count = 0
+    now = datetime.now(timezone.utc)
+    guides = db.query(StudyGuide).filter(
+        StudyGuide.course_content_id == content_id,
+        StudyGuide.archived_at.is_(None),
+    ).all()
+    for guide in guides:
+        guide.archived_at = now
+        archived_guides_count += 1
+
+    db.commit()
+    db.refresh(content)
+
+    resp = CourseContentUpdateResponse.model_validate(content)
+    resp.archived_guides_count = archived_guides_count
+    return resp
+
+
 @router.delete("/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -255,7 +564,7 @@ def delete_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can delete content")
 
     content.archived_at = datetime.now(timezone.utc)
@@ -263,7 +572,9 @@ def delete_course_content(
 
 
 @router.patch("/{content_id}/restore", response_model=CourseContentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def restore_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -272,7 +583,7 @@ def restore_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can restore content")
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not archived")
@@ -284,7 +595,9 @@ def restore_course_content(
 
 
 @router.delete("/{content_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def permanent_delete_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -294,7 +607,7 @@ def permanent_delete_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can permanently delete content")
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
@@ -304,6 +617,8 @@ def permanent_delete_course_content(
 
 
 def _permanent_delete_content(db: Session, content: CourseContent):
-    """Hard-delete a content item and all linked study guides."""
+    """Hard-delete a content item, its stored file, and all linked study guides."""
+    if content.file_path:
+        delete_file(content.file_path)
     db.query(StudyGuide).filter(StudyGuide.course_content_id == content.id).delete()
     db.delete(content)

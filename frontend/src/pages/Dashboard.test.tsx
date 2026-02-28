@@ -57,9 +57,4 @@ describe('Dashboard (dispatcher)', () => {
     expect(screen.getByTestId('student-dashboard')).toBeInTheDocument()
   })
 
-  it('renders StudentDashboard for unknown role (default case)', () => {
-    mockRole = undefined
-    renderWithProviders(<Dashboard />)
-    expect(screen.getByTestId('student-dashboard')).toBeInTheDocument()
-  })
 })

@@ -81,19 +81,67 @@ export interface ExtractedText {
   word_count: number;
 }
 
+// Quiz Result Types
+export interface QuizResultCreate {
+  study_guide_id: number;
+  score: number;
+  total_questions: number;
+  answers: Record<number, string>;
+  time_taken_seconds?: number;
+  student_user_id?: number;
+}
+
+export interface QuizResultResponse {
+  id: number;
+  user_id: number;
+  study_guide_id: number;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  answers_json: string;
+  attempt_number: number;
+  time_taken_seconds: number | null;
+  completed_at: string;
+  quiz_title: string | null;
+}
+
+export interface QuizResultSummary {
+  id: number;
+  study_guide_id: number;
+  quiz_title: string | null;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  attempt_number: number;
+  completed_at: string;
+}
+
+export interface QuizHistoryStats {
+  total_attempts: number;
+  unique_quizzes: number;
+  average_score: number;
+  best_score: number;
+  recent_trend: 'improving' | 'declining' | 'stable';
+}
+
+export interface ResolvedStudent {
+  student_user_id: number;
+  student_name: string;
+}
+
 // Study Tools API
 export const studyApi = {
-  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number }) => {
+  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string }) => {
     const response = await api.post('/api/study/generate', params);
     return response.data as StudyGuide;
   },
 
-  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number }) => {
+  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
     const response = await api.post('/api/study/quiz/generate', params);
     return response.data as Quiz;
   },
 
-  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number }) => {
+  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
     const response = await api.post('/api/study/flashcards/generate', params);
     return response.data as FlashcardSet;
   },
@@ -150,6 +198,7 @@ export const studyApi = {
     num_cards?: number;
     course_id?: number;
     course_content_id?: number;
+    focus_prompt?: string;
   }) => {
     const formData = new FormData();
     formData.append('file', params.file);
@@ -159,8 +208,37 @@ export const studyApi = {
     if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
     if (params.course_id) formData.append('course_id', params.course_id.toString());
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
+    if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
 
     const response = await api.post('/api/study/upload/generate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as StudyGuide;
+  },
+
+  generateFromTextAndImages: async (params: {
+    content: string;
+    images: File[];
+    title?: string;
+    guide_type: 'study_guide' | 'quiz' | 'flashcards';
+    num_questions?: number;
+    num_cards?: number;
+    course_id?: number;
+    course_content_id?: number;
+    focus_prompt?: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('content', params.content);
+    if (params.title) formData.append('title', params.title);
+    formData.append('guide_type', params.guide_type);
+    if (params.num_questions) formData.append('num_questions', params.num_questions.toString());
+    if (params.num_cards) formData.append('num_cards', params.num_cards.toString());
+    if (params.course_id) formData.append('course_id', params.course_id.toString());
+    if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
+    if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
+    params.images.forEach(img => formData.append('images', img));
+
+    const response = await api.post('/api/study/generate-with-images', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data as StudyGuide;
@@ -174,5 +252,35 @@ export const studyApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data as ExtractedText;
+  },
+
+  // Quiz Results Methods
+  saveQuizResult: async (data: QuizResultCreate) => {
+    const response = await api.post('/api/quiz-results/', data);
+    return response.data as QuizResultResponse;
+  },
+
+  getQuizHistory: async (params?: { study_guide_id?: number; student_user_id?: number; limit?: number; offset?: number }) => {
+    const response = await api.get('/api/quiz-results/', { params: params || {} });
+    return response.data as QuizResultSummary[];
+  },
+
+  getQuizStats: async (params?: { student_user_id?: number }) => {
+    const response = await api.get('/api/quiz-results/stats', { params: params || {} });
+    return response.data as QuizHistoryStats;
+  },
+
+  getQuizResult: async (id: number) => {
+    const response = await api.get(`/api/quiz-results/${id}`);
+    return response.data as QuizResultResponse;
+  },
+
+  deleteQuizResult: async (id: number) => {
+    await api.delete(`/api/quiz-results/${id}`);
+  },
+
+  resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
+    const response = await api.get('/api/quiz-results/resolve-student', { params });
+    return response.data as ResolvedStudent | null;
   },
 };

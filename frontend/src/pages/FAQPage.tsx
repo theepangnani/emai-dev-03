@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import { faqApi, type FAQQuestionItem } from '../api/client';
 import './FAQPage.css';
 
@@ -11,7 +13,7 @@ const CATEGORIES = [
   { value: 'google-classroom', label: 'Google Classroom' },
   { value: 'study-tools', label: 'Study Tools' },
   { value: 'account', label: 'Account' },
-  { value: 'courses', label: 'Courses' },
+  { value: 'courses', label: 'Classes' },
   { value: 'messaging', label: 'Messaging' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'other', label: 'Other' },
@@ -28,6 +30,7 @@ export function FAQPage() {
   const [formDesc, setFormDesc] = useState('');
   const [formCat, setFormCat] = useState('other');
   const [saving, setSaving] = useState(false);
+  const faqModalRef = useFocusTrap<HTMLDivElement>(showModal, () => setShowModal(false));
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
@@ -67,7 +70,7 @@ export function FAQPage() {
   };
 
   return (
-    <DashboardLayout welcomeSubtitle="Find answers and ask questions">
+    <DashboardLayout welcomeSubtitle="Find answers and ask questions" showBackButton>
       <div className="faq-page">
         <div className="faq-header">
           <h1>FAQ / Knowledge Base</h1>
@@ -100,9 +103,11 @@ export function FAQPage() {
         {loading ? (
           <ListSkeleton rows={6} />
         ) : questions.length === 0 ? (
-          <div className="faq-empty">
-            No questions found. Be the first to ask!
-          </div>
+          <EmptyState
+            title="No questions found"
+            description="Be the first to ask!"
+            action={{ label: 'Ask a Question', onClick: () => setShowModal(true) }}
+          />
         ) : (
           <div className="faq-list">
             {questions.map((q) => (
@@ -136,7 +141,7 @@ export function FAQPage() {
 
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Ask a Question" ref={faqModalRef} onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Ask a Question</h2>
                 <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>

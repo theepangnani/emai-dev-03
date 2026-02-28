@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.utils import escape_like
+from app.core.rate_limit import limiter, get_user_id_or_ip
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 ENTITY_LABELS = {
     "course": "Courses",
-    "study_guide": "Course Materials",
+    "study_guide": "Class Materials",
     "task": "Tasks",
     "course_content": "Course Content",
     "faq": "FAQ",
@@ -127,7 +128,7 @@ def _search_study_guides(db: Session, term: str, limit: int, user_ids: list[int]
             url=url,
         ))
 
-    return SearchResultGroup(entity_type="study_guide", label="Course Materials", items=items, total=total)
+    return SearchResultGroup(entity_type="study_guide", label="Class Materials", items=items, total=total)
 
 
 def _search_tasks(db: Session, term: str, limit: int, user_ids: list[int]) -> SearchResultGroup:
@@ -212,7 +213,9 @@ def _search_faq(db: Session, term: str, limit: int) -> SearchResultGroup:
 
 
 @router.get("", response_model=SearchResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def global_search(
+    request: Request,
     q: str = Query(..., min_length=2, max_length=200),
     types: str | None = Query(None, description="Comma-separated entity types to search"),
     limit: int = Query(5, ge=1, le=20),
@@ -256,7 +259,7 @@ def global_search(
                 url = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
                 type_label = {"quiz": "Quiz", "flashcards": "Flashcards"}.get(guide_type, "Study Guide")
                 items.append(SearchResultItem(id=g.id, title=g.title, subtitle=type_label, entity_type="study_guide", url=url))
-            groups.append(SearchResultGroup(entity_type="study_guide", label="Course Materials", items=items, total=sg_total))
+            groups.append(SearchResultGroup(entity_type="study_guide", label="Class Materials", items=items, total=sg_total))
         else:
             groups.append(_search_study_guides(db, term, limit, admin_user_ids))
 

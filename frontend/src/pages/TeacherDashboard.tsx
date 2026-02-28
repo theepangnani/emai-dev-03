@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi } from '../api/client';
-import type { GoogleAccount, InviteResponse } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, courseContentsApi } from '../api/client';
+import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import type { InspirationData } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
+import { RoleQuickActions } from '../components/RoleQuickActions';
+import type { QuickAction } from '../components/RoleQuickActions';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -18,11 +24,18 @@ interface Course {
 
 export function TeacherDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+
+  // Activity summary state
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentItem[]>([]);
+  const [focusDismissed, setFocusDismissed] = useState(false);
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -48,11 +61,12 @@ export function TeacherDashboard() {
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [resentToastId, setResentToastId] = useState<number | null>(null);
   const [invitesExpanded, setInvitesExpanded] = useState(true);
+  const [coursesExpanded, setCoursesExpanded] = useState(true);
+  const [googleAccountsExpanded, setGoogleAccountsExpanded] = useState(true);
   const [resendError, setResendError] = useState<string | null>(null);
 
   // Course search
   const [courseSearch, setCourseSearch] = useState('');
-
   // Announcement modal state
   const [showAnnounceModal, setShowAnnounceModal] = useState(false);
   const [announceCourseId, setAnnounceCourseId] = useState<number | ''>('');
@@ -61,6 +75,25 @@ export function TeacherDashboard() {
   const [announceSending, setAnnounceSending] = useState(false);
   const [announceError, setAnnounceError] = useState('');
   const [announceSuccess, setAnnounceSuccess] = useState('');
+  const [announcePreview, setAnnouncePreview] = useState(false);
+
+  // Upload material modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadCourseId, setUploadCourseId] = useState<number | ''>('');
+  const [uploadType, setUploadType] = useState('notes');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDragging, setUploadDragging] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+
+  // Focus traps for modals (must be after state declarations they reference)
+  const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => setShowCreateModal(false));
+  const inviteParentModalRef = useFocusTrap<HTMLDivElement>(showInviteParentModal, () => setShowInviteParentModal(false));
+  const announceModalRef = useFocusTrap<HTMLDivElement>(showAnnounceModal, () => setShowAnnounceModal(false));
+  const uploadModalRef = useFocusTrap<HTMLDivElement>(showUploadModal, () => setShowUploadModal(false));
 
   useEffect(() => {
     loadData();
@@ -68,11 +101,14 @@ export function TeacherDashboard() {
 
   const loadData = async () => {
     try {
-      const [coursesData, googleStatus, accountsData, invitesData] = await Promise.allSettled([
+      const [coursesData, googleStatus, accountsData, invitesData, unreadData, conversationsData, assignmentsData] = await Promise.allSettled([
         coursesApi.teachingList(),
         googleApi.getStatus(),
         googleApi.getTeacherAccounts(),
         invitesApi.listSent(),
+        messagesApi.getUnreadCount(),
+        messagesApi.listConversations({ limit: 3 }),
+        assignmentsApi.list(),
       ]);
 
       if (coursesData.status === 'fulfilled') {
@@ -86,6 +122,20 @@ export function TeacherDashboard() {
       }
       if (invitesData.status === 'fulfilled') {
         setSentInvites(invitesData.value);
+      }
+      if (unreadData.status === 'fulfilled') {
+        setUnreadCount(unreadData.value.total_unread);
+      }
+      if (conversationsData.status === 'fulfilled') {
+        setRecentConversations(conversationsData.value.slice(0, 3));
+      }
+      if (assignmentsData.status === 'fulfilled') {
+        const now = new Date();
+        const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const upcoming = assignmentsData.value
+          .filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) >= now && new Date(a.due_date) <= sevenDays)
+          .sort((a: AssignmentItem, b: AssignmentItem) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+        setUpcomingAssignments(upcoming);
       }
     } finally {
       setLoading(false);
@@ -141,7 +191,7 @@ export function TeacherDashboard() {
       const coursesData = await coursesApi.teachingList();
       setCourses(coursesData);
     } catch (err: any) {
-      setCreateError(err.response?.data?.detail || 'Failed to create course');
+      setCreateError(err.response?.data?.detail || 'Failed to create class');
     } finally {
       setCreateLoading(false);
     }
@@ -248,6 +298,7 @@ export function TeacherDashboard() {
     setAnnounceBody('');
     setAnnounceError('');
     setAnnounceSuccess('');
+    setAnnouncePreview(false);
   };
 
   const handleSendAnnouncement = async () => {
@@ -267,6 +318,113 @@ export function TeacherDashboard() {
     }
   };
 
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadCourseId('');
+    setUploadType('notes');
+    setUploadTitle('');
+    setUploadDescription('');
+    setUploadFile(null);
+    setUploadError('');
+    setUploadSuccess('');
+    setUploadDragging(false);
+  };
+
+  const handleUploadMaterial = async () => {
+    if (!uploadCourseId || !uploadFile) return;
+    setUploadLoading(true);
+    setUploadError('');
+    setUploadSuccess('');
+    try {
+      await courseContentsApi.uploadFile(
+        uploadFile,
+        uploadCourseId as number,
+        uploadTitle.trim() || undefined,
+        uploadType,
+      );
+      setUploadSuccess('Material uploaded successfully!');
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+      setTimeout(() => {
+        closeUploadModal();
+      }, 1500);
+    } catch (err: any) {
+      setUploadError(err.response?.data?.detail || 'Failed to upload material');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleUploadDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
+  const handleUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
+  const firstName = user?.full_name?.split(' ')[0] ?? '';
+
+  const renderHeaderSlot = (inspiration: InspirationData | null) => {
+    if (focusDismissed) return null;
+
+    const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+
+    return (
+      <div className="teacher-focus-header">
+        <div className="teacher-focus-main">
+          <span className="teacher-focus-icon">{unreadCount > 0 ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+          )}</span>
+          <div>
+            <div className="teacher-focus-title">
+              {greeting}, {firstName}!
+              {unreadCount > 0 && ` You have ${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}.`}
+              {unreadCount === 0 && ' Your inbox is clear.'}
+            </div>
+            <div className="teacher-focus-badges">
+              {unreadCount > 0 && (
+                <button type="button" className="teacher-focus-badge messages" onClick={() => navigate('/messages')}>
+                  {unreadCount} unread
+                </button>
+              )}
+              {upcomingAssignments.length > 0 && (
+                <button type="button" className="teacher-focus-badge deadlines" onClick={() => navigate('/courses')}>
+                  {upcomingAssignments.length} deadline{upcomingAssignments.length !== 1 ? 's' : ''} this week
+                </button>
+              )}
+              {courses.length > 0 && (
+                <span className="teacher-focus-badge classes">
+                  {courses.reduce((sum, c) => sum + c.student_count, 0)} students
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {inspiration && (
+          <div className="teacher-focus-inspiration">
+            <span className="teacher-focus-quote">"{inspiration.text}"</span>
+            {inspiration.author && <span className="teacher-focus-author"> — {inspiration.author}</span>}
+          </div>
+        )}
+        <button className="teacher-focus-close" onClick={() => setFocusDismissed(true)} aria-label="Dismiss">{'\u00D7'}</button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <DashboardLayout welcomeSubtitle="Your classroom overview">
@@ -276,55 +434,144 @@ export function TeacherDashboard() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle="Your classroom overview">
-      <div className="dashboard-grid">
-        <div className="dashboard-card">
-          <div className="card-icon">📚</div>
-          <h3>Courses</h3>
-          <p className="card-value">{courses.length}</p>
-          <p className="card-label">Courses teaching</p>
-        </div>
+    <DashboardLayout welcomeSubtitle="Your classroom overview" headerSlot={renderHeaderSlot}>
+      {/* Quick Actions (#837 unified) */}
+      <RoleQuickActions
+        actions={[
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
+            ),
+            label: 'My Classes',
+            onClick: () => navigate('/courses'),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            ),
+            label: 'Messages',
+            onClick: () => navigate('/messages'),
+            badge: unreadCount > 0 ? unreadCount : undefined,
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            ),
+            label: 'Announcements',
+            onClick: () => setShowAnnounceModal(true),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            ),
+            label: googleConnected ? 'Sync Classes' : 'Google Classroom',
+            onClick: googleConnected ? handleSyncCourses : handleConnectGoogle,
+            disabled: syncing,
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="23" y1="11" x2="17" y2="11" />
+              </svg>
+            ),
+            label: 'Invite Parents',
+            onClick: () => setShowInviteParentModal(true),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            ),
+            label: 'Upload Materials',
+            onClick: () => setShowUploadModal(true),
+          },
+        ] satisfies QuickAction[]}
+        maxVisible={4}
+      />
 
-        <div className="dashboard-card clickable" onClick={() => navigate('/messages')}>
-          <div className="card-icon">💬</div>
-          <h3>Messages</h3>
-          <p className="card-value">View</p>
-          <p className="card-label">Parent messages</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => navigate('/teacher-communications')}>
-          <div className="card-icon">📧</div>
-          <h3>Communications</h3>
-          <p className="card-value">View</p>
-          <p className="card-label">Email monitoring</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => setShowAnnounceModal(true)}>
-          <div className="card-icon">📢</div>
-          <h3>Announcement</h3>
-          <p className="card-value">Send</p>
-          <p className="card-label">Notify all parents</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => setShowInviteParentModal(true)}>
-          <div className="card-icon">👨‍👩‍👧</div>
-          <h3>Invite Parent</h3>
-          <p className="card-value">Invite</p>
-          <p className="card-label">Connect families</p>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="card-icon">🔗</div>
-          <h3>Google Classroom</h3>
-          <p className="card-value">{googleConnected ? 'Connected' : 'Not Connected'}</p>
-          {!googleConnected ? (
-            <button className="connect-button" onClick={handleConnectGoogle}>
-              Connect
-            </button>
+      {/* Activity Summary */}
+      <div className="teacher-activity-summary">
+        <div className="teacher-activity-card">
+          <div className="teacher-activity-card-header">
+            <h4>Recent Messages</h4>
+            {recentConversations.length > 0 && (
+              <button className="teacher-activity-view-all" onClick={() => navigate('/messages')}>View All</button>
+            )}
+          </div>
+          {recentConversations.length > 0 ? (
+            <div className="teacher-activity-list">
+              {recentConversations.map((conv) => (
+                <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
+                  <div className="teacher-activity-item-info">
+                    <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
+                    <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
+                  </div>
+                  <div className="teacher-activity-item-meta">
+                    {conv.unread_count > 0 && (
+                      <span className="teacher-activity-unread-badge">{conv.unread_count}</span>
+                    )}
+                    {conv.last_message_at && (
+                      <span className="teacher-activity-item-time">
+                        {new Date(conv.last_message_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
-              {syncing ? 'Syncing...' : 'Sync Courses'}
-            </button>
+            <EmptyState
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></svg>}
+              title="No recent activity"
+              description="Activity will appear here as students interact with your classes."
+            />
+          )}
+        </div>
+
+        <div className="teacher-activity-card">
+          <div className="teacher-activity-card-header">
+            <h4>Upcoming Deadlines</h4>
+            {upcomingAssignments.length > 0 && (
+              <span className="teacher-activity-subtitle">Next 7 days</span>
+            )}
+          </div>
+          {upcomingAssignments.length > 0 ? (
+            <div className="teacher-activity-list">
+              {upcomingAssignments.slice(0, 5).map((assignment) => (
+                <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate(`/courses`)}>
+                  <div className="teacher-activity-item-info">
+                    <span className="teacher-activity-item-name">{assignment.title}</span>
+                    <span className="teacher-activity-item-preview">{assignment.course_name}</span>
+                  </div>
+                  <span className="teacher-activity-item-time">
+                    {new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
+              title="No upcoming deadlines"
+              description="All caught up!"
+            />
           )}
         </div>
       </div>
@@ -332,32 +579,41 @@ export function TeacherDashboard() {
       <div className="dashboard-sections">
         <section className="section teacher-courses-section">
           <div className="section-header">
-            <h3>Your Courses</h3>
+            <button className="collapse-toggle" onClick={() => setCoursesExpanded(v => !v)}>
+              <span className={`section-chevron${coursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Your Classes ({courses.length})</h3>
+            </button>
             <div className="section-header-actions">
               {googleConnected && (
                 <button className="sync-btn" onClick={handleSyncCourses} disabled={syncing}>
-                  {syncing ? 'Syncing...' : 'Sync Courses'}
+                  {syncing ? 'Syncing...' : 'Sync Classes'}
                 </button>
               )}
               <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
-                + Create Course
+                + Create Class
               </button>
             </div>
           </div>
+          {coursesExpanded && (
+          <>
           {syncMessage && (
             <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`}>
               {syncMessage}
             </div>
           )}
           {courses.length > 3 && (
-            <input
-              type="text"
-              className="courses-search-input"
-              placeholder="Search courses by name or subject..."
-              value={courseSearch}
-              onChange={(e) => setCourseSearch(e.target.value)}
-              style={{ marginBottom: 16 }}
-            />
+            <>
+              <label htmlFor="teacher-course-search" className="sr-only">Search classes</label>
+              <input
+                id="teacher-course-search"
+                type="text"
+                className="courses-search-input"
+                placeholder="Search classes by name or subject..."
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                style={{ marginBottom: 16 }}
+              />
+            </>
           )}
           {courses.length > 0 ? (
             <div className="teacher-courses-grid">
@@ -386,35 +642,25 @@ export function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <p>No courses yet</p>
-              <small>
-                Create a course manually{googleConnected
-                  ? ' or click "Sync Courses" to import from Google Classroom'
-                  : ' or connect Google Classroom to sync your courses'}
-              </small>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
-                <button className="connect-button" onClick={() => setShowCreateModal(true)}>
-                  + Create Course
-                </button>
-                {googleConnected && (
-                  <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
-                    {syncing ? 'Syncing...' : 'Sync Courses'}
-                  </button>
-                )}
-              </div>
-            </div>
+            <EmptyState
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>}
+              title="No classes yet"
+              description="Create your first class to start organizing materials and assignments."
+              action={{ label: 'Create a Class', onClick: () => setShowCreateModal(true) }}
+            />
+          )}
+          </>
           )}
         </section>
 
         {/* Sent Invites Section */}
         {sentInvites.length > 0 && (
           <section className="section sent-invites-section">
-            <div className="section-header section-header-collapsible" onClick={() => setInvitesExpanded(!invitesExpanded)}>
-              <h3>
-                <span className={`collapse-arrow ${invitesExpanded ? 'expanded' : ''}`}>&#9654;</span>
-                {' '}Sent Invites ({sentInvites.length})
-              </h3>
+            <div className="section-header">
+              <button className="collapse-toggle" onClick={() => setInvitesExpanded(!invitesExpanded)}>
+                <span className={`section-chevron${invitesExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>Sent Invites ({sentInvites.length})</h3>
+              </button>
             </div>
             {resendError && (
               <div className="resend-error-toast">{resendError}</div>
@@ -469,12 +715,15 @@ export function TeacherDashboard() {
         {googleConnected && (
           <section className="section teacher-google-accounts-section">
             <div className="section-header">
-              <h3>Google Accounts</h3>
+              <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)}>
+                <span className={`section-chevron${googleAccountsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>Google Accounts ({googleAccounts.length})</h3>
+              </button>
               <button className="create-custom-btn" onClick={handleAddGoogleAccount}>
                 + Add Account
               </button>
             </div>
-            {googleAccounts.length > 0 ? (
+            {googleAccountsExpanded && googleAccounts.length > 0 ? (
               <div className="google-accounts-list">
                 {googleAccounts.map((account) => (
                   <div key={account.id} className="google-account-row">
@@ -517,12 +766,13 @@ export function TeacherDashboard() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="empty-state">
-                <p>No Google accounts linked yet</p>
-                <small>Connect your Google account to sync courses from Google Classroom</small>
-              </div>
-            )}
+            ) : googleAccountsExpanded ? (
+              <EmptyState
+                icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>}
+                title="No Google accounts linked yet"
+                description="Connect your Google account to sync classes from Google Classroom."
+              />
+            ) : null}
           </section>
         )}
       </div>
@@ -530,11 +780,11 @@ export function TeacherDashboard() {
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Course</h2>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create Class</h2>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input
                   type="text"
                   value={courseName}
@@ -559,7 +809,7 @@ export function TeacherDashboard() {
                 <textarea
                   value={courseDescription}
                   onChange={(e) => setCourseDescription(e.target.value)}
-                  placeholder="Brief description of the course..."
+                  placeholder="Brief description of the class..."
                   rows={3}
                   disabled={createLoading}
                 />
@@ -575,7 +825,7 @@ export function TeacherDashboard() {
                 onClick={handleCreateCourse}
                 disabled={createLoading || !courseName.trim()}
               >
-                {createLoading ? 'Creating...' : 'Create Course'}
+                {createLoading ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>
@@ -584,7 +834,7 @@ export function TeacherDashboard() {
       {/* Invite Parent Modal */}
       {showInviteParentModal && (
         <div className="modal-overlay" onClick={closeInviteParentModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite Parent" ref={inviteParentModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Invite Parent</h2>
             <p className="modal-desc">
               Send an email invitation to a parent to join ClassBridge.
@@ -622,58 +872,219 @@ export function TeacherDashboard() {
       {/* Announcement Modal */}
       {showAnnounceModal && (
         <div className="modal-overlay" onClick={closeAnnounceModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Send Announcement</h2>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Send Announcement" ref={announceModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>{announcePreview ? 'Preview Announcement' : 'Send Announcement'}</h2>
+            {!announcePreview ? (
+              <>
+                <p className="modal-desc">
+                  Send a message to all parents of students in a class.
+                </p>
+                <div className="modal-form">
+                  <label>
+                    Class *
+                    <select
+                      value={announceCourseId}
+                      onChange={(e) => { setAnnounceCourseId(e.target.value ? Number(e.target.value) : ''); setAnnounceError(''); }}
+                      disabled={announceSending}
+                    >
+                      <option value="">Select a class...</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Subject *
+                    <input
+                      type="text"
+                      value={announceSubject}
+                      onChange={(e) => { setAnnounceSubject(e.target.value); setAnnounceError(''); }}
+                      placeholder="e.g., Upcoming field trip"
+                      disabled={announceSending}
+                    />
+                  </label>
+                  <label>
+                    Message *
+                    <textarea
+                      value={announceBody}
+                      onChange={(e) => { setAnnounceBody(e.target.value); setAnnounceError(''); }}
+                      placeholder="Write your announcement..."
+                      rows={5}
+                      disabled={announceSending}
+                    />
+                  </label>
+                  {announceError && <p className="link-error">{announceError}</p>}
+                  {announceSuccess && <p className="link-success">{announceSuccess}</p>}
+                </div>
+                <div className="modal-actions">
+                  <button className="cancel-btn" onClick={closeAnnounceModal} disabled={announceSending}>
+                    {announceSuccess ? 'Close' : 'Cancel'}
+                  </button>
+                  <button
+                    className="generate-btn"
+                    onClick={() => setAnnouncePreview(true)}
+                    disabled={announceSending || !announceCourseId || !announceSubject.trim() || !announceBody.trim()}
+                  >
+                    Send Announcement
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="announce-preview">
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Class</span>
+                    <span className="announce-preview-value">{courses.find(c => c.id === announceCourseId)?.name}</span>
+                  </div>
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Recipients</span>
+                    <span className="announce-preview-value">
+                      {(() => {
+                        const selectedCourse = courses.find(c => c.id === announceCourseId);
+                        const count = selectedCourse?.student_count ?? 0;
+                        return `${count} student${count !== 1 ? 's' : ''} (parents will be notified)`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Subject</span>
+                    <span className="announce-preview-value announce-preview-subject">{announceSubject}</span>
+                  </div>
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Message</span>
+                    <div className="announce-preview-body">{announceBody}</div>
+                  </div>
+                </div>
+                {announceError && <p className="link-error">{announceError}</p>}
+                {announceSuccess && <p className="link-success">{announceSuccess}</p>}
+                <div className="modal-actions">
+                  {announceSuccess ? (
+                    <button className="cancel-btn" onClick={closeAnnounceModal}>
+                      Close
+                    </button>
+                  ) : (
+                    <>
+                      <button className="cancel-btn" onClick={() => setAnnouncePreview(false)} disabled={announceSending}>
+                        Edit
+                      </button>
+                      <button
+                        className="generate-btn"
+                        onClick={handleSendAnnouncement}
+                        disabled={announceSending}
+                      >
+                        {announceSending ? 'Sending...' : 'Confirm Send'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Upload Material Modal */}
+      {showUploadModal && (
+        <div className="modal-overlay" onClick={closeUploadModal}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Material" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Upload Material</h2>
             <p className="modal-desc">
-              Send a message to all parents of students in a course.
+              Upload class notes, tests, or other materials to a course.
             </p>
             <div className="modal-form">
               <label>
                 Course *
                 <select
-                  value={announceCourseId}
-                  onChange={(e) => { setAnnounceCourseId(e.target.value ? Number(e.target.value) : ''); setAnnounceError(''); }}
-                  disabled={announceSending}
+                  value={uploadCourseId}
+                  onChange={(e) => { setUploadCourseId(e.target.value ? Number(e.target.value) : ''); setUploadError(''); }}
+                  disabled={uploadLoading}
                 >
-                  <option value="">Select a course...</option>
+                  <option value="">Select a class...</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </label>
               <label>
-                Subject *
+                Material Type *
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  disabled={uploadLoading}
+                >
+                  <option value="notes">Class Notes</option>
+                  <option value="test">Test / Quiz</option>
+                  <option value="lab">Lab / Project</option>
+                  <option value="assignment">Assignment</option>
+                </select>
+              </label>
+              <label>
+                Title
                 <input
                   type="text"
-                  value={announceSubject}
-                  onChange={(e) => { setAnnounceSubject(e.target.value); setAnnounceError(''); }}
-                  placeholder="e.g., Upcoming field trip"
-                  disabled={announceSending}
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="e.g., Chapter 5 Notes"
+                  disabled={uploadLoading}
                 />
               </label>
               <label>
-                Message *
+                Description
                 <textarea
-                  value={announceBody}
-                  onChange={(e) => { setAnnounceBody(e.target.value); setAnnounceError(''); }}
-                  placeholder="Write your announcement..."
-                  rows={5}
-                  disabled={announceSending}
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  placeholder="Optional description..."
+                  rows={2}
+                  disabled={uploadLoading}
                 />
               </label>
-              {announceError && <p className="link-error">{announceError}</p>}
-              {announceSuccess && <p className="link-success">{announceSuccess}</p>}
+              <div
+                className={`upload-drop-zone${uploadDragging ? ' dragging' : ''}${uploadFile ? ' has-file' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setUploadDragging(true); }}
+                onDragLeave={() => setUploadDragging(false)}
+                onDrop={handleUploadDrop}
+                onClick={() => document.getElementById('teacher-upload-input')?.click()}
+              >
+                {uploadFile ? (
+                  <div className="upload-file-info">
+                    <span className="upload-file-name">{uploadFile.name}</span>
+                    <span className="upload-file-size">({(uploadFile.size / 1024).toFixed(0)} KB)</span>
+                    <button
+                      type="button"
+                      className="upload-file-remove"
+                      onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
+                    >
+                      {'\u00D7'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="upload-drop-prompt">
+                    <span className="upload-drop-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                    </span>
+                    <span>Drag & drop a file here, or click to browse</span>
+                  </div>
+                )}
+                <input
+                  id="teacher-upload-input"
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadFileChange}
+                  disabled={uploadLoading}
+                />
+              </div>
+              {uploadError && <p className="link-error">{uploadError}</p>}
+              {uploadSuccess && <p className="link-success">{uploadSuccess}</p>}
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={closeAnnounceModal} disabled={announceSending}>
-                {announceSuccess ? 'Close' : 'Cancel'}
+              <button className="cancel-btn" onClick={closeUploadModal} disabled={uploadLoading}>
+                {uploadSuccess ? 'Close' : 'Cancel'}
               </button>
               <button
                 className="generate-btn"
-                onClick={handleSendAnnouncement}
-                disabled={announceSending || !announceCourseId || !announceSubject.trim() || !announceBody.trim()}
+                onClick={handleUploadMaterial}
+                disabled={uploadLoading || !uploadCourseId || !uploadFile}
               >
-                {announceSending ? 'Sending...' : 'Send Announcement'}
+                {uploadLoading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
           </div>

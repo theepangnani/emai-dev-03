@@ -2,6 +2,7 @@
 AI Service for generating educational content using Anthropic Claude.
 """
 import time
+from datetime import datetime
 import anthropic
 from app.core.config import settings
 from app.core.logging_config import get_logger
@@ -106,6 +107,8 @@ async def generate_study_guide(
     assignment_description: str,
     course_name: str,
     due_date: str | None = None,
+    custom_prompt: str | None = None,
+    focus_prompt: str | None = None,
 ) -> str:
     """
     Generate a study guide for an assignment.
@@ -130,25 +133,41 @@ async def generate_study_guide(
 **Description:**
 {assignment_description}
 
-Please include:
+Analyze the content above. If it contains math problems, equations, science calculations, or any exercises/questions that require solving, then:
+
+1. **Worked Solutions** - Solve each problem step-by-step with clear explanations
+2. **Key Concepts** - Explain the underlying concepts used in the solutions
+3. **Common Mistakes** - Warn about typical errors students make on these types of problems
+4. **Practice Problems** - 2-3 similar problems for extra practice (with answers)
+
+If the content is conceptual/reading material (no problems to solve), then:
+
 1. **Key Concepts** - Main topics and ideas to understand
 2. **Important Terms** - Vocabulary with definitions
 3. **Study Tips** - Strategies for mastering this material
 4. **Practice Questions** - 3-5 questions to test understanding
 5. **Resources** - Suggested areas to review
 
-Format the response in Markdown for easy reading.
+Format the response in Markdown for easy reading. For math, use clear notation (fractions, exponents, etc.).
 
-IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, quizzes, homework due dates, or review sessions, include a section at the very end of your response in this exact format:
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions), include a section at the very end of your response in this exact format:
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description of what is due/happening", "priority": "high"}}]
 
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
-Only include this section if specific dates are mentioned. If no dates are found, do not include this section at all."""
+If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the nearest future occurrence from today's date and output the full YYYY-MM-DD.
+ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
+Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all."""
 
-    system_prompt = """You are an expert educational tutor. Create clear, well-organized study guides
-that help students understand concepts deeply. Use simple language and provide practical examples.
-Format responses in clean Markdown with proper headers and bullet points."""
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Prioritize these topics in your response while still covering other key material briefly."
+
+    if custom_prompt:
+        system_prompt = custom_prompt
+    else:
+        system_prompt = """You are an expert educational tutor. When given math problems or exercises, solve them
+step-by-step with clear explanations so students can learn the process. For conceptual material, create
+well-organized study guides. Use simple language, practical examples, and clean Markdown formatting."""
 
     return await generate_content(prompt, system_prompt, max_tokens=2000)
 
@@ -157,6 +176,7 @@ async def generate_quiz(
     topic: str,
     content: str,
     num_questions: int = 5,
+    focus_prompt: str | None = None,
 ) -> str:
     """
     Generate a practice quiz from content.
@@ -177,11 +197,13 @@ async def generate_quiz(
 **Content:**
 {content}
 
+If the content contains math problems or calculations, create questions that test the student's ability to solve similar problems (provide numerical answer choices). If conceptual, test understanding.
+
 For each question, provide:
 1. The question text
 2. Four options labeled A, B, C, D
 3. The correct answer letter
-4. A brief explanation of why it's correct
+4. A brief explanation of why it's correct (for math, show the solution steps)
 
 Format your response as a JSON array with this structure:
 ```json
@@ -202,10 +224,13 @@ Format your response as a JSON array with this structure:
 
 Return ONLY the JSON array, no other text.
 
-IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, or due dates, AFTER the JSON array, include a section in this exact format:
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, or homework due dates), AFTER the JSON array, include a section in this exact format:
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
-Use "high" for exams/tests, "medium" for homework. Only include if dates are found."""
+Use "high" for exams/tests, "medium" for homework. If a date does not include a year, assume the nearest future occurrence from today's date and output the full YYYY-MM-DD. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
+
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure quiz questions heavily cover these topics."
 
     system_prompt = """You are an expert quiz creator. Create clear, educational questions that test
 understanding, not just memorization. Make wrong answers plausible but clearly incorrect.
@@ -218,6 +243,7 @@ async def generate_flashcards(
     topic: str,
     content: str,
     num_cards: int = 10,
+    focus_prompt: str | None = None,
 ) -> str:
     """
     Generate flashcards from content.
@@ -239,9 +265,10 @@ async def generate_flashcards(
 {content}
 
 Create flashcards that cover the most important concepts, terms, and ideas.
+If the content contains math problems or calculations, create flashcards with the problem on the front and the step-by-step solution on the back.
 Each flashcard should have:
-- Front: A term, concept, or question
-- Back: The definition, explanation, or answer
+- Front: A term, concept, question, or math problem
+- Back: The definition, explanation, answer, or worked solution
 
 Format your response as a JSON array:
 ```json
@@ -255,10 +282,13 @@ Format your response as a JSON array:
 
 Return ONLY the JSON array, no other text.
 
-IMPORTANT: If the source material mentions any dates, deadlines, exams, tests, or due dates, AFTER the JSON array, include a section in this exact format:
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, or homework due dates), AFTER the JSON array, include a section in this exact format:
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
-Use "high" for exams/tests, "medium" for homework. Only include if dates are found."""
+Use "high" for exams/tests, "medium" for homework. If a date does not include a year, assume the nearest future occurrence from today's date and output the full YYYY-MM-DD. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
+
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure flashcards heavily cover these topics."
 
     system_prompt = """You are an expert at creating effective study flashcards.
 Focus on key concepts and important details. Make cards concise but informative.

@@ -1,30 +1,31 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse } from '../api/client';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
+import { tasksApi, type TaskItem } from '../api/tasks';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
+import { PageNav } from '../components/PageNav';
+import { DocumentTab } from './course-material/DocumentTab';
+import { StudyGuideTab } from './course-material/StudyGuideTab';
+import { QuizTab } from './course-material/QuizTab';
+import { FlashcardsTab } from './course-material/FlashcardsTab';
+import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
+import { EditMaterialModal } from '../components/EditMaterialModal';
 import './CourseMaterialDetailPage.css';
-
-const MarkdownGuideBody = lazy(() =>
-  import('react-markdown').then(mod => {
-    const ReactMarkdown = mod.default;
-    return import('remark-gfm').then(gfm => ({
-      default: ({ content }: { content: string }) => (
-        <ReactMarkdown remarkPlugins={[gfm.default]}>{content}</ReactMarkdown>
-      ),
-    }));
-  })
-);
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
 
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { confirm, confirmModal } = useConfirm();
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
 
   const [content, setContent] = useState<CourseContentItem | null>(null);
   const [guides, setGuides] = useState<StudyGuide[]>([]);
@@ -34,29 +35,17 @@ export function CourseMaterialDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('document');
   const [generating, setGenerating] = useState<string | null>(null);
 
-  // Quiz state
-  const [quizIndex, setQuizIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [quizScore, setQuizScore] = useState(0);
-  const [, setQuizAnswers] = useState<Record<number, string>>({});
-  const [quizFinished, setQuizFinished] = useState(false);
-
-  // Flashcard state
-  const [cardIndex, setCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  // Create task modal
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
+  const [focusPrompt, setFocusPrompt] = useState('');
 
-  // Document editing
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTextContent, setEditTextContent] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
-
-  // Toast + regeneration prompt
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
+  const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
   const contentId = parseInt(id || '0');
 
@@ -70,8 +59,18 @@ export function CourseMaterialDetailPage() {
       ]);
       setContent(cc);
       setGuides(allGuides);
+      // Fetch linked tasks for each guide
+      const taskMap: Record<number, TaskItem[]> = {};
+      await Promise.all(
+        allGuides.map(async (g) => {
+          try {
+            taskMap[g.id] = await tasksApi.list({ study_guide_id: g.id });
+          } catch { /* ignore */ }
+        })
+      );
+      setLinkedTasks(taskMap);
     } catch {
-      setError('Failed to load course material');
+      setError('Failed to load class material');
     } finally {
       setLoading(false);
     }
@@ -79,16 +78,23 @@ export function CourseMaterialDetailPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    if (!isParent || !content?.course_id) return;
+    studyApi.resolveStudent({ course_id: content.course_id })
+      .then(setResolvedStudent)
+      .catch(() => {});
+  }, [isParent, content?.course_id]);
+
   const studyGuide = guides.find(g => g.guide_type === 'study_guide');
   const quiz = guides.find(g => g.guide_type === 'quiz');
   const flashcardSet = guides.find(g => g.guide_type === 'flashcards');
 
-  const parsedQuiz = quiz ? (() => {
-    try { return JSON.parse(quiz.content); } catch { return []; }
-  })() : [];
-  const parsedCards = flashcardSet ? (() => {
-    try { return JSON.parse(flashcardSet.content); } catch { return []; }
-  })() : [];
+  const hasSourceContent = !!(content?.text_content || content?.description);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
     if (!content) return;
@@ -101,13 +107,16 @@ export function CourseMaterialDetailPage() {
     if (!ok) return;
 
     setGenerating(type);
+    setActiveTab(type === 'study_guide' ? 'guide' : type);
     try {
+      const fp = focusPrompt.trim() || undefined;
       if (type === 'study_guide') {
         await studyApi.generateGuide({
           course_content_id: contentId,
           course_id: content.course_id,
           title: content.title,
           content: content.text_content || content.description || '',
+          focus_prompt: fp,
         });
       } else if (type === 'quiz') {
         await studyApi.generateQuiz({
@@ -116,6 +125,7 @@ export function CourseMaterialDetailPage() {
           topic: content.title,
           content: content.text_content || content.description || '',
           num_questions: 5,
+          focus_prompt: fp,
         });
       } else {
         await studyApi.generateFlashcards({
@@ -124,10 +134,22 @@ export function CourseMaterialDetailPage() {
           topic: content.title,
           content: content.text_content || content.description || '',
           num_cards: 10,
+          focus_prompt: fp,
         });
       }
       await loadData();
       setActiveTab(type === 'study_guide' ? 'guide' : type);
+      // Show toast if tasks were auto-created
+      const updatedGuides = await studyApi.listGuides({ course_content_id: contentId });
+      const newGuide = updatedGuides.find(g => g.guide_type === type);
+      if (newGuide) {
+        const tasks = await tasksApi.list({ study_guide_id: newGuide.id }).catch(() => []);
+        if (tasks.length > 0) {
+          const t = tasks[0];
+          const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
+          showToast(`Task created: ${t.title}${dueStr}`);
+        }
+      }
     } catch (err) {
       setError(`Failed to generate ${labels[type].toLowerCase()}`);
       setFaqCode(extractFaqCode(err));
@@ -146,42 +168,42 @@ export function CourseMaterialDetailPage() {
     try {
       await studyApi.deleteGuide(guide.id);
       await loadData();
+      showToast('Study material archived');
     } catch {
-      setError('Failed to archive');
+      showToast('Failed to archive study material');
     }
   };
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  const handleStartEdit = () => {
-    setEditTextContent(content?.text_content || '');
-    setIsEditing(true);
-  };
-
-  const handleSaveTextContent = async () => {
+  const handleArchiveContent = async () => {
     if (!content) return;
-    setEditSaving(true);
+    const ok = await confirm({
+      title: 'Archive Material',
+      message: `Archive "${content.title}"? You can restore it later from the archive.`,
+      confirmLabel: 'Archive',
+    });
+    if (!ok) return;
     try {
-      const result: CourseContentUpdateResponse = await courseContentsApi.update(content.id, {
-        text_content: editTextContent,
-      });
-      setContent(result);
-      setIsEditing(false);
-      if (result.archived_guides_count > 0) {
-        showToast(`Content updated. ${result.archived_guides_count} linked study material(s) archived.`);
-        setShowRegenPrompt(true);
-        await loadData(); // refresh guides list
-      } else {
-        showToast('Content saved');
-      }
+      await courseContentsApi.delete(content.id);
+      navigate('/course-materials');
     } catch {
-      setError('Failed to save content');
-    } finally {
-      setEditSaving(false);
+      setError('Failed to archive material');
     }
+  };
+
+  const handleDownload = async () => {
+    if (!content) return;
+    setDownloading(true);
+    try {
+      await courseContentsApi.download(content.id, content.original_filename || undefined);
+    } catch {
+      setError('Failed to download document');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleContentUpdated = (result: CourseContentUpdateResponse) => {
+    setContent(result);
   };
 
   const handleRegenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
@@ -189,62 +211,33 @@ export function CourseMaterialDetailPage() {
     await handleGenerate(type);
   };
 
-  // Quiz handlers
-  const handleQuizAnswer = (answer: string) => {
-    if (showResult) return;
-    setSelectedAnswer(answer);
-  };
-
-  const handleQuizSubmit = () => {
-    if (!selectedAnswer || !parsedQuiz[quizIndex]) return;
-    const correct = parsedQuiz[quizIndex].correct_answer === selectedAnswer;
-    if (correct) setQuizScore(s => s + 1);
-    setQuizAnswers(prev => ({ ...prev, [quizIndex]: selectedAnswer }));
-    setShowResult(true);
-  };
-
-  const handleQuizNext = () => {
-    if (quizIndex < parsedQuiz.length - 1) {
-      setQuizIndex(i => i + 1);
-      setSelectedAnswer(null);
-      setShowResult(false);
-    } else {
-      setQuizFinished(true);
-    }
-  };
-
-  const resetQuiz = () => {
-    setQuizIndex(0);
-    setSelectedAnswer(null);
-    setShowResult(false);
-    setQuizScore(0);
-    setQuizAnswers({});
-    setQuizFinished(false);
-  };
-
-  if (loading) return <DashboardLayout><DetailSkeleton /></DashboardLayout>;
+  if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
-    <DashboardLayout>
+    <DashboardLayout showBackButton>
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
-        <Link to="/course-materials" className="cm-back-link">Back to Course Materials</Link>
+        <Link to="/course-materials" className="cm-back-link">Back to Class Materials</Link>
       </div>
     </DashboardLayout>
   );
 
   const tabs: { key: TabKey; label: string; hasContent: boolean }[] = [
-    { key: 'document', label: 'Original Document', hasContent: !!(content.text_content || content.description) },
+    { key: 'document', label: 'Original Document', hasContent: !!(content.text_content || content.description || content.has_file) },
     { key: 'guide', label: 'Study Guide', hasContent: !!studyGuide },
     { key: 'quiz', label: 'Quiz', hasContent: !!quiz },
     { key: 'flashcards', label: 'Flashcards', hasContent: !!flashcardSet },
   ];
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showBackButton>
       <div className="cm-detail-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Course Materials', to: '/course-materials' },
+          { label: content?.title || 'Material' },
+        ]} />
         <div className="cm-detail-header">
-          <Link to="/course-materials" className="cm-back-link">&larr; Back</Link>
           <div className="cm-detail-title-row">
             <h2>{content.title}</h2>
             {content.course_name && (
@@ -252,19 +245,31 @@ export function CourseMaterialDetailPage() {
             )}
           </div>
           <div className="cm-detail-meta">
-            <span className="cm-type-badge">{content.content_type}</span>
+            {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
-            <button className="cm-action-btn" onClick={() => setShowTaskModal(true)} title="Create task">&#128203; + Task</button>
+            <div className="cm-header-icon-actions">
+              <button className="cm-icon-btn cm-icon-btn-task" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
+                  <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+              </button>
+              <button className="cm-icon-btn" title="Edit" aria-label="Edit material" onClick={() => setShowEditModal(true)}>&#9998;</button>
+              <button className="cm-icon-btn" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>&#128465;</button>
+            </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="cm-tabs">
+        <div className="cm-tabs" role="tablist">
           {tabs.map(tab => (
             <button
               key={tab.key}
               className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
               onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
             >
               {tab.label}
               {!tab.hasContent && tab.key !== 'document' && (
@@ -274,276 +279,63 @@ export function CourseMaterialDetailPage() {
           ))}
         </div>
 
-        {/* Tab Content */}
-        <div className="cm-tab-content">
+        <div className="cm-tab-content" role="tabpanel">
           {activeTab === 'document' && (
-            <div className="cm-document-tab">
-              <div className="cm-guide-actions">
-                {!isEditing ? (
-                  <button className="cm-action-btn" onClick={handleStartEdit}>Edit Content</button>
-                ) : (
-                  <>
-                    <button className="cm-action-btn" onClick={handleSaveTextContent} disabled={editSaving}>
-                      {editSaving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
-                  </>
-                )}
-              </div>
-              {isEditing ? (
-                <textarea
-                  className="cm-edit-textarea"
-                  value={editTextContent}
-                  onChange={(e) => setEditTextContent(e.target.value)}
-                  rows={20}
-                  disabled={editSaving}
-                />
-              ) : content.text_content ? (
-                <div className="cm-document-text">
-                  {(() => {
-                    // Detect JSON quiz/flashcard data and format readably
-                    const trimmed = content.text_content!.trim();
-                    if (trimmed.startsWith('[')) {
-                      try {
-                        const parsed = JSON.parse(trimmed);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                          if (parsed[0].question && parsed[0].options) {
-                            return (
-                              <div className="cm-formatted-quiz">
-                                {parsed.map((q: any, i: number) => (
-                                  <div key={i} className="cm-fq-item">
-                                    <p className="cm-fq-question"><strong>Q{i + 1}:</strong> {q.question}</p>
-                                    <ul className="cm-fq-options">
-                                      {Object.entries(q.options || {}).map(([k, v]) => (
-                                        <li key={k} className={k === q.correct_answer ? 'cm-fq-correct' : ''}>
-                                          <strong>{k}.</strong> {v as string}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    {q.explanation && <p className="cm-fq-explanation"><em>{q.explanation}</em></p>}
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          }
-                          if (parsed[0].front && parsed[0].back) {
-                            return (
-                              <div className="cm-formatted-cards">
-                                {parsed.map((c: any, i: number) => (
-                                  <div key={i} className="cm-fc-item">
-                                    <strong>{c.front}</strong>
-                                    <span> — {c.back}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          }
-                        }
-                      } catch { /* not JSON, fall through to markdown */ }
-                    }
-                    return (
-                      <Suspense fallback={<div className="cm-render-loading">Rendering...</div>}>
-                        <MarkdownGuideBody content={content.text_content!} />
-                      </Suspense>
-                    );
-                  })()}
-                </div>
-              ) : content.description ? (
-                <p className="cm-document-desc">{content.description}</p>
-              ) : (
-                <p className="cm-empty-message">No document content available.</p>
-              )}
-              {content.reference_url && (
-                <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">
-                  View Original Source
-                </a>
-              )}
-            </div>
+            <DocumentTab
+              content={content}
+              downloading={downloading}
+              onDownload={handleDownload}
+              onShowReplaceModal={() => setShowReplaceModal(true)}
+              onContentUpdated={handleContentUpdated}
+              showToast={showToast}
+              onShowRegenPrompt={() => setShowRegenPrompt(true)}
+              onReloadData={loadData}
+            />
           )}
 
           {activeTab === 'guide' && (
-            <div className="cm-guide-tab">
-              {studyGuide ? (
-                <>
-                  <div className="cm-guide-actions">
-                    <button className="cm-action-btn" onClick={() => window.print()} title="Print">Print</button>
-                    <button className="cm-action-btn" onClick={() => handleGenerate('study_guide')} disabled={generating !== null}>Regenerate</button>
-                    <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(studyGuide)}>Delete</button>
-                  </div>
-                  <div className="cm-guide-body">
-                    <Suspense fallback={<div className="cm-render-loading">Rendering...</div>}>
-                      <MarkdownGuideBody content={studyGuide.content} />
-                    </Suspense>
-                  </div>
-                </>
-              ) : (
-                <div className="cm-empty-tab">
-                  <p>No study guide generated yet.</p>
-                  <button
-                    className="generate-btn"
-                    onClick={() => handleGenerate('study_guide')}
-                    disabled={generating !== null || !content.text_content}
-                  >
-                    {generating === 'study_guide' ? 'Generating...' : 'Generate Study Guide'}
-                  </button>
-                  {!content.text_content && (
-                    <p className="cm-hint">Upload document content first to generate a study guide.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <StudyGuideTab
+              studyGuide={studyGuide}
+              generating={generating}
+              focusPrompt={focusPrompt}
+              onFocusPromptChange={setFocusPrompt}
+              onGenerate={() => handleGenerate('study_guide')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+              linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
+            />
           )}
 
           {activeTab === 'quiz' && (
-            <div className="cm-quiz-tab">
-              {quiz && parsedQuiz.length > 0 ? (
-                <>
-                  <div className="cm-guide-actions">
-                    <button className="cm-action-btn" onClick={resetQuiz}>Reset</button>
-                    <button className="cm-action-btn" onClick={() => handleGenerate('quiz')} disabled={generating !== null}>Regenerate</button>
-                    <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(quiz)}>Delete</button>
-                  </div>
-                  {quizFinished ? (
-                    <div className="cm-quiz-results">
-                      <h3>Quiz Complete!</h3>
-                      <div className="cm-quiz-score">
-                        {quizScore} / {parsedQuiz.length}
-                        <span className="cm-quiz-pct">
-                          ({Math.round((quizScore / parsedQuiz.length) * 100)}%)
-                        </span>
-                      </div>
-                      <button className="generate-btn" onClick={resetQuiz}>Try Again</button>
-                    </div>
-                  ) : (
-                    <div className="cm-quiz-question">
-                      <div className="cm-quiz-progress">
-                        Question {quizIndex + 1} of {parsedQuiz.length}
-                      </div>
-                      <h3>{parsedQuiz[quizIndex].question}</h3>
-                      <div className="cm-quiz-options">
-                        {Object.entries(parsedQuiz[quizIndex].options || {}).map(([key, value]) => (
-                          <button
-                            key={key}
-                            className={`cm-quiz-option${selectedAnswer === key ? ' selected' : ''}${
-                              showResult && key === parsedQuiz[quizIndex].correct_answer ? ' correct' : ''
-                            }${showResult && selectedAnswer === key && key !== parsedQuiz[quizIndex].correct_answer ? ' incorrect' : ''}`}
-                            onClick={() => handleQuizAnswer(key)}
-                            disabled={showResult}
-                          >
-                            <span className="cm-option-key">{key}</span>
-                            <span>{value as string}</span>
-                          </button>
-                        ))}
-                      </div>
-                      {showResult && parsedQuiz[quizIndex].explanation && (
-                        <div className="cm-quiz-explanation">
-                          <strong>Explanation:</strong> {parsedQuiz[quizIndex].explanation}
-                        </div>
-                      )}
-                      <div className="cm-quiz-actions">
-                        {!showResult ? (
-                          <button className="generate-btn" onClick={handleQuizSubmit} disabled={!selectedAnswer}>
-                            Submit Answer
-                          </button>
-                        ) : (
-                          <button className="generate-btn" onClick={handleQuizNext}>
-                            {quizIndex < parsedQuiz.length - 1 ? 'Next Question' : 'See Results'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="cm-empty-tab">
-                  <p>No quiz generated yet.</p>
-                  <button
-                    className="generate-btn"
-                    onClick={() => handleGenerate('quiz')}
-                    disabled={generating !== null || !content.text_content}
-                  >
-                    {generating === 'quiz' ? 'Generating...' : 'Generate Quiz'}
-                  </button>
-                  {!content.text_content && (
-                    <p className="cm-hint">Upload document content first to generate a quiz.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <QuizTab
+              quiz={quiz}
+              generating={generating}
+              focusPrompt={focusPrompt}
+              onFocusPromptChange={setFocusPrompt}
+              onGenerate={() => handleGenerate('quiz')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+              isParent={isParent}
+              resolvedStudent={resolvedStudent}
+              linkedTasks={linkedTasks[quiz?.id ?? 0] ?? []}
+            />
           )}
 
           {activeTab === 'flashcards' && (
-            <div className="cm-flashcards-tab">
-              {flashcardSet && parsedCards.length > 0 ? (
-                <>
-                  <div className="cm-guide-actions">
-                    <button className="cm-action-btn" onClick={() => { setCardIndex(0); setIsFlipped(false); }}>Reset</button>
-                    <button className="cm-action-btn" onClick={() => {
-                      setCardIndex(0);
-                      setIsFlipped(false);
-                    }}>Shuffle</button>
-                    <button className="cm-action-btn" onClick={() => handleGenerate('flashcards')} disabled={generating !== null}>Regenerate</button>
-                    <button className="cm-action-btn danger" onClick={() => handleDeleteGuide(flashcardSet)}>Delete</button>
-                  </div>
-                  <div className="cm-flashcard-progress">
-                    Card {cardIndex + 1} of {parsedCards.length}
-                  </div>
-                  <div
-                    className={`cm-flashcard${isFlipped ? ' flipped' : ''}`}
-                    onClick={() => setIsFlipped(f => !f)}
-                  >
-                    <div className="cm-flashcard-inner">
-                      <div className="cm-flashcard-front">
-                        <p>{parsedCards[cardIndex]?.front}</p>
-                      </div>
-                      <div className="cm-flashcard-back">
-                        <p>{parsedCards[cardIndex]?.back}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="cm-flashcard-controls">
-                    <button
-                      className="cm-action-btn"
-                      onClick={() => { setCardIndex(i => i - 1); setIsFlipped(false); }}
-                      disabled={cardIndex === 0}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      className="cm-action-btn"
-                      onClick={() => { setCardIndex(i => i + 1); setIsFlipped(false); }}
-                      disabled={cardIndex >= parsedCards.length - 1}
-                    >
-                      Next
-                    </button>
-                  </div>
-                  <p className="cm-hint">Click card to flip. Use arrow keys to navigate.</p>
-                </>
-              ) : (
-                <div className="cm-empty-tab">
-                  <p>No flashcards generated yet.</p>
-                  <button
-                    className="generate-btn"
-                    onClick={() => handleGenerate('flashcards')}
-                    disabled={generating !== null || !content.text_content}
-                  >
-                    {generating === 'flashcards' ? 'Generating...' : 'Generate Flashcards'}
-                  </button>
-                  {!content.text_content && (
-                    <p className="cm-hint">Upload document content first to generate flashcards.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <FlashcardsTab
+              flashcardSet={flashcardSet}
+              generating={generating}
+              focusPrompt={focusPrompt}
+              onFocusPromptChange={setFocusPrompt}
+              onGenerate={() => handleGenerate('flashcards')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+              isActiveTab={activeTab === 'flashcards'}
+              linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
+            />
           )}
         </div>
 
-        {generating && (
-          <div className="cm-generating-overlay">
-            <div className="cm-generating-spinner" />
-            <p>Generating... This may take a moment.</p>
-          </div>
-        )}
       </div>
       <CreateTaskModal
         open={showTaskModal}
@@ -553,15 +345,45 @@ export function CourseMaterialDetailPage() {
         courseContentId={content.id}
         linkedEntityLabel={`${content.title}${content.course_name ? ` (${content.course_name})` : ''}`}
       />
+      {showEditModal && content && (
+        <EditMaterialModal
+          material={content}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updated) => { setContent(updated); setShowEditModal(false); showToast('Material updated'); }}
+        />
+      )}
       {confirmModal}
       {toast && <div className="toast-notification">{toast}</div>}
+      {uploadStatus === 'uploading' && (
+        <div className="cm-upload-status">
+          <span className="cm-upload-spinner" />
+          Uploading &amp; extracting text...
+        </div>
+      )}
+      {uploadStatus === 'error' && (
+        <div className="cm-upload-status error">
+          Upload failed
+        </div>
+      )}
+      {showReplaceModal && (
+        <ReplaceDocumentModal
+          content={content}
+          guides={guides}
+          onClose={() => setShowReplaceModal(false)}
+          onContentUpdated={handleContentUpdated}
+          showToast={showToast}
+          onShowRegenPrompt={() => setShowRegenPrompt(true)}
+          onReloadData={loadData}
+          onUploadStatusChange={setUploadStatus}
+        />
+      )}
       {showRegenPrompt && (
         <div className="cm-regen-prompt">
           <p>Source content was modified. Regenerate study materials?</p>
           <div className="cm-regen-buttons">
-            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>Study Guide</button>
-            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>Quiz</button>
-            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>Flashcards</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>{'\u2728'} Study Guide</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>{'\u2728'} Quiz</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>{'\u2728'} Flashcards</button>
             <button className="cm-action-btn" onClick={() => setShowRegenPrompt(false)}>Dismiss</button>
           </div>
         </div>

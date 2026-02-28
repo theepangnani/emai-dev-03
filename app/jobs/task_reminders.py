@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.database import SessionLocal
 from app.models.task import Task
 from app.models.user import User
@@ -114,7 +115,7 @@ async def check_task_reminders():
                             task_title=task.title,
                             days_remaining=str(days),
                             due_date=due_date_str,
-                            task_url=f"/tasks/{task.id}",
+                            task_url=f"{settings.frontend_url}/tasks/{task.id}",
                         )
                         html = add_inspiration_to_email(html, db, user.role)
                         sent = await send_email(

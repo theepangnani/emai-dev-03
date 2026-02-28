@@ -1,20 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api/client';
 import type {
   ConversationSummary,
   ConversationDetail,
   RecipientOption,
+  MessageSearchResult,
 } from '../api/client';
-import { NotificationBell } from '../components/NotificationBell';
+import { DashboardLayout } from '../components/DashboardLayout';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { logger } from '../utils/logger';
+import EmptyState from '../components/EmptyState';
 import './MessagesPage.css';
 
 export function MessagesPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -32,11 +34,19 @@ export function MessagesPage() {
   const [messageOffset, setMessageOffset] = useState(0);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MessageSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // New conversation form state
   const [selectedRecipient, setSelectedRecipient] = useState<number | null>(null);
   const [newSubject, setNewSubject] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
   const [creatingConversation, setCreatingConversation] = useState(false);
+  const newConvModalRef = useFocusTrap<HTMLDivElement>(showNewModal, () => setShowNewModal(false));
 
   useEffect(() => {
     loadConversations(true);
@@ -199,6 +209,80 @@ export function MessagesPage() {
     setInitialMessage('');
   };
 
+  const performSearch = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSearchResults([]);
+      setSearchActive(false);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    setSearchActive(true);
+    try {
+      const results = await messagesApi.search(query);
+      setSearchResults(results);
+    } catch (err) {
+      logger.error('Failed to search messages', { error: err });
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (value.length < 2) {
+      setSearchResults([]);
+      setSearchActive(false);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    searchDebounceRef.current = setTimeout(() => {
+      performSearch(value);
+    }, 300);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchActive(false);
+    setIsSearching(false);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+  };
+
+  const handleSearchResultClick = (result: MessageSearchResult) => {
+    clearSearch();
+    selectConversation(result.conversation_id);
+  };
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query || query.length < 2) return <>{text}</>;
+    const parts: React.ReactNode[] = [];
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let lastIndex = 0;
+    let idx = lowerText.indexOf(lowerQuery, lastIndex);
+    let keyCounter = 0;
+    while (idx !== -1) {
+      if (idx > lastIndex) {
+        parts.push(<span key={keyCounter++}>{text.slice(lastIndex, idx)}</span>);
+      }
+      parts.push(<mark key={keyCounter++}>{text.slice(idx, idx + query.length)}</mark>);
+      lastIndex = idx + query.length;
+      idx = lowerText.indexOf(lowerQuery, lastIndex);
+    }
+    if (lastIndex < text.length) {
+      parts.push(<span key={keyCounter++}>{text.slice(lastIndex)}</span>);
+    }
+    return <>{parts}</>;
+  };
+
   const getOtherParticipantName = (conv: ConversationDetail) => {
     if (conv.participant_1_id === user?.id) {
       return conv.participant_2_name;
@@ -223,7 +307,7 @@ export function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="messages-page">
+      <DashboardLayout welcomeSubtitle="Your conversations" showBackButton>
         <div className="loading-container">
           <div className="loading-grid">
             <div className="loading-card">
@@ -238,31 +322,12 @@ export function MessagesPage() {
             </div>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="messages-page">
-      <header className="messages-header">
-        <div className="header-left">
-          <button className="back-button" onClick={() => navigate('/dashboard')}>
-            &larr; Dashboard
-          </button>
-          <h1 className="page-title">Messages</h1>
-        </div>
-        <div className="header-right">
-          <span className="user-name">{user?.full_name}</span>
-          <NotificationBell />
-          <button className="new-message-btn" onClick={() => setShowNewModal(true)}>
-            + New Message
-          </button>
-          <button className="logout-button" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <DashboardLayout welcomeSubtitle="Your conversations" showBackButton>
       {error && (
         <div className="error-banner">
           {error}
@@ -275,12 +340,65 @@ export function MessagesPage() {
         <aside className="conversation-list">
           <div className="list-header">
             <h2>Conversations</h2>
+            <button className="new-message-btn" onClick={() => setShowNewModal(true)}>
+              + New Message
+            </button>
           </div>
-          {conversations.length === 0 ? (
-            <div className="empty-state">
-              <p>No conversations yet</p>
-              <small>Start a new message to begin</small>
+          <div className="search-bar">
+            <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="search-clear" onClick={clearSearch} aria-label="Clear search">
+                &times;
+              </button>
+            )}
+          </div>
+          {searchActive ? (
+            <div className="search-results">
+              {isSearching ? (
+                <div className="search-loading">Searching...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="search-empty">No messages matching &lsquo;{searchQuery}&rsquo;</div>
+              ) : (
+                searchResults.map((result) => (
+                  <div
+                    key={`${result.conversation_id}-${result.message_id}`}
+                    className="search-result-item"
+                    onClick={() => handleSearchResultClick(result)}
+                  >
+                    {result.conversation_subject && (
+                      <div className="search-result-subject">
+                        {highlightMatch(result.conversation_subject, searchQuery)}
+                      </div>
+                    )}
+                    <div className="search-result-content">
+                      {highlightMatch(result.message_content.length > 120 ? result.message_content.slice(0, 120) + '...' : result.message_content, searchQuery)}
+                    </div>
+                    <div className="search-result-meta">
+                      <span className="search-result-sender">{result.sender_name}</span>
+                      <span className="search-result-time">{formatTime(result.sent_at)}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
+          ) : conversations.length === 0 ? (
+            <EmptyState
+              icon={<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
+              title="No messages yet"
+              description="Start a conversation with your child's teacher."
+              action={{ label: 'New Message', onClick: () => setShowNewModal(true) }}
+              variant="compact"
+            />
           ) : (
             <div className="conversations">
               {conversations.map((conv) => (
@@ -313,7 +431,7 @@ export function MessagesPage() {
               ))}
             </div>
           )}
-          {hasMoreConversations && (
+          {!searchActive && hasMoreConversations && (
             <div className="conversation-footer">
               <button onClick={() => loadConversations()} className="load-more-btn">
                 Load more
@@ -409,7 +527,7 @@ export function MessagesPage() {
       {/* New Conversation Modal */}
       {showNewModal && (
         <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="New Message" ref={newConvModalRef} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>New Message</h2>
               <button className="modal-close" onClick={() => setShowNewModal(false)}>
@@ -477,6 +595,6 @@ export function MessagesPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

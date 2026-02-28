@@ -39,7 +39,7 @@ export function LandingPage() {
           <div className="landing-feature">
             <div className="landing-feature-icon">&#128218;</div>
             <h3>Assignments & Grades</h3>
-            <p>See all your child's assignments, due dates, and grades across every course. Never miss a deadline.</p>
+            <p>See all your child's assignments, due dates, and grades across every class. Never miss a deadline.</p>
           </div>
           <div className="landing-feature">
             <div className="landing-feature-icon">&#128172;</div>
@@ -95,7 +95,7 @@ export function LandingPage() {
             <ul>
               <li>Google Classroom integration</li>
               <li>Parent communication hub</li>
-              <li>Course and assignment management</li>
+              <li>Class and assignment management</li>
               <li>Student progress visibility</li>
             </ul>
           </div>

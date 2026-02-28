@@ -1,863 +1,215 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { parentApi, googleApi, invitesApi, studyApi, tasksApi } from '../api/client';
-import { queueStudyGeneration } from './StudyGuidesPage';
-import { isValidEmail } from '../utils/validation';
-import type { ChildSummary, ChildOverview, ParentDashboardData, DiscoveredChild, SupportedFormats, DuplicateCheckResponse, TaskItem, InviteResponse } from '../api/client';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { PageSkeleton } from '../components/Skeleton';
-import { CalendarView } from '../components/calendar/CalendarView';
-import type { CalendarAssignment } from '../components/calendar/types';
-import { getCourseColor, dateKey, TASK_PRIORITY_COLORS } from '../components/calendar/types';
-import { useConfirm } from '../components/ConfirmModal';
+import { dateKey } from '../components/calendar/types';
+import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
+import { AlertBanner } from '../components/parent/AlertBanner';
+import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
+import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
+import { CreateTaskModal } from '../components/CreateTaskModal';
+import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
+import { CollapsibleSection } from '../components/parent/CollapsibleSection';
+import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { useAuth } from '../context/AuthContext';
+import { RoleQuickActions } from '../components/RoleQuickActions';
+import type { QuickAction } from '../components/RoleQuickActions';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
+import { SetupChecklist } from '../components/SetupChecklist';
+import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import './ParentDashboard.css';
 
-const MAX_FILE_SIZE_MB = 100;
+/** Section-specific skeleton that matches the Parent Dashboard layout. */
+function DashboardSkeleton() {
+  return (
+    <div className="pd-skeleton" aria-busy="true" aria-label="Loading dashboard">
+      {/* Today's Focus skeleton */}
+      <div className="pd-skeleton-focus">
+        <div className="skeleton pd-skeleton-headline" />
+        <div className="pd-skeleton-tags">
+          <div className="skeleton pd-skeleton-tag" />
+          <div className="skeleton pd-skeleton-tag" />
+          <div className="skeleton pd-skeleton-tag" style={{ width: 100 }} />
+        </div>
+      </div>
 
-type LinkTab = 'create' | 'email' | 'google';
-type DiscoveryState = 'idle' | 'discovering' | 'results' | 'no_results';
+      {/* Child selector skeleton */}
+      <div className="pd-skeleton-child-selector">
+        <div className="skeleton pd-skeleton-pill" />
+        <div className="skeleton pd-skeleton-pill" />
+        <div className="skeleton pd-skeleton-pill" style={{ width: 100 }} />
+      </div>
 
-const CHILD_COLORS = [
-  '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b',
-  '#3b82f6', '#ef4444', '#10b981', '#6366f1',
-];
+      {/* Timeline skeleton */}
+      <div className="pd-skeleton-timeline">
+        { [70, 55, 80, 60].map((w, i) => (
+          <div className="pd-skeleton-timeline-item" key={i}>
+            <div className="skeleton pd-skeleton-timeline-dot" />
+            <div className="pd-skeleton-timeline-content">
+              <div className="skeleton pd-skeleton-timeline-row" style={{ width: `${w}%` }} />
+              <div className="skeleton pd-skeleton-timeline-row-sm" style={{ width: `${w - 20}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return (parts[0]?.[0] || '?').toUpperCase();
+      {/* Detail panel skeleton */}
+      <div className="pd-skeleton-detail">
+        <div className="skeleton pd-skeleton-detail-header" />
+        <div className="skeleton pd-skeleton-detail-row" />
+        <div className="skeleton pd-skeleton-detail-row" style={{ width: '50%' }} />
+      </div>
+    </div>
+  );
+}
+
+// localStorage key for section collapse states
+const SECTION_STATES_KEY = 'pd-section-states';
+const VIEW_MODE_KEY = 'pd-view-mode';
+
+interface SectionStates {
+  grades: boolean;
+  comingUp: boolean;
+  studentDetail: boolean;
+  activityFeed?: boolean; // deprecated — kept for localStorage compat
+}
+
+function loadSectionStates(): SectionStates {
+  try {
+    const saved = localStorage.getItem(SECTION_STATES_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  // First-time defaults: Grades and Coming Up expanded, others collapsed
+  return { grades: true, comingUp: true, studentDetail: false, activityFeed: false };
+}
+
+function saveSectionStates(states: SectionStates) {
+  try { localStorage.setItem(SECTION_STATES_KEY, JSON.stringify(states)); } catch { /* ignore */ }
+}
+
+function loadViewMode(): 'simplified' | 'full' {
+  try {
+    const saved = localStorage.getItem(VIEW_MODE_KEY);
+    if (saved === 'simplified' || saved === 'full') return saved;
+  } catch { /* ignore */ }
+  return 'full';
 }
 
 export function ParentDashboard() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { confirm, confirmModal } = useConfirm();
-  const [children, setChildren] = useState<ChildSummary[]>([]);
-  const [selectedChild, setSelectedChild] = useState<number | null>(null);
-  const [childOverview, setChildOverview] = useState<ChildOverview | null>(null);
-  const [allOverviews, setAllOverviews] = useState<ChildOverview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [overviewLoading, setOverviewLoading] = useState(false);
-  const [dashboardError, setDashboardError] = useState(false);
+  const { user } = useAuth();
+  const pd = useParentDashboard();
+  const [tipDismissed, setTipDismissed] = useState(false);
+  const childTabsRef = useRef<HTMLDivElement>(null);
+  const childScrollRef = useRef<HTMLDivElement>(null);
 
-  // Dashboard summary data (from single API call)
-  const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
+  // Collapsible section states (#832)
+  const [sectionStates, setSectionStates] = useState<SectionStates>(loadSectionStates);
+  const [viewMode, setViewMode] = useState<'simplified' | 'full'>(loadViewMode);
 
-  // Collapsible calendar (default expanded; user can collapse and preference is saved)
-  const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
-    try {
-      const saved = localStorage.getItem('calendar_collapsed');
-      return saved === '1';
-    } catch { return false; }
-  });
-  const toggleCalendar = () => {
-    setCalendarCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem('calendar_collapsed', next ? '1' : '0'); } catch { /* ignore */ }
-      return next;
-    });
-  };
+  // Scroll indicator state for child selector (#830)
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Link child modal state
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [linkTab, setLinkTab] = useState<LinkTab>('create');
-  const [linkEmail, setLinkEmail] = useState('');
-  const [linkName, setLinkName] = useState('');
-  const [linkRelationship, setLinkRelationship] = useState('guardian');
-  const [linkError, setLinkError] = useState('');
-  const [linkLoading, setLinkLoading] = useState(false);
-  const [linkInviteLink, setLinkInviteLink] = useState('');
-
-  // Invite student modal state
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRelationship, setInviteRelationship] = useState('guardian');
-  const [inviteError, setInviteError] = useState('');
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState('');
-
-  // Google discovery state
-  const [discoveryState, setDiscoveryState] = useState<DiscoveryState>('idle');
-  const [discoveredChildren, setDiscoveredChildren] = useState<DiscoveredChild[]>([]);
-  const [selectedDiscovered, setSelectedDiscovered] = useState<Set<number>>(new Set());
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [coursesSearched, setCoursesSearched] = useState(0);
-  const [bulkLinking, setBulkLinking] = useState(false);
-
-  // Study tools modal state
-  const [showStudyModal, setShowStudyModal] = useState(false);
-  const [studyTitle, setStudyTitle] = useState('');
-  const [studyContent, setStudyContent] = useState('');
-  const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
-  const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [studyError, setStudyError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
-  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // One-click study generation state
-  const [generatingStudyId, setGeneratingStudyId] = useState<number | null>(null);
-
-  // Edit child modal state
-  const [showEditChildModal, setShowEditChildModal] = useState(false);
-  const [editChild, setEditChild] = useState<ChildSummary | null>(null);
-  const [editChildName, setEditChildName] = useState('');
-  const [editChildEmail, setEditChildEmail] = useState('');
-  const [editChildGrade, setEditChildGrade] = useState('');
-  const [editChildSchool, setEditChildSchool] = useState('');
-  const [editChildDob, setEditChildDob] = useState('');
-  const [editChildPhone, setEditChildPhone] = useState('');
-  const [editChildAddress, setEditChildAddress] = useState('');
-  const [editChildCity, setEditChildCity] = useState('');
-  const [editChildProvince, setEditChildProvince] = useState('');
-  const [editChildPostal, setEditChildPostal] = useState('');
-  const [editChildNotes, setEditChildNotes] = useState('');
-  const [editChildLoading, setEditChildLoading] = useState(false);
-  const [editChildError, setEditChildError] = useState('');
-  const [editChildOptionalOpen, setEditChildOptionalOpen] = useState(false);
-
-  // Day detail modal state
-  const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
-  const [dayTasks, setDayTasks] = useState<TaskItem[]>([]);
-  const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskCreating, setNewTaskCreating] = useState(false);
-  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
-
-  // Create child (name-only) state
-  const [createChildName, setCreateChildName] = useState('');
-  const [createChildEmail, setCreateChildEmail] = useState('');
-  const [createChildRelationship, setCreateChildRelationship] = useState('guardian');
-  const [createChildLoading, setCreateChildLoading] = useState(false);
-  const [createChildError, setCreateChildError] = useState('');
-  const [createChildInviteLink, setCreateChildInviteLink] = useState('');
-
-  // Pending invites state
-  const [pendingInvites, setPendingInvites] = useState<InviteResponse[]>([]);
-  const [resendingId, setResendingId] = useState<number | null>(null);
-
-  // ============================================
-  // Data Loading
-  // ============================================
-
-  // Load dashboard data in a single API call
-  const loadDashboard = async () => {
-    let childEmails: Set<string> = new Set();
-    try {
-      const data = await parentApi.getDashboard();
-      setDashboardData(data);
-      setChildren(data.children);
-      setGoogleConnected(data.google_connected);
-      // Build task items from dashboard data
-      setAllTasks(data.all_tasks as unknown as TaskItem[]);
-      if (data.children.length === 1) {
-        setSelectedChild(data.children[0].student_id);
-      } else {
-        setSelectedChild(null);
-      }
-      childEmails = new Set(data.children.map(c => c.email?.toLowerCase()).filter(Boolean) as string[]);
-    } catch {
-      setDashboardError(true);
-    } finally {
-      setLoading(false);
-      setOverviewLoading(false);
-    }
-    // Load pending invites in background — exclude invites for already-linked children
-    try {
-      const invites = await invitesApi.listSent();
-      setPendingInvites(invites.filter(i => !i.accepted_at && new Date(i.expires_at) > new Date() && !childEmails.has(i.email.toLowerCase())));
-    } catch { /* ignore */ }
-  };
-
-  useEffect(() => {
-    const connected = searchParams.get('google_connected');
-    const pendingAction = localStorage.getItem('pendingAction');
-
-    if (connected === 'true' && pendingAction === 'discover_children') {
-      localStorage.removeItem('pendingAction');
-      setSearchParams({});
-      setShowLinkModal(true);
-      setLinkTab('google');
-      setGoogleConnected(true);
-      setTimeout(() => triggerDiscovery(), 100);
-    } else if (connected === 'true') {
-      setSearchParams({});
-      setGoogleConnected(true);
-    }
-
-    loadDashboard();
+  const updateScrollIndicators = useCallback(() => {
+    const el = childScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
   }, []);
 
-  // When child selection changes, load individual overview for filtering
   useEffect(() => {
-    if (selectedChild) {
-      loadChildOverview(selectedChild);
-    } else if (children.length > 0 && dashboardData) {
-      // Build all overviews from dashboard data
-      const overviews = dashboardData.child_highlights.map(h => ({
-        student_id: h.student_id,
-        user_id: h.user_id,
-        full_name: h.full_name,
-        grade_level: h.grade_level,
-        google_connected: false,
-        courses: h.courses,
-        assignments: dashboardData.all_assignments.filter(a =>
-          h.courses.some(c => c.id === a.course_id)
-        ),
-        study_guides_count: 0,
-      }));
-      setAllOverviews(overviews);
-    }
-  }, [selectedChild, children, dashboardData]);
+    const el = childScrollRef.current;
+    if (!el) return;
+    updateScrollIndicators();
+    el.addEventListener('scroll', updateScrollIndicators, { passive: true });
+    const ro = new ResizeObserver(updateScrollIndicators);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateScrollIndicators);
+      ro.disconnect();
+    };
+  }, [updateScrollIndicators, pd.children.length]);
 
-  const loadChildOverview = async (studentId: number) => {
-    setOverviewLoading(true);
-    try {
-      const data = await parentApi.getChildOverview(studentId);
-      setChildOverview(data);
-    } catch {
-      setChildOverview(null);
-    } finally {
-      setOverviewLoading(false);
-    }
-  };
-
-  // ============================================
-  // Child Management Handlers
-  // ============================================
-
-  const handleCreateChild = async () => {
-    if (!createChildName.trim()) return;
-    setCreateChildError('');
-    setCreateChildInviteLink('');
-    if (createChildEmail.trim() && !isValidEmail(createChildEmail.trim())) {
-      setCreateChildError('Please enter a valid email address');
-      return;
-    }
-    setCreateChildLoading(true);
-    try {
-      const result = await parentApi.createChild(
-        createChildName.trim(),
-        createChildRelationship,
-        createChildEmail.trim() || undefined,
-      );
-      if (result.invite_link) {
-        setCreateChildInviteLink(result.invite_link);
-      } else {
-        closeLinkModal();
-      }
-      await loadDashboard();
-    } catch (err: any) {
-      setCreateChildError(err.response?.data?.detail || 'Failed to create child');
-    } finally {
-      setCreateChildLoading(false);
-    }
-  };
-
-  const handleLinkChild = async () => {
-    if (!linkEmail.trim()) return;
-    setLinkError('');
-    setLinkInviteLink('');
-    if (!isValidEmail(linkEmail.trim())) {
-      setLinkError('Please enter a valid email address');
-      return;
-    }
-    setLinkLoading(true);
-    try {
-      const result = await parentApi.linkChild(linkEmail.trim(), linkRelationship, linkName.trim() || undefined);
-      if (result.invite_link) {
-        setLinkInviteLink(result.invite_link);
-      } else {
-        closeLinkModal();
-      }
-      await loadDashboard();
-    } catch (err: any) {
-      setLinkError(err.response?.data?.detail || 'Failed to link child');
-    } finally {
-      setLinkLoading(false);
-    }
-  };
-
-  const handleInviteStudent = async () => {
-    if (!inviteEmail.trim()) return;
-    if (!isValidEmail(inviteEmail.trim())) {
-      setInviteError('Please enter a valid email address');
-      return;
-    }
-    setInviteError('');
-    setInviteSuccess('');
-    setInviteLoading(true);
-    try {
-      const result = await invitesApi.create({
-        email: inviteEmail.trim(),
-        invite_type: 'student',
-        metadata: { relationship_type: inviteRelationship },
-      });
-      const inviteLink = `${window.location.origin}/accept-invite?token=${result.token}`;
-      setInviteSuccess(`Invite created! Share this link with your child:\n${inviteLink}`);
-      setInviteEmail('');
-    } catch (err: any) {
-      setInviteError(err.response?.data?.detail || 'Failed to send invite');
-    } finally {
-      setInviteLoading(false);
-    }
-  };
-
-  const closeInviteModal = () => {
-    setShowInviteModal(false);
-    setInviteEmail('');
-    setInviteRelationship('guardian');
-    setInviteError('');
-    setInviteSuccess('');
-  };
-
-  const handleResendInvite = async (inviteId: number) => {
-    setResendingId(inviteId);
-    try {
-      const updated = await invitesApi.resend(inviteId);
-      setPendingInvites(prev => prev.map(i => i.id === inviteId ? updated : i));
-    } catch { /* ignore */ }
-    setResendingId(null);
-  };
-
-  const handleConnectGoogle = async () => {
-    try {
-      localStorage.setItem('pendingAction', 'discover_children');
-      const { authorization_url } = await googleApi.getConnectUrl();
-      window.location.href = authorization_url;
-    } catch {
-      setLinkError('Failed to initiate Google connection');
-      localStorage.removeItem('pendingAction');
-    }
-  };
-
-  const triggerDiscovery = async () => {
-    setDiscoveryState('discovering');
-    setDiscoveredChildren([]);
-    setSelectedDiscovered(new Set());
-    setLinkError('');
-    try {
-      const data = await parentApi.discoverViaGoogle();
-      setGoogleConnected(data.google_connected);
-      setCoursesSearched(data.courses_searched);
-      if (data.discovered.length > 0) {
-        setDiscoveredChildren(data.discovered);
-        const preSelected = new Set(
-          data.discovered.filter(c => !c.already_linked).map(c => c.user_id)
-        );
-        setSelectedDiscovered(preSelected);
-        setDiscoveryState('results');
-      } else {
-        setDiscoveryState('no_results');
-      }
-    } catch (err: any) {
-      setLinkError(err.response?.data?.detail || 'Failed to search Google Classroom');
-      setDiscoveryState('idle');
-    }
-  };
-
-  const handleBulkLink = async () => {
-    if (selectedDiscovered.size === 0) return;
-    setBulkLinking(true);
-    setLinkError('');
-    try {
-      await parentApi.linkChildrenBulk(Array.from(selectedDiscovered));
-      closeLinkModal();
-      await loadDashboard();
-    } catch (err: any) {
-      setLinkError(err.response?.data?.detail || 'Failed to link selected children');
-    } finally {
-      setBulkLinking(false);
-    }
-  };
-
-  const toggleDiscovered = (userId: number) => {
-    setSelectedDiscovered(prev => {
-      const next = new Set(prev);
-      if (next.has(userId)) next.delete(userId);
-      else next.add(userId);
+  const updateSection = useCallback((key: keyof SectionStates, value: boolean) => {
+    setSectionStates(prev => {
+      const next = { ...prev, [key]: value };
+      saveSectionStates(next);
       return next;
     });
-  };
+  }, []);
 
-  const closeLinkModal = () => {
-    setShowLinkModal(false);
-    setLinkTab('create');
-    setLinkEmail('');
-    setLinkName('');
-    setLinkRelationship('guardian');
-    setLinkError('');
-    setLinkInviteLink('');
-    setDiscoveryState('idle');
-    setDiscoveredChildren([]);
-    setSelectedDiscovered(new Set());
-    setCreateChildName('');
-    setCreateChildEmail('');
-    setCreateChildRelationship('guardian');
-    setCreateChildError('');
-    setCreateChildInviteLink('');
-  };
-
-  // ============================================
-  // Edit Child Handlers
-  // ============================================
-
-  const openEditChild = (child: ChildSummary) => {
-    setEditChild(child);
-    setEditChildName(child.full_name);
-    setEditChildEmail(child.email || '');
-    setEditChildGrade(child.grade_level != null ? String(child.grade_level) : '');
-    setEditChildSchool(child.school_name || '');
-    setEditChildDob(child.date_of_birth || '');
-    setEditChildPhone(child.phone || '');
-    setEditChildAddress(child.address || '');
-    setEditChildCity(child.city || '');
-    setEditChildProvince(child.province || '');
-    setEditChildPostal(child.postal_code || '');
-    setEditChildNotes(child.notes || '');
-    setEditChildError('');
-    // Auto-expand optional section if any optional field has data
-    const hasOptionalData = !!(child.date_of_birth || child.phone || child.address || child.city || child.province || child.postal_code || child.notes);
-    setEditChildOptionalOpen(hasOptionalData);
-    setShowEditChildModal(true);
-  };
-
-  const closeEditChildModal = () => {
-    setShowEditChildModal(false);
-    setEditChild(null);
-    setEditChildName('');
-    setEditChildEmail('');
-    setEditChildGrade('');
-    setEditChildSchool('');
-    setEditChildDob('');
-    setEditChildPhone('');
-    setEditChildAddress('');
-    setEditChildCity('');
-    setEditChildProvince('');
-    setEditChildPostal('');
-    setEditChildNotes('');
-    setEditChildError('');
-    setEditChildOptionalOpen(false);
-  };
-
-  const handleEditChild = async () => {
-    if (!editChild || !editChildName.trim()) return;
-    if (editChildEmail.trim() && !isValidEmail(editChildEmail.trim())) {
-      setEditChildError('Please enter a valid email address');
-      return;
-    }
-    setEditChildLoading(true);
-    setEditChildError('');
-    try {
-      // Only send fields that actually changed to prevent accidental overwrites
-      const payload: Record<string, unknown> = {};
-      if (editChildName.trim() !== editChild.full_name) payload.full_name = editChildName.trim();
-      if (editChildEmail.trim() !== (editChild.email || '')) payload.email = editChildEmail.trim();
-      const newGrade = editChildGrade ? parseInt(editChildGrade, 10) : null;
-      if (newGrade !== editChild.grade_level) payload.grade_level = newGrade ?? undefined;
-      if (editChildSchool.trim() !== (editChild.school_name || '')) payload.school_name = editChildSchool.trim() || undefined;
-      if (editChildDob !== (editChild.date_of_birth || '')) payload.date_of_birth = editChildDob || undefined;
-      if (editChildPhone.trim() !== (editChild.phone || '')) payload.phone = editChildPhone.trim() || undefined;
-      if (editChildAddress.trim() !== (editChild.address || '')) payload.address = editChildAddress.trim() || undefined;
-      if (editChildCity.trim() !== (editChild.city || '')) payload.city = editChildCity.trim() || undefined;
-      if (editChildProvince.trim() !== (editChild.province || '')) payload.province = editChildProvince.trim() || undefined;
-      if (editChildPostal.trim() !== (editChild.postal_code || '')) payload.postal_code = editChildPostal.trim() || undefined;
-      if (editChildNotes.trim() !== (editChild.notes || '')) payload.notes = editChildNotes.trim() || undefined;
-
-      if (Object.keys(payload).length === 0) {
-        closeEditChildModal();
-        return;
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode(prev => {
+      const next = prev === 'full' ? 'simplified' : 'full';
+      try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
+      if (next === 'simplified') {
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false, grades: false };
+        setSectionStates(collapsed);
+        saveSectionStates(collapsed);
+      } else {
+        const expanded: SectionStates = { comingUp: true, studentDetail: true, grades: true };
+        setSectionStates(expanded);
+        saveSectionStates(expanded);
       }
-      await parentApi.updateChild(editChild.student_id, payload as any);
-      closeEditChildModal();
-      await loadDashboard();
-    } catch (err: any) {
-      setEditChildError(err.response?.data?.detail || 'Failed to update child');
-    } finally {
-      setEditChildLoading(false);
-    }
-  };
-
-  const handleChildTabClick = (studentId: number) => {
-    if (selectedChild === studentId) {
-      setSelectedChild(null);
-      setChildOverview(null);
-    } else {
-      setSelectedChild(studentId);
-    }
-  };
-
-  // ============================================
-  // Study Tools Handlers
-  // ============================================
-
-  useEffect(() => {
-    if (showStudyModal && !supportedFormats) {
-      studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
-    }
-  }, [showStudyModal, supportedFormats]);
-
-  const handleFileSelect = (file: File) => {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setStudyError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
-      return;
-    }
-    setSelectedFile(file);
-    setStudyMode('file');
-    if (!studyTitle) {
-      setStudyTitle(file.name.replace(/\.[^/.]+$/, ''));
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  };
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const clearFileSelection = () => {
-    setSelectedFile(null);
-    setStudyMode('text');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const resetStudyModal = () => {
-    setShowStudyModal(false);
-    setStudyTitle('');
-    setStudyContent('');
-    setStudyType('study_guide');
-    setStudyMode('text');
-    setSelectedFile(null);
-    setStudyError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleGenerateStudy = async () => {
-    if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
-    if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
-
-    if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
-
-    setIsGenerating(true);
-    try {
-      if (studyMode === 'text' && !duplicateCheck) {
-        try {
-          const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
-          if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
-        } catch { /* Continue */ }
-      }
-      // Queue generation and navigate to study guides page (non-blocking)
-      queueStudyGeneration({
-        title: studyTitle || `New ${studyType.replace('_', ' ')}`,
-        content: studyContent,
-        type: studyType,
-        mode: studyMode,
-        file: selectedFile ?? undefined,
-        regenerateId: duplicateCheck?.existing_guide?.id,
-      });
-      setDuplicateCheck(null);
-      resetStudyModal();
-      navigate('/course-materials', { state: { selectedChild } });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // ============================================
-  // Tasks & Day Detail Modal
-  // ============================================
-
-  const selectedChildUserId = useMemo(() => {
-    if (!selectedChild) return null;
-    return children.find(c => c.student_id === selectedChild)?.user_id ?? null;
-  }, [selectedChild, children]);
-
-  // Tasks are loaded from the dashboard API call.
-  // When a specific child is selected, filter tasks client-side.
-  const filteredTasks = useMemo(() => {
-    if (!selectedChildUserId) return allTasks;
-    return allTasks.filter(t =>
-      t.assigned_to_user_id === selectedChildUserId ||
-      t.created_by_user_id === selectedChildUserId
-    );
-  }, [allTasks, selectedChildUserId]);
-
-  // Compute overdue/due-today counts from filtered tasks (respects child filter)
-  // Uses local time to match TasksPage filter logic
-  const { taskOverdueCount, taskDueTodayCount } = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-    let overdue = 0;
-    let dueToday = 0;
-    for (const t of filteredTasks) {
-      if (t.is_completed || t.archived_at || !t.due_date) continue;
-      const due = new Date(t.due_date);
-      if (due < todayStart) overdue++;
-      else if (due >= todayStart && due < todayEnd) dueToday++;
-    }
-    return { taskOverdueCount: overdue, taskDueTodayCount: dueToday };
-  }, [filteredTasks]);
-
-  // Compute total tasks count from filtered tasks (respects child filter)
-  const totalTasksCount = useMemo(() => {
-    return filteredTasks.filter(t => !t.archived_at).length;
-  }, [filteredTasks]);
-
-  // Per-child task stats for enhanced cards
-  const childTaskStats = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return children.map(child => {
-      const childTasks = allTasks.filter(t => t.assigned_to_user_id === child.user_id && !t.archived_at);
-      const totalTasks = childTasks.length;
-      const completedTasks = childTasks.filter(t => t.is_completed).length;
-      const completionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      const pendingWithDue = childTasks
-        .filter(t => !t.is_completed && t.due_date)
-        .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
-      let nextDeadline: { title: string; label: string } | null = null;
-      if (pendingWithDue.length > 0) {
-        const next = pendingWithDue[0];
-        const dueDate = new Date(next.due_date!);
-        const diffDays = Math.floor((dueDate.getTime() - todayStart.getTime()) / (86400000));
-        let label: string;
-        if (diffDays < 0) label = `overdue by ${Math.abs(diffDays)}d`;
-        else if (diffDays === 0) label = 'due today';
-        else if (diffDays === 1) label = 'due tomorrow';
-        else label = `due in ${diffDays} days`;
-        nextDeadline = { title: next.title, label };
-      }
-      return { studentId: child.student_id, totalTasks, completedTasks, completionPct, nextDeadline };
+      return next;
     });
-  }, [children, allTasks]);
+  }, []);
 
-  const openDayModal = (date: Date) => {
-    setDayModalDate(date);
-    setNewTaskTitle('');
-    // Filter tasks for this day
-    const dk = dateKey(date);
-    const filtered = allTasks.filter(t => {
-      if (!t.due_date) return false;
-      return dateKey(new Date(t.due_date)) === dk;
-    });
-    setDayTasks(filtered);
-  };
-
-  const closeDayModal = () => {
-    setDayModalDate(null);
-    setDayTasks([]);
-    setNewTaskTitle('');
-  };
-
-  const handleCreateDayTask = async () => {
-    if (!newTaskTitle.trim() || !dayModalDate) return;
-    setNewTaskCreating(true);
-    try {
-      // Find the child's user_id for assignment (if a child is selected)
-      const childUserId = selectedChild
-        ? children.find(c => c.student_id === selectedChild)?.user_id
-        : undefined;
-      const task = await tasksApi.create({
-        title: newTaskTitle.trim(),
-        due_date: dayModalDate.toISOString(),
-        assigned_to_user_id: childUserId,
-      });
-      setDayTasks(prev => [...prev, task]);
-      setAllTasks(prev => [...prev, task]);
-      setNewTaskTitle('');
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to create task');
-    } finally {
-      setNewTaskCreating(false);
+  // Arrow key navigation for child selector tabs (ARIA tab pattern)
+  // Index 0 = "All" tab, index 1..N = individual children
+  const handleChildTabKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
+    const tabs = childTabsRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    if (!tabs || tabs.length === 0) return;
+    let nextIndex = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (index + 1) % tabs.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (index - 1 + tabs.length) % tabs.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = tabs.length - 1;
     }
-  };
-
-  const handleToggleTask = async (task: TaskItem) => {
-    try {
-      const updated = await tasksApi.update(task.id, { is_completed: !task.is_completed });
-      setDayTasks(prev => prev.map(t => t.id === task.id ? updated : t));
-      setAllTasks(prev => prev.map(t => t.id === task.id ? updated : t));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to update task');
-    }
-  };
-
-  const handleDeleteTask = async (taskId: number) => {
-    const ok = await confirm({ title: 'Archive Task', message: 'Archive this task? You can restore it later.', confirmLabel: 'Archive' });
-    if (!ok) return;
-    try {
-      await tasksApi.delete(taskId);
-      setDayTasks(prev => prev.filter(t => t.id !== taskId));
-      setAllTasks(prev => prev.filter(t => t.id !== taskId));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete task');
-    }
-  };
-
-  const handleTaskDrop = async (calendarId: number, newDate: Date) => {
-    // Calendar uses id + 1_000_000 offset for tasks
-    const taskId = calendarId - 1_000_000;
-    const task = allTasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const prevTasks = allTasks;
-    const newDueDate = newDate.toISOString();
-
-    // Optimistic update
-    setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
-
-    try {
-      const updated = await tasksApi.update(taskId, { due_date: newDueDate });
-      setAllTasks(prev => prev.map(t => t.id === taskId ? updated : t));
-    } catch {
-      // Revert on failure
-      setAllTasks(prevTasks);
-      alert('Failed to reschedule task. You may not have permission to edit this task.');
-    }
-  };
-
-  // ============================================
-  // Calendar Data Derivation
-  // ============================================
-
-  // Use selected child overview or merge all overviews
-  const activeOverviews = useMemo(() => {
-    if (selectedChild && childOverview) return [childOverview];
-    if (!selectedChild && allOverviews.length > 0) return allOverviews;
-    return [];
-  }, [selectedChild, childOverview, allOverviews]);
-
-  const courseIds = useMemo(() => {
-    return activeOverviews.flatMap(o => o.courses.map(c => c.id));
-  }, [activeOverviews]);
-
-  const calendarAssignments: CalendarAssignment[] = useMemo(() => {
-    const assignments = activeOverviews.flatMap(overview =>
-      overview.assignments
-        .filter(a => a.due_date)
-        .map(a => ({
-          id: a.id,
-          title: a.title,
-          description: a.description,
-          courseId: a.course_id,
-          courseName: overview.courses.find(c => c.id === a.course_id)?.name || 'Unknown',
-          courseColor: getCourseColor(a.course_id, courseIds),
-          dueDate: new Date(a.due_date!),
-          childName: children.length > 1 ? overview.full_name : '',
-          maxPoints: a.max_points,
-          itemType: 'assignment' as const,
-        }))
-    );
-
-    // Merge tasks with due dates into calendar
-    const taskItems: CalendarAssignment[] = filteredTasks
-      .filter(t => t.due_date)
-      .map(t => ({
-        id: t.id + 1_000_000, // offset to avoid ID collisions with assignments
-        taskId: t.id,  // real task ID for navigation
-        title: t.title,
-        description: t.description,
-        courseId: 0,
-        courseName: '',
-        courseColor: TASK_PRIORITY_COLORS[t.priority || 'medium'],
-        dueDate: new Date(t.due_date!),
-        childName: t.assignee_name || '',
-        maxPoints: null,
-        itemType: 'task' as const,
-        priority: (t.priority || 'medium') as 'low' | 'medium' | 'high',
-        isCompleted: t.is_completed,
-      }));
-
-    return [...assignments, ...taskItems];
-  }, [activeOverviews, courseIds, children.length, filteredTasks]);
-
-  const undatedAssignments: CalendarAssignment[] = useMemo(() => {
-    return activeOverviews.flatMap(overview =>
-      overview.assignments
-        .filter(a => !a.due_date)
-        .map(a => ({
-          id: a.id,
-          title: a.title,
-          description: a.description,
-          courseId: a.course_id,
-          courseName: overview.courses.find(c => c.id === a.course_id)?.name || 'Unknown',
-          courseColor: getCourseColor(a.course_id, courseIds),
-          dueDate: new Date(),
-          childName: children.length > 1 ? overview.full_name : '',
-          maxPoints: a.max_points,
-        }))
-    );
-  }, [activeOverviews, courseIds, children.length]);
-
-  const handleOneClickStudy = async (assignment: CalendarAssignment) => {
-    if (generatingStudyId) return; // already generating
-    setGeneratingStudyId(assignment.id);
-    try {
-      // Check if study material already exists for this assignment
-      const dupResult = await studyApi.checkDuplicate({
-        title: assignment.title,
-        guide_type: 'study_guide',
-      });
-      if (dupResult.exists && dupResult.existing_guide) {
-        const guide = dupResult.existing_guide;
-        const path = guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}`
-          : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}`
-          : `/study/guide/${guide.id}`;
-        navigate(path);
-        return;
+    if (nextIndex >= 0) {
+      tabs[nextIndex].focus();
+      if (nextIndex === 0) {
+        // "All" tab
+        pd.handleAllChildrenClick();
+      } else {
+        pd.handleChildTabClick(pd.children[nextIndex - 1].student_id);
       }
-      // No existing material — generate with smart defaults (no modal)
-      if (!assignment.description?.trim()) {
-        // No content to generate from — fall back to modal
-        setStudyTitle(assignment.title);
-        setStudyContent('');
-        setShowStudyModal(true);
-        return;
-      }
-      queueStudyGeneration({
-        title: assignment.title,
-        content: assignment.description,
-        type: 'study_guide',
-        mode: 'text',
-      });
-      navigate('/course-materials', { state: { selectedChild } });
-    } catch {
-      // On error, fall back to the modal
-      setStudyTitle(assignment.title);
-      setStudyContent(assignment.description || '');
-      setShowStudyModal(true);
-    } finally {
-      setGeneratingStudyId(null);
     }
-  };
+  }, [pd]);
 
-  const handleGoToCourse = (courseId: number) => {
-    navigate(`/courses?highlight=${courseId}`);
-  };
+  // Focus traps for modals
+  const linkModalRef = useFocusTrap<HTMLDivElement>(!!pd.showLinkModal, pd.closeLinkModal);
+  const inviteModalRef = useFocusTrap<HTMLDivElement>(!!pd.showInviteModal, pd.closeInviteModal);
+  const editChildModalRef = useFocusTrap<HTMLDivElement>(!!pd.showEditChildModal, pd.closeEditChildModal);
+  const dayModalRef = useFocusTrap<HTMLDivElement>(!!pd.dayModalDate, pd.closeDayModal);
+  const taskDetailModalRef = useFocusTrap<HTMLDivElement>(!!pd.taskDetailModal, () => pd.setTaskDetailModal(null));
 
-  const handleViewStudyGuides = () => {
-    navigate('/course-materials', { state: { selectedChild } });
-  };
+  // Today's Focus header builder
+  const renderHeaderSlot = pd.children.length > 0
+    ? TodaysFocusHeader({
+        children: pd.children,
+        selectedChild: pd.selectedChild,
+        selectedChildFirstName: pd.selectedChildFirstName,
+        taskCounts: pd.taskCounts,
+        pendingInviteCount: pd.pendingInvites.length,
+        perChildOverdue: pd.perChildOverdue,
+        collapsed: pd.focusCollapsed,
+        onToggleCollapse: () => pd.setFocusCollapsed(prev => !prev),
+        onNavigate: (path) => pd.navigate(path),
+      })
+    : undefined;
 
-  // ============================================
-  // Render
-  // ============================================
-
-  if (loading) {
+  if (pd.loading) {
     return (
       <DashboardLayout welcomeSubtitle="At-a-glance monitoring, calendar, and quick actions">
-        <PageSkeleton />
+        <DashboardSkeleton />
       </DashboardLayout>
     );
   }
@@ -865,228 +217,269 @@ export function ParentDashboard() {
   return (
     <DashboardLayout
       welcomeSubtitle="At-a-glance monitoring, calendar, and quick actions"
-      sidebarActions={[
-        { label: '+ Add Child', onClick: () => setShowLinkModal(true) },
-        { label: '+ Create Course Material', onClick: () => setShowStudyModal(true) },
-      ]}
+      headerSlot={renderHeaderSlot}
     >
-      {dashboardError ? (
+      {pd.dashboardError ? (
         <div className="no-children-state">
           <h3>Unable to Load Dashboard</h3>
           <p>Something went wrong while loading your dashboard. Please try refreshing the page.</p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
-            <button className="link-child-btn" onClick={() => window.location.reload()}>
-              Refresh Page
-            </button>
+            <button className="link-child-btn" onClick={() => window.location.reload()}>Refresh Page</button>
           </div>
         </div>
-      ) : children.length === 0 ? (
-        <div className="no-children-state">
-          <h3>Get Started</h3>
-          <p>Add your child to start managing their education. No school account required!</p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
-            <button className="link-child-btn" onClick={() => setShowLinkModal(true)}>
-              + Add Child
-            </button>
+      ) : pd.children.length === 0 ? (
+        <div className="pd-onboard-container">
+          <h2 className="pd-onboard-title">Welcome to ClassBridge!</h2>
+          <p className="pd-onboard-subtitle">Your education command center starts here.</p>
+
+          <div className="pd-onboard-steps" role="list" aria-label="Setup steps">
+            <div className="pd-onboard-card pd-onboard-card-active" role="listitem" style={{ animationDelay: '0ms' }}>
+              <span className="pd-onboard-card-step">Step 1</span>
+              <span className="pd-onboard-card-icon" aria-hidden="true">👨‍👩‍👧</span>
+              <span className="pd-onboard-card-title">Add Your Child</span>
+              <span className="pd-onboard-card-desc">Create a profile or link an existing student account</span>
+            </div>
+            <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '100ms' }}>
+              <span className="pd-onboard-card-step">Step 2</span>
+              <span className="pd-onboard-card-icon" aria-hidden="true">🏫</span>
+              <span className="pd-onboard-card-title">Connect School</span>
+              <span className="pd-onboard-card-desc">Import classes from Google Classroom automatically</span>
+            </div>
+            <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '200ms' }}>
+              <span className="pd-onboard-card-step">Step 3</span>
+              <span className="pd-onboard-card-icon" aria-hidden="true">📚</span>
+              <span className="pd-onboard-card-title">Explore Tools</span>
+              <span className="pd-onboard-card-desc">Study guides, tasks &amp; tracking for your child</span>
+            </div>
           </div>
+
+          <button className="pd-onboard-cta" onClick={() => pd.setShowLinkModal(true)}>
+            Get Started &mdash; Add Your First Child
+          </button>
         </div>
       ) : (
         <>
-          {/* Child Filter */}
-          <div className="child-selector">
-            {children.length > 1 && (
-              <button
-                className={`child-tab ${selectedChild === null ? 'active' : ''}`}
-                onClick={() => { setSelectedChild(null); setChildOverview(null); }}
-              >
-                All Children
-              </button>
-            )}
-            {children.map((child, index) => (
-              <button
-                key={child.student_id}
-                className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-                onClick={() => handleChildTabClick(child.student_id)}
-              >
-                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                {child.full_name}
-                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
-              </button>
-            ))}
+          {/* Onboarding Setup Checklist (#869) */}
+          <SetupChecklist />
+
+          {/* View Mode Toggle (#832) */}
+          <div className="pd-view-toggle-row">
+            <button
+              className="pd-view-toggle"
+              onClick={handleToggleViewMode}
+              aria-label={viewMode === 'full' ? 'Switch to simplified view' : 'Switch to full view'}
+              type="button"
+            >
+              <span className={`pd-view-toggle-option ${viewMode === 'simplified' ? 'active' : ''}`}>Simplified</span>
+              <span className={`pd-view-toggle-option ${viewMode === 'full' ? 'active' : ''}`}>Full</span>
+            </button>
           </div>
 
-          {/* Status Summary Cards */}
-          {dashboardData && (
-            <div className="status-summary">
-              <div
-                className={`status-card${taskOverdueCount > 0 ? ' urgent' : ''}`}
-                onClick={() => navigate('/tasks?due=overdue')}
-              >
-                <span className="status-card-count">{taskOverdueCount}</span>
-                <span className="status-card-label">{'\u26A0'} Overdue</span>
-              </div>
-              <div
-                className={`status-card${taskDueTodayCount > 0 ? ' active' : ''}`}
-                onClick={() => navigate('/tasks?due=today')}
-              >
-                <span className="status-card-count">{taskDueTodayCount}</span>
-                <span className="status-card-label">{'\u{1F4C5}'} Due Today</span>
-              </div>
-              <div
-                className={`status-card${dashboardData.unread_messages > 0 ? ' notify' : ''}`}
-                onClick={() => navigate('/messages')}
-              >
-                <span className="status-card-count">{dashboardData.unread_messages}</span>
-                <span className="status-card-label">{'\u{1F4AC}'} Messages</span>
-              </div>
-              <div className="status-card" onClick={() => navigate('/tasks')}>
-                <span className="status-card-count">{totalTasksCount}</span>
-                <span className="status-card-label">{'\u{1F4CB}'} Total Tasks</span>
-              </div>
-            </div>
-          )}
-
-          {/* Per-Child Enhanced Cards */}
-          {dashboardData && dashboardData.child_highlights.length > 0 && (
-            <div className="child-highlights">
-              {dashboardData.child_highlights
-                .filter(h => !selectedChild || h.student_id === selectedChild)
-                .map((h, index) => {
-                const childSummary = children.find(c => c.student_id === h.student_id);
-                const stats = childTaskStats.find(s => s.studentId === h.student_id);
+          {/* Child Filter (#830) */}
+          <div className={`pd-child-selector-wrapper${canScrollLeft ? ' can-scroll-left' : ''}${canScrollRight ? ' can-scroll-right' : ''}`}>
+            <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={(el) => { (childTabsRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (childScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}>
+              {/* "All" tab — always first (#830) */}
+              {pd.children.length > 1 && (
+                <button
+                  role="tab"
+                  aria-selected={pd.selectedChild === null}
+                  tabIndex={pd.selectedChild === null ? 0 : -1}
+                  className={`pd-child-tab pd-child-tab-all ${pd.selectedChild === null ? 'active' : ''}`}
+                  onClick={() => pd.handleAllChildrenClick()}
+                  onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
+                  title="All children"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </button>
+              )}
+              {pd.children.map((child, index) => {
+                const isSelected = pd.selectedChild === child.student_id;
+                const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
+                // When "All" tab is present, keyboard index is offset by 1
+                const tabKeyIndex = pd.children.length > 1 ? index + 1 : index;
                 return (
-                  <div
-                    key={h.student_id}
-                    className="child-card-enhanced"
-                    onClick={() => navigate(`/my-kids?student_id=${h.student_id}`)}
+                  <button
+                    key={child.student_id}
+                    role="tab"
+                    aria-selected={isSelected}
+                    tabIndex={isSelected || (pd.selectedChild === null && pd.children.length <= 1 && index === 0) ? 0 : -1}
+                    className={`pd-child-tab ${isSelected ? 'active' : ''}`}
+                    onClick={() => pd.handleChildTabClick(child.student_id)}
+                    onKeyDown={(e) => handleChildTabKeyDown(e, tabKeyIndex)}
                   >
-                    <div className="child-avatar" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }}>
-                      {getInitials(h.full_name)}
-                    </div>
-                    <div className="child-card-content">
-                      <div className="child-card-header">
-                        <span className="child-card-name">{h.full_name}</span>
-                        {h.grade_level != null && <span className="grade-badge">Grade {h.grade_level}</span>}
-                      </div>
-                      {childSummary?.school_name && (
-                        <div className="child-card-school">{childSummary.school_name}</div>
-                      )}
-                      <div className="child-card-stats">
-                        <span className="child-card-stat">{h.courses.length} course{h.courses.length !== 1 ? 's' : ''}</span>
-                        <span className="child-card-stat">{stats?.totalTasks ?? 0} task{(stats?.totalTasks ?? 0) !== 1 ? 's' : ''}</span>
-                        {h.overdue_count > 0 && <span className="child-card-stat overdue">{h.overdue_count} overdue</span>}
-                      </div>
-                      {stats && stats.totalTasks > 0 && (
-                        <div className="child-card-progress">
-                          <div className="child-card-progress-bar">
-                            <div className="child-card-progress-fill" style={{ width: `${stats.completionPct}%`, backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                          </div>
-                          <span className="child-card-progress-label">{stats.completionPct}%</span>
-                        </div>
-                      )}
-                      <div className="child-card-deadline">
-                        {stats?.nextDeadline ? (
-                          <>
-                            <span className="child-card-deadline-title">{stats.nextDeadline.title}</span>
-                            <span className="child-card-deadline-label">{stats.nextDeadline.label}</span>
-                          </>
-                        ) : (
-                          <span className="child-card-all-clear">All caught up!</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="child-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="child-action-btn" title="Courses" aria-label="View courses for this child" onClick={() => navigate(`/courses?student_id=${h.student_id}`)}>{'\u{1F4DA}'}</button>
-                      <button className="child-action-btn" title="Tasks" aria-label="View tasks for this child" onClick={() => navigate(`/tasks?assignee=${childSummary?.user_id || ''}`)}>{'\u2705'}</button>
-                      <button className="child-action-btn" title="Edit" aria-label="Edit this child's profile" onClick={() => { if (childSummary) openEditChild(childSummary); }}>{'\u270F\uFE0F'}</button>
-                    </div>
-                  </div>
+                    <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                    {child.full_name}
+                    {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
+                    {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
+                  </button>
                 );
               })}
+              {/* "+" add child button */}
+              <button
+                className="pd-child-tab pd-add-child-btn"
+                onClick={() => pd.setShowLinkModal(true)}
+                aria-label="Add child"
+                title="Add child"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
-          )}
-
-          {/* Pending Invites */}
-          {pendingInvites.length > 0 && (
-            <div className="pending-invites-section">
-              <h3>Pending Invites</h3>
-              {pendingInvites.map(inv => (
-                <div key={inv.id} className="pending-invite-row">
-                  <span className="pending-invite-email">{inv.email}</span>
-                  <span className="pending-invite-type">{inv.invite_type}</span>
-                  <button
-                    className="btn-sm"
-                    disabled={resendingId === inv.id}
-                    onClick={() => handleResendInvite(inv.id)}
-                  >
-                    {resendingId === inv.id ? 'Sending...' : 'Resend'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Quick Actions Above Calendar */}
-          <div className="calendar-actions-bar">
-            <button className="btn-accent-outline" onClick={() => setShowStudyModal(true)}>
-              + Create Course Material
-            </button>
-            <button className="btn-accent-outline" onClick={() => navigate('/course-materials', { state: { selectedChild } })}>
-              View Course Materials
-            </button>
           </div>
 
-          {/* Collapsible Calendar Section */}
-          <div className="calendar-collapse-section">
-            <button className="calendar-collapse-toggle" onClick={toggleCalendar}>
-              <span className={`calendar-collapse-chevron${calendarCollapsed ? '' : ' expanded'}`}>&#9654;</span>
-              <span className="calendar-collapse-label">
-                {calendarCollapsed
-                  ? `Calendar (${calendarAssignments.length} items)`
-                  : 'Calendar'}
-              </span>
-            </button>
-          </div>
+          <AlertBanner
+            pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
+            onResendInvite={pd.handleResendInvite}
+            resendingId={pd.resendingId}
+          />
 
-          {!calendarCollapsed && (
-            <>
-              {overviewLoading ? (
-                <PageSkeleton />
-              ) : (
+          {pd.backgroundGeneration && (
+            <div className={`pd-generation-banner ${pd.backgroundGeneration.status}`}>
+              {pd.backgroundGeneration.status === 'generating' && (
                 <>
-                  <CalendarView
-                    assignments={calendarAssignments}
-                    onCreateStudyGuide={handleOneClickStudy}
-                    onDayClick={openDayModal}
-                    onTaskDrop={handleTaskDrop}
-                    onGoToCourse={handleGoToCourse}
-                    onViewStudyGuides={handleViewStudyGuides}
-                    generatingStudyId={generatingStudyId}
-                  />
-
-                  {/* Undated Assignments */}
-                  {undatedAssignments.length > 0 && (
-                    <div className="undated-section">
-                      <h4>Undated Assignments ({undatedAssignments.length})</h4>
-                      <div className="undated-list">
-                        {undatedAssignments.map(a => (
-                          <div
-                            key={a.id}
-                            className="undated-item"
-                            onClick={() => handleOneClickStudy(a)}
-                          >
-                            <span className="cal-entry-dot" style={{ background: a.courseColor }} />
-                            <span className="undated-title">{a.title}</span>
-                            <span className="undated-course">{a.courseName}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <span className="pd-gen-spinner" />
+                  <span>Generating {pd.backgroundGeneration.type}...</span>
                 </>
               )}
-            </>
+              {pd.backgroundGeneration.status === 'success' && (
+                <>
+                  <span>{pd.backgroundGeneration.type} ready!</span>
+                  <button className="pd-gen-view-btn" onClick={() => { pd.navigate('/course-materials'); pd.dismissBackgroundGeneration(); }}>
+                    View
+                  </button>
+                  <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
+                </>
+              )}
+              {pd.backgroundGeneration.status === 'error' && (
+                <>
+                  <span>Failed to generate {pd.backgroundGeneration.type}</span>
+                  <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
+                </>
+              )}
+            </div>
           )}
+
+          {/* Google Classroom connection prompt when selected child has 0 courses (#874) */}
+          {(() => {
+            const selectedChildData = pd.selectedChild
+              ? pd.children.find(c => c.student_id === pd.selectedChild)
+              : null;
+            if (selectedChildData && selectedChildData.course_count === 0) {
+              return (
+                <GoogleClassroomPrompt
+                  childName={selectedChildData.full_name}
+                  childStudentId={selectedChildData.student_id}
+                  onAddManually={() => pd.navigate('/courses')}
+                />
+              );
+            }
+            return null;
+          })()}
+
+          {/* Quick Action Bar (#837 unified) */}
+          <RoleQuickActions
+            actions={[
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                ),
+                label: 'Upload Material',
+                onClick: () => pd.setShowStudyModal(true),
+              },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 11 12 14 22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                ),
+                label: 'Create Task',
+                onClick: () => pd.setShowCreateTaskModal(true),
+              },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                ),
+                label: 'Study Guide',
+                onClick: () => pd.navigate('/course-materials'),
+              },
+            ] satisfies QuickAction[]}
+            maxVisible={3}
+          />
+
+          {/* Grades Overview (#838 - collapsible) */}
+          <CollapsibleSection
+            title="Grades"
+            expanded={sectionStates.grades}
+            onToggle={() => updateSection('grades', !sectionStates.grades)}
+          >
+            <GradesSummaryCard
+              selectedChildId={pd.selectedChild ?? undefined}
+              onViewDetails={() => pd.navigate('/grades')}
+            />
+          </CollapsibleSection>
+
+          {/* Coming Up Timeline (#832 - collapsible) */}
+          <CollapsibleSection
+            title="Coming Up"
+            expanded={sectionStates.comingUp}
+            onToggle={() => updateSection('comingUp', !sectionStates.comingUp)}
+          >
+            <ComingUpTimeline
+              calendarAssignments={pd.calendarAssignments}
+              filteredTasks={pd.filteredTasks}
+              selectedChild={pd.selectedChild}
+              currentUserId={user?.id}
+              onToggleTask={pd.handleToggleTask}
+              onNavigateStudy={pd.handleOneClickStudy}
+              onCreateTask={() => pd.setShowCreateTaskModal(true)}
+              onUploadMaterial={() => pd.setShowStudyModal(true)}
+            />
+          </CollapsibleSection>
+
+          {!tipDismissed && pd.courseMaterials.length === 0 && (
+            <div className="pd-onboard-tip" role="status">
+              <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
+              <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
+              <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
+              <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)} aria-label="Dismiss tip">&times;</button>
+            </div>
+          )}
+
+          {/* Student Detail (#832 - collapsible) */}
+          <CollapsibleSection
+            title={pd.selectedChild ? `${pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? ''}'s Details` : 'Student Detail'}
+            badge={pd.filteredTasks.filter(t => !t.archived_at).length}
+            expanded={sectionStates.studentDetail}
+            onToggle={() => updateSection('studentDetail', !sectionStates.studentDetail)}
+          >
+            <StudentDetailPanel
+              selectedChildName={pd.selectedChild ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? null) : null}
+              courseMaterials={pd.courseMaterials}
+              tasks={pd.filteredTasks}
+              onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
+              onToggleTask={pd.handleToggleTask}
+              onTaskClick={(task) => pd.setTaskDetailModal(task)}
+              onViewAllTasks={() => pd.navigate('/tasks', { state: { selectedChild: pd.selectedChildUserId } })}
+              onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
+            />
+          </CollapsibleSection>
+
+
+          {/* Calendar moved to Tasks page */}
         </>
       )}
 
@@ -1095,35 +488,27 @@ export function ParentDashboard() {
           ============================================ */}
 
       {/* Link Child Modal */}
-      {showLinkModal && (
-        <div className="modal-overlay" onClick={closeLinkModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+      {pd.showLinkModal && (
+        <div className="modal-overlay" onClick={pd.closeLinkModal}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Add Child" ref={linkModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Add Child</h2>
 
-            <div className="link-tabs">
-              <button className={`link-tab ${linkTab === 'create' ? 'active' : ''}`} onClick={() => { setLinkTab('create'); setLinkError(''); }}>
-                Create New
-              </button>
-              <button className={`link-tab ${linkTab === 'email' ? 'active' : ''}`} onClick={() => { setLinkTab('email'); setLinkError(''); }}>
-                Link by Email
-              </button>
-              <button className={`link-tab ${linkTab === 'google' ? 'active' : ''}`} onClick={() => { setLinkTab('google'); setLinkError(''); }}>
-                Google Classroom
-              </button>
+            <div className="link-tabs" role="tablist" aria-label="Add child method">
+              <button role="tab" aria-selected={pd.linkTab === 'create'} className={`link-tab ${pd.linkTab === 'create' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('create'); pd.setLinkError(''); }}>Create New</button>
+              <button role="tab" aria-selected={pd.linkTab === 'email'} className={`link-tab ${pd.linkTab === 'email' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('email'); pd.setLinkError(''); }}>Link by Email</button>
+              <button role="tab" aria-selected={pd.linkTab === 'google'} className={`link-tab ${pd.linkTab === 'google' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('google'); pd.setLinkError(''); }}>Google Classroom</button>
             </div>
 
-            {linkTab === 'create' && (
+            {pd.linkTab === 'create' && (
               <>
-                {createChildInviteLink ? (
+                {pd.createChildInviteLink ? (
                   <div className="modal-form">
                     <div className="invite-success-box">
                       <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child added successfully!</p>
-                      <p style={{ margin: '0 0 8px', fontSize: 14 }}>
-                        Share this link with your child so they can set their password and log in:
-                      </p>
+                      <p style={{ margin: '0 0 8px', fontSize: 14 }}>Share this link with your child so they can set their password and log in:</p>
                       <div className="invite-link-container">
-                        <span className="invite-link">{createChildInviteLink}</span>
-                        <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(createChildInviteLink)}>Copy</button>
+                        <span className="invite-link">{pd.createChildInviteLink}</span>
+                        <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(pd.createChildInviteLink)}>Copy</button>
                       </div>
                     </div>
                   </div>
@@ -1131,50 +516,38 @@ export function ParentDashboard() {
                   <>
                     <p className="modal-desc">Add your child with just their name. Email is optional.</p>
                     <div className="modal-form">
-                      <label>
-                        Child's Name *
-                        <input type="text" value={createChildName} onChange={(e) => setCreateChildName(e.target.value)} placeholder="e.g. Alex Smith" disabled={createChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleCreateChild()} />
-                      </label>
-                      <label>
-                        Email (optional)
-                        <input type="email" value={createChildEmail} onChange={(e) => { setCreateChildEmail(e.target.value); setCreateChildError(''); }} placeholder="child@example.com" disabled={createChildLoading} />
-                      </label>
-                      <label>
-                        Relationship
-                        <select value={createChildRelationship} onChange={(e) => setCreateChildRelationship(e.target.value)} disabled={createChildLoading}>
-                          <option value="mother">Mother</option>
-                          <option value="father">Father</option>
-                          <option value="guardian">Guardian</option>
-                          <option value="other">Other</option>
+                      <label>Child's Name *<input type="text" value={pd.createChildName} onChange={(e) => pd.setCreateChildName(e.target.value)} placeholder="e.g. Alex Smith" disabled={pd.createChildLoading} onKeyDown={(e) => e.key === 'Enter' && pd.handleCreateChild()} /></label>
+                      <label>Email (optional)<input type="email" value={pd.createChildEmail} onChange={(e) => { pd.setCreateChildEmail(e.target.value); pd.setCreateChildError(''); }} placeholder="child@example.com" disabled={pd.createChildLoading} /></label>
+                      <label>Relationship
+                        <select value={pd.createChildRelationship} onChange={(e) => pd.setCreateChildRelationship(e.target.value)} disabled={pd.createChildLoading}>
+                          <option value="mother">Mother</option><option value="father">Father</option><option value="guardian">Guardian</option><option value="other">Other</option>
                         </select>
                       </label>
-                      {createChildError && <p className="link-error">{createChildError}</p>}
+                      {pd.createChildError && <p className="link-error">{pd.createChildError}</p>}
                     </div>
                   </>
                 )}
                 <div className="modal-actions">
-                  <button className="cancel-btn" onClick={closeLinkModal} disabled={createChildLoading}>{createChildInviteLink ? 'Close' : 'Cancel'}</button>
-                  {!createChildInviteLink && (
-                    <button className="generate-btn" onClick={handleCreateChild} disabled={createChildLoading || !createChildName.trim()}>
-                      {createChildLoading ? 'Creating...' : 'Add Child'}
+                  <button className="cancel-btn" onClick={pd.closeLinkModal} disabled={pd.createChildLoading}>{pd.createChildInviteLink ? 'Close' : 'Cancel'}</button>
+                  {!pd.createChildInviteLink && (
+                    <button className="generate-btn" onClick={pd.handleCreateChild} disabled={pd.createChildLoading || !pd.createChildName.trim()}>
+                      {pd.createChildLoading ? 'Creating...' : 'Add Child'}
                     </button>
                   )}
                 </div>
               </>
             )}
 
-            {linkTab === 'email' && (
+            {pd.linkTab === 'email' && (
               <>
-                {linkInviteLink ? (
+                {pd.linkInviteLink ? (
                   <div className="modal-form">
                     <div className="invite-success-box">
                       <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child linked successfully!</p>
-                      <p style={{ margin: '0 0 8px', fontSize: 14 }}>
-                        A new student account was created. Share this link with your child so they can set their password and log in:
-                      </p>
+                      <p style={{ margin: '0 0 8px', fontSize: 14 }}>A new student account was created. Share this link with your child so they can set their password and log in:</p>
                       <div className="invite-link-container">
-                        <span className="invite-link">{linkInviteLink}</span>
-                        <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(linkInviteLink)}>Copy</button>
+                        <span className="invite-link">{pd.linkInviteLink}</span>
+                        <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(pd.linkInviteLink)}>Copy</button>
                       </div>
                     </div>
                   </div>
@@ -1182,76 +555,61 @@ export function ParentDashboard() {
                   <>
                     <p className="modal-desc">Enter your child's email to link or create their account.</p>
                     <div className="modal-form">
-                      <label>
-                        Child's Name
-                        <input type="text" value={linkName} onChange={(e) => setLinkName(e.target.value)} placeholder="e.g. Alex Smith" disabled={linkLoading} />
-                      </label>
-                      <label>
-                        Student Email
-                        <input type="email" value={linkEmail} onChange={(e) => { setLinkEmail(e.target.value); setLinkError(''); }} placeholder="child@school.edu" disabled={linkLoading} onKeyDown={(e) => e.key === 'Enter' && handleLinkChild()} />
-                      </label>
-                      <label>
-                        Relationship
-                        <select value={linkRelationship} onChange={(e) => setLinkRelationship(e.target.value)} disabled={linkLoading}>
-                          <option value="mother">Mother</option>
-                          <option value="father">Father</option>
-                          <option value="guardian">Guardian</option>
-                          <option value="other">Other</option>
+                      <label>Child's Name<input type="text" value={pd.linkName} onChange={(e) => pd.setLinkName(e.target.value)} placeholder="e.g. Alex Smith" disabled={pd.linkLoading} /></label>
+                      <label>Student Email<input type="email" value={pd.linkEmail} onChange={(e) => { pd.setLinkEmail(e.target.value); pd.setLinkError(''); }} placeholder="child@school.edu" disabled={pd.linkLoading} onKeyDown={(e) => e.key === 'Enter' && pd.handleLinkChild()} /></label>
+                      <label>Relationship
+                        <select value={pd.linkRelationship} onChange={(e) => pd.setLinkRelationship(e.target.value)} disabled={pd.linkLoading}>
+                          <option value="mother">Mother</option><option value="father">Father</option><option value="guardian">Guardian</option><option value="other">Other</option>
                         </select>
                       </label>
-                      {linkError && <p className="link-error">{linkError}</p>}
+                      {pd.linkError && <p className="link-error">{pd.linkError}</p>}
                     </div>
                   </>
                 )}
                 <div className="modal-actions">
-                  <button className="cancel-btn" onClick={closeLinkModal} disabled={linkLoading}>{linkInviteLink ? 'Close' : 'Cancel'}</button>
-                  {!linkInviteLink && (
-                    <button className="generate-btn" onClick={handleLinkChild} disabled={linkLoading || !linkEmail.trim()}>
-                      {linkLoading ? 'Linking...' : 'Link Child'}
+                  <button className="cancel-btn" onClick={pd.closeLinkModal} disabled={pd.linkLoading}>{pd.linkInviteLink ? 'Close' : 'Cancel'}</button>
+                  {!pd.linkInviteLink && (
+                    <button className="generate-btn" onClick={pd.handleLinkChild} disabled={pd.linkLoading || !pd.linkEmail.trim()}>
+                      {pd.linkLoading ? 'Linking...' : 'Link Child'}
                     </button>
                   )}
                 </div>
               </>
             )}
 
-            {linkTab === 'google' && (
+            {pd.linkTab === 'google' && (
               <>
-                {!googleConnected && discoveryState === 'idle' && (
-                  <div className="google-connect-prompt">
-                    <div className="google-icon">🔗</div>
+                {!pd.googleConnected && pd.discoveryState === 'idle' && (
+                  <div className="pd-google-connect-prompt">
+                    <div className="pd-google-icon" aria-hidden="true">🔗</div>
                     <h3>Connect Google Account</h3>
                     <p>Sign in with your Google account to automatically discover your children's student accounts from Google Classroom.</p>
-                    <button className="google-connect-btn" onClick={handleConnectGoogle}>Connect Google Account</button>
-                    {linkError && <p className="link-error">{linkError}</p>}
+                    <button className="pd-google-connect-btn" onClick={pd.handleConnectGoogle}>Connect Google Account</button>
+                    {pd.linkError && <p className="link-error">{pd.linkError}</p>}
                   </div>
                 )}
-                {googleConnected && discoveryState === 'idle' && (
-                  <div className="google-connect-prompt">
-                    <div className="google-icon">✓</div>
-                    <h3>Google Account Connected</h3>
-                    <p>Search your Google Classroom courses to find your children's student accounts.</p>
-                    <button className="google-connect-btn" onClick={triggerDiscovery}>Search Google Classroom</button>
-                    <button className="cancel-btn" style={{ marginTop: '8px', fontSize: '13px' }} onClick={async () => { try { await googleApi.disconnect(); setGoogleConnected(false); } catch { setLinkError('Failed to disconnect Google account'); } }}>
-                      Disconnect Google
-                    </button>
-                    {linkError && <p className="link-error">{linkError}</p>}
-                  </div>
-                )}
-                {discoveryState === 'discovering' && (
-                  <div className="discovery-loading">
-                    <div className="loading-spinner-large" />
+                {((pd.googleConnected && pd.discoveryState === 'idle') || pd.discoveryState === 'discovering') && (
+                  <div className="pd-discovery-loading">
+                    <div className="pd-loading-spinner-large" />
                     <p>Searching Google Classroom courses for student accounts...</p>
                   </div>
                 )}
-                {discoveryState === 'results' && (
+                {pd.discoveryState === 'results' && (
                   <div className="discovery-results">
-                    <p className="modal-desc">
-                      Found {discoveredChildren.length} student{discoveredChildren.length !== 1 ? 's' : ''} across {coursesSearched} course{coursesSearched !== 1 ? 's' : ''}. Select the children you want to link:
-                    </p>
+                    {pd.bulkLinkSuccess > 0 && (
+                      <div className="invite-success-box" style={{ marginBottom: 12 }}>
+                        <p style={{ margin: 0, fontWeight: 600 }}>Successfully linked {pd.bulkLinkSuccess} child{pd.bulkLinkSuccess !== 1 ? 'ren' : ''}!</p>
+                      </div>
+                    )}
+                    {pd.discoveredChildren.every(c => c.already_linked) ? (
+                      <p className="modal-desc">All {pd.discoveredChildren.length} discovered student{pd.discoveredChildren.length !== 1 ? 's' : ''} are linked to your account.</p>
+                    ) : (
+                      <p className="modal-desc">Found {pd.discoveredChildren.length} student{pd.discoveredChildren.length !== 1 ? 's' : ''} across {pd.coursesSearched} class{pd.coursesSearched !== 1 ? 'es' : ''}. Select the children you want to link:</p>
+                    )}
                     <div className="discovered-list">
-                      {discoveredChildren.map((child) => (
+                      {pd.discoveredChildren.map((child) => (
                         <label key={child.user_id} className={`discovered-item ${child.already_linked ? 'disabled' : ''}`}>
-                          <input type="checkbox" checked={selectedDiscovered.has(child.user_id)} onChange={() => toggleDiscovered(child.user_id)} disabled={child.already_linked} />
+                          <input type="checkbox" checked={pd.selectedDiscovered.has(child.user_id)} onChange={() => pd.toggleDiscovered(child.user_id)} disabled={child.already_linked} />
                           <div className="discovered-info">
                             <span className="discovered-name">{child.full_name}</span>
                             <span className="discovered-email">{child.email}</span>
@@ -1261,24 +619,29 @@ export function ParentDashboard() {
                         </label>
                       ))}
                     </div>
-                    {linkError && <p className="link-error">{linkError}</p>}
-                    <div className="modal-actions">
-                      <button className="cancel-btn" onClick={closeLinkModal} disabled={bulkLinking}>Cancel</button>
-                      <button className="generate-btn" onClick={handleBulkLink} disabled={bulkLinking || selectedDiscovered.size === 0}>
-                        {bulkLinking ? 'Linking...' : `Link ${selectedDiscovered.size} Selected`}
-                      </button>
+                    {pd.linkError && <p className="link-error">{pd.linkError}</p>}
+                    <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+                      <button className="cancel-btn" style={{ fontSize: '13px' }} onClick={async () => { try { await (await import('../api/client')).googleApi.disconnect(); pd.setGoogleConnected(false); pd.setDiscoveryState('idle'); pd.setDiscoveredChildren([]); pd.setBulkLinkSuccess(0); } catch { pd.setLinkError('Failed to disconnect Google account'); } }}>Disconnect Google</button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="cancel-btn" onClick={pd.closeLinkModal} disabled={pd.bulkLinking}>Done</button>
+                        {!pd.discoveredChildren.every(c => c.already_linked) && (
+                          <button className="generate-btn" onClick={pd.handleBulkLink} disabled={pd.bulkLinking || pd.selectedDiscovered.size === 0}>
+                            {pd.bulkLinking ? 'Linking...' : `Link ${pd.selectedDiscovered.size} Selected`}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
-                {discoveryState === 'no_results' && (
-                  <div className="google-connect-prompt">
-                    <div className="google-icon">📭</div>
+                {pd.discoveryState === 'no_results' && (
+                  <div className="pd-google-connect-prompt">
+                    <div className="pd-google-icon" aria-hidden="true">📭</div>
                     <h3>No Matching Students Found</h3>
-                    <p>We searched {coursesSearched} Google Classroom course{coursesSearched !== 1 ? 's' : ''} but didn't find any matching student accounts.</p>
-                    <button className="link-tab-switch" onClick={() => { setLinkTab('email'); setDiscoveryState('idle'); }}>Try linking by email instead</button>
+                    <p>We searched {pd.coursesSearched} Google Classroom class{pd.coursesSearched !== 1 ? 'es' : ''} but didn't find any matching student accounts.</p>
+                    <button className="pd-link-tab-switch" onClick={() => { pd.setLinkTab('email'); pd.setDiscoveryState('idle'); }}>Try linking by email instead</button>
                     <div className="modal-actions">
-                      <button className="cancel-btn" onClick={closeLinkModal}>Close</button>
-                      <button className="generate-btn" onClick={triggerDiscovery}>Search Again</button>
+                      <button className="cancel-btn" onClick={pd.closeLinkModal}>Close</button>
+                      <button className="generate-btn" onClick={pd.triggerDiscovery}>Search Again</button>
                     </div>
                   </div>
                 )}
@@ -1289,41 +652,34 @@ export function ParentDashboard() {
       )}
 
       {/* Invite Student Modal */}
-      {showInviteModal && (
-        <div className="modal-overlay" onClick={closeInviteModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {pd.showInviteModal && (
+        <div className="modal-overlay" onClick={pd.closeInviteModal}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite Student" ref={inviteModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Invite Student</h2>
             <p className="modal-desc">Send an email invite to create a new student account linked to yours.</p>
             <div className="modal-form">
-              <label>
-                Student Email
-                <input type="email" value={inviteEmail} onChange={(e) => { setInviteEmail(e.target.value); setInviteError(''); setInviteSuccess(''); }} placeholder="child@example.com" disabled={inviteLoading} onKeyDown={(e) => e.key === 'Enter' && handleInviteStudent()} />
-              </label>
-              <label>
-                Relationship
-                <select value={inviteRelationship} onChange={(e) => setInviteRelationship(e.target.value)} disabled={inviteLoading}>
-                  <option value="mother">Mother</option>
-                  <option value="father">Father</option>
-                  <option value="guardian">Guardian</option>
-                  <option value="other">Other</option>
+              <label>Student Email<input type="email" value={pd.inviteEmail} onChange={(e) => { pd.setInviteEmail(e.target.value); pd.setInviteError(''); pd.setInviteSuccess(''); }} placeholder="child@example.com" disabled={pd.inviteLoading} onKeyDown={(e) => e.key === 'Enter' && pd.handleInviteStudent()} /></label>
+              <label>Relationship
+                <select value={pd.inviteRelationship} onChange={(e) => pd.setInviteRelationship(e.target.value)} disabled={pd.inviteLoading}>
+                  <option value="mother">Mother</option><option value="father">Father</option><option value="guardian">Guardian</option><option value="other">Other</option>
                 </select>
               </label>
-              {inviteError && <p className="link-error">{inviteError}</p>}
-              {inviteSuccess && (
+              {pd.inviteError && <p className="link-error">{pd.inviteError}</p>}
+              {pd.inviteSuccess && (
                 <div className="invite-success-box">
                   <p className="link-success">Invite created!</p>
                   <p className="invite-link-label">Share this link with your child:</p>
                   <div className="invite-link-container">
-                    <code className="invite-link">{inviteSuccess.split('\n')[1]}</code>
-                    <button className="copy-link-btn" onClick={() => { navigator.clipboard.writeText(inviteSuccess.split('\n')[1]); alert('Link copied!'); }}>Copy</button>
+                    <code className="invite-link">{pd.inviteSuccess.split('\n')[1]}</code>
+                    <button className="copy-link-btn" onClick={() => { navigator.clipboard.writeText(pd.inviteSuccess.split('\n')[1]); alert('Link copied!'); }}>Copy</button>
                   </div>
                 </div>
               )}
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={closeInviteModal} disabled={inviteLoading}>Close</button>
-              <button className="generate-btn" onClick={handleInviteStudent} disabled={inviteLoading || !inviteEmail.trim() || !!inviteSuccess}>
-                {inviteLoading ? 'Creating...' : 'Create Invite'}
+              <button className="cancel-btn" onClick={pd.closeInviteModal} disabled={pd.inviteLoading}>Close</button>
+              <button className="generate-btn" onClick={pd.handleInviteStudent} disabled={pd.inviteLoading || !pd.inviteEmail.trim() || !!pd.inviteSuccess}>
+                {pd.inviteLoading ? 'Creating...' : 'Create Invite'}
               </button>
             </div>
           </div>
@@ -1331,81 +687,46 @@ export function ParentDashboard() {
       )}
 
       {/* Edit Child Modal */}
-      {showEditChildModal && editChild && (
-        <div className="modal-overlay" onClick={closeEditChildModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {pd.showEditChildModal && pd.editChild && (
+        <div className="modal-overlay" onClick={pd.closeEditChildModal}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Edit Child" ref={editChildModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Edit Child</h2>
-            <p className="modal-desc">Update {editChild.full_name}'s profile information.</p>
+            <p className="modal-desc">Update {pd.editChild.full_name}'s profile information.</p>
             <div className="modal-form">
-              <label>
-                Name
-                <input type="text" value={editChildName} onChange={(e) => setEditChildName(e.target.value)} placeholder="Child's name" disabled={editChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleEditChild()} />
-              </label>
-              <label>
-                Email
-                <input type="email" value={editChildEmail} onChange={(e) => setEditChildEmail(e.target.value)} placeholder="child@example.com" disabled={editChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleEditChild()} />
-              </label>
-              <label>
-                Grade Level
-                <select value={editChildGrade} onChange={(e) => setEditChildGrade(e.target.value)} disabled={editChildLoading}>
+              <label>Name<input type="text" value={pd.editChildName} onChange={(e) => pd.setEditChildName(e.target.value)} placeholder="Child's name" disabled={pd.editChildLoading} onKeyDown={(e) => e.key === 'Enter' && pd.handleEditChild()} /></label>
+              <label>Email<input type="email" value={pd.editChildEmail} onChange={(e) => pd.setEditChildEmail(e.target.value)} placeholder="child@example.com" disabled={pd.editChildLoading} onKeyDown={(e) => e.key === 'Enter' && pd.handleEditChild()} /></label>
+              <label>Grade Level
+                <select value={pd.editChildGrade} onChange={(e) => pd.setEditChildGrade(e.target.value)} disabled={pd.editChildLoading}>
                   <option value="">Not set</option>
-                  {Array.from({ length: 13 }, (_, i) => (
-                    <option key={i} value={String(i)}>{i === 0 ? 'Kindergarten' : `Grade ${i}`}</option>
-                  ))}
+                  {Array.from({ length: 13 }, (_, i) => (<option key={i} value={String(i)}>{i === 0 ? 'Kindergarten' : `Grade ${i}`}</option>))}
                 </select>
               </label>
-              <label>
-                School
-                <input type="text" value={editChildSchool} onChange={(e) => setEditChildSchool(e.target.value)} placeholder="e.g., Lincoln Elementary" disabled={editChildLoading} />
-              </label>
-
-              {/* Collapsible optional fields */}
+              <label>School<input type="text" value={pd.editChildSchool} onChange={(e) => pd.setEditChildSchool(e.target.value)} placeholder="e.g., Lincoln Elementary" disabled={pd.editChildLoading} /></label>
               <div className="collapsible-section">
-                <button type="button" className="collapsible-toggle" onClick={() => setEditChildOptionalOpen(!editChildOptionalOpen)}>
-                  <span className={`collapsible-arrow ${editChildOptionalOpen ? 'open' : ''}`}>&#9656;</span>
+                <button type="button" className="collapsible-toggle" onClick={() => pd.setEditChildOptionalOpen(!pd.editChildOptionalOpen)}>
+                  <span className={`collapsible-arrow ${pd.editChildOptionalOpen ? 'open' : ''}`}>&#9656;</span>
                   Additional Details
                 </button>
-                {editChildOptionalOpen && (
+                {pd.editChildOptionalOpen && (
                   <div className="collapsible-content">
-                    <label>
-                      Date of Birth
-                      <input type="date" value={editChildDob} onChange={(e) => setEditChildDob(e.target.value)} disabled={editChildLoading} />
-                    </label>
-                    <label>
-                      Phone
-                      <input type="tel" value={editChildPhone} onChange={(e) => setEditChildPhone(e.target.value)} placeholder="e.g., 555-123-4567" disabled={editChildLoading} />
-                    </label>
-                    <label>
-                      Address
-                      <input type="text" value={editChildAddress} onChange={(e) => setEditChildAddress(e.target.value)} placeholder="Street address" disabled={editChildLoading} />
-                    </label>
+                    <label>Date of Birth<input type="date" value={pd.editChildDob} onChange={(e) => pd.setEditChildDob(e.target.value)} disabled={pd.editChildLoading} /></label>
+                    <label>Phone<input type="tel" value={pd.editChildPhone} onChange={(e) => pd.setEditChildPhone(e.target.value)} placeholder="e.g., 555-123-4567" disabled={pd.editChildLoading} /></label>
+                    <label>Address<input type="text" value={pd.editChildAddress} onChange={(e) => pd.setEditChildAddress(e.target.value)} placeholder="Street address" disabled={pd.editChildLoading} /></label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <label>
-                        City
-                        <input type="text" value={editChildCity} onChange={(e) => setEditChildCity(e.target.value)} placeholder="City" disabled={editChildLoading} />
-                      </label>
-                      <label>
-                        Province
-                        <input type="text" value={editChildProvince} onChange={(e) => setEditChildProvince(e.target.value)} placeholder="Province" disabled={editChildLoading} />
-                      </label>
+                      <label>City<input type="text" value={pd.editChildCity} onChange={(e) => pd.setEditChildCity(e.target.value)} placeholder="City" disabled={pd.editChildLoading} /></label>
+                      <label>Province<input type="text" value={pd.editChildProvince} onChange={(e) => pd.setEditChildProvince(e.target.value)} placeholder="Province" disabled={pd.editChildLoading} /></label>
                     </div>
-                    <label>
-                      Postal Code
-                      <input type="text" value={editChildPostal} onChange={(e) => setEditChildPostal(e.target.value)} placeholder="e.g., A1B 2C3" disabled={editChildLoading} />
-                    </label>
-                    <label>
-                      Notes
-                      <textarea value={editChildNotes} onChange={(e) => setEditChildNotes(e.target.value)} placeholder="Any additional notes about your child..." disabled={editChildLoading} rows={3} />
-                    </label>
+                    <label>Postal Code<input type="text" value={pd.editChildPostal} onChange={(e) => pd.setEditChildPostal(e.target.value)} placeholder="e.g., A1B 2C3" disabled={pd.editChildLoading} /></label>
+                    <label>Notes<textarea value={pd.editChildNotes} onChange={(e) => pd.setEditChildNotes(e.target.value)} placeholder="Any additional notes about your child..." disabled={pd.editChildLoading} rows={3} /></label>
                   </div>
                 )}
               </div>
-              {editChildError && <p className="link-error">{editChildError}</p>}
+              {pd.editChildError && <p className="link-error">{pd.editChildError}</p>}
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={closeEditChildModal} disabled={editChildLoading}>Cancel</button>
-              <button className="generate-btn" onClick={handleEditChild} disabled={editChildLoading || !editChildName.trim()}>
-                {editChildLoading ? 'Saving...' : 'Save Changes'}
+              <button className="cancel-btn" onClick={pd.closeEditChildModal} disabled={pd.editChildLoading}>Cancel</button>
+              <button className="generate-btn" onClick={pd.handleEditChild} disabled={pd.editChildLoading || !pd.editChildName.trim()}>
+                {pd.editChildLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -1413,29 +734,28 @@ export function ParentDashboard() {
       )}
 
       {/* Day Detail Modal */}
-      {dayModalDate && (
-        <div className="modal-overlay" onClick={closeDayModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>{dayModalDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
+      {pd.dayModalDate && (
+        <div className="modal-overlay" onClick={pd.closeDayModal}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label={`Day detail: ${pd.dayModalDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`} ref={dayModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>{pd.dayModalDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
 
-            {/* Assignments for this day */}
             {(() => {
-              const dk = dateKey(dayModalDate);
-              const dayAssigns = calendarAssignments.filter(a => dateKey(a.dueDate) === dk && a.itemType !== 'task');
+              const dk = dateKey(pd.dayModalDate);
+              const dayAssigns = pd.calendarAssignments.filter(a => dateKey(a.dueDate) === dk && a.itemType !== 'task');
               return dayAssigns.length > 0 ? (
-                <div className="day-modal-section">
-                  <div className="day-modal-section-title">Assignments</div>
-                  <div className="day-modal-list">
+                <div className="pd-day-modal-section">
+                  <div className="pd-day-modal-section-title">Assignments</div>
+                  <div className="pd-day-modal-list">
                     {dayAssigns.map(a => (
-                      <div key={a.id} className="day-modal-item">
+                      <div key={a.id} className="pd-day-modal-item">
                         <span className="cal-entry-dot" style={{ background: a.courseColor }} />
-                        <div className="day-modal-item-info">
-                          <span className="day-modal-item-title">{a.title}</span>
-                          <span className="day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
+                        <div className="pd-day-modal-item-info">
+                          <span className="pd-day-modal-item-title">{a.title}</span>
+                          <span className="pd-day-modal-item-meta">{a.courseName}{a.childName ? ` \u2022 ${a.childName}` : ''}</span>
                         </div>
-                        <div className="day-modal-item-actions">
-                          {a.courseId > 0 && <button className="day-modal-action-btn" onClick={() => { closeDayModal(); handleGoToCourse(a.courseId); }}>Course</button>}
-                          <button className="day-modal-study-btn" disabled={generatingStudyId === a.id} onClick={() => { closeDayModal(); handleOneClickStudy(a); }}>{generatingStudyId === a.id ? 'Checking...' : 'Study'}</button>
+                        <div className="pd-day-modal-item-actions">
+                          {a.courseId > 0 && <button className="pd-day-modal-action-btn" onClick={() => { pd.closeDayModal(); pd.handleGoToCourse(a.courseId); }}>Class</button>}
+                          <button className="pd-day-modal-study-btn" disabled={pd.generatingStudyId === a.id} onClick={() => { pd.closeDayModal(); pd.handleOneClickStudy(a); }}>{pd.generatingStudyId === a.id ? 'Checking...' : 'Study'}</button>
                         </div>
                       </div>
                     ))}
@@ -1444,42 +764,30 @@ export function ParentDashboard() {
               ) : null;
             })()}
 
-            {/* Tasks for this day */}
-            <div className="day-modal-section">
-              <div className="day-modal-section-title">Tasks</div>
-              <div className="day-modal-list">
-                {dayTasks.length === 0 && (
-                  <div className="day-modal-empty">No tasks for this day</div>
-                )}
-                {dayTasks.map(task => {
-                  const isExpanded = expandedTaskId === task.id;
+            <div className="pd-day-modal-section">
+              <div className="pd-day-modal-section-title">Tasks</div>
+              <div className="pd-day-modal-list">
+                {pd.dayTasks.length === 0 && <div className="pd-day-modal-empty">No tasks for this day</div>}
+                {pd.dayTasks.map(task => {
+                  const isExpanded = pd.expandedTaskId === task.id;
                   const priorityClass = task.priority || 'medium';
                   return (
-                    <div
-                      key={task.id}
-                      className={`task-sticky-note ${priorityClass}${task.is_completed ? ' completed' : ''}`}
-                      onClick={() => setExpandedTaskId(prev => prev === task.id ? null : task.id)}
-                    >
-                      <div className="task-sticky-header">
-                        <input
-                          type="checkbox"
-                          checked={task.is_completed}
-                          onChange={(e) => { e.stopPropagation(); handleToggleTask(task); }}
-                          className="task-checkbox"
-                        />
-                        <div className="task-sticky-body">
-                          <span className={`task-sticky-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
-                          <span className="task-sticky-meta">
-                            <span className={`task-priority-badge ${priorityClass}`} aria-label={`Priority: ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
-                            {task.assignee_name && <span className="task-sticky-assignee">&rarr; {task.assignee_name}</span>}
+                    <div key={task.id} className={`pd-task-sticky-note ${priorityClass}${task.is_completed ? ' completed' : ''}`} onClick={() => pd.setExpandedTaskId(prev => prev === task.id ? null : task.id)}>
+                      <div className="pd-task-sticky-header">
+                        <input type="checkbox" checked={task.is_completed} onChange={(e) => { e.stopPropagation(); pd.handleToggleTask(task); }} className="pd-task-checkbox" />
+                        <div className="pd-task-sticky-body">
+                          <span className={`pd-task-sticky-title${task.is_completed ? ' completed' : ''}`}>{task.title}</span>
+                          <span className="pd-task-sticky-meta">
+                            <span className={`pd-task-priority-badge ${priorityClass}`} aria-label={`Priority: ${priorityClass}`}>{priorityClass === 'high' ? '\u25B2 ' : priorityClass === 'low' ? '\u25BC ' : '\u25CF '}{priorityClass}</span>
+                            {task.assignee_name && <span className="pd-task-sticky-assignee">&rarr; {task.assignee_name}</span>}
                           </span>
                         </div>
-                        <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} title="Archive task" aria-label="Delete this task">&times;</button>
+                        <button className="pd-task-delete-btn" onClick={(e) => { e.stopPropagation(); pd.handleDeleteTask(task.id); }} title="Archive task" aria-label="Delete this task">&times;</button>
                       </div>
                       {isExpanded && (
-                        <div className="task-sticky-detail">
-                          {task.description && <p className="task-sticky-desc">{task.description}</p>}
-                          <div className="task-sticky-detail-row">
+                        <div className="pd-task-sticky-detail">
+                          {task.description && <p className="pd-task-sticky-desc">{task.description}</p>}
+                          <div className="pd-task-sticky-detail-row">
                             {task.due_date && <span>Due: {new Date(task.due_date).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
                             {task.creator_name && <span>Created by: {task.creator_name}</span>}
                             {task.category && <span>Category: {task.category}</span>}
@@ -1490,101 +798,72 @@ export function ParentDashboard() {
                   );
                 })}
               </div>
-              <div className="day-modal-add-task">
-                <input
-                  type="text"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="Add a task..."
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateDayTask()}
-                  disabled={newTaskCreating}
-                />
-                <button onClick={handleCreateDayTask} disabled={newTaskCreating || !newTaskTitle.trim()} className="generate-btn">
-                  {newTaskCreating ? '...' : 'Add'}
+              <div className="pd-day-modal-add-task">
+                <label htmlFor="pd-day-add-task" className="sr-only">Add a task</label>
+                <input id="pd-day-add-task" type="text" value={pd.newTaskTitle} onChange={(e) => pd.setNewTaskTitle(e.target.value)} placeholder="Add a task..." onKeyDown={(e) => e.key === 'Enter' && pd.handleCreateDayTask()} disabled={pd.newTaskCreating} />
+                <button onClick={pd.handleCreateDayTask} disabled={pd.newTaskCreating || !pd.newTaskTitle.trim()} className="generate-btn">
+                  {pd.newTaskCreating ? '...' : 'Add'}
                 </button>
               </div>
             </div>
 
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={closeDayModal}>Close</button>
+              <button className="cancel-btn" onClick={pd.closeDayModal}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {pd.taskDetailModal && (
+        <div className="modal-overlay" onClick={() => pd.setTaskDetailModal(null)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={`Task: ${pd.taskDetailModal.title}`} ref={taskDetailModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>{pd.taskDetailModal.title}</h2>
+            <div className="pd-task-detail-modal-body">
+              {pd.taskDetailModal.description && <p className="pd-task-detail-desc">{pd.taskDetailModal.description}</p>}
+              <div className="pd-task-detail-fields">
+                <div className="pd-task-detail-row"><span className="pd-task-detail-label">Status</span><span className={`sdp-task-badge ${pd.taskDetailModal.is_completed ? 'completed' : 'pending'}`}>{pd.taskDetailModal.is_completed ? 'Completed' : 'Pending'}</span></div>
+                {pd.taskDetailModal.due_date && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Due Date</span><span>{new Date(pd.taskDetailModal.due_date.includes('T') ? pd.taskDetailModal.due_date : pd.taskDetailModal.due_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>}
+                {pd.taskDetailModal.priority && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Priority</span><span className={`pd-task-priority-badge ${pd.taskDetailModal.priority}`}>{pd.taskDetailModal.priority === 'high' ? '\u25B2 ' : pd.taskDetailModal.priority === 'low' ? '\u25BC ' : '\u25CF '}{pd.taskDetailModal.priority}</span></div>}
+                {pd.taskDetailModal.assignee_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Assigned To</span><span>{pd.taskDetailModal.assignee_name}</span></div>}
+                {pd.taskDetailModal.creator_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Created By</span><span>{pd.taskDetailModal.creator_name}</span></div>}
+                {pd.taskDetailModal.course_name && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Class</span><span>{pd.taskDetailModal.course_name}</span></div>}
+                {pd.taskDetailModal.category && <div className="pd-task-detail-row"><span className="pd-task-detail-label">Category</span><span>{pd.taskDetailModal.category}</span></div>}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => pd.setTaskDetailModal(null)}>Close</button>
+              <button className="generate-btn view-details-btn" onClick={() => { pd.setTaskDetailModal(null); pd.navigate(`/tasks/${pd.taskDetailModal!.id}`); }}>View Details</button>
+              <button className="generate-btn" onClick={() => { pd.handleToggleTask(pd.taskDetailModal!); pd.setTaskDetailModal({ ...pd.taskDetailModal!, is_completed: !pd.taskDetailModal!.is_completed }); }}>
+                {pd.taskDetailModal.is_completed ? 'Mark Incomplete' : 'Mark Complete'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Study Tools Modal */}
-      {showStudyModal && (
-        <div className="modal-overlay" onClick={resetStudyModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Study Material</h2>
-            <p className="modal-desc">Upload a document or photo, or paste text to generate AI-powered study materials.</p>
-            <div className="modal-form">
-              <label>
-                What to create
-                <select value={studyType} onChange={(e) => setStudyType(e.target.value as any)} disabled={isGenerating}>
-                  <option value="study_guide">Study Guide</option>
-                  <option value="quiz">Practice Quiz</option>
-                  <option value="flashcards">Flashcards</option>
-                </select>
-              </label>
-              <label>
-                Title (optional)
-                <input type="text" value={studyTitle} onChange={(e) => setStudyTitle(e.target.value)} placeholder="e.g., Chapter 5 Review" disabled={isGenerating} />
-              </label>
-              <div className="mode-toggle">
-                <button className={`mode-btn ${studyMode === 'text' ? 'active' : ''}`} onClick={() => setStudyMode('text')} disabled={isGenerating}>Paste Text</button>
-                <button className={`mode-btn ${studyMode === 'file' ? 'active' : ''}`} onClick={() => setStudyMode('file')} disabled={isGenerating}>Upload File</button>
-              </div>
-              {studyMode === 'text' ? (
-                <label>
-                  Content to study
-                  <textarea value={studyContent} onChange={(e) => setStudyContent(e.target.value)} placeholder="Paste notes, textbook content, or any study material..." rows={8} disabled={isGenerating} />
-                </label>
-              ) : (
-                <div className="file-upload-section">
-                  <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
-                  <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
-                    {selectedFile ? (
-                      <div className="selected-file">
-                        <span className="file-icon">📄</span>
-                        <div className="file-info">
-                          <span className="file-name">{selectedFile.name}</span>
-                          <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                        <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>✕</button>
-                      </div>
-                    ) : (
-                      <div className="drop-zone-content">
-                        <span className="upload-icon">📁</span>
-                        <p>Drag & drop a file here, or click to browse</p>
-                        <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {studyError && <p className="link-error">{studyError}</p>}
-            </div>
-            {duplicateCheck && duplicateCheck.exists && (
-              <div className="duplicate-warning">
-                <p>{duplicateCheck.message}</p>
-                <div className="duplicate-actions">
-                  <button className="generate-btn" onClick={() => { const guide = duplicateCheck.existing_guide!; resetStudyModal(); setDuplicateCheck(null); navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`); }}>View Existing</button>
-                  <button className="generate-btn" onClick={handleGenerateStudy}>Regenerate (New Version)</button>
-                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
-                </div>
-              </div>
-            )}
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => { resetStudyModal(); setDuplicateCheck(null); }} disabled={isGenerating}>Cancel</button>
-              <button className="generate-btn" onClick={handleGenerateStudy} disabled={isGenerating || (studyMode === 'file' ? !selectedFile : !studyContent.trim())}>
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {confirmModal}
+      <CreateStudyMaterialModal
+        open={pd.showStudyModal}
+        onClose={pd.resetStudyModal}
+        onGenerate={pd.handleGenerateFromModal}
+        isGenerating={pd.isGenerating}
+        initialTitle={pd.studyModalInitialTitle}
+        initialContent={pd.studyModalInitialContent}
+        duplicateCheck={pd.duplicateCheck}
+        onViewExisting={() => {
+          const guide = pd.duplicateCheck?.existing_guide;
+          if (guide) { pd.resetStudyModal(); pd.navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`); }
+        }}
+        onRegenerate={() => pd.handleGenerateFromModal({ title: pd.studyModalInitialTitle, content: pd.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
+        onDismissDuplicate={() => pd.setDuplicateCheck(null)}
+      />
+      <CreateTaskModal
+        open={pd.showCreateTaskModal}
+        onClose={() => pd.setShowCreateTaskModal(false)}
+        onCreated={() => { pd.setShowCreateTaskModal(false); pd.loadDashboard(); }}
+      />
+      {pd.confirmModal}
     </DashboardLayout>
   );
 }

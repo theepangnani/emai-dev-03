@@ -1,34 +1,41 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
-import type { StudyGuide, SupportedFormats, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
+import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { useConfirm } from '../components/ConfirmModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
+import { AddActionButton } from '../components/AddActionButton';
+import { PageNav } from '../components/PageNav';
+import { CHILD_COLORS } from '../components/parent/useParentDashboard';
+import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
+import { EditMaterialModal } from '../components/EditMaterialModal';
+import EmptyState from '../components/EmptyState';
 import './StudyGuidesPage.css';
-
-const MAX_FILE_SIZE_MB = 100;
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
 interface PendingGeneration {
   title: string;
   content: string;
   type: 'study_guide' | 'quiz' | 'flashcards';
+  focusPrompt?: string;
   mode: 'text' | 'file';
   file?: File;
+  pastedImages?: File[];
   regenerateId?: number;
   courseId?: number;
   courseContentId?: number;
 }
 
-let _pendingGeneration: PendingGeneration | null = null;
+let _pendingGenerations: PendingGeneration[] = [];
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function queueStudyGeneration(params: PendingGeneration) {
-  _pendingGeneration = params;
+  _pendingGenerations.push(params);
 }
 
 // In-progress generation placeholder
@@ -49,6 +56,7 @@ export function StudyGuidesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isParent = user?.role === 'parent';
   const { confirm, confirmModal } = useConfirm();
 
@@ -59,31 +67,32 @@ export function StudyGuidesPage() {
   // Map of course_content_id -> guide_types for filtering
   const [contentGuideMap, setContentGuideMap] = useState<Record<number, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  // Filters
-  const [filterChild, setFilterChild] = useState<number | ''>('');
-  const [filterCourse, setFilterCourse] = useState<number | ''>('');
-  const [filterType, setFilterType] = useState<string>('all');
+  // Filters — initialize child from navigation state if parent dashboard passed it
+  const [filterChild, setFilterChild] = useState<number | ''>(() => {
+    const navState = location.state as { selectedChild?: number | null } | null;
+    if (navState?.selectedChild) return navState.selectedChild;
+    const stored = sessionStorage.getItem('selectedChildId');
+    return stored ? Number(stored) : '';
+  });
+  const [filterCourse, setFilterCourse] = useState<number | ''>(() => {
+    const course = searchParams.get('course');
+    return course ? Number(course) : '';
+  });
+  const [filterType, setFilterType] = useState<string>(() => searchParams.get('type') || 'all');
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
 
   // Study tools modal
   const [showModal, setShowModal] = useState(false);
-  const [studyTitle, setStudyTitle] = useState('');
-  const [studyContent, setStudyContent] = useState('');
-  const [studyType, setStudyType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
-  const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [modalCourseId, setModalCourseId] = useState<number | ''>('');
   const [modalMaterials, setModalMaterials] = useState<CourseContentItem[]>([]);
   const [modalMaterialId, setModalMaterialId] = useState<number | ''>('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [studyError, setStudyError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const generatingRef = useRef(false);
+  const lastGenerateParamsRef = useRef<StudyMaterialGenerateParams | null>(null);
 
   // In-progress generation placeholders
   const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
@@ -95,10 +104,18 @@ export function StudyGuidesPage() {
   const [datePromptTasks, setDatePromptTasks] = useState<AutoCreatedTask[]>([]);
   const [datePromptValues, setDatePromptValues] = useState<Record<number, string>>({});
 
+  // Collapsible sections
+  const [materialsExpanded, setMaterialsExpanded] = useState(true);
+
   // Archive section
   const [showArchived, setShowArchived] = useState(false);
   const [archivedContents, setArchivedContents] = useState<CourseContentItem[]>([]);
   const [archivedGuides, setArchivedGuides] = useState<StudyGuide[]>([]);
+
+  // Course search
+  const [courseSearchQuery, setCourseSearchQuery] = useState('');
+  const [courseSearchOpen, setCourseSearchOpen] = useState(false);
+  const courseSearchRef = useRef<HTMLDivElement>(null);
 
   // Toast notification
   const [toast, setToast] = useState<string | null>(null);
@@ -113,38 +130,54 @@ export function StudyGuidesPage() {
   // Reassign course content to different course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
 
+  // Edit material modal
+  const [editContent, setEditContent] = useState<CourseContentItem | null>(null);
+
+  // Focus traps for modals
+  const categorizeModalRef = useFocusTrap<HTMLDivElement>(!!categorizeGuide, () => setCategorizeGuide(null));
+  const reassignModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
+  const datePromptModalRef = useFocusTrap<HTMLDivElement>(datePromptTasks.length > 0);
+
   useEffect(() => {
     loadData();
-    if (_pendingGeneration) {
-      const params = _pendingGeneration;
-      _pendingGeneration = null;
-      startGeneration(params);
+    if (_pendingGenerations.length > 0) {
+      const pending = [..._pendingGenerations];
+      _pendingGenerations = [];
+      pending.forEach(p => startGeneration(p));
     }
+    // Safety timeout: if loading takes too long, show error state
+    const timeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) setLoadError(true);
+        return false;
+      });
+    }, 15000);
+    return () => clearTimeout(timeout);
   }, []);
 
-  // Set filter from navigation state (parent dashboard child selection)
-  useEffect(() => {
-    const navState = location.state as { selectedChild?: number | null } | null;
-    if (navState?.selectedChild) {
-      setFilterChild(navState.selectedChild);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    if (showModal && !supportedFormats) {
-      studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
-    }
-  }, [showModal, supportedFormats]);
-
   // Reset course filter when child changes (filter cascade fix)
+  const prevFilterChild = useRef(filterChild);
   useEffect(() => {
-    setFilterCourse('');
+    if (prevFilterChild.current !== filterChild) {
+      prevFilterChild.current = filterChild;
+      setFilterCourse('');
+      searchParams.delete('course');
+      setSearchParams(searchParams, { replace: true });
+    }
   }, [filterChild]);
 
   // Reload content when filters change
   useEffect(() => {
     loadContentItems();
   }, [filterChild, filterCourse]);
+
+  // Sync course search query with selected course name
+  useEffect(() => {
+    if (filterCourse && courses.length > 0) {
+      const selected = courses.find(c => c.id === filterCourse);
+      if (selected) setCourseSearchQuery(selected.name);
+    }
+  }, [courses, filterCourse]);
 
   // Load materials for modal course selection
   useEffect(() => {
@@ -157,9 +190,12 @@ export function StudyGuidesPage() {
   }, [modalCourseId]);
 
   const loadData = async () => {
+    setLoadError(false);
     try {
+      const contentParams: Record<string, any> = {};
+      if (filterChild) contentParams.student_user_id = filterChild;
       const [contents, allGuides, courseList] = await Promise.all([
-        courseContentsApi.listAll(),
+        courseContentsApi.listAll(contentParams),
         studyApi.listGuides(),
         coursesApi.list(),
       ]);
@@ -185,7 +221,9 @@ export function StudyGuidesPage() {
         const childrenData = await parentApi.getChildren();
         setChildren(childrenData);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -201,8 +239,10 @@ export function StudyGuidesPage() {
 
   const loadArchived = async () => {
     try {
+      const archiveParams: Record<string, any> = { include_archived: true };
+      if (filterChild) archiveParams.student_user_id = filterChild;
       const [allContents, allGuides] = await Promise.all([
-        courseContentsApi.listAll({ include_archived: true }),
+        courseContentsApi.listAll(archiveParams),
         studyApi.listGuides({ include_archived: true }),
       ]);
       setArchivedContents(allContents.filter(c => c.archived_at));
@@ -211,8 +251,20 @@ export function StudyGuidesPage() {
   };
 
   useEffect(() => {
-    if (showArchived) loadArchived();
-  }, [showArchived]);
+    loadArchived();
+  }, [filterChild]);
+
+  // Close course search dropdown on outside click
+  useEffect(() => {
+    if (!courseSearchOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (courseSearchRef.current && !courseSearchRef.current.contains(e.target as Node)) {
+        setCourseSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [courseSearchOpen]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -220,7 +272,7 @@ export function StudyGuidesPage() {
   };
 
   const handleArchiveContent = async (id: number) => {
-    const ok = await confirm({ title: 'Archive Material', message: 'This will archive the course material. You can restore it later from the archive.', confirmLabel: 'Archive' });
+    const ok = await confirm({ title: 'Archive Material', message: 'This will archive the class material. You can restore it later from the archive.', confirmLabel: 'Archive' });
     if (!ok) return;
     try {
       await courseContentsApi.delete(id);
@@ -379,39 +431,10 @@ export function StudyGuidesPage() {
     return 'Study Guide';
   };
 
-  // File handling
-  const handleFileSelect = (file: File) => {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setStudyError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
-      return;
-    }
-    setSelectedFile(file);
-    setStudyMode('file');
-    if (!studyTitle) setStudyTitle(file.name.replace(/\.[^/.]+$/, ''));
-  };
-
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  };
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const clearFileSelection = () => {
-    setSelectedFile(null); setStudyMode('text');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const resetModal = () => {
-    setShowModal(false); setStudyTitle(''); setStudyContent('');
-    setStudyType('study_guide'); setStudyMode('text'); setSelectedFile(null);
-    setStudyError(''); setDuplicateCheck(null);
+    setShowModal(false);
+    setDuplicateCheck(null);
     setModalCourseId(''); setModalMaterialId(''); setModalMaterials([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const startGeneration = (params: PendingGeneration) => {
@@ -428,13 +451,26 @@ export function StudyGuidesPage() {
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId, course_content_id: params.courseContentId,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.pastedImages && params.pastedImages.length > 0) {
+          result = await studyApi.generateFromTextAndImages({
+            content: params.content,
+            images: params.pastedImages,
+            title: params.title || undefined,
+            guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+            course_id: params.courseId,
+            course_content_id: params.courseContentId,
+            focus_prompt: params.focusPrompt,
           });
         } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else {
-          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId });
+          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
@@ -457,36 +493,68 @@ export function StudyGuidesPage() {
     })();
   };
 
-  const handleGenerate = async () => {
-    if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
-    if (studyMode === 'text' && !studyContent.trim()) { setStudyError('Please enter content'); return; }
+  const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     if (generatingRef.current) return;
-
-    if (!duplicateCheck && !await confirm({ title: 'Generate Study Material', message: `Generate ${studyType.replace('_', ' ')}? This will use AI credits.`, confirmLabel: 'Generate' })) return;
+    lastGenerateParamsRef.current = modalParams;
 
     setIsGenerating(true);
     try {
-      if (studyMode === 'text' && !duplicateCheck) {
+      // Upload-only mode: no AI types selected → create course content directly
+      if (modalParams.types.length === 0) {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: studyTitle || undefined, guide_type: studyType });
+          const courseId = modalParams.courseId
+            ?? (await coursesApi.getDefault()).id;
+          if (modalParams.mode === 'file' && modalParams.file) {
+            // File upload: save original file + extract text on backend
+            await courseContentsApi.uploadFile(
+              modalParams.file,
+              courseId,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else {
+            // Text/paste mode: create content with text only
+            await courseContentsApi.create({
+              course_id: courseId,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
+          }
+          resetModal();
+          loadData();
+        } catch {
+          // Silently handle — user will see content list refresh
+        }
+        return;
+      }
+
+      // Check for duplicates only when single type selected (skip for multi-select)
+      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+        try {
+          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
         } catch { /* continue */ }
       }
 
-      const params: PendingGeneration = {
-        title: studyTitle || `New ${studyType.replace('_', ' ')}`,
-        content: studyContent,
-        type: studyType,
-        mode: studyMode,
-        file: selectedFile ?? undefined,
-        regenerateId: duplicateCheck?.existing_guide?.id,
-        courseId: modalCourseId ? (modalCourseId as number) : undefined,
-        courseContentId: modalMaterialId ? (modalMaterialId as number) : undefined,
-      };
-
       setDuplicateCheck(null);
       resetModal();
-      startGeneration(params);
+
+      // Fan out: one startGeneration() per selected type (parallel)
+      for (const type of modalParams.types) {
+        startGeneration({
+          title: modalParams.title,
+          content: modalParams.content,
+          type,
+          focusPrompt: modalParams.focusPrompt,
+          mode: modalParams.mode,
+          file: modalParams.file,
+          pastedImages: modalParams.pastedImages,
+          regenerateId: duplicateCheck?.existing_guide?.id,
+          courseId: modalParams.courseId,
+          courseContentId: modalParams.courseContentId,
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -514,10 +582,23 @@ export function StudyGuidesPage() {
     return courses.filter(c => courseIdsInContent.has(c.id));
   }, [courses, contentItems]);
 
-  // Apply course + type filters
+  // Filtered courses for search dropdown
+  const searchFilteredCourses = useMemo(() => {
+    if (!courseSearchQuery.trim()) return visibleCourses;
+    return visibleCourses.filter(c => c.name.toLowerCase().includes(courseSearchQuery.toLowerCase()));
+  }, [visibleCourses, courseSearchQuery]);
+
+  // Apply course + type + text search filters
+  const materialSearchQuery = courseSearchQuery.trim().toLowerCase();
   const filteredContent = contentItems.filter(c => {
     if (filterCourse && c.course_id !== filterCourse) return false;
     if (filterType !== 'all' && !contentGuideMap[c.id]?.includes(filterType)) return false;
+    // When text is entered but no specific course selected, filter by title or course name
+    if (materialSearchQuery && !filterCourse) {
+      const matchesTitle = c.title.toLowerCase().includes(materialSearchQuery);
+      const matchesCourse = (c.course_name || '').toLowerCase().includes(materialSearchQuery);
+      if (!matchesTitle && !matchesCourse) return false;
+    }
     return true;
   });
 
@@ -543,10 +624,25 @@ export function StudyGuidesPage() {
     return counts;
   }, [contentItems, contentGuideMap, legacyGuides]);
 
-  if (loading) {
+  if (loading || loadError) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage study materials">
-        <PageSkeleton />
+      <DashboardLayout welcomeSubtitle="Manage study materials" showBackButton>
+        {loadError ? (
+          <div className="no-children-state">
+            <h3>Unable to Load Class Materials</h3>
+            <p>Something went wrong while loading your class materials. Please try again.</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+              <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
+                Retry
+              </button>
+              <button className="cancel-btn" onClick={() => window.location.reload()}>
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        ) : (
+          <PageSkeleton />
+        )}
       </DashboardLayout>
     );
   }
@@ -554,40 +650,81 @@ export function StudyGuidesPage() {
   return (
     <DashboardLayout
       welcomeSubtitle="Manage study materials"
+      showBackButton
       sidebarActions={[
         { label: '+ Create Study Material', onClick: () => setShowModal(true) },
       ]}
     >
       <div className="guides-page">
-        {/* Header with filters + create button */}
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Class Materials' },
+        ]} />
+
+        {/* Child selector pills (parent only) + add action button */}
+        {isParent && children.length > 0 && (
+          <div className="guides-child-selector">
+            {children.map((child, index) => (
+              <button
+                key={child.user_id}
+                className={`child-tab${filterChild === child.user_id ? ' active' : ''}`}
+                onClick={() => { setFilterChild(child.user_id); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
+              >
+                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                {child.full_name}
+                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+              </button>
+            ))}
+            <AddActionButton actions={[
+              { icon: '\u{1F4DD}', label: 'Upload Document', onClick: () => setShowModal(true) },
+            ]} />
+          </div>
+        )}
+
+        {/* Course search box + Create button */}
         <div className="guides-header">
           <div className="guides-filters-row">
-            {isParent && children.length > 0 && (
-              <select
-                className="guides-filter-select"
-                value={filterChild}
-                onChange={e => setFilterChild(e.target.value ? Number(e.target.value) : '')}
-              >
-                <option value="">All Family</option>
-                {children.map(child => (
-                  <option key={child.user_id} value={child.user_id}>{child.full_name}</option>
-                ))}
-              </select>
-            )}
-            {visibleCourses.length > 0 && (
-              <select
-                className="guides-filter-select"
-                value={filterCourse}
-                onChange={e => setFilterCourse(e.target.value ? Number(e.target.value) : '')}
-              >
-                <option value="">All Courses</option>
-                {visibleCourses.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            )}
+            <div className="guides-course-search" ref={courseSearchRef}>
+              <input
+                type="text"
+                className="guides-course-search-input"
+                placeholder="Search classes and materials..."
+                value={courseSearchQuery}
+                onChange={e => { setCourseSearchQuery(e.target.value); setCourseSearchOpen(true); }}
+                onFocus={() => setCourseSearchOpen(true)}
+              />
+              {(filterCourse || courseSearchQuery) && (
+                <button
+                  className="guides-course-search-clear"
+                  onClick={() => { setFilterCourse(''); setCourseSearchQuery(''); searchParams.delete('course'); setSearchParams(searchParams, { replace: true }); }}
+                  aria-label="Clear filter"
+                >
+                  &times;
+                </button>
+              )}
+              {courseSearchOpen && searchFilteredCourses.length > 0 && (
+                <div className="guides-course-dropdown">
+                  {filterCourse && (
+                    <div
+                      className="guides-course-dropdown-item all"
+                      onClick={() => { setFilterCourse(''); setCourseSearchQuery(''); searchParams.delete('course'); setSearchParams(searchParams, { replace: true }); setCourseSearchOpen(false); }}
+                    >
+                      All Classes
+                    </div>
+                  )}
+                  {searchFilteredCourses.map(c => (
+                    <div
+                      key={c.id}
+                      className={`guides-course-dropdown-item${filterCourse === c.id ? ' active' : ''}`}
+                      onClick={() => { setFilterCourse(c.id); setCourseSearchQuery(c.name); searchParams.set('course', String(c.id)); setSearchParams(searchParams, { replace: true }); setCourseSearchOpen(false); }}
+                    >
+                      {c.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <button className="generate-btn" onClick={() => setShowModal(true)}>+ Create</button>
         </div>
 
         {/* Guide type filter tabs with counts */}
@@ -601,7 +738,7 @@ export function StudyGuidesPage() {
             <button
               key={tab.key}
               className={`guides-filter-btn${filterType === tab.key ? ' active' : ''}`}
-              onClick={() => setFilterType(tab.key)}
+              onClick={() => { setFilterType(tab.key); if (tab.key === 'all') { searchParams.delete('type'); } else { searchParams.set('type', tab.key); } setSearchParams(searchParams, { replace: true }); }}
             >
               {tab.label}
               {typeCounts[tab.key] > 0 && <span className="filter-count">{typeCounts[tab.key]}</span>}
@@ -611,8 +748,11 @@ export function StudyGuidesPage() {
 
         {/* Course content items */}
         <div className="guides-section">
-          <h3>Course Materials ({filteredContent.length + generatingItems.length})</h3>
-          {filteredContent.length > 0 || generatingItems.length > 0 ? (
+          <button className="collapse-toggle" onClick={() => setMaterialsExpanded(v => !v)}>
+            <span className={`section-chevron${materialsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+            <h3>Class Materials ({filteredContent.length + generatingItems.length})</h3>
+          </button>
+          {materialsExpanded && (filteredContent.length > 0 || generatingItems.length > 0) ? (
             <div className="guides-list">
               {/* In-progress generation placeholders */}
               {generatingItems.map(item => (
@@ -650,47 +790,40 @@ export function StudyGuidesPage() {
                         {item.course_name && (
                           <span className="guide-course-badge">{item.course_name}</span>
                         )}
-                        <span className="guide-type-label">
-                          {contentGuideMap[item.id]
-                            ? contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')
-                            : item.content_type}
-                        </span>
+                        {contentGuideMap[item.id] && (
+                          <span className="guide-type-label">
+                            {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
+                          </span>
+                        )}
                         <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
                       </span>
                     </div>
                   </div>
                   <div className="guide-row-actions">
-                    <button className="guide-convert-btn" title="Edit" onClick={() => navigateToContent(item)}>&#9998;</button>
-                    <button className="guide-convert-btn" title="Move to course" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
+                    <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
+                    <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
                     <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="guides-empty">
-              <p>No course materials yet. Click "+ Create" to generate study materials from your content.</p>
-            </div>
-          )}
+          ) : materialsExpanded ? (
+            <EmptyState
+              icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>}
+              title="No materials yet"
+              description="Upload class documents to generate study guides, quizzes, and flashcards."
+              action={{ label: 'Upload Your First Document', onClick: () => setShowModal(true) }}
+            />
+          ) : null}
         </div>
 
-        {/* Archive toggle */}
-        <div className="archive-toggle-row">
-          <button
-            className={`archive-toggle-btn${showArchived ? ' active' : ''}`}
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? 'Hide Archive' : 'Show Archive'}
-            {showArchived && (archivedContents.length + archivedGuides.length > 0) && (
-              <span className="filter-count">{archivedContents.length + archivedGuides.length}</span>
-            )}
-          </button>
-        </div>
-
-        {/* Archived items */}
-        {showArchived && (archivedContents.length > 0 || archivedGuides.length > 0) && (
-          <div className="guides-section archived-section">
+        {/* Archive section */}
+        <div className="guides-section archived-section">
+          <button className="collapse-toggle" onClick={() => setShowArchived(!showArchived)}>
+            <span className={`section-chevron${showArchived ? ' expanded' : ''}`}>&#9654;</span>
             <h3>Archived ({archivedContents.length + archivedGuides.length})</h3>
+          </button>
+        {showArchived && (archivedContents.length > 0 || archivedGuides.length > 0) && (
             <div className="guides-list">
               {archivedContents.map(item => (
                 <div key={`ac-${item.id}`} className="guide-row guide-row-archived">
@@ -731,8 +864,8 @@ export function StudyGuidesPage() {
                 </div>
               ))}
             </div>
-          </div>
         )}
+        </div>
 
         {/* Legacy study guides (no course_content_id) */}
         {filteredLegacy.length > 0 && (
@@ -779,7 +912,7 @@ export function StudyGuidesPage() {
                     </button>
                     <button
                       className="guide-convert-btn"
-                      title="Move to course"
+                      title="Move to class"
                       onClick={() => { setCategorizeGuide(guide); setCategorizeCourseId(''); }}
                     >
                       &#128194;
@@ -796,97 +929,46 @@ export function StudyGuidesPage() {
       </div>
 
       {/* Study Tools Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={resetModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Study Material</h2>
-            <p className="modal-desc">Upload a document or photo, or paste text to generate AI-powered study materials.</p>
-            <div className="modal-form">
-              <label>
-                What to create
-                <select value={studyType} onChange={(e) => setStudyType(e.target.value as any)} disabled={isGenerating}>
-                  <option value="study_guide">Study Guide</option>
-                  <option value="quiz">Practice Quiz</option>
-                  <option value="flashcards">Flashcards</option>
-                </select>
-              </label>
-              <label>
-                Title (optional)
-                <input type="text" value={studyTitle} onChange={(e) => setStudyTitle(e.target.value)} placeholder="e.g., Chapter 5 Review" disabled={isGenerating} />
-              </label>
-              <label>
-                Course (optional)
-                <select value={modalCourseId} onChange={(e) => setModalCourseId(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
-                  <option value="">Main Course (default)</option>
-                  {courses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </label>
-              {modalCourseId && modalMaterials.length > 0 && (
-                <label>
-                  Existing material (optional)
-                  <select value={modalMaterialId} onChange={(e) => setModalMaterialId(e.target.value ? Number(e.target.value) : '')} disabled={isGenerating}>
-                    <option value="">Create new material</option>
-                    {modalMaterials.map(m => (
-                      <option key={m.id} value={m.id}>{m.title}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <div className="mode-toggle">
-                <button className={`mode-btn ${studyMode === 'text' ? 'active' : ''}`} onClick={() => setStudyMode('text')} disabled={isGenerating}>Paste Text</button>
-                <button className={`mode-btn ${studyMode === 'file' ? 'active' : ''}`} onClick={() => setStudyMode('file')} disabled={isGenerating}>Upload File</button>
-              </div>
-              {studyMode === 'text' ? (
-                <label>
-                  Content to study
-                  <textarea value={studyContent} onChange={(e) => setStudyContent(e.target.value)} placeholder="Paste notes, textbook content, or any study material..." rows={8} disabled={isGenerating} />
-                </label>
-              ) : (
-                <div className="file-upload-section">
-                  <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
-                  <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
-                    {selectedFile ? (
-                      <div className="selected-file">
-                        <span className="file-icon">&#128196;</span>
-                        <div className="file-info">
-                          <span className="file-name">{selectedFile.name}</span>
-                          <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                        <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>&times;</button>
-                      </div>
-                    ) : (
-                      <div className="drop-zone-content">
-                        <span className="upload-icon">&#128193;</span>
-                        <p>Drag & drop a file here, or click to browse</p>
-                        <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {studyError && <p className="link-error">{studyError}</p>}
-            </div>
-            {duplicateCheck && duplicateCheck.exists && (
-              <div className="duplicate-warning">
-                <p>{duplicateCheck.message}</p>
-                <div className="duplicate-actions">
-                  <button className="generate-btn" onClick={() => { const guide = duplicateCheck.existing_guide!; resetModal(); navigateToLegacyGuide(guide); }}>View Existing</button>
-                  <button className="generate-btn" onClick={handleGenerate}>Regenerate (New Version)</button>
-                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
-                </div>
-              </div>
-            )}
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={resetModal} disabled={isGenerating}>Cancel</button>
-              <button className="generate-btn" onClick={handleGenerate} disabled={isGenerating || (studyMode === 'file' ? !selectedFile : !studyContent.trim())}>
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateStudyMaterialModal
+        open={showModal}
+        onClose={resetModal}
+        onGenerate={handleGenerateFromModal}
+        isGenerating={isGenerating}
+        courses={courses}
+        materials={modalMaterials}
+        selectedCourseId={modalCourseId}
+        onCourseChange={setModalCourseId}
+        selectedMaterialId={modalMaterialId}
+        onMaterialChange={setModalMaterialId}
+        duplicateCheck={duplicateCheck}
+        onViewExisting={() => {
+          const guide = duplicateCheck?.existing_guide;
+          if (guide) { resetModal(); navigateToLegacyGuide(guide); }
+        }}
+        onRegenerate={() => {
+          if (lastGenerateParamsRef.current) {
+            const params = lastGenerateParamsRef.current;
+            setDuplicateCheck(null);
+            resetModal();
+            for (const type of params.types) {
+              startGeneration({
+                title: params.title,
+                content: params.content,
+                type,
+                focusPrompt: params.focusPrompt,
+                mode: params.mode,
+                file: params.file,
+                pastedImages: params.pastedImages,
+                regenerateId: duplicateCheck?.existing_guide?.id,
+                courseId: params.courseId,
+                courseContentId: params.courseContentId,
+              });
+            }
+          }
+        }}
+        onDismissDuplicate={() => setDuplicateCheck(null)}
+        showParentNote={user?.role === 'student'}
+      />
 
       <CreateTaskModal
         open={!!taskModalGuide}
@@ -899,13 +981,13 @@ export function StudyGuidesPage() {
       {/* Categorize modal */}
       {categorizeGuide && (
         <div className="modal-overlay" onClick={() => setCategorizeGuide(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Move to Course</h2>
-            <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a course.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Move to Class" ref={categorizeModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Move to Class</h2>
+            <p className="modal-desc">Assign &ldquo;{categorizeGuide.title}&rdquo; to a class.</p>
             <div className="modal-form">
               <input
                 type="text"
-                placeholder="Search courses or type a new name..."
+                placeholder="Search classes or type a new name..."
                 value={categorizeSearch}
                 onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
                 autoFocus
@@ -932,7 +1014,7 @@ export function StudyGuidesPage() {
                   </div>
                 )}
                 {categorizeSearch && courses.filter(c => c.name.toLowerCase().includes(categorizeSearch.toLowerCase())).length === 0 && !categorizeSearch.trim() && (
-                  <div className="categorize-empty">No courses found</div>
+                  <div className="categorize-empty">No classes found</div>
                 )}
               </div>
             </div>
@@ -949,16 +1031,25 @@ export function StudyGuidesPage() {
           </div>
         </div>
       )}
+      {/* Edit material modal */}
+      {editContent && (
+        <EditMaterialModal
+          material={editContent}
+          courses={courses}
+          onClose={() => setEditContent(null)}
+          onSaved={() => { setEditContent(null); loadData(); showToast('Material updated'); }}
+        />
+      )}
       {/* Reassign content to course modal */}
       {reassignContent && (
         <div className="modal-overlay" onClick={() => setReassignContent(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Move to Course</h2>
-            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a course.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Move to Class" ref={reassignModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Move to Class</h2>
+            <p className="modal-desc">Assign &ldquo;{reassignContent.title}&rdquo; to a class.</p>
             <div className="modal-form">
               <input
                 type="text"
-                placeholder="Search courses or type a new name..."
+                placeholder="Search classes or type a new name..."
                 value={categorizeSearch}
                 onChange={(e) => { setCategorizeSearch(e.target.value); setCategorizeCourseId(''); setCategorizeNewName(''); }}
                 autoFocus
@@ -1002,12 +1093,12 @@ export function StudyGuidesPage() {
       {/* Date prompt for auto-created tasks */}
       {datePromptTasks.length > 0 && (
         <div className="modal-overlay" onClick={handleDatePromptCancel}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Tasks Created" ref={datePromptModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Tasks Created</h2>
             <p className="modal-desc">
               {datePromptTasks.length === 1
-                ? 'A task was auto-created from your course material. Set the action date:'
-                : `${datePromptTasks.length} tasks were auto-created from your course material. Set the action dates:`}
+                ? 'A task was auto-created from your class material. Set the action date:'
+                : `${datePromptTasks.length} tasks were auto-created from your class material. Set the action dates:`}
             </p>
             <div className="modal-form">
               {datePromptTasks.map(task => (

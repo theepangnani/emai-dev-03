@@ -33,6 +33,9 @@ vi.mock('../api/client', () => ({
     permanentDelete: (...args: any[]) => mockPermanentDelete(...args),
     getAssignableUsers: (...args: any[]) => mockGetAssignableUsers(...args),
   },
+  parentApi: {
+    getChildren: vi.fn().mockResolvedValue([]),
+  },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
   },
@@ -59,6 +62,10 @@ vi.mock('../components/GlobalSearch', () => ({
 
 vi.mock('../components/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
+}))
+
+vi.mock('../components/parent/useParentDashboard', () => ({
+  CHILD_COLORS: ['#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b'],
 }))
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -107,6 +114,11 @@ import { TasksPage } from './TasksPage'
 describe('TasksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset search params to avoid pollution between tests
+    mockSearchParams.delete('status')
+    mockSearchParams.delete('priority')
+    mockSearchParams.delete('due')
+    mockSearchParams.delete('assignee')
   })
 
   it('shows loading skeleton initially', () => {
@@ -139,7 +151,7 @@ describe('TasksPage', () => {
   it('shows empty state when no tasks', async () => {
     renderTasks([])
     await waitFor(() => {
-      expect(screen.getByText('No tasks found.')).toBeInTheDocument()
+      expect(screen.getByText('No tasks yet')).toBeInTheDocument()
     })
   })
 
@@ -167,14 +179,19 @@ describe('TasksPage', () => {
     expect(mockUpdate).toHaveBeenCalledWith(1, { is_completed: true })
   })
 
-  it('opens create modal on "+ New Task" click', async () => {
+  it('opens create modal via + popover "New Task"', async () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByText('+ New Task')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('+ New Task'))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('New Task'))
+
     expect(screen.getByRole('heading', { name: 'Create Task' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Task title')).toBeInTheDocument()
   })
@@ -184,10 +201,14 @@ describe('TasksPage', () => {
     mockCreate.mockResolvedValue({})
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByText('+ New Task')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('+ New Task'))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('New Task'))
     await user.type(screen.getByPlaceholderText('Task title'), 'New task title')
     await user.click(screen.getByRole('button', { name: 'Create Task' }))
 
@@ -202,11 +223,31 @@ describe('TasksPage', () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
-      expect(screen.getByText('+ New Task')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('+ New Task'))
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('New Task'))
     expect(screen.getByRole('button', { name: 'Create Task' })).toBeDisabled()
+  })
+
+  it('navigates to course-materials on "Upload Documents" click', async () => {
+    const user = userEvent.setup()
+    renderTasks()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Upload Documents'))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/course-materials')
   })
 
   it('opens edit modal on edit button click', async () => {
@@ -247,7 +288,7 @@ describe('TasksPage', () => {
     })
   })
 
-  it('archives task with confirmation', async () => {
+  it('archives task via edit modal', async () => {
     const user = userEvent.setup()
     mockDeleteTask.mockResolvedValue({})
     renderTasks()
@@ -255,8 +296,15 @@ describe('TasksPage', () => {
       expect(screen.getByText('Review Chapter 5')).toBeInTheDocument()
     })
 
-    const archiveBtns = screen.getAllByTitle('Archive')
-    await user.click(archiveBtns[0])
+    // Open edit modal via the edit button
+    const editBtns = screen.getAllByTitle('Edit')
+    await user.click(editBtns[0])
+
+    // Click Archive button inside edit modal
+    await waitFor(() => {
+      expect(screen.getByTitle('Archive this task')).toBeInTheDocument()
+    })
+    await user.click(screen.getByTitle('Archive this task'))
 
     // Confirm modal
     await waitFor(() => {
@@ -315,8 +363,12 @@ describe('TasksPage', () => {
         expect(screen.getByText('3 tasks')).toBeInTheDocument()
       })
 
-      const prioritySelect = screen.getAllByRole('combobox')[1] // Priority is second select
-      await user.selectOptions(prioritySelect, 'high')
+      // Expand the filters panel first
+      await user.click(screen.getByRole('button', { name: /Filters/i }))
+
+      // Click the "High" chip button in the Priority filter group
+      const chipButtons = screen.getAllByRole('button', { name: 'High' })
+      await user.click(chipButtons[0])
 
       // Only high priority task should be visible
       expect(screen.getByText('1 task')).toBeInTheDocument()
@@ -331,8 +383,12 @@ describe('TasksPage', () => {
         expect(screen.getByText('3 tasks')).toBeInTheDocument()
       })
 
-      const prioritySelect = screen.getAllByRole('combobox')[1]
-      await user.selectOptions(prioritySelect, 'low')
+      // Expand the filters panel first
+      await user.click(screen.getByRole('button', { name: /Filters/i }))
+
+      // Click the "Low" chip button in the Priority filter group
+      const chipButtons = screen.getAllByRole('button', { name: 'Low' })
+      await user.click(chipButtons[0])
 
       expect(screen.getByText('1 task')).toBeInTheDocument()
     })

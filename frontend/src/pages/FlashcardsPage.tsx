@@ -4,6 +4,7 @@ import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
 import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { PageNav } from '../components/PageNav';
 import './FlashcardsPage.css';
 
 type CardDifficulty = 'mastered' | 'learning';
@@ -206,7 +207,14 @@ export function FlashcardsPage() {
     return (
       <div className="flashcards-page">
         <div className="error">{error || 'Flashcards not found'}</div>
-        <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Course Materials', to: '/course-materials' },
+          ...(guide?.course_content_id
+            ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+            : []),
+          { label: 'Flashcards' },
+        ]} />
       </div>
     );
   }
@@ -216,7 +224,11 @@ export function FlashcardsPage() {
     return (
       <div className="flashcards-page">
         <div className="flashcards-header">
-          <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+          <PageNav items={[
+            { label: 'Home', to: '/dashboard' },
+            { label: 'Materials', to: '/course-materials' },
+            { label: 'Flashcards' },
+          ]} />
           <h1>{guide.title}</h1>
         </div>
         <div className="fc-summary">
@@ -261,7 +273,14 @@ export function FlashcardsPage() {
   return (
     <div className="flashcards-page">
       <div className="flashcards-header">
-        <Link to="/dashboard" className="back-link">&larr; Back to Dashboard</Link>
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Course Materials', to: '/course-materials' },
+          ...(guide?.course_content_id
+            ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+            : []),
+          { label: 'Flashcards' },
+        ]} />
         <h1>
           {guide.title}
           {reviewMode && <span className="review-mode-badge">Review Mode</span>}

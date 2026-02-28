@@ -52,8 +52,15 @@ frontend/test-results/
 # Smoke test output
 smoke-results.json
 
+# Uploaded files
+uploads/
+
 # Temp files
 ERROR
 WARNING
 =*
 *scratchpad*
+tmp_*.txt
+
+# Claude worktrees
+.claude/worktrees/

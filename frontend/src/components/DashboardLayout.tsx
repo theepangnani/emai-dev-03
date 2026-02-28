@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
 import type { InspirationMessage } from '../api/client';
@@ -12,16 +12,108 @@ import '../pages/Dashboard.css';
 
 interface SidebarAction {
   label: string;
+  icon?: string;
   onClick: () => void;
+}
+
+export interface InspirationData {
+  text: string;
+  author: string | null;
 }
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   welcomeSubtitle?: string;
   sidebarActions?: SidebarAction[];
+  /** @deprecated Use <PageNav> inside page content instead. Kept for backward compat. */
+  showBackButton?: boolean;
+  /** When provided, replaces the default welcome section. Receives inspiration data. */
+  headerSlot?: (inspiration: InspirationData | null) => React.ReactNode;
 }
 
-export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: DashboardLayoutProps) {
+// Module-level cache so inspiration persists across DashboardLayout remounts (page navigations)
+let cachedInspiration: InspirationMessage | null = null;
+
+// SVG icon component for nav items (Feather/Lucide style)
+const NAV_SVG: Record<string, React.ReactNode> = {
+  Home: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+  'My Kids': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Classes: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
+  Materials: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  ),
+  'Quiz History': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  Tasks: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 11 12 14 22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  ),
+  Messages: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
+  'Teacher Comms': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  ),
+  Help: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
+};
+
+const NavIcon = ({ name }: { name: string }) => {
+  return NAV_SVG[name] || <span>{name[0]}</span>;
+};
+
+// Quick action SVG icons
+const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
+  '+ Class Material': NAV_SVG.Materials,
+  '+ Create Class Material': NAV_SVG.Materials,
+  '+ Task': NAV_SVG.Tasks,
+  '+ Child': NAV_SVG['My Kids'],
+  '+ Add Child': NAV_SVG['My Kids'],
+  '+ Class': NAV_SVG.Classes,
+  '+ Add Class': NAV_SVG.Classes,
+  '+ Create Study Material': NAV_SVG.Materials,
+};
+
+export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,8 +121,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
-  const [inspiration, setInspiration] = useState<InspirationMessage | null>(null);
+  const [inspiration, setInspiration] = useState<InspirationMessage | null>(cachedInspiration);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
@@ -49,8 +142,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
   const navItems = useMemo(() => {
     if (user?.role === 'parent') {
       return [
-        { label: 'Overview', path: '/dashboard' },
-        { label: 'Child Profiles', path: '/my-kids' },
+        { label: 'Home', path: '/dashboard' },
+        { label: 'My Kids', path: '/my-kids' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -58,12 +151,19 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     }
 
     const items: Array<{ label: string; path: string }> = [
-      { label: 'Dashboard', path: '/dashboard' },
-      { label: 'Courses', path: '/courses' },
-      { label: 'Course Materials', path: '/course-materials' },
+      { label: 'Home', path: '/dashboard' },
+      { label: 'Classes', path: '/courses' },
+      { label: 'Materials', path: '/course-materials' },
+    ];
+
+    if (user?.role === 'student') {
+      items.push({ label: 'Quiz History', path: '/quiz-history' });
+    }
+
+    items.push(
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
-    ];
+    );
 
     if (user?.role === 'teacher') {
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
@@ -89,9 +189,13 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     return () => clearInterval(interval);
   }, []);
 
-  // Load inspirational message once per session
+  // Load inspirational message once per session (cached across remounts)
   useEffect(() => {
-    inspirationApi.getRandom().then(setInspiration).catch(() => {});
+    if (cachedInspiration) return;
+    inspirationApi.getRandom().then((msg) => {
+      cachedInspiration = msg;
+      setInspiration(msg);
+    }).catch(() => {});
   }, []);
 
   // Close menu when route changes
@@ -99,6 +203,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     // Menu close is intentionally synchronous here to provide immediate feedback on navigation
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMenuOpen(false);
+    setQuickActionsOpen(false);
   }, [location.pathname]);
 
   // Close role switcher on click outside
@@ -127,6 +232,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
+
+  // Build the full quick actions list for persistent sidebar (non-parent roles only)
+  const persistentQuickActions = useMemo(() => {
+    return sidebarActions || [];
+  }, [sidebarActions]);
 
   const handleNavClick = useCallback((path: string) => {
     navigate(path);
@@ -238,7 +348,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
         </div>
       )}
 
-      {/* Slide-out menu overlay */}
+      {/* Slide-out menu overlay (mobile only, <768px) */}
       {menuOpen && <div className="menu-overlay" onClick={() => setMenuOpen(false)} />}
 
       <div className={`slide-menu${menuOpen ? ' open' : ''}`}>
@@ -250,7 +360,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
               className={`sidebar-link${location.pathname === item.path ? ' active' : ''}`}
               onClick={() => handleNavClick(item.path)}
             >
-              {item.label}
+              <span className="sidebar-link-icon"><NavIcon name={item.label} /></span>
+              <span className="sidebar-link-label">{item.label}</span>
               {item.path === '/messages' && unreadCount > 0 && (
                 <span className="sidebar-badge">{unreadCount}</span>
               )}
@@ -268,7 +379,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
                   className="sidebar-action"
                   onClick={() => handleActionClick(action)}
                 >
-                  {action.label}
+                  <span className="sidebar-action-icon icon-with-plus">{QUICK_ACTION_SVG[action.label] || <NavIcon name={action.label} />}</span>
+                  <span className="sidebar-action-label">{action.label}</span>
                 </button>
               ))}
             </div>
@@ -276,25 +388,89 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions }: D
         )}
       </div>
 
-      <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
-        <div className="welcome-section">
-          {inspiration ? (
+      <div className="dashboard-body">
+        {/* Persistent sidebar (>=768px) */}
+        <aside className="persistent-sidebar" aria-label="Main navigation">
+          <nav className="persistent-sidebar-nav">
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                className={`ps-nav-item${location.pathname === item.path ? ' active' : ''}`}
+                onClick={() => navigate(item.path)}
+                title={item.label}
+                aria-label={item.label}
+              >
+                <span className="ps-nav-icon"><NavIcon name={item.label} /></span>
+                <span className="ps-nav-label">{item.label}</span>
+                {item.path === '/messages' && unreadCount > 0 && (
+                  <span className="ps-nav-badge">{unreadCount}</span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {persistentQuickActions.length > 0 && (
             <>
-              <h2 className="inspiration-text">"{inspiration.text}"</h2>
-              {inspiration.author && (
-                <p className="inspiration-author">— {inspiration.author}</p>
+              <div className="ps-divider" />
+              <button
+                className={`ps-fab-toggle${quickActionsOpen ? ' open' : ''}`}
+                onClick={() => setQuickActionsOpen(p => !p)}
+                title="Quick Actions"
+                aria-label="Quick Actions"
+              >
+                <span className="ps-fab-icon">+</span>
+              </button>
+              {quickActionsOpen && (
+                <div className="persistent-sidebar-actions">
+                  {persistentQuickActions.map((action, i) => (
+                    <button
+                      key={i}
+                      className="ps-action-item"
+                      onClick={action.onClick}
+                      title={action.label}
+                      aria-label={action.label}
+                    >
+                      <span className="ps-action-icon icon-with-plus">{QUICK_ACTION_SVG[action.label] || <NavIcon name={action.label} />}</span>
+                    </button>
+                  ))}
+                </div>
               )}
             </>
-          ) : (
-            <>
-              <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
-              <p>{welcomeSubtitle || "Here's your overview"}</p>
-            </>
           )}
-        </div>
+        </aside>
+
+        <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
+        {headerSlot ? (
+          headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
+        ) : (
+          <div className="welcome-section">
+            {inspiration ? (
+              <>
+                <h2 className="inspiration-text">"{inspiration.text}"</h2>
+                {inspiration.author && (
+                  <p className="inspiration-author">— {inspiration.author}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
+                <p>{welcomeSubtitle || "Here's your overview"}</p>
+              </>
+            )}
+          </div>
+        )}
 
         {children}
       </main>
+      </div>{/* end dashboard-body */}
+
+      <footer className="dashboard-footer">
+        <Link to="/privacy">Privacy Policy</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <Link to="/terms">Terms of Service</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <a href="mailto:support@classbridge.ca">Contact Us</a>
+      </footer>
 
       <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 

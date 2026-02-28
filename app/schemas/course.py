@@ -24,6 +24,7 @@ class CourseResponse(BaseModel):
     description: str | None
     subject: str | None
     google_classroom_id: str | None
+    classroom_type: str | None = None
     teacher_id: int | None
     teacher_name: str | None = None
     teacher_email: str | None = None
@@ -39,3 +40,4 @@ class CourseResponse(BaseModel):
 
 class AddStudentRequest(BaseModel):
     email: str
+    message: str | None = None  # Optional message to include in the invite (#551)

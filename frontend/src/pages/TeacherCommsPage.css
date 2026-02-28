@@ -29,7 +29,7 @@
 .comms-header .back-button {
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 14px;
   cursor: pointer;
   padding: 4px 8px;
@@ -405,7 +405,7 @@
 .reply-btn {
   padding: 10px 20px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -470,7 +470,7 @@
 .send-reply-btn {
   padding: 8px 20px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -505,7 +505,7 @@
   display: none;
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
