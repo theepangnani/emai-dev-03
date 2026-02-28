@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { studyApi } from '../api/study';
 import type { SupportedFormats, DuplicateCheckResponse } from '../api/study';
+import { UploadProgressBar, type UploadStatus } from './UploadProgressBar';
 
 const MAX_FILE_SIZE_MB = 100;
 
@@ -44,6 +45,14 @@ interface CreateStudyMaterialModalProps {
   onDismissDuplicate?: () => void;
   /** Show parent notification note for student uploads (#552) */
   showParentNote?: boolean;
+  /** Optional upload progress (0-100) — shows progress bar when provided (#883) */
+  uploadProgress?: number;
+  /** Upload status for progress bar display */
+  uploadStatus?: UploadStatus;
+  /** Error message for upload progress bar */
+  uploadErrorMessage?: string;
+  /** Called when user cancels an in-progress upload */
+  onCancelUpload?: () => void;
 }
 
 export default function CreateStudyMaterialModal({
@@ -64,6 +73,10 @@ export default function CreateStudyMaterialModal({
   onRegenerate,
   onDismissDuplicate,
   showParentNote = false,
+  uploadProgress,
+  uploadStatus,
+  uploadErrorMessage,
+  onCancelUpload,
 }: CreateStudyMaterialModalProps) {
   const [studyTitle, setStudyTitle] = useState('');
   const [studyContent, setStudyContent] = useState('');
@@ -369,6 +382,20 @@ export default function CreateStudyMaterialModal({
               {onRegenerate && <button className="generate-btn" onClick={onRegenerate}>Regenerate (New Version)</button>}
               {onDismissDuplicate && <button className="cancel-btn" onClick={onDismissDuplicate}>Cancel</button>}
             </div>
+          </div>
+        )}
+
+        {/* Upload progress bar (#883) */}
+        {uploadStatus && selectedFile && (
+          <div style={{ margin: '8px 0' }}>
+            <UploadProgressBar
+              fileName={selectedFile.name}
+              fileSize={selectedFile.size}
+              progress={uploadProgress ?? 0}
+              status={uploadStatus}
+              errorMessage={uploadErrorMessage}
+              onCancel={onCancelUpload}
+            />
           </div>
         )}
 

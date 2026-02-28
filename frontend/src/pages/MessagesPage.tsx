@@ -67,6 +67,17 @@ export function MessagesPage() {
     }
   }, [searchParams, recipients]);
 
+  // Handle ?conversation= deep link param (#885)
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId && conversations.length > 0 && !selectedConversation) {
+      const id = Number(conversationId);
+      if (conversations.some(c => c.id === id)) {
+        selectConversation(id);
+      }
+    }
+  }, [searchParams, conversations]);
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -123,6 +134,10 @@ export function MessagesPage() {
 
   const selectConversation = async (id: number) => {
     setLoadingConversation(true);
+    // Sync conversation ID to URL for deep linking (#885)
+    const params = new URLSearchParams(searchParams);
+    params.set('conversation', String(id));
+    setSearchParams(params, { replace: true });
     try {
       const detail = await messagesApi.getConversation(id, { offset: 0, limit: messageLimit });
       setSelectedConversation(detail);

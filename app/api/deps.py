@@ -7,12 +7,14 @@ from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# auto_error=False so missing Authorization header does NOT 401 immediately —
+# we fall back to httpOnly cookie before raising.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def get_current_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
+    bearer_token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
@@ -20,6 +22,17 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    # 1. Prefer explicit Authorization: Bearer header (mobile / API / test clients)
+    token = bearer_token
+
+    # 2. Fall back to httpOnly cookie (web clients — cookie sent automatically)
+    if not token:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         user_id: str = payload.get("sub")

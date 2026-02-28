@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
@@ -13,7 +14,7 @@ from app.models.invite import Invite, InviteType
 from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest
 from app.schemas.invite import AcceptInviteRequest
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
-from app.api.deps import get_current_user, oauth2_scheme
+from app.api.deps import get_current_user
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
@@ -26,6 +27,41 @@ _ALLOWED_REGISTRATION_ROLES = {UserRole.PARENT, UserRole.STUDENT, UserRole.TEACH
 
 import logging as _logging
 _logger = _logging.getLogger(__name__)
+
+
+def _set_auth_cookies(
+    response: JSONResponse,
+    access_token: str,
+    refresh_token: str | None = None,
+) -> None:
+    """Set httpOnly secure cookies for JWT tokens on a response."""
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/api",
+        domain=settings.cookie_domain or None,
+    )
+    if refresh_token:
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite="lax",
+            max_age=settings.refresh_token_expire_days * 86400,
+            path="/api/auth/refresh",
+            domain=settings.cookie_domain or None,
+        )
+
+
+def _clear_auth_cookies(response: JSONResponse) -> None:
+    """Clear httpOnly auth cookies on a response."""
+    response.delete_cookie("access_token", path="/api", domain=settings.cookie_domain or None)
+    response.delete_cookie("refresh_token", path="/api/auth/refresh", domain=settings.cookie_domain or None)
 
 
 def _send_verification_email(user: User, db: Session) -> None:
@@ -258,7 +294,18 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     )
 
 
-@router.post("/login", response_model=Token)
+def _get_lockout_duration(failed_attempts: int) -> int | None:
+    """Return lockout duration in seconds based on failed attempt count, or None."""
+    if failed_attempts >= 15:
+        return 24 * 60 * 60   # 24 hours
+    elif failed_attempts >= 10:
+        return 60 * 60        # 1 hour
+    elif failed_attempts >= 5:
+        return 15 * 60        # 15 minutes
+    return None
+
+
+@router.post("/login")
 @limiter.limit("5/minute")
 def login(
     request: Request,
@@ -270,7 +317,9 @@ def login(
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user:
         user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+    # If user not found, reject immediately (no lockout info to leak)
+    if not user:
         log_action(db, user_id=None, action="login_failed", resource_type="user",
                    details={"identifier": form_data.username}, ip_address=ip)
         db.commit()
@@ -280,18 +329,95 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Check account lockout BEFORE password verification (prevents timing attacks)
+    now = datetime.now(timezone.utc)
+    if user.locked_until:
+        # Compare as naive UTC to handle mixed tz-aware/naive from SQLite vs PostgreSQL
+        locked_until_naive = user.locked_until.replace(tzinfo=None)
+        now_naive = now.replace(tzinfo=None)
+        if locked_until_naive > now_naive:
+            retry_after = int((locked_until_naive - now_naive).total_seconds())
+            log_action(db, user_id=user.id, action="login_locked", resource_type="user",
+                       resource_id=user.id, details={"retry_after": retry_after}, ip_address=ip)
+            db.commit()
+            raise HTTPException(
+                status_code=423,
+                detail=f"Account is locked due to too many failed login attempts. Try again in {retry_after} seconds.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
+    # Verify password
+    if not verify_password(form_data.password, user.hashed_password):
+        # Increment failed attempts
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        user.last_failed_login = now
+        failed = user.failed_login_attempts
+
+        # Apply progressive lockout
+        lockout_seconds = _get_lockout_duration(failed)
+        if lockout_seconds:
+            from datetime import timedelta
+            user.locked_until = now + timedelta(seconds=lockout_seconds)
+
+        # Create admin notification at 15+ failed attempts
+        if failed >= 15 and failed % 15 == 0:
+            try:
+                from app.models.notification import Notification, NotificationType
+                admins = db.query(User).filter(User.roles.contains("admin")).all()
+                for admin_user in admins:
+                    db.add(Notification(
+                        user_id=admin_user.id,
+                        type=NotificationType.SYSTEM,
+                        title="Account Lockout Alert",
+                        content=f"User {user.email or user.username} (ID: {user.id}) has {failed} consecutive failed login attempts. Account locked for 24 hours.",
+                        link="/admin",
+                    ))
+            except Exception as e:
+                _logger.warning("Failed to create admin lockout notification: %s", e)
+
+        log_action(db, user_id=user.id, action="login_failed", resource_type="user",
+                   resource_id=user.id,
+                   details={"identifier": form_data.username, "failed_attempts": failed,
+                            "locked": bool(lockout_seconds)},
+                   ip_address=ip)
+        db.commit()
+
+        # Build error detail with remaining attempts info
+        remaining = 5 - failed if failed < 5 else 0
+        detail = "Incorrect email/username or password"
+        if 0 < remaining <= 2:
+            detail += f". {remaining} attempt(s) remaining before account lockout."
+        elif remaining == 0 and lockout_seconds:
+            detail = f"Account locked due to too many failed attempts. Try again in {lockout_seconds // 60} minutes."
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Successful login — reset lockout state
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.last_failed_login = None
+
     log_action(db, user_id=user.id, action="login", resource_type="user",
                resource_id=user.id, ip_address=ip)
     db.commit()
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token, refresh_token=refresh_token)
+
+    # Return token in JSON body (backward compat for mobile/existing clients)
+    # AND set httpOnly cookies for web clients (XSS mitigation)
+    token_data = Token(access_token=access_token, refresh_token=refresh_token)
+    response = JSONResponse(content=token_data.model_dump())
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 @router.post("/logout")
 def logout(
     request: Request,
-    token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -299,29 +425,40 @@ def logout(
     from jose import jwt as _jwt
     from app.models.token_blacklist import TokenBlacklist
 
-    try:
-        payload = _jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        jti = payload.get("jti")
-        exp = payload.get("exp")
-        if jti and exp:
-            expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
-            blacklist_entry = TokenBlacklist(
-                jti=jti,
-                user_id=current_user.id,
-                expires_at=expires_at,
-                reason="logout",
-            )
-            db.add(blacklist_entry)
-            log_action(db, user_id=current_user.id, action="logout", resource_type="user",
-                       resource_id=current_user.id, ip_address=request.client.host if request.client else None)
-            db.commit()
-    except Exception:
-        pass  # Best-effort; token is short-lived anyway
+    # Extract token from cookie or Authorization header for blacklisting
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
 
-    return {"message": "Logged out successfully"}
+    if token:
+        try:
+            payload = _jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti and exp:
+                expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+                blacklist_entry = TokenBlacklist(
+                    jti=jti,
+                    user_id=current_user.id,
+                    expires_at=expires_at,
+                    reason="logout",
+                )
+                db.add(blacklist_entry)
+                log_action(db, user_id=current_user.id, action="logout", resource_type="user",
+                           resource_id=current_user.id, ip_address=request.client.host if request.client else None)
+                db.commit()
+        except Exception:
+            pass  # Best-effort; token is short-lived anyway
+
+    # Clear httpOnly cookies and return success
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    _clear_auth_cookies(response)
+    return response
 
 
-@router.post("/accept-invite", response_model=Token)
+@router.post("/accept-invite")
 def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Depends(get_db)):
     """Accept an invite and create a new user account."""
     # Validate token (FOR UPDATE prevents concurrent accept race condition)
@@ -463,21 +600,40 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     # Return JWT so the user is logged in immediately
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token, refresh_token=refresh_token)
+
+    # Return in JSON body AND set httpOnly cookies
+    token_data = Token(access_token=access_token, refresh_token=refresh_token)
+    response = JSONResponse(content=token_data.model_dump())
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 from pydantic import BaseModel as _BaseModel
 
 
 class _RefreshRequest(_BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
-@router.post("/refresh", response_model=Token)
+@router.post("/refresh")
 @limiter.limit("10/minute")
-def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = Depends(get_db)):
-    """Exchange a valid refresh token for a new access token."""
-    payload = decode_refresh_token(body.refresh_token)
+def refresh_access_token(request: Request, body: _RefreshRequest | None = None, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for a new access token.
+
+    The refresh token can be provided in:
+    1. The request body (backward compat for mobile/existing clients)
+    2. The httpOnly refresh_token cookie (web clients)
+    """
+    # Try body first, then cookie
+    raw_token = None
+    if body and body.refresh_token:
+        raw_token = body.refresh_token
+    if not raw_token:
+        raw_token = request.cookies.get("refresh_token")
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="No refresh token provided")
+
+    payload = decode_refresh_token(raw_token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -487,7 +643,21 @@ def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = 
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     new_access_token = create_access_token(data={"sub": str(user.id)})
-    return Token(access_token=new_access_token)
+
+    # Return in JSON body AND set httpOnly cookie
+    token_data = Token(access_token=new_access_token)
+    response = JSONResponse(content=token_data.model_dump())
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/api",
+        domain=settings.cookie_domain or None,
+    )
+    return response
 
 
 import os

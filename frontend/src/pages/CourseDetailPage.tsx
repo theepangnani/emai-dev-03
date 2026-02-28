@@ -12,6 +12,7 @@ import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AssignmentSubmission } from '../components/AssignmentSubmission';
+import { BulkImportWizard } from '../components/BulkImportWizard';
 import '../components/AssignmentSubmission.css';
 import './CourseDetailPage.css';
 
@@ -54,6 +55,8 @@ export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const courseId = Number(id);
   const navigate = useNavigate();
+  // ?child= param in the URL preserves parent context for deep linking (#885)
+  // — no need to read it here, but CoursesPage sets it so browser back works correctly.
   const { user } = useAuth();
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
@@ -126,6 +129,9 @@ export function CourseDetailPage() {
   const [generateAfterUpload, setGenerateAfterUpload] = useState(false);
   const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards' | 'other'>('study_guide');
   const [customPrompt, setCustomPrompt] = useState('');
+
+  // Bulk import wizard
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   // Collapsible sections
   const [materialsExpanded, setMaterialsExpanded] = useState(true);
@@ -664,6 +670,9 @@ export function CourseDetailPage() {
               </button>
               <button className="courses-btn secondary action-icon-btn" onClick={openUploadModal}>
                 <span className="action-icon">&#128228;</span> Upload Document
+              </button>
+              <button className="courses-btn secondary action-icon-btn" onClick={() => setShowBulkImport(true)}>
+                <span className="action-icon">&#128193;</span> Import Folder
               </button>
               <button className="courses-btn secondary action-icon-btn" onClick={() => setTaskModalContext({
                 courseId: courseId,
@@ -1256,6 +1265,13 @@ export function CourseDetailPage() {
         }}
       />
       {confirmModal}
+      <BulkImportWizard
+        open={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        courses={course ? [{ id: course.id, name: course.name }] : []}
+        defaultCourseId={courseId}
+        onComplete={loadContents}
+      />
     </DashboardLayout>
   );
 }
