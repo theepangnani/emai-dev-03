@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { googleApi } from '../api/client';
@@ -11,9 +11,12 @@ export function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const { user, login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Redirect to dashboard once user is loaded (after OAuth or if already logged in)
   useEffect(() => {
@@ -36,18 +39,78 @@ export function Login() {
     }
   }, [searchParams, setSearchParams, loginWithToken]);
 
+  // Lockout countdown timer
+  const startLockoutTimer = useCallback((seconds: number) => {
+    if (lockoutTimerRef.current) {
+      clearInterval(lockoutTimerRef.current);
+    }
+    setLockoutSeconds(seconds);
+    lockoutTimerRef.current = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          if (lockoutTimerRef.current) {
+            clearInterval(lockoutTimerRef.current);
+            lockoutTimerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (lockoutTimerRef.current) {
+        clearInterval(lockoutTimerRef.current);
+      }
+    };
+  }, []);
+
+  const formatLockoutTime = (seconds: number): string => {
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    if (seconds >= 60) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    return `${seconds}s`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutSeconds > 0) return;
     setError('');
+    setRemainingAttempts(null);
     setIsLoading(true);
 
     try {
       await login(identifier, password);
+      setLockoutSeconds(0);
+      setRemainingAttempts(null);
       navigate('/dashboard');
     } catch (err: any) {
-      const detail = err?.response?.data?.detail;
-      if (detail) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail || '';
+      const retryAfter = err?.response?.headers?.['retry-after'];
+
+      if (status === 423) {
+        // Account locked
+        const seconds = retryAfter ? parseInt(retryAfter, 10) : 900;
+        startLockoutTimer(seconds);
+        setError('');
+      } else if (detail) {
         setError(detail);
+        // Parse remaining attempts from the detail message
+        const match = detail.match(/(\d+) attempt\(s\) remaining/);
+        if (match) {
+          setRemainingAttempts(parseInt(match[1], 10));
+        }
       } else {
         setError('Login failed. Please check your credentials.');
       }
@@ -74,7 +137,29 @@ export function Login() {
         <h1 className="auth-title">Welcome to ClassBridge</h1>
         <p className="auth-subtitle">Sign in to your account</p>
 
+        {lockoutSeconds > 0 && (
+          <div className="auth-lockout-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <div>
+              <strong>Account locked</strong>
+              <p>Too many failed login attempts. Try again in {formatLockoutTime(lockoutSeconds)}.</p>
+              <p className="auth-lockout-hint">
+                <Link to="/forgot-password">Reset your password</Link> to regain access immediately.
+              </p>
+            </div>
+          </div>
+        )}
+
         {error && <div className="auth-error">{error}</div>}
+
+        {remainingAttempts !== null && remainingAttempts <= 2 && (
+          <div className="auth-warning">
+            {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining before your account is temporarily locked.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -86,6 +171,7 @@ export function Login() {
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="you@example.com or username"
               required
+              disabled={lockoutSeconds > 0}
             />
           </div>
 
@@ -99,6 +185,7 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                disabled={lockoutSeconds > 0}
               />
               <button
                 type="button"
@@ -122,8 +209,8 @@ export function Login() {
             </div>
           </div>
 
-          <button type="submit" className="auth-button" disabled={isLoading}>
-            {isLoading ? 'Signing in...' : 'Sign In'}
+          <button type="submit" className="auth-button" disabled={isLoading || lockoutSeconds > 0}>
+            {isLoading ? 'Signing in...' : lockoutSeconds > 0 ? `Locked (${formatLockoutTime(lockoutSeconds)})` : 'Sign In'}
           </button>
 
           <p className="auth-forgot-link">

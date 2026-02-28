@@ -258,6 +258,17 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     )
 
 
+def _get_lockout_duration(failed_attempts: int) -> int | None:
+    """Return lockout duration in seconds based on failed attempt count, or None."""
+    if failed_attempts >= 15:
+        return 24 * 60 * 60   # 24 hours
+    elif failed_attempts >= 10:
+        return 60 * 60        # 1 hour
+    elif failed_attempts >= 5:
+        return 15 * 60        # 15 minutes
+    return None
+
+
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
 def login(
@@ -270,7 +281,9 @@ def login(
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user:
         user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+    # If user not found, reject immediately (no lockout info to leak)
+    if not user:
         log_action(db, user_id=None, action="login_failed", resource_type="user",
                    details={"identifier": form_data.username}, ip_address=ip)
         db.commit()
@@ -279,6 +292,78 @@ def login(
             detail="Incorrect email/username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Check account lockout BEFORE password verification (prevents timing attacks)
+    now = datetime.now(timezone.utc)
+    if user.locked_until:
+        # Compare as naive UTC to handle mixed tz-aware/naive from SQLite vs PostgreSQL
+        locked_until_naive = user.locked_until.replace(tzinfo=None)
+        now_naive = now.replace(tzinfo=None)
+        if locked_until_naive > now_naive:
+            retry_after = int((locked_until_naive - now_naive).total_seconds())
+            log_action(db, user_id=user.id, action="login_locked", resource_type="user",
+                       resource_id=user.id, details={"retry_after": retry_after}, ip_address=ip)
+            db.commit()
+            raise HTTPException(
+                status_code=423,
+                detail=f"Account is locked due to too many failed login attempts. Try again in {retry_after} seconds.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
+    # Verify password
+    if not verify_password(form_data.password, user.hashed_password):
+        # Increment failed attempts
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        user.last_failed_login = now
+        failed = user.failed_login_attempts
+
+        # Apply progressive lockout
+        lockout_seconds = _get_lockout_duration(failed)
+        if lockout_seconds:
+            from datetime import timedelta
+            user.locked_until = now + timedelta(seconds=lockout_seconds)
+
+        # Create admin notification at 15+ failed attempts
+        if failed >= 15 and failed % 15 == 0:
+            try:
+                from app.models.notification import Notification, NotificationType
+                admins = db.query(User).filter(User.roles.contains("admin")).all()
+                for admin_user in admins:
+                    db.add(Notification(
+                        user_id=admin_user.id,
+                        type=NotificationType.SYSTEM,
+                        title="Account Lockout Alert",
+                        content=f"User {user.email or user.username} (ID: {user.id}) has {failed} consecutive failed login attempts. Account locked for 24 hours.",
+                        link="/admin",
+                    ))
+            except Exception as e:
+                _logger.warning("Failed to create admin lockout notification: %s", e)
+
+        log_action(db, user_id=user.id, action="login_failed", resource_type="user",
+                   resource_id=user.id,
+                   details={"identifier": form_data.username, "failed_attempts": failed,
+                            "locked": bool(lockout_seconds)},
+                   ip_address=ip)
+        db.commit()
+
+        # Build error detail with remaining attempts info
+        remaining = 5 - failed if failed < 5 else 0
+        detail = "Incorrect email/username or password"
+        if 0 < remaining <= 2:
+            detail += f". {remaining} attempt(s) remaining before account lockout."
+        elif remaining == 0 and lockout_seconds:
+            detail = f"Account locked due to too many failed attempts. Try again in {lockout_seconds // 60} minutes."
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Successful login — reset lockout state
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.last_failed_login = None
 
     log_action(db, user_id=user.id, action="login", resource_type="user",
                resource_id=user.id, ip_address=ip)
