@@ -222,7 +222,7 @@ export function MyKidsPage() {
   const completedTasks = tasks.filter(t => t.is_completed);
 
   const sidebarActions = [
-    { label: '+ Create Class Material', icon: '\u{1F4DD}', onClick: () => navigate('/course-materials') },
+    { label: '+ Course Material', icon: '\u{1F4C4}', onClick: () => navigate('/course-materials') },
     { label: '+ Task', icon: '\u2705', onClick: () => navigate('/tasks') },
     { label: '+ Add Child', icon: '\u{1F476}', onClick: () => setShowAddChildModal(true) },
   ];
@@ -627,10 +627,10 @@ export function MyKidsPage() {
           </div>
         ))}
         <AddActionButton actions={[
-          { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true) },
-          { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true) },
-          { icon: '\u{1F4DD}', label: 'Class Materials', onClick: () => navigate('/course-materials') },
+          { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
+          { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
           { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
+          { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
         ]} />
       </div>
 

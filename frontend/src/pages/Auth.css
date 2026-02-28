@@ -344,6 +344,69 @@
   flex-shrink: 0;
 }
 
+/* Mode toggle (pill-style segmented control) */
+.auth-mode-toggle {
+  display: flex;
+  background: var(--color-surface-alt, #f3f4f6);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.auth-mode-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.auth-mode-btn:hover {
+  color: var(--color-ink);
+}
+
+.auth-mode-btn.active {
+  background: var(--color-surface);
+  color: var(--color-accent-strong);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+/* Username availability status */
+.username-status {
+  font-size: 13px;
+  margin-top: 4px;
+  padding: 2px 0;
+  line-height: 1.4;
+}
+
+.username-status.checking {
+  color: var(--color-ink-muted);
+}
+
+.username-status.available {
+  color: var(--color-success, #16a34a);
+}
+
+.username-status.taken {
+  color: var(--color-danger);
+}
+
+/* Form hint text */
+.form-hint {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .checkbox-group {
   display: flex;
   flex-direction: column;
@@ -451,5 +514,14 @@
     font-size: 15px;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .auth-mode-toggle {
+    margin-bottom: 14px;
+  }
+
+  .auth-mode-btn {
+    padding: 8px 8px;
+    font-size: 13px;
   }
 }

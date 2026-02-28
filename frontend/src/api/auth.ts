@@ -56,6 +56,11 @@ export const authApi = {
     return response.data;
   },
 
+  getOnboardingStatus: async () => {
+    const response = await api.get('/api/auth/onboarding-status');
+    return response.data as { onboarding_completed: boolean; needs_onboarding: boolean };
+  },
+
   verifyEmail: async (token: string) => {
     const response = await api.post('/api/auth/verify-email', { token });
     return response.data as { message: string };
@@ -64,5 +69,10 @@ export const authApi = {
   resendVerification: async () => {
     const response = await api.post('/api/auth/resend-verification');
     return response.data as { message: string };
+  },
+
+  checkUsername: async (username: string) => {
+    const response = await api.get(`/api/auth/check-username/${encodeURIComponent(username)}`);
+    return response.data as { available: boolean; valid: boolean; message: string };
   },
 };

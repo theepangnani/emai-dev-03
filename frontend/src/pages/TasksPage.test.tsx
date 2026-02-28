@@ -234,7 +234,7 @@ describe('TasksPage', () => {
     expect(screen.getByRole('button', { name: 'Create Task' })).toBeDisabled()
   })
 
-  it('navigates to course-materials on "Upload Documents" click', async () => {
+  it('navigates to course-materials on "Course Material" click', async () => {
     const user = userEvent.setup()
     renderTasks()
     await waitFor(() => {
@@ -243,9 +243,9 @@ describe('TasksPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add new' }))
     await waitFor(() => {
-      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
+      expect(screen.getByText('Course Material')).toBeInTheDocument()
     })
-    await user.click(screen.getByText('Upload Documents'))
+    await user.click(screen.getByText('Course Material'))
 
     expect(mockNavigate).toHaveBeenCalledWith('/course-materials')
   })

@@ -5,7 +5,7 @@ from datetime import datetime, date
 
 from app.models.user import UserRole
 
-USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_]{3,30}$')
+USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_]{3,20}$')
 
 
 def strip_whitespace(v: object) -> object:
@@ -52,9 +52,11 @@ class UserCreate(BaseModel):
 
     @model_validator(mode='after')
     def validate_email_or_username(self):
-        # Username validation
-        if self.username and not USERNAME_PATTERN.match(self.username):
-            raise ValueError("Username must be 3-30 characters, alphanumeric and underscores only")
+        # Username normalization and validation
+        if self.username:
+            self.username = self.username.lower()
+            if not USERNAME_PATTERN.match(self.username):
+                raise ValueError("Username must be 3-20 characters, alphanumeric and underscores only")
 
         # Students can register with username + parent_email instead of email
         if UserRole.STUDENT in self.roles:
@@ -85,6 +87,7 @@ class UserResponse(BaseModel):
     is_active: bool
     google_connected: bool = False
     needs_onboarding: bool = False
+    onboarding_completed: bool = False
     email_verified: bool = False
     created_at: datetime
 
@@ -109,6 +112,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
+    onboarding_completed: bool | None = None
 
 
 class ForgotPasswordRequest(BaseModel):

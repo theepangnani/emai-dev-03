@@ -1,12 +1,12 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.db.database import get_db
+from app.db.database import get_db, SessionLocal
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.course_content import CourseContent
 from app.models.course import Course, student_courses
@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 _ONE_YEAR = timedelta(days=365)
 _SEVEN_YEARS = timedelta(days=365 * 7)
+
+VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
 
 router = APIRouter(prefix="/course-contents", tags=["Course Contents"])
 
@@ -94,16 +96,30 @@ def _can_modify_content(db: Session, user: User, content: CourseContent) -> bool
 def create_course_content(
     request: Request,
     data: CourseContentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new content item for a course. Must have access to the course."""
+    """Create a new content item for a course. Must have access to the course.
+
+    Optionally triggers AI study material generation as a background task:
+    - ai_tool: "study_guide", "quiz", "flashcards", or "none" (default)
+    - ai_custom_prompt: custom instructions for AI generation (optional)
+    """
     course = db.query(Course).filter(Course.id == data.course_id).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
     if not can_access_course(db, current_user, data.course_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Validate ai_tool if provided
+    ai_tool = (data.ai_tool or "none").strip().lower()
+    if ai_tool not in VALID_AI_TOOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid ai_tool. Must be one of: {', '.join(sorted(VALID_AI_TOOLS))}",
+        )
 
     content = CourseContent(
         course_id=data.course_id,
@@ -136,25 +152,149 @@ def create_course_content(
         except Exception as e:
             logger.warning(f"Failed to notify parents of student upload: {e}")
 
+    # Trigger AI generation in background if requested (#552)
+    source_text = data.text_content or data.description or ""
+    if ai_tool != "none" and source_text:
+        background_tasks.add_task(
+            _run_ai_generation_background,
+            content_id=content.id,
+            user_id=current_user.id,
+            course_id=data.course_id,
+            ai_tool=ai_tool,
+            ai_custom_prompt=(data.ai_custom_prompt or "").strip() or None,
+            title=data.title,
+            text_content=source_text,
+            course_name=course.name,
+        )
+
     return content
 
 
 MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
 
 
+def _run_ai_generation_background(
+    content_id: int,
+    user_id: int,
+    course_id: int,
+    ai_tool: str,
+    ai_custom_prompt: str | None,
+    title: str,
+    text_content: str,
+    course_name: str,
+):
+    """Background task: generate an AI study material for uploaded content.
+
+    Runs in its own DB session so the upload response returns immediately.
+    """
+    import asyncio
+
+    async def _generate():
+        from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+        from app.models.study_guide import StudyGuide
+
+        db = SessionLocal()
+        try:
+            logger.info(
+                "Background AI generation started | content_id=%s | tool=%s | user=%s",
+                content_id, ai_tool, user_id,
+            )
+
+            if ai_tool == "study_guide":
+                raw_content = await generate_study_guide(
+                    assignment_title=title,
+                    assignment_description=text_content,
+                    course_name=course_name,
+                    custom_prompt=ai_custom_prompt or None,
+                )
+                guide = StudyGuide(
+                    user_id=user_id,
+                    course_id=course_id,
+                    course_content_id=content_id,
+                    title=f"Study Guide: {title}",
+                    content=raw_content,
+                    guide_type="study_guide",
+                )
+                db.add(guide)
+
+            elif ai_tool == "quiz":
+                raw_content = await generate_quiz(
+                    topic=title,
+                    content=text_content,
+                    num_questions=5,
+                )
+                guide = StudyGuide(
+                    user_id=user_id,
+                    course_id=course_id,
+                    course_content_id=content_id,
+                    title=f"Quiz: {title}",
+                    content=raw_content,
+                    guide_type="quiz",
+                )
+                db.add(guide)
+
+            elif ai_tool == "flashcards":
+                raw_content = await generate_flashcards(
+                    topic=title,
+                    content=text_content,
+                    num_cards=10,
+                )
+                guide = StudyGuide(
+                    user_id=user_id,
+                    course_id=course_id,
+                    course_content_id=content_id,
+                    title=f"Flashcards: {title}",
+                    content=raw_content,
+                    guide_type="flashcards",
+                )
+                db.add(guide)
+
+            db.commit()
+            logger.info(
+                "Background AI generation completed | content_id=%s | tool=%s",
+                content_id, ai_tool,
+            )
+        except Exception as e:
+            db.rollback()
+            logger.error(
+                "Background AI generation failed | content_id=%s | tool=%s | error=%s",
+                content_id, ai_tool, e,
+            )
+        finally:
+            db.close()
+
+    # Run the async generation in a new event loop for the background thread
+    asyncio.run(_generate())
+
+
 @router.post("/upload", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def upload_course_content_file(
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     course_id: int = Form(...),
     title: str = Form(""),
     content_type: str = Form("notes"),
+    ai_tool: str = Form("none"),
+    ai_custom_prompt: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Upload a file as course content. Saves the original file and extracts text.
-    No AI generation — just stores the material."""
+
+    Optionally triggers AI study material generation as a background task:
+    - ai_tool: "study_guide", "quiz", "flashcards", or "none" (default)
+    - ai_custom_prompt: custom instructions for AI generation (optional)
+    """
+    # Validate ai_tool
+    ai_tool_normalized = ai_tool.strip().lower()
+    if ai_tool_normalized not in VALID_AI_TOOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid ai_tool. Must be one of: {', '.join(sorted(VALID_AI_TOOLS))}",
+        )
+
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
@@ -210,6 +350,20 @@ async def upload_course_content_file(
             db.commit()
         except Exception as e:
             logger.warning("Failed to notify parents of student upload: %s", e)
+
+    # Trigger AI generation in background if requested (#552)
+    if ai_tool_normalized != "none" and extracted_text:
+        background_tasks.add_task(
+            _run_ai_generation_background,
+            content_id=content.id,
+            user_id=current_user.id,
+            course_id=course_id,
+            ai_tool=ai_tool_normalized,
+            ai_custom_prompt=ai_custom_prompt.strip() or None,
+            title=title or filename,
+            text_content=extracted_text,
+            course_name=course.name,
+        )
 
     return content
 

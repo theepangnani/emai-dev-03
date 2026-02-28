@@ -22,8 +22,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  // Redirect users who need onboarding
-  if (user.needs_onboarding) {
+  // Redirect users who need onboarding (check both flags for robustness)
+  if (user.needs_onboarding || !user.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
   }
 

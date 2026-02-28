@@ -775,7 +775,7 @@ export function StudyGuidesPage() {
               </button>
             ))}
             <AddActionButton actions={[
-              { icon: '\u{1F4DD}', label: 'Upload Document', onClick: () => setShowModal(true) },
+              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => setShowModal(true), showPlus: true },
             ]} />
           </div>
         )}

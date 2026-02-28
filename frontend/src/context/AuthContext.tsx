@@ -12,6 +12,7 @@ interface User {
   is_active: boolean;
   google_connected: boolean;
   needs_onboarding: boolean;
+  onboarding_completed: boolean;
   email_verified: boolean;
 }
 
@@ -96,7 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const completeOnboarding = async (roles: string[], teacherType?: string) => {
-    const userData = await authApi.completeOnboarding(roles, teacherType);
+    const responseData = await authApi.completeOnboarding(roles, teacherType);
+    // The onboarding endpoint now returns new JWT tokens along with user data
+    if (responseData.access_token) {
+      localStorage.setItem('token', responseData.access_token);
+      if (responseData.refresh_token) {
+        localStorage.setItem('refresh_token', responseData.refresh_token);
+      }
+      setToken(responseData.access_token);
+    }
+    // Refresh user data from the server to get the updated state
+    const userData = await authApi.getMe();
     setUser(userData);
   };
 

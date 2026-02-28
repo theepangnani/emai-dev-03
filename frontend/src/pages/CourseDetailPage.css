@@ -451,6 +451,26 @@
   accent-color: var(--color-accent);
 }
 
+/* AI Tool Selection (#552) */
+.upload-ai-tool-select {
+  margin-top: 4px;
+}
+
+.upload-ai-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+.upload-ai-custom-prompt {
+  margin-top: 4px;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 48px;
+}
+
 /* Content type badges */
 .content-type-badge {
   display: inline-block;

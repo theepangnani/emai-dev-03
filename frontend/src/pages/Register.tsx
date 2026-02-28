@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/auth';
 import { isValidEmail } from '../utils/validation';
 import './Auth.css';
 
@@ -24,8 +25,14 @@ export function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    message: string;
+  }>({ checking: false, available: null, message: '' });
   const { register } = useAuth();
   const navigate = useNavigate();
+  const usernameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Handle Google OAuth redirect with pre-fill data
   useEffect(() => {
@@ -52,6 +59,50 @@ export function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Debounced username availability check
+  const checkUsernameAvailability = useCallback((username: string) => {
+    if (usernameTimerRef.current) {
+      clearTimeout(usernameTimerRef.current);
+    }
+
+    const trimmed = username.trim().toLowerCase();
+
+    if (!trimmed || trimmed.length < 3) {
+      setUsernameStatus({ checking: false, available: null, message: '' });
+      return;
+    }
+
+    setUsernameStatus({ checking: true, available: null, message: 'Checking...' });
+
+    usernameTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await authApi.checkUsername(trimmed);
+        setUsernameStatus({
+          checking: false,
+          available: result.available,
+          message: result.message,
+        });
+      } catch {
+        setUsernameStatus({ checking: false, available: null, message: 'Could not check availability' });
+      }
+    }, 500);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (usernameTimerRef.current) {
+        clearTimeout(usernameTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, username: value }));
+    checkUsernameAvailability(value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -62,12 +113,17 @@ export function Register() {
     }
 
     if (mode === 'student') {
-      if (!formData.username.trim()) {
-        setError('Username is required');
+      const trimmedUsername = formData.username.trim().toLowerCase();
+      if (!trimmedUsername || trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+        setError('Username must be 3-30 characters');
         return;
       }
-      if (!/^[a-zA-Z0-9_]{3,30}$/.test(formData.username)) {
-        setError('Username must be 3-30 characters, letters, numbers, and underscores only');
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+        setError('Username can only contain letters, numbers, and underscores');
+        return;
+      }
+      if (usernameStatus.available === false) {
+        setError('Please choose an available username');
         return;
       }
       if (formData.email && !isValidEmail(formData.email)) {
@@ -107,7 +163,7 @@ export function Register() {
       };
 
       if (mode === 'student') {
-        registrationData.username = formData.username;
+        registrationData.username = formData.username.trim().toLowerCase();
         if (formData.email) registrationData.email = formData.email;
         registrationData.parent_email = formData.parent_email;
       } else {
@@ -229,11 +285,22 @@ export function Register() {
                   id="username"
                   name="username"
                   value={formData.username}
-                  onChange={handleChange}
+                  onChange={handleUsernameChange}
                   placeholder="cool_student_123"
                   required
+                  minLength={3}
+                  maxLength={30}
                   autoComplete="username"
                 />
+                {formData.username.trim().length >= 3 && (
+                  <div className={`username-status ${
+                    usernameStatus.checking ? 'checking' :
+                    usernameStatus.available === true ? 'available' :
+                    usernameStatus.available === false ? 'taken' : ''
+                  }`}>
+                    {usernameStatus.message}
+                  </div>
+                )}
                 <span className="form-hint">3-30 characters, letters, numbers, and underscores</span>
               </div>
 

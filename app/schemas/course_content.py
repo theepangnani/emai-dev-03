@@ -7,6 +7,9 @@ from app.schemas.user import strip_whitespace
 VALID_CONTENT_TYPES = {"notes", "syllabus", "labs", "assignments", "readings", "resources", "other"}
 
 
+VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
+
+
 class CourseContentCreate(BaseModel):
     course_id: int
     title: str = Field(min_length=1, max_length=255)
@@ -15,6 +18,8 @@ class CourseContentCreate(BaseModel):
     content_type: str = "other"
     reference_url: Optional[str] = Field(default=None, max_length=1000)
     google_classroom_url: Optional[str] = Field(default=None, max_length=1000)
+    ai_tool: Optional[str] = Field(default="none", max_length=20)
+    ai_custom_prompt: Optional[str] = Field(default=None, max_length=2000)
 
     @field_validator('title', 'description', mode='before')
     @classmethod
@@ -27,6 +32,16 @@ class CourseContentCreate(BaseModel):
         normalized = v.strip().lower()
         if normalized not in VALID_CONTENT_TYPES:
             raise ValueError(f"Invalid content_type. Must be one of: {', '.join(sorted(VALID_CONTENT_TYPES))}")
+        return normalized
+
+    @field_validator("ai_tool")
+    @classmethod
+    def validate_ai_tool(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return "none"
+        normalized = v.strip().lower()
+        if normalized not in VALID_AI_TOOLS:
+            raise ValueError(f"Invalid ai_tool. Must be one of: {', '.join(sorted(VALID_AI_TOOLS))}")
         return normalized
 
 

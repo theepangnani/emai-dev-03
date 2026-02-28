@@ -291,7 +291,7 @@ export function ParentDashboard() {
                   onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
                   title="All children"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                     <circle cx="9" cy="7" r="4" />
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -321,16 +321,19 @@ export function ParentDashboard() {
                   </button>
                 );
               })}
-              {/* "+" add child button */}
+              {/* Add child button — person icon with "+" badge overlay */}
               <button
                 className="pd-child-tab pd-add-child-btn"
                 onClick={() => pd.setShowLinkModal(true)}
                 aria-label="Add child"
                 title="Add child"
               >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                  <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+                <span className="icon-with-plus" style={{ display: 'inline-flex' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                  </svg>
+                </span>
               </button>
             </div>
           </div>
@@ -395,7 +398,7 @@ export function ParentDashboard() {
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                 ),
-                label: 'Upload Material',
+                label: 'Course Material',
                 onClick: () => pd.setShowStudyModal(true),
               },
               {

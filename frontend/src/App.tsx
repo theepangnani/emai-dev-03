@@ -324,14 +324,15 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (!user.needs_onboarding) return <Navigate to="/dashboard" replace />;
+  // User already completed onboarding — send them to the dashboard
+  if (!user.needs_onboarding && user.onboarding_completed) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <PageLoader />;
-  if (user && user.needs_onboarding) return <Navigate to="/onboarding" replace />;
+  if (user && (user.needs_onboarding || !user.onboarding_completed)) return <Navigate to="/onboarding" replace />;
   if (user) return <Navigate to="/dashboard" replace />;
   return <LandingPage />;
 }

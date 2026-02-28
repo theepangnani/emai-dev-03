@@ -781,7 +781,7 @@ export function StudentDashboard() {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             ),
-            label: 'Upload Materials',
+            label: 'Course Material',
             onClick: () => { setUploadMode('file'); setShowCreateModal(true); },
           },
           {

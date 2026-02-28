@@ -26,6 +26,7 @@ class TestRolelessRegistration:
         assert resp.status_code == 200
         data = resp.json()
         assert data["needs_onboarding"] is True
+        assert data["onboarding_completed"] is False
         assert data["role"] is None
         assert data["roles"] == []
 
@@ -51,6 +52,7 @@ class TestRolelessRegistration:
         assert resp.status_code == 200
         data = resp.json()
         assert data["needs_onboarding"] is False
+        assert data["onboarding_completed"] is True
         assert data["role"] == "parent"
         assert "parent" in data["roles"]
 
@@ -61,6 +63,7 @@ class TestRolelessRegistration:
         resp = client.get("/api/users/me", headers=headers)
         assert resp.status_code == 200
         assert resp.json()["needs_onboarding"] is True
+        assert resp.json()["onboarding_completed"] is False
 
 
 # ── Onboarding Endpoint Tests ────────────────────────────────
@@ -77,6 +80,10 @@ class TestOnboardingEndpoint:
         assert data["role"] == "parent"
         assert "parent" in data["roles"]
         assert data["needs_onboarding"] is False
+        assert data["onboarding_completed"] is True
+        # New JWT tokens should be included in the response
+        assert "access_token" in data
+        assert "refresh_token" in data
 
     def test_onboarding_teacher_with_type(self, client, db_session):
         from app.models.teacher import Teacher
@@ -93,6 +100,7 @@ class TestOnboardingEndpoint:
         data = resp.json()
         assert data["role"] == "teacher"
         assert data["needs_onboarding"] is False
+        assert data["onboarding_completed"] is True
 
         # Verify teacher record was created
         from app.models.user import User
@@ -110,6 +118,8 @@ class TestOnboardingEndpoint:
 
         resp = client.post("/api/auth/onboarding", json={"roles": ["student"]}, headers=headers)
         assert resp.status_code == 200
+        data = resp.json()
+        assert data["onboarding_completed"] is True
 
         from app.models.user import User
         user = db_session.query(User).filter(User.email == email).first()
@@ -130,6 +140,7 @@ class TestOnboardingEndpoint:
         assert data["role"] == "parent"  # First role becomes primary
         assert "parent" in data["roles"]
         assert "teacher" in data["roles"]
+        assert data["onboarding_completed"] is True
 
     def test_onboarding_rejects_duplicate(self, client):
         email = "onb_dup@test.com"
@@ -174,3 +185,47 @@ class TestOnboardingEndpoint:
     def test_onboarding_requires_auth(self, client):
         resp = client.post("/api/auth/onboarding", json={"roles": ["parent"]})
         assert resp.status_code == 401
+
+
+# ── Onboarding Status Endpoint Tests ───────────────────────────
+
+class TestOnboardingStatus:
+    def test_onboarding_status_before_completion(self, client):
+        email = "onb_status_before@test.com"
+        _register_no_role(client, email)
+        headers = _auth(client, email)
+
+        resp = client.get("/api/auth/onboarding-status", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["onboarding_completed"] is False
+        assert data["needs_onboarding"] is True
+
+    def test_onboarding_status_after_completion(self, client):
+        email = "onb_status_after@test.com"
+        _register_no_role(client, email)
+        headers = _auth(client, email)
+
+        # Complete onboarding
+        client.post("/api/auth/onboarding", json={"roles": ["parent"]}, headers=headers)
+
+        resp = client.get("/api/auth/onboarding-status", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["onboarding_completed"] is True
+        assert data["needs_onboarding"] is False
+
+    def test_onboarding_status_requires_auth(self, client):
+        resp = client.get("/api/auth/onboarding-status")
+        assert resp.status_code == 401
+
+    def test_login_includes_onboarding_completed(self, client):
+        """Login response should include onboarding_completed field."""
+        email = "onb_login_flag@test.com"
+        _register_no_role(client, email)
+
+        resp = client.post("/api/auth/login", data={"username": email, "password": PASSWORD})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "onboarding_completed" in data
+        assert data["onboarding_completed"] is False
