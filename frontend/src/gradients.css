@@ -154,10 +154,233 @@
   background: var(--gradient-accent-subtle);
 }
 
+/* ---------- Dashboard: skip-to-content, role switcher, FAB ---------- */
+[data-style="gradient"] .skip-to-content {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .role-switcher-trigger:hover {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .connect-button {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .mode-btn.active {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .tour-next-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .ps-fab-toggle:hover,
+[data-style="gradient"] .ps-fab-toggle.open {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .view-details-btn.generate-btn:hover:not(:disabled) {
+  background: var(--gradient-accent-hover);
+}
+
+[data-style="gradient"] .btn-sm:hover {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Parent Dashboard ---------- */
+[data-style="gradient"] .pd-child-tab.active {
+  background: var(--gradient-accent);
+  border-color: transparent;
+}
+
+[data-style="gradient"] .pd-view-toggle-option.active {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .pd-empty-state-cta {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .pd-google-connect-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .copy-link-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .pd-onboard-cta {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .pd-onboard-tip-action {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .pd-day-modal-study-btn:hover {
+  background: var(--gradient-accent-hover);
+}
+
+[data-style="gradient"] .pd-timeline-study-btn:hover {
+  background: var(--gradient-accent-hover);
+}
+
+/* ---------- Student Dashboard ---------- */
+[data-style="gradient"] .sd-google-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .sd-empty-cta {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Courses ---------- */
+[data-style="gradient"] .courses-btn.primary {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Course Material Detail ---------- */
+[data-style="gradient"] .cm-unlinked-assign-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .cm-action-btn.primary {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .cm-empty-tab .cm-empty-generate-btn {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Study Guides ---------- */
+[data-style="gradient"] .guides-filter-btn.active {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .guides-assign-filter-btn.active {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .study-btn-guide {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Study Guide Detail ---------- */
+[data-style="gradient"] .task-prompt-banner button:first-of-type {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Quiz ---------- */
+[data-style="gradient"] .progress-segment.current {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .option.selected .option-letter {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .submit-btn {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Flashcards ---------- */
+[data-style="gradient"] .fc-done-btn {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Tasks ---------- */
+[data-style="gradient"] .tasks-chip.active {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .td-action-btn.primary {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .td-link-tab.active {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Calendar ---------- */
+[data-style="gradient"] .cal-view-btn.active {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Teacher Comms ---------- */
+[data-style="gradient"] .search-bar button {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .reply-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .send-reply-btn {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Notifications ---------- */
+[data-style="gradient"] .notif-mark-all:hover {
+  background: var(--gradient-accent);
+}
+
 /* ---------- Analytics ---------- */
 [data-style="gradient"] .analytics-ai-btn {
   background: var(--gradient-accent);
 }
 [data-style="gradient"] .analytics-ai-btn:hover:not(:disabled) {
   background: var(--gradient-accent-hover);
+}
+
+[data-style="gradient"] .analytics-chart-filters button.active {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Grades ---------- */
+[data-style="gradient"] .gp-analytics-link {
+  background: var(--gradient-accent);
+}
+
+/* ---------- FAQ ---------- */
+[data-style="gradient"] .faq-cat-pill.active {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Admin ---------- */
+[data-style="gradient"] .admin-insp-add-btn {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .admin-insp-save-btn {
+  background: var(--gradient-accent) !important;
+}
+
+/* ---------- MyKids extras ---------- */
+[data-style="gradient"] .mykids-modal-actions .mykids-modal-submit {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .invite-resend-btn {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Components ---------- */
+[data-style="gradient"] .empty-state-cta {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .error-boundary-btn.primary {
+  background: var(--gradient-accent);
+}
+
+[data-style="gradient"] .submission-submit-btn {
+  background: var(--gradient-accent);
+}
+
+/* ---------- Style toggle (gradient-ify the toggle itself) ---------- */
+[data-style="gradient"] .style-toggle.active {
+  background: var(--gradient-accent);
+  color: white;
+  border-color: transparent;
 }
