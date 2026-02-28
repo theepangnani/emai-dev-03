@@ -945,6 +945,60 @@ def update_teacher_google_account(
     return {"status": "ok"}
 
 
+@router.post("/sync-grades/{course_id}")
+def sync_grades_for_course(
+    course_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sync grades from Google Classroom for a specific course.
+
+    Fetches student submissions and updates StudentAssignment grades
+    and GradeRecord analytics rows.
+    """
+    if not current_user.google_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google Classroom not connected. Please connect your Google account first.",
+        )
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+
+    if not course.google_classroom_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This course is not linked to Google Classroom",
+        )
+
+    # Verify user has access to this course
+    from app.api.deps import can_access_course
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this course",
+        )
+
+    from app.services.grade_sync_service import sync_grades_for_course as _sync_grades
+    result = _sync_grades(current_user, course, db)
+
+    synced = result["synced"]
+    errors = result["errors"]
+    if errors:
+        message = f"Synced {synced} grade(s) with {errors} error(s)"
+    else:
+        message = f"Synced {synced} grade(s) from Google Classroom"
+
+    log_action(db, user_id=current_user.id, action="sync", resource_type="grades", resource_id=course_id)
+    db.commit()
+
+    return {"synced": synced, "errors": errors, "message": message}
+
+
 @router.delete("/teacher/accounts/{account_id}")
 def remove_teacher_google_account(
     account_id: int,

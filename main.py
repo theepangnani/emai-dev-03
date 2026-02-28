@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -739,6 +739,7 @@ app.include_router(analytics.router, prefix="/api")
 app.include_router(link_requests.router, prefix="/api")
 app.include_router(quiz_results.router, prefix="/api")
 app.include_router(onboarding.router, prefix="/api")
+app.include_router(grades.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
