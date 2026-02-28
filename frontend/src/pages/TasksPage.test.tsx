@@ -151,7 +151,7 @@ describe('TasksPage', () => {
   it('shows empty state when no tasks', async () => {
     renderTasks([])
     await waitFor(() => {
-      expect(screen.getByText('No tasks found')).toBeInTheDocument()
+      expect(screen.getByText('No tasks yet')).toBeInTheDocument()
     })
   })
 

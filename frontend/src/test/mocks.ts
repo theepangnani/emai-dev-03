@@ -206,6 +206,8 @@ export function createMockChild(
     notes: null,
     relationship_type: 'guardian',
     invite_link: null,
+    invite_status: 'active',
+    invite_id: null,
     course_count: 2,
     active_task_count: 3,
     ...overrides,

@@ -78,6 +78,7 @@ vi.mock('../api/client', () => ({
     create: (...args: any[]) => mockTasksCreate(...args),
     update: (...args: any[]) => mockTasksUpdate(...args),
     delete: (...args: any[]) => mockTasksDelete(...args),
+    remind: vi.fn().mockResolvedValue({ success: true, reminded_at: new Date().toISOString() }),
   },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
@@ -103,6 +104,18 @@ vi.mock('../components/calendar/CalendarView', () => ({
   CalendarView: ({ assignments }: any) => (
     <div data-testid="calendar-view">Calendar ({assignments.length} items)</div>
   ),
+}))
+
+vi.mock('../components/SetupChecklist', () => ({
+  SetupChecklist: () => <div data-testid="setup-checklist" />,
+}))
+
+vi.mock('../components/GoogleClassroomPrompt', () => ({
+  GoogleClassroomPrompt: () => <div data-testid="google-classroom-prompt" />,
+}))
+
+vi.mock('../components/QuickActionBar', () => ({
+  QuickActionBar: () => <div data-testid="quick-action-bar" />,
 }))
 
 vi.mock('./StudyGuidesPage', () => ({
@@ -280,7 +293,7 @@ describe('ParentDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('Upload Documents')).toBeInTheDocument()
     })
-    expect(screen.getByText('Create Task')).toBeInTheDocument()
+    expect(screen.getAllByText('Create Task').length).toBeGreaterThanOrEqual(1)
   })
 
   it('opens study modal from Upload Documents in + popover', async () => {

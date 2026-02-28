@@ -102,7 +102,7 @@ describe('MessagesPage', () => {
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no conversations yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
   })
 
@@ -298,7 +298,7 @@ describe('MessagesPage', () => {
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no conversations yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
@@ -321,7 +321,7 @@ describe('MessagesPage', () => {
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no conversations yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
@@ -348,7 +348,7 @@ describe('MessagesPage', () => {
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no conversations yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
@@ -376,7 +376,7 @@ describe('MessagesPage', () => {
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no conversations yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
@@ -391,7 +391,7 @@ describe('MessagesPage', () => {
     renderWithProviders(<MessagesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no conversations yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: /\+ new message/i }))
