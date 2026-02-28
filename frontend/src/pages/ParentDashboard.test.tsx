@@ -114,8 +114,8 @@ vi.mock('../components/GoogleClassroomPrompt', () => ({
   GoogleClassroomPrompt: () => <div data-testid="google-classroom-prompt" />,
 }))
 
-vi.mock('../components/QuickActionBar', () => ({
-  QuickActionBar: () => <div data-testid="quick-action-bar" />,
+vi.mock('../components/RoleQuickActions', () => ({
+  RoleQuickActions: () => <div data-testid="quick-action-bar" />,
 }))
 
 vi.mock('./StudyGuidesPage', () => ({

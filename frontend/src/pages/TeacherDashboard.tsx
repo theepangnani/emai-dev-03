@@ -9,6 +9,8 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { RoleQuickActions } from '../components/RoleQuickActions';
+import type { QuickAction } from '../components/RoleQuickActions';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -433,78 +435,76 @@ export function TeacherDashboard() {
 
   return (
     <DashboardLayout welcomeSubtitle="Your classroom overview" headerSlot={renderHeaderSlot}>
-      <div className="dashboard-grid">
-        <div className="dashboard-card">
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-          </div>
-          <h3>Classes</h3>
-          <p className="card-value">{courses.length}</p>
-          <p className="card-label">{courses.length === 1 ? '1 class' : `${courses.length} classes`}</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => navigate('/messages')}>
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-          </div>
-          <h3>Messages</h3>
-          <p className="card-value">{unreadCount > 0 ? unreadCount : 'View'}</p>
-          <p className="card-label">{unreadCount > 0 ? `${unreadCount} unread` : 'Parent messages'}</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => navigate('/teacher-communications')}>
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-          </div>
-          <h3>Communications</h3>
-          <p className="card-value">View</p>
-          <p className="card-label">Email monitoring</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => setShowAnnounceModal(true)}>
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 13v-2z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
-          </div>
-          <h3>Announcement</h3>
-          <p className="card-value">Send</p>
-          <p className="card-label">Notify all parents</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => setShowInviteParentModal(true)}>
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-          </div>
-          <h3>Invite Parent</h3>
-          <p className="card-value">{sentInvites.filter(i => i.status === 'pending').length || 'Invite'}</p>
-          <p className="card-label">{sentInvites.filter(i => i.status === 'pending').length > 0 ? `${sentInvites.filter(i => i.status === 'pending').length} pending` : 'Connect families'}</p>
-        </div>
-
-        <div className="dashboard-card clickable" onClick={() => setShowUploadModal(true)}>
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
-          </div>
-          <h3>Upload Material</h3>
-          <p className="card-value">Upload</p>
-          <p className="card-label">Share class content</p>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="card-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
-          </div>
-          <h3>Google Classroom</h3>
-          <p className="card-value">{googleConnected ? 'Connected' : 'Not Connected'}</p>
-          {!googleConnected ? (
-            <button className="connect-button" onClick={handleConnectGoogle}>
-              Connect
-            </button>
-          ) : (
-            <button className="connect-button" onClick={handleSyncCourses} disabled={syncing}>
-              {syncing ? 'Syncing...' : 'Sync Classes'}
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Quick Actions (#837 unified) */}
+      <RoleQuickActions
+        actions={[
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
+            ),
+            label: 'My Classes',
+            onClick: () => navigate('/courses'),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            ),
+            label: 'Messages',
+            onClick: () => navigate('/messages'),
+            badge: unreadCount > 0 ? unreadCount : undefined,
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            ),
+            label: 'Announcements',
+            onClick: () => setShowAnnounceModal(true),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            ),
+            label: googleConnected ? 'Sync Classes' : 'Google Classroom',
+            onClick: googleConnected ? handleSyncCourses : handleConnectGoogle,
+            disabled: syncing,
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="23" y1="11" x2="17" y2="11" />
+              </svg>
+            ),
+            label: 'Invite Parents',
+            onClick: () => setShowInviteParentModal(true),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            ),
+            label: 'Upload Materials',
+            onClick: () => setShowUploadModal(true),
+          },
+        ] satisfies QuickAction[]}
+        maxVisible={4}
+      />
 
       {/* Activity Summary */}
       <div className="teacher-activity-summary">

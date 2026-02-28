@@ -1,0 +1,246 @@
+/* ── Unified Quick Actions Bar (#837) ─────────────────── */
+.rqa-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.rqa-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  min-width: 100px;
+  flex: 1 1 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
+  color: var(--color-ink);
+  text-align: center;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.rqa-card:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle, rgba(73, 184, 192, 0.04));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.rqa-card:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.rqa-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.rqa-card:disabled:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+/* Icon circle */
+.rqa-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-surface-alt, #f5f5f5);
+  color: var(--color-accent-strong, var(--color-accent));
+  transition: background 0.2s;
+}
+
+.rqa-card:hover .rqa-icon {
+  background: var(--color-accent-subtle, rgba(73, 184, 192, 0.1));
+}
+
+/* Label */
+.rqa-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-display);
+  line-height: 1.2;
+}
+
+/* Badge */
+.rqa-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-error, #e74c3c);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── "More" dropdown ──────────────────────── */
+.rqa-more-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 100px;
+}
+
+.rqa-more-trigger[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle, rgba(73, 184, 192, 0.04));
+}
+
+.rqa-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  padding: 6px 0;
+  animation: rqaDropIn 0.15s ease-out;
+}
+
+@keyframes rqaDropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rqa-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--color-ink);
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.rqa-dropdown-item:hover {
+  background: var(--color-accent-subtle, rgba(73, 184, 192, 0.06));
+}
+
+.rqa-dropdown-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rqa-dropdown-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-surface-alt, #f5f5f5);
+  color: var(--color-accent-strong, var(--color-accent));
+  flex-shrink: 0;
+}
+
+.rqa-dropdown-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+/* ── Mobile: horizontal scroll ────────────── */
+@media (max-width: 768px) {
+  .rqa-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    margin: 12px 0 16px;
+    padding-bottom: 4px;
+  }
+
+  .rqa-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rqa-card {
+    padding: 12px 8px;
+    gap: 6px;
+    min-width: 88px;
+    flex: 0 0 auto;
+  }
+
+  .rqa-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .rqa-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .rqa-label {
+    font-size: 0.78rem;
+  }
+
+  .rqa-more-wrap {
+    flex: 0 0 auto;
+    min-width: 88px;
+  }
+}
+
+@media (max-width: 380px) {
+  .rqa-label {
+    font-size: 0.72rem;
+  }
+
+  .rqa-card {
+    padding: 10px 6px;
+    min-width: 76px;
+  }
+}
+
+/* ── Reduced motion ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .rqa-card {
+    transition: none !important;
+  }
+
+  .rqa-card:hover {
+    transform: none;
+  }
+
+  .rqa-dropdown {
+    animation: none;
+  }
+}

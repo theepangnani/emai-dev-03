@@ -14,21 +14,14 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
+import { RoleQuickActions } from '../components/RoleQuickActions';
+import type { QuickAction } from '../components/RoleQuickActions';
 import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
 import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
-
-function formatTimeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -100,7 +93,7 @@ export function StudentDashboard() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  // lastSynced state removed — no longer displayed in unified quick actions
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -363,7 +356,6 @@ export function StudentDashboard() {
     try {
       const result = await googleApi.syncCourses(overrideType || classroomType);
       setStatusMessage({ type: 'success', text: result.message || 'Classes synced successfully' });
-      setLastSynced(new Date());
       loadCourses();
       loadAssignments();
     } catch (err) {
@@ -756,62 +748,70 @@ export function StudentDashboard() {
         </div>
       )}
 
-      {/* ── Quick Actions ────────────────────────────────── */}
-      <section className="sd-actions">
-        <button className="sd-action-card upload" onClick={() => { setUploadMode('file'); setShowCreateModal(true); }}>
-          <div className="sd-action-icon-wrap">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </div>
-          <div className="sd-action-text">
-            <span className="sd-action-title">Upload Materials</span>
-            <span className="sd-action-desc">From Classroom, TeachAssist...</span>
-          </div>
-        </button>
-
-        <button className="sd-action-card course" onClick={() => setShowCreateCourseModal(true)}>
-          <div className="sd-action-icon-wrap">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="12" y1="6" x2="12" y2="14"/><line x1="8" y1="10" x2="16" y2="10"/></svg>
-          </div>
-          <div className="sd-action-text">
-            <span className="sd-action-title">New Course</span>
-            <span className="sd-action-desc">Create a subject</span>
-          </div>
-        </button>
-
-        <button className="sd-action-card study" onClick={() => { setUploadMode('text'); setShowCreateModal(true); }}>
-          <div className="sd-action-icon-wrap">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          </div>
-          <div className="sd-action-text">
-            <span className="sd-action-title">Study Guide</span>
-            <span className="sd-action-desc">Generate from your notes</span>
-          </div>
-        </button>
-
-        {googleConnected ? (
-          <button className="sd-action-card sync" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>
-            <div className="sd-action-icon-wrap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'sd-spin' : ''}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-            </div>
-            <div className="sd-action-text">
-              <span className="sd-action-title">{isSyncing ? 'Syncing...' : 'Sync Classes'}</span>
-              <span className="sd-action-desc">
-                {lastSynced ? `Last: ${formatTimeAgo(lastSynced)}` : 'Google Classroom'}
-              </span>
-            </div>
-          </button>
-        ) : (
-          <button className="sd-action-card connect" onClick={handleConnectGoogle} disabled={isConnecting}>
-            <div className="sd-action-icon-wrap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            </div>
-            <div className="sd-action-text">
-              <span className="sd-action-title">Connect Classroom</span>
-              <span className="sd-action-desc">Link Google account</span>
-            </div>
-          </button>
-        )}
-      </section>
+      {/* ── Quick Actions (#837 unified) ────────────────── */}
+      <RoleQuickActions
+        actions={[
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            ),
+            label: 'Upload Materials',
+            onClick: () => { setUploadMode('file'); setShowCreateModal(true); },
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <line x1="12" y1="6" x2="12" y2="14" />
+                <line x1="8" y1="10" x2="16" y2="10" />
+              </svg>
+            ),
+            label: 'New Course',
+            onClick: () => setShowCreateCourseModal(true),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            ),
+            label: 'Study Guide',
+            onClick: () => { setUploadMode('text'); setShowCreateModal(true); },
+          },
+          googleConnected ? {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            ),
+            label: isSyncing ? 'Syncing...' : 'Sync Classes',
+            onClick: handleSyncWithTypeChoice,
+            disabled: isSyncing,
+          } : {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            ),
+            label: 'Connect Classroom',
+            onClick: handleConnectGoogle,
+            disabled: isConnecting,
+          },
+        ] satisfies QuickAction[]}
+        maxVisible={4}
+      />
 
       {/* ── Continue Studying ─────────────────────────────── */}
       <ContinueStudying studyGuides={studyGuides} courses={courses} />

@@ -213,12 +213,12 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      // Quick action cards have sd-action-title class
-      const actionTitles = document.querySelectorAll('.sd-action-title')
-      const titles = Array.from(actionTitles).map(el => el.textContent)
-      expect(titles).toContain('Upload Materials')
-      expect(titles).toContain('New Course')
-      expect(titles).toContain('Study Guide')
+      // Quick action cards use RoleQuickActions with rqa-label class
+      const actionLabels = document.querySelectorAll('.rqa-label')
+      const labels = Array.from(actionLabels).map(el => el.textContent)
+      expect(labels).toContain('Upload Materials')
+      expect(labels).toContain('New Course')
+      expect(labels).toContain('Study Guide')
     })
   })
 
@@ -235,9 +235,9 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      const actionTitles = document.querySelectorAll('.sd-action-title')
-      const titles = Array.from(actionTitles).map(el => el.textContent)
-      expect(titles).toContain('Connect Classroom')
+      const actionLabels = document.querySelectorAll('.rqa-label')
+      const labels = Array.from(actionLabels).map(el => el.textContent)
+      expect(labels).toContain('Connect Classroom')
     })
   })
 
