@@ -83,7 +83,13 @@ export function EditMaterialModal({ material, courses: externalCourses, onClose,
       <div className="modal edit-material-modal" onClick={(e) => e.stopPropagation()}>
         <h2>Edit Material</h2>
         <p className="modal-desc">Edit material details or move to a different class.</p>
-        {error && <p className="edit-mat-error">{error}</p>}
+        {error && (
+          <div className="modal-error">
+            <span className="error-icon">!</span>
+            <span className="error-message">{error}</span>
+            <button onClick={handleSave} className="retry-btn" disabled={saving}>Try Again</button>
+          </div>
+        )}
         <div className="modal-form edit-mat-form">
           <label>
             Title *
@@ -165,7 +171,7 @@ export function EditMaterialModal({ material, courses: externalCourses, onClose,
         <div className="modal-actions">
           <button className="cancel-btn" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="generate-btn" disabled={saving || !hasChanges || !title.trim()} onClick={handleSave}>
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? <><span className="btn-spinner" /> Saving...</> : 'Save Changes'}
           </button>
         </div>
       </div>

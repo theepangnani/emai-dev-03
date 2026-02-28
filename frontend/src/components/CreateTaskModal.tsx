@@ -130,12 +130,18 @@ export function CreateTaskModal({
               </select>
             </label>
           )}
-          {error && <p className="link-error">{error}</p>}
+          {error && (
+            <div className="modal-error">
+              <span className="error-icon">!</span>
+              <span className="error-message">{error}</span>
+              <button onClick={handleCreate} className="retry-btn" disabled={creating}>Try Again</button>
+            </div>
+          )}
         </div>
         <div className="modal-actions">
           <button className="cancel-btn" onClick={onClose} disabled={creating}>Cancel</button>
           <button className="generate-btn" onClick={handleCreate} disabled={creating || !title.trim()}>
-            {creating ? 'Creating...' : 'Create Task'}
+            {creating ? <><span className="btn-spinner" /> Creating...</> : 'Create Task'}
           </button>
         </div>
       </div>

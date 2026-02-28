@@ -1575,6 +1575,95 @@
   margin-top: 8px;
 }
 
+/* ── Modal error with retry button ── */
+
+.modal-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--color-danger, #ef4444);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.modal-error .error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-danger, #ef4444);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.modal-error .error-message {
+  flex: 1;
+  color: #991b1b;
+  line-height: 1.4;
+}
+
+.modal-error .retry-btn,
+button.retry-btn {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-danger, #ef4444);
+  background: transparent;
+  border: 1.5px solid var(--color-danger, #ef4444);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.modal-error .retry-btn:hover:not(:disabled),
+button.retry-btn:hover:not(:disabled) {
+  background: var(--color-danger, #ef4444);
+  color: #fff;
+}
+
+.modal-error .retry-btn:disabled,
+button.retry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .modal-error {
+  background: #451a1a;
+  border-color: #7f1d1d;
+}
+
+[data-theme="dark"] .modal-error .error-message {
+  color: #fca5a5;
+}
+
+/* ── Loading spinner for buttons ── */
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
 .loading-state {
   text-align: center;
   padding: 40px;

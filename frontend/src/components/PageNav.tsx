@@ -28,6 +28,11 @@ export function PageNav({ items }: PageNavProps) {
   // The "back" destination is always the second-to-last item
   const backItem = items.length >= 2 ? items[items.length - 2] : null;
 
+  // Mobile: show last 2 levels with ellipsis for earlier levels
+  const mobileItems = items.length > 2
+    ? [{ label: '...', to: items[0].to }, ...items.slice(-2)]
+    : items;
+
   return (
     <nav className="page-nav" aria-label="Page navigation">
       {/* Back button — always visible when there's a parent */}
@@ -50,9 +55,23 @@ export function PageNav({ items }: PageNavProps) {
         </Link>
       )}
 
-      {/* Desktop breadcrumb trail */}
-      <div className="page-nav-trail">
+      {/* Desktop breadcrumb trail (full) */}
+      <div className="page-nav-trail page-nav-trail-desktop">
         {items.map((item, i) => (
+          <span key={i} className="page-nav-trail-item">
+            {i > 0 && <span className="page-nav-trail-sep">/</span>}
+            {item.to ? (
+              <Link to={item.to} className="page-nav-trail-link">{item.label}</Link>
+            ) : (
+              <span className="page-nav-trail-current">{item.label}</span>
+            )}
+          </span>
+        ))}
+      </div>
+
+      {/* Mobile breadcrumb trail (truncated: ... / Parent / Current) */}
+      <div className="page-nav-trail page-nav-trail-mobile">
+        {mobileItems.map((item, i) => (
           <span key={i} className="page-nav-trail-item">
             {i > 0 && <span className="page-nav-trail-sep">/</span>}
             {item.to ? (

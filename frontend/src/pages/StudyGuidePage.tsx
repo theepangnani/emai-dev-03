@@ -111,8 +111,11 @@ export function StudyGuidePage() {
     <div className="study-guide-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
-        { label: 'Materials', to: '/course-materials' },
-        { label: guide?.title || 'Study Guide' },
+        { label: 'Course Materials', to: '/course-materials' },
+        ...(guide?.course_content_id
+          ? [{ label: guide.title.replace(/^Study Guide:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+          : []),
+        { label: 'Study Guide' },
       ]} />
 
       {/* Header card */}

@@ -544,6 +544,28 @@
   color: var(--color-danger);
 }
 
+/* Remind button */
+.task-row-btn.remind {
+  font-size: 13px;
+  gap: 4px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.task-row-btn.remind:not(.reminded):hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: #fffbeb;
+}
+
+.task-row-btn.remind.reminded {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  border-color: var(--color-border);
+  opacity: 0.7;
+  cursor: default;
+}
+
 /* Archived row */
 .task-row.archived {
   opacity: 0.55;

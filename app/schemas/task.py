@@ -49,6 +49,7 @@ class TaskResponse(BaseModel):
     course_content_title: Optional[str] = None
     study_guide_title: Optional[str] = None
     study_guide_type: Optional[str] = None
+    last_reminder_sent_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime]
 

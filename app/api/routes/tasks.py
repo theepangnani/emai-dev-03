@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,7 +14,7 @@ from app.models.teacher import Teacher
 from app.models.course_content import CourseContent
 from app.models.study_guide import StudyGuide
 from app.api.deps import get_current_user
-from app.models.notification import NotificationType
+from app.models.notification import Notification, NotificationType
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 from app.services.audit_service import log_action
 from app.services.notification_service import notify_parents_of_student
@@ -80,6 +80,7 @@ def _task_to_response(task: Task) -> dict:
         "course_content_title": task.course_content.title if task.course_content else None,
         "study_guide_title": task.study_guide.title if task.study_guide else None,
         "study_guide_type": task.study_guide.guide_type if task.study_guide else None,
+        "last_reminder_sent_at": task.last_reminder_sent_at,
         "created_at": task.created_at,
         "updated_at": task.updated_at,
     }
@@ -348,3 +349,87 @@ def permanent_delete_task(
 
     db.delete(task)
     db.commit()
+
+
+@router.post("/{task_id}/remind")
+def send_task_reminder(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Send a reminder notification for a task to the assigned student.
+
+    - Only the task creator (parent) can send reminders
+    - Task must be assigned to someone and not completed
+    - Rate limited: 1 reminder per task per 24 hours
+    """
+    task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Only the creator can send reminders
+    if task.created_by_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the task creator can send reminders")
+
+    # Task must be assigned to someone
+    if not task.assigned_to_user_id:
+        raise HTTPException(status_code=400, detail="Task is not assigned to anyone")
+
+    # Task must not be completed
+    if task.is_completed:
+        raise HTTPException(status_code=400, detail="Task is already completed")
+
+    # Rate limit: 1 reminder per 24 hours
+    if task.last_reminder_sent_at:
+        hours_since = (datetime.now(timezone.utc) - task.last_reminder_sent_at).total_seconds() / 3600
+        if hours_since < 24:
+            remaining = 24 - hours_since
+            raise HTTPException(
+                status_code=429,
+                detail=f"Reminder already sent. Try again in {int(remaining)} hours."
+            )
+
+    # Determine due status for message
+    now = datetime.now(timezone.utc)
+    if task.due_date:
+        if task.due_date.replace(tzinfo=timezone.utc) < now:
+            due_status = "overdue"
+        elif task.due_date.replace(tzinfo=timezone.utc).date() == now.date():
+            due_status = "due today"
+        else:
+            due_status = "due soon"
+    else:
+        due_status = "pending"
+
+    # Create in-app notification for the assigned student
+    assignee = db.query(User).filter(User.id == task.assigned_to_user_id).first()
+    if not assignee:
+        raise HTTPException(status_code=400, detail="Assigned user not found")
+
+    notification = Notification(
+        user_id=assignee.id,
+        type=NotificationType.TASK_DUE,
+        title=f"Reminder: {task.title}",
+        content=f"Reminder: {task.title} is {due_status}. Your parent would like you to complete it.",
+        link=f"/tasks/{task.id}",
+        source_type="task",
+        source_id=task.id,
+    )
+    db.add(notification)
+
+    # Update last_reminder_sent_at
+    reminded_at = datetime.now(timezone.utc)
+    task.last_reminder_sent_at = reminded_at
+
+    log_action(
+        db, user_id=current_user.id, action="remind", resource_type="task",
+        resource_id=task.id, details={"assignee_id": assignee.id, "title": task.title},
+    )
+
+    db.commit()
+
+    return {
+        "success": True,
+        "reminded_at": reminded_at.isoformat(),
+        "assignee_name": assignee.full_name,
+    }

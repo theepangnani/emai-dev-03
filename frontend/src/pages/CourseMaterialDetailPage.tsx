@@ -210,7 +210,7 @@ export function CourseMaterialDetailPage() {
       <div className="cm-detail-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
-          { label: 'Materials', to: '/course-materials' },
+          { label: 'Course Materials', to: '/course-materials' },
           { label: content?.title || 'Material' },
         ]} />
         <div className="cm-detail-header">

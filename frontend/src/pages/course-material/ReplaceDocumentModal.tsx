@@ -135,7 +135,13 @@ export function ReplaceDocumentModal({
             </div>
           )}
         </div>
-        {replaceError && <p className="cm-replace-error">{replaceError}</p>}
+        {replaceError && (
+          <div className="modal-error">
+            <span className="error-icon">!</span>
+            <span className="error-message">{replaceError}</span>
+            <button onClick={handleReplace} className="retry-btn" disabled={!replaceFile}>Try Again</button>
+          </div>
+        )}
         <div className="cm-replace-actions">
           <button className="cm-action-btn" onClick={handleClose}>Cancel</button>
           <button className="generate-btn" onClick={handleReplace} disabled={!replaceFile}>

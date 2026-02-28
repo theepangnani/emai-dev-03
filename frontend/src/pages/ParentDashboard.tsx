@@ -11,6 +11,7 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { useAuth } from '../context/AuthContext';
 import { QuickActionBar } from '../components/QuickActionBar';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
@@ -93,6 +94,7 @@ function loadViewMode(): 'simplified' | 'full' {
 }
 
 export function ParentDashboard() {
+  const { user } = useAuth();
   const pd = useParentDashboard();
   const activityCount = useMemo(() => Math.min(pd.courseMaterials.length, 10), [pd.courseMaterials]);
   const [tipDismissed, setTipDismissed] = useState(false);
@@ -392,6 +394,7 @@ export function ParentDashboard() {
               calendarAssignments={pd.calendarAssignments}
               filteredTasks={pd.filteredTasks}
               selectedChild={pd.selectedChild}
+              currentUserId={user?.id}
               onToggleTask={pd.handleToggleTask}
               onNavigateStudy={pd.handleOneClickStudy}
               onCreateTask={() => pd.setShowCreateTaskModal(true)}
