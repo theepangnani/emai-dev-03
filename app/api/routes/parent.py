@@ -80,9 +80,42 @@ def list_children(
         )
         task_counts = {uid: cnt for uid, cnt in tc_rows}
 
+    # Batch-fetch pending invites for all child emails (for invite_status)
+    child_emails = [s.user.email for s, _ in rows if s.user and s.user.email]
+    invite_map: dict[str, Invite] = {}  # email -> most recent pending invite
+    if child_emails:
+        pending_invites = (
+            db.query(Invite)
+            .filter(
+                Invite.email.in_(child_emails),
+                Invite.invite_type == InviteType.STUDENT,
+                Invite.accepted_at.is_(None),
+            )
+            .order_by(Invite.created_at.desc())
+            .all()
+        )
+        for inv in pending_invites:
+            if inv.email not in invite_map:
+                invite_map[inv.email] = inv
+
     result = []
     for student, rel_type in rows:
         user = student.user
+
+        # Derive invite_status
+        invite_status = "active"
+        invite_id = None
+        if user:
+            pending_invite = invite_map.get(user.email) if user.email else None
+            if pending_invite and not pending_invite.accepted_at:
+                invite_status = "pending"
+                invite_id = pending_invite.id
+            elif user.hashed_password == UNUSABLE_PASSWORD_HASH:
+                # Account created but child hasn't set password yet
+                invite_status = "pending"
+            elif user.email and not user.email_verified:
+                invite_status = "email_unverified"
+
         result.append(ChildSummary(
             student_id=student.id,
             user_id=student.user_id,
@@ -100,6 +133,8 @@ def list_children(
             relationship_type=rel_type.value if rel_type else None,
             course_count=course_counts.get(student.id, 0),
             active_task_count=task_counts.get(student.user_id, 0),
+            invite_status=invite_status,
+            invite_id=invite_id,
         ))
 
     log_action(db, user_id=current_user.id, action="read", resource_type="children", details={"count": len(result)})
@@ -193,10 +228,41 @@ def get_parent_dashboard(
     for a in _all_assignments:
         _assignments_by_course.setdefault(a.course_id, []).append(a)
 
+    # Batch-fetch pending invites for child emails (for invite_status)
+    _child_emails = [s.user.email for s, _ in child_rows if s.user and s.user.email]
+    _invite_map: dict[str, Invite] = {}
+    if _child_emails:
+        _pending_invites = (
+            db.query(Invite)
+            .filter(
+                Invite.email.in_(_child_emails),
+                Invite.invite_type == InviteType.STUDENT,
+                Invite.accepted_at.is_(None),
+            )
+            .order_by(Invite.created_at.desc())
+            .all()
+        )
+        for inv in _pending_invites:
+            if inv.email not in _invite_map:
+                _invite_map[inv.email] = inv
+
     for student, rel_type in child_rows:
         user = student.user
         courses = _courses_by_student.get(student.id, [])
         course_ids = [c.id for c in courses]
+
+        # Derive invite_status
+        _inv_status = "active"
+        _inv_id = None
+        if user:
+            _pending_inv = _invite_map.get(user.email) if user.email else None
+            if _pending_inv and not _pending_inv.accepted_at:
+                _inv_status = "pending"
+                _inv_id = _pending_inv.id
+            elif user.hashed_password == UNUSABLE_PASSWORD_HASH:
+                _inv_status = "pending"
+            elif user.email and not user.email_verified:
+                _inv_status = "email_unverified"
 
         children.append(ChildSummary(
             student_id=student.id,
@@ -215,6 +281,8 @@ def get_parent_dashboard(
             relationship_type=rel_type.value if rel_type else None,
             course_count=len(courses),
             active_task_count=_task_count_map.get(student.user_id, 0),
+            invite_status=_inv_status,
+            invite_id=_inv_id,
         ))
 
         # Build courses with teacher info (using batch-fetched teacher map)

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
+import { parentApi, courseContentsApi, coursesApi, tasksApi, invitesApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -98,6 +99,11 @@ export function MyKidsPage() {
   const [addCourseSubject, setAddCourseSubject] = useState('');
   const [addCourseLoading, setAddCourseLoading] = useState(false);
   const [addCourseError, setAddCourseError] = useState('');
+
+  // Invite resend state
+  const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
+  const [resendSuccess, setResendSuccess] = useState<number | null>(null);
+  const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
 
   // Focus traps for modals
   const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
@@ -539,27 +545,74 @@ export function MyKidsPage() {
       {/* Child Tabs */}
       <div className="child-selector">
         {children.map((child, index) => (
-          <button
-            key={child.student_id}
-            className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-            onClick={() => {
-              if (selectedChild === child.student_id) {
-                setSelectedChild(null);
-                sessionStorage.removeItem('selectedChildId');
-              } else {
-                setSelectedChild(child.student_id);
-                sessionStorage.setItem('selectedChildId', String(child.user_id));
-              }
-            }}
-          >
-            <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-            {child.full_name}
-            {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
-            <span className="child-tab-detail">
-              {child.school_name && <>{child.school_name} · </>}
-              {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
-            </span>
-          </button>
+          <div key={child.student_id} className="child-tab-wrapper">
+            <button
+              className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
+              onClick={() => {
+                if (selectedChild === child.student_id) {
+                  setSelectedChild(null);
+                  sessionStorage.removeItem('selectedChildId');
+                } else {
+                  setSelectedChild(child.student_id);
+                  sessionStorage.setItem('selectedChildId', String(child.user_id));
+                }
+              }}
+            >
+              <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+              {child.full_name}
+              {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+              {child.invite_status && (
+                <span className={`invite-status-badge invite-status-${child.invite_status}`}>
+                  {child.invite_status === 'active' ? 'Active' : child.invite_status === 'pending' ? 'Pending' : 'Unverified'}
+                </span>
+              )}
+              <span className="child-tab-detail">
+                {child.school_name && <>{child.school_name} · </>}
+                {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
+              </span>
+            </button>
+            {child.invite_status === 'pending' && child.invite_id && (
+              <div className="invite-actions">
+                <button
+                  className="invite-action-btn invite-resend-btn"
+                  disabled={resendingInviteId === child.invite_id}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setResendingInviteId(child.invite_id);
+                    setResendSuccess(null);
+                    try {
+                      await invitesApi.resend(child.invite_id!);
+                      setResendSuccess(child.invite_id);
+                      setTimeout(() => setResendSuccess(null), 3000);
+                    } catch {
+                      /* rate limit or other error — silently handled */
+                    } finally {
+                      setResendingInviteId(null);
+                    }
+                  }}
+                >
+                  {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? 'Sent!' : 'Resend Invite'}
+                </button>
+                <button
+                  className="invite-action-btn invite-copy-btn"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (child.invite_link) {
+                      await navigator.clipboard.writeText(child.invite_link);
+                    } else {
+                      // Build link from frontend URL + invite flow
+                      const link = `${window.location.origin}/accept-invite`;
+                      await navigator.clipboard.writeText(link);
+                    }
+                    setCopiedInviteId(child.invite_id);
+                    setTimeout(() => setCopiedInviteId(null), 2000);
+                  }}
+                >
+                  {copiedInviteId === child.invite_id ? 'Copied!' : 'Copy Link'}
+                </button>
+              </div>
+            )}
+          </div>
         ))}
         <AddActionButton actions={[
           { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true) },
@@ -679,7 +732,11 @@ export function MyKidsPage() {
             {showCourses && overview && (
               <div className="mykids-list">
                 {overview.courses.length === 0 ? (
-                  <p className="mykids-empty-hint">No classes enrolled.</p>
+                  <GoogleClassroomPrompt
+                    childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
+                    childStudentId={selectedChild}
+                    onAddManually={() => setShowAddCourseModal(true)}
+                  />
                 ) : overview.courses.map(c => (
                   <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-list-body">

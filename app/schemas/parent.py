@@ -37,6 +37,8 @@ class ChildSummary(BaseModel):
     link_request_pending: bool = False
     course_count: int = 0
     active_task_count: int = 0
+    invite_status: str | None = None  # "active", "pending", or "email_unverified"
+    invite_id: int | None = None  # ID of pending invite (for resend)
 
     class Config:
         from_attributes = True
