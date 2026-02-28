@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy.orm import Session, selectinload, joinedload
+from sqlalchemy.orm import Session, aliased, selectinload, joinedload
 from sqlalchemy import or_, and_, desc, func as sa_func
 
 from app.db.database import get_db
@@ -327,6 +327,24 @@ def search_messages(
     )
     subject_conv_ids = {row[0] for row in subject_match_convs}
 
+    # Search conversations by participant name (To/From)
+    P1 = aliased(User)
+    P2 = aliased(User)
+    participant_match_convs = (
+        db.query(Conversation.id)
+        .join(P1, Conversation.participant_1_id == P1.id)
+        .join(P2, Conversation.participant_2_id == P2.id)
+        .filter(
+            Conversation.id.in_(db.query(user_conversations.c.id)),
+            or_(
+                sa_func.lower(P1.full_name).like(sa_func.lower(like_pattern)),
+                sa_func.lower(P2.full_name).like(sa_func.lower(like_pattern)),
+            ),
+        )
+        .all()
+    )
+    subject_conv_ids |= {row[0] for row in participant_match_convs}
+
     # For subject matches, get the latest message from each matching conversation
     # that wasn't already found by content search
     content_msg_ids = {msg.id for msg, _, _ in content_results}
@@ -460,6 +478,19 @@ def get_valid_recipients(
                                 student_names=[child_name] if child_name else [],
                             )
                         )
+
+        # Include the parent's own children as recipients
+        for child in children:
+            if child.user and child.user_id not in seen_user_ids:
+                seen_user_ids.add(child.user_id)
+                result.append(
+                    RecipientOption(
+                        user_id=child.user_id,
+                        full_name=child.user.full_name,
+                        role=child.user.role.value if child.user.role else "student",
+                        student_names=[],
+                    )
+                )
 
     if current_user.has_role(UserRole.TEACHER):
         # Teacher can message parents of students in their courses

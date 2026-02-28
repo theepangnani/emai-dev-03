@@ -383,3 +383,55 @@ class TestMessageNotifications:
             .first()
         )
         assert notif is not None
+
+
+# ── Regression: parent sees children in recipients (#936) ──
+
+class TestParentSeesChildrenInRecipients:
+    def test_parent_recipients_include_own_children(self, client, msg_users):
+        """Parent's recipient list must include their linked children."""
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/recipients", headers=headers)
+        assert resp.status_code == 200
+        recipients = resp.json()
+        recipient_ids = [r["user_id"] for r in recipients]
+        assert msg_users["student"].id in recipient_ids, (
+            "Parent's own child should appear in recipient list"
+        )
+        # Verify the child entry has the correct role
+        child_entry = next(r for r in recipients if r["user_id"] == msg_users["student"].id)
+        assert child_entry["role"] == "student"
+
+
+# ── Regression: search matches participant names (#937) ──
+
+class TestSearchByParticipantName:
+    def test_search_by_recipient_name(self, client, msg_users, db_session):
+        """Searching for a participant's name should return their conversations."""
+        from app.models.message import Conversation, Message
+
+        conv = Conversation(
+            participant_1_id=msg_users["parent"].id,
+            participant_2_id=msg_users["teacher"].id,
+            subject="Homework Question",
+        )
+        db_session.add(conv)
+        db_session.commit()
+        db_session.refresh(conv)
+
+        msg = Message(
+            conversation_id=conv.id,
+            sender_id=msg_users["teacher"].id,
+            content="Please review the assignment",
+            is_read=False,
+        )
+        db_session.add(msg)
+        db_session.commit()
+
+        # Search by teacher's name (not in message content or subject)
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/search", params={"q": "Msg Teacher"}, headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        assert len(results) >= 1, "Search by participant name should return results"
+        assert any(r["conversation_id"] == conv.id for r in results)
