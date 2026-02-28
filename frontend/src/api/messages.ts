@@ -65,12 +65,12 @@ export const messagesApi = {
     return response.data as MessageSearchResult[];
   },
 
-  getRecipients: async () => {
-    const response = await api.get('/api/messages/recipients');
+  getRecipients: async (params?: { q?: string }) => {
+    const response = await api.get('/api/messages/recipients', { params });
     return response.data as RecipientOption[];
   },
 
-  listConversations: async (params?: { skip?: number; limit?: number }) => {
+  listConversations: async (params?: { skip?: number; limit?: number; q?: string }) => {
     const response = await api.get('/api/messages/conversations', { params });
     return response.data as ConversationSummary[];
   },
