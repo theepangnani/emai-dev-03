@@ -344,9 +344,112 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.thread-header-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.thread-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .thread-header h2 {
   margin: 0 0 4px 0;
   font-size: 18px;
+  color: var(--color-ink);
+}
+
+/* Thread search toggle button */
+.thread-search-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.thread-search-toggle:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+/* Thread search bar */
+.thread-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--color-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.thread-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-ink);
+  background: transparent;
+  min-width: 0;
+}
+
+.thread-search-input::placeholder {
+  color: var(--color-ink-muted);
+}
+
+.thread-search-count {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.thread-search-nav {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  line-height: 1;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.thread-search-nav:hover:not(:disabled) {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.thread-search-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.thread-search-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.thread-search-close:hover {
   color: var(--color-ink);
 }
 
@@ -409,6 +512,40 @@
   background: var(--color-surface-alt);
   color: var(--color-ink);
   border-bottom-left-radius: 4px;
+}
+
+/* Message highlight from search result click */
+.message-highlight {
+  animation: message-flash 2s ease-out;
+}
+
+@keyframes message-flash {
+  0% { box-shadow: 0 0 0 3px var(--color-accent); }
+  100% { box-shadow: none; }
+}
+
+/* In-thread search match highlighting */
+.message.thread-match {
+  outline: 2px solid var(--color-warning-light, #fff3cd);
+  outline-offset: 2px;
+}
+
+.message.thread-match-active {
+  outline-color: var(--color-accent);
+  outline-width: 2px;
+}
+
+.message.thread-match mark,
+.message.thread-match-active mark {
+  background: var(--color-warning-light, #fff3cd);
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.message.sent.thread-match mark,
+.message.sent.thread-match-active mark {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .message-content {
