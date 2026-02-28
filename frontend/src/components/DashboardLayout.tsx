@@ -444,19 +444,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
         ) : (
           <div className="welcome-section">
-            {inspiration ? (
-              <>
+            {inspiration && (
+              <div className="welcome-inspiration">
                 <h2 className="inspiration-text">"{inspiration.text}"</h2>
                 {inspiration.author && (
                   <p className="inspiration-author">— {inspiration.author}</p>
                 )}
-              </>
-            ) : (
-              <>
-                <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
-                <p>{welcomeSubtitle || "Here's your overview"}</p>
-              </>
+              </div>
             )}
+            <div className={`welcome-fallback${inspiration ? ' has-inspiration' : ''}`}>
+              <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
+              <p>{welcomeSubtitle || "Here's your overview"}</p>
+            </div>
           </div>
         )}
 
