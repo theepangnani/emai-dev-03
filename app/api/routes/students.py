@@ -62,6 +62,20 @@ def list_students(
     return db.query(Student).filter(Student.id.in_(student_ids)).all()
 
 
+@router.get("/me", response_model=StudentResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_my_student_profile(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's own student profile."""
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No student profile found")
+    return student
+
+
 @router.get("/{student_id}", response_model=StudentResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_student(

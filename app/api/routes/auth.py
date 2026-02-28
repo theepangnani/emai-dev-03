@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
@@ -13,7 +14,7 @@ from app.models.invite import Invite, InviteType
 from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest
 from app.schemas.invite import AcceptInviteRequest
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
-from app.api.deps import get_current_user, oauth2_scheme
+from app.api.deps import get_current_user
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
@@ -26,6 +27,41 @@ _ALLOWED_REGISTRATION_ROLES = {UserRole.PARENT, UserRole.STUDENT, UserRole.TEACH
 
 import logging as _logging
 _logger = _logging.getLogger(__name__)
+
+
+def _set_auth_cookies(
+    response: JSONResponse,
+    access_token: str,
+    refresh_token: str | None = None,
+) -> None:
+    """Set httpOnly secure cookies for JWT tokens on a response."""
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/api",
+        domain=settings.cookie_domain or None,
+    )
+    if refresh_token:
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite="lax",
+            max_age=settings.refresh_token_expire_days * 86400,
+            path="/api/auth/refresh",
+            domain=settings.cookie_domain or None,
+        )
+
+
+def _clear_auth_cookies(response: JSONResponse) -> None:
+    """Clear httpOnly auth cookies on a response."""
+    response.delete_cookie("access_token", path="/api", domain=settings.cookie_domain or None)
+    response.delete_cookie("refresh_token", path="/api/auth/refresh", domain=settings.cookie_domain or None)
 
 
 def _send_verification_email(user: User, db: Session) -> None:
@@ -157,6 +193,22 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             if teacher:
                 teacher.teacher_type = TeacherType(user_data.teacher_type)
 
+    # Age-based consent status for students (#783 — MFIPPA)
+    if has_roles and UserRole.STUDENT in user_data.roles:
+        student = db.query(Student).filter(Student.user_id == user.id).first()
+        if student and user_data.date_of_birth:
+            student.date_of_birth = user_data.date_of_birth
+            today = datetime.now(timezone.utc).date()
+            age = today.year - user_data.date_of_birth.year - (
+                (today.month, today.day) < (user_data.date_of_birth.month, user_data.date_of_birth.day)
+            )
+            if age < 16:
+                student.consent_status = "parent_only"
+            elif age < 18:
+                student.consent_status = "dual_required"
+            else:
+                student.consent_status = "pending"  # 18+ can give consent themselves
+
     # Student registration: store parent_email and trigger LinkRequest or Invite
     if has_roles and UserRole.STUDENT in user_data.roles and user_data.parent_email:
         student = db.query(Student).filter(Student.user_id == user.id).first()
@@ -269,7 +321,7 @@ def _get_lockout_duration(failed_attempts: int) -> int | None:
     return None
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 @limiter.limit("5/minute")
 def login(
     request: Request,
@@ -370,13 +422,18 @@ def login(
     db.commit()
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token, refresh_token=refresh_token)
+
+    # Return token in JSON body (backward compat for mobile/existing clients)
+    # AND set httpOnly cookies for web clients (XSS mitigation)
+    token_data = Token(access_token=access_token, refresh_token=refresh_token)
+    response = JSONResponse(content=token_data.model_dump())
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 @router.post("/logout")
 def logout(
     request: Request,
-    token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -384,29 +441,40 @@ def logout(
     from jose import jwt as _jwt
     from app.models.token_blacklist import TokenBlacklist
 
-    try:
-        payload = _jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        jti = payload.get("jti")
-        exp = payload.get("exp")
-        if jti and exp:
-            expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
-            blacklist_entry = TokenBlacklist(
-                jti=jti,
-                user_id=current_user.id,
-                expires_at=expires_at,
-                reason="logout",
-            )
-            db.add(blacklist_entry)
-            log_action(db, user_id=current_user.id, action="logout", resource_type="user",
-                       resource_id=current_user.id, ip_address=request.client.host if request.client else None)
-            db.commit()
-    except Exception:
-        pass  # Best-effort; token is short-lived anyway
+    # Extract token from cookie or Authorization header for blacklisting
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
 
-    return {"message": "Logged out successfully"}
+    if token:
+        try:
+            payload = _jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti and exp:
+                expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+                blacklist_entry = TokenBlacklist(
+                    jti=jti,
+                    user_id=current_user.id,
+                    expires_at=expires_at,
+                    reason="logout",
+                )
+                db.add(blacklist_entry)
+                log_action(db, user_id=current_user.id, action="logout", resource_type="user",
+                           resource_id=current_user.id, ip_address=request.client.host if request.client else None)
+                db.commit()
+        except Exception:
+            pass  # Best-effort; token is short-lived anyway
+
+    # Clear httpOnly cookies and return success
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    _clear_auth_cookies(response)
+    return response
 
 
-@router.post("/accept-invite", response_model=Token)
+@router.post("/accept-invite")
 def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Depends(get_db)):
     """Accept an invite and create a new user account."""
     # Validate token (FOR UPDATE prevents concurrent accept race condition)
@@ -548,21 +616,40 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     # Return JWT so the user is logged in immediately
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token, refresh_token=refresh_token)
+
+    # Return in JSON body AND set httpOnly cookies
+    token_data = Token(access_token=access_token, refresh_token=refresh_token)
+    response = JSONResponse(content=token_data.model_dump())
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 from pydantic import BaseModel as _BaseModel
 
 
 class _RefreshRequest(_BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
-@router.post("/refresh", response_model=Token)
+@router.post("/refresh")
 @limiter.limit("10/minute")
-def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = Depends(get_db)):
-    """Exchange a valid refresh token for a new access token."""
-    payload = decode_refresh_token(body.refresh_token)
+def refresh_access_token(request: Request, body: _RefreshRequest | None = None, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for a new access token.
+
+    The refresh token can be provided in:
+    1. The request body (backward compat for mobile/existing clients)
+    2. The httpOnly refresh_token cookie (web clients)
+    """
+    # Try body first, then cookie
+    raw_token = None
+    if body and body.refresh_token:
+        raw_token = body.refresh_token
+    if not raw_token:
+        raw_token = request.cookies.get("refresh_token")
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="No refresh token provided")
+
+    payload = decode_refresh_token(raw_token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -572,7 +659,21 @@ def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = 
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     new_access_token = create_access_token(data={"sub": str(user.id)})
-    return Token(access_token=new_access_token)
+
+    # Return in JSON body AND set httpOnly cookie
+    token_data = Token(access_token=new_access_token)
+    response = JSONResponse(content=token_data.model_dump())
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/api",
+        domain=settings.cookie_domain or None,
+    )
+    return response
 
 
 import os

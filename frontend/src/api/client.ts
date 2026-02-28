@@ -9,6 +9,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,  // Send httpOnly cookies automatically (#788)
 });
 
 // Add auth token to requests
@@ -40,14 +41,6 @@ api.interceptors.response.use(
     const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/accept-invite') || url.includes('/auth/refresh') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password');
 
     if (error.response?.status === 401 && !isAuthEndpoint && !originalRequest._retry) {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
-
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
@@ -64,9 +57,16 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refresh_token: refreshToken });
-        localStorage.setItem('token', data.access_token);
-        originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+        // Send refresh_token in body (for localStorage/mobile) AND via cookie (withCredentials)
+        const refreshToken = localStorage.getItem('refresh_token');
+        const refreshBody = refreshToken ? { refresh_token: refreshToken } : {};
+        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, refreshBody, {
+          withCredentials: true,  // Send refresh_token cookie
+        });
+        if (data.access_token) {
+          localStorage.setItem('token', data.access_token);
+          originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+        }
         processQueue(null, data.access_token);
         return api(originalRequest);
       } catch {
@@ -93,7 +93,7 @@ api.interceptors.response.use(
 // Re-export all API modules and types for backward compatibility
 export { authApi } from './auth';
 export { coursesApi, courseContentsApi, assignmentsApi } from './courses';
-export type { CourseContentItem, CourseContentUpdateResponse, AssignmentItem, SubmissionResponse, SubmissionListItem } from './courses';
+export type { CourseContentItem, CourseContentUpdateResponse, AssignmentItem, SubmissionResponse, SubmissionListItem, ExtractedTaskItem, ExtractTasksResponse, TaskCreateFromExtraction, CreatedTaskSummary, BulkTaskCreateResponse, UploadOptions, BulkUploadFileResult, BulkUploadResponse } from './courses';
 export { googleApi } from './google';
 export type { GoogleAccount } from './google';
 export { studyApi } from './study';
@@ -154,7 +154,7 @@ export type {
   BroadcastItem,
 } from './admin';
 export { tasksApi } from './tasks';
-export type { TaskItem, AssignableUser } from './tasks';
+export type { TaskItem, AssignableUser, TaskTemplate, TaskComment } from './tasks';
 export { searchApi } from './search';
 export type { SearchResultItem, SearchResultGroup, SearchResponse } from './search';
 export { inspirationApi } from './inspiration';
@@ -174,3 +174,5 @@ export type {
   CourseGradesResponse,
   GradeSyncResponse,
 } from './grades';
+export { consentApi } from './consent';
+export type { ConsentPreferences, ConsentStatus } from './consent';
