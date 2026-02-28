@@ -451,3 +451,37 @@ class TestParentAccessChildContent:
         assert resp.status_code == 200
         titles = [item["title"] for item in resp.json()]
         assert "Child List Item" in titles
+
+    def test_parent_can_edit_child_created_content(self, client, family):
+        """Parent should be able to edit content created by their child (#930)."""
+        child_headers = _auth(client, family["child"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": family["child_course"].id,
+            "title": "Child Editable",
+            "text_content": "Original text",
+            "content_type": "notes",
+        }, headers=child_headers)
+        assert resp.status_code == 201
+        content_id = resp.json()["id"]
+
+        parent_headers = _auth(client, family["parent"].email)
+        resp = client.patch(f"/api/course-contents/{content_id}", json={
+            "text_content": "Parent edited text",
+        }, headers=parent_headers)
+        assert resp.status_code == 200
+        assert resp.json()["text_content"] == "Parent edited text"
+
+    def test_parent_can_delete_child_created_content(self, client, family):
+        """Parent should be able to archive content created by their child (#930)."""
+        child_headers = _auth(client, family["child"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": family["child_course"].id,
+            "title": "Child Deletable",
+            "content_type": "notes",
+        }, headers=child_headers)
+        assert resp.status_code == 201
+        content_id = resp.json()["id"]
+
+        parent_headers = _auth(client, family["parent"].email)
+        resp = client.delete(f"/api/course-contents/{content_id}", headers=parent_headers)
+        assert resp.status_code == 204

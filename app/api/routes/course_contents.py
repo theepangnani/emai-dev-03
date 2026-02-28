@@ -65,6 +65,30 @@ def _strip_urls_for_school(
     return results
 
 
+def _can_modify_content(db: Session, user: User, content: CourseContent) -> bool:
+    """Check if user can modify (edit/delete) a content item.
+    Allowed for: the creator, admins, and parents of the creator."""
+    if content.created_by_user_id == user.id:
+        return True
+    if user.has_role(UserRole.ADMIN):
+        return True
+    if user.role == UserRole.PARENT:
+        child_student_ids = [
+            r[0] for r in db.query(parent_students.c.student_id).filter(
+                parent_students.c.parent_id == user.id
+            ).all()
+        ]
+        if child_student_ids:
+            child_user_ids = [
+                r[0] for r in db.query(Student.user_id).filter(
+                    Student.id.in_(child_student_ids)
+                ).all()
+            ]
+            if content.created_by_user_id in child_user_ids:
+                return True
+    return False
+
+
 @router.post("/", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_course_content(
@@ -422,7 +446,7 @@ def update_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can edit content")
 
     update_data = data.model_dump(exclude_unset=True)
@@ -474,7 +498,7 @@ async def replace_course_content_file(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can replace content")
 
     file_content = await file.read()
@@ -540,7 +564,7 @@ def delete_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can delete content")
 
     content.archived_at = datetime.now(timezone.utc)
@@ -559,7 +583,7 @@ def restore_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can restore content")
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not archived")
@@ -583,7 +607,7 @@ def permanent_delete_course_content(
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    if content.created_by_user_id != current_user.id and not current_user.has_role(UserRole.ADMIN):
+    if not _can_modify_content(db, current_user, content):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can permanently delete content")
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
