@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Any
+
+from app.schemas.user import strip_whitespace
 
 
 class StudyGuideCreate(BaseModel):
@@ -8,11 +10,16 @@ class StudyGuideCreate(BaseModel):
     assignment_id: int | None = None
     course_id: int | None = None
     course_content_id: int | None = None
-    title: str | None = None  # Optional custom title
-    content: str | None = None  # Optional custom content to base guide on
+    title: str | None = Field(default=None, max_length=200)  # Optional custom title
+    content: str | None = Field(default=None, max_length=50000)  # Optional custom content to base guide on
     regenerate_from_id: int | None = None  # ID of existing guide to create new version of
-    custom_prompt: str | None = None  # Custom AI prompt (for "Other" tool selection)
-    focus_prompt: str | None = None  # Optional focus area for AI generation
+    custom_prompt: str | None = Field(default=None, max_length=5000)  # Custom AI prompt (for "Other" tool selection)
+    focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
+
+    @field_validator('title', 'custom_prompt', 'focus_prompt', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class AutoCreatedTask(BaseModel):
@@ -48,11 +55,16 @@ class QuizGenerateRequest(BaseModel):
     assignment_id: int | None = None
     course_id: int | None = None
     course_content_id: int | None = None
-    topic: str | None = None
-    content: str | None = None
-    num_questions: int = 5
+    topic: str | None = Field(default=None, max_length=200)
+    content: str | None = Field(default=None, max_length=50000)
+    num_questions: int = Field(default=5, ge=1, le=50)
     regenerate_from_id: int | None = None
-    focus_prompt: str | None = None  # Optional focus area for AI generation
+    focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
+
+    @field_validator('topic', 'focus_prompt', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class QuizQuestion(BaseModel):
@@ -83,11 +95,16 @@ class FlashcardGenerateRequest(BaseModel):
     assignment_id: int | None = None
     course_id: int | None = None
     course_content_id: int | None = None
-    topic: str | None = None
-    content: str | None = None
-    num_cards: int = 10
+    topic: str | None = Field(default=None, max_length=200)
+    content: str | None = Field(default=None, max_length=50000)
+    num_cards: int = Field(default=10, ge=1, le=100)
     regenerate_from_id: int | None = None
-    focus_prompt: str | None = None  # Optional focus area for AI generation
+    focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
+
+    @field_validator('topic', 'focus_prompt', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class Flashcard(BaseModel):
@@ -119,10 +136,15 @@ class StudyGuideUpdate(BaseModel):
 
 class DuplicateCheckRequest(BaseModel):
     """Request to check for duplicate study guide before generation."""
-    title: str | None = None
-    guide_type: str  # study_guide, quiz, flashcards
+    title: str | None = Field(default=None, max_length=200)
+    guide_type: str = Field(max_length=50)  # study_guide, quiz, flashcards
     assignment_id: int | None = None
     course_id: int | None = None
+
+    @field_validator('title', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class DuplicateCheckResponse(BaseModel):

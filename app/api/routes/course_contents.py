@@ -214,6 +214,60 @@ async def upload_course_content_file(
     return content
 
 
+@router.get("/linked-course-ids")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_linked_course_ids(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return course IDs that have enrolled students who are children of the current parent.
+
+    Used by the frontend to determine which course materials are 'unlinked'
+    (i.e., not assigned to any of the parent's children). Only meaningful for parents.
+    """
+    if current_user.role != UserRole.PARENT:
+        return {"linked_course_ids": [], "children": []}
+
+    # Get parent's children student IDs
+    child_rows = (
+        db.query(parent_students.c.student_id)
+        .filter(parent_students.c.parent_id == current_user.id)
+        .all()
+    )
+    child_sids = [r[0] for r in child_rows]
+    if not child_sids:
+        return {"linked_course_ids": [], "children": []}
+
+    # Get course IDs where these children are enrolled
+    enrolled = (
+        db.query(student_courses.c.course_id, student_courses.c.student_id)
+        .filter(student_courses.c.student_id.in_(child_sids))
+        .all()
+    )
+
+    # Build a map: course_id -> list of student_ids enrolled
+    course_to_students: dict[int, list[int]] = {}
+    for course_id, student_id in enrolled:
+        course_to_students.setdefault(course_id, []).append(student_id)
+
+    # Get child info (student_id, user_id, full_name) for the frontend
+    children_info = []
+    students = db.query(Student).filter(Student.id.in_(child_sids)).all()
+    for s in students:
+        children_info.append({
+            "student_id": s.id,
+            "user_id": s.user_id,
+            "full_name": s.user.full_name if s.user else f"Student #{s.id}",
+        })
+
+    return {
+        "linked_course_ids": list(course_to_students.keys()),
+        "course_student_map": course_to_students,
+        "children": children_info,
+    }
+
+
 @router.get("/", response_model=list[CourseContentResponse])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_course_contents(

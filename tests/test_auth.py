@@ -315,11 +315,11 @@ class TestPasswordReset:
         assert resp.status_code == 400
 
     def test_reset_password_weak_password(self, client, reset_user):
-        """Should reject a weak password."""
+        """Should reject a weak password (422 from schema validation or 400 from route)."""
         from app.core.security import create_password_reset_token
 
         token = create_password_reset_token(reset_user.email)
         resp = client.post("/api/auth/reset-password", json={
             "token": token, "new_password": "weak",
         })
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)

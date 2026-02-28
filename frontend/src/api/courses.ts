@@ -27,6 +27,18 @@ export interface CourseContentUpdateResponse extends CourseContentItem {
   archived_guides_count: number;
 }
 
+export interface LinkedCourseChild {
+  student_id: number;
+  user_id: number;
+  full_name: string;
+}
+
+export interface LinkedCourseIdsResponse {
+  linked_course_ids: number[];
+  course_student_map: Record<number, number[]>;
+  children: LinkedCourseChild[];
+}
+
 // Assignment Types
 export interface AssignmentItem {
   id: number;
@@ -37,6 +49,27 @@ export interface AssignmentItem {
   google_classroom_id: string | null;
   due_date: string | null;
   max_points: number | null;
+  created_at: string;
+}
+
+// Teacher Course Management type (#947)
+export interface TeacherCourseManagement {
+  id: number;
+  name: string;
+  description: string | null;
+  subject: string | null;
+  google_classroom_id: string | null;
+  classroom_type: string | null;
+  teacher_id: number | null;
+  teacher_name: string | null;
+  created_by_user_id: number | null;
+  is_private: boolean;
+  is_default: boolean;
+  student_count: number;
+  assignment_count: number;
+  material_count: number;
+  last_activity: string | null;
+  source: 'google' | 'manual' | 'admin';
   created_at: string;
 }
 
@@ -54,6 +87,11 @@ export const coursesApi = {
 
   teachingList: async () => {
     const response = await api.get('/api/courses/teaching');
+    return response.data;
+  },
+
+  teachingManagement: async (): Promise<TeacherCourseManagement[]> => {
+    const response = await api.get('/api/courses/teaching/management');
     return response.data;
   },
 
@@ -195,6 +233,11 @@ export const courseContentsApi = {
 
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
+  },
+
+  getLinkedCourseIds: async () => {
+    const response = await api.get('/api/course-contents/linked-course-ids');
+    return response.data as LinkedCourseIdsResponse;
   },
 
   download: async (id: number, originalFilename?: string) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
+import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -10,18 +10,95 @@ import { DetailSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { PageNav } from '../components/PageNav';
-import { MaterialHeader } from './course-material/MaterialHeader';
-import { TabNavigation, type TabKey } from './course-material/TabNavigation';
 import { DocumentTab } from './course-material/DocumentTab';
 import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
-import { RegenPromptBanner } from './course-material/RegenPromptBanner';
-import { UploadStatusIndicator } from './course-material/UploadStatusIndicator';
-import { ToastNotification } from './course-material/ToastNotification';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import './CourseMaterialDetailPage.css';
+
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
+
+/* ── Tab icon components ──────────────────────── */
+function DocIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4 1h5.5L13 4.5V13a2 2 0 01-2 2H5a2 2 0 01-2-2V3a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function GuideIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2 3a1 1 0 011-1h4l1 1h5a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M5 7h6M5 9.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function QuizIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M6 6.2a2.2 2.2 0 114 1.3c0 .8-.8 1-1.2 1.3-.2.2-.3.4-.3.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <circle cx="8.5" cy="11.2" r="0.6" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function FlashcardIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="1.5" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <rect x="4.5" y="5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="var(--color-surface, #fff)"/>
+      <path d="M7 8.5h5M7 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+/* ── Header toolbar icons ─────────────────────── */
+function TaskIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
+      <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function ArchiveIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="1" y="2" width="14" height="3" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M2.5 5v8a1.5 1.5 0 001.5 1.5h8a1.5 1.5 0 001.5-1.5V5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M6 8.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M1.5 6.5h13" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M5 1v3M11 1v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +128,10 @@ export function CourseMaterialDetailPage() {
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
+
+  // Unlinked material state (#623)
+  const [isUnlinked, setIsUnlinked] = useState(false);
+  const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
 
   const contentId = parseInt(id || '0');
 
@@ -87,6 +168,13 @@ export function CourseMaterialDetailPage() {
     if (!isParent || !content?.course_id) return;
     studyApi.resolveStudent({ course_id: content.course_id })
       .then(setResolvedStudent)
+      .catch(() => {});
+    // Check if material is unlinked (#623)
+    courseContentsApi.getLinkedCourseIds()
+      .then(data => {
+        setIsUnlinked(!data.linked_course_ids.includes(content.course_id));
+        setLinkedChildren(data.children);
+      })
       .catch(() => {});
   }, [isParent, content?.course_id]);
 
@@ -212,6 +300,18 @@ export function CourseMaterialDetailPage() {
     setContent(result);
   };
 
+  // Assign material's course to a child (#623)
+  const handleAssignToChild = async (childStudentId: number) => {
+    if (!content) return;
+    try {
+      await parentApi.assignCoursesToChild(childStudentId, [content.course_id]);
+      showToast(`Assigned "${content.course_name || 'course'}" to child`);
+      setIsUnlinked(false);
+    } catch {
+      showToast('Failed to assign course to child');
+    }
+  };
+
   const handleRegenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
     setShowRegenPrompt(false);
     await handleGenerate(type);
@@ -228,11 +328,11 @@ export function CourseMaterialDetailPage() {
     </DashboardLayout>
   );
 
-  const tabs = [
-    { key: 'document' as TabKey, label: 'Original Document', hasContent: !!(content.text_content || content.description || content.has_file) },
-    { key: 'guide' as TabKey, label: 'Study Guide', hasContent: !!studyGuide },
-    { key: 'quiz' as TabKey, label: 'Quiz', hasContent: !!quiz },
-    { key: 'flashcards' as TabKey, label: 'Flashcards', hasContent: !!flashcardSet },
+  const tabs: { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode }[] = [
+    { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
+    { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
+    { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
+    { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
   ];
 
   return (
@@ -244,19 +344,83 @@ export function CourseMaterialDetailPage() {
           { label: content?.title || 'Material' },
         ]} />
 
-        <MaterialHeader
-          content={content}
-          onCreateTask={() => setShowTaskModal(true)}
-          onEdit={() => setShowEditModal(true)}
-          onArchive={handleArchiveContent}
-        />
+        {/* ── Header card ──────────────────────────── */}
+        <div className="cm-detail-header">
+          <div className="cm-header-main">
+            <div className="cm-header-info">
+              <div className="cm-detail-title-row">
+                <h2>{content.title}</h2>
+                {content.course_name && (
+                  <span className="cm-course-badge">{content.course_name}</span>
+                )}
+              </div>
+              <div className="cm-detail-meta">
+                {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
+                <span className="cm-meta-date">
+                  <CalendarIcon />
+                  {new Date(content.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+          </div>
 
-        <TabNavigation
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+          <div className="cm-header-toolbar">
+            <button className="cm-toolbar-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
+              <TaskIcon />
+              <span className="cm-toolbar-btn-label">Create Task</span>
+            </button>
+            <button className="cm-toolbar-btn" title="Edit" aria-label="Edit material" onClick={() => setShowEditModal(true)}>
+              <EditIcon />
+              <span className="cm-toolbar-btn-label">Edit</span>
+            </button>
+            <span className="cm-toolbar-sep" />
+            <button className="cm-toolbar-btn danger" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>
+              <ArchiveIcon />
+              <span className="cm-toolbar-btn-label">Archive</span>
+            </button>
+          </div>
+        </div>
 
+        {/* Unlinked banner with assign action (#623) */}
+        {isParent && isUnlinked && linkedChildren.length > 0 && (
+          <div className="cm-unlinked-banner">
+            <span className="cm-unlinked-badge">Not assigned</span>
+            <span className="cm-unlinked-text">This material is not assigned to any of your children.</span>
+            <div className="cm-unlinked-actions">
+              {linkedChildren.map(child => (
+                <button
+                  key={child.student_id}
+                  className="cm-unlinked-assign-btn"
+                  onClick={() => handleAssignToChild(child.student_id)}
+                >
+                  Assign to {child.full_name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab navigation ───────────────────────── */}
+        <div className="cm-tabs" role="tablist">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
+            >
+              <span className="cm-tab-icon">{tab.icon}</span>
+              <span className="cm-tab-label">{tab.label}</span>
+              <span className="cm-tab-label-short">{tab.shortLabel}</span>
+              {!tab.hasContent && tab.key !== 'document' && (
+                <span className="cm-tab-empty-dot" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab content ──────────────────────────── */}
         <div className="cm-tab-content" role="tabpanel">
           {activeTab === 'document' && (
             <DocumentTab
@@ -331,8 +495,18 @@ export function CourseMaterialDetailPage() {
         />
       )}
       {confirmModal}
-      <ToastNotification message={toast} />
-      <UploadStatusIndicator status={uploadStatus} />
+      {toast && <div className="toast-notification">{toast}</div>}
+      {uploadStatus === 'uploading' && (
+        <div className="cm-upload-status">
+          <span className="cm-upload-spinner" />
+          Uploading &amp; extracting text...
+        </div>
+      )}
+      {uploadStatus === 'error' && (
+        <div className="cm-upload-status error">
+          Upload failed
+        </div>
+      )}
       {showReplaceModal && (
         <ReplaceDocumentModal
           content={content}
@@ -346,10 +520,15 @@ export function CourseMaterialDetailPage() {
         />
       )}
       {showRegenPrompt && (
-        <RegenPromptBanner
-          onRegenerate={handleRegenerate}
-          onDismiss={() => setShowRegenPrompt(false)}
-        />
+        <div className="cm-regen-prompt">
+          <p>Source content was modified. Regenerate study materials?</p>
+          <div className="cm-regen-buttons">
+            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>{'\u2728'} Study Guide</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>{'\u2728'} Quiz</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>{'\u2728'} Flashcards</button>
+            <button className="cm-action-btn" onClick={() => setShowRegenPrompt(false)}>Dismiss</button>
+          </div>
+        </div>
       )}
     </DashboardLayout>
   );

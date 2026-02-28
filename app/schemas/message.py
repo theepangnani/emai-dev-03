@@ -1,11 +1,11 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 import html
 
 
 class MessageCreate(BaseModel):
-    content: str
+    content: str = Field(min_length=1, max_length=10000)
 
     @field_validator("content")
     @classmethod
@@ -31,8 +31,8 @@ class MessageResponse(BaseModel):
 class ConversationCreate(BaseModel):
     recipient_id: int
     student_id: Optional[int] = None
-    subject: Optional[str] = None
-    initial_message: str
+    subject: Optional[str] = Field(default=None, max_length=255)
+    initial_message: str = Field(min_length=1, max_length=10000)
 
     @field_validator("initial_message")
     @classmethod
