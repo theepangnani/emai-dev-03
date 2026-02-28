@@ -46,7 +46,9 @@ jobs:
       - run: pip install safety pip-audit
       - run: pip install -r requirements.txt
       - run: pip-audit --format json --output pip-audit-report.json || true
-      - run: pip-audit --desc  # Fail on known vulnerabilities
+      # CVE-2024-23342: ecdsa timing attack — we use python-jose[cryptography] backend,
+      # not the ecdsa backend. The ecdsa project has no planned fix.
+      - run: pip-audit --desc --ignore-vuln CVE-2024-23342
       - uses: actions/upload-artifact@v4
         if: always()
         with:
