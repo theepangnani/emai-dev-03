@@ -45,6 +45,8 @@ export interface ChildSummary {
   invite_link: string | null;
   course_count: number;
   active_task_count: number;
+  invite_status: 'active' | 'pending' | 'email_unverified' | null;
+  invite_id: number | null;
 }
 
 export interface ChildOverview {

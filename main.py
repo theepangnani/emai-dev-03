@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -593,6 +593,18 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── users.onboarding_dismissed_at column (#869) ─────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "onboarding_dismissed_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN onboarding_dismissed_at {col_type}"))
+                logger.info("Added 'onboarding_dismissed_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # One-time data fix: correct known invalid email (#408)
     try:
         conn.execute(text(
@@ -726,6 +738,7 @@ app.include_router(faq.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
 app.include_router(link_requests.router, prefix="/api")
 app.include_router(quiz_results.router, prefix="/api")
+app.include_router(onboarding.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

@@ -9,6 +9,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import './CoursesPage.css';
 
 interface CourseItem {
@@ -337,6 +338,15 @@ export function CoursesPage() {
     } catch (err: any) {
       setSyncMessage(err.response?.data?.detail || 'Failed to sync classes');
       setSyncState('error');
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { authorization_url } = await googleApi.getConnectUrl();
+      window.location.href = authorization_url;
+    } catch {
+      setActionError('Failed to start Google connection');
     }
   };
 
@@ -695,10 +705,10 @@ export function CoursesPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState
-                title="No classes yet"
-                description="Create a class or sync from Google Classroom."
-                variant="compact"
+              <GoogleClassroomPrompt
+                childName={childName || 'your child'}
+                childStudentId={selectedChild ?? 0}
+                onAddManually={() => setShowCreateModal(true)}
               />
             )}
             </>

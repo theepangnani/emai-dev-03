@@ -567,3 +567,86 @@
   font-weight: 500;
   color: var(--color-ink);
 }
+
+/* ── Invite Status Badges ────────────────────── */
+.child-tab-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invite-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.invite-status-active {
+  background: #dcfce7;
+  color: #166534;
+}
+.child-tab.active .invite-status-active {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.invite-status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+.child-tab.active .invite-status-pending {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.invite-status-email_unverified {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.child-tab.active .invite-status-email_unverified {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+/* ── Invite Action Buttons ───────────────────── */
+.invite-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.invite-action-btn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.invite-resend-btn {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+.invite-resend-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.invite-resend-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.invite-copy-btn {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.invite-copy-btn:hover {
+  background: var(--color-surface-alt);
+}

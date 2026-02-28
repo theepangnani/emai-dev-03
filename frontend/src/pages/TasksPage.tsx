@@ -603,9 +603,10 @@ export function TasksPage() {
           </div>
         ) : filteredTasks.length === 0 ? (
           <EmptyState
-            title="No tasks found"
-            description={'Click "New Task" to create one.'}
-            action={{ label: 'New Task', onClick: () => setShowCreate(true) }}
+            icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="m9 14 2 2 4-4" /></svg>}
+            title="No tasks yet"
+            description="Create tasks to track assignments and study activities for your children."
+            action={{ label: 'Create Your First Task', onClick: () => setShowCreate(true) }}
           />
         ) : (
           <div className="tasks-list">
