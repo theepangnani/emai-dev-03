@@ -346,6 +346,7 @@ _TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__f
 
 
 def _auto_invite_shadow_teacher(
+    teacher: Teacher,
     teacher_email: str,
     teacher_name: str,
     inviting_user: User,
@@ -354,8 +355,28 @@ def _auto_invite_shadow_teacher(
     """Auto-create an invite and send email to a shadow teacher.
 
     Called when a parent/student syncs Google Classroom and a new shadow
-    teacher record is created. Skips if a pending invite already exists.
+    teacher record is created.
+
+    Skips if:
+    - AUTO_INVITE_SHADOW_TEACHERS config is disabled
+    - Teacher was already invited in the last 30 days (debounce)
+    - A pending (unexpired, unaccepted) invite already exists
     """
+    # Guard: check config setting (#946)
+    if not settings.auto_invite_shadow_teachers:
+        logger.debug(f"Auto-invite disabled; skipping invite for {teacher_email}")
+        return
+
+    # Debounce: skip if teacher was already invited in last 30 days (#946)
+    now = datetime.now(timezone.utc)
+    if teacher.auto_invited_at:
+        days_since = (now - teacher.auto_invited_at).days
+        if days_since < 30:
+            logger.debug(
+                f"Shadow teacher {teacher_email} was auto-invited {days_since} days ago; skipping"
+            )
+            return
+
     # Check for existing pending invite
     existing_invite = (
         db.query(Invite)
@@ -363,7 +384,7 @@ def _auto_invite_shadow_teacher(
             Invite.email == teacher_email,
             Invite.invite_type == InviteType.TEACHER,
             Invite.accepted_at.is_(None),
-            Invite.expires_at > datetime.now(timezone.utc),
+            Invite.expires_at > now,
         )
         .first()
     )
@@ -375,12 +396,15 @@ def _auto_invite_shadow_teacher(
         email=teacher_email,
         invite_type=InviteType.TEACHER,
         token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        expires_at=now + timedelta(days=30),
         invited_by_user_id=inviting_user.id,
         metadata_json={"source": "google_classroom_sync", "teacher_name": teacher_name},
     )
     db.add(invite)
     db.flush()
+
+    # Track when invite was sent on the teacher record (#946)
+    teacher.auto_invited_at = now
 
     # Send invite email
     invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
@@ -492,8 +516,8 @@ def _resolve_teacher_for_course(
     db.add(teacher)
     db.flush()
 
-    # Auto-send invite to shadow teacher (#57)
-    _auto_invite_shadow_teacher(email, full_name, user, db)
+    # Auto-send invite to shadow teacher (#57, #946)
+    _auto_invite_shadow_teacher(teacher, email, full_name, user, db)
 
     return teacher
 
