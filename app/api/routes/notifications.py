@@ -13,6 +13,7 @@ from app.models.notification_suppression import NotificationSuppression
 from app.schemas.notification import (
     NotificationResponse,
     NotificationPreferences,
+    NotificationSuppressionResponse,
     UnreadCountResponse,
 )
 from app.api.deps import get_current_user
@@ -268,3 +269,45 @@ def update_notification_settings(
     )
 
     return prefs
+
+
+@router.get("/suppressions", response_model=list[NotificationSuppressionResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_suppressions(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all notification suppressions for the current user."""
+    suppressions = (
+        db.query(NotificationSuppression)
+        .filter(NotificationSuppression.user_id == current_user.id)
+        .order_by(desc(NotificationSuppression.suppressed_at))
+        .all()
+    )
+    return suppressions
+
+
+@router.delete("/suppressions/{suppression_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_suppression(
+    request: Request,
+    suppression_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove a notification suppression to re-enable notifications from that source."""
+    suppression = (
+        db.query(NotificationSuppression)
+        .filter(
+            NotificationSuppression.id == suppression_id,
+            NotificationSuppression.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not suppression:
+        raise HTTPException(status_code=404, detail="Suppression not found")
+
+    db.delete(suppression)
+    db.commit()
+    return {"status": "ok"}
