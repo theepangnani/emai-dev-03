@@ -181,12 +181,72 @@
   overflow: hidden;
 }
 
+.notif-card.acknowledged {
+  opacity: 0.65;
+}
+
+.notif-acked-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-success);
+  margin-top: 4px;
+}
+
+.notif-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .notif-card-time {
   font-size: 12px;
   color: var(--color-ink-muted);
   white-space: nowrap;
-  flex-shrink: 0;
-  margin-top: 2px;
+}
+
+.notif-action-btns {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.notif-card:hover .notif-action-btns {
+  opacity: 1;
+}
+
+.notif-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.notif-action-btn.ack:hover {
+  background: var(--color-success);
+  color: white;
+  border-color: var(--color-success);
+}
+
+.notif-action-btn.suppress:hover {
+  background: var(--color-warning-light, #fef3cd);
+  border-color: var(--color-warning-dark, #856404);
+}
+
+.notif-action-btn.delete:hover {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 @media (max-width: 768px) {
@@ -198,5 +258,9 @@
 
   .notif-card {
     padding: 10px 12px;
+  }
+
+  .notif-action-btns {
+    opacity: 1;
   }
 }

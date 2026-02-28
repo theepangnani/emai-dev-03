@@ -7,7 +7,7 @@ import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import './NotificationsPage.css';
 
-type FilterTab = 'all' | 'unread' | 'read';
+type FilterTab = 'all' | 'unread' | 'read' | 'acked';
 
 const TYPE_GROUPS: { key: string; label: string; types: string[] }[] = [
   { key: 'tasks', label: 'Tasks & Assignments', types: ['assignment_due', 'task_due', 'project_due', 'assessment_upcoming'] },
@@ -93,13 +93,45 @@ export function NotificationsPage() {
     }
   };
 
+  const handleAck = async (e: React.MouseEvent, notification: NotificationResponse) => {
+    e.stopPropagation();
+    try {
+      const updated = await notificationsApi.ack(notification.id);
+      setNotifications(prev => prev.map(n => n.id === notification.id ? updated : n));
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const handleSuppress = async (e: React.MouseEvent, notification: NotificationResponse) => {
+    e.stopPropagation();
+    try {
+      await notificationsApi.suppress(notification.id);
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, notification: NotificationResponse) => {
+    e.stopPropagation();
+    try {
+      await notificationsApi.delete(notification.id);
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+    } catch {
+      // Silently fail
+    }
+  };
+
   const filtered = useMemo(() => {
     if (filterTab === 'unread') return notifications.filter(n => !n.read);
-    if (filterTab === 'read') return notifications.filter(n => n.read);
+    if (filterTab === 'read') return notifications.filter(n => n.read && !n.acked_at);
+    if (filterTab === 'acked') return notifications.filter(n => !!n.acked_at);
     return notifications;
   }, [notifications, filterTab]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const ackedCount = notifications.filter(n => !!n.acked_at).length;
 
   // Group filtered notifications by type category
   const grouped = useMemo(() => {
@@ -136,15 +168,18 @@ export function NotificationsPage() {
         </div>
 
         <div className="notif-tabs">
-          {(['all', 'unread', 'read'] as FilterTab[]).map(tab => (
+          {(['all', 'unread', 'read', 'acked'] as FilterTab[]).map(tab => (
             <button
               key={tab}
               className={`notif-tab${filterTab === tab ? ' active' : ''}`}
               onClick={() => setFilterTab(tab)}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'acked' ? 'Acknowledged' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               {tab === 'unread' && unreadCount > 0 && (
                 <span className="notif-tab-count">{unreadCount}</span>
+              )}
+              {tab === 'acked' && ackedCount > 0 && (
+                <span className="notif-tab-count">{ackedCount}</span>
               )}
             </button>
           ))}
@@ -167,15 +202,47 @@ export function NotificationsPage() {
                   {group.items.map(n => (
                     <div
                       key={n.id}
-                      className={`notif-card${!n.read ? ' unread' : ''}${n.link ? ' clickable' : ''}`}
+                      className={`notif-card${!n.read ? ' unread' : ''}${n.acked_at ? ' acknowledged' : ''}${n.link ? ' clickable' : ''}`}
                       onClick={() => handleClick(n)}
                     >
                       <span className="notif-card-icon">{getTypeIcon(n.type)}</span>
                       <div className="notif-card-body">
                         <p className="notif-card-title">{n.title}</p>
                         {n.content && <p className="notif-card-text">{n.content}</p>}
+                        {n.acked_at && (
+                          <span className="notif-acked-badge">Acknowledged</span>
+                        )}
                       </div>
-                      <span className="notif-card-time">{formatTime(n.created_at)}</span>
+                      <div className="notif-card-actions">
+                        <span className="notif-card-time">{formatTime(n.created_at)}</span>
+                        <div className="notif-action-btns">
+                          {n.requires_ack && !n.acked_at && (
+                            <button
+                              className="notif-action-btn ack"
+                              title="Acknowledge"
+                              onClick={(e) => handleAck(e, n)}
+                            >
+                              &#x2713;
+                            </button>
+                          )}
+                          {n.source_type && !n.acked_at && (
+                            <button
+                              className="notif-action-btn suppress"
+                              title="Silence future notifications from this source"
+                              onClick={(e) => handleSuppress(e, n)}
+                            >
+                              &#x1F515;
+                            </button>
+                          )}
+                          <button
+                            className="notif-action-btn delete"
+                            title="Delete"
+                            onClick={(e) => handleDelete(e, n)}
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
