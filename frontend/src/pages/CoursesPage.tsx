@@ -341,15 +341,6 @@ export function CoursesPage() {
     }
   };
 
-  const handleConnectGoogle = async () => {
-    try {
-      const { authorization_url } = await googleApi.getConnectUrl();
-      window.location.href = authorization_url;
-    } catch {
-      setActionError('Failed to start Google connection');
-    }
-  };
-
   const handleUnassignCourse = async (courseId: number, courseName: string) => {
     if (!selectedChild) return;
     const ok = await confirm({
