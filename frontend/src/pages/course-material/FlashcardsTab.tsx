@@ -123,6 +123,12 @@ export function FlashcardsTab({
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
+          {generating === 'flashcards' && (
+            <div className="cm-regen-status">
+              <div className="cm-inline-spinner" />
+              <span>Regenerating flashcards...</span>
+            </div>
+          )}
           {/* Hidden print-ready view with all flashcards */}
           <div ref={printRef} className="cm-print-view">
             <h1 className="print-title">{flashcardSet.title}</h1>
