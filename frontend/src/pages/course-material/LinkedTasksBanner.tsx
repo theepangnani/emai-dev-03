@@ -5,6 +5,15 @@ interface LinkedTasksBannerProps {
   tasks: TaskItem[];
 }
 
+function TaskListIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 export function LinkedTasksBanner({ tasks }: LinkedTasksBannerProps) {
   if (tasks.length === 0) return null;
 
@@ -13,10 +22,7 @@ export function LinkedTasksBanner({ tasks }: LinkedTasksBannerProps) {
       {tasks.map(task => (
         <Link key={task.id} to={`/tasks/${task.id}`} className="cm-linked-task">
           <span className="cm-linked-task-icon">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
-              <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
+            <TaskListIcon />
           </span>
           <span className="cm-linked-task-title">{task.title}</span>
           {task.due_date && (() => {

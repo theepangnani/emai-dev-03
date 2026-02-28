@@ -21,6 +21,26 @@ interface FlashcardsTabProps {
   linkedTasks?: TaskItem[];
 }
 
+function FocusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function EmptyFlashcardIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="2" y="5" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="8" y="9" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M11 13h8M11 16h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 export function FlashcardsTab({
   flashcardSet,
   generating,
@@ -104,19 +124,22 @@ export function FlashcardsTab({
   return (
     <div className="cm-flashcards-tab">
       <div className="cm-focus-prompt">
-        <input
-          type="text"
-          value={focusPrompt}
-          onChange={(e) => onFocusPromptChange(e.target.value)}
-          placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-          disabled={generating !== null}
-        />
+        <div className="cm-focus-prompt-inner">
+          <span className="cm-focus-prompt-icon"><FocusIcon /></span>
+          <input
+            type="text"
+            value={focusPrompt}
+            onChange={(e) => onFocusPromptChange(e.target.value)}
+            placeholder="Focus on a specific topic (e.g., photosynthesis, the Calvin cycle)"
+            disabled={generating !== null}
+          />
+        </div>
       </div>
       {flashcardSet && displayCards.length > 0 ? (
-        <>
+        <div className="cm-tab-card">
           <div className="cm-guide-actions">
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
-            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
+            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
             <button className="cm-action-btn" onClick={handleReset}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={handleShuffle}>{'\u{1F500}'} Shuffle</button>
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
@@ -141,43 +164,45 @@ export function FlashcardsTab({
               </div>
             ))}
           </div>
-          <div className="cm-flashcard-progress">
-            Card {cardIndex + 1} of {displayCards.length}
-          </div>
-          <div
-            className={`cm-flashcard${isFlipped ? ' flipped' : ''}`}
-            onClick={() => setIsFlipped(f => !f)}
-            tabIndex={0}
-            role="button"
-            aria-label={`Flashcard ${cardIndex + 1}. ${isFlipped ? 'Back' : 'Front'}: ${isFlipped ? displayCards[cardIndex]?.back : displayCards[cardIndex]?.front}`}
-          >
-            <div className="cm-flashcard-inner">
-              <div className="cm-flashcard-front">
-                <p>{displayCards[cardIndex]?.front}</p>
-              </div>
-              <div className="cm-flashcard-back">
-                <p>{displayCards[cardIndex]?.back}</p>
+          <div className="cm-tab-card-body">
+            <div className="cm-flashcard-progress">
+              Card {cardIndex + 1} of {displayCards.length}
+            </div>
+            <div
+              className={`cm-flashcard${isFlipped ? ' flipped' : ''}`}
+              onClick={() => setIsFlipped(f => !f)}
+              tabIndex={0}
+              role="button"
+              aria-label={`Flashcard ${cardIndex + 1}. ${isFlipped ? 'Back' : 'Front'}: ${isFlipped ? displayCards[cardIndex]?.back : displayCards[cardIndex]?.front}`}
+            >
+              <div className="cm-flashcard-inner">
+                <div className="cm-flashcard-front">
+                  <p>{displayCards[cardIndex]?.front}</p>
+                </div>
+                <div className="cm-flashcard-back">
+                  <p>{displayCards[cardIndex]?.back}</p>
+                </div>
               </div>
             </div>
+            <div className="cm-flashcard-controls">
+              <button
+                className="cm-action-btn"
+                onClick={() => { setCardIndex(i => i - 1); setIsFlipped(false); }}
+                disabled={cardIndex === 0}
+              >
+                Previous
+              </button>
+              <button
+                className="cm-action-btn"
+                onClick={() => { setCardIndex(i => i + 1); setIsFlipped(false); }}
+                disabled={cardIndex >= displayCards.length - 1}
+              >
+                Next
+              </button>
+            </div>
+            <p className="cm-hint" style={{ textAlign: 'center' }}>Click card to flip. Use arrow keys to navigate.</p>
           </div>
-          <div className="cm-flashcard-controls">
-            <button
-              className="cm-action-btn"
-              onClick={() => { setCardIndex(i => i - 1); setIsFlipped(false); }}
-              disabled={cardIndex === 0}
-            >
-              Previous
-            </button>
-            <button
-              className="cm-action-btn"
-              onClick={() => { setCardIndex(i => i + 1); setIsFlipped(false); }}
-              disabled={cardIndex >= displayCards.length - 1}
-            >
-              Next
-            </button>
-          </div>
-          <p className="cm-hint">Click card to flip. Use arrow keys to navigate.</p>
-        </>
+        </div>
       ) : generating === 'flashcards' ? (
         <div className="cm-inline-generating">
           <div className="cm-inline-spinner" />
@@ -185,13 +210,15 @@ export function FlashcardsTab({
         </div>
       ) : (
         <div className="cm-empty-tab">
-          <p>No flashcards generated yet.</p>
+          <div className="cm-empty-tab-icon"><EmptyFlashcardIcon /></div>
+          <h3>No flashcards yet</h3>
+          <p>Generate flashcards to review key concepts from this material with an interactive card deck.</p>
           <button
-            className="generate-btn"
+            className="cm-empty-generate-btn"
             onClick={onGenerate}
             disabled={generating !== null || !hasSourceContent}
           >
-            Generate Flashcards
+            {'\u2728'} Generate Flashcards
           </button>
           {!hasSourceContent && (
             <p className="cm-hint">Add content or upload a document first to generate flashcards.</p>
