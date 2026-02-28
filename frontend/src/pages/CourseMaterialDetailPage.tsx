@@ -146,7 +146,7 @@ export function CourseMaterialDetailPage() {
         const tasks = await tasksApi.list({ study_guide_id: newGuide.id }).catch(() => []);
         if (tasks.length > 0) {
           const t = tasks[0];
-          const dueStr = t.due_date ? ` (due ${new Date(t.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
+          const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
           showToast(`Task created: ${t.title}${dueStr}`);
         }
       }
