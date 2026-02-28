@@ -12,6 +12,7 @@ import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -351,6 +352,23 @@ export function ParentDashboard() {
               )}
             </div>
           )}
+
+          {/* Google Classroom connection prompt when selected child has 0 courses (#874) */}
+          {(() => {
+            const selectedChildData = pd.selectedChild
+              ? pd.children.find(c => c.student_id === pd.selectedChild)
+              : null;
+            if (selectedChildData && selectedChildData.course_count === 0) {
+              return (
+                <GoogleClassroomPrompt
+                  childName={selectedChildData.full_name}
+                  childStudentId={selectedChildData.student_id}
+                  onAddManually={() => pd.navigate('/courses')}
+                />
+              );
+            }
+            return null;
+          })()}
 
           {/* Coming Up Timeline (#832 - collapsible) */}
           <CollapsibleSection

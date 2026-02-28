@@ -9,6 +9,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import './CoursesPage.css';
 
 interface CourseItem {
@@ -695,10 +696,10 @@ export function CoursesPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState
-                title="No classes yet"
-                description="Create a class or sync from Google Classroom."
-                variant="compact"
+              <GoogleClassroomPrompt
+                childName={childName || 'your child'}
+                childStudentId={selectedChild ?? 0}
+                onAddManually={() => setShowCreateModal(true)}
               />
             )}
             </>
