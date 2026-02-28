@@ -43,7 +43,7 @@ const CONTENT_TYPE_ICONS: Record<string, string> = {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const MAX_RECENT_MATERIALS = 5;
+const MAX_RECENT_MATERIALS = 10;
 
 /* ── Helpers ───────────────────────────────────────────────── */
 

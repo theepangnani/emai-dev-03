@@ -143,14 +143,14 @@ export function ComingUpTimeline({
       });
     }
 
-    // Add tasks
+    // Add only overdue tasks (urgent items that shouldn't be missed)
     for (const t of filteredTasks) {
       if (t.archived_at) continue;
       if (!t.due_date) continue;
+      if (t.is_completed) continue;
       const due = new Date(t.due_date);
-      if (due >= sevenDaysOut) continue;
-      // Skip completed tasks that are not overdue
-      if (t.is_completed && due >= todayStart) continue;
+      // Only include overdue tasks — non-overdue tasks live in Student Detail panel
+      if (due >= todayStart) continue;
       items.push({
         id: t.id + 2_000_000, // offset to avoid collision with assignment ids
         title: t.title,
@@ -158,8 +158,8 @@ export function ComingUpTimeline({
         courseName: t.course_name || undefined,
         childName: t.assignee_name || undefined,
         dueDate: due,
-        urgency: getUrgency(due),
-        isCompleted: t.is_completed,
+        urgency: 'overdue' as UrgencyLevel,
+        isCompleted: false,
         priority: t.priority || undefined,
         taskId: t.id,
       });
@@ -187,12 +187,12 @@ export function ComingUpTimeline({
 
   if (timelineItems.length === 0) {
     const emptyActions = [];
-    if (onCreateTask) emptyActions.push({ label: 'Create Task', onClick: onCreateTask, variant: 'secondary' as const });
     if (onUploadMaterial) emptyActions.push({ label: 'Upload Materials', onClick: onUploadMaterial, variant: 'secondary' as const });
+    if (onCreateTask) emptyActions.push({ label: 'Create Task', onClick: onCreateTask, variant: 'secondary' as const });
     return (
       <EmptyState
-        title="No upcoming items"
-        description="Create a task or upload materials to get started."
+        title="No upcoming assignments"
+        description="Assignments from Google Classroom and overdue tasks will appear here."
         actions={emptyActions}
         variant="compact"
       />
@@ -209,7 +209,7 @@ export function ComingUpTimeline({
           className="pd-timeline-view-all"
           onClick={() => navigate('/tasks')}
         >
-          View All Tasks
+          View All
         </button>
         {onDismiss && (
           <button
