@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../context/AuthContext';
 import { linkRequestsApi, type LinkRequestItem } from '../api/linkRequests';
 import { DashboardLayout } from '../components/DashboardLayout';
 import './LinkRequestsPage.css';
@@ -90,7 +91,13 @@ function RequestCard({
 }
 
 export function LinkRequestsPage() {
+  const { user } = useAuth();
+  const isStudent = user?.role === 'student';
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [parentEmail, setParentEmail] = useState('');
+  const [relationship, setRelationship] = useState('guardian');
+  const [message, setMessage] = useState('');
   const queryClient = useQueryClient();
 
   const pendingQuery = useQuery({
@@ -111,8 +118,28 @@ export function LinkRequestsPage() {
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: linkRequestsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['linkRequests'] });
+      setShowCreateForm(false);
+      setParentEmail('');
+      setRelationship('guardian');
+      setMessage('');
+    },
+  });
+
   const handleRespond = (id: number, action: 'approve' | 'reject') => {
     respondMutation.mutate({ id, action });
+  };
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate({
+      parent_email: parentEmail,
+      relationship_type: relationship,
+      message: message || undefined,
+    });
   };
 
   const pendingItems = pendingQuery.data || [];
@@ -121,10 +148,94 @@ export function LinkRequestsPage() {
   return (
     <DashboardLayout>
       <div className="lr-page">
-        <h1 className="lr-title">Link Requests</h1>
-        <p className="lr-subtitle">
-          Manage requests to link parent and student accounts
-        </p>
+        <div className="lr-page-header">
+          <div>
+            <h1 className="lr-title">Link Requests</h1>
+            <p className="lr-subtitle">
+              Manage requests to link parent and student accounts
+            </p>
+          </div>
+          {isStudent && !showCreateForm && (
+            <button
+              className="lr-btn lr-btn-create"
+              onClick={() => setShowCreateForm(true)}
+            >
+              + Link a Parent
+            </button>
+          )}
+        </div>
+
+        {showCreateForm && (
+          <form className="lr-create-form" onSubmit={handleCreate}>
+            <h3 className="lr-create-title">Link a Parent</h3>
+            <p className="lr-create-desc">
+              Enter your parent's email address to send them a link request.
+            </p>
+            <div className="lr-form-field">
+              <label htmlFor="parentEmail">Parent's Email</label>
+              <input
+                id="parentEmail"
+                type="email"
+                required
+                placeholder="parent@example.com"
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+              />
+            </div>
+            <div className="lr-form-field">
+              <label htmlFor="relationship">Relationship</label>
+              <select
+                id="relationship"
+                value={relationship}
+                onChange={(e) => setRelationship(e.target.value)}
+              >
+                <option value="guardian">Guardian</option>
+                <option value="mother">Mother</option>
+                <option value="father">Father</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="lr-form-field">
+              <label htmlFor="linkMessage">Message (optional)</label>
+              <textarea
+                id="linkMessage"
+                placeholder="Add a note for your parent..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                maxLength={500}
+                rows={2}
+              />
+            </div>
+            {createMutation.isError && (
+              <div className="lr-error">
+                {(createMutation.error as Error & { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+                  'Failed to send request. Please try again.'}
+              </div>
+            )}
+            <div className="lr-form-actions">
+              <button
+                type="button"
+                className="lr-btn lr-btn-reject"
+                onClick={() => setShowCreateForm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="lr-btn lr-btn-approve"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? 'Sending...' : 'Send Request'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {createMutation.isSuccess && (
+          <div className="lr-success">
+            Link request sent successfully!
+          </div>
+        )}
 
         <div className="lr-tabs">
           <button

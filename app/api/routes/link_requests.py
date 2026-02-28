@@ -1,6 +1,7 @@
 """Link request routes for parent-student approval workflows."""
 import logging
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import insert
@@ -8,12 +9,17 @@ from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student, parent_students, RelationshipType
-from app.models.link_request import LinkRequest, LinkRequestStatus
+from app.models.link_request import LinkRequest, LinkRequestStatus, LinkRequestType
 from app.models.notification import NotificationType
-from app.schemas.link_request import LinkRequestResponse, LinkRequestRespondRequest, LinkRequestUserInfo
-from app.api.deps import get_current_user
+from app.schemas.link_request import (
+    LinkRequestResponse,
+    LinkRequestRespondRequest,
+    LinkRequestCreateRequest,
+    LinkRequestUserInfo,
+)
+from app.api.deps import get_current_user, require_role
 from app.services.notification_service import send_multi_channel_notification
 
 logger = logging.getLogger(__name__)
@@ -95,6 +101,87 @@ def list_sent_link_requests(
         .all()
     )
     return [_build_response(lr) for lr in requests]
+
+
+@router.post("", response_model=LinkRequestResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def create_link_request(
+    request: Request,
+    body: LinkRequestCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STUDENT)),
+):
+    """Create a link request from a student to a parent by email."""
+    # Find the student's Student record
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=400, detail="No student profile found for your account")
+
+    # Look up the parent user by email
+    parent = db.query(User).filter(User.email == body.parent_email).first()
+    if not parent:
+        raise HTTPException(
+            status_code=404,
+            detail="No account found with that email. Ask your parent to register first.",
+        )
+
+    if parent.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot send a link request to yourself")
+
+    # Check if already linked
+    existing_link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == parent.id,
+            parent_students.c.student_id == student.id,
+        )
+        .first()
+    )
+    if existing_link:
+        raise HTTPException(status_code=400, detail="You are already linked to this parent")
+
+    # Check for existing pending request
+    existing_request = (
+        db.query(LinkRequest)
+        .filter(
+            LinkRequest.requester_user_id == current_user.id,
+            LinkRequest.target_user_id == parent.id,
+            LinkRequest.status == LinkRequestStatus.PENDING.value,
+        )
+        .first()
+    )
+    if existing_request:
+        raise HTTPException(status_code=400, detail="You already have a pending request to this parent")
+
+    # Create the link request
+    lr = LinkRequest(
+        request_type=LinkRequestType.STUDENT_TO_PARENT.value,
+        status=LinkRequestStatus.PENDING.value,
+        requester_user_id=current_user.id,
+        target_user_id=parent.id,
+        student_id=student.id,
+        relationship_type=body.relationship_type,
+        message=body.message,
+        token=secrets.token_urlsafe(32),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+    )
+    db.add(lr)
+    db.flush()
+
+    # Notify the parent
+    send_multi_channel_notification(
+        db=db,
+        recipient=parent,
+        sender=current_user,
+        title="New Link Request",
+        content=f"{current_user.full_name} wants to link as your student.",
+        notification_type=NotificationType.LINK_REQUEST,
+        link="/link-requests",
+    )
+
+    db.commit()
+    db.refresh(lr)
+    return _build_response(lr)
 
 
 @router.post("/{request_id}/respond")

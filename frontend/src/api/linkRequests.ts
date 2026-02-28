@@ -20,6 +20,12 @@ export interface LinkRequestItem {
   responded_at: string | null;
 }
 
+export interface LinkRequestCreatePayload {
+  parent_email: string;
+  relationship_type?: string;
+  message?: string;
+}
+
 export const linkRequestsApi = {
   getPending: async () => {
     const response = await api.get<LinkRequestItem[]>('/api/link-requests');
@@ -28,6 +34,11 @@ export const linkRequestsApi = {
 
   getSent: async () => {
     const response = await api.get<LinkRequestItem[]>('/api/link-requests/sent');
+    return response.data;
+  },
+
+  create: async (payload: LinkRequestCreatePayload) => {
+    const response = await api.post<LinkRequestItem>('/api/link-requests', payload);
     return response.data;
   },
 
