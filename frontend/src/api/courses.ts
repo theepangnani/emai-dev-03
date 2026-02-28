@@ -1,4 +1,11 @@
 import { api } from './client';
+import type { AxiosProgressEvent } from 'axios';
+
+/** Options for upload methods that support progress tracking and cancellation */
+export interface UploadOptions {
+  onUploadProgress?: (event: AxiosProgressEvent) => void;
+  signal?: AbortSignal;
+}
 
 // Course Content Types
 export interface CourseContentItem {
@@ -25,6 +32,22 @@ export interface CourseContentItem {
 
 export interface CourseContentUpdateResponse extends CourseContentItem {
   archived_guides_count: number;
+}
+
+/** Result for a single file in a bulk upload */
+export interface BulkUploadFileResult {
+  filename: string;
+  success: boolean;
+  content_id: number | null;
+  error: string | null;
+}
+
+/** Response from the bulk upload endpoint */
+export interface BulkUploadResponse {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkUploadFileResult[];
 }
 
 // Assignment Types
@@ -150,7 +173,7 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
-  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string) => {
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string, options?: UploadOptions) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('course_id', String(courseId));
@@ -158,6 +181,8 @@ export const courseContentsApi = {
     if (contentType) formData.append('content_type', contentType);
     const response = await api.post('/api/course-contents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: options?.onUploadProgress,
+      signal: options?.signal,
     });
     return response.data as CourseContentItem;
   },
@@ -175,11 +200,13 @@ export const courseContentsApi = {
     return response.data as CourseContentUpdateResponse;
   },
 
-  replaceFile: async (id: number, file: File) => {
+  replaceFile: async (id: number, file: File, options?: UploadOptions) => {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.put(`/api/course-contents/${id}/replace-file`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: options?.onUploadProgress,
+      signal: options?.signal,
     });
     return response.data as CourseContentUpdateResponse;
   },
@@ -195,6 +222,21 @@ export const courseContentsApi = {
 
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
+  },
+
+  bulkUpload: async (files: File[], courseId: number, contentType?: string, options?: UploadOptions) => {
+    const formData = new FormData();
+    formData.append('course_id', String(courseId));
+    if (contentType) formData.append('content_type', contentType);
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const response = await api.post('/api/course-contents/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: options?.onUploadProgress,
+      signal: options?.signal,
+    });
+    return response.data as BulkUploadResponse;
   },
 
   download: async (id: number, originalFilename?: string) => {
