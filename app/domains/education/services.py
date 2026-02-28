@@ -235,8 +235,6 @@ class EducationService:
                 if course in courses:
                     return True
 
-            # Also grant access to courses created by co-parents
-            # (other parents linked to the same children)
             child_student_ids = (
                 self.db.query(parent_students.c.student_id)
                 .filter(parent_students.c.parent_id == user.id)
@@ -244,6 +242,18 @@ class EducationService:
             )
             child_sids = [r[0] for r in child_student_ids]
             if child_sids:
+                # Grant access to courses created by children
+                child_user_ids = (
+                    self.db.query(Student.user_id)
+                    .filter(Student.id.in_(child_sids))
+                    .all()
+                )
+                child_uids = [r[0] for r in child_user_ids]
+                if child_uids and course.created_by_user_id in child_uids:
+                    return True
+
+                # Also grant access to courses created by co-parents
+                # (other parents linked to the same children)
                 co_parent_ids = (
                     self.db.query(parent_students.c.parent_id)
                     .filter(
