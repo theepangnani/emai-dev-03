@@ -71,6 +71,7 @@ const GradesPage = lazyRetry(() => import('./pages/GradesPage').then((m) => ({ d
 const NotificationsPage = lazyRetry(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const LinkRequestsPage = lazyRetry(() => import('./pages/LinkRequestsPage').then((m) => ({ default: m.LinkRequestsPage })));
 const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((m) => ({ default: m.QuizHistoryPage })));
+const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').then((m) => ({ default: m.EmailSettingsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -296,6 +297,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminFAQPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/emails"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <EmailSettingsPage />
                   </ProtectedRoute>
                 }
               />
