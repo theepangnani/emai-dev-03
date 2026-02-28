@@ -278,9 +278,18 @@ describe('StudentDashboard', () => {
       expect(screen.getByText('Sync Classes')).toBeInTheDocument()
     })
 
-    // Find and click the sync action card
+    // Find and click the sync action card — opens classroom type modal
     const syncCard = screen.getByText('Sync Classes').closest('button')!
     await user.click(syncCard)
+
+    // Classroom type modal appears — confirm with default selection
+    await waitFor(() => {
+      expect(screen.getByText('School Classroom')).toBeInTheDocument()
+    })
+    const confirmBtn = screen.getAllByText('Sync Classes').find(
+      el => el.closest('.modal-actions')
+    )!
+    await user.click(confirmBtn)
 
     await waitFor(() => {
       expect(mockSyncCourses).toHaveBeenCalled()
@@ -477,13 +486,20 @@ describe('StudentDashboard', () => {
     mockSearchParams.set('google_connected', 'true')
     mockGetStatus.mockResolvedValue({ connected: true })
     mockSyncCourses.mockResolvedValue({ message: 'Auto-synced!' })
+    const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
+
+    // google_connected now shows classroom type modal instead of auto-syncing
+    await waitFor(() => {
+      expect(screen.getByText('School Classroom')).toBeInTheDocument()
+    })
+    const confirmBtn = screen.getAllByText('Sync Classes').find(
+      el => el.closest('.modal-actions')
+    )!
+    await user.click(confirmBtn)
 
     await waitFor(() => {
       expect(mockSyncCourses).toHaveBeenCalled()
-    })
-    await waitFor(() => {
-      expect(screen.getByText('Auto-synced!')).toBeInTheDocument()
     })
   })
 
