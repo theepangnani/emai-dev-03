@@ -46,5 +46,16 @@ class NotificationPreferences(BaseModel):
     task_reminder_days: str = Field(default="1,3", max_length=50)
 
 
+class NotificationSuppressionResponse(BaseModel):
+    id: int
+    user_id: int
+    source_type: str
+    source_id: int
+    suppressed_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class UnreadCountResponse(BaseModel):
     count: int

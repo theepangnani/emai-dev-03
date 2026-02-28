@@ -33,6 +33,15 @@ export interface NotificationResponse {
 export interface NotificationPreferences {
   email_notifications: boolean;
   assignment_reminder_days: string;
+  task_reminder_days: string;
+}
+
+export interface NotificationSuppressionResponse {
+  id: number;
+  user_id: number;
+  source_type: string;
+  source_id: number;
+  suppressed_at: string;
 }
 
 // Notifications API
@@ -78,5 +87,14 @@ export const notificationsApi = {
   updateSettings: async (settings: NotificationPreferences) => {
     const response = await api.put('/api/notifications/settings', settings);
     return response.data as NotificationPreferences;
+  },
+
+  listSuppressions: async () => {
+    const response = await api.get('/api/notifications/suppressions');
+    return response.data as NotificationSuppressionResponse[];
+  },
+
+  deleteSuppression: async (suppressionId: number) => {
+    await api.delete(`/api/notifications/suppressions/${suppressionId}`);
   },
 };
