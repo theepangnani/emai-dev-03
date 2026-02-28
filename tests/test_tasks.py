@@ -809,3 +809,21 @@ class TestTaskEntityLinking:
         assert body["course_id"] == linked_entities["course"].id
         assert body["course_content_id"] == linked_entities["content"].id
         assert body["course_content_title"] == "Chapter 5 Notes"
+
+    def test_filter_tasks_by_study_guide_id(self, client, users, linked_entities):
+        """List endpoint supports study_guide_id filter (#902)."""
+        headers = _auth(client, users["parent"].email)
+        guide_id = linked_entities["guide"].id
+        # Create one task linked to the guide and one unlinked
+        client.post("/api/tasks/", json={
+            "title": "Linked to guide",
+            "study_guide_id": guide_id,
+        }, headers=headers)
+        client.post("/api/tasks/", json={"title": "Not linked to guide"}, headers=headers)
+
+        resp = client.get(f"/api/tasks/?study_guide_id={guide_id}", headers=headers)
+        assert resp.status_code == 200
+        tasks = resp.json()
+        assert len(tasks) >= 1
+        for t in tasks:
+            assert t["study_guide_id"] == guide_id

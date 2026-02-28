@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { studyApi, type StudyGuide, type ResolvedStudent } from '../../api/client';
+import type { TaskItem } from '../../api/tasks';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
+import { LinkedTasksBanner } from './LinkedTasksBanner';
 
 interface ParsedQuestion {
   question: string;
@@ -20,6 +22,7 @@ interface QuizTabProps {
   hasSourceContent: boolean;
   isParent: boolean;
   resolvedStudent: ResolvedStudent | null;
+  linkedTasks?: TaskItem[];
 }
 
 export function QuizTab({
@@ -32,6 +35,7 @@ export function QuizTab({
   hasSourceContent,
   isParent,
   resolvedStudent,
+  linkedTasks = [],
 }: QuizTabProps) {
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -145,6 +149,7 @@ export function QuizTab({
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
+          <LinkedTasksBanner tasks={linkedTasks} />
           {/* Hidden print-ready view with all questions */}
           <div ref={printRef} className="cm-print-view">
             <h1 className="print-title">{quiz.title}</h1>

@@ -2,6 +2,7 @@
 AI Service for generating educational content using Anthropic Claude.
 """
 import time
+from datetime import datetime
 import anthropic
 from app.core.config import settings
 from app.core.logging_config import get_logger
@@ -149,11 +150,12 @@ If the content is conceptual/reading material (no problems to solve), then:
 
 Format the response in Markdown for easy reading. For math, use clear notation (fractions, exponents, etc.).
 
-IMPORTANT: If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions with specific future dates), include a section at the very end of your response in this exact format:
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions), include a section at the very end of your response in this exact format:
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description of what is due/happening", "priority": "high"}}]
 
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
+If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the nearest future occurrence from today's date and output the full YYYY-MM-DD.
 ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
 Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all."""
 
@@ -222,10 +224,10 @@ Format your response as a JSON array with this structure:
 
 Return ONLY the JSON array, no other text.
 
-IMPORTANT: If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, or homework due dates), AFTER the JSON array, include a section in this exact format:
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, or homework due dates), AFTER the JSON array, include a section in this exact format:
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
-Use "high" for exams/tests, "medium" for homework. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
+Use "high" for exams/tests, "medium" for homework. If a date does not include a year, assume the nearest future occurrence from today's date and output the full YYYY-MM-DD. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
 
     if focus_prompt:
         prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure quiz questions heavily cover these topics."
@@ -280,10 +282,10 @@ Format your response as a JSON array:
 
 Return ONLY the JSON array, no other text.
 
-IMPORTANT: If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, or homework due dates), AFTER the JSON array, include a section in this exact format:
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, or homework due dates), AFTER the JSON array, include a section in this exact format:
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
-Use "high" for exams/tests, "medium" for homework. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
+Use "high" for exams/tests, "medium" for homework. If a date does not include a year, assume the nearest future occurrence from today's date and output the full YYYY-MM-DD. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
 
     if focus_prompt:
         prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure flashcards heavily cover these topics."

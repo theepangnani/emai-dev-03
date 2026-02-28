@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
+import { tasksApi, type TaskItem } from '../api/tasks';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -44,6 +45,7 @@ export function CourseMaterialDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
+  const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
   const contentId = parseInt(id || '0');
 
@@ -57,6 +59,16 @@ export function CourseMaterialDetailPage() {
       ]);
       setContent(cc);
       setGuides(allGuides);
+      // Fetch linked tasks for each guide
+      const taskMap: Record<number, TaskItem[]> = {};
+      await Promise.all(
+        allGuides.map(async (g) => {
+          try {
+            taskMap[g.id] = await tasksApi.list({ study_guide_id: g.id });
+          } catch { /* ignore */ }
+        })
+      );
+      setLinkedTasks(taskMap);
     } catch {
       setError('Failed to load class material');
     } finally {
@@ -127,6 +139,17 @@ export function CourseMaterialDetailPage() {
       }
       await loadData();
       setActiveTab(type === 'study_guide' ? 'guide' : type);
+      // Show toast if tasks were auto-created
+      const updatedGuides = await studyApi.listGuides({ course_content_id: contentId });
+      const newGuide = updatedGuides.find(g => g.guide_type === type);
+      if (newGuide) {
+        const tasks = await tasksApi.list({ study_guide_id: newGuide.id }).catch(() => []);
+        if (tasks.length > 0) {
+          const t = tasks[0];
+          const dueStr = t.due_date ? ` (due ${new Date(t.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
+          showToast(`Task created: ${t.title}${dueStr}`);
+        }
+      }
     } catch (err) {
       setError(`Failed to generate ${labels[type].toLowerCase()}`);
       setFaqCode(extractFaqCode(err));
@@ -278,6 +301,7 @@ export function CourseMaterialDetailPage() {
               onGenerate={() => handleGenerate('study_guide')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
+              linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
             />
           )}
 
@@ -292,6 +316,7 @@ export function CourseMaterialDetailPage() {
               hasSourceContent={hasSourceContent}
               isParent={isParent}
               resolvedStudent={resolvedStudent}
+              linkedTasks={linkedTasks[quiz?.id ?? 0] ?? []}
             />
           )}
 
@@ -305,6 +330,7 @@ export function CourseMaterialDetailPage() {
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
               isActiveTab={activeTab === 'flashcards'}
+              linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
             />
           )}
         </div>

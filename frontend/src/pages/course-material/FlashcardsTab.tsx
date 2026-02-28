@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { StudyGuide } from '../../api/client';
+import type { TaskItem } from '../../api/tasks';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
+import { LinkedTasksBanner } from './LinkedTasksBanner';
 
 interface FlashcardItem {
   front: string;
@@ -16,6 +18,7 @@ interface FlashcardsTabProps {
   onDelete: (guide: StudyGuide) => void;
   hasSourceContent: boolean;
   isActiveTab: boolean;
+  linkedTasks?: TaskItem[];
 }
 
 export function FlashcardsTab({
@@ -27,6 +30,7 @@ export function FlashcardsTab({
   onDelete,
   hasSourceContent,
   isActiveTab,
+  linkedTasks = [],
 }: FlashcardsTabProps) {
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -118,6 +122,7 @@ export function FlashcardsTab({
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
+          <LinkedTasksBanner tasks={linkedTasks} />
           {/* Hidden print-ready view with all flashcards */}
           <div ref={printRef} className="cm-print-view">
             <h1 className="print-title">{flashcardSet.title}</h1>

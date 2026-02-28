@@ -115,13 +115,20 @@ Instead of a secondary AI call, the existing generation prompts are enhanced to 
 - AI includes at end of response: `--- CRITICAL_DATES ---\n[{"date": "2026-03-15", "title": "Biology Exam", "priority": "high"}]`
 - Backend helper `parse_critical_dates(content)` splits content and parses JSON
 - If section is missing or malformed, silently skipped (no error to user)
-- Handles relative dates via Python dateutil
+- **Date context**: All AI prompts include `Today's date is {YYYY-MM-DD}` so the model can infer the year for ambiguous dates (e.g., "Due Mar 3" → `2026-03-03`). Prompts instruct the model to assume the nearest future occurrence when no year is specified
+- **Non-student date filtering**: Prompts instruct the model to only extract actual student deadlines — not historical dates, reference dates, or dates from article/lesson subject matter
 
 **API Changes:**
 - Generation endpoints (`/api/study/generate`, `/api/study/quiz/generate`, `/api/study/flashcards/generate`) return optional `auto_created_tasks` array in response
+- `GET /api/tasks/` supports `study_guide_id` query parameter to filter tasks linked to a specific study guide
 - No new endpoints needed — uses existing task creation logic internally
 
-**GitHub Issues:** #195 (AI auto-task creation)
+**Frontend Task Display:**
+- Study Guide, Quiz, and Flashcards tabs display a `LinkedTasksBanner` showing auto-created tasks with due date badge and clickable link to the task detail page
+- After generating study material, a toast notification shows when tasks were auto-created (e.g., "Task created: Due Mar 3 (due Mar 3, 2026)")
+- Tasks are fetched per study guide via `tasksApi.list({ study_guide_id })` in `CourseMaterialDetailPage`
+
+**GitHub Issues:** #195 (AI auto-task creation), #902 (parent_id fix), #920 (date context + UI display)
 
 #### 6.2.4 Quiz Results History (Phase 2) - IMPLEMENTED
 
