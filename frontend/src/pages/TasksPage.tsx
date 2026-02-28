@@ -458,14 +458,14 @@ export function TasksPage() {
               </button>
             ))}
             <AddActionButton actions={[
-              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => navigate('/course-materials') },
+              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
               { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
             ]} />
           </div>
         ) : (
           <div className="tasks-child-selector">
             <AddActionButton actions={[
-              { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => navigate('/course-materials') },
+              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
               { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
             ]} />
           </div>

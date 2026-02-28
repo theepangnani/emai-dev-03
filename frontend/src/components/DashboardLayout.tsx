@@ -101,9 +101,10 @@ const NavIcon = ({ name }: { name: string }) => {
   return NAV_SVG[name] || <span>{name[0]}</span>;
 };
 
-// Quick action SVG icons
+// Quick action SVG icons — maps sidebar action labels to nav SVGs
 const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Class Material': NAV_SVG.Materials,
+  '+ Course Material': NAV_SVG.Materials,
   '+ Create Class Material': NAV_SVG.Materials,
   '+ Task': NAV_SVG.Tasks,
   '+ Child': NAV_SVG['My Kids'],
@@ -418,7 +419,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
                 title="Quick Actions"
                 aria-label="Quick Actions"
               >
-                <span className="ps-fab-icon">+</span>
+                <span className="ps-fab-icon">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </span>
               </button>
               {quickActionsOpen && (
                 <div className="persistent-sidebar-actions">
