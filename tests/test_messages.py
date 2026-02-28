@@ -438,3 +438,213 @@ class TestSearchByParticipantName:
         assert any(r["conversation_id"] == conv.id for r in results)
         assert data["total"] >= 1
         assert data["query"] == "Msg Teacher"
+
+
+# ── Conversation search filter (#955) ─────────────────────
+
+class TestConversationSearchFilter:
+    def test_list_conversations_with_q_filters_by_content(self, client, msg_users, db_session):
+        """GET /api/messages/conversations?q=... filters by message content."""
+        from app.models.message import Conversation, Message
+
+        conv = Conversation(
+            participant_1_id=msg_users["parent"].id,
+            participant_2_id=msg_users["teacher"].id,
+            subject="General Chat",
+        )
+        db_session.add(conv)
+        db_session.commit()
+        db_session.refresh(conv)
+
+        msg = Message(conversation_id=conv.id, sender_id=msg_users["teacher"].id,
+                      content="The algebra homework is due Friday", is_read=False)
+        db_session.add(msg)
+        db_session.commit()
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/conversations", params={"q": "algebra"}, headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        assert any(r["id"] == conv.id for r in results)
+
+    def test_list_conversations_with_q_filters_by_subject(self, client, msg_users, db_session):
+        """q parameter matches against conversation subject."""
+        from app.models.message import Conversation, Message
+
+        conv = Conversation(
+            participant_1_id=msg_users["parent"].id,
+            participant_2_id=msg_users["teacher"].id,
+            subject="Calculus Midterm Review",
+        )
+        db_session.add(conv)
+        db_session.commit()
+        db_session.refresh(conv)
+
+        msg = Message(conversation_id=conv.id, sender_id=msg_users["teacher"].id,
+                      content="Hello", is_read=False)
+        db_session.add(msg)
+        db_session.commit()
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/conversations", params={"q": "Calculus"}, headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        assert any(r["id"] == conv.id for r in results)
+
+    def test_list_conversations_with_q_filters_by_participant(self, client, msg_users, db_session):
+        """q parameter matches against other participant name."""
+        from app.models.message import Conversation, Message
+
+        conv = Conversation(
+            participant_1_id=msg_users["parent"].id,
+            participant_2_id=msg_users["teacher"].id,
+        )
+        db_session.add(conv)
+        db_session.commit()
+        db_session.refresh(conv)
+
+        msg = Message(conversation_id=conv.id, sender_id=msg_users["teacher"].id,
+                      content="Hi", is_read=False)
+        db_session.add(msg)
+        db_session.commit()
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/conversations", params={"q": "Msg Teacher"}, headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        assert any(r["id"] == conv.id for r in results)
+
+    def test_list_conversations_without_q_returns_all(self, client, msg_users, db_session):
+        """Without q parameter, all conversations are returned."""
+        from app.models.message import Conversation, Message
+
+        conv = Conversation(
+            participant_1_id=msg_users["parent"].id,
+            participant_2_id=msg_users["teacher"].id,
+            subject="No Filter Test",
+        )
+        db_session.add(conv)
+        db_session.commit()
+        db_session.refresh(conv)
+
+        msg = Message(conversation_id=conv.id, sender_id=msg_users["teacher"].id,
+                      content="test", is_read=False)
+        db_session.add(msg)
+        db_session.commit()
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/conversations", headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        assert any(r["id"] == conv.id for r in results)
+
+    def test_list_conversations_q_no_match_returns_empty(self, client, msg_users, db_session):
+        """Search with non-matching q returns empty list."""
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/conversations", params={"q": "xyznonexistent"}, headers=headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
+# ── Recipient search (#956) ───────────────────────────────
+
+class TestRecipientSearch:
+    def test_recipients_with_q_returns_any_active_user(self, client, msg_users, db_session):
+        """GET /api/messages/recipients?q=... searches all active users."""
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/recipients", params={"q": "Msg"}, headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        names = [r["full_name"] for r in results]
+        assert "Msg Teacher" in names
+        assert "Msg Student" in names
+        assert "Msg Parent" not in names
+
+    def test_recipients_with_q_excludes_self(self, client, msg_users):
+        """Search results should not include the current user."""
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/recipients", params={"q": "Msg Parent"}, headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        ids = [r["user_id"] for r in results]
+        assert msg_users["parent"].id not in ids
+
+    def test_recipients_without_q_returns_linked_only(self, client, msg_users, db_session):
+        """Without q, returns connected users + admins (no unlinked users)."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+
+        unlinked = db_session.query(User).filter(User.email == "unlinked_recip@test.com").first()
+        if not unlinked:
+            unlinked = User(
+                email="unlinked_recip@test.com", full_name="Unlinked Recipient",
+                role=UserRole.PARENT, hashed_password=get_password_hash(PASSWORD),
+            )
+            db_session.add(unlinked)
+            db_session.commit()
+            db_session.refresh(unlinked)
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.get("/api/messages/recipients", headers=headers)
+        assert resp.status_code == 200
+        results = resp.json()
+        ids = [r["user_id"] for r in results]
+        assert unlinked.id not in ids
+
+
+# ── Relaxed conversation creation (#956) ──────────────────
+
+class TestCreateConversationRelaxed:
+    def test_can_message_any_active_user(self, client, msg_users, db_session):
+        """Any active user should be a valid conversation recipient."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+
+        unlinked = db_session.query(User).filter(User.email == "unlinked_conv@test.com").first()
+        if not unlinked:
+            unlinked = User(
+                email="unlinked_conv@test.com", full_name="Unlinked Conv User",
+                role=UserRole.PARENT, hashed_password=get_password_hash(PASSWORD),
+            )
+            db_session.add(unlinked)
+            db_session.commit()
+            db_session.refresh(unlinked)
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.post("/api/messages/conversations", json={
+            "recipient_id": unlinked.id,
+            "initial_message": "Hello unlinked user",
+        }, headers=headers)
+        assert resp.status_code == 200
+
+    def test_cannot_message_self(self, client, msg_users):
+        """Users should not be able to message themselves."""
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.post("/api/messages/conversations", json={
+            "recipient_id": msg_users["parent"].id,
+            "initial_message": "Talking to myself",
+        }, headers=headers)
+        assert resp.status_code == 400
+
+    def test_cannot_message_inactive_user(self, client, msg_users, db_session):
+        """Inactive users should not be valid recipients."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+
+        inactive = db_session.query(User).filter(User.email == "inactive_msg@test.com").first()
+        if not inactive:
+            inactive = User(
+                email="inactive_msg@test.com", full_name="Inactive Msg User",
+                role=UserRole.PARENT, hashed_password=get_password_hash(PASSWORD),
+                is_active=False,
+            )
+            db_session.add(inactive)
+            db_session.commit()
+            db_session.refresh(inactive)
+
+        headers = _auth(client, msg_users["parent"].email)
+        resp = client.post("/api/messages/conversations", json={
+            "recipient_id": inactive.id,
+            "initial_message": "Hello?",
+        }, headers=headers)
+        assert resp.status_code == 404
