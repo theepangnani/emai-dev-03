@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api/client';
@@ -6,6 +6,7 @@ import type {
   ConversationSummary,
   ConversationDetail,
   RecipientOption,
+  MessageSearchResult,
 } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -32,6 +33,13 @@ export function MessagesPage() {
   const [hasMoreConversations, setHasMoreConversations] = useState(true);
   const [messageOffset, setMessageOffset] = useState(0);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MessageSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // New conversation form state
   const [selectedRecipient, setSelectedRecipient] = useState<number | null>(null);
@@ -201,6 +209,80 @@ export function MessagesPage() {
     setInitialMessage('');
   };
 
+  const performSearch = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSearchResults([]);
+      setSearchActive(false);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    setSearchActive(true);
+    try {
+      const results = await messagesApi.search(query);
+      setSearchResults(results);
+    } catch (err) {
+      logger.error('Failed to search messages', { error: err });
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (value.length < 2) {
+      setSearchResults([]);
+      setSearchActive(false);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    searchDebounceRef.current = setTimeout(() => {
+      performSearch(value);
+    }, 300);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchActive(false);
+    setIsSearching(false);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+  };
+
+  const handleSearchResultClick = (result: MessageSearchResult) => {
+    clearSearch();
+    selectConversation(result.conversation_id);
+  };
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query || query.length < 2) return <>{text}</>;
+    const parts: React.ReactNode[] = [];
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let lastIndex = 0;
+    let idx = lowerText.indexOf(lowerQuery, lastIndex);
+    let keyCounter = 0;
+    while (idx !== -1) {
+      if (idx > lastIndex) {
+        parts.push(<span key={keyCounter++}>{text.slice(lastIndex, idx)}</span>);
+      }
+      parts.push(<mark key={keyCounter++}>{text.slice(idx, idx + query.length)}</mark>);
+      lastIndex = idx + query.length;
+      idx = lowerText.indexOf(lowerQuery, lastIndex);
+    }
+    if (lastIndex < text.length) {
+      parts.push(<span key={keyCounter++}>{text.slice(lastIndex)}</span>);
+    }
+    return <>{parts}</>;
+  };
+
   const getOtherParticipantName = (conv: ConversationDetail) => {
     if (conv.participant_1_id === user?.id) {
       return conv.participant_2_name;
@@ -262,7 +344,54 @@ export function MessagesPage() {
               + New Message
             </button>
           </div>
-          {conversations.length === 0 ? (
+          <div className="search-bar">
+            <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="search-clear" onClick={clearSearch} aria-label="Clear search">
+                &times;
+              </button>
+            )}
+          </div>
+          {searchActive ? (
+            <div className="search-results">
+              {isSearching ? (
+                <div className="search-loading">Searching...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="search-empty">No messages matching &lsquo;{searchQuery}&rsquo;</div>
+              ) : (
+                searchResults.map((result) => (
+                  <div
+                    key={`${result.conversation_id}-${result.message_id}`}
+                    className="search-result-item"
+                    onClick={() => handleSearchResultClick(result)}
+                  >
+                    {result.conversation_subject && (
+                      <div className="search-result-subject">
+                        {highlightMatch(result.conversation_subject, searchQuery)}
+                      </div>
+                    )}
+                    <div className="search-result-content">
+                      {highlightMatch(result.message_content.length > 120 ? result.message_content.slice(0, 120) + '...' : result.message_content, searchQuery)}
+                    </div>
+                    <div className="search-result-meta">
+                      <span className="search-result-sender">{result.sender_name}</span>
+                      <span className="search-result-time">{formatTime(result.sent_at)}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : conversations.length === 0 ? (
             <EmptyState
               icon={<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
               title="No messages yet"
@@ -302,7 +431,7 @@ export function MessagesPage() {
               ))}
             </div>
           )}
-          {hasMoreConversations && (
+          {!searchActive && hasMoreConversations && (
             <div className="conversation-footer">
               <button onClick={() => loadConversations()} className="load-more-btn">
                 Load more

@@ -18,9 +18,11 @@ from app.schemas.message import (
     ConversationDetail,
     MessageCreate,
     MessageResponse,
+    MessageSearchResult,
     RecipientOption,
     UnreadCountResponse,
 )
+from app.core.utils import escape_like
 from app.api.deps import get_current_user
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
@@ -268,6 +270,102 @@ def _build_conversation_detail(
         messages_limit=message_limit,
         created_at=conv.created_at,
     )
+
+
+@router.get("/search", response_model=list[MessageSearchResult])
+def search_messages(
+    q: str = Query(..., min_length=2, max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Search messages across conversations the current user participates in.
+
+    Searches both Message.content and Conversation.subject using case-insensitive
+    LIKE matching. Returns up to 20 results, ordered by most recent first.
+    """
+    escaped_q = escape_like(q)
+    like_pattern = f"%{escaped_q}%"
+
+    # Get conversations the current user participates in
+    user_conversations = (
+        db.query(Conversation.id)
+        .filter(
+            or_(
+                Conversation.participant_1_id == current_user.id,
+                Conversation.participant_2_id == current_user.id,
+            )
+        )
+        .subquery()
+    )
+
+    # Search messages by content match
+    content_results = (
+        db.query(Message, Conversation.subject, User.full_name)
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .join(User, Message.sender_id == User.id)
+        .filter(
+            Message.conversation_id.in_(db.query(user_conversations.c.id)),
+            sa_func.lower(Message.content).like(sa_func.lower(like_pattern)),
+        )
+        .order_by(desc(Message.created_at))
+        .limit(20)
+        .all()
+    )
+
+    # Search conversations by subject match (return the latest message from each)
+    subject_match_convs = (
+        db.query(Conversation.id)
+        .filter(
+            Conversation.id.in_(db.query(user_conversations.c.id)),
+            Conversation.subject.isnot(None),
+            sa_func.lower(Conversation.subject).like(sa_func.lower(like_pattern)),
+        )
+        .all()
+    )
+    subject_conv_ids = {row[0] for row in subject_match_convs}
+
+    # For subject matches, get the latest message from each matching conversation
+    # that wasn't already found by content search
+    content_msg_ids = {msg.id for msg, _, _ in content_results}
+    subject_results = []
+    if subject_conv_ids:
+        # Get latest message per conversation for subject matches
+        for conv_id in subject_conv_ids:
+            latest_msg = (
+                db.query(Message, Conversation.subject, User.full_name)
+                .join(Conversation, Message.conversation_id == Conversation.id)
+                .join(User, Message.sender_id == User.id)
+                .filter(Message.conversation_id == conv_id)
+                .order_by(desc(Message.created_at))
+                .first()
+            )
+            if latest_msg and latest_msg[0].id not in content_msg_ids:
+                subject_results.append(latest_msg)
+
+    # Combine and deduplicate results, sort by most recent
+    all_results = content_results + subject_results
+    seen_ids: set[int] = set()
+    unique_results = []
+    for msg, conv_subject, sender_name in all_results:
+        if msg.id not in seen_ids:
+            seen_ids.add(msg.id)
+            unique_results.append((msg, conv_subject, sender_name))
+
+    # Sort by sent_at descending and limit to 20
+    unique_results.sort(key=lambda r: r[0].created_at, reverse=True)
+    unique_results = unique_results[:20]
+
+    return [
+        MessageSearchResult(
+            conversation_id=msg.conversation_id,
+            conversation_subject=conv_subject,
+            message_id=msg.id,
+            message_content=msg.content,
+            sender_name=sender_name,
+            sent_at=msg.created_at,
+        )
+        for msg, conv_subject, sender_name in unique_results
+    ]
 
 
 @router.get("/recipients", response_model=list[RecipientOption])
