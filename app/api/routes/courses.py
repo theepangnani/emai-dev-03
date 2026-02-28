@@ -18,7 +18,7 @@ from app.models.invite import Invite, InviteType
 from app.models.broadcast import Broadcast
 from app.models.notification import Notification, NotificationType
 from app.models.message import Conversation, Message
-from app.schemas.course import CourseCreate, CourseUpdate, CourseResponse, AddStudentRequest
+from app.schemas.course import CourseCreate, CourseUpdate, CourseResponse, TeacherCourseManagementResponse, AddStudentRequest
 from app.api.deps import get_current_user, require_role, can_access_course
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
@@ -166,6 +166,108 @@ def list_teaching_courses(
     """List courses taught by the current teacher."""
     education_service = EducationService(db)
     return education_service.get_teaching_courses(current_user)
+
+
+@router.get("/teaching/management", response_model=list[TeacherCourseManagementResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_teaching_courses_management(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    """List courses taught by the current teacher with enriched management data (#947).
+
+    Returns assignment count, material count, last activity, and source badge info.
+    """
+    from sqlalchemy import func as sa_func
+    from app.models.assignment import Assignment
+    from app.models.course_content import CourseContent
+
+    education_service = EducationService(db)
+    courses = education_service.get_teaching_courses(current_user)
+
+    if not courses:
+        return []
+
+    course_ids = [c.id for c in courses]
+
+    # Batch-query assignment counts per course
+    assignment_counts = dict(
+        db.query(Assignment.course_id, sa_func.count(Assignment.id))
+        .filter(Assignment.course_id.in_(course_ids))
+        .group_by(Assignment.course_id)
+        .all()
+    )
+
+    # Batch-query material counts per course (non-archived only)
+    material_counts = dict(
+        db.query(CourseContent.course_id, sa_func.count(CourseContent.id))
+        .filter(CourseContent.course_id.in_(course_ids), CourseContent.archived_at.is_(None))
+        .group_by(CourseContent.course_id)
+        .all()
+    )
+
+    # Batch-query last activity (max of assignment created_at and material created_at)
+    last_assignment = dict(
+        db.query(Assignment.course_id, sa_func.max(Assignment.created_at))
+        .filter(Assignment.course_id.in_(course_ids))
+        .group_by(Assignment.course_id)
+        .all()
+    )
+    last_material = dict(
+        db.query(CourseContent.course_id, sa_func.max(CourseContent.created_at))
+        .filter(CourseContent.course_id.in_(course_ids))
+        .group_by(CourseContent.course_id)
+        .all()
+    )
+
+    results = []
+    for course in courses:
+        # Determine source
+        if course.google_classroom_id:
+            source = "google"
+        elif course.created_by_user_id and course.created_by_user_id != current_user.id:
+            # Created by someone else (likely admin or parent) and assigned to this teacher
+            creator = course.created_by
+            if creator and creator.role == UserRole.ADMIN:
+                source = "admin"
+            else:
+                source = "manual"
+        else:
+            source = "manual"
+
+        # Compute last activity
+        last_a = last_assignment.get(course.id)
+        last_m = last_material.get(course.id)
+        last_activity = None
+        if last_a and last_m:
+            last_activity = max(last_a, last_m)
+        elif last_a:
+            last_activity = last_a
+        elif last_m:
+            last_activity = last_m
+
+        results.append(TeacherCourseManagementResponse(
+            id=course.id,
+            name=course.name,
+            description=course.description,
+            subject=course.subject,
+            google_classroom_id=course.google_classroom_id,
+            classroom_type=course.classroom_type,
+            teacher_id=course.teacher_id,
+            teacher_name=course.teacher_name,
+            created_by_user_id=course.created_by_user_id,
+            is_private=course.is_private,
+            is_default=course.is_default,
+            student_count=course.student_count,
+            assignment_count=assignment_counts.get(course.id, 0),
+            material_count=material_counts.get(course.id, 0),
+            last_activity=last_activity,
+            source=source,
+            created_at=course.created_at,
+        ))
+
+    return results
 
 
 @router.get("/created/me", response_model=list[CourseResponse])

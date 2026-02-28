@@ -50,6 +50,30 @@ class CourseResponse(BaseModel):
         from_attributes = True
 
 
+class TeacherCourseManagementResponse(BaseModel):
+    """Enriched course data for teacher course management view (#947)."""
+    id: int
+    name: str
+    description: str | None
+    subject: str | None
+    google_classroom_id: str | None
+    classroom_type: str | None = None
+    teacher_id: int | None
+    teacher_name: str | None = None
+    created_by_user_id: int | None = None
+    is_private: bool = False
+    is_default: bool = False
+    student_count: int = 0
+    assignment_count: int = 0
+    material_count: int = 0
+    last_activity: datetime | None = None
+    source: str = "manual"  # "google", "manual", or "admin"
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class AddStudentRequest(BaseModel):
     email: str = Field(max_length=255)
     message: str | None = Field(default=None, max_length=500)  # Optional message to include in the invite (#551)
