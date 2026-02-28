@@ -228,6 +228,29 @@ class TestDeleteStudyGuide:
         resp = client.delete(f"/api/study/guides/{users['parent_guide'].id}", headers=headers)
         assert resp.status_code == 404
 
+    def test_parent_archives_childs_guide(self, client, users, db_session):
+        """Regression #924: parent must be able to archive a guide created by their child."""
+        from app.models.study_guide import StudyGuide
+
+        guide = StudyGuide(
+            user_id=users["student"].id, title="Child Disposable",
+            content="# Delete Me", guide_type="study_guide", version=1,
+            course_id=users["course"].id,
+        )
+        db_session.add(guide)
+        db_session.commit()
+        db_session.refresh(guide)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.delete(f"/api/study/guides/{guide.id}", headers=headers)
+        assert resp.status_code == 204
+
+    def test_unlinked_parent_cannot_archive_childs_guide(self, client, users, db_session):
+        """An unrelated parent should NOT be able to archive another child's guide."""
+        headers = _auth(client, users["outsider"].email)
+        resp = client.delete(f"/api/study/guides/{users['child_guide'].id}", headers=headers)
+        assert resp.status_code == 404
+
 
 # ── Duplicate check ──────────────────────────────────────────
 
@@ -514,3 +537,48 @@ class TestAIDateContext:
         from app.services.ai_service import generate_flashcards
         source = inspect.getsource(generate_flashcards)
         assert "Today's date is" in source, "AI prompt must include today's date for year inference"
+
+
+class TestScanContentForDates:
+    """Regression tests for scan_content_for_dates() fallback (#925)."""
+
+    def test_due_mar_3_extracts_march(self):
+        """'Due Mar 3' in content should extract March 3 date."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Assignment summary\nDue Mar 3\nPlease review", "My Assignment")
+        assert len(result) == 1
+        assert result[0]["date"].endswith("-03-03")
+
+    def test_due_colon_format(self):
+        """'Due: March 15' should be recognised."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Due: March 15", "Homework")
+        assert len(result) == 1
+        assert "-03-15" in result[0]["date"]
+
+    def test_due_date_with_year(self):
+        """'Due Jan 10, 2027' should use the explicit year."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Due Jan 10, 2027", "Report")
+        assert len(result) == 1
+        assert result[0]["date"] == "2027-01-10"
+
+    def test_no_dates_returns_empty(self):
+        """Content without date patterns returns empty list."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Just a normal paragraph with no dates", "Notes")
+        assert result == []
+
+    def test_due_by_format(self):
+        """'Due by Apr 1' should be recognised."""
+        from app.api.routes.study import scan_content_for_dates
+        result = scan_content_for_dates("Due by Apr 1", "Project")
+        assert len(result) == 1
+        assert "-04-01" in result[0]["date"]
+
+    def test_multiple_dates(self):
+        """Multiple due date patterns should all be extracted."""
+        from app.api.routes.study import scan_content_for_dates
+        text = "Part A Due Mar 3\nPart B Due: April 10"
+        result = scan_content_for_dates(text, "Multi-part")
+        assert len(result) == 2

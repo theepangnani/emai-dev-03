@@ -236,6 +236,69 @@ def parse_critical_dates(content: str) -> tuple[str, list[dict]]:
         return clean_content, []
 
 
+# Month name → number mapping for date scanning
+_MONTH_MAP = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2,
+    "mar": 3, "march": 3, "apr": 4, "april": 4,
+    "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+    "aug": 8, "august": 8, "sep": 9, "september": 9, "sept": 9,
+    "oct": 10, "october": 10, "nov": 11, "november": 11,
+    "dec": 12, "december": 12,
+}
+
+# Regex: "Due Mar 3", "Due: March 15", "due date: Feb 25", "Due by Apr 1"
+_DUE_DATE_PATTERN = re.compile(
+    r"(?:due(?:\s+date)?[\s:]*(?:by\s+)?)"
+    r"([A-Za-z]+)\s+(\d{1,2})"
+    r"(?:[,\s]+(\d{4}))?",
+    re.IGNORECASE,
+)
+
+
+def scan_content_for_dates(source_content: str, title: str) -> list[dict]:
+    """Scan source content for common due date patterns as a fallback.
+
+    Returns a list of date dicts compatible with auto_create_tasks_from_dates().
+    Only returns dates that are in the future (from today).
+    """
+    results = []
+    now = datetime.now()
+
+    for match in _DUE_DATE_PATTERN.finditer(source_content):
+        month_str = match.group(1).lower()
+        day = int(match.group(2))
+        year_str = match.group(3)
+
+        month = _MONTH_MAP.get(month_str)
+        if not month or day < 1 or day > 31:
+            continue
+
+        if year_str:
+            year = int(year_str)
+        else:
+            # Infer year: use current year, bump to next year if date is in the past
+            year = now.year
+            try:
+                candidate = datetime(year, month, day)
+            except ValueError:
+                continue
+            if candidate.date() < now.date():
+                year += 1
+
+        try:
+            due = datetime(year, month, day)
+        except ValueError:
+            continue
+
+        results.append({
+            "date": due.strftime("%Y-%m-%d"),
+            "title": f"{title} — due {due.strftime('%b %d')}",
+            "priority": "medium",
+        })
+
+    return results
+
+
 def auto_create_tasks_from_dates(
     db: Session,
     dates: list[dict],
@@ -449,7 +512,9 @@ async def generate_study_guide_endpoint(
     db.add(study_guide)
     db.flush()
 
-    # Auto-create tasks from critical dates (or fallback review task)
+    # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(description, title)
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
@@ -559,7 +624,9 @@ async def generate_quiz_endpoint(
     db.add(study_guide)
     db.flush()
 
-    # Auto-create tasks from critical dates (or fallback review task)
+    # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(content, f"Quiz: {topic}")
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: Quiz: {topic}", "priority": "medium"}]
@@ -675,7 +742,9 @@ async def generate_flashcards_endpoint(
     db.add(study_guide)
     db.flush()
 
-    # Auto-create tasks from critical dates (or fallback review task)
+    # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(content, f"Flashcards: {topic}")
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: Flashcards: {topic}", "priority": "medium"}]
@@ -845,13 +914,18 @@ def delete_study_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Soft-delete (archive) a study guide (owner only)."""
-    guide = db.query(StudyGuide).filter(
-        StudyGuide.id == guide_id,
-        StudyGuide.user_id == current_user.id,
-    ).first()
+    """Soft-delete (archive) a study guide (owner or parent of owner)."""
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
+    # Owner can always archive; parents can archive their children's guides
+    if guide.user_id != current_user.id:
+        if current_user.role == UserRole.PARENT:
+            child_user_ids = get_linked_children_user_ids(db, current_user.id)
+            if guide.user_id not in child_user_ids:
+                raise HTTPException(status_code=404, detail="Study guide not found")
+        else:
+            raise HTTPException(status_code=404, detail="Study guide not found")
     guide.archived_at = datetime.now(timezone.utc)
     log_action(db, user_id=current_user.id, action="archive", resource_type="study_guide", resource_id=guide_id)
     db.commit()
@@ -1099,6 +1173,8 @@ async def generate_from_text_and_images(
 
     # Auto-create tasks from critical dates (or fallback review task)
     if not critical_dates:
+        critical_dates = scan_content_for_dates(extracted_text, title)
+    if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
 
@@ -1269,6 +1345,8 @@ async def generate_from_file_upload(
     db.flush()
 
     # Auto-create tasks from critical dates (or fallback review task)
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(extracted_text, title)
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
