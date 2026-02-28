@@ -5,6 +5,7 @@ import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionL
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { TaskExtractionModal } from '../components/TaskExtractionModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
@@ -144,6 +145,12 @@ export function CourseDetailPage() {
     courseContentId?: number;
     title: string;
     label: string;
+  } | null>(null);
+
+  // Task extraction modal (#878)
+  const [extractionContext, setExtractionContext] = useState<{
+    contentId: number;
+    contentTitle: string;
   } | null>(null);
 
   // Guard refs to prevent double-submission
@@ -719,6 +726,19 @@ export function CourseDetailPage() {
                       >
                         {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
                       </button>
+                      {item.text_content && (
+                        <button
+                          className="content-icon-btn"
+                          title="Extract Tasks with AI"
+                          aria-label="Extract tasks from this content using AI"
+                          onClick={() => setExtractionContext({
+                            contentId: item.id,
+                            contentTitle: item.title,
+                          })}
+                        >
+                          &#9889;
+                        </button>
+                      )}
                       <button
                         className="content-icon-btn"
                         title="Create task"
@@ -1223,6 +1243,17 @@ export function CourseDetailPage() {
         courseId={taskModalContext?.courseId}
         courseContentId={taskModalContext?.courseContentId}
         linkedEntityLabel={taskModalContext?.label}
+      />
+
+      <TaskExtractionModal
+        open={!!extractionContext}
+        onClose={() => setExtractionContext(null)}
+        contentId={extractionContext?.contentId ?? 0}
+        contentTitle={extractionContext?.contentTitle ?? ''}
+        courseName={course?.name}
+        onCreated={(count) => {
+          alert(`Successfully created ${count} task${count !== 1 ? 's' : ''} from document.`);
+        }}
       />
       {confirmModal}
     </DashboardLayout>

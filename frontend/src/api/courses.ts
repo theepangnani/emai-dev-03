@@ -27,6 +27,42 @@ export interface CourseContentUpdateResponse extends CourseContentItem {
   archived_guides_count: number;
 }
 
+// Task Extraction Types (#878)
+export interface ExtractedTaskItem {
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  priority: string;
+  included: boolean;
+}
+
+export interface ExtractTasksResponse {
+  content_id: number;
+  filename: string | null;
+  tasks: ExtractedTaskItem[];
+  message: string;
+}
+
+export interface TaskCreateFromExtraction {
+  title: string;
+  description?: string | null;
+  due_date?: string | null;
+  priority: string;
+  assigned_to_user_id?: number | null;
+}
+
+export interface CreatedTaskSummary {
+  id: number;
+  title: string;
+  due_date: string | null;
+  priority: string;
+}
+
+export interface BulkTaskCreateResponse {
+  created_count: number;
+  tasks: CreatedTaskSummary[];
+}
+
 // Assignment Types
 export interface AssignmentItem {
   id: number;
@@ -195,6 +231,16 @@ export const courseContentsApi = {
 
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
+  },
+
+  extractTasks: async (id: number) => {
+    const response = await api.post(`/api/course-contents/${id}/extract-tasks`);
+    return response.data as ExtractTasksResponse;
+  },
+
+  createTasksFromExtraction: async (id: number, tasks: TaskCreateFromExtraction[]) => {
+    const response = await api.post(`/api/course-contents/${id}/create-tasks`, { tasks });
+    return response.data as BulkTaskCreateResponse;
   },
 
   download: async (id: number, originalFilename?: string) => {

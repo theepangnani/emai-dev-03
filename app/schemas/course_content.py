@@ -78,3 +78,50 @@ class CourseContentResponse(BaseModel):
 class CourseContentUpdateResponse(CourseContentResponse):
     """Extended response returned from PATCH that includes side-effect counts."""
     archived_guides_count: int = 0
+
+
+# --- Task Extraction Schemas (#878) ---
+
+class ExtractedTaskItem(BaseModel):
+    """A single task extracted by AI from a document."""
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[str] = None  # ISO date string YYYY-MM-DD
+    priority: str = "medium"  # low, medium, high
+    included: bool = True  # frontend toggle
+
+
+class ExtractTasksResponse(BaseModel):
+    """Response from the extract-tasks endpoint."""
+    content_id: int
+    filename: Optional[str] = None
+    tasks: list[ExtractedTaskItem]
+    message: str
+
+
+class TaskCreateFromExtraction(BaseModel):
+    """A single task to create from extraction results."""
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[str] = None  # ISO date string YYYY-MM-DD
+    priority: str = "medium"
+    assigned_to_user_id: Optional[int] = None
+
+
+class BulkTaskCreateRequest(BaseModel):
+    """Request to create multiple tasks from extraction."""
+    tasks: list[TaskCreateFromExtraction]
+
+
+class CreatedTaskSummary(BaseModel):
+    """Summary of a created task."""
+    id: int
+    title: str
+    due_date: Optional[str] = None
+    priority: str
+
+
+class BulkTaskCreateResponse(BaseModel):
+    """Response from the create-tasks endpoint."""
+    created_count: int
+    tasks: list[CreatedTaskSummary]
