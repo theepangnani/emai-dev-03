@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.student import Student, parent_students
@@ -30,12 +31,15 @@ def _user_response(user: User) -> UserResponse:
 
 
 @router.get("/me", response_model=UserResponse)
-def get_current_user_info(current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_current_user_info(request: Request, current_user: User = Depends(get_current_user)):
     return _user_response(current_user)
 
 
 @router.post("/me/switch-role", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def switch_role(
+    request: Request,
     data: SwitchRoleRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -66,7 +70,9 @@ def switch_role(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_user(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

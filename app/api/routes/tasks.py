@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.task import Task
 from app.models.student import Student, parent_students
 from app.models.course import Course, student_courses
@@ -87,7 +88,9 @@ def _task_to_response(task: Task) -> dict:
 
 
 @router.get("/assignable-users")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_assignable_users(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -97,7 +100,9 @@ def get_assignable_users(
 
 
 @router.get("/", response_model=list[TaskResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_tasks(
+    request: Request,
     assigned_to_user_id: Optional[int] = Query(None),
     is_completed: Optional[bool] = Query(None),
     priority: Optional[str] = Query(None),
@@ -151,7 +156,9 @@ def list_tasks(
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_task(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -169,41 +176,43 @@ def get_task(
 
 
 @router.post("/", response_model=TaskResponse, status_code=201)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def create_task(
-    request: TaskCreate,
+    request: Request,
+    data: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Create a new task, optionally assigned to another user."""
     task_service = TaskService(db)
-    if request.assigned_to_user_id:
-        task_service.validate_assignment_relationship(current_user, request.assigned_to_user_id)
+    if data.assigned_to_user_id:
+        task_service.validate_assignment_relationship(current_user, data.assigned_to_user_id)
 
     # Resolve legacy student_id from assigned_to_user_id for backwards compat
     legacy_student_id = None
-    if request.assigned_to_user_id:
-        student = db.query(Student).filter(Student.user_id == request.assigned_to_user_id).first()
+    if data.assigned_to_user_id:
+        student = db.query(Student).filter(Student.user_id == data.assigned_to_user_id).first()
         if student:
             legacy_student_id = student.id
 
     task = Task(
         created_by_user_id=current_user.id,
-        assigned_to_user_id=request.assigned_to_user_id,
+        assigned_to_user_id=data.assigned_to_user_id,
         parent_id=current_user.id,  # Legacy column — existing DB has NOT NULL constraint
         student_id=legacy_student_id,  # Legacy column
-        title=request.title,
-        description=request.description,
-        due_date=request.due_date,
-        priority=_normalize_priority(request.priority) or "medium",
-        category=request.category,
-        course_id=request.course_id,
-        course_content_id=request.course_content_id,
-        study_guide_id=request.study_guide_id,
+        title=data.title,
+        description=data.description,
+        due_date=data.due_date,
+        priority=_normalize_priority(data.priority) or "medium",
+        category=data.category,
+        course_id=data.course_id,
+        course_content_id=data.course_content_id,
+        study_guide_id=data.study_guide_id,
     )
     db.add(task)
     db.flush()
     log_action(db, user_id=current_user.id, action="create", resource_type="task", resource_id=task.id,
-               details={"title": request.title, "assigned_to": request.assigned_to_user_id})
+               details={"title": data.title, "assigned_to": data.assigned_to_user_id})
     db.commit()
     db.refresh(task)
 
@@ -227,9 +236,11 @@ def create_task(
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def update_task(
+    request: Request,
     task_id: int,
-    request: TaskUpdate,
+    data: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -248,13 +259,13 @@ def update_task(
 
     # Assignees can only toggle completion
     if not is_creator:
-        if request.is_completed is not None:
-            task_service.toggle_completion(task, current_user, request.is_completed)
+        if data.is_completed is not None:
+            task_service.toggle_completion(task, current_user, data.is_completed)
             db.commit()
             db.refresh(task)
 
             # Notify the task creator (parent) when assignee completes the task
-            if request.is_completed and task.created_by_user_id and task.created_by_user_id != current_user.id:
+            if data.is_completed and task.created_by_user_id and task.created_by_user_id != current_user.id:
                 try:
                     creator = db.query(User).filter(User.id == task.created_by_user_id).first()
                     if creator:
@@ -277,32 +288,32 @@ def update_task(
             raise HTTPException(status_code=403, detail="Only the task creator can edit task details")
 
     # Creator can update all fields
-    if request.assigned_to_user_id is not None:
-        if request.assigned_to_user_id == 0:
+    if data.assigned_to_user_id is not None:
+        if data.assigned_to_user_id == 0:
             # Convention: 0 means unassign
             task.assigned_to_user_id = None
         else:
-            task_service.validate_assignment_relationship(current_user, request.assigned_to_user_id)
-            task.assigned_to_user_id = request.assigned_to_user_id
+            task_service.validate_assignment_relationship(current_user, data.assigned_to_user_id)
+            task.assigned_to_user_id = data.assigned_to_user_id
 
-    if request.title is not None:
-        task.title = request.title
-    if request.description is not None:
-        task.description = request.description
-    if request.due_date is not None:
-        task.due_date = request.due_date
-    if request.is_completed is not None:
-        task_service.toggle_completion(task, current_user, request.is_completed)
-    if request.priority is not None:
-        task.priority = _normalize_priority(request.priority)
-    if request.category is not None:
-        task.category = request.category
-    if request.course_id is not None:
-        task.course_id = request.course_id if request.course_id != 0 else None
-    if request.course_content_id is not None:
-        task.course_content_id = request.course_content_id if request.course_content_id != 0 else None
-    if request.study_guide_id is not None:
-        task.study_guide_id = request.study_guide_id if request.study_guide_id != 0 else None
+    if data.title is not None:
+        task.title = data.title
+    if data.description is not None:
+        task.description = data.description
+    if data.due_date is not None:
+        task.due_date = data.due_date
+    if data.is_completed is not None:
+        task_service.toggle_completion(task, current_user, data.is_completed)
+    if data.priority is not None:
+        task.priority = _normalize_priority(data.priority)
+    if data.category is not None:
+        task.category = data.category
+    if data.course_id is not None:
+        task.course_id = data.course_id if data.course_id != 0 else None
+    if data.course_content_id is not None:
+        task.course_content_id = data.course_content_id if data.course_content_id != 0 else None
+    if data.study_guide_id is not None:
+        task.study_guide_id = data.study_guide_id if data.study_guide_id != 0 else None
 
     db.commit()
     db.refresh(task)
@@ -310,7 +321,9 @@ def update_task(
 
 
 @router.delete("/{task_id}", status_code=204)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_task(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -331,7 +344,9 @@ def delete_task(
 
 
 @router.patch("/{task_id}/restore", response_model=TaskResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def restore_task(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -352,7 +367,9 @@ def restore_task(
 
 
 @router.delete("/{task_id}/permanent", status_code=204)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def permanent_delete_task(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -372,7 +389,9 @@ def permanent_delete_task(
 
 
 @router.post("/{task_id}/remind")
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def send_task_reminder(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

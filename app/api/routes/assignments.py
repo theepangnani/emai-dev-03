@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.assignment import Assignment, StudentAssignment
 from app.models.course import Course, student_courses
@@ -130,7 +130,9 @@ def _to_response(assignment: Assignment) -> dict:
 
 
 @router.post("/", response_model=AssignmentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_assignment(
+    request: Request,
     assignment_data: AssignmentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -149,7 +151,9 @@ def create_assignment(
 
 
 @router.put("/{assignment_id}", response_model=AssignmentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_assignment(
+    request: Request,
     assignment_id: int,
     data: AssignmentUpdate,
     db: Session = Depends(get_db),
@@ -172,7 +176,9 @@ def update_assignment(
 
 
 @router.delete("/{assignment_id}", status_code=status.HTTP_200_OK)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_assignment(
+    request: Request,
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -190,7 +196,9 @@ def delete_assignment(
 
 
 @router.get("/", response_model=list[AssignmentResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_assignments(
+    request: Request,
     course_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -212,7 +220,9 @@ def list_assignments(
 
 
 @router.get("/{assignment_id}", response_model=AssignmentResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_assignment(
+    request: Request,
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -384,7 +394,9 @@ async def submit_assignment(
 
 
 @router.get("/{assignment_id}/submission", response_model=SubmissionResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_submission(
+    request: Request,
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -421,7 +433,9 @@ def get_submission(
 
 
 @router.get("/{assignment_id}/submissions", response_model=list[SubmissionListItem])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_submissions(
+    request: Request,
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -470,7 +484,9 @@ def list_submissions(
 
 
 @router.get("/{assignment_id}/submission/download")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def download_submission_file(
+    request: Request,
     assignment_id: int,
     student_id: int | None = None,
     db: Session = Depends(get_db),

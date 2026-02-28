@@ -1,12 +1,13 @@
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import or_, and_, desc, func as sa_func
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.student import Student, parent_students, student_teachers
 from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
@@ -273,7 +274,9 @@ def _build_conversation_detail(
 
 
 @router.get("/search", response_model=list[MessageSearchResult])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def search_messages(
+    request: Request,
     q: str = Query(..., min_length=2, max_length=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -369,7 +372,9 @@ def search_messages(
 
 
 @router.get("/recipients", response_model=list[RecipientOption])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_valid_recipients(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -572,7 +577,9 @@ def get_valid_recipients(
 
 
 @router.post("/conversations", response_model=ConversationDetail)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def create_conversation(
+    request: Request,
     data: ConversationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -588,7 +595,7 @@ def create_conversation(
         raise HTTPException(status_code=404, detail="Recipient not found")
 
     # Verify this is a valid recipient
-    valid_recipients = get_valid_recipients(db=db, current_user=current_user)
+    valid_recipients = get_valid_recipients(request=request, db=db, current_user=current_user)
     valid_ids = [r.user_id for r in valid_recipients]
 
     if data.recipient_id not in valid_ids:
@@ -678,7 +685,9 @@ def create_conversation(
 
 
 @router.get("/conversations", response_model=list[ConversationSummary])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_conversations(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -768,7 +777,9 @@ def list_conversations(
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_conversation(
+    request: Request,
     conversation_id: int,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -809,7 +820,9 @@ def get_conversation(
 @router.post(
     "/conversations/{conversation_id}/messages", response_model=MessageResponse
 )
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def send_message(
+    request: Request,
     conversation_id: int,
     data: MessageCreate,
     db: Session = Depends(get_db),
@@ -862,7 +875,9 @@ def send_message(
 
 
 @router.patch("/conversations/{conversation_id}/read")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def mark_conversation_read(
+    request: Request,
     conversation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -898,7 +913,9 @@ def mark_conversation_read(
 
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_unread_count(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

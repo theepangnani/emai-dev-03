@@ -1,12 +1,13 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.db.database import get_db
 from app.models.user import User
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.notification import Notification
 from app.models.notification_suppression import NotificationSuppression
 from app.schemas.notification import (
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
 @router.get("/", response_model=list[NotificationResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_notifications(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     unread_only: bool = Query(False),
@@ -56,7 +59,9 @@ def list_notifications(
 
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_unread_count(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -73,7 +78,9 @@ def get_unread_count(
 
 
 @router.put("/{notification_id}/read", response_model=NotificationResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def mark_as_read(
+    request: Request,
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -97,7 +104,9 @@ def mark_as_read(
 
 
 @router.put("/{notification_id}/ack", response_model=NotificationResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def acknowledge_notification(
+    request: Request,
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -126,7 +135,9 @@ def acknowledge_notification(
 
 
 @router.put("/{notification_id}/suppress", response_model=NotificationResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def suppress_notification(
+    request: Request,
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -174,7 +185,9 @@ def suppress_notification(
 
 
 @router.put("/read-all")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def mark_all_as_read(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -193,7 +206,9 @@ def mark_all_as_read(
 
 
 @router.delete("/{notification_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_notification(
+    request: Request,
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -216,7 +231,9 @@ def delete_notification(
 
 
 @router.get("/settings", response_model=NotificationPreferences)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_notification_settings(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """Get notification preferences for the current user."""
@@ -230,7 +247,9 @@ def get_notification_settings(
 
 
 @router.put("/settings", response_model=NotificationPreferences)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_notification_settings(
+    request: Request,
     prefs: NotificationPreferences,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

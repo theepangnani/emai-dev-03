@@ -8,10 +8,11 @@ Provides:
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.analytics import GradeRecord
 from app.models.assignment import Assignment
@@ -124,7 +125,9 @@ def _get_student_ids_for_user(db: Session, current_user: User) -> list[tuple[int
 # ---------------------------------------------------------------------------
 
 @router.get("/summary")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_grade_summary(
+    request: Request,
     student_id: int | None = Query(None, description="Filter by student ID (parents can specify a child)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -183,7 +186,9 @@ def get_grade_summary(
 
 
 @router.get("/course/{course_id}")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_course_grades(
+    request: Request,
     course_id: int,
     student_id: int | None = Query(None, description="Filter by student ID"),
     db: Session = Depends(get_db),

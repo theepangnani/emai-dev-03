@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
@@ -88,7 +89,9 @@ def _resolve_student_id(db: Session, student_id: int | None, current_user: User)
 # ---------------------------------------------------------------------------
 
 @router.get("/grades", response_model=GradeListResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_grades(
+    request: Request,
     student_id: int | None = None,
     course_id: int | None = None,
     limit: int = 50,
@@ -107,7 +110,9 @@ def list_grades(
 
 
 @router.get("/summary", response_model=GradeSummaryResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_summary(
+    request: Request,
     student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -122,7 +127,9 @@ def get_summary(
 
 
 @router.get("/trends", response_model=GradeTrendResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_trends(
+    request: Request,
     student_id: int | None = None,
     course_id: int | None = None,
     days: int = 90,
@@ -140,7 +147,9 @@ def get_trends(
 
 
 @router.post("/ai-insights", response_model=AIInsightResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def get_ai_insights(
+    request: Request,
     body: AIInsightRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -155,7 +164,9 @@ async def get_ai_insights(
 
 
 @router.get("/reports/weekly", response_model=ProgressReportResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_weekly_report(
+    request: Request,
     student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -170,7 +181,9 @@ def get_weekly_report(
 
 
 @router.post("/sync-grades", response_model=GradeSyncResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_grades(
+    request: Request,
     student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

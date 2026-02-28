@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
@@ -13,7 +14,9 @@ router = APIRouter(prefix="/students", tags=["Students"])
 
 
 @router.post("/", response_model=StudentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_student(
+    request: Request,
     student_data: StudentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -27,7 +30,9 @@ def create_student(
 
 
 @router.get("/", response_model=list[StudentResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_students(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.TEACHER)),
 ):
@@ -58,7 +63,9 @@ def list_students(
 
 
 @router.get("/{student_id}", response_model=StudentResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_student(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
