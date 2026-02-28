@@ -1,8 +1,9 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 
 from app.models.faq import FAQCategory, FAQAnswerStatus
+from app.schemas.user import strip_whitespace
 
 VALID_FAQ_CATEGORIES = {c.value for c in FAQCategory}
 VALID_FAQ_ANSWER_STATUSES = {s.value for s in FAQAnswerStatus}
@@ -12,9 +13,14 @@ VALID_FAQ_ANSWER_STATUSES = {s.value for s in FAQAnswerStatus}
 
 
 class FAQQuestionCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
+    title: str = Field(min_length=1, max_length=300)
+    description: Optional[str] = Field(default=None, max_length=5000)
     category: str = "other"
+
+    @field_validator('title', 'description', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
     @field_validator("category")
     @classmethod
@@ -26,10 +32,15 @@ class FAQQuestionCreate(BaseModel):
 
 
 class FAQQuestionUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: Optional[str] = Field(default=None, max_length=300)
+    description: Optional[str] = Field(default=None, max_length=5000)
     category: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[str] = Field(default=None, max_length=20)
+
+    @field_validator('title', 'description', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
     @field_validator("category")
     @classmethod
@@ -74,11 +85,16 @@ class FAQQuestionPin(BaseModel):
 
 class FAQAdminQuestionCreate(BaseModel):
     """Create an official FAQ entry (question + auto-approved answer) in one shot."""
-    title: str
-    description: Optional[str] = None
+    title: str = Field(min_length=1, max_length=300)
+    description: Optional[str] = Field(default=None, max_length=5000)
     category: str = "other"
-    answer_content: str
+    answer_content: str = Field(min_length=10, max_length=20000)
     is_official: bool = True
+
+    @field_validator('title', 'description', 'answer_content', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
     @field_validator("category")
     @classmethod
@@ -93,7 +109,7 @@ class FAQAdminQuestionCreate(BaseModel):
 
 
 class FAQAnswerCreate(BaseModel):
-    content: str
+    content: str = Field(max_length=20000)
 
     @field_validator("content")
     @classmethod
@@ -105,7 +121,7 @@ class FAQAnswerCreate(BaseModel):
 
 
 class FAQAnswerUpdate(BaseModel):
-    content: Optional[str] = None
+    content: Optional[str] = Field(default=None, max_length=20000)
 
     @field_validator("content")
     @classmethod

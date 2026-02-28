@@ -1,21 +1,32 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import date, datetime
 from typing import Optional
 
 from app.schemas.course import CourseResponse
 from app.schemas.assignment import AssignmentResponse
+from app.schemas.user import strip_whitespace
 
 
 class CreateChildRequest(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=1, max_length=255)
     email: EmailStr | None = None
-    relationship_type: str = "guardian"
+    relationship_type: str = Field(default="guardian", max_length=50)
+
+    @field_validator('full_name', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class LinkChildRequest(BaseModel):
     student_email: EmailStr
-    full_name: str | None = None
-    relationship_type: str = "guardian"
+    full_name: str | None = Field(default=None, max_length=255)
+    relationship_type: str = Field(default="guardian", max_length=50)
+
+    @field_validator('full_name', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class ChildSummary(BaseModel):
@@ -60,7 +71,7 @@ class DiscoverChildrenResponse(BaseModel):
 
 class LinkChildrenBulkRequest(BaseModel):
     user_ids: list[int]
-    relationship_type: str = "guardian"
+    relationship_type: str = Field(default="guardian", max_length=50)
 
 
 class CourseWithTeacher(CourseResponse):
@@ -69,17 +80,22 @@ class CourseWithTeacher(CourseResponse):
 
 
 class ChildUpdateRequest(BaseModel):
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(default=None, max_length=255)
     email: Optional[EmailStr] = None
     grade_level: Optional[int] = None
-    school_name: Optional[str] = None
+    school_name: Optional[str] = Field(default=None, max_length=200)
     date_of_birth: Optional[date] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    province: Optional[str] = None
-    postal_code: Optional[str] = None
-    notes: Optional[str] = None
+    phone: Optional[str] = Field(default=None, max_length=20)
+    address: Optional[str] = Field(default=None, max_length=500)
+    city: Optional[str] = Field(default=None, max_length=100)
+    province: Optional[str] = Field(default=None, max_length=100)
+    postal_code: Optional[str] = Field(default=None, max_length=20)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+    @field_validator('full_name', 'school_name', 'address', 'city', 'province', 'notes', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class ChildOverview(BaseModel):
@@ -109,12 +125,17 @@ class ChildHighlight(BaseModel):
 
 
 class ChildResetPasswordRequest(BaseModel):
-    new_password: str | None = None
+    new_password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class LinkTeacherRequest(BaseModel):
     teacher_email: EmailStr
-    teacher_name: str | None = None
+    teacher_name: str | None = Field(default=None, max_length=255)
+
+    @field_validator('teacher_name', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class LinkedTeacher(BaseModel):
