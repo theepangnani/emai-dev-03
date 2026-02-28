@@ -221,6 +221,33 @@ export const courseContentsApi = {
   },
 };
 
+// Submission Types (#839)
+export interface SubmissionResponse {
+  id: number;
+  student_id: number;
+  assignment_id: number;
+  status: string;
+  submitted_at: string | null;
+  grade: number | null;
+  submission_file_name: string | null;
+  submission_notes: string | null;
+  is_late: boolean;
+  assignment_title: string | null;
+  course_name: string | null;
+  student_name: string | null;
+  has_file: boolean;
+}
+
+export interface SubmissionListItem {
+  student_id: number;
+  student_name: string;
+  status: string;
+  submitted_at: string | null;
+  is_late: boolean;
+  grade: number | null;
+  has_file: boolean;
+}
+
 // Assignments API
 export const assignmentsApi = {
   list: async (courseId?: number): Promise<AssignmentItem[]> => {
@@ -246,5 +273,47 @@ export const assignmentsApi = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/api/assignments/${id}`);
+  },
+
+  // Submission endpoints (#839)
+  submit: async (assignmentId: number, formData: FormData): Promise<SubmissionResponse> => {
+    const response = await api.post(`/api/assignments/${assignmentId}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  getSubmission: async (assignmentId: number): Promise<SubmissionResponse> => {
+    const response = await api.get(`/api/assignments/${assignmentId}/submission`);
+    return response.data;
+  },
+
+  listSubmissions: async (assignmentId: number): Promise<SubmissionListItem[]> => {
+    const response = await api.get(`/api/assignments/${assignmentId}/submissions`);
+    return response.data;
+  },
+
+  downloadSubmission: async (assignmentId: number, studentId?: number) => {
+    const params = studentId ? { student_id: studentId } : {};
+    const response = await api.get(`/api/assignments/${assignmentId}/submission/download`, {
+      responseType: 'blob',
+      params,
+    });
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `submission-${assignmentId}`;
+    if (contentDisposition) {
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+      const stdMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (utf8Match) filename = decodeURIComponent(utf8Match[1]);
+      else if (stdMatch) filename = stdMatch[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };
