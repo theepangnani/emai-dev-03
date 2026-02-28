@@ -1646,6 +1646,24 @@ button.retry-btn:disabled {
   color: #fca5a5;
 }
 
+/* ── Info note in modals (#552) ── */
+.modal-info-note {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+  background: rgba(79, 70, 229, 0.06);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  border-radius: var(--radius-md, 6px);
+  padding: 8px 12px;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .modal-info-note {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.25);
+  color: #a5b4fc;
+}
+
 /* ── Loading spinner for buttons ── */
 
 @keyframes btn-spin {

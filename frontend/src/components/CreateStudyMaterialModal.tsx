@@ -42,6 +42,8 @@ interface CreateStudyMaterialModalProps {
   onViewExisting?: () => void;
   onRegenerate?: () => void;
   onDismissDuplicate?: () => void;
+  /** Show parent notification note for student uploads (#552) */
+  showParentNote?: boolean;
 }
 
 export default function CreateStudyMaterialModal({
@@ -61,6 +63,7 @@ export default function CreateStudyMaterialModal({
   onViewExisting,
   onRegenerate,
   onDismissDuplicate,
+  showParentNote = false,
 }: CreateStudyMaterialModalProps) {
   const [studyTitle, setStudyTitle] = useState('');
   const [studyContent, setStudyContent] = useState('');
@@ -349,6 +352,13 @@ export default function CreateStudyMaterialModal({
             </div>
           )}
         </div>
+
+        {/* Parent notification note (#552) */}
+        {showParentNote && (
+          <p className="modal-info-note">
+            Your parent will be notified about this upload.
+          </p>
+        )}
 
         {/* Duplicate check warning */}
         {duplicateCheck && duplicateCheck.exists && (

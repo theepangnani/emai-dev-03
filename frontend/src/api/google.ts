@@ -38,8 +38,9 @@ export const googleApi = {
     return response.data;
   },
 
-  syncCourses: async () => {
-    const response = await api.post('/api/google/courses/sync');
+  syncCourses: async (classroomType?: 'school' | 'private') => {
+    const params = classroomType ? { classroom_type: classroomType } : {};
+    const response = await api.post('/api/google/courses/sync', null, { params });
     return response.data;
   },
 

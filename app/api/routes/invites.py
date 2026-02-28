@@ -121,7 +121,7 @@ def create_invite(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create an invite. Parents can invite students; teachers and admins can invite teachers."""
+    """Create an invite. Parents can invite students; students, teachers, and admins can invite teachers (#551)."""
     invite_type = InviteType(data.invite_type)
 
     # Authorization checks
@@ -130,10 +130,14 @@ def create_invite(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only parents can invite students",
         )
-    if invite_type == InviteType.TEACHER and not (current_user.has_role(UserRole.TEACHER) or current_user.has_role(UserRole.ADMIN)):
+    if invite_type == InviteType.TEACHER and not (
+        current_user.has_role(UserRole.STUDENT)
+        or current_user.has_role(UserRole.TEACHER)
+        or current_user.has_role(UserRole.ADMIN)
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only teachers and admins can invite teachers",
+            detail="Only students, teachers, and admins can invite teachers",
         )
     if invite_type == InviteType.PARENT and not (current_user.has_role(UserRole.TEACHER) or current_user.has_role(UserRole.ADMIN)):
         raise HTTPException(
@@ -306,6 +310,7 @@ def resend_invite(
 
 class _InviteTeacherRequest(PydanticBaseModel):
     teacher_email: EmailStr
+    course_id: int | None = None
 
 
 @router.post("/invite-teacher")
@@ -318,6 +323,7 @@ def invite_teacher(
 
     If the teacher already has an account, sends them a welcome message instead.
     Also notifies the student's parents.
+    Optionally includes course_id if the student wants the teacher for a specific course (#551).
     """
     from app.services.notification_service import notify_parents_of_student
 
@@ -364,13 +370,16 @@ def invite_teacher(
         )
 
     token = secrets.token_urlsafe(32)
+    metadata = {"source": "student_invite"}
+    if data.course_id:
+        metadata["course_id"] = data.course_id
     invite = Invite(
         email=data.teacher_email,
         invite_type=InviteType.TEACHER,
         token=token,
         expires_at=datetime.now(timezone.utc) + timedelta(days=30),
         invited_by_user_id=current_user.id,
-        metadata_json={"source": "student_invite"},
+        metadata_json=metadata,
     )
     db.add(invite)
     db.flush()
