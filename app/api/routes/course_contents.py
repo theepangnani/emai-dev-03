@@ -214,6 +214,147 @@ async def upload_course_content_file(
     return content
 
 
+
+
+MAX_BULK_FILES = 20  # Maximum files per bulk upload request
+
+
+@router.post("/bulk-upload")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def bulk_upload_materials(
+    request: Request,
+    course_id: int = Form(...),
+    content_type: str = Form("notes"),
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload multiple files as course content in a single request.
+
+    Accepts up to 20 files. Each file is saved and text is extracted.
+    Returns per-file success/failure results.
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    if len(files) > MAX_BULK_FILES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Too many files. Maximum {MAX_BULK_FILES} files per request.",
+        )
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No files provided.",
+        )
+
+    # Normalize content_type
+    normalized_type = content_type.strip().lower()
+    from app.schemas.course_content import VALID_CONTENT_TYPES
+    if normalized_type not in VALID_CONTENT_TYPES:
+        normalized_type = "notes"
+
+    results = []
+    succeeded = 0
+    failed = 0
+
+    for file in files:
+        filename = file.filename or "unknown"
+        try:
+            file_content = await file.read()
+            if len(file_content) > MAX_UPLOAD_SIZE:
+                results.append({
+                    "filename": filename,
+                    "success": False,
+                    "content_id": None,
+                    "error": f"File size exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)} MB limit",
+                })
+                failed += 1
+                continue
+
+            if len(file_content) == 0:
+                results.append({
+                    "filename": filename,
+                    "success": False,
+                    "content_id": None,
+                    "error": "File is empty",
+                })
+                failed += 1
+                continue
+
+            stored_path = save_file(file_content, filename)
+
+            # Extract text from uploaded file
+            extracted_text = ""
+            try:
+                extracted_text = process_file(file_content, filename)
+            except FileProcessingError as e:
+                logger.warning("Text extraction failed for %s: %s", filename, e)
+
+            content_item = CourseContent(
+                course_id=course_id,
+                title=filename.rsplit(".", 1)[0] if "." in filename else filename,
+                content_type=normalized_type,
+                text_content=extracted_text or None,
+                file_path=stored_path,
+                original_filename=filename,
+                file_size=len(file_content),
+                mime_type=file.content_type,
+                created_by_user_id=current_user.id,
+            )
+            db.add(content_item)
+            db.commit()
+            db.refresh(content_item)
+
+            results.append({
+                "filename": filename,
+                "success": True,
+                "content_id": content_item.id,
+                "error": None,
+            })
+            succeeded += 1
+
+        except Exception as e:
+            logger.error("Bulk upload failed for %s: %s", filename, e)
+            db.rollback()
+            results.append({
+                "filename": filename,
+                "success": False,
+                "content_id": None,
+                "error": str(e) if str(e) else "Upload failed",
+            })
+            failed += 1
+
+    # Notify parents when a student uploads materials
+    if current_user.role == UserRole.STUDENT and succeeded > 0:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded {succeeded} file(s)",
+                content=f"{current_user.full_name} uploaded {succeeded} file(s) to {course.name}.",
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{course_id}",
+                source_type="course_content",
+                source_id=None,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to notify parents of student bulk upload: %s", e)
+
+    return {
+        "total": len(files),
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": results,
+    }
+
+
 @router.get("/linked-course-ids")
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_linked_course_ids(

@@ -87,6 +87,17 @@ export function MessagesPage() {
     }
   }, [searchParams, recipients]);
 
+  // Handle ?conversation= deep link param (#885)
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId && conversations.length > 0 && !selectedConversation) {
+      const id = Number(conversationId);
+      if (conversations.some(c => c.id === id)) {
+        selectConversation(id);
+      }
+    }
+  }, [searchParams, conversations]);
+
   // Auto-scroll to bottom when messages change (unless scrolling to a specific message)
   useEffect(() => {
     if (scrollToMessageId && selectedConversation) {
@@ -170,6 +181,10 @@ export function MessagesPage() {
 
   const selectConversation = async (id: number, targetMessageId?: number) => {
     setLoadingConversation(true);
+    // Sync conversation ID to URL for deep linking (#885)
+    const params = new URLSearchParams(searchParams);
+    params.set('conversation', String(id));
+    setSearchParams(params, { replace: true });
     closeThreadSearch();
     try {
       // Load all messages to ensure the target message is visible

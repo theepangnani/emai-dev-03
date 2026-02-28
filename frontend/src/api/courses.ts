@@ -27,6 +27,64 @@ export interface CourseContentUpdateResponse extends CourseContentItem {
   archived_guides_count: number;
 }
 
+// Task Extraction Types (#878)
+export interface ExtractedTaskItem {
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  priority: string;
+  included: boolean;
+}
+
+export interface ExtractTasksResponse {
+  content_id: number;
+  filename: string | null;
+  tasks: ExtractedTaskItem[];
+  message: string;
+}
+
+export interface TaskCreateFromExtraction {
+  title: string;
+  description?: string | null;
+  due_date?: string | null;
+  priority: string;
+  assigned_to_user_id?: number | null;
+}
+
+export interface CreatedTaskSummary {
+  id: number;
+  title: string;
+  due_date: string | null;
+  priority: string;
+}
+
+export interface BulkTaskCreateResponse {
+  created_count: number;
+  tasks: CreatedTaskSummary[];
+}
+
+/** Options for upload operations */
+export interface UploadOptions {
+  onUploadProgress?: (event: { loaded: number; total?: number }) => void;
+  signal?: AbortSignal;
+}
+
+/** Result for a single file in a bulk upload */
+export interface BulkUploadFileResult {
+  filename: string;
+  success: boolean;
+  content_id: number | null;
+  error: string | null;
+}
+
+/** Response from the bulk upload endpoint */
+export interface BulkUploadResponse {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkUploadFileResult[];
+}
+
 export interface LinkedCourseChild {
   student_id: number;
   user_id: number;
@@ -233,6 +291,31 @@ export const courseContentsApi = {
 
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
+  },
+
+  extractTasks: async (id: number) => {
+    const response = await api.post(`/api/course-contents/${id}/extract-tasks`);
+    return response.data as ExtractTasksResponse;
+  },
+
+  createTasksFromExtraction: async (id: number, tasks: TaskCreateFromExtraction[]) => {
+    const response = await api.post(`/api/course-contents/${id}/create-tasks`, { tasks });
+    return response.data as BulkTaskCreateResponse;
+  },
+
+  bulkUpload: async (files: File[], courseId: number, contentType?: string, options?: UploadOptions) => {
+    const formData = new FormData();
+    formData.append('course_id', String(courseId));
+    if (contentType) formData.append('content_type', contentType);
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const response = await api.post('/api/course-contents/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: options?.onUploadProgress,
+      signal: options?.signal,
+    });
+    return response.data as BulkUploadResponse;
   },
 
   getLinkedCourseIds: async () => {
