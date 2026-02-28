@@ -39,7 +39,7 @@ export function ActivityFeed({ courseMaterials, onViewMaterial, onViewAllMateria
     <div className="pd-feed-container">
       <div className="pd-feed-body">
         {recentItems.length === 0 ? (
-          <p className="pd-feed-empty">No recent activity</p>
+          <p className="pd-feed-empty">Activity will appear here as you upload materials and complete tasks.</p>
         ) : (
           <>
             <div className="pd-feed-list">
