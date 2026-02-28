@@ -532,6 +532,33 @@ describe('ParentDashboard', () => {
     })
   })
 
+  it('shows file drop zone and text area simultaneously in study modal (#891)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Add new' }))
+    await waitFor(() => {
+      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Upload Documents'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+    })
+
+    // File drop zone should be visible — no mode toggle needed
+    expect(screen.getByText(/Drag & drop a file here/)).toBeInTheDocument()
+    // Text area should also be visible simultaneously
+    expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
+    // Mode toggle buttons should NOT exist
+    expect(screen.queryByText('Paste Text')).not.toBeInTheDocument()
+    expect(screen.queryByText('Upload File')).not.toBeInTheDocument()
+  })
+
   // ── Dashboard loads successfully ─────────────────────────────
   it('loads dashboard data and renders child name', async () => {
     renderWithProviders(<ParentDashboard />)

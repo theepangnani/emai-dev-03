@@ -1858,6 +1858,24 @@ button.retry-btn:disabled {
   margin: 0;
 }
 
+/* ── Upload divider ("or paste content") ─── */
+.upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  text-transform: lowercase;
+}
+
+.upload-divider::before,
+.upload-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
 /* ── Shared: study material modal – mode toggle & file upload ─── */
 .mode-toggle {
   display: flex;

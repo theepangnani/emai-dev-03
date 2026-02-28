@@ -67,7 +67,6 @@ export default function CreateStudyMaterialModal({
   const [selectedTypes, setSelectedTypes] = useState<Set<SelectableType>>(new Set());
   const [focusPrompt, setFocusPrompt] = useState('');
   const [otherPrompt, setOtherPrompt] = useState('');
-  const [studyMode, setStudyMode] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [studyError, setStudyError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -97,8 +96,6 @@ export default function CreateStudyMaterialModal({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOtherPrompt('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyMode('text');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFile(null);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyError('');
@@ -115,7 +112,6 @@ export default function CreateStudyMaterialModal({
       return;
     }
     setSelectedFile(file);
-    setStudyMode('file');
     if (!studyTitle) {
       setStudyTitle(file.name.replace(/\.[^/.]+$/, ''));
     }
@@ -133,7 +129,7 @@ export default function CreateStudyMaterialModal({
     if (file) handleFileSelect(file);
   };
   const clearFileSelection = () => {
-    setSelectedFile(null); setStudyMode('text');
+    setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -157,8 +153,9 @@ export default function CreateStudyMaterialModal({
   };
 
   const handleSubmit = () => {
-    if (studyMode === 'file' && !selectedFile) { setStudyError('Please select a file'); return; }
-    if (studyMode === 'text' && !studyContent.trim() && pastedImages.length === 0) { setStudyError('Please enter content or paste images'); return; }
+    // Determine mode: file takes priority if selected, else text/images
+    const effectiveMode: 'text' | 'file' = selectedFile ? 'file' : 'text';
+    if (effectiveMode === 'text' && !studyContent.trim() && pastedImages.length === 0) { setStudyError('Please upload a file, paste content, or paste images'); return; }
     if (selectedTypes.has('other') && !otherPrompt.trim()) { setStudyError('Please describe what you want to generate'); return; }
 
     // Map selectable types to actual StudyMaterialType values
@@ -178,7 +175,7 @@ export default function CreateStudyMaterialModal({
       content: studyContent,
       types,
       focusPrompt: effectivePrompt,
-      mode: studyMode,
+      mode: effectiveMode,
       file: selectedFile ?? undefined,
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
       courseId: selectedCourseId ? (selectedCourseId as number) : undefined,
@@ -277,76 +274,71 @@ export default function CreateStudyMaterialModal({
             </label>
           )}
 
-          <div className="mode-toggle">
-            <button className={`mode-btn ${studyMode === 'text' ? 'active' : ''}`} onClick={() => setStudyMode('text')} disabled={isGenerating}>Paste Text</button>
-            <button className={`mode-btn ${studyMode === 'file' ? 'active' : ''}`} onClick={() => setStudyMode('file')} disabled={isGenerating}>Upload File</button>
-          </div>
-
-          {studyMode === 'text' ? (
-            <>
-              <label>
-                Content to study
-                <textarea
-                  value={studyContent}
-                  onChange={(e) => setStudyContent(e.target.value)}
-                  onPaste={handlePaste}
-                  placeholder="Paste notes, email content, or screenshots — images will be detected automatically..."
-                  rows={8}
-                  disabled={isGenerating}
-                />
-              </label>
-              {/* Pasted image thumbnails */}
-              {pastedImages.length > 0 && (
-                <div className="pasted-images-strip">
-                  <div className="pasted-images-header">
-                    <span>{pastedImages.length} image{pastedImages.length !== 1 ? 's' : ''} detected</span>
-                    <button className="clear-images-btn" onClick={() => setPastedImages([])} disabled={isGenerating}>
-                      Clear all
-                    </button>
+          {/* File drop zone — always visible */}
+          <div className="file-upload-section">
+            <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
+            <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
+              {selectedFile ? (
+                <div className="selected-file">
+                  <span className="file-icon">&#128196;</span>
+                  <div className="file-info">
+                    <span className="file-name">{selectedFile.name}</span>
+                    <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
                   </div>
-                  <div className="pasted-images-thumbnails">
-                    {pastedImages.map((img, idx) => (
-                      <div key={idx} className="pasted-image-thumb">
-                        <img
-                          src={URL.createObjectURL(img)}
-                          alt={`Pasted ${idx + 1}`}
-                          onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-                        />
-                        <button
-                          className="remove-image-btn"
-                          onClick={() => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
-                          disabled={isGenerating}
-                        >
-                          &times;
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {pastedImages.length >= 10 && <small className="images-limit-note">Maximum 10 images</small>}
+                  <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>&times;</button>
+                </div>
+              ) : (
+                <div className="drop-zone-content">
+                  <span className="upload-icon">&#128193;</span>
+                  <p>Drag & drop a file here, or click to browse</p>
+                  <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
                 </div>
               )}
-            </>
-          ) : (
-            <div className="file-upload-section">
-              <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
-              <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
-                {selectedFile ? (
-                  <div className="selected-file">
-                    <span className="file-icon">&#128196;</span>
-                    <div className="file-info">
-                      <span className="file-name">{selectedFile.name}</span>
-                      <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                    </div>
-                    <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>&times;</button>
-                  </div>
-                ) : (
-                  <div className="drop-zone-content">
-                    <span className="upload-icon">&#128193;</span>
-                    <p>Drag & drop a file here, or click to browse</p>
-                    <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
-                  </div>
-                )}
+            </div>
+          </div>
+
+          <div className="upload-divider"><span>or paste content</span></div>
+
+          {/* Text area — always visible */}
+          <label>
+            Content to study
+            <textarea
+              value={studyContent}
+              onChange={(e) => setStudyContent(e.target.value)}
+              onPaste={handlePaste}
+              placeholder="Paste notes, email content, or screenshots — images will be detected automatically..."
+              rows={4}
+              disabled={isGenerating}
+            />
+          </label>
+          {/* Pasted image thumbnails */}
+          {pastedImages.length > 0 && (
+            <div className="pasted-images-strip">
+              <div className="pasted-images-header">
+                <span>{pastedImages.length} image{pastedImages.length !== 1 ? 's' : ''} detected</span>
+                <button className="clear-images-btn" onClick={() => setPastedImages([])} disabled={isGenerating}>
+                  Clear all
+                </button>
               </div>
+              <div className="pasted-images-thumbnails">
+                {pastedImages.map((img, idx) => (
+                  <div key={idx} className="pasted-image-thumb">
+                    <img
+                      src={URL.createObjectURL(img)}
+                      alt={`Pasted ${idx + 1}`}
+                      onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                    />
+                    <button
+                      className="remove-image-btn"
+                      onClick={() => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
+                      disabled={isGenerating}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {pastedImages.length >= 10 && <small className="images-limit-note">Maximum 10 images</small>}
             </div>
           )}
           {studyError && (
@@ -375,7 +367,7 @@ export default function CreateStudyMaterialModal({
           <button
             className="generate-btn"
             onClick={handleSubmit}
-            disabled={isGenerating || (studyMode === 'file' ? !selectedFile : (!studyContent.trim() && pastedImages.length === 0))}
+            disabled={isGenerating || (!selectedFile && !studyContent.trim() && pastedImages.length === 0)}
           >
             {isGenerating ? <><span className="btn-spinner" /> Generating...</> : selectedTypes.size > 0 ? (selectedTypes.size > 1 ? `Upload & Generate ${selectedTypes.size} Materials` : 'Upload & Generate') : 'Upload'}
           </button>
