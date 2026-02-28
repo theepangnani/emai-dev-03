@@ -11,10 +11,7 @@ export function Register() {
     password: '',
     confirmPassword: '',
     full_name: '',
-    username: '',
-    parent_email: '',
   });
-  const [isStudentMode, setIsStudentMode] = useState(false);
   const [googleData, setGoogleData] = useState<{
     google_id: string;
   } | null>(null);
@@ -53,33 +50,9 @@ export function Register() {
     e.preventDefault();
     setError('');
 
-    if (isStudentMode) {
-      // Student mode validation
-      if (!formData.email && !formData.username) {
-        setError('Please provide either an email or a username');
-        return;
-      }
-      if (formData.username && !formData.email && !formData.parent_email) {
-        setError('Parent email is required when registering with a username');
-        return;
-      }
-      if (formData.email && !isValidEmail(formData.email)) {
-        setError('Please enter a valid email address');
-        return;
-      }
-      if (formData.parent_email && !isValidEmail(formData.parent_email)) {
-        setError('Please enter a valid parent email address');
-        return;
-      }
-      if (formData.username && !/^[a-zA-Z0-9_]{3,30}$/.test(formData.username)) {
-        setError('Username must be 3-30 characters, letters, numbers, and underscores only');
-        return;
-      }
-    } else {
-      if (!isValidEmail(formData.email)) {
-        setError('Please enter a valid email address');
-        return;
-      }
+    if (!isValidEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -91,26 +64,22 @@ export function Register() {
 
     try {
       const registrationData: {
-        email?: string;
-        username?: string;
-        parent_email?: string;
+        email: string;
         password: string;
         full_name: string;
         roles: string[];
         google_id?: string;
       } = {
+        email: formData.email,
         password: formData.password,
         full_name: formData.full_name,
-        roles: isStudentMode ? ['student'] : [],
+        roles: [],
       };
 
-      if (formData.email) registrationData.email = formData.email;
-      if (isStudentMode && formData.username) registrationData.username = formData.username;
-      if (isStudentMode && formData.parent_email) registrationData.parent_email = formData.parent_email;
       if (googleData) registrationData.google_id = googleData.google_id;
 
       await register(registrationData);
-      navigate(isStudentMode ? '/dashboard' : '/onboarding');
+      navigate('/onboarding');
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       if (detail) {
@@ -129,30 +98,10 @@ export function Register() {
         <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
         <h1 className="auth-title">Join ClassBridge</h1>
         <p className="auth-subtitle">
-          {isGoogleSignup ? 'Complete your Google account setup' : 'Stay connected with your child\'s education'}
+          {isGoogleSignup ? 'Complete your Google account setup' : 'Create your account to get started'}
         </p>
 
         {error && <div className="auth-error">{error}</div>}
-
-        {/* Student toggle */}
-        {!isGoogleSignup && (
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-              <input
-                type="checkbox"
-                checked={isStudentMode}
-                onChange={(e) => setIsStudentMode(e.target.checked)}
-                style={{ width: '18px', height: '18px' }}
-              />
-              I'm a student
-            </label>
-            {isStudentMode && (
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: '8px 0 0' }}>
-                Students can register with a username. Your parent will receive a request to link accounts.
-              </p>
-            )}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -168,27 +117,8 @@ export function Register() {
             />
           </div>
 
-          {isStudentMode && (
-            <div className="form-group">
-              <label htmlFor="username">Username</label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="my_username"
-              />
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                3-30 characters, letters, numbers, and underscores
-              </span>
-            </div>
-          )}
-
           <div className="form-group">
-            <label htmlFor="email">
-              Email{isStudentMode ? ' (optional if username provided)' : ''}
-            </label>
+            <label htmlFor="email">Email</label>
             <input
               type="email"
               id="email"
@@ -196,30 +126,10 @@ export function Register() {
               value={formData.email}
               onChange={handleChange}
               placeholder="you@example.com"
-              required={!isStudentMode || !formData.username}
+              required
               disabled={isGoogleSignup}
             />
           </div>
-
-          {isStudentMode && (
-            <div className="form-group">
-              <label htmlFor="parent_email">
-                Parent Email{formData.username && !formData.email ? '' : ' (optional)'}
-              </label>
-              <input
-                type="email"
-                id="parent_email"
-                name="parent_email"
-                value={formData.parent_email}
-                onChange={handleChange}
-                placeholder="parent@example.com"
-                required={isStudentMode && !!formData.username && !formData.email}
-              />
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                Your parent will receive an invitation to connect
-              </span>
-            </div>
-          )}
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
