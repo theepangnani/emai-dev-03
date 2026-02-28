@@ -537,6 +537,29 @@
   50% { opacity: 0.5; }
 }
 
+/* Regeneration status banner (shown when regenerating existing content) */
+.cm-regen-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 1rem;
+  background: var(--color-accent-subtle, #e6f7f8);
+  border: 1px solid var(--color-accent-light, #b2e0e3);
+  border-radius: 8px;
+  color: var(--color-accent-strong, #2a9fa8);
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: cm-gen-pulse 1.5s ease-in-out infinite;
+}
+.cm-regen-status .cm-inline-spinner {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
 /* Document editing */
 .cm-edit-textarea {
   width: 100%;

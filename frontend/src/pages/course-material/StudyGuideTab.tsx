@@ -64,6 +64,12 @@ export function StudyGuideTab({
             <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
+          {generating === 'study_guide' && (
+            <div className="cm-regen-status">
+              <div className="cm-inline-spinner" />
+              <span>Regenerating study guide...</span>
+            </div>
+          )}
           <div ref={printRef}>
             <ContentCard>
               <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>

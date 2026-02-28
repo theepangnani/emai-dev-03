@@ -150,6 +150,12 @@ export function QuizTab({
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
+          {generating === 'quiz' && (
+            <div className="cm-regen-status">
+              <div className="cm-inline-spinner" />
+              <span>Regenerating quiz...</span>
+            </div>
+          )}
           {/* Hidden print-ready view with all questions */}
           <div ref={printRef} className="cm-print-view">
             <h1 className="print-title">{quiz.title}</h1>
