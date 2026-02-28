@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Literal
 
@@ -31,3 +31,9 @@ class LinkRequestResponse(BaseModel):
 
 class LinkRequestRespondRequest(BaseModel):
     action: Literal["approve", "reject"]
+
+
+class LinkRequestCreateRequest(BaseModel):
+    parent_email: EmailStr
+    relationship_type: str = Field(default="guardian", max_length=20)
+    message: str | None = Field(default=None, max_length=500)
