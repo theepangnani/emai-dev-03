@@ -3,13 +3,14 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel as PydanticBaseModel, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.invite import Invite, InviteType
 from app.models.message import Conversation, Message
 from app.models.notification import Notification, NotificationType
@@ -116,7 +117,9 @@ def _send_message_to_existing_user(
 
 
 @router.post("/")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def create_invite(
+    request: Request,
     data: InviteCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -233,7 +236,9 @@ def create_invite(
 
 
 @router.get("/sent", response_model=list[InviteResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_sent_invites(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -248,7 +253,9 @@ def list_sent_invites(
 
 
 @router.post("/{invite_id}/resend", response_model=InviteResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def resend_invite(
+    request: Request,
     invite_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -314,7 +321,9 @@ class _InviteTeacherRequest(PydanticBaseModel):
 
 
 @router.post("/invite-teacher")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def invite_teacher(
+    request: Request,
     data: _InviteTeacherRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
@@ -426,7 +435,9 @@ class _InviteParentRequest(PydanticBaseModel):
 
 
 @router.post("/invite-parent")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def invite_parent(
+    request: Request,
     data: _InviteParentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),

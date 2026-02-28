@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import or_, desc
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.faq import FAQQuestion, FAQAnswer, FAQAnswerStatus, FAQQuestionStatus
@@ -98,7 +99,9 @@ def _notify_user(db: Session, user_id: int, title: str, content: str, link: str)
 
 
 @router.get("/questions", response_model=list[FAQQuestionResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_questions(
+    request: Request,
     category: str | None = Query(None),
     status: str | None = Query(None),
     search: str | None = Query(None),
@@ -137,7 +140,9 @@ def list_questions(
 
 
 @router.get("/by-error-code/{code}")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_by_error_code(
+    request: Request,
     code: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -153,7 +158,9 @@ def get_by_error_code(
 
 
 @router.get("/questions/{question_id}", response_model=FAQQuestionDetail)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_question(
+    request: Request,
     question_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -192,7 +199,9 @@ def get_question(
 
 
 @router.post("/questions", response_model=FAQQuestionResponse, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_question(
+    request: Request,
     data: FAQQuestionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -215,7 +224,9 @@ def create_question(
 
 
 @router.patch("/questions/{question_id}", response_model=FAQQuestionResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_question(
+    request: Request,
     question_id: int,
     data: FAQQuestionUpdate,
     db: Session = Depends(get_db),
@@ -250,7 +261,9 @@ def update_question(
 
 
 @router.delete("/questions/{question_id}", status_code=204)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_question(
+    request: Request,
     question_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -274,7 +287,9 @@ def delete_question(
 
 
 @router.post("/questions/{question_id}/answers", response_model=FAQAnswerResponse, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def submit_answer(
+    request: Request,
     question_id: int,
     data: FAQAnswerCreate,
     db: Session = Depends(get_db),
@@ -324,7 +339,9 @@ def submit_answer(
 
 
 @router.patch("/answers/{answer_id}", response_model=FAQAnswerResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_answer(
+    request: Request,
     answer_id: int,
     data: FAQAnswerUpdate,
     db: Session = Depends(get_db),
@@ -356,7 +373,9 @@ def update_answer(
 
 
 @router.get("/admin/pending", response_model=list[FAQAnswerResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_pending_answers(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -376,7 +395,9 @@ def list_pending_answers(
 
 
 @router.patch("/admin/answers/{answer_id}/approve", response_model=FAQAnswerResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def approve_answer(
+    request: Request,
     answer_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -416,7 +437,9 @@ def approve_answer(
 
 
 @router.patch("/admin/answers/{answer_id}/reject", response_model=FAQAnswerResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def reject_answer(
+    request: Request,
     answer_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -451,7 +474,9 @@ def reject_answer(
 
 
 @router.patch("/admin/questions/{question_id}/pin", response_model=FAQQuestionResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def toggle_pin(
+    request: Request,
     question_id: int,
     data: FAQQuestionPin,
     db: Session = Depends(get_db),
@@ -474,7 +499,9 @@ def toggle_pin(
 
 
 @router.patch("/admin/answers/{answer_id}/mark-official", response_model=FAQAnswerResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def mark_official(
+    request: Request,
     answer_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -508,7 +535,9 @@ def mark_official(
 
 
 @router.delete("/admin/answers/{answer_id}", status_code=204)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def admin_delete_answer(
+    request: Request,
     answer_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -525,7 +554,9 @@ def admin_delete_answer(
 
 
 @router.post("/admin/questions", response_model=FAQQuestionDetail, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_official_faq(
+    request: Request,
     data: FAQAdminQuestionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),

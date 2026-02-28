@@ -1,10 +1,11 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func as sql_func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.course import student_courses
 from app.models.quiz_result import QuizResult
@@ -61,7 +62,9 @@ def _get_target_user_ids(
 
 
 @router.post("/", response_model=QuizResultResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def save_quiz_result(
+    request: Request,
     data: QuizResultCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -135,7 +138,9 @@ def save_quiz_result(
 
 
 @router.get("/", response_model=list[QuizResultSummary])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_quiz_results(
+    request: Request,
     study_guide_id: int | None = Query(None),
     student_user_id: int | None = Query(None, description="Filter by child (parent only)"),
     limit: int = Query(50, ge=1, le=200),
@@ -166,7 +171,9 @@ def list_quiz_results(
 
 
 @router.get("/stats", response_model=QuizHistoryStats)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_quiz_stats(
+    request: Request,
     student_user_id: int | None = Query(None, description="Filter by child (parent only)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -238,7 +245,9 @@ def get_quiz_stats(
 
 
 @router.get("/resolve-student")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def resolve_student_for_quiz(
+    request: Request,
     course_id: int | None = Query(None),
     study_guide_id: int | None = Query(None),
     db: Session = Depends(get_db),
@@ -284,7 +293,9 @@ def resolve_student_for_quiz(
 
 
 @router.get("/{result_id}", response_model=QuizResultResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_quiz_result(
+    request: Request,
     result_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -303,7 +314,9 @@ def get_quiz_result(
 
 
 @router.delete("/{result_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_quiz_result(
+    request: Request,
     result_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

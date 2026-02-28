@@ -1,12 +1,13 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.course_content import CourseContent
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
@@ -65,7 +66,9 @@ def _strip_urls_for_school(
 
 
 @router.post("/", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_course_content(
+    request: Request,
     data: CourseContentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -116,7 +119,9 @@ MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
 
 
 @router.post("/upload", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def upload_course_content_file(
+    request: Request,
     file: UploadFile = File(...),
     course_id: int = Form(...),
     title: str = Form(""),
@@ -186,7 +191,9 @@ async def upload_course_content_file(
 
 
 @router.get("/", response_model=list[CourseContentResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_course_contents(
+    request: Request,
     course_id: Optional[int] = Query(None, description="Filter by course ID"),
     content_type: Optional[str] = Query(None, description="Filter by content type"),
     student_user_id: Optional[int] = Query(None, description="Filter by child (parent only)"),
@@ -303,7 +310,9 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
 
 
 @router.get("/{content_id}", response_model=CourseContentResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -356,7 +365,9 @@ def get_course_content(
 
 
 @router.get("/{content_id}/download")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def download_course_content_file(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -398,7 +409,9 @@ def download_course_content_file(
 
 
 @router.patch("/{content_id}", response_model=CourseContentUpdateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_course_content(
+    request: Request,
     content_id: int,
     data: CourseContentUpdate,
     db: Session = Depends(get_db),
@@ -449,7 +462,9 @@ def update_course_content(
 
 
 @router.put("/{content_id}/replace-file", response_model=CourseContentUpdateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def replace_course_content_file(
+    request: Request,
     content_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -514,7 +529,9 @@ async def replace_course_content_file(
 
 
 @router.delete("/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -531,7 +548,9 @@ def delete_course_content(
 
 
 @router.patch("/{content_id}/restore", response_model=CourseContentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def restore_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -552,7 +571,9 @@ def restore_course_content(
 
 
 @router.delete("/{content_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def permanent_delete_course_content(
+    request: Request,
     content_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

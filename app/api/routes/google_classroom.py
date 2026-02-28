@@ -4,12 +4,13 @@ import secrets
 import time
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 
 from app.db.database import get_db
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.user import User, UserRole
 from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
@@ -99,7 +100,8 @@ def _store_granted_scopes(user: User, granted_scopes_str: str) -> None:
 
 
 @router.get("/auth")
-def google_auth(user_id: int | None = None):
+@limiter.limit("10/minute")
+def google_auth(request: Request, user_id: int | None = None):
     """Get Google OAuth authorization URL.
 
     If user_id is provided, it will be included in the state to link
@@ -111,7 +113,9 @@ def google_auth(user_id: int | None = None):
 
 
 @router.get("/connect")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def google_connect(
+    request: Request,
     current_user: User = Depends(get_current_user),
     add_account: bool = Query(False, description="If true, adds as additional teacher Google account"),
 ):
@@ -123,7 +127,9 @@ def google_connect(
 
 
 @router.get("/callback")
+@limiter.limit("10/minute")
 def google_callback(
+    request: Request,
     code: str,
     state: str | None = None,
     error: str | None = None,
@@ -283,7 +289,8 @@ def google_callback(
 
 
 @router.get("/status")
-def google_status(current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def google_status(request: Request, current_user: User = Depends(get_current_user)):
     """Check if user has connected Google Classroom."""
     return {
         "connected": bool(current_user.google_access_token),
@@ -293,7 +300,9 @@ def google_status(current_user: User = Depends(get_current_user)):
 
 
 @router.delete("/disconnect")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def google_disconnect(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -307,7 +316,9 @@ def google_disconnect(
 
 
 @router.get("/courses")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_google_courses(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -705,7 +716,9 @@ def _sync_assignments_for_course(course: Course, user: User, db: Session) -> int
 
 
 @router.post("/courses/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_courses(
+    request: Request,
     classroom_type: str | None = Query(
         None,
         description='Override classroom type for synced courses: "school" or "private"',
@@ -749,7 +762,9 @@ def sync_google_courses(
 
 
 @router.get("/courses/{course_id}/assignments")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_google_assignments(
+    request: Request,
     course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -774,7 +789,9 @@ def get_google_assignments(
 
 
 @router.post("/courses/{google_course_id}/assignments/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_assignments(
+    request: Request,
     google_course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -848,7 +865,9 @@ def sync_google_assignments(
 
 
 @router.post("/courses/{google_course_id}/materials/sync")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_materials(
+    request: Request,
     google_course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -886,7 +905,9 @@ def sync_google_materials(
 # ── Teacher Google Accounts ──────────────────────────────────────────
 
 @router.get("/teacher/accounts")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_teacher_google_accounts(
+    request: Request,
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
@@ -915,7 +936,9 @@ def list_teacher_google_accounts(
 
 
 @router.patch("/teacher/accounts/{account_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_teacher_google_account(
+    request: Request,
     account_id: int,
     label: str | None = Query(None),
     set_primary: bool = Query(False),
@@ -946,7 +969,9 @@ def update_teacher_google_account(
 
 
 @router.delete("/teacher/accounts/{account_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def remove_teacher_google_account(
+    request: Request,
     account_id: int,
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.utils import escape_like
+from app.core.rate_limit import limiter, get_user_id_or_ip
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -212,7 +213,9 @@ def _search_faq(db: Session, term: str, limit: int) -> SearchResultGroup:
 
 
 @router.get("", response_model=SearchResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def global_search(
+    request: Request,
     q: str = Query(..., min_length=2, max_length=200),
     types: str | None = Query(None, description="Comma-separated entity types to search"),
     limit: int = Query(5, ge=1, le=20),

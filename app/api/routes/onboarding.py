@@ -1,10 +1,11 @@
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, exists
 
 from app.api.deps import get_db, get_current_user
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.user import User
 from app.models.student import parent_students
 from app.models.course import student_courses
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 
 @router.get("/progress")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_onboarding_progress(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -83,7 +86,9 @@ def get_onboarding_progress(
 
 
 @router.post("/dismiss")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def dismiss_onboarding(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

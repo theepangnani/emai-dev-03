@@ -1,8 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.inspiration_message import InspirationMessage
@@ -21,7 +22,9 @@ router = APIRouter(prefix="/inspiration", tags=["Inspiration"])
 
 
 @router.get("/random", response_model=InspirationRandomResponse | None)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def random_message(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -37,7 +40,9 @@ def random_message(
 
 
 @router.get("/messages", response_model=list[InspirationMessageResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_messages(
+    request: Request,
     role: str | None = None,
     is_active: bool | None = None,
     skip: int = Query(0, ge=0),
@@ -56,7 +61,9 @@ def list_messages(
 
 
 @router.post("/messages", response_model=InspirationMessageResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_message(
+    request: Request,
     body: InspirationMessageCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -79,7 +86,9 @@ def create_message(
 
 
 @router.patch("/messages/{message_id}", response_model=InspirationMessageResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_message(
+    request: Request,
     message_id: int,
     body: InspirationMessageUpdate,
     db: Session = Depends(get_db),
@@ -103,7 +112,9 @@ def update_message(
 
 
 @router.delete("/messages/{message_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_message(
+    request: Request,
     message_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -119,7 +130,9 @@ def delete_message(
 
 
 @router.post("/seed")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def reseed_messages(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):

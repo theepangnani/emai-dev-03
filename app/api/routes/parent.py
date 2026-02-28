@@ -21,7 +21,7 @@ from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
 from app.core.security import UNUSABLE_PASSWORD_HASH, validate_password_strength, get_password_hash, create_password_reset_token
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.schemas.parent import (
     ChildSummary, ChildOverview, LinkChildRequest, CreateChildRequest,
     ChildUpdateRequest, ChildResetPasswordRequest, DiscoveredChild,
@@ -39,7 +39,9 @@ router = APIRouter(prefix="/parent", tags=["Parent"])
 
 
 @router.get("/children", response_model=list[ChildSummary])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_children(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -143,7 +145,9 @@ def list_children(
 
 
 @router.get("/dashboard", response_model=ParentDashboardResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_parent_dashboard(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -441,8 +445,10 @@ def get_parent_dashboard(
 
 
 @router.post("/children/create", response_model=ChildSummary)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_child(
-    request: CreateChildRequest,
+    request: Request,
+    data: CreateChildRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -450,16 +456,16 @@ def create_child(
     invite_link = None
 
     # If email is provided, check it's not already taken by a non-student
-    if request.email:
-        existing_user = db.query(User).filter(User.email == request.email).first()
+    if data.email:
+        existing_user = db.query(User).filter(User.email == data.email).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="An account with this email already exists. Use 'Link Child' instead.")
 
     # Create student user (email may be None)
     student_user = User(
-        email=request.email,
+        email=data.email,
         hashed_password=UNUSABLE_PASSWORD_HASH,
-        full_name=request.full_name,
+        full_name=data.full_name,
         role=UserRole.STUDENT,
         roles=UserRole.STUDENT.value,
     )
@@ -467,15 +473,15 @@ def create_child(
     db.flush()
 
     # Create invite if email is provided so child can set their password
-    if request.email:
+    if data.email:
         token = secrets.token_urlsafe(32)
         invite = Invite(
-            email=request.email,
+            email=data.email,
             invite_type=InviteType.STUDENT,
             token=token,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
-            metadata_json={"relationship_type": request.relationship_type},
+            metadata_json={"relationship_type": data.relationship_type},
         )
         db.add(invite)
         db.flush()
@@ -492,12 +498,12 @@ def create_child(
                 """
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
-                to_email=request.email,
+                to_email=data.email,
                 subject=f"{current_user.full_name} invited you to ClassBridge",
                 html_content=invite_html,
             )
         except Exception as e:
-            logger.warning(f"Failed to send invite email to {request.email}: {e}")
+            logger.warning(f"Failed to send invite email to {data.email}: {e}")
 
     # Create Student record
     student = Student(user_id=student_user.id)
@@ -505,7 +511,7 @@ def create_child(
     db.flush()
 
     # Link parent to student
-    rel_type = RelationshipType(request.relationship_type)
+    rel_type = RelationshipType(data.relationship_type)
     db.execute(
         insert(parent_students).values(
             parent_id=current_user.id,
@@ -528,8 +534,10 @@ def create_child(
 
 
 @router.post("/children/link", response_model=ChildSummary)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def link_child(
-    request: LinkChildRequest,
+    request: Request,
+    data: LinkChildRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -537,7 +545,7 @@ def link_child(
     invite_link = None
 
     # Look for existing user with this email
-    existing_user = db.query(User).filter(User.email == request.student_email).first()
+    existing_user = db.query(User).filter(User.email == data.student_email).first()
 
     if existing_user and existing_user.role != UserRole.STUDENT:
         raise HTTPException(
@@ -574,7 +582,7 @@ def link_child(
             requester_user_id=current_user.id,
             target_user_id=existing_user.id,
             student_id=student.id,
-            relationship_type=request.relationship_type,
+            relationship_type=data.relationship_type,
             token=secrets.token_urlsafe(32),
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
         )
@@ -599,7 +607,7 @@ def link_child(
             email=existing_user.email,
             grade_level=student.grade_level,
             school_name=student.school_name,
-            relationship_type=request.relationship_type,
+            relationship_type=data.relationship_type,
             invite_link=None,
             link_request_pending=True,
         )
@@ -608,9 +616,9 @@ def link_child(
         student_user = existing_user
     else:
         # Auto-create student account (no password — child sets it via invite link)
-        full_name = request.full_name or request.student_email.split("@")[0]
+        full_name = data.full_name or data.student_email.split("@")[0]
         student_user = User(
-            email=request.student_email,
+            email=data.student_email,
             hashed_password=UNUSABLE_PASSWORD_HASH,
             full_name=full_name,
             role=UserRole.STUDENT,
@@ -622,17 +630,17 @@ def link_child(
         # Create invite so child can set their password
         token = secrets.token_urlsafe(32)
         invite = Invite(
-            email=request.student_email,
+            email=data.student_email,
             invite_type=InviteType.STUDENT,
             token=token,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             invited_by_user_id=current_user.id,
-            metadata_json={"relationship_type": request.relationship_type},
+            metadata_json={"relationship_type": data.relationship_type},
         )
         db.add(invite)
         db.flush()
         invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
-        logger.info(f"Auto-created student account for {request.student_email}, invite token generated")
+        logger.info(f"Auto-created student account for {data.student_email}, invite token generated")
 
         # Send invite email to the child
         try:
@@ -645,12 +653,12 @@ def link_child(
                 """
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
-                to_email=request.student_email,
+                to_email=data.student_email,
                 subject=f"{current_user.full_name} invited you to ClassBridge",
                 html_content=invite_html,
             )
         except Exception as e:
-            logger.warning(f"Failed to send invite email to {request.student_email}: {e}")
+            logger.warning(f"Failed to send invite email to {data.student_email}: {e}")
 
     # Find or create the Student record
     student = db.query(Student).filter(Student.user_id == student_user.id).first()
@@ -672,7 +680,7 @@ def link_child(
         raise HTTPException(status_code=400, detail="This student is already linked to your account")
 
     # Insert into join table
-    rel_type = RelationshipType(request.relationship_type)
+    rel_type = RelationshipType(data.relationship_type)
     db.execute(
         insert(parent_students).values(
             parent_id=current_user.id,
@@ -695,7 +703,9 @@ def link_child(
 
 
 @router.post("/children/discover-google", response_model=DiscoverChildrenResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def discover_children_google(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -849,15 +859,17 @@ def discover_children_google(
 
 
 @router.post("/children/link-bulk", response_model=list[ChildSummary])
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def link_children_bulk(
-    request: LinkChildrenBulkRequest,
+    request: Request,
+    data: LinkChildrenBulkRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Link multiple students to the current parent."""
-    rel_type = RelationshipType(request.relationship_type)
+    rel_type = RelationshipType(data.relationship_type)
     linked = []
-    for user_id in request.user_ids:
+    for user_id in data.user_ids:
         student_user = (
             db.query(User)
             .filter(User.id == user_id, User.role == UserRole.STUDENT)
@@ -908,7 +920,9 @@ def link_children_bulk(
 
 
 @router.get("/children/{student_id}/overview", response_model=ChildOverview)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_child_overview(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
@@ -1006,9 +1020,11 @@ def get_child_overview(
 
 
 @router.patch("/children/{student_id}", response_model=ChildSummary)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def update_child(
+    request: Request,
     student_id: int,
-    request: ChildUpdateRequest,
+    data: ChildUpdateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -1031,32 +1047,32 @@ def update_child(
 
     user = student.user
 
-    if request.full_name is not None and user:
-        user.full_name = request.full_name
-    if request.email is not None and user:
+    if data.full_name is not None and user:
+        user.full_name = data.full_name
+    if data.email is not None and user:
         # Check email uniqueness
-        existing = db.query(User).filter(User.email == request.email, User.id != user.id).first()
+        existing = db.query(User).filter(User.email == data.email, User.id != user.id).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email already in use by another account")
-        user.email = request.email
-    if request.grade_level is not None:
-        student.grade_level = request.grade_level
-    if request.school_name is not None:
-        student.school_name = request.school_name
-    if request.date_of_birth is not None:
-        student.date_of_birth = request.date_of_birth
-    if request.phone is not None:
-        student.phone = request.phone
-    if request.address is not None:
-        student.address = request.address
-    if request.city is not None:
-        student.city = request.city
-    if request.province is not None:
-        student.province = request.province
-    if request.postal_code is not None:
-        student.postal_code = request.postal_code
-    if request.notes is not None:
-        student.notes = request.notes
+        user.email = data.email
+    if data.grade_level is not None:
+        student.grade_level = data.grade_level
+    if data.school_name is not None:
+        student.school_name = data.school_name
+    if data.date_of_birth is not None:
+        student.date_of_birth = data.date_of_birth
+    if data.phone is not None:
+        student.phone = data.phone
+    if data.address is not None:
+        student.address = data.address
+    if data.city is not None:
+        student.city = data.city
+    if data.province is not None:
+        student.province = data.province
+    if data.postal_code is not None:
+        student.postal_code = data.postal_code
+    if data.notes is not None:
+        student.notes = data.notes
 
     db.commit()
     db.refresh(student)
@@ -1080,7 +1096,9 @@ def update_child(
 
 
 @router.post("/children/{student_id}/sync-courses")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_child_courses(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
@@ -1140,9 +1158,11 @@ class AssignCoursesRequest(PydanticBaseModel):
 
 
 @router.post("/children/{student_id}/courses")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def assign_courses_to_child(
+    request: Request,
     student_id: int,
-    request: AssignCoursesRequest,
+    data: AssignCoursesRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -1164,7 +1184,7 @@ def assign_courses_to_child(
         raise HTTPException(status_code=404, detail="Student not found")
 
     assigned = []
-    for course_id in request.course_ids:
+    for course_id in data.course_ids:
         course = db.query(Course).filter(Course.id == course_id).first()
         if not course:
             continue
@@ -1198,7 +1218,9 @@ def assign_courses_to_child(
 
 
 @router.delete("/children/{student_id}/courses/{course_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def unassign_course_from_child(
+    request: Request,
     student_id: int,
     course_id: int,
     db: Session = Depends(get_db),
@@ -1240,9 +1262,11 @@ def unassign_course_from_child(
 
 
 @router.post("/children/{student_id}/teachers", response_model=LinkedTeacher)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def link_teacher_to_child(
+    request: Request,
     student_id: int,
-    request: LinkTeacherRequest,
+    data: LinkTeacherRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
@@ -1272,9 +1296,9 @@ def link_teacher_to_child(
     child_name = child_user.full_name if child_user else "your child"
 
     # Find teacher user by email
-    teacher_user = db.query(User).filter(User.email == request.teacher_email).first()
+    teacher_user = db.query(User).filter(User.email == data.teacher_email).first()
     teacher_user_id = teacher_user.id if teacher_user else None
-    teacher_name = request.teacher_name
+    teacher_name = data.teacher_name
 
     if teacher_user:
         # If the user exists, use their name unless overridden
@@ -1289,7 +1313,7 @@ def link_teacher_to_child(
         db.query(student_teachers)
         .filter(
             student_teachers.c.student_id == student_id,
-            student_teachers.c.teacher_email == request.teacher_email,
+            student_teachers.c.teacher_email == data.teacher_email,
         )
         .first()
     )
@@ -1301,8 +1325,8 @@ def link_teacher_to_child(
         insert(student_teachers).values(
             student_id=student_id,
             teacher_user_id=teacher_user_id,
-            teacher_name=teacher_name or request.teacher_email.split("@")[0],
-            teacher_email=request.teacher_email,
+            teacher_name=teacher_name or data.teacher_email.split("@")[0],
+            teacher_email=data.teacher_email,
             added_by_user_id=current_user.id,
         )
     )
@@ -1313,13 +1337,13 @@ def link_teacher_to_child(
         db.query(student_teachers)
         .filter(
             student_teachers.c.student_id == student_id,
-            student_teachers.c.teacher_email == request.teacher_email,
+            student_teachers.c.teacher_email == data.teacher_email,
         )
         .first()
     )
 
     log_action(db, user_id=current_user.id, action="create", resource_type="student_teacher_link",
-               details={"student_id": student_id, "teacher_email": request.teacher_email})
+               details={"student_id": student_id, "teacher_email": data.teacher_email})
     db.commit()
 
     # ── Email handling ─────────────────────────────────────────
@@ -1365,7 +1389,7 @@ def link_teacher_to_child(
             existing_invite = (
                 db.query(Invite)
                 .filter(
-                    Invite.email == request.teacher_email,
+                    Invite.email == data.teacher_email,
                     Invite.invite_type == InviteType.TEACHER,
                     Invite.accepted_at.is_(None),
                     Invite.expires_at > datetime.now(timezone.utc),
@@ -1375,7 +1399,7 @@ def link_teacher_to_child(
             if not existing_invite:
                 token = secrets.token_urlsafe(32)
                 invite = Invite(
-                    email=request.teacher_email,
+                    email=data.teacher_email,
                     invite_type=InviteType.TEACHER,
                     token=token,
                     expires_at=datetime.now(timezone.utc) + timedelta(days=30),
@@ -1398,11 +1422,11 @@ def link_teacher_to_child(
                 .replace("{{invite_link}}", invite_link))
             html = add_inspiration_to_email(html, db, "teacher")
             send_email_sync(
-                to_email=request.teacher_email,
+                to_email=data.teacher_email,
                 subject=f"{current_user.full_name} invited you to ClassBridge",
                 html_content=html,
             )
-            logger.info(f"Teacher invite email sent to {request.teacher_email}")
+            logger.info(f"Teacher invite email sent to {data.teacher_email}")
         except Exception as e:
             logger.warning(f"Failed to send teacher invite email: {e}")
 
@@ -1418,7 +1442,9 @@ def link_teacher_to_child(
 
 
 @router.get("/children/{student_id}/teachers", response_model=list[LinkedTeacher])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_linked_teachers(
+    request: Request,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
@@ -1457,7 +1483,9 @@ def list_linked_teachers(
 
 
 @router.delete("/children/{student_id}/teachers/{link_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def unlink_teacher_from_child(
+    request: Request,
     student_id: int,
     link_id: int,
     db: Session = Depends(get_db),
@@ -1497,7 +1525,7 @@ def unlink_teacher_from_child(
 
 
 @router.post("/children/{student_id}/reset-password")
-@limiter.limit("5/minute")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
 def reset_child_password(
     student_id: int,
     body: ChildResetPasswordRequest,
@@ -1576,7 +1604,9 @@ class _RequestCompletionBody(PydanticBaseModel):
 
 
 @router.post("/children/{student_id}/request-completion")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def request_task_completion(
+    request: Request,
     student_id: int,
     body: _RequestCompletionBody,
     db: Session = Depends(get_db),

@@ -2,10 +2,11 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User
 from app.models.student import Student, parent_students, RelationshipType
@@ -46,7 +47,9 @@ def _build_response(lr: LinkRequest) -> LinkRequestResponse:
 
 
 @router.get("", response_model=list[LinkRequestResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_pending_link_requests(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -78,7 +81,9 @@ def list_pending_link_requests(
 
 
 @router.get("/sent", response_model=list[LinkRequestResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_sent_link_requests(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -93,7 +98,9 @@ def list_sent_link_requests(
 
 
 @router.post("/{request_id}/respond")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def respond_to_link_request(
+    request: Request,
     request_id: int,
     body: LinkRequestRespondRequest,
     db: Session = Depends(get_db),

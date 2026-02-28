@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from app.core.logging_config import get_logger, FrontendLogHandler
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.user import User
 from app.api.deps import get_current_user
 
@@ -36,6 +37,7 @@ class LogBatch(BaseModel):
 
 
 @router.post("/")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def receive_log(
     entry: LogEntry,
     request: Request,
@@ -66,6 +68,7 @@ async def receive_log(
 
 
 @router.post("/batch")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def receive_log_batch(
     batch: LogBatch,
     request: Request,
