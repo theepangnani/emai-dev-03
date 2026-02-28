@@ -576,6 +576,7 @@ export function TeacherDashboard() {
       <div className="dashboard-sections">
         {/* Course Management Section (#947) */}
         <TeacherCourseManagement
+          key={courses.length}
           googleConnected={googleConnected}
           onSync={handleSyncCourses}
           syncing={syncing}

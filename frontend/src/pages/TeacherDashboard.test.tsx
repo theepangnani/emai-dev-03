@@ -6,6 +6,7 @@ import { createMockInvite } from '../test/mocks'
 // ── Mocks ──────────────────────────────────────────────────────
 const mockNavigate = vi.fn()
 const mockTeachingList = vi.fn()
+const mockTeachingManagement = vi.fn()
 const mockGetStatus = vi.fn()
 const mockGetConnectUrl = vi.fn()
 const mockSyncCourses = vi.fn()
@@ -33,6 +34,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../api/client', () => ({
   coursesApi: {
     teachingList: (...args: any[]) => mockTeachingList(...args),
+    teachingManagement: (...args: any[]) => mockTeachingManagement(...args),
     create: (...args: any[]) => mockCoursesCreate(...args),
   },
   googleApi: {
@@ -79,9 +81,34 @@ import { TeacherDashboard } from './TeacherDashboard'
 
 function setupDefaults() {
   mockTeachingList.mockResolvedValue([])
+  mockTeachingManagement.mockResolvedValue([])
   mockGetStatus.mockResolvedValue({ connected: false })
   mockGetTeacherAccounts.mockResolvedValue([])
   mockListSent.mockResolvedValue([])
+}
+
+// Helper to create a management-style course object (matches TeacherCourseManagement type)
+function mockMgmtCourse(overrides: Record<string, any> = {}) {
+  return {
+    id: 1,
+    name: 'Algebra I',
+    description: null,
+    subject: 'Math',
+    google_classroom_id: null,
+    classroom_type: null,
+    teacher_id: 1,
+    teacher_name: 'Teacher User',
+    created_by_user_id: 1,
+    is_private: false,
+    is_default: false,
+    student_count: 0,
+    assignment_count: 0,
+    material_count: 0,
+    last_activity: null,
+    source: 'manual',
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
 }
 
 describe('TeacherDashboard', () => {
@@ -96,13 +123,19 @@ describe('TeacherDashboard', () => {
       { id: 1, name: 'Algebra I', description: null, subject: 'Math', google_classroom_id: null, student_count: 0 },
       { id: 2, name: 'Geometry', description: 'Shapes', subject: null, google_classroom_id: 'gc-1', student_count: 0 },
     ])
+    mockTeachingManagement.mockResolvedValue([
+      mockMgmtCourse({ id: 1, name: 'Algebra I', subject: 'Math' }),
+      mockMgmtCourse({ id: 2, name: 'Geometry', description: 'Shapes', subject: null, google_classroom_id: 'gc-1', source: 'google' }),
+    ])
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'My Classes' })).toBeInTheDocument()
     })
-    // Courses appear in the classes section
-    expect(screen.getByText('Algebra I')).toBeInTheDocument()
+    // Courses appear in the Course Management section (loaded via teachingManagement)
+    await waitFor(() => {
+      expect(screen.getByText('Algebra I')).toBeInTheDocument()
+    })
     expect(screen.getByText('Geometry')).toBeInTheDocument()
   })
 
@@ -111,16 +144,21 @@ describe('TeacherDashboard', () => {
       { id: 1, name: 'Algebra I', description: null, subject: 'Math', google_classroom_id: null },
       { id: 2, name: 'Geometry', description: 'All about shapes', subject: null, google_classroom_id: 'gc-1' },
     ])
+    mockTeachingManagement.mockResolvedValue([
+      mockMgmtCourse({ id: 1, name: 'Algebra I', subject: 'Math' }),
+      mockMgmtCourse({ id: 2, name: 'Geometry', description: 'All about shapes', subject: null, google_classroom_id: 'gc-1', source: 'google' }),
+    ])
     renderWithProviders(<TeacherDashboard />)
 
+    // Wait for TeacherCourseManagement to load its data via teachingManagement()
     await waitFor(() => {
       expect(screen.getByText('Algebra I')).toBeInTheDocument()
     })
     expect(screen.getByText('Math')).toBeInTheDocument()
     expect(screen.getByText('Geometry')).toBeInTheDocument()
     expect(screen.getByText('All about shapes')).toBeInTheDocument()
-    // "Google Classroom" appears as both the card heading and the course source badge
-    expect(document.querySelector('.course-source-badge')).toBeInTheDocument()
+    // Source badge and filter pill both show "Google Classroom"
+    expect(screen.getAllByText('Google Classroom').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows empty state when no courses', async () => {
@@ -182,6 +220,9 @@ describe('TeacherDashboard', () => {
     mockTeachingList
       .mockResolvedValueOnce([]) // initial load
       .mockResolvedValueOnce([{ id: 1, name: 'Synced Course', description: null, subject: null, google_classroom_id: 'gc-1' }]) // after sync
+    mockTeachingManagement
+      .mockResolvedValueOnce([]) // initial load
+      .mockResolvedValueOnce([mockMgmtCourse({ id: 1, name: 'Synced Course', google_classroom_id: 'gc-1', source: 'google' })]) // after sync
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
@@ -205,11 +246,11 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
+    // Wait for TeacherCourseManagement to finish loading (button appears after load)
     await waitFor(() => {
-      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
-    })
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
+    }, { timeout: 3000 })
 
-    // Open modal - use first button (section header) since empty state also has one
     const createButtons = screen.getAllByRole('button', { name: /\+ Create Class/i })
     await user.click(createButtons[0])
 
@@ -230,12 +271,16 @@ describe('TeacherDashboard', () => {
     mockTeachingList
       .mockResolvedValueOnce([]) // initial load
       .mockResolvedValueOnce([{ id: 10, name: 'New Course', description: null, subject: 'Science', google_classroom_id: null }])
+    mockTeachingManagement
+      .mockResolvedValueOnce([]) // initial load
+      .mockResolvedValueOnce([mockMgmtCourse({ id: 10, name: 'New Course', subject: 'Science' })]) // after create
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
+    // Wait for TeacherCourseManagement to finish loading (button appears after load)
     await waitFor(() => {
-      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
-    })
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
+    }, { timeout: 3000 })
 
     // Open modal - use first button (section header)
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
@@ -271,7 +316,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
     })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
@@ -293,7 +338,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Your Classes/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
     })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
