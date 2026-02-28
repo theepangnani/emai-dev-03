@@ -246,11 +246,11 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
+    // Wait for TeacherCourseManagement to finish loading (button appears after load)
     await waitFor(() => {
-      expect(screen.getByText(/Course Management/)).toBeInTheDocument()
-    })
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
+    }, { timeout: 3000 })
 
-    // Open modal - use first button (section header) since empty state also has one
     const createButtons = screen.getAllByRole('button', { name: /\+ Create Class/i })
     await user.click(createButtons[0])
 
@@ -277,9 +277,10 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
+    // Wait for TeacherCourseManagement to finish loading (button appears after load)
     await waitFor(() => {
-      expect(screen.getByText(/Course Management/)).toBeInTheDocument()
-    })
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
+    }, { timeout: 3000 })
 
     // Open modal - use first button (section header)
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
@@ -315,7 +316,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Course Management/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
     })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
@@ -337,7 +338,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Course Management/)).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
     })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
