@@ -117,6 +117,8 @@ export { messagesApi } from './messages';
 export type {
   MessageResponse,
   MessageSearchResult,
+  MessageSearchResponse,
+  MessageSearchParams,
   ConversationSummary,
   ConversationDetail,
   RecipientOption,

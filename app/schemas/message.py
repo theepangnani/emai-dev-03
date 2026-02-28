@@ -107,3 +107,11 @@ class MessageSearchResult(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MessageSearchResponse(BaseModel):
+    results: list[MessageSearchResult]
+    total: int
+    offset: int
+    limit: int
+    query: str
