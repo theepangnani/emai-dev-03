@@ -70,4 +70,9 @@ export const authApi = {
     const response = await api.post('/api/auth/resend-verification');
     return response.data as { message: string };
   },
+
+  checkUsername: async (username: string) => {
+    const response = await api.get(`/api/auth/check-username/${encodeURIComponent(username)}`);
+    return response.data as { available: boolean; valid: boolean; message: string };
+  },
 };

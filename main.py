@@ -696,6 +696,17 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── users: unique index on username (#546) ──────────────────
+    try:
+        if "sqlite" in settings.database_url:
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username_unique ON users(username)"))
+        else:
+            conn.execute(text("CREATE UNIQUE INDEX ix_users_username_unique ON users(username) WHERE username IS NOT NULL"))
+        logger.info("Added unique index ix_users_username_unique on users.username")
+    except Exception:
+        conn.rollback()
+    conn.commit()
+
     # One-time data fix: correct known invalid email (#408)
     try:
         conn.execute(text(

@@ -10,7 +10,7 @@ from app.models.user import User, UserRole
 from app.models.teacher import Teacher, TeacherType
 from app.models.student import Student, parent_students, RelationshipType
 from app.models.invite import Invite, InviteType
-from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest
+from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest, USERNAME_PATTERN
 from app.schemas.invite import AcceptInviteRequest
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
 from app.api.deps import get_current_user, oauth2_scheme
@@ -239,8 +239,8 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     db.commit()
     db.refresh(user)
 
-    # Send verification + welcome emails for non-Google signups (best-effort)
-    if not is_google_signup:
+    # Send verification + welcome emails for non-Google signups with email (best-effort)
+    if not is_google_signup and user.email:
         _send_verification_email(user, db)
         _send_welcome_email(user, db)
 
@@ -258,6 +258,21 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         email_verified=user.email_verified or False,
         created_at=user.created_at,
     )
+
+
+@router.get("/check-username/{username}")
+def check_username(username: str, db: Session = Depends(get_db)):
+    """Check if a username is valid and available (case-insensitive)."""
+    normalized = username.lower()
+    valid = bool(USERNAME_PATTERN.match(normalized))
+    if not valid:
+        return {"available": False, "valid": False, "message": "Username must be 3-20 characters, alphanumeric and underscores only"}
+
+    existing = db.query(User).filter(User.username == normalized).first()
+    if existing:
+        return {"available": False, "valid": True, "message": "Username is already taken"}
+
+    return {"available": True, "valid": True, "message": "Username is available"}
 
 
 def _get_lockout_duration(failed_attempts: int) -> int | None:
@@ -279,10 +294,18 @@ def login(
     db: Session = Depends(get_db),
 ):
     ip = request.client.host if request.client else None
-    # Try email first, then username
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user:
-        user = db.query(User).filter(User.username == form_data.username).first()
+    # Detect email vs username by checking for '@'
+    identifier = form_data.username
+    if "@" in identifier:
+        # Email lookup
+        user = db.query(User).filter(User.email == identifier).first()
+    else:
+        # Username lookup (case-insensitive)
+        normalized = identifier.lower()
+        user = db.query(User).filter(User.username == normalized).first()
+        if not user:
+            # Fallback: try email without @ (shouldn't happen, but be safe)
+            user = db.query(User).filter(User.email == identifier).first()
 
     # If user not found, reject immediately (no lockout info to leak)
     if not user:
