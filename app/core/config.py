@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # Cookie settings (httpOnly JWT cookies for XSS mitigation)
+    cookie_secure: bool = False  # True in production (HTTPS only); auto-set below
+    cookie_domain: str = ""  # Empty = browser default (current domain)
+
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -70,6 +74,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Auto-set cookie_secure based on environment if not explicitly configured
+if settings.environment == "production":
+    settings.cookie_secure = True
 
 # Validate secret key
 _KNOWN_WEAK_KEYS = {"your-secret-key-change-in-production", "changeme", "secret", ""}

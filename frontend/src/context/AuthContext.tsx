@@ -38,15 +38,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadUser = async () => {
       setIsLoading(true);
-      if (token) {
-        try {
-          const userData = await authApi.getMe();
-          setUser(userData);
-        } catch {
-          localStorage.removeItem('token');
-          setToken(null);
-        }
-      } else {
+      // Try to load user if we have a localStorage token OR httpOnly cookies
+      // (cookies are sent automatically via withCredentials — we can't read them
+      // from JS, so always attempt getMe even without a localStorage token)
+      try {
+        const userData = await authApi.getMe();
+        setUser(userData);
+      } catch {
+        // No valid session (neither cookie nor localStorage token)
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        setToken(null);
         setUser(null);
       }
       setIsLoading(false);
@@ -77,8 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    // Best-effort server-side token revocation
+    // Server-side: revoke token + clear httpOnly cookies (best-effort, fire-and-forget)
     authApi.logout().catch(() => {});
+    // Client-side: clear localStorage immediately for instant UI update
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     setToken(null);
