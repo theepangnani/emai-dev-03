@@ -46,8 +46,11 @@ export function TasksPage() {
   const [filterAssignee, setFilterAssignee] = useState<number | 'all'>(() => {
     const navState = location.state as { selectedChild?: number | null } | null;
     if (navState?.selectedChild) return navState.selectedChild;
-    const assignee = searchParams.get('assignee');
+    const assignee = searchParams.get('assignee') || searchParams.get('child');
     if (assignee) return Number(assignee);
+    // Fallback: localStorage (persisted across sessions) then sessionStorage (legacy)
+    const lastChild = localStorage.getItem('last_selected_child');
+    if (lastChild) return Number(lastChild);
     const stored = sessionStorage.getItem('selectedChildId');
     return stored ? Number(stored) : 'all';
   });
@@ -105,6 +108,7 @@ export function TasksPage() {
       searchParams.set('assignee', String(first.user_id));
       setSearchParams(searchParams, { replace: true });
       sessionStorage.setItem('selectedChildId', String(first.user_id));
+      try { localStorage.setItem('last_selected_child', String(first.user_id)); } catch { /* ignore */ }
     }
   }, [children]);
 
@@ -450,7 +454,7 @@ export function TasksPage() {
               <button
                 key={child.user_id}
                 className={`child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
-                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
+                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); try { localStorage.setItem('last_selected_child', String(child.user_id)); } catch { /* ignore */ } }}
               >
                 <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}

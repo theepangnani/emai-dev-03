@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { authApi } from '../api/client';
+import { clearAllSessionState } from '../hooks/useSessionState';
 
 interface User {
   id: number;
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Client-side: clear localStorage immediately for instant UI update
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
+    clearAllSessionState();
     setToken(null);
     setUser(null);
   };
