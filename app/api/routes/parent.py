@@ -18,7 +18,7 @@ from app.models.message import Conversation, Message
 from app.models.invite import Invite, InviteType
 from app.api.deps import require_role
 from app.services.audit_service import log_action
-from app.services.email_service import send_email_sync, add_inspiration_to_email
+from app.services.email_service import send_email_sync, add_inspiration_to_email, wrap_branded_email
 from app.core.config import settings
 from app.core.security import UNUSABLE_PASSWORD_HASH, validate_password_strength, get_password_hash, create_password_reset_token
 from app.core.rate_limit import limiter, get_user_id_or_ip
@@ -489,13 +489,14 @@ def create_child(
 
         # Send invite email to the child
         try:
-            invite_html = f"""
-                <h2>You've been invited to ClassBridge</h2>
-                <p><strong>{current_user.full_name}</strong> has added you as a student on ClassBridge.</p>
-                <p>Click the link below to set your password and get started:</p>
-                <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
-                <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
-                """
+            invite_body = (
+                f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve been invited to ClassBridge</h2>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>{current_user.full_name}</strong> has added you as a student on ClassBridge.</p>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Click the link below to set your password and get started:</p>'
+                f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+                f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in 30 days.</p>'
+            )
+            invite_html = wrap_branded_email(invite_body)
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
                 to_email=data.email,
@@ -644,13 +645,14 @@ def link_child(
 
         # Send invite email to the child
         try:
-            invite_html = f"""
-                <h2>You've been invited to ClassBridge</h2>
-                <p><strong>{current_user.full_name}</strong> has added you as a student on ClassBridge.</p>
-                <p>Click the link below to set your password and get started:</p>
-                <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
-                <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
-                """
+            invite_body = (
+                f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve been invited to ClassBridge</h2>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>{current_user.full_name}</strong> has added you as a student on ClassBridge.</p>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Click the link below to set your password and get started:</p>'
+                f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+                f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in 30 days.</p>'
+            )
+            invite_html = wrap_branded_email(invite_body)
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
                 to_email=data.student_email,
@@ -808,13 +810,14 @@ def discover_children_google(
         # Send invite email so the child can set their password
         invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
         try:
-            invite_html = f"""
-                <h2>You've been invited to ClassBridge</h2>
-                <p><strong>{current_user.full_name}</strong> has added you as a student on ClassBridge.</p>
-                <p>Click the link below to set your password and get started:</p>
-                <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
-                <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
-                """
+            invite_body = (
+                f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve been invited to ClassBridge</h2>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>{current_user.full_name}</strong> has added you as a student on ClassBridge.</p>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Click the link below to set your password and get started:</p>'
+                f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+                f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in 30 days.</p>'
+            )
+            invite_html = wrap_branded_email(invite_body)
             invite_html = add_inspiration_to_email(invite_html, db, "student")
             send_email_sync(
                 to_email=email,
@@ -1575,17 +1578,17 @@ def reset_child_password(
             )
         token = create_password_reset_token(user.email)
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
-        html = (
-            f'<h2 style="color:#1a1a1a;">Set Your Password</h2>'
-            f'<p>Hi {user.full_name or "there"},</p>'
-            f'<p>Your parent has requested a password reset for your ClassBridge account.</p>'
-            f'<p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>'
-            f'<p style="text-align:center;margin:24px 0;">'
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">Set Your Password</h2>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">Hi {user.full_name or "there"},</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">Your parent has requested a password reset for your ClassBridge account.</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>'
             f'<a href="{reset_url}" style="display:inline-block;background:#4f46e5;color:white;'
-            f'text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Set Password</a></p>'
-            f'<p style="color:#666;font-size:13px;">If you didn\'t expect this, you can safely ignore this email.</p>'
-            f'<p style="color:#999;font-size:12px;">Or copy this link: {reset_url}</p>'
+            f'text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Set Password</a>'
+            f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">If you didn\'t expect this, you can safely ignore this email.</p>'
+            f'<p style="color:#999;font-size:12px;margin:8px 0 0 0;">Or copy this link: {reset_url}</p>'
         )
+        html = wrap_branded_email(body)
         html = add_inspiration_to_email(html, db, user.role)
         sent = send_email_sync(to_email=user.email, subject="ClassBridge — Set Your Password", html_content=html)
         log_action(db, user_id=current_user.id, action="parent_reset_child_password",
