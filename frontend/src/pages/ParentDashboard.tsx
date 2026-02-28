@@ -4,9 +4,7 @@ import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
-import { ActivityFeed } from '../components/parent/ActivityFeed';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
-import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
@@ -99,7 +97,6 @@ function loadViewMode(): 'simplified' | 'full' {
 export function ParentDashboard() {
   const { user } = useAuth();
   const pd = useParentDashboard();
-  const activityCount = useMemo(() => Math.min(pd.courseMaterials.length, 10), [pd.courseMaterials]);
   const [tipDismissed, setTipDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
