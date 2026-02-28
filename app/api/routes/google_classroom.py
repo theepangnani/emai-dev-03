@@ -441,14 +441,45 @@ def _auto_invite_shadow_teacher(
         logger.warning(f"Failed to send auto-invite to shadow teacher {teacher_email}: {e}")
 
 
-def _set_classroom_type(course: Course, db: Session) -> None:
-    """Set classroom_type based on the course teacher's teacher_type.
+# Well-known personal email domains (not school/organization domains)
+_PERSONAL_EMAIL_DOMAINS = frozenset({
+    "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk",
+    "hotmail.com", "outlook.com", "live.com", "msn.com",
+    "aol.com", "icloud.com", "me.com", "mac.com",
+    "protonmail.com", "proton.me", "zoho.com", "yandex.com",
+    "mail.com", "gmx.com", "gmx.net", "fastmail.com",
+})
 
-    school_teacher → "school", private_tutor or unknown → "private".
-    Does not override if already set.
+
+def _detect_classroom_type_from_domain(owner_email: str | None) -> str:
+    """Detect classroom type based on email domain.
+
+    School domains (e.g. @school.edu, @district.k12.ca.us) -> "school"
+    Personal domains (gmail.com, yahoo.com, etc.) -> "private"
     """
-    if course.classroom_type:
+    if not owner_email:
+        return "private"
+    domain = owner_email.rsplit("@", 1)[-1].lower() if "@" in owner_email else ""
+    if not domain:
+        return "private"
+    if domain in _PERSONAL_EMAIL_DOMAINS:
+        return "private"
+    return "school"
+
+
+def _set_classroom_type(course: Course, gc_data: dict | None, db: Session) -> None:
+    """Set classroom_type based on Google Classroom data and teacher info.
+
+    Detection priority:
+    1. Teacher explicit teacher_type
+    2. Teacher google_email domain
+    3. Default to "private"
+
+    Does not override if already set to school/private.
+    """
+    if course.classroom_type and course.classroom_type != "manual":
         return
+
     if course.teacher_id:
         teacher = db.query(Teacher).filter(Teacher.id == course.teacher_id).first()
         if teacher and teacher.teacher_type:
@@ -456,6 +487,16 @@ def _set_classroom_type(course: Course, db: Session) -> None:
             if teacher.teacher_type == TeacherType.SCHOOL_TEACHER:
                 course.classroom_type = "school"
                 return
+            elif teacher.teacher_type == TeacherType.PRIVATE_TUTOR:
+                course.classroom_type = "private"
+                return
+
+    if course.teacher_id:
+        teacher = db.query(Teacher).filter(Teacher.id == course.teacher_id).first()
+        if teacher and teacher.google_email:
+            course.classroom_type = _detect_classroom_type_from_domain(teacher.google_email)
+            return
+
     course.classroom_type = "private"
 
 
@@ -588,7 +629,7 @@ def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None =
         if classroom_type in ("school", "private"):
             course.classroom_type = classroom_type
         else:
-            _set_classroom_type(course, db)
+            _set_classroom_type(course, gc, db)
 
         # Link student to course
         if student:

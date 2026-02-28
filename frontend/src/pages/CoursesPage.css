@@ -776,3 +776,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Classroom type filter */
+.courses-type-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.courses-type-filter label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+.courses-type-filter select {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.courses-type-filter select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}

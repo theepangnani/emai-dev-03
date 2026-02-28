@@ -3,7 +3,7 @@ import secrets
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
@@ -148,12 +148,28 @@ def create_course(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_courses(
     request: Request,
+    classroom_type: str | None = Query(
+        None,
+        description='Filter by classroom type: "school", "private", or "manual"',
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List courses visible to the current user (respects privacy)."""
+    """List courses visible to the current user (respects privacy).
+
+    Optional query parameter classroom_type filters by type.
+    """
     education_service = EducationService(db)
-    return education_service.get_visible_courses(current_user)
+    courses = education_service.get_visible_courses(current_user)
+    if classroom_type:
+        from app.models.course import VALID_CLASSROOM_TYPES
+        if classroom_type not in VALID_CLASSROOM_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid classroom_type. Must be one of: school, private, manual",
+            )
+        courses = [c for c in courses if c.classroom_type == classroom_type]
+    return courses
 
 
 @router.get("/teaching", response_model=list[CourseResponse])
