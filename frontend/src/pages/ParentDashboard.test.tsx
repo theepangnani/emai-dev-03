@@ -115,7 +115,13 @@ vi.mock('../components/GoogleClassroomPrompt', () => ({
 }))
 
 vi.mock('../components/RoleQuickActions', () => ({
-  RoleQuickActions: () => <div data-testid="quick-action-bar" />,
+  RoleQuickActions: ({ actions }: { actions: Array<{ label: string; onClick: () => void }> }) => (
+    <div data-testid="quick-action-bar">
+      {actions.map((a: any) => (
+        <button key={a.label} onClick={a.onClick}>{a.label}</button>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('./StudyGuidesPage', () => ({
@@ -279,38 +285,25 @@ describe('ParentDashboard', () => {
 
   // ── Calendar moved to TasksPage ──────────────────────────────
 
-  // ── Quick Action Buttons (+ popover) ────────────────────────
-  it('renders + button that reveals Upload Documents and Create Task actions', async () => {
-    const user = userEvent.setup()
+  // ── Quick Action Cards ────────────────────────────────────
+  it('renders quick action cards for Upload Material and Create Task', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
+      expect(screen.getByText('Upload Material')).toBeInTheDocument()
     })
     expect(screen.getAllByText('Create Task').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('opens study modal from Upload Documents in + popover', async () => {
+  it('opens study modal from Upload Material action card', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+      expect(screen.getByText('Upload Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Upload Documents'))
+    await user.click(screen.getByText('Upload Material'))
 
     await waitFor(() => {
       // Study material modal should open
@@ -511,21 +504,15 @@ describe('ParentDashboard', () => {
   // Edit child modal is now accessed from the My Kids page, not the dashboard
 
   // ── Study Tools Modal ────────────────────────────────────────
-  it('opens study tools modal from + popover Upload Documents', async () => {
+  it('opens study tools modal from Upload Material action card', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+      expect(screen.getByText('Upload Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Upload Documents'))
+    await user.click(screen.getByText('Upload Material'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
@@ -537,14 +524,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument()
+      expect(screen.getByText('Upload Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Add new' }))
-    await waitFor(() => {
-      expect(screen.getByText('Upload Documents')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Upload Documents'))
+    await user.click(screen.getByText('Upload Material'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()

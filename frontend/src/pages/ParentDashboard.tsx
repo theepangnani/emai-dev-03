@@ -70,7 +70,7 @@ interface SectionStates {
   grades: boolean;
   comingUp: boolean;
   studentDetail: boolean;
-  activityFeed: boolean;
+  activityFeed?: boolean; // deprecated — kept for localStorage compat
 }
 
 function loadSectionStates(): SectionStates {
