@@ -51,6 +51,54 @@
   font-size: 14px;
 }
 
+.auth-lockout-banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--color-warning-light, #fef3cd);
+  color: var(--color-warning-dark, #856404);
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.auth-lockout-banner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-warning-dark, #856404);
+}
+
+.auth-lockout-banner strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.auth-lockout-banner p {
+  margin: 0;
+}
+
+.auth-lockout-hint {
+  margin-top: 6px !important;
+  font-size: 13px;
+}
+
+.auth-lockout-hint a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
+.auth-warning {
+  background: var(--color-warning-light, #fff3cd);
+  color: var(--color-warning-dark, #856404);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
