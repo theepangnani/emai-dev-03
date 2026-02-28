@@ -86,6 +86,9 @@ export function FlashcardsTab({
   useEffect(() => {
     if (!isActiveTab || displayCards.length === 0) return;
     const handler = (e: KeyboardEvent) => {
+      // Don't intercept keys when the user is typing in an input or textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.key === 'ArrowLeft' && cardIndex > 0) {
         setCardIndex(i => i - 1);
         setIsFlipped(false);

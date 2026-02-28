@@ -40,7 +40,9 @@ export function CourseMaterialDetailPage() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
-  const [focusPrompt, setFocusPrompt] = useState('');
+  const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
+  const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
+  const [flashcardsFocusPrompt, setFlashcardsFocusPrompt] = useState('');
 
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
@@ -109,7 +111,8 @@ export function CourseMaterialDetailPage() {
     setGenerating(type);
     setActiveTab(type === 'study_guide' ? 'guide' : type);
     try {
-      const fp = focusPrompt.trim() || undefined;
+      const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt };
+      const fp = promptMap[type].trim() || undefined;
       if (type === 'study_guide') {
         await studyApi.generateGuide({
           course_content_id: contentId,
@@ -297,8 +300,8 @@ export function CourseMaterialDetailPage() {
             <StudyGuideTab
               studyGuide={studyGuide}
               generating={generating}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
+              focusPrompt={guideFocusPrompt}
+              onFocusPromptChange={setGuideFocusPrompt}
               onGenerate={() => handleGenerate('study_guide')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
@@ -310,8 +313,8 @@ export function CourseMaterialDetailPage() {
             <QuizTab
               quiz={quiz}
               generating={generating}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
+              focusPrompt={quizFocusPrompt}
+              onFocusPromptChange={setQuizFocusPrompt}
               onGenerate={() => handleGenerate('quiz')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
@@ -325,8 +328,8 @@ export function CourseMaterialDetailPage() {
             <FlashcardsTab
               flashcardSet={flashcardSet}
               generating={generating}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
+              focusPrompt={flashcardsFocusPrompt}
+              onFocusPromptChange={setFlashcardsFocusPrompt}
               onGenerate={() => handleGenerate('flashcards')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
