@@ -20,8 +20,9 @@ export function LinkedTasksBanner({ tasks }: LinkedTasksBannerProps) {
           </span>
           <span className="cm-linked-task-title">{task.title}</span>
           {task.due_date && (() => {
-            // Append T00:00:00 to date-only strings so JS parses as local midnight, not UTC
-            const d = new Date(task.due_date.includes('T') ? task.due_date : task.due_date + 'T00:00:00');
+            // Always extract date-only portion and parse as local midnight to avoid UTC off-by-one
+            const dateOnly = task.due_date.substring(0, 10); // "YYYY-MM-DD"
+            const d = new Date(dateOnly + 'T00:00:00');
             const isOverdue = d < new Date() && !task.is_completed;
             return (
               <span className={`cm-linked-task-due${isOverdue ? ' overdue' : ''}`}>
