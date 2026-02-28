@@ -121,10 +121,9 @@ export function CourseDetailPage() {
   // Generate study guide state
   const [generatingContentId, setGeneratingContentId] = useState<number | null>(null);
 
-  // Upload: optional study guide generation
-  const [generateAfterUpload, setGenerateAfterUpload] = useState(false);
-  const [studyGuideType, setStudyGuideType] = useState<'study_guide' | 'quiz' | 'flashcards' | 'other'>('study_guide');
-  const [customPrompt, setCustomPrompt] = useState('');
+  // Upload: AI tool selection (#552)
+  const [uploadAiTool, setUploadAiTool] = useState<'none' | 'study_guide' | 'quiz' | 'flashcards'>('none');
+  const [uploadAiCustomPrompt, setUploadAiCustomPrompt] = useState('');
 
   // Collapsible sections
   const [materialsExpanded, setMaterialsExpanded] = useState(true);
@@ -372,9 +371,8 @@ export function CourseDetailPage() {
     setExtractedText('');
     setExtracting(false);
     setIsDragging(false);
-    setGenerateAfterUpload(false);
-    setStudyGuideType('study_guide');
-    setCustomPrompt('');
+    setUploadAiTool('none');
+    setUploadAiCustomPrompt('');
     setShowUploadModal(true);
   };
 
@@ -415,57 +413,19 @@ export function CourseDetailPage() {
     setUploading(true);
     setUploadError('');
     try {
+      // Pass ai_tool and ai_custom_prompt to backend; AI generation happens
+      // as a background task so the upload returns immediately (#552)
       await courseContentsApi.create({
         course_id: courseId,
         title: uploadTitle.trim(),
         description: `Uploaded from: ${selectedFile.name}`,
         text_content: extractedText || undefined,
         content_type: uploadType,
+        ai_tool: uploadAiTool !== 'none' ? uploadAiTool : undefined,
+        ai_custom_prompt: uploadAiTool !== 'none' && uploadAiCustomPrompt.trim() ? uploadAiCustomPrompt.trim() : undefined,
       });
       setShowUploadModal(false);
       await loadContents();
-
-      // If user opted to generate study material, confirm and do it now
-      const shouldGenerate = generateAfterUpload && extractedText && await confirm({
-        title: 'Generate Study Material',
-        message: `Generate ${studyGuideType.replace('_', ' ')} from uploaded content? This will use AI credits.`,
-        confirmLabel: 'Generate',
-      });
-      if (shouldGenerate) {
-        setGeneratingContentId(-1); // generic loading indicator
-        try {
-          let result;
-          if (studyGuideType === 'quiz') {
-            result = await studyApi.generateQuiz({
-              topic: uploadTitle.trim(),
-              content: extractedText,
-              course_id: courseId,
-              num_questions: 10,
-            });
-            navigate(`/study/quiz/${result.id}`);
-          } else if (studyGuideType === 'flashcards') {
-            result = await studyApi.generateFlashcards({
-              topic: uploadTitle.trim(),
-              content: extractedText,
-              course_id: courseId,
-              num_cards: 15,
-            });
-            navigate(`/study/flashcards/${result.id}`);
-          } else {
-            result = await studyApi.generateGuide({
-              content: extractedText,
-              title: uploadTitle.trim(),
-              course_id: courseId,
-              custom_prompt: studyGuideType === 'other' && customPrompt.trim() ? customPrompt.trim() : undefined,
-            });
-            navigate(`/study/guide/${result.id}`);
-          }
-        } catch (err: any) {
-          alert(err.response?.data?.detail || 'Failed to generate study material');
-        } finally {
-          setGeneratingContentId(null);
-        }
-      }
     } catch (err: any) {
       setUploadError(err.response?.data?.detail || 'Failed to upload document');
     } finally {
@@ -1124,40 +1084,36 @@ export function CourseDetailPage() {
                   {CONTENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </label>
-              {/* Optional: generate study guide */}
-              <label className="upload-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={generateAfterUpload}
-                  onChange={(e) => setGenerateAfterUpload(e.target.checked)}
+              {/* AI Tool Selection (#552) */}
+              <label>
+                Generate AI Study Material
+                <select
+                  value={uploadAiTool}
+                  onChange={(e) => setUploadAiTool(e.target.value as any)}
                   disabled={uploading || !extractedText}
-                />
-                Generate study material from this document
+                  className="upload-ai-tool-select"
+                >
+                  <option value="none">None - just save the document</option>
+                  <option value="study_guide">Study Guide - key concepts, tips & practice questions</option>
+                  <option value="quiz">Quiz - multiple choice practice questions</option>
+                  <option value="flashcards">Flashcards - term/concept review cards</option>
+                </select>
+                {!extractedText && selectedFile && !extracting && (
+                  <span className="upload-ai-hint">Text extraction required for AI generation</span>
+                )}
               </label>
-              {generateAfterUpload && (
-                <>
-                  <label>
-                    AI Help Type
-                    <select value={studyGuideType} onChange={(e) => setStudyGuideType(e.target.value as any)} disabled={uploading}>
-                      <option value="study_guide">Study Guide</option>
-                      <option value="quiz">Quiz</option>
-                      <option value="flashcards">Flashcards</option>
-                      <option value="other">Other (Custom Prompt)</option>
-                    </select>
-                  </label>
-                  {studyGuideType === 'other' && (
-                    <label>
-                      Custom AI Prompt
-                      <textarea
-                        value={customPrompt}
-                        onChange={(e) => setCustomPrompt(e.target.value)}
-                        placeholder="Describe what you want the AI to do with this content, e.g. 'Summarize the key themes' or 'Create a timeline of events'"
-                        rows={3}
-                        disabled={uploading}
-                      />
-                    </label>
-                  )}
-                </>
+              {uploadAiTool !== 'none' && (
+                <label>
+                  Custom Instructions (optional)
+                  <textarea
+                    value={uploadAiCustomPrompt}
+                    onChange={(e) => setUploadAiCustomPrompt(e.target.value)}
+                    placeholder="e.g. 'Focus on chapters 3-5' or 'Include worked solutions for all math problems'"
+                    rows={2}
+                    disabled={uploading}
+                    className="upload-ai-custom-prompt"
+                  />
+                </label>
               )}
               {course?.classroom_type === 'school' && (
                 <div className="dtap-disclaimer" style={{ marginTop: 8 }}>
@@ -1165,7 +1121,7 @@ export function CourseDetailPage() {
                 </div>
               )}
               {uploadError && <p className="link-error">{uploadError}</p>}
-              {/* Parent notification note for students (#552) */}
+              {/* Parent notification note for students */}
               {user?.role === 'student' && (
                 <p className="modal-info-note">
                   Your parent will be notified about this upload.
@@ -1175,7 +1131,9 @@ export function CourseDetailPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowUploadModal(false)} disabled={uploading}>Cancel</button>
               <button className="generate-btn" onClick={handleUploadDocument} disabled={uploading || !selectedFile || !uploadTitle.trim() || extracting}>
-                {uploading ? (generateAfterUpload ? 'Saving & Generating...' : 'Saving...') : (generateAfterUpload ? 'Save & Generate' : 'Save to Class')}
+                {uploading
+                  ? (uploadAiTool !== 'none' ? 'Saving & Queuing AI...' : 'Saving...')
+                  : (uploadAiTool !== 'none' ? 'Save & Generate' : 'Save to Class')}
               </button>
             </div>
           </div>

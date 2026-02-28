@@ -183,17 +183,21 @@ export const courseContentsApi = {
     content_type?: string;
     reference_url?: string;
     google_classroom_url?: string;
+    ai_tool?: string;
+    ai_custom_prompt?: string;
   }) => {
     const response = await api.post('/api/course-contents/', data);
     return response.data as CourseContentItem;
   },
 
-  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string) => {
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string, aiTool?: string, aiCustomPrompt?: string) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('course_id', String(courseId));
     if (title) formData.append('title', title);
     if (contentType) formData.append('content_type', contentType);
+    if (aiTool && aiTool !== 'none') formData.append('ai_tool', aiTool);
+    if (aiCustomPrompt) formData.append('ai_custom_prompt', aiCustomPrompt);
     const response = await api.post('/api/course-contents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
