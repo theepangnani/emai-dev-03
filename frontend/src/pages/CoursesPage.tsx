@@ -61,6 +61,7 @@ export function CoursesPage() {
     return tab === 'browse' ? 'browse' : 'enrolled';
   });
   const [enrollingId, setEnrollingId] = useState<number | null>(null);
+    const [classroomTypeFilter, setClassroomTypeFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
 
   // Parent-specific state
@@ -517,7 +518,14 @@ export function CoursesPage() {
     }
   };
 
-  const filteredAvailable = availableCourses.filter(c =>
+  // Apply classroom type filter
+  const filterByType = (courses: CourseItem[]) => {
+    if (!classroomTypeFilter) return courses;
+    return courses.filter(c => c.classroom_type === classroomTypeFilter);
+  };
+
+
+  const filteredAvailable = filterByType(availableCourses).filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.subject && c.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (c.teacher_name && c.teacher_name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -564,6 +572,29 @@ export function CoursesPage() {
             <button onClick={() => setActionError('')} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }}>&times;</button>
           </div>
         )}
+        {/* Classroom type filter */}
+        <div className="courses-type-filter">
+          <label htmlFor="classroom-type-filter">Filter by type:</label>
+          <select
+            id="classroom-type-filter"
+            value={classroomTypeFilter}
+            onChange={(e) => {
+              setClassroomTypeFilter(e.target.value);
+              if (e.target.value) {
+                searchParams.set("type", e.target.value);
+              } else {
+                searchParams.delete("type");
+              }
+              setSearchParams(searchParams, { replace: true });
+            }}
+          >
+            <option value="">All Types</option>
+            <option value="school">School</option>
+            <option value="private">Private / Tutor</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+
         {/* Parent: Child selector */}
         {isParent && children.length > 1 && (
           <div className="child-selector" style={{ marginBottom: 20 }}>
@@ -626,7 +657,7 @@ export function CoursesPage() {
               </div>
             ) : childOverview && childOverview.courses.length > 0 ? (
               <div className="courses-list">
-                {childOverview.courses.map((course) => (
+                {filterByType(childOverview.courses).map((course) => (
                   <div key={course.id} className="course-list-item-wrapper">
                     <div
                       className={`course-list-row${expandedCourseId === course.id ? ' expanded' : ''}`}
@@ -729,7 +760,7 @@ export function CoursesPage() {
               <div className="courses-section">
                 {enrolledCourses.length > 0 ? (
                   <div className="courses-list">
-                    {enrolledCourses.map((course) => (
+                    {filterByType(enrolledCourses).map((course) => (
                       <div key={course.id} className="course-list-item-wrapper">
                         <div
                           className={`course-list-row${expandedCourseId === course.id ? ' expanded' : ''}`}
@@ -744,6 +775,9 @@ export function CoursesPage() {
                             <div className="course-list-meta">
                               {course.subject && <span className="course-card-subject">{course.subject}</span>}
                               {course.teacher_name && <span>{course.teacher_name}</span>}
+                              {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                              {course.classroom_type === "school" && <span className="course-card-badge school">School</span>}
+                              {course.classroom_type === "private" && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
                             </div>
                           </div>
                           <span className="course-list-expand">{expandedCourseId === course.id ? '▲' : '▼'}</span>
@@ -831,6 +865,9 @@ export function CoursesPage() {
                           <div className="course-list-meta">
                             {course.subject && <span className="course-card-subject">{course.subject}</span>}
                             {course.teacher_name && <span>{course.teacher_name}</span>}
+                            {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                            {course.classroom_type === "school" && <span className="course-card-badge school">School</span>}
+                            {course.classroom_type === "private" && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
                             {course.description && <span className="course-list-desc">{course.description}</span>}
                           </div>
                         </div>
@@ -871,7 +908,7 @@ export function CoursesPage() {
           </div>
           {myCoursesExpanded && myCourses.length > 0 ? (
             <div className="courses-list">
-              {myCourses.map((course) => (
+              {filterByType(myCourses).map((course) => (
                 <div
                   key={course.id}
                   className="course-list-row"
@@ -885,6 +922,9 @@ export function CoursesPage() {
                     <span className="course-list-title">{course.name}</span>
                     <div className="course-list-meta">
                       {course.subject && <span className="course-card-subject">{course.subject}</span>}
+                      {course.google_classroom_id && <span className="course-card-badge google">Google</span>}
+                      {course.classroom_type === "school" && <span className="course-card-badge school">School</span>}
+                      {course.classroom_type === "private" && course.google_classroom_id && <span className="course-card-badge private-gc">Private</span>}
                       {course.description && <span className="course-list-desc">{course.description}</span>}
                     </div>
                   </div>
