@@ -426,6 +426,11 @@ Users can reset forgotten passwords via email-based JWT token flow.
 - Password strength validation (8+ chars, upper, lower, digit, special)
 - Audit logging for reset requests and completions
 
+**Reliability (#866):**
+- 15-second request timeout on frontend reset call to prevent indefinite hangs
+- Background jobs (`teacher_comm_sync`, `assignment_reminders`, `notification_reminders`) use per-item commits to avoid holding long DB row locks on User table during slow I/O (AI calls, email sends)
+- Auto-redirect to login page 3 seconds after successful password reset
+
 **Key files:**
 - `app/core/security.py` — `create_password_reset_token()`, `decode_password_reset_token()`
 - `app/api/routes/auth.py` — forgot-password, reset-password endpoints
