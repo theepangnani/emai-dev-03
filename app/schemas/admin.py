@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.user import UserResponse
+from app.schemas.user import UserResponse, strip_whitespace
 
 
 class AdminUserList(BaseModel):
@@ -18,8 +18,13 @@ class AdminStats(BaseModel):
 
 
 class BroadcastCreate(BaseModel):
-    subject: str
-    body: str
+    subject: str = Field(min_length=1, max_length=255)
+    body: str = Field(min_length=1, max_length=10000)
+
+    @field_validator('subject', 'body', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class BroadcastResponse(BaseModel):
@@ -46,8 +51,13 @@ class BroadcastListItem(BaseModel):
 
 
 class AdminMessageCreate(BaseModel):
-    subject: str
-    body: str
+    subject: str = Field(min_length=1, max_length=255)
+    body: str = Field(min_length=1, max_length=10000)
+
+    @field_validator('subject', 'body', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class AdminMessageResponse(BaseModel):

@@ -1,21 +1,33 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 
+from app.schemas.user import strip_whitespace
+
 
 class CourseCreate(BaseModel):
-    name: str
-    description: str | None = None
-    subject: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    subject: str | None = Field(default=None, max_length=100)
     teacher_id: int | None = None
-    teacher_email: str | None = None
+    teacher_email: str | None = Field(default=None, max_length=255)
+
+    @field_validator('name', 'description', 'subject', 'teacher_email', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class CourseUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    subject: Optional[str] = None
-    teacher_email: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    subject: Optional[str] = Field(default=None, max_length=100)
+    teacher_email: Optional[str] = Field(default=None, max_length=255)
+
+    @field_validator('name', 'description', 'subject', 'teacher_email', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class CourseResponse(BaseModel):
@@ -39,5 +51,10 @@ class CourseResponse(BaseModel):
 
 
 class AddStudentRequest(BaseModel):
-    email: str
-    message: str | None = None  # Optional message to include in the invite (#551)
+    email: str = Field(max_length=255)
+    message: str | None = Field(default=None, max_length=500)  # Optional message to include in the invite (#551)
+
+    @field_validator('email', 'message', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
