@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CalendarAssignment } from '../calendar/types';
 import type { TaskItem } from '../../api/tasks';
+import { tasksApi } from '../../api/tasks';
 
 /* ── Interfaces ──────────────────────────────────────────── */
 
@@ -25,6 +26,7 @@ interface ComingUpTimelineProps {
   calendarAssignments: CalendarAssignment[];
   filteredTasks: TaskItem[];
   selectedChild: number | null;
+  currentUserId?: number;
   onToggleTask: (task: TaskItem) => void;
   onNavigateStudy: (assignment: CalendarAssignment) => void;
   onDismiss?: () => void;
@@ -66,11 +68,39 @@ export function ComingUpTimeline({
   calendarAssignments,
   filteredTasks,
   selectedChild,
+  currentUserId,
   onToggleTask,
   onNavigateStudy,
   onDismiss,
 }: ComingUpTimelineProps) {
   const navigate = useNavigate();
+  const [remindingTaskId, setRemindingTaskId] = useState<number | null>(null);
+  const [reminderToast, setReminderToast] = useState<string | null>(null);
+  // Track locally-sent reminders to update UI instantly
+  const [localReminders, setLocalReminders] = useState<Map<number, string>>(new Map());
+
+  const handleRemind = async (task: TaskItem) => {
+    setRemindingTaskId(task.id);
+    try {
+      const result = await tasksApi.remind(task.id);
+      setLocalReminders(prev => new Map(prev).set(task.id, result.reminded_at));
+      setReminderToast(`Reminder sent to ${result.assignee_name}`);
+      setTimeout(() => setReminderToast(null), 4000);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Failed to send reminder';
+      setReminderToast(detail);
+      setTimeout(() => setReminderToast(null), 4000);
+    } finally {
+      setRemindingTaskId(null);
+    }
+  };
+
+  const canRemindTask = (task: TaskItem): boolean => {
+    const sentAt = localReminders.get(task.id) || task.last_reminder_sent_at;
+    if (!sentAt) return true;
+    const hoursSince = (Date.now() - new Date(sentAt).getTime()) / (1000 * 60 * 60);
+    return hoursSince >= 24;
+  };
 
   // Build a task lookup to quickly find TaskItem by id for toggle
   const taskMap = useMemo(() => {
@@ -235,6 +265,22 @@ export function ComingUpTimeline({
                       Study
                     </button>
                   )}
+                  {item.type === 'task' && item.taskId && !item.isCompleted && (() => {
+                    const task = taskMap.get(item.taskId);
+                    if (!task || !task.assigned_to_user_id || task.created_by_user_id !== currentUserId) return null;
+                    const canRemind = canRemindTask(task);
+                    return (
+                      <button
+                        className={`pd-timeline-remind-btn${!canRemind ? ' reminded' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
+                        disabled={!canRemind || remindingTaskId === task.id}
+                        aria-label={canRemind ? `Send reminder for ${item.title}` : 'Reminder already sent'}
+                        title={canRemind ? 'Send Reminder' : 'Reminded'}
+                      >
+                        {remindingTaskId === task.id ? <span className="btn-spinner" /> : canRemind ? '\uD83D\uDD14' : '\u2705'}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -249,6 +295,7 @@ export function ComingUpTimeline({
           </button>
         )}
       </div>
+      {reminderToast && <div className="toast-notification">{reminderToast}</div>}
     </section>
   );
 }

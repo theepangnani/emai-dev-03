@@ -349,7 +349,13 @@ export default function CreateStudyMaterialModal({
               </div>
             </div>
           )}
-          {studyError && <p className="link-error">{studyError}</p>}
+          {studyError && (
+            <div className="modal-error">
+              <span className="error-icon">!</span>
+              <span className="error-message">{studyError}</span>
+              <button onClick={handleSubmit} className="retry-btn" disabled={isGenerating}>Try Again</button>
+            </div>
+          )}
         </div>
 
         {/* Duplicate check warning */}
@@ -371,7 +377,7 @@ export default function CreateStudyMaterialModal({
             onClick={handleSubmit}
             disabled={isGenerating || (studyMode === 'file' ? !selectedFile : (!studyContent.trim() && pastedImages.length === 0))}
           >
-            {isGenerating ? 'Generating...' : selectedTypes.size > 0 ? (selectedTypes.size > 1 ? `Upload & Generate ${selectedTypes.size} Materials` : 'Upload & Generate') : 'Upload'}
+            {isGenerating ? <><span className="btn-spinner" /> Generating...</> : selectedTypes.size > 0 ? (selectedTypes.size > 1 ? `Upload & Generate ${selectedTypes.size} Materials` : 'Upload & Generate') : 'Upload'}
           </button>
         </div>
       </div>

@@ -107,7 +107,13 @@
   text-overflow: ellipsis;
 }
 
-/* ── Mobile: collapse trail, enlarge back ── */
+/* ── Desktop/mobile trail visibility ── */
+
+.page-nav-trail-mobile {
+  display: none;
+}
+
+/* ── Mobile: show truncated trail, enlarge back ── */
 
 @media (max-width: 768px) {
   .page-nav {
@@ -117,8 +123,13 @@
     border-radius: 8px;
   }
 
-  .page-nav-trail {
+  .page-nav-trail-desktop {
     display: none;
+  }
+
+  .page-nav-trail-mobile {
+    display: flex;
+    font-size: 12px;
   }
 
   .page-nav-back {

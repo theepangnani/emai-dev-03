@@ -465,7 +465,13 @@ export function MyKidsPage() {
                       <option value="other">Other</option>
                     </select>
                   </label>
-                  {addChildError && <p className="link-error">{addChildError}</p>}
+                  {addChildError && (
+                    <div className="modal-error">
+                      <span className="error-icon">!</span>
+                      <span className="error-message">{addChildError}</span>
+                      <button onClick={handleCreateChild} className="retry-btn" disabled={addChildLoading}>Try Again</button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -473,7 +479,7 @@ export function MyKidsPage() {
               <button className="cancel-btn" onClick={closeAddChildModal} disabled={addChildLoading}>{addChildInviteLink ? 'Close' : 'Cancel'}</button>
               {!addChildInviteLink && (
                 <button className="generate-btn" onClick={handleCreateChild} disabled={addChildLoading || !addChildName.trim()}>
-                  {addChildLoading ? 'Creating...' : 'Add Child'}
+                  {addChildLoading ? <><span className="btn-spinner" /> Creating...</> : 'Add Child'}
                 </button>
               )}
             </div>
@@ -516,7 +522,13 @@ export function MyKidsPage() {
                       <option value="other">Other</option>
                     </select>
                   </label>
-                  {addChildError && <p className="link-error">{addChildError}</p>}
+                  {addChildError && (
+                    <div className="modal-error">
+                      <span className="error-icon">!</span>
+                      <span className="error-message">{addChildError}</span>
+                      <button onClick={handleLinkChild} className="retry-btn" disabled={addChildLoading}>Try Again</button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -524,7 +536,7 @@ export function MyKidsPage() {
               <button className="cancel-btn" onClick={closeAddChildModal} disabled={addChildLoading}>{addChildInviteLink ? 'Close' : 'Cancel'}</button>
               {!addChildInviteLink && (
                 <button className="generate-btn" onClick={handleLinkChild} disabled={addChildLoading || !addChildEmail.trim()}>
-                  {addChildLoading ? 'Linking...' : 'Link Child'}
+                  {addChildLoading ? <><span className="btn-spinner" /> Linking...</> : 'Link Child'}
                 </button>
               )}
             </div>

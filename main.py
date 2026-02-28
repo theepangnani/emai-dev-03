@@ -225,6 +225,18 @@ with engine.connect() as conn:
             except Exception:
                 pass  # Already nullable or not applicable
         conn.commit()
+    # ── tasks: last_reminder_sent_at column (#876) ──────────
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "last_reminder_sent_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE tasks ADD COLUMN last_reminder_sent_at {col_type}"))
+                logger.info("Added 'last_reminder_sent_at' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # Make users.email nullable for students created without email (by parent)
     if "users" in inspector.get_table_names():
         if "sqlite" not in settings.database_url:

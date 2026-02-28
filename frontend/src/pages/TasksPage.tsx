@@ -70,6 +70,8 @@ export function TasksPage() {
   const [editAssignee, setEditAssignee] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
   const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
+  const [remindingTaskId, setRemindingTaskId] = useState<number | null>(null);
+  const [reminderToast, setReminderToast] = useState<string | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const { confirm, confirmModal } = useConfirm();
   const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
@@ -324,6 +326,36 @@ export function TasksPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleRemind = async (task: TaskItem) => {
+    setRemindingTaskId(task.id);
+    try {
+      const result = await tasksApi.remind(task.id);
+      // Update the task's last_reminder_sent_at in local state
+      setTasks(prev => prev.map(t =>
+        t.id === task.id ? { ...t, last_reminder_sent_at: result.reminded_at } : t
+      ));
+      setReminderToast(`Reminder sent to ${result.assignee_name}`);
+      setTimeout(() => setReminderToast(null), 4000);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Failed to send reminder';
+      setReminderToast(detail);
+      setTimeout(() => setReminderToast(null), 4000);
+    } finally {
+      setRemindingTaskId(null);
+    }
+  };
+
+  const getReminderStatus = (task: TaskItem): { canRemind: boolean; label: string } => {
+    if (!task.last_reminder_sent_at) return { canRemind: true, label: 'Send Reminder' };
+    const sentAt = new Date(task.last_reminder_sent_at);
+    const hoursSince = (Date.now() - sentAt.getTime()) / (1000 * 60 * 60);
+    if (hoursSince < 24) {
+      const hoursAgo = Math.floor(hoursSince);
+      return { canRemind: false, label: hoursAgo < 1 ? 'Reminded just now' : `Reminded ${hoursAgo}h ago` };
+    }
+    return { canRemind: true, label: 'Send Reminder' };
   };
 
   const filteredTasks = tasks.filter(t => {
@@ -628,6 +660,20 @@ export function TasksPage() {
                   </div>
                 ) : isCreator(task) ? (
                   <div className="task-row-actions">
+                    {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
+                      const { canRemind, label } = getReminderStatus(task);
+                      return (
+                        <button
+                          className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
+                          disabled={!canRemind || remindingTaskId === task.id}
+                          title={label}
+                          aria-label={label}
+                        >
+                          {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
+                        </button>
+                      );
+                    })()}
                     <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
                   </div>
                 ) : null}
@@ -773,6 +819,7 @@ export function TasksPage() {
         )}
       </div>
       {confirmModal}
+      {reminderToast && <div className="toast-notification">{reminderToast}</div>}
     </DashboardLayout>
   );
 }
