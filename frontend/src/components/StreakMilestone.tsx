@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import './StreakMilestone.css';
 
 interface MilestoneDef {
@@ -18,21 +18,21 @@ interface StreakMilestoneProps {
 }
 
 export function StreakMilestone({ streak }: StreakMilestoneProps) {
-  const [visibleMilestones, setVisibleMilestones] = useState<MilestoneDef[]>([]);
+  const [dismissed, setDismissed] = useState<number[]>([]);
 
-  useEffect(() => {
-    const active = MILESTONES.filter(m => {
+  const visibleMilestones = useMemo(() => {
+    return MILESTONES.filter(m => {
       if (streak < m.days) return false;
+      if (dismissed.includes(m.days)) return false;
       const key = `streak_milestone_${m.days}_dismissed`;
       return localStorage.getItem(key) !== 'true';
     });
-    setVisibleMilestones(active);
-  }, [streak]);
+  }, [streak, dismissed]);
 
-  const handleDismiss = (days: number) => {
+  const handleDismiss = useCallback((days: number) => {
     localStorage.setItem(`streak_milestone_${days}_dismissed`, 'true');
-    setVisibleMilestones(prev => prev.filter(m => m.days !== days));
-  };
+    setDismissed(prev => [...prev, days]);
+  }, []);
 
   if (visibleMilestones.length === 0) return null;
 
