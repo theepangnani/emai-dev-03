@@ -38,6 +38,9 @@ class User(Base):
     assignment_reminder_days = Column(String(50), default="1,3")
     task_reminder_days = Column(String(50), default="1,3")
 
+    # Onboarding setup checklist
+    onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
+
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)

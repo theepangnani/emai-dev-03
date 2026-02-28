@@ -12,6 +12,7 @@ import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { SetupChecklist } from '../components/SetupChecklist';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -254,6 +255,9 @@ export function ParentDashboard() {
         </div>
       ) : (
         <>
+          {/* Onboarding Setup Checklist (#869) */}
+          <SetupChecklist />
+
           {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
