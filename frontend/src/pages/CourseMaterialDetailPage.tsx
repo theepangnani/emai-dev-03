@@ -168,8 +168,9 @@ export function CourseMaterialDetailPage() {
     try {
       await studyApi.deleteGuide(guide.id);
       await loadData();
+      showToast('Study material archived');
     } catch {
-      setError('Failed to archive');
+      showToast('Failed to archive study material');
     }
   };
 
