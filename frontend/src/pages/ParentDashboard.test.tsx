@@ -286,24 +286,24 @@ describe('ParentDashboard', () => {
   // ── Calendar moved to TasksPage ──────────────────────────────
 
   // ── Quick Action Cards ────────────────────────────────────
-  it('renders quick action cards for Upload Material and Create Task', async () => {
+  it('renders quick action cards for Course Material and Create Task', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Upload Material')).toBeInTheDocument()
+      expect(screen.getByText('Course Material')).toBeInTheDocument()
     })
     expect(screen.getAllByText('Create Task').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('opens study modal from Upload Material action card', async () => {
+  it('opens study modal from Course Material action card', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Upload Material')).toBeInTheDocument()
+      expect(screen.getByText('Course Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Upload Material'))
+    await user.click(screen.getByText('Course Material'))
 
     await waitFor(() => {
       // Study material modal should open
@@ -504,15 +504,15 @@ describe('ParentDashboard', () => {
   // Edit child modal is now accessed from the My Kids page, not the dashboard
 
   // ── Study Tools Modal ────────────────────────────────────────
-  it('opens study tools modal from Upload Material action card', async () => {
+  it('opens study tools modal from Course Material action card', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Upload Material')).toBeInTheDocument()
+      expect(screen.getByText('Course Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Upload Material'))
+    await user.click(screen.getByText('Course Material'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
@@ -524,10 +524,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Upload Material')).toBeInTheDocument()
+      expect(screen.getByText('Course Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Upload Material'))
+    await user.click(screen.getByText('Course Material'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()

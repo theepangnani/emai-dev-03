@@ -216,7 +216,7 @@ describe('StudentDashboard', () => {
       // Quick action cards use RoleQuickActions with rqa-label class
       const actionLabels = document.querySelectorAll('.rqa-label')
       const labels = Array.from(actionLabels).map(el => el.textContent)
-      expect(labels).toContain('Upload Materials')
+      expect(labels).toContain('Course Material')
       expect(labels).toContain('New Course')
       expect(labels).toContain('Study Guide')
     })

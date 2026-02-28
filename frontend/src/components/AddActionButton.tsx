@@ -5,6 +5,8 @@ export interface ActionItem {
   icon: string;
   label: string;
   onClick: () => void;
+  /** When true, renders a small "+" badge overlay on the icon (for create/add actions). */
+  showPlus?: boolean;
 }
 
 interface AddActionButtonProps {
@@ -49,7 +51,7 @@ export function AddActionButton({ actions, showLabel }: AddActionButtonProps) {
               className="add-action-item"
               onClick={() => { setOpen(false); action.onClick(); }}
             >
-              <span className="add-action-item-icon">{action.icon}</span>
+              <span className={`add-action-item-icon${action.showPlus ? ' icon-with-plus' : ''}`}>{action.icon}</span>
               <span className="add-action-item-label">{action.label}</span>
             </button>
           ))}

@@ -382,7 +382,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 2px dashed var(--color-border);
   color: var(--color-ink-muted);

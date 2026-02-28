@@ -149,6 +149,36 @@
   flex-shrink: 0;
 }
 
+/* "+" badge overlay for create/add action icons in popover */
+.add-action-item-icon.icon-with-plus {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+.add-action-item-icon.icon-with-plus::after {
+  content: '+';
+  position: absolute;
+  bottom: -2px;
+  right: -4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--color-accent-strong, var(--color-accent));
+  background: var(--color-surface);
+  border-radius: 50%;
+  width: 13px;
+  height: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 0 0 1.5px var(--color-surface);
+  font-family: system-ui, sans-serif;
+}
+
 .add-action-item-label {
   white-space: nowrap;
 }
