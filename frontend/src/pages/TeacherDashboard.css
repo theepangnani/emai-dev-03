@@ -90,6 +90,13 @@
   font-weight: 500;
 }
 
+/* Hide motivational quote on mobile to save space (#670) */
+@media (max-width: 639px) {
+  .teacher-focus-inspiration {
+    display: none;
+  }
+}
+
 .teacher-focus-close {
   position: absolute;
   top: 10px;

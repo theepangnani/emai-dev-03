@@ -358,9 +358,9 @@
 }
 
 .ps-nav-item.active {
-  background: var(--color-accent-light);
+  background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
-  border-left: 3px solid var(--color-accent);
+  border-left: 3px solid var(--color-accent-strong);
 }
 
 .ps-nav-item:focus {
@@ -580,9 +580,8 @@
   margin: 0;
 }
 
-/* Tooltip on hover for icon-only sidebar (all screen sizes >=768px) */
+/* Tooltip on hover for icon-only quick-action items (labels are visible for nav items) */
 @media (min-width: 768px) {
-  .ps-nav-item[title]:hover::after,
   .ps-action-item[title]:hover::after {
     content: attr(title);
     position: absolute;
@@ -666,9 +665,9 @@
 }
 
 .sidebar-link.active {
-  background: var(--color-accent);
-  color: white;
-  border-color: transparent;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+  border-color: var(--color-accent-subtle);
 }
 
 .sidebar-badge {
@@ -682,7 +681,7 @@
 }
 
 .sidebar-link.active .sidebar-badge {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-accent);
   color: white;
 }
 
@@ -759,6 +758,22 @@
   font-size: 14px;
   color: var(--color-ink-muted);
   margin-top: 4px;
+}
+
+/* When inspiration is loaded, hide the fallback welcome on desktop */
+.welcome-fallback.has-inspiration {
+  display: none;
+}
+
+/* Hide motivational quote on mobile to save space (#670) */
+@media (max-width: 639px) {
+  .welcome-inspiration {
+    display: none;
+  }
+  /* Show fallback welcome on mobile even when inspiration is loaded */
+  .welcome-fallback.has-inspiration {
+    display: block;
+  }
 }
 
 .dashboard-grid {
