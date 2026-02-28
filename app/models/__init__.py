@@ -8,7 +8,7 @@ from app.models.message import Conversation, Message
 from app.models.notification import Notification
 from app.models.teacher_communication import TeacherCommunication
 from app.models.invite import Invite, InviteType
-from app.models.task import Task, TaskPriority
+from app.models.task import Task, TaskPriority, TaskTemplate, TaskComment
 from app.models.course_content import CourseContent, ContentType
 from app.models.audit_log import AuditLog, AuditAction
 from app.models.inspiration_message import InspirationMessage
@@ -38,6 +38,8 @@ __all__ = [
     "InviteType",
     "Task",
     "TaskPriority",
+    "TaskTemplate",
+    "TaskComment",
     "CourseContent",
     "ContentType",
     "AuditLog",
