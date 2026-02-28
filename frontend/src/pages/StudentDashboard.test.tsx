@@ -363,9 +363,10 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Chapter 1 Notes')).toBeInTheDocument()
+      // Materials appear in both Continue Studying and Study Materials sections
+      expect(screen.getAllByText('Chapter 1 Notes').length).toBeGreaterThanOrEqual(1)
     })
-    expect(screen.getByText('Quiz Practice')).toBeInTheDocument()
+    expect(screen.getAllByText('Quiz Practice').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows empty state for study materials', async () => {

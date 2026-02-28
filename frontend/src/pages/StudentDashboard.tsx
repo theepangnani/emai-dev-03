@@ -16,6 +16,9 @@ import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
+import { StreakMilestone } from '../components/StreakMilestone';
+import { ContinueStudying } from '../components/ContinueStudying';
+import { StreakHistory } from '../components/StreakHistory';
 import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -661,6 +664,8 @@ export function StudentDashboard() {
               <span>{streak} day{streak !== 1 ? 's' : ''}</span>
             </div>
           )}
+          <StreakMilestone streak={streak} />
+          <StreakHistory studyGuides={studyGuides} />
           <div className="sd-stat-chip">
             <span className="sd-stat-icon">{'\u{1F4DA}'}</span>
             <span>{courses.length} class{courses.length !== 1 ? 'es' : ''}</span>
@@ -807,6 +812,9 @@ export function StudentDashboard() {
         ] satisfies QuickAction[]}
         maxVisible={4}
       />
+
+      {/* ── Continue Studying ─────────────────────────────── */}
+      <ContinueStudying studyGuides={studyGuides} courses={courses} />
 
       {/* ── Main Content Grid ────────────────────────────── */}
       <div className="sd-main-grid">

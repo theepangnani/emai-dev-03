@@ -774,6 +774,54 @@
   color: var(--color-danger);
 }
 
+/* Announcement Preview */
+.announce-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--color-surface-alt, #f9fafb);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.announce-preview-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.announce-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-ink-muted);
+}
+
+.announce-preview-value {
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+.announce-preview-subject {
+  font-weight: 600;
+}
+
+.announce-preview-body {
+  font-size: 14px;
+  color: var(--color-ink);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* Tablet */
 @media (max-width: 768px) {
   .teacher-courses-grid {

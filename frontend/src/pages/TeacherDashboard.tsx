@@ -75,6 +75,7 @@ export function TeacherDashboard() {
   const [announceSending, setAnnounceSending] = useState(false);
   const [announceError, setAnnounceError] = useState('');
   const [announceSuccess, setAnnounceSuccess] = useState('');
+  const [announcePreview, setAnnouncePreview] = useState(false);
 
   // Upload material modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -297,6 +298,7 @@ export function TeacherDashboard() {
     setAnnounceBody('');
     setAnnounceError('');
     setAnnounceSuccess('');
+    setAnnouncePreview(false);
   };
 
   const handleSendAnnouncement = async () => {
@@ -382,7 +384,11 @@ export function TeacherDashboard() {
     return (
       <div className="teacher-focus-header">
         <div className="teacher-focus-main">
-          <span className="teacher-focus-icon">{unreadCount > 0 ? '\u{1F4EC}' : '\u{1F4DA}'}</span>
+          <span className="teacher-focus-icon">{unreadCount > 0 ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+          )}</span>
           <div>
             <div className="teacher-focus-title">
               {greeting}, {firstName}!
@@ -532,7 +538,7 @@ export function TeacherDashboard() {
             </div>
           ) : (
             <EmptyState
-              icon="📊"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></svg>}
               title="No recent activity"
               description="Activity will appear here as students interact with your classes."
             />
@@ -562,7 +568,7 @@ export function TeacherDashboard() {
             </div>
           ) : (
             <EmptyState
-              icon="✅"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
               title="No upcoming deadlines"
               description="All caught up!"
             />
@@ -637,7 +643,7 @@ export function TeacherDashboard() {
             </div>
           ) : (
             <EmptyState
-              icon="📚"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>}
               title="No classes yet"
               description="Create your first class to start organizing materials and assignments."
               action={{ label: 'Create a Class', onClick: () => setShowCreateModal(true) }}
@@ -762,7 +768,7 @@ export function TeacherDashboard() {
               </div>
             ) : googleAccountsExpanded ? (
               <EmptyState
-                icon="🔗"
+                icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>}
                 title="No Google accounts linked yet"
                 description="Connect your Google account to sync classes from Google Classroom."
               />
@@ -867,59 +873,112 @@ export function TeacherDashboard() {
       {showAnnounceModal && (
         <div className="modal-overlay" onClick={closeAnnounceModal}>
           <div className="modal" role="dialog" aria-modal="true" aria-label="Send Announcement" ref={announceModalRef} onClick={(e) => e.stopPropagation()}>
-            <h2>Send Announcement</h2>
-            <p className="modal-desc">
-              Send a message to all parents of students in a class.
-            </p>
-            <div className="modal-form">
-              <label>
-                Class *
-                <select
-                  value={announceCourseId}
-                  onChange={(e) => { setAnnounceCourseId(e.target.value ? Number(e.target.value) : ''); setAnnounceError(''); }}
-                  disabled={announceSending}
-                >
-                  <option value="">Select a class...</option>
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Subject *
-                <input
-                  type="text"
-                  value={announceSubject}
-                  onChange={(e) => { setAnnounceSubject(e.target.value); setAnnounceError(''); }}
-                  placeholder="e.g., Upcoming field trip"
-                  disabled={announceSending}
-                />
-              </label>
-              <label>
-                Message *
-                <textarea
-                  value={announceBody}
-                  onChange={(e) => { setAnnounceBody(e.target.value); setAnnounceError(''); }}
-                  placeholder="Write your announcement..."
-                  rows={5}
-                  disabled={announceSending}
-                />
-              </label>
-              {announceError && <p className="link-error">{announceError}</p>}
-              {announceSuccess && <p className="link-success">{announceSuccess}</p>}
-            </div>
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={closeAnnounceModal} disabled={announceSending}>
-                {announceSuccess ? 'Close' : 'Cancel'}
-              </button>
-              <button
-                className="generate-btn"
-                onClick={handleSendAnnouncement}
-                disabled={announceSending || !announceCourseId || !announceSubject.trim() || !announceBody.trim()}
-              >
-                {announceSending ? 'Sending...' : 'Send Announcement'}
-              </button>
-            </div>
+            <h2>{announcePreview ? 'Preview Announcement' : 'Send Announcement'}</h2>
+            {!announcePreview ? (
+              <>
+                <p className="modal-desc">
+                  Send a message to all parents of students in a class.
+                </p>
+                <div className="modal-form">
+                  <label>
+                    Class *
+                    <select
+                      value={announceCourseId}
+                      onChange={(e) => { setAnnounceCourseId(e.target.value ? Number(e.target.value) : ''); setAnnounceError(''); }}
+                      disabled={announceSending}
+                    >
+                      <option value="">Select a class...</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Subject *
+                    <input
+                      type="text"
+                      value={announceSubject}
+                      onChange={(e) => { setAnnounceSubject(e.target.value); setAnnounceError(''); }}
+                      placeholder="e.g., Upcoming field trip"
+                      disabled={announceSending}
+                    />
+                  </label>
+                  <label>
+                    Message *
+                    <textarea
+                      value={announceBody}
+                      onChange={(e) => { setAnnounceBody(e.target.value); setAnnounceError(''); }}
+                      placeholder="Write your announcement..."
+                      rows={5}
+                      disabled={announceSending}
+                    />
+                  </label>
+                  {announceError && <p className="link-error">{announceError}</p>}
+                  {announceSuccess && <p className="link-success">{announceSuccess}</p>}
+                </div>
+                <div className="modal-actions">
+                  <button className="cancel-btn" onClick={closeAnnounceModal} disabled={announceSending}>
+                    {announceSuccess ? 'Close' : 'Cancel'}
+                  </button>
+                  <button
+                    className="generate-btn"
+                    onClick={() => setAnnouncePreview(true)}
+                    disabled={announceSending || !announceCourseId || !announceSubject.trim() || !announceBody.trim()}
+                  >
+                    Send Announcement
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="announce-preview">
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Class</span>
+                    <span className="announce-preview-value">{courses.find(c => c.id === announceCourseId)?.name}</span>
+                  </div>
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Recipients</span>
+                    <span className="announce-preview-value">
+                      {(() => {
+                        const selectedCourse = courses.find(c => c.id === announceCourseId);
+                        const count = selectedCourse?.student_count ?? 0;
+                        return `${count} student${count !== 1 ? 's' : ''} (parents will be notified)`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Subject</span>
+                    <span className="announce-preview-value announce-preview-subject">{announceSubject}</span>
+                  </div>
+                  <div className="announce-preview-field">
+                    <span className="announce-preview-label">Message</span>
+                    <div className="announce-preview-body">{announceBody}</div>
+                  </div>
+                </div>
+                {announceError && <p className="link-error">{announceError}</p>}
+                {announceSuccess && <p className="link-success">{announceSuccess}</p>}
+                <div className="modal-actions">
+                  {announceSuccess ? (
+                    <button className="cancel-btn" onClick={closeAnnounceModal}>
+                      Close
+                    </button>
+                  ) : (
+                    <>
+                      <button className="cancel-btn" onClick={() => setAnnouncePreview(false)} disabled={announceSending}>
+                        Edit
+                      </button>
+                      <button
+                        className="generate-btn"
+                        onClick={handleSendAnnouncement}
+                        disabled={announceSending}
+                      >
+                        {announceSending ? 'Sending...' : 'Confirm Send'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -999,7 +1058,9 @@ export function TeacherDashboard() {
                   </div>
                 ) : (
                   <div className="upload-drop-prompt">
-                    <span className="upload-drop-icon">📁</span>
+                    <span className="upload-drop-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                    </span>
                     <span>Drag & drop a file here, or click to browse</span>
                   </div>
                 )}
