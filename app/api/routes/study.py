@@ -252,6 +252,24 @@ def auto_create_tasks_from_dates(
     now = datetime.now()
     one_year_ago = now - timedelta(days=365)
 
+    # Resolve assignment target and legacy columns up-front
+    assigned_to = None
+    legacy_student_id = None
+    if user.role == UserRole.PARENT:
+        child_ids = get_linked_children_user_ids(db, user.id)
+        if child_ids:
+            assigned_to = child_ids[0]
+            # Resolve legacy student_id from user_id
+            student_rec = db.query(Student).filter(Student.user_id == assigned_to).first()
+            if student_rec:
+                legacy_student_id = student_rec.id
+    elif user.role == UserRole.STUDENT:
+        # Students should be assigned their own auto-created tasks
+        assigned_to = user.id
+        student_rec = db.query(Student).filter(Student.user_id == user.id).first()
+        if student_rec:
+            legacy_student_id = student_rec.id
+
     for d in dates:
         try:
             due_date = datetime.strptime(d["date"], "%Y-%m-%d")
@@ -265,25 +283,19 @@ def auto_create_tasks_from_dates(
             logger.warning(f"Skipping historical date in auto-task creation: {d.get('date')} '{d.get('title')}'")
             continue
 
-        # Determine who the task should be assigned to
-        # If parent creating for a child, assign to first linked child
-        assigned_to = None
-        if user.role == UserRole.PARENT:
-            child_ids = get_linked_children_user_ids(db, user.id)
-            if child_ids:
-                assigned_to = child_ids[0]
-
         priority = d.get("priority", "medium")
         if priority not in ("low", "medium", "high"):
             priority = "medium"
 
         task = Task(
             title=d["title"],
-            description=f"Auto-created from class material generation",
+            description="Auto-created from study material generation",
             due_date=due_date,
             priority=priority,
             created_by_user_id=user.id,
             assigned_to_user_id=assigned_to,
+            parent_id=user.id,  # Legacy column — existing DB may have NOT NULL constraint
+            student_id=legacy_student_id,  # Legacy column
             study_guide_id=study_guide_id,
             course_id=course_id,
             course_content_id=course_content_id,
@@ -297,6 +309,24 @@ def auto_create_tasks_from_dates(
             "priority": priority,
         })
         logger.info(f"Auto-created task '{task.title}' due {d['date']} from study guide {study_guide_id}")
+
+    # Notify parents when tasks are auto-created for a student
+    if created_tasks and user.role == UserRole.STUDENT:
+        try:
+            task_titles = ", ".join(t["title"] for t in created_tasks[:3])
+            suffix = f" (+{len(created_tasks) - 3} more)" if len(created_tasks) > 3 else ""
+            notify_parents_of_student(
+                db=db,
+                student_user=user,
+                title="New study task created",
+                content=f"{user.full_name} has a new study task: {task_titles}{suffix}",
+                notification_type=NotificationType.TASK_DUE,
+                link=f"/tasks",
+                source_type="task",
+                source_id=created_tasks[0]["id"],
+            )
+        except Exception:
+            pass  # Never break primary action
 
     return created_tasks
 
