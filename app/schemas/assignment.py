@@ -30,3 +30,39 @@ class AssignmentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Submission schemas (#839) ──────────────────────────────
+
+class SubmissionResponse(BaseModel):
+    """Response for a student's assignment submission."""
+    id: int
+    student_id: int
+    assignment_id: int
+    status: str
+    submitted_at: datetime | None = None
+    grade: float | None = None
+    submission_file_name: str | None = None
+    submission_notes: str | None = None
+    is_late: bool = False
+    assignment_title: str | None = None
+    course_name: str | None = None
+    student_name: str | None = None
+    has_file: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class SubmissionListItem(BaseModel):
+    """Summary of a submission for teacher's list view."""
+    student_id: int
+    student_name: str
+    status: str
+    submitted_at: datetime | None = None
+    is_late: bool = False
+    grade: float | None = None
+    has_file: bool = False
+
+    class Config:
+        from_attributes = True
