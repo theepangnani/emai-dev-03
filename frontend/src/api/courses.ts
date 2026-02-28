@@ -271,11 +271,13 @@ export const courseContentsApi = {
     return response.data as CourseContentUpdateResponse;
   },
 
-  replaceFile: async (id: number, file: File) => {
+  replaceFile: async (id: number, file: File, options?: UploadOptions) => {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.put(`/api/course-contents/${id}/replace-file`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: options?.onUploadProgress,
+      signal: options?.signal,
     });
     return response.data as CourseContentUpdateResponse;
   },

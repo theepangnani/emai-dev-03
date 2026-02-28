@@ -135,7 +135,7 @@ export function StudyGuidesPage() {
 
   // Linked course tracking for unlinked material tagging (#623)
   const [linkedCourseIds, setLinkedCourseIds] = useState<Set<number>>(new Set());
-  const [courseStudentMap, setCourseStudentMap] = useState<Record<number, number[]>>({});
+  const [, setCourseStudentMap] = useState<Record<number, number[]>>({});
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
   const [assignFilter, setAssignFilter] = useState<'all' | 'unlinked' | 'assigned'>('all');
 
