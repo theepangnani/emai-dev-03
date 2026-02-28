@@ -432,6 +432,9 @@ class TestSearchByParticipantName:
         headers = _auth(client, msg_users["parent"].email)
         resp = client.get("/api/messages/search", params={"q": "Msg Teacher"}, headers=headers)
         assert resp.status_code == 200
-        results = resp.json()
+        data = resp.json()
+        results = data["results"]
         assert len(results) >= 1, "Search by participant name should return results"
         assert any(r["conversation_id"] == conv.id for r in results)
+        assert data["total"] >= 1
+        assert data["query"] == "Msg Teacher"

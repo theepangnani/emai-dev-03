@@ -20,6 +20,7 @@ from app.schemas.message import (
     MessageCreate,
     MessageResponse,
     MessageSearchResult,
+    MessageSearchResponse,
     RecipientOption,
     UnreadCountResponse,
 )
@@ -273,47 +274,62 @@ def _build_conversation_detail(
     )
 
 
-@router.get("/search", response_model=list[MessageSearchResult])
+@router.get("/search", response_model=MessageSearchResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def search_messages(
     request: Request,
     q: str = Query(..., min_length=2, max_length=100),
+    conversation_id: int | None = Query(None, description="Filter by conversation"),
+    date_from: datetime | None = Query(None, description="Filter messages from this date (ISO 8601)"),
+    date_to: datetime | None = Query(None, description="Filter messages up to this date (ISO 8601)"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    limit: int = Query(20, ge=1, le=50, description="Pagination limit"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Search messages across conversations the current user participates in.
 
-    Searches both Message.content and Conversation.subject using case-insensitive
-    LIKE matching. Returns up to 20 results, ordered by most recent first.
+    Searches Message.content, Conversation.subject, and participant names using
+    case-insensitive LIKE matching. Supports filtering by conversation_id and
+    date range. Returns paginated results ordered by most recent first.
     """
     escaped_q = escape_like(q)
     like_pattern = f"%{escaped_q}%"
 
     # Get conversations the current user participates in
+    user_conv_filter = or_(
+        Conversation.participant_1_id == current_user.id,
+        Conversation.participant_2_id == current_user.id,
+    )
     user_conversations = (
         db.query(Conversation.id)
-        .filter(
-            or_(
-                Conversation.participant_1_id == current_user.id,
-                Conversation.participant_2_id == current_user.id,
-            )
-        )
-        .subquery()
+        .filter(user_conv_filter)
     )
+    # If conversation_id is specified, also verify user has access
+    if conversation_id is not None:
+        user_conversations = user_conversations.filter(Conversation.id == conversation_id)
+    user_conversations = user_conversations.subquery()
+
+    # Build base date filters for messages
+    date_filters = []
+    if date_from is not None:
+        date_filters.append(Message.created_at >= date_from)
+    if date_to is not None:
+        date_filters.append(Message.created_at <= date_to)
 
     # Search messages by content match
-    content_results = (
+    content_query = (
         db.query(Message, Conversation.subject, User.full_name)
         .join(Conversation, Message.conversation_id == Conversation.id)
         .join(User, Message.sender_id == User.id)
         .filter(
             Message.conversation_id.in_(db.query(user_conversations.c.id)),
             sa_func.lower(Message.content).like(sa_func.lower(like_pattern)),
+            *date_filters,
         )
         .order_by(desc(Message.created_at))
-        .limit(20)
-        .all()
     )
+    content_results = content_query.all()
 
     # Search conversations by subject match (return the latest message from each)
     subject_match_convs = (
@@ -345,21 +361,20 @@ def search_messages(
     )
     subject_conv_ids |= {row[0] for row in participant_match_convs}
 
-    # For subject matches, get the latest message from each matching conversation
-    # that wasn't already found by content search
+    # For subject/participant matches, get the latest message from each matching
+    # conversation that wasn't already found by content search
     content_msg_ids = {msg.id for msg, _, _ in content_results}
     subject_results = []
     if subject_conv_ids:
-        # Get latest message per conversation for subject matches
         for conv_id in subject_conv_ids:
-            latest_msg = (
+            latest_query = (
                 db.query(Message, Conversation.subject, User.full_name)
                 .join(Conversation, Message.conversation_id == Conversation.id)
                 .join(User, Message.sender_id == User.id)
-                .filter(Message.conversation_id == conv_id)
+                .filter(Message.conversation_id == conv_id, *date_filters)
                 .order_by(desc(Message.created_at))
-                .first()
             )
+            latest_msg = latest_query.first()
             if latest_msg and latest_msg[0].id not in content_msg_ids:
                 subject_results.append(latest_msg)
 
@@ -372,21 +387,30 @@ def search_messages(
             seen_ids.add(msg.id)
             unique_results.append((msg, conv_subject, sender_name))
 
-    # Sort by sent_at descending and limit to 20
+    # Sort by sent_at descending
     unique_results.sort(key=lambda r: r[0].created_at, reverse=True)
-    unique_results = unique_results[:20]
+    total = len(unique_results)
 
-    return [
-        MessageSearchResult(
-            conversation_id=msg.conversation_id,
-            conversation_subject=conv_subject,
-            message_id=msg.id,
-            message_content=msg.content,
-            sender_name=sender_name,
-            sent_at=msg.created_at,
-        )
-        for msg, conv_subject, sender_name in unique_results
-    ]
+    # Apply pagination
+    paginated = unique_results[offset: offset + limit]
+
+    return MessageSearchResponse(
+        results=[
+            MessageSearchResult(
+                conversation_id=msg.conversation_id,
+                conversation_subject=conv_subject,
+                message_id=msg.id,
+                message_content=msg.content,
+                sender_name=sender_name,
+                sent_at=msg.created_at,
+            )
+            for msg, conv_subject, sender_name in paginated
+        ],
+        total=total,
+        offset=offset,
+        limit=limit,
+        query=q,
+    )
 
 
 @router.get("/recipients", response_model=list[RecipientOption])
