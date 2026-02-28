@@ -411,6 +411,279 @@
   text-transform: capitalize;
 }
 
+/* ── Section header with select all button ──── */
+.guides-section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.guides-select-all-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.guides-select-all-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+/* ── Assign status filter (#623) ──────────── */
+.guides-assign-filter {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.guides-assign-filter-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  margin-right: 4px;
+}
+
+.guides-assign-filter-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.guides-assign-filter-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
+}
+
+.guides-assign-filter-btn.active {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.guides-assign-filter-btn.has-unlinked:not(.active) {
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+
+.assign-filter-count {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  margin-left: 4px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.guides-assign-filter-btn.active .assign-filter-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.guides-batch-assign-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: auto;
+}
+
+.guides-batch-assign-btn:hover {
+  background: var(--color-accent-strong);
+}
+
+/* ── Unlinked material row styling (#623) ──── */
+.guide-row-unlinked {
+  border-left: 3px solid var(--color-warning-border);
+}
+
+.guide-row-checkbox {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.guide-row-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.guide-unlinked-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ── Quick assign button (#623) ─────────────── */
+.guide-assign-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.guide-assign-btn:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+.guide-assign-btn svg {
+  flex-shrink: 0;
+}
+
+/* ── Quick assign dropdown (multi-child) ────── */
+.guide-assign-dropdown {
+  position: relative;
+}
+
+.guide-assign-dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.guide-assign-dropdown:hover .guide-assign-dropdown-content,
+.guide-assign-dropdown:focus-within .guide-assign-dropdown-content {
+  display: block;
+}
+
+.guide-assign-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.guide-assign-dropdown-item:hover {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+/* ── Batch assign modal (#623) ──────────────── */
+.assign-children-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.assign-child-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.assign-child-item:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.assign-child-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.assign-child-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.assign-materials-summary {
+  padding: 12px 14px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.assign-materials-summary strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-ink);
+}
+
+.assign-materials-summary ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.assign-materials-summary li {
+  padding: 2px 0;
+}
+
 /* ── Responsive ─────────────────────────────── */
 @media (max-width: 480px) {
   .guides-child-selector {
@@ -443,6 +716,31 @@
     width: 100%;
     justify-content: flex-end;
     margin-top: 4px;
+  }
+
+  .guides-assign-filter {
+    gap: 4px;
+  }
+
+  .guides-assign-filter-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .guides-batch-assign-btn {
+    width: 100%;
+    text-align: center;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  .guides-section-header-row {
+    flex-wrap: wrap;
+  }
+
+  .guide-assign-dropdown-content {
+    right: auto;
+    left: 0;
   }
 }
 

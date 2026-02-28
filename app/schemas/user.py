@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from datetime import datetime, date
 
 from app.models.user import UserRole
@@ -8,17 +8,29 @@ from app.models.user import UserRole
 USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_]{3,30}$')
 
 
+def strip_whitespace(v: object) -> object:
+    """Reusable whitespace stripper for string fields."""
+    if isinstance(v, str):
+        return v.strip()
+    return v
+
+
 class UserCreate(BaseModel):
     email: EmailStr | None = None
     username: str | None = None
     parent_email: EmailStr | None = None
-    password: str
-    full_name: str
+    password: str = Field(min_length=8, max_length=128)
+    full_name: str = Field(min_length=1, max_length=255)
     role: UserRole | None = None  # Single role (backward compat)
     roles: list[UserRole] = []    # New multi-role field
-    teacher_type: str | None = None  # only relevant when role=teacher
-    google_id: str | None = None
+    teacher_type: str | None = Field(default=None, max_length=50)
+    google_id: str | None = Field(default=None, max_length=255)
     date_of_birth: date | None = None  # Optional DOB for students (#783)
+
+    @field_validator('full_name', 'teacher_type', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
     @model_validator(mode='after')
     def validate_roles(self):
@@ -60,14 +72,14 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class UserResponse(BaseModel):
     id: int
     email: str | None = None
     username: str | None = None
-    full_name: str
+    full_name: str = Field(max_length=255)
     role: UserRole | None = None
     roles: list[str] = []
     is_active: bool
@@ -90,7 +102,7 @@ class UserResponse(BaseModel):
 
 
 class SwitchRoleRequest(BaseModel):
-    role: str
+    role: str = Field(min_length=1, max_length=20)
 
 
 class Token(BaseModel):
@@ -104,14 +116,14 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
+    token: str = Field(min_length=1, max_length=500)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class OnboardingRequest(BaseModel):
     roles: list[str]
-    teacher_type: str | None = None
+    teacher_type: str | None = Field(default=None, max_length=50)
 
 
 class EmailVerifyRequest(BaseModel):
-    token: str
+    token: str = Field(min_length=1, max_length=500)

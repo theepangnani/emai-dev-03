@@ -1,5 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+
+from app.schemas.user import strip_whitespace
 
 
 # --- Grade Data (from StudentAssignment + Assignment) ---
@@ -75,7 +77,12 @@ class ProgressReportResponse(BaseModel):
 
 class AIInsightRequest(BaseModel):
     student_id: int
-    focus_area: str | None = None
+    focus_area: str | None = Field(default=None, max_length=500)
+
+    @field_validator('focus_area', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class AIInsightResponse(BaseModel):

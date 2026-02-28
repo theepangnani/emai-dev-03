@@ -1,18 +1,25 @@
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import datetime
 from typing import Optional
+
+from app.schemas.user import strip_whitespace
 
 VALID_CONTENT_TYPES = {"notes", "syllabus", "labs", "assignments", "readings", "resources", "other"}
 
 
 class CourseContentCreate(BaseModel):
     course_id: int
-    title: str
-    description: Optional[str] = None
-    text_content: Optional[str] = None
+    title: str = Field(min_length=1, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    text_content: Optional[str] = Field(default=None, max_length=100000)
     content_type: str = "other"
-    reference_url: Optional[str] = None
-    google_classroom_url: Optional[str] = None
+    reference_url: Optional[str] = Field(default=None, max_length=1000)
+    google_classroom_url: Optional[str] = Field(default=None, max_length=1000)
+
+    @field_validator('title', 'description', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
     @field_validator("content_type")
     @classmethod
@@ -24,13 +31,18 @@ class CourseContentCreate(BaseModel):
 
 
 class CourseContentUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    text_content: Optional[str] = None
+    title: Optional[str] = Field(default=None, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    text_content: Optional[str] = Field(default=None, max_length=100000)
     content_type: Optional[str] = None
-    reference_url: Optional[str] = None
-    google_classroom_url: Optional[str] = None
+    reference_url: Optional[str] = Field(default=None, max_length=1000)
+    google_classroom_url: Optional[str] = Field(default=None, max_length=1000)
     course_id: Optional[int] = None
+
+    @field_validator('title', 'description', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
     @field_validator("content_type")
     @classmethod

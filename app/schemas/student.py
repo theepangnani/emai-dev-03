@@ -1,11 +1,18 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, date
+
+from app.schemas.user import strip_whitespace
 
 
 class StudentCreate(BaseModel):
     user_id: int
     grade_level: int | None = None
-    school_name: str | None = None
+    school_name: str | None = Field(default=None, max_length=200)
+
+    @field_validator('school_name', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class StudentResponse(BaseModel):
@@ -13,10 +20,6 @@ class StudentResponse(BaseModel):
     user_id: int
     grade_level: int | None
     school_name: str | None
-    date_of_birth: date | None = None
-    consent_status: str | None = None
-    parent_consent_given_at: datetime | None = None
-    student_consent_given_at: datetime | None = None
     created_at: datetime
 
     class Config:

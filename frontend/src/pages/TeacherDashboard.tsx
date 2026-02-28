@@ -11,6 +11,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
+import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -61,12 +62,8 @@ export function TeacherDashboard() {
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [resentToastId, setResentToastId] = useState<number | null>(null);
   const [invitesExpanded, setInvitesExpanded] = useState(true);
-  const [coursesExpanded, setCoursesExpanded] = useState(true);
   const [googleAccountsExpanded, setGoogleAccountsExpanded] = useState(true);
   const [resendError, setResendError] = useState<string | null>(null);
-
-  // Course search
-  const [courseSearch, setCourseSearch] = useState('');
   // Announcement modal state
   const [showAnnounceModal, setShowAnnounceModal] = useState(false);
   const [announceCourseId, setAnnounceCourseId] = useState<number | ''>('');
@@ -577,81 +574,19 @@ export function TeacherDashboard() {
       </div>
 
       <div className="dashboard-sections">
-        <section className="section teacher-courses-section">
-          <div className="section-header">
-            <button className="collapse-toggle" onClick={() => setCoursesExpanded(v => !v)}>
-              <span className={`section-chevron${coursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
-              <h3>Your Classes ({courses.length})</h3>
-            </button>
-            <div className="section-header-actions">
-              {googleConnected && (
-                <button className="sync-btn" onClick={handleSyncCourses} disabled={syncing}>
-                  {syncing ? 'Syncing...' : 'Sync Classes'}
-                </button>
-              )}
-              <button className="create-custom-btn" onClick={() => setShowCreateModal(true)}>
-                + Create Class
-              </button>
-            </div>
+        {/* Course Management Section (#947) */}
+        <TeacherCourseManagement
+          googleConnected={googleConnected}
+          onSync={handleSyncCourses}
+          syncing={syncing}
+          onCreateCourse={() => setShowCreateModal(true)}
+        />
+
+        {syncMessage && (
+          <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`} style={{ gridColumn: '1 / -1' }}>
+            {syncMessage}
           </div>
-          {coursesExpanded && (
-          <>
-          {syncMessage && (
-            <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`}>
-              {syncMessage}
-            </div>
-          )}
-          {courses.length > 3 && (
-            <>
-              <label htmlFor="teacher-course-search" className="sr-only">Search classes</label>
-              <input
-                id="teacher-course-search"
-                type="text"
-                className="courses-search-input"
-                placeholder="Search classes by name or subject..."
-                value={courseSearch}
-                onChange={(e) => setCourseSearch(e.target.value)}
-                style={{ marginBottom: 16 }}
-              />
-            </>
-          )}
-          {courses.length > 0 ? (
-            <div className="teacher-courses-grid">
-              {courses.filter(c =>
-                !courseSearch ||
-                c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
-                (c.subject && c.subject.toLowerCase().includes(courseSearch.toLowerCase()))
-              ).map((course) => (
-                <div key={course.id} className="teacher-course-card" onClick={() => navigate(`/courses/${course.id}`)}>
-                  <div className="course-card-header">
-                    <h4>{course.name}</h4>
-                    <span className={`course-source-badge ${course.google_classroom_id ? 'source-google' : 'source-manual'}`}>
-                      {course.google_classroom_id ? 'Google Classroom' : 'Manual'}
-                    </span>
-                  </div>
-                  {course.subject && <span className="course-subject-tag">{course.subject}</span>}
-                  {course.description && (
-                    <p className="course-desc">{course.description}</p>
-                  )}
-                  <div className="course-card-footer">
-                    <span className="course-student-count">
-                      {course.student_count} {course.student_count === 1 ? 'student' : 'students'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>}
-              title="No classes yet"
-              description="Create your first class to start organizing materials and assignments."
-              action={{ label: 'Create a Class', onClick: () => setShowCreateModal(true) }}
-            />
-          )}
-          </>
-          )}
-        </section>
+        )}
 
         {/* Sent Invites Section */}
         {sentInvites.length > 0 && (

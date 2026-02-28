@@ -21,7 +21,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   loginWithToken: (token: string, refreshToken?: string) => void;
-  register: (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles: string[]; teacher_type?: string; google_id?: string }) => Promise<void>;
+  register: (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string }) => Promise<void>;
   logout: () => void;
   switchRole: (role: string) => Promise<void>;
   completeOnboarding: (roles: string[], teacherType?: string) => Promise<void>;
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
   };
 
-  const register = async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles: string[]; teacher_type?: string; google_id?: string }) => {
+  const register = async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string }) => {
     await authApi.register(data);
     // Login with email or username, whichever was provided
     const identifier = data.email || data.username || '';

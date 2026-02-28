@@ -1,20 +1,32 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+
+from app.schemas.user import strip_whitespace
 
 
 class AssignmentCreate(BaseModel):
-    title: str
-    description: str | None = None
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
     course_id: int
     due_date: datetime | None = None
     max_points: float | None = None
 
+    @field_validator('title', 'description', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
+
 
 class AssignmentUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
     due_date: datetime | None = None
     max_points: float | None = None
+
+    @field_validator('title', 'description', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class AssignmentResponse(BaseModel):

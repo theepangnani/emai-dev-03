@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""  # Gmail App Password
 
+    # Shadow teacher auto-invite (#946)
+    auto_invite_shadow_teachers: bool = True
+
     # File storage
     upload_dir: str = "./uploads"
 

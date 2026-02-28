@@ -140,62 +140,66 @@ export function DocumentTab({
 
   return (
     <div className="cm-document-tab">
-      <div className="cm-guide-actions">
-        {isEditing ? (
-          <>
-            <button className="cm-action-btn primary" onClick={handleSaveTextContent} disabled={editSaving}>
-              {editSaving ? 'Saving...' : '\u{1F4BE} Save'}
-            </button>
-            <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
-          </>
-        ) : (
-          <>
-            {hasContent && (
-              <>
-                <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
-                <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
-              </>
-            )}
-            {content.has_file && (
-              <button className="cm-action-btn" onClick={onDownload} disabled={downloading}>
-                {downloading ? 'Downloading...' : '\u{1F4CB} Download Original'}
+      <div className="cm-tab-card">
+        <div className="cm-guide-actions">
+          {isEditing ? (
+            <>
+              <button className="cm-action-btn primary" onClick={handleSaveTextContent} disabled={editSaving}>
+                {editSaving ? 'Saving...' : '\u{1F4BE} Save'}
               </button>
-            )}
-            {!content.has_file && (
-              <button className="cm-action-btn" onClick={handleStartEdit}>{'\u270F\uFE0F'} Edit Content</button>
-            )}
-            <button className="cm-action-btn" onClick={onShowReplaceModal}>
-              {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
-            </button>
-          </>
-        )}
-      </div>
-      {isEditing ? (
-        <textarea
-          className="cm-edit-textarea"
-          value={editTextContent}
-          onChange={(e) => setEditTextContent(e.target.value)}
-          rows={20}
-          disabled={editSaving}
-        />
-      ) : (
-        <div ref={printRef}>
-          {content.text_content ? (
-            <ContentCard ocrCheckText={content.text_content}>
-              <FormattedContent textContent={content.text_content} />
-            </ContentCard>
-          ) : content.has_file ? (
-            <div className="cm-file-info-card">
-              <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
-              <p className="cm-file-info-hint">Use the Download button above to get the original file.</p>
-            </div>
-          ) : content.description ? (
-            <p className="cm-document-desc">{content.description}</p>
+              <button className="cm-action-btn" onClick={() => setIsEditing(false)} disabled={editSaving}>Cancel</button>
+            </>
           ) : (
-            <p className="cm-empty-message">No document content available.</p>
+            <>
+              {hasContent && (
+                <>
+                  <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+                  <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
+                </>
+              )}
+              {content.has_file && (
+                <button className="cm-action-btn" onClick={onDownload} disabled={downloading}>
+                  {downloading ? 'Downloading...' : '\u{1F4CB} Download Original'}
+                </button>
+              )}
+              {!content.has_file && (
+                <button className="cm-action-btn" onClick={handleStartEdit}>{'\u270F\uFE0F'} Edit Content</button>
+              )}
+              <button className="cm-action-btn" onClick={onShowReplaceModal}>
+                {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
+              </button>
+            </>
           )}
         </div>
-      )}
+        <div className="cm-tab-card-body">
+          {isEditing ? (
+            <textarea
+              className="cm-edit-textarea"
+              value={editTextContent}
+              onChange={(e) => setEditTextContent(e.target.value)}
+              rows={20}
+              disabled={editSaving}
+            />
+          ) : (
+            <div ref={printRef}>
+              {content.text_content ? (
+                <ContentCard ocrCheckText={content.text_content}>
+                  <FormattedContent textContent={content.text_content} />
+                </ContentCard>
+              ) : content.has_file ? (
+                <div className="cm-file-info-card">
+                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
+                  <p className="cm-file-info-hint">Use the Download button above to get the original file.</p>
+                </div>
+              ) : content.description ? (
+                <p className="cm-document-desc">{content.description}</p>
+              ) : (
+                <p className="cm-empty-message">No document content available.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
       {content.reference_url && (
         <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">
           View Original Source

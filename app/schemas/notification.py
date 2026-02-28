@@ -1,16 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 
 from app.models.notification import NotificationType
+from app.schemas.user import strip_whitespace
 
 
 class NotificationCreate(BaseModel):
     user_id: int
     type: NotificationType
-    title: str
-    content: Optional[str] = None
-    link: Optional[str] = None
+    title: str = Field(min_length=1, max_length=255)
+    content: Optional[str] = Field(default=None, max_length=5000)
+    link: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator('title', 'content', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class NotificationResponse(BaseModel):
@@ -36,8 +42,8 @@ class NotificationResponse(BaseModel):
 
 class NotificationPreferences(BaseModel):
     email_notifications: bool
-    assignment_reminder_days: str
-    task_reminder_days: str = "1,3"
+    assignment_reminder_days: str = Field(max_length=50)
+    task_reminder_days: str = Field(default="1,3", max_length=50)
 
 
 class UnreadCountResponse(BaseModel):

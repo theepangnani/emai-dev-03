@@ -1,11 +1,4 @@
 import { api } from './client';
-import type { AxiosProgressEvent } from 'axios';
-
-/** Options for upload methods that support progress tracking and cancellation */
-export interface UploadOptions {
-  onUploadProgress?: (event: AxiosProgressEvent) => void;
-  signal?: AbortSignal;
-}
 
 // Course Content Types
 export interface CourseContentItem {
@@ -70,6 +63,12 @@ export interface BulkTaskCreateResponse {
   tasks: CreatedTaskSummary[];
 }
 
+/** Options for upload operations */
+export interface UploadOptions {
+  onUploadProgress?: (event: { loaded: number; total?: number }) => void;
+  signal?: AbortSignal;
+}
+
 /** Result for a single file in a bulk upload */
 export interface BulkUploadFileResult {
   filename: string;
@@ -86,6 +85,18 @@ export interface BulkUploadResponse {
   results: BulkUploadFileResult[];
 }
 
+export interface LinkedCourseChild {
+  student_id: number;
+  user_id: number;
+  full_name: string;
+}
+
+export interface LinkedCourseIdsResponse {
+  linked_course_ids: number[];
+  course_student_map: Record<number, number[]>;
+  children: LinkedCourseChild[];
+}
+
 // Assignment Types
 export interface AssignmentItem {
   id: number;
@@ -96,6 +107,27 @@ export interface AssignmentItem {
   google_classroom_id: string | null;
   due_date: string | null;
   max_points: number | null;
+  created_at: string;
+}
+
+// Teacher Course Management type (#947)
+export interface TeacherCourseManagement {
+  id: number;
+  name: string;
+  description: string | null;
+  subject: string | null;
+  google_classroom_id: string | null;
+  classroom_type: string | null;
+  teacher_id: number | null;
+  teacher_name: string | null;
+  created_by_user_id: number | null;
+  is_private: boolean;
+  is_default: boolean;
+  student_count: number;
+  assignment_count: number;
+  material_count: number;
+  last_activity: string | null;
+  source: 'google' | 'manual' | 'admin';
   created_at: string;
 }
 
@@ -113,6 +145,11 @@ export const coursesApi = {
 
   teachingList: async () => {
     const response = await api.get('/api/courses/teaching');
+    return response.data;
+  },
+
+  teachingManagement: async (): Promise<TeacherCourseManagement[]> => {
+    const response = await api.get('/api/courses/teaching/management');
     return response.data;
   },
 
@@ -209,7 +246,7 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
-  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string, options?: UploadOptions) => {
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('course_id', String(courseId));
@@ -217,8 +254,6 @@ export const courseContentsApi = {
     if (contentType) formData.append('content_type', contentType);
     const response = await api.post('/api/course-contents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: options?.onUploadProgress,
-      signal: options?.signal,
     });
     return response.data as CourseContentItem;
   },
@@ -236,13 +271,11 @@ export const courseContentsApi = {
     return response.data as CourseContentUpdateResponse;
   },
 
-  replaceFile: async (id: number, file: File, options?: UploadOptions) => {
+  replaceFile: async (id: number, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.put(`/api/course-contents/${id}/replace-file`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: options?.onUploadProgress,
-      signal: options?.signal,
     });
     return response.data as CourseContentUpdateResponse;
   },
@@ -283,6 +316,11 @@ export const courseContentsApi = {
       signal: options?.signal,
     });
     return response.data as BulkUploadResponse;
+  },
+
+  getLinkedCourseIds: async () => {
+    const response = await api.get('/api/course-contents/linked-course-ids');
+    return response.data as LinkedCourseIdsResponse;
   },
 
   download: async (id: number, originalFilename?: string) => {
