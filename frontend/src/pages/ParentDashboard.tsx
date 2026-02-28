@@ -1,10 +1,12 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
+import { ActivityFeed } from '../components/parent/ActivityFeed';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
+import { AddActionButton } from '../components/AddActionButton';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
@@ -97,6 +99,7 @@ function loadViewMode(): 'simplified' | 'full' {
 export function ParentDashboard() {
   const { user } = useAuth();
   const pd = useParentDashboard();
+  const activityCount = useMemo(() => Math.min(pd.courseMaterials.length, 10), [pd.courseMaterials]);
   const [tipDismissed, setTipDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
@@ -142,11 +145,11 @@ export function ParentDashboard() {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
       if (next === 'simplified') {
-        const collapsed: SectionStates = { comingUp: false, studentDetail: false, grades: false };
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false, activityFeed: false, grades: false };
         setSectionStates(collapsed);
         saveSectionStates(collapsed);
       } else {
-        const expanded: SectionStates = { comingUp: true, studentDetail: true, grades: true };
+        const expanded: SectionStates = { comingUp: true, studentDetail: true, activityFeed: true, grades: true };
         setSectionStates(expanded);
         saveSectionStates(expanded);
       }
@@ -319,17 +322,12 @@ export function ParentDashboard() {
                   </button>
                 );
               })}
-              {/* "+" add child button */}
-              <button
-                className="pd-child-tab pd-add-child-btn"
-                onClick={() => pd.setShowLinkModal(true)}
-                aria-label="Add child"
-                title="Add child"
-              >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                  <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
+              <AddActionButton
+                actions={[
+                  { icon: '\u{1F4DD}', label: 'Upload Documents', onClick: () => pd.setShowStudyModal(true) },
+                  { icon: '\u2705', label: 'Create Task', onClick: () => pd.setShowCreateTaskModal(true) },
+                ]}
+              />
             </div>
           </div>
 
@@ -477,7 +475,20 @@ export function ParentDashboard() {
               onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
             />
           </CollapsibleSection>
-
+
+          {/* Activity Feed (#832 - collapsible) */}
+          <CollapsibleSection
+            title="Recent Activity"
+            badge={activityCount}
+            expanded={sectionStates.activityFeed}
+            onToggle={() => updateSection('activityFeed', !sectionStates.activityFeed)}
+          >
+            <ActivityFeed
+              courseMaterials={pd.courseMaterials}
+              onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
+              onViewAllMaterials={() => pd.navigate('/course-materials')}
+            />
+          </CollapsibleSection>
 
           {/* Calendar moved to Tasks page */}
         </>
