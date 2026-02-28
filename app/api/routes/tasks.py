@@ -252,6 +252,26 @@ def update_task(
             task_service.toggle_completion(task, current_user, request.is_completed)
             db.commit()
             db.refresh(task)
+
+            # Notify the task creator (parent) when assignee completes the task
+            if request.is_completed and task.created_by_user_id and task.created_by_user_id != current_user.id:
+                try:
+                    creator = db.query(User).filter(User.id == task.created_by_user_id).first()
+                    if creator:
+                        notification = Notification(
+                            user_id=creator.id,
+                            type=NotificationType.TASK_DUE,
+                            title=f"{current_user.full_name} completed \"{task.title}\"",
+                            content=f"{current_user.full_name} has completed the task \"{task.title}\".",
+                            link=f"/tasks/{task.id}",
+                            source_type="task",
+                            source_id=task.id,
+                        )
+                        db.add(notification)
+                        db.commit()
+                except Exception:
+                    pass  # Never break primary action
+
             return _task_to_response(task)
         else:
             raise HTTPException(status_code=403, detail="Only the task creator can edit task details")

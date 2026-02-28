@@ -26,13 +26,31 @@ def list_notifications(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     unread_only: bool = Query(False),
+    status: str | None = Query(None, description="Filter: 'unread' (not acknowledged), 'acked', or 'all'"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List notifications for the current user, newest first."""
+    """List notifications for the current user, newest first.
+
+    Supports filtering by status:
+    - status=unread  — only non-acknowledged notifications (acked_at IS NULL)
+    - status=acked   — only acknowledged notifications
+    - status=all     — all notifications (default)
+
+    The legacy unread_only parameter filters by the 'read' boolean field.
+    """
     q = db.query(Notification).filter(Notification.user_id == current_user.id)
+
+    # Apply status filter (ACK-based)
+    if status == "unread":
+        q = q.filter(Notification.acked_at.is_(None))
+    elif status == "acked":
+        q = q.filter(Notification.acked_at.isnot(None))
+
+    # Legacy filter (read-based)
     if unread_only:
         q = q.filter(Notification.read == False)
+
     notifications = q.order_by(desc(Notification.created_at)).offset(skip).limit(limit).all()
     return notifications
 
