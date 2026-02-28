@@ -40,6 +40,17 @@ export function MessagesPage() {
   const [searchActive, setSearchActive] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Scroll-to-message state (set when clicking a search result)
+  const [scrollToMessageId, setScrollToMessageId] = useState<number | null>(null);
+
+  // In-thread search state
+  const [threadSearchOpen, setThreadSearchOpen] = useState(false);
+  const [threadSearchQuery, setThreadSearchQuery] = useState('');
+  const [threadSearchMatches, setThreadSearchMatches] = useState<number[]>([]);
+  const [threadSearchIndex, setThreadSearchIndex] = useState(0);
+  const threadSearchInputRef = useRef<HTMLInputElement>(null);
+  const threadSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // New conversation form state
   const [selectedRecipient, setSelectedRecipient] = useState<number | null>(null);
   const [newSubject, setNewSubject] = useState('');
@@ -76,10 +87,37 @@ export function MessagesPage() {
     }
   }, [searchParams, recipients]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change (unless scrolling to a specific message)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedConversation?.messages]);
+    if (scrollToMessageId && selectedConversation) {
+      // Try to scroll to the target message
+      const el = document.getElementById(`msg-${scrollToMessageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('message-highlight');
+        setTimeout(() => el.classList.remove('message-highlight'), 2000);
+        setScrollToMessageId(null);
+      }
+    } else if (!scrollToMessageId) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedConversation?.messages, scrollToMessageId]);
+
+  // Ctrl+F handler for in-thread search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && selectedConversation) {
+        e.preventDefault();
+        setThreadSearchOpen(true);
+        setTimeout(() => threadSearchInputRef.current?.focus(), 50);
+      }
+      if (e.key === 'Escape' && threadSearchOpen) {
+        closeThreadSearch();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedConversation, threadSearchOpen]);
 
   // Poll active conversation more frequently
   useEffect(() => {
@@ -130,13 +168,19 @@ export function MessagesPage() {
     }
   };
 
-  const selectConversation = async (id: number) => {
+  const selectConversation = async (id: number, targetMessageId?: number) => {
     setLoadingConversation(true);
+    closeThreadSearch();
     try {
-      const detail = await messagesApi.getConversation(id, { offset: 0, limit: messageLimit });
+      // Load all messages to ensure the target message is visible
+      const loadLimit = targetMessageId ? 200 : messageLimit;
+      const detail = await messagesApi.getConversation(id, { offset: 0, limit: loadLimit });
       setSelectedConversation(detail);
       setMessageOffset(detail.messages.length);
       setHasMoreMessages(detail.messages.length < detail.messages_total);
+      if (targetMessageId) {
+        setScrollToMessageId(targetMessageId);
+      }
       await messagesApi.markAsRead(id);
       loadConversations(true); // Refresh unread counts
     } catch (err) {
@@ -300,6 +344,82 @@ export function MessagesPage() {
     setIsSearching(false);
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
+    }
+  };
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query || query.length < 2) return <>{text}</>;
+    const parts: React.ReactNode[] = [];
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let lastIndex = 0;
+    let idx = lowerText.indexOf(lowerQuery, lastIndex);
+    let keyCounter = 0;
+    while (idx !== -1) {
+      if (idx > lastIndex) {
+        parts.push(<span key={keyCounter++}>{text.slice(lastIndex, idx)}</span>);
+      }
+      parts.push(<mark key={keyCounter++}>{text.slice(idx, idx + query.length)}</mark>);
+      lastIndex = idx + query.length;
+      idx = lowerText.indexOf(lowerQuery, lastIndex);
+    }
+    if (lastIndex < text.length) {
+      parts.push(<span key={keyCounter++}>{text.slice(lastIndex)}</span>);
+    }
+    return <>{parts}</>;
+  };
+
+  // In-thread search functions
+  const handleThreadSearchChange = (value: string) => {
+    setThreadSearchQuery(value);
+    if (threadSearchDebounceRef.current) {
+      clearTimeout(threadSearchDebounceRef.current);
+    }
+    if (value.length < 2 || !selectedConversation) {
+      setThreadSearchMatches([]);
+      setThreadSearchIndex(0);
+      return;
+    }
+    threadSearchDebounceRef.current = setTimeout(() => {
+      const lowerQuery = value.toLowerCase();
+      const matches = selectedConversation.messages
+        .filter((msg) => msg.content.toLowerCase().includes(lowerQuery))
+        .map((msg) => msg.id);
+      setThreadSearchMatches(matches);
+      setThreadSearchIndex(0);
+      // Scroll to first match
+      if (matches.length > 0) {
+        scrollToThreadMatch(matches[0]);
+      }
+    }, 200);
+  };
+
+  const scrollToThreadMatch = (messageId: number) => {
+    const el = document.getElementById(`msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const navigateThreadSearch = (direction: 'prev' | 'next') => {
+    if (threadSearchMatches.length === 0) return;
+    let newIndex: number;
+    if (direction === 'next') {
+      newIndex = (threadSearchIndex + 1) % threadSearchMatches.length;
+    } else {
+      newIndex = (threadSearchIndex - 1 + threadSearchMatches.length) % threadSearchMatches.length;
+    }
+    setThreadSearchIndex(newIndex);
+    scrollToThreadMatch(threadSearchMatches[newIndex]);
+  };
+
+  const closeThreadSearch = () => {
+    setThreadSearchOpen(false);
+    setThreadSearchQuery('');
+    setThreadSearchMatches([]);
+    setThreadSearchIndex(0);
+    if (threadSearchDebounceRef.current) {
+      clearTimeout(threadSearchDebounceRef.current);
     }
   };
 
@@ -483,15 +603,82 @@ export function MessagesPage() {
           ) : selectedConversation ? (
             <>
               <div className="thread-header">
-                <button className="mobile-back-btn" onClick={() => setSelectedConversation(null)}>&larr; Back</button>
-                <h2>{getOtherParticipantName(selectedConversation)}</h2>
-                {selectedConversation.student_name && (
-                  <span className="thread-student">
-                    Regarding: {selectedConversation.student_name}
-                  </span>
-                )}
-                {selectedConversation.subject && (
-                  <span className="thread-subject">{selectedConversation.subject}</span>
+                <div className="thread-header-top">
+                  <button className="mobile-back-btn" onClick={() => setSelectedConversation(null)}>&larr; Back</button>
+                  <div className="thread-header-info">
+                    <h2>{getOtherParticipantName(selectedConversation)}</h2>
+                    {selectedConversation.student_name && (
+                      <span className="thread-student">
+                        Regarding: {selectedConversation.student_name}
+                      </span>
+                    )}
+                    {selectedConversation.subject && (
+                      <span className="thread-subject">{selectedConversation.subject}</span>
+                    )}
+                  </div>
+                  <button
+                    className="thread-search-toggle"
+                    onClick={() => {
+                      if (threadSearchOpen) {
+                        closeThreadSearch();
+                      } else {
+                        setThreadSearchOpen(true);
+                        setTimeout(() => threadSearchInputRef.current?.focus(), 50);
+                      }
+                    }}
+                    aria-label="Search in conversation"
+                    title="Search in conversation (Ctrl+F)"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                  </button>
+                </div>
+                {threadSearchOpen && (
+                  <div className="thread-search-bar">
+                    <input
+                      ref={threadSearchInputRef}
+                      type="text"
+                      className="thread-search-input"
+                      placeholder="Search in conversation..."
+                      value={threadSearchQuery}
+                      onChange={(e) => handleThreadSearchChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          navigateThreadSearch(e.shiftKey ? 'prev' : 'next');
+                        }
+                      }}
+                    />
+                    {threadSearchMatches.length > 0 && (
+                      <span className="thread-search-count">
+                        {threadSearchIndex + 1}/{threadSearchMatches.length}
+                      </span>
+                    )}
+                    {threadSearchQuery.length >= 2 && threadSearchMatches.length === 0 && (
+                      <span className="thread-search-count">No results</span>
+                    )}
+                    <button
+                      className="thread-search-nav"
+                      onClick={() => navigateThreadSearch('prev')}
+                      disabled={threadSearchMatches.length === 0}
+                      aria-label="Previous match"
+                    >
+                      &uarr;
+                    </button>
+                    <button
+                      className="thread-search-nav"
+                      onClick={() => navigateThreadSearch('next')}
+                      disabled={threadSearchMatches.length === 0}
+                      aria-label="Next match"
+                    >
+                      &darr;
+                    </button>
+                    <button className="thread-search-close" onClick={closeThreadSearch} aria-label="Close search">
+                      &times;
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="messages-list">
@@ -502,22 +689,31 @@ export function MessagesPage() {
                     </button>
                   </div>
                 )}
-                {selectedConversation.messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`message ${msg.sender_id === user?.id ? 'sent' : 'received'}`}
-                  >
-                    <div className="message-content">{msg.content}</div>
-                    <div className="message-meta">
-                      <span className="message-time">
-                        {new Date(msg.created_at).toLocaleString()}
-                      </span>
-                      {msg.sender_id === user?.id && msg.is_read && (
-                        <span className="read-indicator">Read</span>
-                      )}
+                {selectedConversation.messages.map((msg) => {
+                  const isThreadMatch = threadSearchMatches.includes(msg.id);
+                  const isCurrentThreadMatch = threadSearchMatches[threadSearchIndex] === msg.id;
+                  return (
+                    <div
+                      key={msg.id}
+                      id={`msg-${msg.id}`}
+                      className={`message ${msg.sender_id === user?.id ? 'sent' : 'received'}${isThreadMatch ? ' thread-match' : ''}${isCurrentThreadMatch ? ' thread-match-active' : ''}`}
+                    >
+                      <div className="message-content">
+                        {threadSearchQuery.length >= 2 && isThreadMatch
+                          ? highlightMatch(msg.content, threadSearchQuery)
+                          : msg.content}
+                      </div>
+                      <div className="message-meta">
+                        <span className="message-time">
+                          {new Date(msg.created_at).toLocaleString()}
+                        </span>
+                        {msg.sender_id === user?.id && msg.is_read && (
+                          <span className="read-indicator">Read</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
               <div className="message-input">

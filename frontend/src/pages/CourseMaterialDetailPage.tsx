@@ -10,15 +10,18 @@ import { DetailSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { PageNav } from '../components/PageNav';
+import { MaterialHeader } from './course-material/MaterialHeader';
+import { TabNavigation, type TabKey } from './course-material/TabNavigation';
 import { DocumentTab } from './course-material/DocumentTab';
 import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
+import { RegenPromptBanner } from './course-material/RegenPromptBanner';
+import { UploadStatusIndicator } from './course-material/UploadStatusIndicator';
+import { ToastNotification } from './course-material/ToastNotification';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import './CourseMaterialDetailPage.css';
-
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
 
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,7 +43,9 @@ export function CourseMaterialDetailPage() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
-  const [focusPrompt, setFocusPrompt] = useState('');
+  const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
+  const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
+  const [flashcardsFocusPrompt, setFlashcardsFocusPrompt] = useState('');
 
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
@@ -109,7 +114,8 @@ export function CourseMaterialDetailPage() {
     setGenerating(type);
     setActiveTab(type === 'study_guide' ? 'guide' : type);
     try {
-      const fp = focusPrompt.trim() || undefined;
+      const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt };
+      const fp = promptMap[type].trim() || undefined;
       if (type === 'study_guide') {
         await studyApi.generateGuide({
           course_content_id: contentId,
@@ -222,11 +228,11 @@ export function CourseMaterialDetailPage() {
     </DashboardLayout>
   );
 
-  const tabs: { key: TabKey; label: string; hasContent: boolean }[] = [
-    { key: 'document', label: 'Original Document', hasContent: !!(content.text_content || content.description || content.has_file) },
-    { key: 'guide', label: 'Study Guide', hasContent: !!studyGuide },
-    { key: 'quiz', label: 'Quiz', hasContent: !!quiz },
-    { key: 'flashcards', label: 'Flashcards', hasContent: !!flashcardSet },
+  const tabs = [
+    { key: 'document' as TabKey, label: 'Original Document', hasContent: !!(content.text_content || content.description || content.has_file) },
+    { key: 'guide' as TabKey, label: 'Study Guide', hasContent: !!studyGuide },
+    { key: 'quiz' as TabKey, label: 'Quiz', hasContent: !!quiz },
+    { key: 'flashcards' as TabKey, label: 'Flashcards', hasContent: !!flashcardSet },
   ];
 
   return (
@@ -237,47 +243,19 @@ export function CourseMaterialDetailPage() {
           { label: 'Course Materials', to: '/course-materials' },
           { label: content?.title || 'Material' },
         ]} />
-        <div className="cm-detail-header">
-          <div className="cm-detail-title-row">
-            <h2>{content.title}</h2>
-            {content.course_name && (
-              <span className="cm-course-badge">{content.course_name}</span>
-            )}
-          </div>
-          <div className="cm-detail-meta">
-            {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
-            <span>{new Date(content.created_at).toLocaleDateString()}</span>
-            <div className="cm-header-icon-actions">
-              <button className="cm-icon-btn cm-icon-btn-task" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
-                  <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
-                  <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-              </button>
-              <button className="cm-icon-btn" title="Edit" aria-label="Edit material" onClick={() => setShowEditModal(true)}>&#9998;</button>
-              <button className="cm-icon-btn" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>&#128465;</button>
-            </div>
-          </div>
-        </div>
 
-        <div className="cm-tabs" role="tablist">
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-              role="tab"
-              aria-selected={activeTab === tab.key}
-            >
-              {tab.label}
-              {!tab.hasContent && tab.key !== 'document' && (
-                <span className="cm-tab-empty-dot" />
-              )}
-            </button>
-          ))}
-        </div>
+        <MaterialHeader
+          content={content}
+          onCreateTask={() => setShowTaskModal(true)}
+          onEdit={() => setShowEditModal(true)}
+          onArchive={handleArchiveContent}
+        />
+
+        <TabNavigation
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
         <div className="cm-tab-content" role="tabpanel">
           {activeTab === 'document' && (
@@ -297,8 +275,8 @@ export function CourseMaterialDetailPage() {
             <StudyGuideTab
               studyGuide={studyGuide}
               generating={generating}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
+              focusPrompt={guideFocusPrompt}
+              onFocusPromptChange={setGuideFocusPrompt}
               onGenerate={() => handleGenerate('study_guide')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
@@ -310,8 +288,8 @@ export function CourseMaterialDetailPage() {
             <QuizTab
               quiz={quiz}
               generating={generating}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
+              focusPrompt={quizFocusPrompt}
+              onFocusPromptChange={setQuizFocusPrompt}
               onGenerate={() => handleGenerate('quiz')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
@@ -325,8 +303,8 @@ export function CourseMaterialDetailPage() {
             <FlashcardsTab
               flashcardSet={flashcardSet}
               generating={generating}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
+              focusPrompt={flashcardsFocusPrompt}
+              onFocusPromptChange={setFlashcardsFocusPrompt}
               onGenerate={() => handleGenerate('flashcards')}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
@@ -353,18 +331,8 @@ export function CourseMaterialDetailPage() {
         />
       )}
       {confirmModal}
-      {toast && <div className="toast-notification">{toast}</div>}
-      {uploadStatus === 'uploading' && (
-        <div className="cm-upload-status">
-          <span className="cm-upload-spinner" />
-          Uploading &amp; extracting text...
-        </div>
-      )}
-      {uploadStatus === 'error' && (
-        <div className="cm-upload-status error">
-          Upload failed
-        </div>
-      )}
+      <ToastNotification message={toast} />
+      <UploadStatusIndicator status={uploadStatus} />
       {showReplaceModal && (
         <ReplaceDocumentModal
           content={content}
@@ -378,15 +346,10 @@ export function CourseMaterialDetailPage() {
         />
       )}
       {showRegenPrompt && (
-        <div className="cm-regen-prompt">
-          <p>Source content was modified. Regenerate study materials?</p>
-          <div className="cm-regen-buttons">
-            <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>{'\u2728'} Study Guide</button>
-            <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>{'\u2728'} Quiz</button>
-            <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>{'\u2728'} Flashcards</button>
-            <button className="cm-action-btn" onClick={() => setShowRegenPrompt(false)}>Dismiss</button>
-          </div>
-        </div>
+        <RegenPromptBanner
+          onRegenerate={handleRegenerate}
+          onDismiss={() => setShowRegenPrompt(false)}
+        />
       )}
     </DashboardLayout>
   );

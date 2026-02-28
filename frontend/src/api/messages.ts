@@ -58,11 +58,30 @@ export interface MessageSearchResult {
   sent_at: string;
 }
 
+export interface MessageSearchResponse {
+  results: MessageSearchResult[];
+  total: number;
+  offset: number;
+  limit: number;
+  query: string;
+}
+
+export interface MessageSearchParams {
+  q: string;
+  conversation_id?: number;
+  date_from?: string;
+  date_to?: string;
+  offset?: number;
+  limit?: number;
+}
+
 // Messages API
 export const messagesApi = {
-  search: async (query: string) => {
-    const response = await api.get('/api/messages/search', { params: { q: query } });
-    return response.data as MessageSearchResult[];
+  search: async (query: string, params?: Omit<MessageSearchParams, 'q'>) => {
+    const response = await api.get('/api/messages/search', {
+      params: { q: query, ...params },
+    });
+    return response.data as MessageSearchResponse;
   },
 
   getRecipients: async (params?: { q?: string }) => {
