@@ -149,6 +149,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'student') {
       items.push({ label: 'Quiz History', path: '/quiz-history' });
+      items.push({ label: 'My Emails', path: '/settings/emails' });
     }
 
     items.push(
