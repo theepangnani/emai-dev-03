@@ -367,3 +367,87 @@ def test_nonexistent_content_returns_404(client, users, method, url, json_body):
         kwargs["json"] = json_body
     resp = getattr(client, method.lower())(url, **kwargs)
     assert resp.status_code == 404
+
+
+# ── Parent access to child-created content (#896) ────────────
+
+class TestParentAccessChildContent:
+    """Regression test: parent must be able to access content in a course
+    created by their child, even if the child is not enrolled in it."""
+
+    @pytest.fixture()
+    def family(self, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.student import Student, parent_students
+        from app.models.course import Course
+
+        # Re-use existing rows if already created by a prior test
+        parent = db_session.query(User).filter(User.email == "family_parent@test.com").first()
+        if parent:
+            child = db_session.query(User).filter(User.email == "family_child@test.com").first()
+            child_course = db_session.query(Course).filter(
+                Course.created_by_user_id == child.id, Course.is_default == True,
+            ).first()
+            return {"parent": parent, "child": child, "child_course": child_course}
+
+        hashed = get_password_hash(PASSWORD)
+
+        parent = User(email="family_parent@test.com", full_name="Family Parent", role=UserRole.PARENT, hashed_password=hashed)
+        child = User(email="family_child@test.com", full_name="Family Child", role=UserRole.STUDENT, hashed_password=hashed)
+        db_session.add_all([parent, child])
+        db_session.flush()
+
+        student = Student(user_id=child.id)
+        db_session.add(student)
+        db_session.flush()
+
+        # Link parent to child
+        db_session.execute(parent_students.insert().values(
+            parent_id=parent.id, student_id=student.id, relationship_type="parent",
+        ))
+
+        # Child's default course (private, not enrolled — just created)
+        child_course = Course(
+            name="Child Main Course", created_by_user_id=child.id,
+            is_private=True, is_default=True,
+        )
+        db_session.add(child_course)
+        db_session.commit()
+
+        for u in [parent, child]:
+            db_session.refresh(u)
+        db_session.refresh(child_course)
+        return {"parent": parent, "child": child, "child_course": child_course}
+
+    def test_parent_can_read_child_created_content(self, client, family):
+        """Parent should access content in a course their child created (#896)."""
+        child_headers = _auth(client, family["child"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": family["child_course"].id,
+            "title": "Child Notes",
+            "content_type": "notes",
+        }, headers=child_headers)
+        assert resp.status_code == 201
+        content_id = resp.json()["id"]
+
+        # Parent reads the same content
+        parent_headers = _auth(client, family["parent"].email)
+        resp = client.get(f"/api/course-contents/{content_id}", headers=parent_headers)
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "Child Notes"
+
+    def test_parent_sees_child_content_in_list(self, client, family):
+        """Parent list endpoint should include child-created course content."""
+        child_headers = _auth(client, family["child"].email)
+        client.post("/api/course-contents/", json={
+            "course_id": family["child_course"].id,
+            "title": "Child List Item",
+            "content_type": "notes",
+        }, headers=child_headers)
+
+        parent_headers = _auth(client, family["parent"].email)
+        resp = client.get("/api/course-contents/", headers=parent_headers)
+        assert resp.status_code == 200
+        titles = [item["title"] for item in resp.json()]
+        assert "Child List Item" in titles
