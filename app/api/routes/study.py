@@ -312,12 +312,12 @@ def auto_create_tasks_from_dates(
     logger = get_logger(__name__)
 
     created_tasks = []
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     one_year_ago = now - timedelta(days=365)
 
     for d in dates:
         try:
-            due_date = datetime.strptime(d["date"], "%Y-%m-%d")
+            due_date = datetime.strptime(d["date"], "%Y-%m-%d").replace(hour=12, tzinfo=timezone.utc)
         except (ValueError, TypeError):
             logger.warning(f"Skipping invalid date in auto-task creation: {d.get('date')}")
             continue

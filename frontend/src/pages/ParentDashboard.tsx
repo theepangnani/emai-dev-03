@@ -9,7 +9,6 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
-import { useAuth } from '../context/AuthContext';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -96,7 +95,6 @@ function loadViewMode(): 'simplified' | 'full' {
 }
 
 export function ParentDashboard() {
-  const { user } = useAuth();
   const pd = useParentDashboard();
   const [tipDismissed, setTipDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
@@ -444,10 +442,7 @@ export function ParentDashboard() {
           >
             <ComingUpTimeline
               calendarAssignments={pd.calendarAssignments}
-              filteredTasks={pd.filteredTasks}
               selectedChild={pd.selectedChild}
-              currentUserId={user?.id}
-              onToggleTask={pd.handleToggleTask}
               onNavigateStudy={pd.handleOneClickStudy}
               onCreateTask={() => pd.setShowCreateTaskModal(true)}
               onUploadMaterial={() => pd.setShowStudyModal(true)}

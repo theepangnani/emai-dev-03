@@ -60,7 +60,7 @@ export function StudyGuideTab({
           <div className="cm-guide-actions">
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{generating === 'study_guide' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />

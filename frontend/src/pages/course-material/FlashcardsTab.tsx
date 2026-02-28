@@ -119,7 +119,7 @@ export function FlashcardsTab({
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
             <button className="cm-action-btn" onClick={handleReset}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={handleShuffle}>{'\u{1F500}'} Shuffle</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{generating === 'flashcards' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />

@@ -1,8 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CalendarAssignment } from '../calendar/types';
-import type { TaskItem } from '../../api/tasks';
-import { tasksApi } from '../../api/tasks';
 import EmptyState from '../EmptyState';
 
 /* ── Interfaces ──────────────────────────────────────────── */
@@ -12,23 +10,17 @@ type UrgencyLevel = 'overdue' | 'today' | 'upcoming' | 'later';
 interface TimelineItem {
   id: number;
   title: string;
-  type: 'assignment' | 'task';
+  type: 'assignment';
   courseName?: string;
   courseColor?: string;
   childName?: string;
   dueDate: Date;
   urgency: UrgencyLevel;
-  isCompleted?: boolean;
-  priority?: string;
-  taskId?: number;
 }
 
 interface ComingUpTimelineProps {
   calendarAssignments: CalendarAssignment[];
-  filteredTasks: TaskItem[];
   selectedChild: number | null;
-  currentUserId?: number;
-  onToggleTask: (task: TaskItem) => void;
   onNavigateStudy: (assignment: CalendarAssignment) => void;
   onDismiss?: () => void;
   onCreateTask?: () => void;
@@ -69,52 +61,13 @@ function formatRelativeDate(date: Date): string {
 
 export function ComingUpTimeline({
   calendarAssignments,
-  filteredTasks,
   selectedChild,
-  currentUserId,
-  onToggleTask,
   onNavigateStudy,
   onDismiss,
   onCreateTask,
   onUploadMaterial,
 }: ComingUpTimelineProps) {
   const navigate = useNavigate();
-  const [remindingTaskId, setRemindingTaskId] = useState<number | null>(null);
-  const [reminderToast, setReminderToast] = useState<string | null>(null);
-  // Track locally-sent reminders to update UI instantly
-  const [localReminders, setLocalReminders] = useState<Map<number, string>>(new Map());
-
-  const handleRemind = async (task: TaskItem) => {
-    setRemindingTaskId(task.id);
-    try {
-      const result = await tasksApi.remind(task.id);
-      setLocalReminders(prev => new Map(prev).set(task.id, result.reminded_at));
-      setReminderToast(`Reminder sent to ${result.assignee_name}`);
-      setTimeout(() => setReminderToast(null), 4000);
-    } catch (err: any) {
-      const detail = err.response?.data?.detail || 'Failed to send reminder';
-      setReminderToast(detail);
-      setTimeout(() => setReminderToast(null), 4000);
-    } finally {
-      setRemindingTaskId(null);
-    }
-  };
-
-  const canRemindTask = (task: TaskItem): boolean => {
-    const sentAt = localReminders.get(task.id) || task.last_reminder_sent_at;
-    if (!sentAt) return true;
-    const hoursSince = (Date.now() - new Date(sentAt).getTime()) / (1000 * 60 * 60);
-    return hoursSince >= 24;
-  };
-
-  // Build a task lookup to quickly find TaskItem by id for toggle
-  const taskMap = useMemo(() => {
-    const map = new Map<number, TaskItem>();
-    for (const t of filteredTasks) {
-      map.set(t.id, t);
-    }
-    return map;
-  }, [filteredTasks]);
 
   const timelineItems = useMemo(() => {
     const now = new Date();
@@ -124,11 +77,10 @@ export function ComingUpTimeline({
 
     const items: TimelineItem[] = [];
 
-    // Add assignments (non-task calendar items)
+    // Only assignments (not tasks) — tasks live exclusively in StudentDetailPanel (#929)
     for (const a of calendarAssignments) {
-      if (a.itemType === 'task') continue; // tasks are handled separately below
+      if (a.itemType === 'task') continue;
       const due = a.dueDate;
-      // Include overdue items + items within next 7 days
       if (due >= sevenDaysOut) continue;
       items.push({
         id: a.id,
@@ -139,29 +91,6 @@ export function ComingUpTimeline({
         childName: a.childName || undefined,
         dueDate: due,
         urgency: getUrgency(due),
-        isCompleted: false,
-      });
-    }
-
-    // Add only overdue tasks (urgent items that shouldn't be missed)
-    for (const t of filteredTasks) {
-      if (t.archived_at) continue;
-      if (!t.due_date) continue;
-      if (t.is_completed) continue;
-      const due = new Date(t.due_date);
-      // Only include overdue tasks — non-overdue tasks live in Student Detail panel
-      if (due >= todayStart) continue;
-      items.push({
-        id: t.id + 2_000_000, // offset to avoid collision with assignment ids
-        title: t.title,
-        type: 'task',
-        courseName: t.course_name || undefined,
-        childName: t.assignee_name || undefined,
-        dueDate: due,
-        urgency: 'overdue' as UrgencyLevel,
-        isCompleted: false,
-        priority: t.priority || undefined,
-        taskId: t.id,
       });
     }
 
@@ -174,7 +103,7 @@ export function ComingUpTimeline({
     });
 
     return items;
-  }, [calendarAssignments, filteredTasks]);
+  }, [calendarAssignments]);
 
   // Find the original CalendarAssignment for "Study" button navigation
   const assignmentMap = useMemo(() => {
@@ -192,7 +121,7 @@ export function ComingUpTimeline({
     return (
       <EmptyState
         title="No upcoming assignments"
-        description="Assignments from Google Classroom and overdue tasks will appear here."
+        description="Assignments from Google Classroom will appear here."
         actions={emptyActions}
         variant="compact"
       />
@@ -223,28 +152,15 @@ export function ComingUpTimeline({
       <div className="pd-timeline" role="list">
         {displayed.map(item => (
           <div
-            key={`${item.type}-${item.id}`}
+            key={`assignment-${item.id}`}
             role="listitem"
-            className={`pd-timeline-item ${item.urgency}${item.isCompleted ? ' completed' : ''}`}
+            className={`pd-timeline-item ${item.urgency}`}
           >
             <div className="pd-timeline-dot" aria-hidden="true" />
             <div className="pd-timeline-content">
               <div className="pd-timeline-row">
-                {item.type === 'task' && (
-                  <input
-                    type="checkbox"
-                    className="pd-timeline-checkbox"
-                    checked={item.isCompleted || false}
-                    aria-label={`Mark "${item.title}" as ${item.isCompleted ? 'incomplete' : 'complete'}`}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      const task = taskMap.get(item.taskId!);
-                      if (task) onToggleTask(task);
-                    }}
-                  />
-                )}
                 <div className="pd-timeline-info">
-                  <span className={`pd-timeline-title${item.isCompleted ? ' completed' : ''}`}>
+                  <span className="pd-timeline-title">
                     {item.title}
                   </span>
                   <div className="pd-timeline-meta">
@@ -259,8 +175,8 @@ export function ComingUpTimeline({
                         {item.courseName}
                       </span>
                     )}
-                    <span className={`pd-timeline-type ${item.type}`}>
-                      {item.type === 'assignment' ? 'Assignment' : 'Task'}
+                    <span className="pd-timeline-type assignment">
+                      Assignment
                     </span>
                     {!selectedChild && item.childName && (
                       <span className="pd-timeline-child">{item.childName}</span>
@@ -268,34 +184,16 @@ export function ComingUpTimeline({
                   </div>
                 </div>
                 <div className="pd-timeline-actions">
-                  {item.type === 'assignment' && (
-                    <button
-                      className="pd-timeline-study-btn"
-                      aria-label={`Study ${item.title}`}
-                      onClick={() => {
-                        const orig = assignmentMap.get(item.id);
-                        if (orig) onNavigateStudy(orig);
-                      }}
-                    >
-                      Study
-                    </button>
-                  )}
-                  {item.type === 'task' && item.taskId && !item.isCompleted && (() => {
-                    const task = taskMap.get(item.taskId);
-                    if (!task || !task.assigned_to_user_id || task.created_by_user_id !== currentUserId) return null;
-                    const canRemind = canRemindTask(task);
-                    return (
-                      <button
-                        className={`pd-timeline-remind-btn${!canRemind ? ' reminded' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
-                        disabled={!canRemind || remindingTaskId === task.id}
-                        aria-label={canRemind ? `Send reminder for ${item.title}` : 'Reminder already sent'}
-                        title={canRemind ? 'Send Reminder' : 'Reminded'}
-                      >
-                        {remindingTaskId === task.id ? <span className="btn-spinner" /> : canRemind ? '\uD83D\uDD14' : '\u2705'}
-                      </button>
-                    );
-                  })()}
+                  <button
+                    className="pd-timeline-study-btn"
+                    aria-label={`Study ${item.title}`}
+                    onClick={() => {
+                      const orig = assignmentMap.get(item.id);
+                      if (orig) onNavigateStudy(orig);
+                    }}
+                  >
+                    Study
+                  </button>
                 </div>
               </div>
             </div>
@@ -310,7 +208,6 @@ export function ComingUpTimeline({
           </button>
         )}
       </div>
-      {reminderToast && <div className="toast-notification">{reminderToast}</div>}
     </section>
   );
 }
