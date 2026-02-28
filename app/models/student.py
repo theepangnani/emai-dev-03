@@ -62,6 +62,11 @@ class Student(Base):
     postal_code = Column(String(20), nullable=True)
     notes = Column(Text, nullable=True)
 
+    # MFIPPA age-based consent (#783)
+    consent_status = Column(String(20), default="pending")  # pending, parent_only, dual_required, given
+    parent_consent_given_at = Column(DateTime(timezone=True), nullable=True)
+    student_consent_given_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
