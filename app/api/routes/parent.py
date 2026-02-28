@@ -1568,3 +1568,86 @@ def reset_child_password(
         if sent:
             return {"message": f"Password reset email sent to {user.email}."}
         return {"message": "Failed to send email. Please try setting the password directly."}
+
+
+class _RequestCompletionBody(PydanticBaseModel):
+    task_id: int
+    message: str | None = None
+
+
+@router.post("/children/{student_id}/request-completion")
+def request_task_completion(
+    student_id: int,
+    body: _RequestCompletionBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Parent requests a child to complete a specific task.
+
+    Creates an in-app notification for the student with the task title
+    and an optional custom message from the parent.
+    """
+    from app.models.notification import NotificationType
+    from app.services.notification_service import send_multi_channel_notification
+
+    # Verify parent-child link
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    # Resolve student user
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    student_user = db.query(User).filter(User.id == student.user_id).first()
+    if not student_user:
+        raise HTTPException(status_code=404, detail="Student account not found")
+
+    # Verify task exists and is assigned to this student
+    task = db.query(Task).filter(Task.id == body.task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.assigned_to_user_id != student.user_id:
+        raise HTTPException(status_code=400, detail="This task is not assigned to this student")
+
+    if task.is_completed:
+        raise HTTPException(status_code=400, detail="This task is already completed")
+
+    # Build notification content
+    content = f"Your parent requests you complete: {task.title}"
+    if body.message:
+        content += f"\n\nMessage from {current_user.full_name}: {body.message}"
+
+    send_multi_channel_notification(
+        db=db,
+        recipient=student_user,
+        sender=current_user,
+        title="Parent Completion Request",
+        content=content,
+        notification_type=NotificationType.PARENT_REQUEST,
+        link=f"/tasks/{task.id}",
+        channels=["app_notification", "email"],
+        source_type="task",
+        source_id=task.id,
+    )
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="request_completion",
+        resource_type="task",
+        resource_id=task.id,
+        details={"student_id": student_id, "task_title": task.title},
+    )
+    db.commit()
+
+    return {"message": f"Completion request sent to {student_user.full_name} for \"{task.title}\""}
