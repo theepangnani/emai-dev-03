@@ -178,4 +178,12 @@ export const parentApi = {
     });
     return response.data as { message: string };
   },
+
+  requestCompletion: async (studentId: number, taskId: number, message?: string) => {
+    const response = await api.post(`/api/parent/children/${studentId}/request-completion`, {
+      task_id: taskId,
+      ...(message ? { message } : {}),
+    });
+    return response.data as { message: string };
+  },
 };

@@ -566,6 +566,18 @@
   cursor: default;
 }
 
+/* Request Completion button */
+.task-row-btn.request-completion {
+  font-size: 14px;
+  padding: 0 6px;
+}
+
+.task-row-btn.request-completion:hover {
+  border-color: var(--primary-color, #4f46e5);
+  color: var(--primary-color, #4f46e5);
+  background: #eef2ff;
+}
+
 /* Archived row */
 .task-row.archived {
   opacity: 0.55;

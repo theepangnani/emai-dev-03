@@ -73,6 +73,11 @@ export function TasksPage() {
   const [remindingTaskId, setRemindingTaskId] = useState<number | null>(null);
   const [reminderToast, setReminderToast] = useState<string | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  // Request completion modal
+  const [requestCompletionTask, setRequestCompletionTask] = useState<TaskItem | null>(null);
+  const [requestCompletionMessage, setRequestCompletionMessage] = useState('');
+  const [requestingCompletion, setRequestingCompletion] = useState(false);
   const { confirm, confirmModal } = useConfirm();
   const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
   const editModalRef = useFocusTrap<HTMLDivElement>(!!editTask, () => setEditTask(null));
@@ -356,6 +361,35 @@ export function TasksPage() {
       return { canRemind: false, label: hoursAgo < 1 ? 'Reminded just now' : `Reminded ${hoursAgo}h ago` };
     }
     return { canRemind: true, label: 'Send Reminder' };
+  };
+
+  const handleRequestCompletion = async () => {
+    if (!requestCompletionTask) return;
+    setRequestingCompletion(true);
+    try {
+      // Find the student_id from children based on the task's assigned_to_user_id
+      const child = children.find(c => c.user_id === requestCompletionTask.assigned_to_user_id);
+      if (!child) {
+        setReminderToast('Could not find the linked child for this task');
+        setTimeout(() => setReminderToast(null), 4000);
+        return;
+      }
+      const result = await parentApi.requestCompletion(
+        child.student_id,
+        requestCompletionTask.id,
+        requestCompletionMessage.trim() || undefined,
+      );
+      setReminderToast(result.message);
+      setTimeout(() => setReminderToast(null), 4000);
+      setRequestCompletionTask(null);
+      setRequestCompletionMessage('');
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Failed to send completion request';
+      setReminderToast(detail);
+      setTimeout(() => setReminderToast(null), 4000);
+    } finally {
+      setRequestingCompletion(false);
+    }
   };
 
   const filteredTasks = tasks.filter(t => {
@@ -664,15 +698,25 @@ export function TasksPage() {
                     {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
                       const { canRemind, label } = getReminderStatus(task);
                       return (
-                        <button
-                          className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
-                          onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
-                          disabled={!canRemind || remindingTaskId === task.id}
-                          title={label}
-                          aria-label={label}
-                        >
-                          {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
-                        </button>
+                        <>
+                          <button
+                            className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
+                            disabled={!canRemind || remindingTaskId === task.id}
+                            title={label}
+                            aria-label={label}
+                          >
+                            {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
+                          </button>
+                          <button
+                            className="task-row-btn request-completion"
+                            onClick={(e) => { e.stopPropagation(); setRequestCompletionTask(task); }}
+                            title="Request completion"
+                            aria-label="Request child to complete this task"
+                          >
+                            &#9993;
+                          </button>
+                        </>
                       );
                     })()}
                     <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
@@ -819,6 +863,38 @@ export function TasksPage() {
           </div>
         )}
       </div>
+      {/* Request Completion modal */}
+      {requestCompletionTask && (
+        <div className="modal-overlay" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Request Completion" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Request Completion</h2>
+              <button className="modal-close" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 12px', color: 'var(--text-secondary, #6b7280)', fontSize: '14px' }}>
+                Send a notification to <strong>{requestCompletionTask.assignee_name}</strong> asking them to complete:
+              </p>
+              <p style={{ margin: '0 0 16px', fontWeight: 600 }}>{requestCompletionTask.title}</p>
+              <label className="form-label">Message (optional)</label>
+              <textarea
+                placeholder="Add a note for your child..."
+                value={requestCompletionMessage}
+                onChange={e => setRequestCompletionMessage(e.target.value)}
+                className="form-input"
+                rows={3}
+                maxLength={500}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }} disabled={requestingCompletion}>Cancel</button>
+              <button className="generate-btn" onClick={handleRequestCompletion} disabled={requestingCompletion}>
+                {requestingCompletion ? 'Sending...' : 'Send Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmModal}
       {reminderToast && <div className="toast-notification">{reminderToast}</div>}
     </DashboardLayout>
