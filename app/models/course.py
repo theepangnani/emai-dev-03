@@ -5,6 +5,13 @@ from sqlalchemy.sql import func
 from app.db.database import Base
 
 
+# Valid classroom types
+CLASSROOM_TYPE_SCHOOL = "school"
+CLASSROOM_TYPE_PRIVATE = "private"
+CLASSROOM_TYPE_MANUAL = "manual"
+VALID_CLASSROOM_TYPES = {CLASSROOM_TYPE_SCHOOL, CLASSROOM_TYPE_PRIVATE, CLASSROOM_TYPE_MANUAL}
+
+
 # Many-to-many relationship between students and courses
 student_courses = Table(
     "student_courses",
@@ -27,7 +34,7 @@ class Course(Base):
     # Google Classroom integration
     google_classroom_id = Column(String(255), unique=True, nullable=True)
 
-    classroom_type = Column(String(20), nullable=True)  # "school" or "private"
+    classroom_type = Column(String(20), nullable=False, default="manual", server_default="manual")  # "school", "private", or "manual"
 
     teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)
 
@@ -62,6 +69,11 @@ class Course(Base):
     @property
     def student_count(self) -> int:
         return len(self.students) if self.students else 0
+
+    @property
+    def is_school_course(self) -> bool:
+        """Whether this is a school Google Classroom course (read-only restrictions apply)."""
+        return self.classroom_type == CLASSROOM_TYPE_SCHOOL
 
     __table_args__ = (
         Index("ix_courses_teacher", "teacher_id"),
