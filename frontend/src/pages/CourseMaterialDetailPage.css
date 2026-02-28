@@ -23,6 +23,64 @@
   margin-bottom: 1rem;
 }
 
+/* Unlinked material banner (#623) */
+.cm-unlinked-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.cm-unlinked-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: var(--color-warning-border);
+  color: var(--color-warning-text);
+  white-space: nowrap;
+}
+
+.cm-unlinked-text {
+  font-size: 13px;
+  color: var(--color-warning-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.cm-unlinked-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.cm-unlinked-assign-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.cm-unlinked-assign-btn:hover {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
 .cm-back-link {
   color: var(--color-purple);
   text-decoration: none;
@@ -649,6 +707,18 @@
   .cm-action-btn {
     padding: 6px 10px;
     font-size: 12px;
+  }
+  .cm-unlinked-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .cm-unlinked-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .cm-unlinked-assign-btn {
+    flex: 1;
+    text-align: center;
   }
 }
 

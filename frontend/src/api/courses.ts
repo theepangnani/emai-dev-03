@@ -27,6 +27,18 @@ export interface CourseContentUpdateResponse extends CourseContentItem {
   archived_guides_count: number;
 }
 
+export interface LinkedCourseChild {
+  student_id: number;
+  user_id: number;
+  full_name: string;
+}
+
+export interface LinkedCourseIdsResponse {
+  linked_course_ids: number[];
+  course_student_map: Record<number, number[]>;
+  children: LinkedCourseChild[];
+}
+
 // Assignment Types
 export interface AssignmentItem {
   id: number;
@@ -221,6 +233,11 @@ export const courseContentsApi = {
 
   permanentDelete: async (id: number) => {
     await api.delete(`/api/course-contents/${id}/permanent`);
+  },
+
+  getLinkedCourseIds: async () => {
+    const response = await api.get('/api/course-contents/linked-course-ids');
+    return response.data as LinkedCourseIdsResponse;
   },
 
   download: async (id: number, originalFilename?: string) => {
