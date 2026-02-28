@@ -40,3 +40,4 @@ class CourseResponse(BaseModel):
 
 class AddStudentRequest(BaseModel):
     email: str
+    message: str | None = None  # Optional message to include in the invite (#551)

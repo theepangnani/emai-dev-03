@@ -48,13 +48,18 @@ def _get_school_course_ids(db: Session, course_ids: list[int]) -> set[int]:
 def _strip_urls_for_school(
     items: list, school_ids: set[int]
 ) -> list[CourseContentResponse]:
-    """Convert ORM items to Pydantic and strip URLs for school courses."""
+    """Convert ORM items to Pydantic and strip URLs for school courses.
+
+    For school courses, reference/download URLs are hidden and a
+    `download_restricted` flag is set for the frontend (#550).
+    """
     results = []
     for item in items:
         resp = CourseContentResponse.model_validate(item)
         if item.course_id in school_ids:
             resp.reference_url = None
             resp.google_classroom_url = None
+            resp.download_restricted = True
         results.append(resp)
     return results
 
@@ -337,13 +342,14 @@ def get_course_content(
     db.commit()
     db.refresh(content)
 
-    # Strip URLs for students on school courses
+    # Strip URLs for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
         school_ids = _get_school_course_ids(db, [content.course_id])
         if content.course_id in school_ids:
             resp = CourseContentResponse.model_validate(content)
             resp.reference_url = None
             resp.google_classroom_url = None
+            resp.download_restricted = True
             return resp
 
     return content
@@ -355,13 +361,27 @@ def download_course_content_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Download the original uploaded file for a content item."""
+    """Download the original uploaded file for a content item.
+
+    Students cannot download files from school-type courses (classroom_type='school').
+    Parents and teachers are not restricted.
+    """
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
     if not can_access_course(db, current_user, content.course_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Restrict downloads for students on school courses (#550)
+    if current_user.role == UserRole.STUDENT:
+        school_ids = _get_school_course_ids(db, [content.course_id])
+        if content.course_id in school_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Downloads are restricted for school classroom content. "
+                       "You can view assignment details but cannot download documents.",
+            )
 
     if not content.file_path:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file attached to this content")

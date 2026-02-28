@@ -487,8 +487,13 @@ def _resolve_teacher_for_course(
     return teacher
 
 
-def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
-    """Shared course sync logic. Returns list of synced course dicts."""
+def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None = None) -> list[dict]:
+    """Shared course sync logic. Returns list of synced course dicts.
+
+    Args:
+        classroom_type: If provided ("school" or "private"), overrides auto-detection
+                        from teacher type and applies to all synced courses.
+    """
     try:
         google_courses, credentials = list_courses(
             user.google_access_token,
@@ -543,8 +548,11 @@ def _sync_courses_for_user(user: User, db: Session) -> list[dict]:
             if resolved_teacher:
                 course.teacher_id = resolved_teacher.id
 
-        # Set classroom_type based on teacher's type
-        _set_classroom_type(course, db)
+        # Set classroom_type: explicit parameter overrides auto-detection
+        if classroom_type in ("school", "private"):
+            course.classroom_type = classroom_type
+        else:
+            _set_classroom_type(course, db)
 
         # Link student to course
         if student:
@@ -698,17 +706,26 @@ def _sync_assignments_for_course(course: Course, user: User, db: Session) -> int
 
 @router.post("/courses/sync")
 def sync_google_courses(
+    classroom_type: str | None = Query(
+        None,
+        description='Override classroom type for synced courses: "school" or "private"',
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Sync Google Classroom courses to local database."""
+    """Sync Google Classroom courses to local database.
+
+    Optional query parameter `classroom_type` overrides auto-detection:
+    - "school" — school classroom (students cannot download documents)
+    - "private" — private/tutor classroom (full access)
+    """
     if not current_user.google_access_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not connected to Google Classroom",
         )
 
-    result = _sync_courses_for_user(current_user, db)
+    result = _sync_courses_for_user(current_user, db, classroom_type=classroom_type)
 
     log_action(db, user_id=current_user.id, action="sync", resource_type="google_classroom")
     db.commit()

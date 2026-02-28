@@ -128,6 +128,10 @@ export function StudentDashboard() {
   const [newCourseSubject, setNewCourseSubject] = useState('');
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
 
+  // Classroom type selection for Google sync (#550)
+  const [showClassroomTypeModal, setShowClassroomTypeModal] = useState(false);
+  const [classroomType, setClassroomType] = useState<'school' | 'private'>('school');
+
   // Invite teacher state
   const [showInviteTeacherModal, setShowInviteTeacherModal] = useState(false);
   const [inviteTeacherEmail, setInviteTeacherEmail] = useState('');
@@ -136,6 +140,7 @@ export function StudentDashboard() {
   const studyModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => resetModal());
   const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateCourseModal, () => setShowCreateCourseModal(false));
   const inviteTeacherModalRef = useFocusTrap<HTMLDivElement>(showInviteTeacherModal, () => setShowInviteTeacherModal(false));
+  const classroomTypeModalRef = useFocusTrap<HTMLDivElement>(showClassroomTypeModal, () => setShowClassroomTypeModal(false));
 
   const justRegistered = searchParams.get('just_registered') === 'true';
 
@@ -255,12 +260,9 @@ export function StudentDashboard() {
 
     if (connected === 'true') {
       setGoogleConnected(true);
-      setStatusMessage({ type: 'success', text: 'Google Classroom connected successfully!' });
-      googleApi.syncCourses().then((result) => {
-        setStatusMessage({ type: 'success', text: result.message || 'Classes synced!' });
-        loadCourses();
-        loadAssignments();
-      }).catch(() => {});
+      setStatusMessage({ type: 'success', text: 'Google Classroom connected! Choose your classroom type to sync.' });
+      // Show classroom type selector before first sync (#550)
+      setShowClassroomTypeModal(true);
       const newParams: Record<string, string> = {};
       if (searchParams.get('just_registered')) newParams.just_registered = 'true';
       setSearchParams(newParams);
@@ -352,11 +354,11 @@ export function StudentDashboard() {
     }
   };
 
-  const handleSyncCourses = async () => {
+  const handleSyncCourses = async (overrideType?: 'school' | 'private') => {
     setIsSyncing(true);
     setStatusMessage(null);
     try {
-      const result = await googleApi.syncCourses();
+      const result = await googleApi.syncCourses(overrideType || classroomType);
       setStatusMessage({ type: 'success', text: result.message || 'Classes synced successfully' });
       setLastSynced(new Date());
       loadCourses();
@@ -367,6 +369,17 @@ export function StudentDashboard() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  /** Show classroom type chooser before first sync (#550) */
+  const handleSyncWithTypeChoice = () => {
+    setShowClassroomTypeModal(true);
+  };
+
+  /** User confirmed classroom type; proceed with sync */
+  const handleConfirmClassroomType = () => {
+    setShowClassroomTypeModal(false);
+    handleSyncCourses(classroomType);
   };
 
   // ── Status message auto-dismiss ───────────────────────────────
@@ -771,7 +784,7 @@ export function StudentDashboard() {
         </button>
 
         {googleConnected ? (
-          <button className="sd-action-card sync" onClick={handleSyncCourses} disabled={isSyncing}>
+          <button className="sd-action-card sync" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>
             <div className="sd-action-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'sd-spin' : ''}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
             </div>
@@ -904,7 +917,7 @@ export function StudentDashboard() {
           <h2>Your Courses</h2>
           <div className="sd-courses-actions">
             {googleConnected && (
-              <button className="sd-text-btn" onClick={handleSyncCourses} disabled={isSyncing}>
+              <button className="sd-text-btn" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>
                 {isSyncing ? 'Syncing...' : 'Sync'}
               </button>
             )}
@@ -1115,6 +1128,50 @@ export function StudentDashboard() {
               <button className="cancel-btn" onClick={() => setShowCreateCourseModal(false)} disabled={isCreatingCourse}>Cancel</button>
               <button className="generate-btn" onClick={handleCreateCourse} disabled={isCreatingCourse || !newCourseName.trim()}>
                 {isCreatingCourse ? 'Creating...' : 'Create Course'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Classroom Type Modal (#550) ───────────────────── */}
+      {showClassroomTypeModal && (
+        <div className="modal-overlay" onClick={() => setShowClassroomTypeModal(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Choose Classroom Type" ref={classroomTypeModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Classroom Type</h2>
+            <p className="modal-desc">What type of Google Classroom is this?</p>
+            <div className="modal-form">
+              <label className={`sd-classroom-type-option${classroomType === 'school' ? ' selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="classroomType"
+                  value="school"
+                  checked={classroomType === 'school'}
+                  onChange={() => setClassroomType('school')}
+                />
+                <div>
+                  <strong>School Classroom</strong>
+                  <small>You can view assignments but ClassBridge cannot download school documents.</small>
+                </div>
+              </label>
+              <label className={`sd-classroom-type-option${classroomType === 'private' ? ' selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="classroomType"
+                  value="private"
+                  checked={classroomType === 'private'}
+                  onChange={() => setClassroomType('private')}
+                />
+                <div>
+                  <strong>Private Classroom (Tutor)</strong>
+                  <small>Full access to all materials and downloads.</small>
+                </div>
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowClassroomTypeModal(false)}>Cancel</button>
+              <button className="generate-btn" onClick={handleConfirmClassroomType} disabled={isSyncing}>
+                {isSyncing ? 'Syncing...' : 'Sync Classes'}
               </button>
             </div>
           </div>

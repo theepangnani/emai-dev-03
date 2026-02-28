@@ -967,6 +967,7 @@ export function StudyGuidesPage() {
           }
         }}
         onDismissDuplicate={() => setDuplicateCheck(null)}
+        showParentNote={user?.role === 'student'}
       />
 
       <CreateTaskModal

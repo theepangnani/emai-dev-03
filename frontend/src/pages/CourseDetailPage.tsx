@@ -62,6 +62,7 @@ export function CourseDetailPage() {
   const [students, setStudents] = useState<RosterStudent[]>([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [addStudentEmail, setAddStudentEmail] = useState('');
+  const [addStudentMessage, setAddStudentMessage] = useState('');
   const [addStudentLoading, setAddStudentLoading] = useState(false);
   const [addStudentError, setAddStudentError] = useState('');
   const [addStudentSuccess, setAddStudentSuccess] = useState('');
@@ -782,8 +783,8 @@ export function CourseDetailPage() {
               <span className={`section-chevron${rosterExpanded ? ' expanded' : ''}`}>&#9654;</span>
               <h3>Enrolled Students ({students.length})</h3>
             </button>
-            <button className="courses-btn secondary action-icon-btn" onClick={() => { setAddStudentEmail(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
-              <span className="action-icon">+</span> Add Student
+            <button className="courses-btn secondary action-icon-btn" onClick={() => { setAddStudentEmail(''); setAddStudentMessage(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
+              <span className="action-icon">+</span> Invite Student
             </button>
           </div>
           {rosterExpanded && (
@@ -811,11 +812,11 @@ export function CourseDetailPage() {
 
       </div>
 
-      {/* Add Student Modal */}
+      {/* Add/Invite Student Modal (#551) */}
       {showAddStudentModal && (
         <div className="modal-overlay" onClick={() => setShowAddStudentModal(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Add Student" ref={addStudentModalRef} onClick={(e) => e.stopPropagation()}>
-            <h2>Add Student</h2>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Invite Student" ref={addStudentModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Invite Student</h2>
             <p className="modal-desc">Enter the student's email address. If they don't have an account, an invitation will be sent.</p>
             <div className="modal-form">
               <label>
@@ -829,13 +830,23 @@ export function CourseDetailPage() {
                   onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
                 />
               </label>
+              <label>
+                Message (optional)
+                <input
+                  type="text"
+                  value={addStudentMessage}
+                  onChange={(e) => setAddStudentMessage(e.target.value)}
+                  placeholder="e.g., Welcome to the class!"
+                  disabled={addStudentLoading}
+                />
+              </label>
               {addStudentError && <p className="link-error">{addStudentError}</p>}
               {addStudentSuccess && <p className="link-success">{addStudentSuccess}</p>}
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowAddStudentModal(false)} disabled={addStudentLoading}>Close</button>
               <button className="generate-btn" onClick={handleAddStudent} disabled={addStudentLoading || !addStudentEmail.trim()}>
-                {addStudentLoading ? 'Adding...' : 'Add Student'}
+                {addStudentLoading ? 'Sending...' : 'Invite Student'}
               </button>
             </div>
           </div>
@@ -1021,6 +1032,12 @@ export function CourseDetailPage() {
                 </div>
               )}
               {uploadError && <p className="link-error">{uploadError}</p>}
+              {/* Parent notification note for students (#552) */}
+              {user?.role === 'student' && (
+                <p className="modal-info-note">
+                  Your parent will be notified about this upload.
+                </p>
+              )}
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowUploadModal(false)} disabled={uploading}>Cancel</button>
