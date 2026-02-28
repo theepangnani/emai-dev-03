@@ -6,7 +6,6 @@ import type {
   ConversationSummary,
   ConversationDetail,
   RecipientOption,
-  MessageSearchResult,
 } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -36,7 +35,7 @@ export function MessagesPage() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<MessageSearchResult[]>([]);
+  const [filteredConversations, setFilteredConversations] = useState<ConversationSummary[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,6 +58,13 @@ export function MessagesPage() {
   const [creatingConversation, setCreatingConversation] = useState(false);
   const newConvModalRef = useFocusTrap<HTMLDivElement>(showNewModal, () => setShowNewModal(false));
 
+  // Recipient search state (#956)
+  const [recipientSearchQuery, setRecipientSearchQuery] = useState('');
+  const [recipientSearchResults, setRecipientSearchResults] = useState<RecipientOption[]>([]);
+  const [isRecipientSearching, setIsRecipientSearching] = useState(false);
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+  const recipientSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     loadConversations(true);
     loadRecipients();
@@ -72,7 +78,10 @@ export function MessagesPage() {
   useEffect(() => {
     const recipientId = searchParams.get('recipient_id');
     if (recipientId && recipients.length > 0) {
-      setSelectedRecipient(Number(recipientId));
+      const rid = Number(recipientId);
+      const match = recipients.find(r => r.user_id === rid);
+      setSelectedRecipient(rid);
+      if (match) setRecipientSearchQuery(match.full_name);
       setShowNewModal(true);
       setSearchParams({}, { replace: true }); // Clear param
     }
@@ -249,13 +258,51 @@ export function MessagesPage() {
 
   const resetNewConversationForm = () => {
     setSelectedRecipient(null);
+    setRecipientSearchQuery('');
+    setRecipientSearchResults([]);
+    setShowRecipientDropdown(false);
     setNewSubject('');
     setInitialMessage('');
   };
 
+  const handleRecipientSearchChange = (value: string) => {
+    setRecipientSearchQuery(value);
+    setSelectedRecipient(null);
+
+    if (recipientSearchDebounceRef.current) {
+      clearTimeout(recipientSearchDebounceRef.current);
+    }
+
+    if (value.length < 2) {
+      setRecipientSearchResults(recipients);
+      setShowRecipientDropdown(value.length > 0 || recipients.length > 0);
+      return;
+    }
+
+    setIsRecipientSearching(true);
+    setShowRecipientDropdown(true);
+    recipientSearchDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await messagesApi.getRecipients({ q: value });
+        setRecipientSearchResults(results);
+      } catch (err) {
+        logger.error('Failed to search recipients', { error: err });
+        setRecipientSearchResults([]);
+      } finally {
+        setIsRecipientSearching(false);
+      }
+    }, 300);
+  };
+
+  const handleRecipientSelect = (recipient: RecipientOption) => {
+    setSelectedRecipient(recipient.user_id);
+    setRecipientSearchQuery(recipient.full_name);
+    setShowRecipientDropdown(false);
+  };
+
   const performSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
-      setSearchResults([]);
+      setFilteredConversations([]);
       setSearchActive(false);
       setIsSearching(false);
       return;
@@ -263,11 +310,11 @@ export function MessagesPage() {
     setIsSearching(true);
     setSearchActive(true);
     try {
-      const response = await messagesApi.search(query);
-      setSearchResults(response.results);
+      const results = await messagesApi.listConversations({ q: query });
+      setFilteredConversations(results);
     } catch (err) {
       logger.error('Failed to search messages', { error: err });
-      setSearchResults([]);
+      setFilteredConversations([]);
     } finally {
       setIsSearching(false);
     }
@@ -279,7 +326,7 @@ export function MessagesPage() {
       clearTimeout(searchDebounceRef.current);
     }
     if (value.length < 2) {
-      setSearchResults([]);
+      setFilteredConversations([]);
       setSearchActive(false);
       setIsSearching(false);
       return;
@@ -292,17 +339,12 @@ export function MessagesPage() {
 
   const clearSearch = () => {
     setSearchQuery('');
-    setSearchResults([]);
+    setFilteredConversations([]);
     setSearchActive(false);
     setIsSearching(false);
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
-  };
-
-  const handleSearchResultClick = (result: MessageSearchResult) => {
-    clearSearch();
-    selectConversation(result.conversation_id, result.message_id);
   };
 
   const highlightMatch = (text: string, query: string) => {
@@ -464,29 +506,39 @@ export function MessagesPage() {
             <div className="search-results">
               {isSearching ? (
                 <div className="search-loading">Searching...</div>
-              ) : searchResults.length === 0 ? (
-                <div className="search-empty">No messages matching &lsquo;{searchQuery}&rsquo;</div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="search-empty">No conversations matching &lsquo;{searchQuery}&rsquo;</div>
               ) : (
-                searchResults.map((result) => (
-                  <div
-                    key={`${result.conversation_id}-${result.message_id}`}
-                    className="search-result-item"
-                    onClick={() => handleSearchResultClick(result)}
-                  >
-                    {result.conversation_subject && (
-                      <div className="search-result-subject">
-                        {highlightMatch(result.conversation_subject, searchQuery)}
+                <div className="conversations">
+                  {filteredConversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      className={`conversation-item ${selectedConversation?.id === conv.id ? 'active' : ''} ${conv.unread_count > 0 ? 'unread' : ''}`}
+                      onClick={() => selectConversation(conv.id)}
+                    >
+                      <div className="conv-header">
+                        <span className="conv-name">
+                          {conv.other_participant_name}
+                          {conv.other_participant_role === 'admin' && (
+                            <span className="conv-role-badge admin">Admin</span>
+                          )}
+                        </span>
+                        {conv.unread_count > 0 && (
+                          <span className="unread-badge">{conv.unread_count}</span>
+                        )}
                       </div>
-                    )}
-                    <div className="search-result-content">
-                      {highlightMatch(result.message_content.length > 120 ? result.message_content.slice(0, 120) + '...' : result.message_content, searchQuery)}
+                      {conv.student_name && (
+                        <span className="conv-student">Re: {conv.student_name}</span>
+                      )}
+                      {conv.last_message_preview && (
+                        <p className="conv-preview">{conv.last_message_preview}</p>
+                      )}
+                      {conv.last_message_at && (
+                        <span className="conv-time">{formatTime(conv.last_message_at)}</span>
+                      )}
                     </div>
-                    <div className="search-result-meta">
-                      <span className="search-result-sender">{result.sender_name}</span>
-                      <span className="search-result-time">{formatTime(result.sent_at)}</span>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           ) : conversations.length === 0 ? (
@@ -709,50 +761,73 @@ export function MessagesPage() {
               </button>
             </div>
             <div className="modal-body">
-              {recipients.length === 0 ? (
-                <div className="no-recipients">
-                  <p>No recipients available</p>
-                  <small>
-                    You can message teachers, parents, or admins linked to your account.
-                  </small>
+              <div className="form-group">
+                <label>To:</label>
+                <div className="recipient-search-wrapper">
+                  <input
+                    type="text"
+                    className="recipient-search-input"
+                    placeholder="Search for a user..."
+                    value={recipientSearchQuery}
+                    onChange={(e) => handleRecipientSearchChange(e.target.value)}
+                    onFocus={() => {
+                      if (recipientSearchQuery.length < 2 && recipients.length > 0) {
+                        setRecipientSearchResults(recipients);
+                        setShowRecipientDropdown(true);
+                      } else if (recipientSearchQuery.length >= 2) {
+                        setShowRecipientDropdown(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowRecipientDropdown(false), 200);
+                    }}
+                  />
+                  {showRecipientDropdown && (
+                    <div className="recipient-dropdown">
+                      {isRecipientSearching ? (
+                        <div className="recipient-dropdown-loading">Searching...</div>
+                      ) : recipientSearchResults.length === 0 ? (
+                        <div className="recipient-dropdown-empty">
+                          {recipientSearchQuery.length >= 2 ? 'No users found' : 'Type to search...'}
+                        </div>
+                      ) : (
+                        recipientSearchResults.map((r) => (
+                          <div
+                            key={r.user_id}
+                            className="recipient-dropdown-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleRecipientSelect(r)}
+                          >
+                            <span className="recipient-name">{r.full_name}</span>
+                            <span className="recipient-role"> ({r.role})</span>
+                            {r.student_names.length > 0 && (
+                              <span className="recipient-students"> &mdash; {r.student_names.join(', ')}</span>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <div className="form-group">
-                    <label>To:</label>
-                    <select
-                      value={selectedRecipient || ''}
-                      onChange={(e) => setSelectedRecipient(Number(e.target.value) || null)}
-                    >
-                      <option value="">Select a recipient...</option>
-                      {recipients.map((r) => (
-                        <option key={r.user_id} value={r.user_id}>
-                          {r.full_name} ({r.role})
-                          {r.student_names.length > 0 && ` - ${r.student_names.join(', ')}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Subject (optional):</label>
-                    <input
-                      type="text"
-                      value={newSubject}
-                      onChange={(e) => setNewSubject(e.target.value)}
-                      placeholder="e.g., Homework question"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Message:</label>
-                    <textarea
-                      value={initialMessage}
-                      onChange={(e) => setInitialMessage(e.target.value)}
-                      placeholder="Write your message..."
-                      rows={5}
-                    />
-                  </div>
-                </>
-              )}
+              </div>
+              <div className="form-group">
+                <label>Subject (optional):</label>
+                <input
+                  type="text"
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  placeholder="e.g., Homework question"
+                />
+              </div>
+              <div className="form-group">
+                <label>Message:</label>
+                <textarea
+                  value={initialMessage}
+                  onChange={(e) => setInitialMessage(e.target.value)}
+                  placeholder="Write your message..."
+                  rows={5}
+                />
+              </div>
             </div>
             <div className="modal-footer">
               <button className="cancel-button" onClick={() => setShowNewModal(false)}>

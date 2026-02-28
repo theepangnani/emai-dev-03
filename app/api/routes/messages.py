@@ -417,16 +417,42 @@ def search_messages(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_valid_recipients(
     request: Request,
+    q: str | None = Query(None, min_length=2, max_length=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get list of users this person can message based on student-teacher relationships.
+    """Get list of users this person can message.
 
-    All users can always message admin users. Parents can message teachers,
-    teachers can message parents, and admins can message everyone.
+    When `q` is provided, searches ALL active users by name (any role).
+    When `q` is absent, returns linked users + admins (existing behavior).
     """
     logger.info(f"Getting recipients for user {current_user.id} ({current_user.role})")
 
+    # ── Global user search mode ─────────────────────────────────
+    if q:
+        escaped_q = escape_like(q)
+        like_pattern = f"%{escaped_q}%"
+        users = (
+            db.query(User)
+            .filter(
+                User.is_active == True,  # noqa: E712
+                User.id != current_user.id,
+                sa_func.lower(User.full_name).like(sa_func.lower(like_pattern)),
+            )
+            .limit(20)
+            .all()
+        )
+        return [
+            RecipientOption(
+                user_id=u.id,
+                full_name=u.full_name,
+                role=u.role.value if u.role else "unknown",
+                student_names=[],
+            )
+            for u in users
+        ]
+
+    # ── Default: linked users + admins ──────────────────────────
     result: list[RecipientOption] = []
     seen_user_ids: set[int] = set()
 
@@ -644,22 +670,19 @@ def create_conversation(
         f"User {current_user.id} creating conversation with recipient {data.recipient_id}"
     )
 
-    # Validate recipient exists
-    recipient = db.query(User).filter(User.id == data.recipient_id).first()
+    # Validate recipient exists and is active
+    recipient = db.query(User).filter(
+        User.id == data.recipient_id,
+        User.is_active == True,  # noqa: E712
+    ).first()
     if not recipient:
         raise HTTPException(status_code=404, detail="Recipient not found")
 
-    # Verify this is a valid recipient
-    valid_recipients = get_valid_recipients(request=request, db=db, current_user=current_user)
-    valid_ids = [r.user_id for r in valid_recipients]
-
-    if data.recipient_id not in valid_ids:
-        logger.warning(
-            f"User {current_user.id} attempted to message invalid recipient {data.recipient_id}"
-        )
+    # Prevent messaging yourself
+    if recipient.id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You cannot message this user",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot message yourself",
         )
 
     # Check if conversation already exists between these two
@@ -745,10 +768,15 @@ def list_conversations(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    q: str | None = Query(None, min_length=2, max_length=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all conversations for the current user with unread counts."""
+    """List all conversations for the current user with unread counts.
+
+    When `q` is provided, filters to conversations matching by message content,
+    subject, or other participant name.
+    """
     conversations = (
         db.query(Conversation)
         .options(
@@ -769,6 +797,39 @@ def list_conversations(
         return []
 
     conv_ids = [c.id for c in conversations]
+
+    # ── Optional search filter ──────────────────────────────────
+    if q:
+        escaped_q = escape_like(q)
+        like_pattern = f"%{escaped_q}%"
+
+        msg_match_ids = set(
+            row[0] for row in db.query(Message.conversation_id)
+            .filter(
+                Message.conversation_id.in_(conv_ids),
+                sa_func.lower(Message.content).like(sa_func.lower(like_pattern)),
+            )
+            .distinct()
+            .all()
+        )
+
+        subject_match_ids = {
+            c.id for c in conversations
+            if c.subject and q.lower() in c.subject.lower()
+        }
+
+        participant_match_ids = set()
+        for conv in conversations:
+            other = conv.participant_1 if conv.participant_2_id == current_user.id else conv.participant_2
+            if other and q.lower() in other.full_name.lower():
+                participant_match_ids.add(conv.id)
+
+        matching_ids = msg_match_ids | subject_match_ids | participant_match_ids
+        conversations = [c for c in conversations if c.id in matching_ids]
+        conv_ids = [c.id for c in conversations]
+
+        if not conversations:
+            return []
 
     # Batch-fetch last message per conversation using a subquery
     last_msg_subq = (
