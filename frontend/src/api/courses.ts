@@ -40,6 +40,27 @@ export interface AssignmentItem {
   created_at: string;
 }
 
+// Teacher Course Management type (#947)
+export interface TeacherCourseManagement {
+  id: number;
+  name: string;
+  description: string | null;
+  subject: string | null;
+  google_classroom_id: string | null;
+  classroom_type: string | null;
+  teacher_id: number | null;
+  teacher_name: string | null;
+  created_by_user_id: number | null;
+  is_private: boolean;
+  is_default: boolean;
+  student_count: number;
+  assignment_count: number;
+  material_count: number;
+  last_activity: string | null;
+  source: 'google' | 'manual' | 'admin';
+  created_at: string;
+}
+
 // Courses API
 export const coursesApi = {
   list: async () => {
@@ -54,6 +75,11 @@ export const coursesApi = {
 
   teachingList: async () => {
     const response = await api.get('/api/courses/teaching');
+    return response.data;
+  },
+
+  teachingManagement: async (): Promise<TeacherCourseManagement[]> => {
+    const response = await api.get('/api/courses/teaching/management');
     return response.data;
   },
 
