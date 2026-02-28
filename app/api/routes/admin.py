@@ -163,6 +163,43 @@ def list_audit_logs(
     return AuditLogList(items=items, total=total)
 
 
+@router.post("/users/{user_id}/unlock")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def unlock_user_account(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Manually unlock a locked user account. Admin only."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    was_locked = bool(user.locked_until) or (user.failed_login_attempts or 0) > 0
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.last_failed_login = None
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="account_unlock",
+        resource_type="user",
+        resource_id=user.id,
+        details={"was_locked": was_locked, "target_email": user.email},
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+
+    logger.info(
+        "Admin %s unlocked user %s (was_locked=%s)",
+        current_user.id, user.id, was_locked
+    )
+
+    return {"message": f"Account for {user.email or user.full_name} has been unlocked."}
+
+
 class AddRoleRequest(BaseModel):
     role: str
 
