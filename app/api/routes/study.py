@@ -845,13 +845,18 @@ def delete_study_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Soft-delete (archive) a study guide (owner only)."""
-    guide = db.query(StudyGuide).filter(
-        StudyGuide.id == guide_id,
-        StudyGuide.user_id == current_user.id,
-    ).first()
+    """Soft-delete (archive) a study guide (owner or parent of owner)."""
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
+    # Owner can always archive; parents can archive their children's guides
+    if guide.user_id != current_user.id:
+        if current_user.role == UserRole.PARENT:
+            child_user_ids = get_linked_children_user_ids(db, current_user.id)
+            if guide.user_id not in child_user_ids:
+                raise HTTPException(status_code=404, detail="Study guide not found")
+        else:
+            raise HTTPException(status_code=404, detail="Study guide not found")
     guide.archived_at = datetime.now(timezone.utc)
     log_action(db, user_id=current_user.id, action="archive", resource_type="study_guide", resource_id=guide_id)
     db.commit()

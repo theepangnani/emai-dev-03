@@ -228,6 +228,29 @@ class TestDeleteStudyGuide:
         resp = client.delete(f"/api/study/guides/{users['parent_guide'].id}", headers=headers)
         assert resp.status_code == 404
 
+    def test_parent_archives_childs_guide(self, client, users, db_session):
+        """Regression #924: parent must be able to archive a guide created by their child."""
+        from app.models.study_guide import StudyGuide
+
+        guide = StudyGuide(
+            user_id=users["student"].id, title="Child Disposable",
+            content="# Delete Me", guide_type="study_guide", version=1,
+            course_id=users["course"].id,
+        )
+        db_session.add(guide)
+        db_session.commit()
+        db_session.refresh(guide)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.delete(f"/api/study/guides/{guide.id}", headers=headers)
+        assert resp.status_code == 204
+
+    def test_unlinked_parent_cannot_archive_childs_guide(self, client, users, db_session):
+        """An unrelated parent should NOT be able to archive another child's guide."""
+        headers = _auth(client, users["outsider"].email)
+        resp = client.delete(f"/api/study/guides/{users['child_guide'].id}", headers=headers)
+        assert resp.status_code == 404
+
 
 # ── Duplicate check ──────────────────────────────────────────
 
