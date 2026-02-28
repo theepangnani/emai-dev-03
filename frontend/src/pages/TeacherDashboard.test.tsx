@@ -91,17 +91,19 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Loading & Data ───────────────────────────────────────────
-  it('renders courses count card after loading', async () => {
+  it('renders My Classes quick action and course list after loading', async () => {
     mockTeachingList.mockResolvedValue([
-      { id: 1, name: 'Algebra I', description: null, subject: 'Math', google_classroom_id: null },
-      { id: 2, name: 'Geometry', description: 'Shapes', subject: null, google_classroom_id: 'gc-1' },
+      { id: 1, name: 'Algebra I', description: null, subject: 'Math', google_classroom_id: null, student_count: 0 },
+      { id: 2, name: 'Geometry', description: 'Shapes', subject: null, google_classroom_id: 'gc-1', student_count: 0 },
     ])
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('2')).toBeInTheDocument() // course count
+      expect(screen.getByRole('button', { name: 'My Classes' })).toBeInTheDocument()
     })
-    expect(screen.getByText('Classes teaching')).toBeInTheDocument()
+    // Courses appear in the classes section
+    expect(screen.getByText('Algebra I')).toBeInTheDocument()
+    expect(screen.getByText('Geometry')).toBeInTheDocument()
   })
 
   it('renders courses list after loading', async () => {
@@ -130,25 +132,22 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Google Connection ────────────────────────────────────────
-  it('shows "Not Connected" when Google is not connected', async () => {
+  it('shows "Google Classroom" action when not connected', async () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Not Connected')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Google Classroom' })).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument()
   })
 
-  it('shows "Connected" with Sync button when Google is connected', async () => {
+  it('shows "Sync Classes" action when Google is connected', async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Connected')).toBeInTheDocument()
+      const syncButtons = screen.getAllByRole('button', { name: 'Sync Classes' })
+      expect(syncButtons.length).toBeGreaterThanOrEqual(1)
     })
-    // When connected + empty courses, Sync Classes appears in both card and empty state
-    const syncButtons = screen.getAllByRole('button', { name: 'Sync Classes' })
-    expect(syncButtons.length).toBeGreaterThanOrEqual(1)
   })
 
   it('handles Connect Google click', async () => {
@@ -157,7 +156,7 @@ describe('TeacherDashboard', () => {
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Google Classroom' })).toBeInTheDocument()
     })
 
     // Mock window.location.href
@@ -167,7 +166,7 @@ describe('TeacherDashboard', () => {
       writable: true,
     })
 
-    await user.click(screen.getByRole('button', { name: 'Connect' }))
+    await user.click(screen.getByRole('button', { name: 'Google Classroom' }))
 
     await waitFor(() => {
       expect(mockGetConnectUrl).toHaveBeenCalled()
@@ -309,18 +308,28 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Invite Parent Modal ──────────────────────────────────────
-  it('opens invite parent modal from dashboard card', async () => {
+  // Helper: open the "More" dropdown and click "Invite Parents"
+  async function openInviteParentViaMore(user: ReturnType<typeof userEvent.setup>) {
+    // Wait for the More dropdown trigger to appear
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'More' })).toBeInTheDocument()
+    })
+    // Open "More" dropdown
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    // Click "Invite Parents" in the dropdown
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'Invite Parents' })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('menuitem', { name: 'Invite Parents' }))
+  }
+
+  it('opens invite parent modal from More dropdown', async () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await waitFor(() => {
-      expect(screen.getByText('Invite Parent')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Invite Parent').closest('.dashboard-card')!)
+    await openInviteParentViaMore(user)
 
     await waitFor(() => {
-      // h2 in modal (card has h3)
       expect(screen.getByRole('heading', { level: 2, name: 'Invite Parent' })).toBeInTheDocument()
     })
   })
@@ -333,11 +342,7 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await waitFor(() => {
-      expect(screen.getByText('Invite Parent')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Invite Parent').closest('.dashboard-card')!)
+    await openInviteParentViaMore(user)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('parent@example.com')).toBeInTheDocument()
@@ -363,10 +368,7 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await waitFor(() => {
-      expect(screen.getByText('Invite Parent')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Invite Parent').closest('.dashboard-card')!)
+    await openInviteParentViaMore(user)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('parent@example.com')).toBeInTheDocument()
@@ -387,10 +389,7 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await waitFor(() => {
-      expect(screen.getByText('Invite Parent')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Invite Parent').closest('.dashboard-card')!)
+    await openInviteParentViaMore(user)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('parent@example.com')).toBeInTheDocument()
@@ -511,29 +510,23 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Navigation cards ─────────────────────────────────────────
-  it('navigates to messages on Messages card click', async () => {
+  it('navigates to messages on Messages quick action click', async () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Parent messages')).toBeInTheDocument()
+      // Multiple "Messages" buttons exist (sidebar + quick actions), find the quick action one
+      const messagesButtons = screen.getAllByRole('button', { name: 'Messages' })
+      expect(messagesButtons.length).toBeGreaterThanOrEqual(1)
     })
 
-    await user.click(screen.getByText('Parent messages').closest('.dashboard-card')!)
+    // The quick action button has rqa-card class
+    const messagesBtn = Array.from(document.querySelectorAll('.rqa-card')).find(
+      el => el.textContent?.includes('Messages')
+    ) as HTMLElement
+    expect(messagesBtn).toBeTruthy()
+    await user.click(messagesBtn)
 
     expect(mockNavigate).toHaveBeenCalledWith('/messages')
-  })
-
-  it('navigates to teacher-communications on Communications card click', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<TeacherDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Communications')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Email monitoring').closest('.dashboard-card')!)
-
-    expect(mockNavigate).toHaveBeenCalledWith('/teacher-communications')
   })
 })
