@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
-import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask } from '../api/client';
+import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -133,6 +133,19 @@ export function StudyGuidesPage() {
   // Edit material modal
   const [editContent, setEditContent] = useState<CourseContentItem | null>(null);
 
+  // Linked course tracking for unlinked material tagging (#623)
+  const [linkedCourseIds, setLinkedCourseIds] = useState<Set<number>>(new Set());
+  const [courseStudentMap, setCourseStudentMap] = useState<Record<number, number[]>>({});
+  const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
+  const [assignFilter, setAssignFilter] = useState<'all' | 'unlinked' | 'assigned'>('all');
+
+  // Batch selection for assigning unlinked materials (#623)
+  const [selectedContentIds, setSelectedContentIds] = useState<Set<number>>(new Set());
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTargetChildren, setAssignTargetChildren] = useState<Set<number>>(new Set());
+  const [assigning, setAssigning] = useState(false);
+  const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
+
   // Focus traps for modals
   const categorizeModalRef = useFocusTrap<HTMLDivElement>(!!categorizeGuide, () => setCategorizeGuide(null));
   const reassignModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
@@ -218,8 +231,14 @@ export function StudyGuidesPage() {
       setContentGuideMap(guideMap);
 
       if (isParent) {
-        const childrenData = await parentApi.getChildren();
+        const [childrenData, linkedData] = await Promise.all([
+          parentApi.getChildren(),
+          courseContentsApi.getLinkedCourseIds(),
+        ]);
         setChildren(childrenData);
+        setLinkedCourseIds(new Set(linkedData.linked_course_ids));
+        setCourseStudentMap(linkedData.course_student_map);
+        setLinkedChildren(linkedData.children);
       }
     } catch {
       setLoadError(true);
@@ -576,6 +595,75 @@ export function StudyGuidesPage() {
     setDatePromptValues({});
   };
 
+  // Toggle selection for batch assign (#623)
+  const toggleContentSelection = (id: number) => {
+    setSelectedContentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllUnlinked = () => {
+    const unlinkedIds = filteredContent
+      .filter(c => !linkedCourseIds.has(c.course_id))
+      .map(c => c.id);
+    const allSelected = unlinkedIds.every(id => selectedContentIds.has(id));
+    if (allSelected) {
+      setSelectedContentIds(new Set());
+    } else {
+      setSelectedContentIds(new Set(unlinkedIds));
+    }
+  };
+
+  // Quick assign a single material's course to a child (#623)
+  const handleQuickAssign = async (contentItem: CourseContentItem, childStudentId: number) => {
+    try {
+      await parentApi.assignCoursesToChild(childStudentId, [contentItem.course_id]);
+      showToast(`Assigned "${contentItem.course_name || 'course'}" to child`);
+      // Refresh linked data
+      const linkedData = await courseContentsApi.getLinkedCourseIds();
+      setLinkedCourseIds(new Set(linkedData.linked_course_ids));
+      setCourseStudentMap(linkedData.course_student_map);
+      setLinkedChildren(linkedData.children);
+      setSelectedContentIds(new Set());
+    } catch {
+      showToast('Failed to assign course to child');
+    }
+  };
+
+  // Batch assign selected materials' courses to selected children (#623)
+  const handleBatchAssign = async () => {
+    if (assignTargetChildren.size === 0 || selectedContentIds.size === 0) return;
+    setAssigning(true);
+    try {
+      // Collect unique course IDs from selected content items
+      const courseIdsToAssign = [...new Set(
+        contentItems
+          .filter(c => selectedContentIds.has(c.id))
+          .map(c => c.course_id)
+      )];
+      // Assign to each selected child
+      for (const childSid of assignTargetChildren) {
+        await parentApi.assignCoursesToChild(childSid, courseIdsToAssign);
+      }
+      showToast(`Assigned ${courseIdsToAssign.length} course(s) to ${assignTargetChildren.size} child(ren)`);
+      // Refresh linked data
+      const linkedData = await courseContentsApi.getLinkedCourseIds();
+      setLinkedCourseIds(new Set(linkedData.linked_course_ids));
+      setCourseStudentMap(linkedData.course_student_map);
+      setLinkedChildren(linkedData.children);
+      setSelectedContentIds(new Set());
+      setAssignTargetChildren(new Set());
+      setShowAssignModal(false);
+    } catch {
+      showToast('Failed to assign courses');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   // Scope course dropdown to courses visible in current content items
   const visibleCourses = useMemo(() => {
     const courseIdsInContent = new Set(contentItems.map(c => c.course_id));
@@ -588,7 +676,7 @@ export function StudyGuidesPage() {
     return visibleCourses.filter(c => c.name.toLowerCase().includes(courseSearchQuery.toLowerCase()));
   }, [visibleCourses, courseSearchQuery]);
 
-  // Apply course + type + text search filters
+  // Apply course + type + text search + assign status filters
   const materialSearchQuery = courseSearchQuery.trim().toLowerCase();
   const filteredContent = contentItems.filter(c => {
     if (filterCourse && c.course_id !== filterCourse) return false;
@@ -599,8 +687,19 @@ export function StudyGuidesPage() {
       const matchesCourse = (c.course_name || '').toLowerCase().includes(materialSearchQuery);
       if (!matchesTitle && !matchesCourse) return false;
     }
+    // Assign status filter (#623)
+    if (isParent && assignFilter !== 'all') {
+      const isLinked = linkedCourseIds.has(c.course_id);
+      if (assignFilter === 'unlinked' && isLinked) return false;
+      if (assignFilter === 'assigned' && !isLinked) return false;
+    }
     return true;
   });
+
+  // Count unlinked materials for badge display (#623)
+  const unlinkedCount = isParent
+    ? contentItems.filter(c => !linkedCourseIds.has(c.course_id)).length
+    : 0;
 
   // Apply guide type filter to legacy guides
   const filteredLegacy = filterType === 'all'
@@ -746,12 +845,52 @@ export function StudyGuidesPage() {
           ))}
         </div>
 
+        {/* Assign status filter (parent only) (#623) */}
+        {isParent && linkedChildren.length > 0 && (
+          <div className="guides-assign-filter">
+            <span className="guides-assign-filter-label">Assignment:</span>
+            {([
+              { key: 'all' as const, label: 'All' },
+              { key: 'unlinked' as const, label: 'Unlinked', count: unlinkedCount },
+              { key: 'assigned' as const, label: 'Assigned' },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                className={`guides-assign-filter-btn${assignFilter === tab.key ? ' active' : ''}${tab.key === 'unlinked' && unlinkedCount > 0 ? ' has-unlinked' : ''}`}
+                onClick={() => setAssignFilter(tab.key)}
+              >
+                {tab.label}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="assign-filter-count">{tab.count}</span>
+                )}
+              </button>
+            ))}
+            {selectedContentIds.size > 0 && (
+              <button
+                className="guides-batch-assign-btn"
+                onClick={() => { setAssignTargetChildren(new Set()); setShowAssignModal(true); }}
+              >
+                Assign {selectedContentIds.size} to Child
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Course content items */}
         <div className="guides-section">
-          <button className="collapse-toggle" onClick={() => setMaterialsExpanded(v => !v)}>
-            <span className={`section-chevron${materialsExpanded ? ' expanded' : ''}`}>&#9654;</span>
-            <h3>Class Materials ({filteredContent.length + generatingItems.length})</h3>
-          </button>
+          <div className="guides-section-header-row">
+            <button className="collapse-toggle" onClick={() => setMaterialsExpanded(v => !v)}>
+              <span className={`section-chevron${materialsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Class Materials ({filteredContent.length + generatingItems.length})</h3>
+            </button>
+            {isParent && materialsExpanded && assignFilter === 'unlinked' && filteredContent.some(c => !linkedCourseIds.has(c.course_id)) && (
+              <button className="guides-select-all-btn" onClick={toggleSelectAllUnlinked}>
+                {filteredContent.filter(c => !linkedCourseIds.has(c.course_id)).every(c => selectedContentIds.has(c.id))
+                  ? 'Deselect All'
+                  : 'Select All Unlinked'}
+              </button>
+            )}
+          </div>
           {materialsExpanded && (filteredContent.length > 0 || generatingItems.length > 0) ? (
             <div className="guides-list">
               {/* In-progress generation placeholders */}
@@ -780,12 +919,30 @@ export function StudyGuidesPage() {
                   )}
                 </div>
               ))}
-              {filteredContent.map(item => (
-                <div key={item.id} className="guide-row">
+              {filteredContent.map(item => {
+                const isUnlinked = isParent && linkedChildren.length > 0 && !linkedCourseIds.has(item.course_id);
+                return (
+                <div key={item.id} className={`guide-row${isUnlinked ? ' guide-row-unlinked' : ''}`}>
+                  {/* Batch selection checkbox for unlinked items (#623) */}
+                  {isParent && isUnlinked && (
+                    <label className="guide-row-checkbox" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedContentIds.has(item.id)}
+                        onChange={() => toggleContentSelection(item.id)}
+                      />
+                    </label>
+                  )}
                   <div className="guide-row-main" onClick={() => navigateToContent(item)}>
                     <span className="guide-row-icon">{contentTypeIcon(item.content_type, item.id)}</span>
                     <div className="guide-row-info">
-                      <span className="guide-row-title">{item.title}</span>
+                      <span className="guide-row-title">
+                        {item.title}
+                        {/* Unlinked badge (#623) */}
+                        {isUnlinked && (
+                          <span className="guide-unlinked-badge">Not assigned</span>
+                        )}
+                      </span>
                       <span className="guide-row-meta">
                         {item.course_name && (
                           <span className="guide-course-badge">{item.course_name}</span>
@@ -800,12 +957,47 @@ export function StudyGuidesPage() {
                     </div>
                   </div>
                   <div className="guide-row-actions">
+                    {/* Quick assign dropdown for unlinked items (#623) */}
+                    {isUnlinked && linkedChildren.length === 1 && (
+                      <button
+                        className="guide-assign-btn"
+                        title={`Assign to ${linkedChildren[0].full_name}`}
+                        onClick={() => handleQuickAssign(item, linkedChildren[0].student_id)}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                          <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                        Assign
+                      </button>
+                    )}
+                    {isUnlinked && linkedChildren.length > 1 && (
+                      <div className="guide-assign-dropdown">
+                        <button className="guide-assign-btn" title="Assign to child">
+                          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          </svg>
+                          Assign
+                        </button>
+                        <div className="guide-assign-dropdown-content">
+                          {linkedChildren.map(child => (
+                            <button
+                              key={child.student_id}
+                              className="guide-assign-dropdown-item"
+                              onClick={() => handleQuickAssign(item, child.student_id)}
+                            >
+                              {child.full_name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
                     <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
                     <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : materialsExpanded ? (
             <EmptyState
@@ -1115,6 +1307,60 @@ export function StudyGuidesPage() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={handleDatePromptCancel}>Skip</button>
               <button className="generate-btn" onClick={handleDatePromptSave}>Save Dates</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Batch assign modal (#623) */}
+      {showAssignModal && (
+        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Assign to Children" ref={assignModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Assign to Children</h2>
+            <p className="modal-desc">
+              Assign {selectedContentIds.size} material(s) to your children. This will enroll them in the associated course(s).
+            </p>
+            <div className="modal-form">
+              <div className="assign-children-list">
+                {linkedChildren.map(child => (
+                  <label key={child.student_id} className="assign-child-item">
+                    <input
+                      type="checkbox"
+                      checked={assignTargetChildren.has(child.student_id)}
+                      onChange={() => {
+                        setAssignTargetChildren(prev => {
+                          const next = new Set(prev);
+                          if (next.has(child.student_id)) next.delete(child.student_id);
+                          else next.add(child.student_id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <span className="assign-child-name">{child.full_name}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="assign-materials-summary">
+                <strong>Courses to assign:</strong>
+                <ul>
+                  {[...new Set(
+                    contentItems
+                      .filter(c => selectedContentIds.has(c.id))
+                      .map(c => c.course_name || `Course #${c.course_id}`)
+                  )].map(name => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowAssignModal(false)}>Cancel</button>
+              <button
+                className="generate-btn"
+                disabled={assignTargetChildren.size === 0 || assigning}
+                onClick={handleBatchAssign}
+              >
+                {assigning ? 'Assigning...' : `Assign to ${assignTargetChildren.size} Child${assignTargetChildren.size !== 1 ? 'ren' : ''}`}
+              </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { courseContentsApi, studyApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent } from '../api/client';
+import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -47,6 +47,10 @@ export function CourseMaterialDetailPage() {
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
+  // Unlinked material state (#623)
+  const [isUnlinked, setIsUnlinked] = useState(false);
+  const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
+
   const contentId = parseInt(id || '0');
 
   const loadData = useCallback(async () => {
@@ -82,6 +86,13 @@ export function CourseMaterialDetailPage() {
     if (!isParent || !content?.course_id) return;
     studyApi.resolveStudent({ course_id: content.course_id })
       .then(setResolvedStudent)
+      .catch(() => {});
+    // Check if material is unlinked (#623)
+    courseContentsApi.getLinkedCourseIds()
+      .then(data => {
+        setIsUnlinked(!data.linked_course_ids.includes(content.course_id));
+        setLinkedChildren(data.children);
+      })
       .catch(() => {});
   }, [isParent, content?.course_id]);
 
@@ -202,6 +213,18 @@ export function CourseMaterialDetailPage() {
     }
   };
 
+  // Assign material's course to a child (#623)
+  const handleAssignToChild = async (childStudentId: number) => {
+    if (!content) return;
+    try {
+      await parentApi.assignCoursesToChild(childStudentId, [content.course_id]);
+      showToast(`Assigned "${content.course_name || 'course'}" to child`);
+      setIsUnlinked(false);
+    } catch {
+      showToast('Failed to assign course to child');
+    }
+  };
+
   const handleContentUpdated = (result: CourseContentUpdateResponse) => {
     setContent(result);
   };
@@ -244,6 +267,24 @@ export function CourseMaterialDetailPage() {
               <span className="cm-course-badge">{content.course_name}</span>
             )}
           </div>
+          {/* Unlinked banner with assign action (#623) */}
+          {isParent && isUnlinked && linkedChildren.length > 0 && (
+            <div className="cm-unlinked-banner">
+              <span className="cm-unlinked-badge">Not assigned</span>
+              <span className="cm-unlinked-text">This material is not assigned to any of your children.</span>
+              <div className="cm-unlinked-actions">
+                {linkedChildren.map(child => (
+                  <button
+                    key={child.student_id}
+                    className="cm-unlinked-assign-btn"
+                    onClick={() => handleAssignToChild(child.student_id)}
+                  >
+                    Assign to {child.full_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="cm-detail-meta">
             {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
