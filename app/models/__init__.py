@@ -19,6 +19,7 @@ from app.models.analytics import GradeRecord, ProgressReport
 from app.models.link_request import LinkRequest, LinkRequestType, LinkRequestStatus
 from app.models.notification_suppression import NotificationSuppression
 from app.models.quiz_result import QuizResult
+from app.models.student_email import StudentEmail, EmailType
 
 __all__ = [
     "User",
@@ -57,4 +58,6 @@ __all__ = [
     "LinkRequestStatus",
     "NotificationSuppression",
     "QuizResult",
+    "StudentEmail",
+    "EmailType",
 ]
