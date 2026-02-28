@@ -273,30 +273,43 @@ def auto_create_tasks_from_dates(
             if child_ids:
                 assigned_to = child_ids[0]
 
+        # Resolve legacy student_id from assigned user (required by prod DB schema)
+        legacy_student_id = None
+        if assigned_to:
+            student_rec = db.query(Student).filter(Student.user_id == assigned_to).first()
+            if student_rec:
+                legacy_student_id = student_rec.id
+
         priority = d.get("priority", "medium")
         if priority not in ("low", "medium", "high"):
             priority = "medium"
 
-        task = Task(
-            title=d["title"],
-            description=f"Auto-created from class material generation",
-            due_date=due_date,
-            priority=priority,
-            created_by_user_id=user.id,
-            assigned_to_user_id=assigned_to,
-            study_guide_id=study_guide_id,
-            course_id=course_id,
-            course_content_id=course_content_id,
-        )
-        db.add(task)
-        db.flush()
-        created_tasks.append({
-            "id": task.id,
-            "title": task.title,
-            "due_date": d["date"],
-            "priority": priority,
-        })
-        logger.info(f"Auto-created task '{task.title}' due {d['date']} from study guide {study_guide_id}")
+        try:
+            task = Task(
+                title=d["title"],
+                description=f"Auto-created from class material generation",
+                due_date=due_date,
+                priority=priority,
+                created_by_user_id=user.id,
+                assigned_to_user_id=assigned_to,
+                parent_id=user.id,
+                student_id=legacy_student_id,
+                study_guide_id=study_guide_id,
+                course_id=course_id,
+                course_content_id=course_content_id,
+            )
+            db.add(task)
+            db.flush()
+            created_tasks.append({
+                "id": task.id,
+                "title": task.title,
+                "due_date": d["date"],
+                "priority": priority,
+            })
+            logger.info(f"Auto-created task '{task.title}' due {d['date']} from study guide {study_guide_id}")
+        except Exception:
+            logger.exception(f"Failed to auto-create task '{d.get('title')}' for study guide {study_guide_id}")
+            db.rollback()
 
     return created_tasks
 
