@@ -94,8 +94,10 @@ export function useParentDashboard() {
       if (data.children.length === 1) {
         setSelectedChild(data.children[0].student_id);
       } else {
-        // Restore persisted child selection from sessionStorage
-        const storedUserId = sessionStorage.getItem('selectedChildId');
+        // Priority: 1) URL ?child= param, 2) localStorage, 3) sessionStorage fallback
+        const urlChildId = searchParams.get('child');
+        const lastChild = localStorage.getItem('last_selected_child');
+        const storedUserId = urlChildId || lastChild || sessionStorage.getItem('selectedChildId');
         const storedMatch = storedUserId ? data.children.find(c => c.user_id === Number(storedUserId)) : null;
         setSelectedChild(storedMatch ? storedMatch.student_id : null);
       }
@@ -215,8 +217,21 @@ export function useParentDashboard() {
     // Auto-expand detail panel when selecting a child, collapse when deselecting (#740)
     if (isDeselecting) {
       setDetailPanelCollapsed(true);
+      // Clear child from URL and localStorage when deselecting
+      const params = new URLSearchParams(searchParams);
+      params.delete('child');
+      setSearchParams(params, { replace: true });
+      try { localStorage.removeItem('last_selected_child'); } catch { /* ignore */ }
     } else {
       setDetailPanelCollapsed(false);
+      // Sync child selection to URL and localStorage (#885)
+      const child = children.find(c => c.student_id === studentId);
+      if (child) {
+        const params = new URLSearchParams(searchParams);
+        params.set('child', String(child.user_id));
+        setSearchParams(params, { replace: true });
+        try { localStorage.setItem('last_selected_child', String(child.user_id)); } catch { /* ignore */ }
+      }
     }
   };
 
@@ -226,6 +241,11 @@ export function useParentDashboard() {
     setChildOverview(null);
     sessionStorage.removeItem('selectedChildId');
     setDetailPanelCollapsed(true);
+    // Clear child from URL and localStorage (#885)
+    const params = new URLSearchParams(searchParams);
+    params.delete('child');
+    setSearchParams(params, { replace: true });
+    try { localStorage.removeItem('last_selected_child'); } catch { /* ignore */ }
   };
 
   // ============================================

@@ -53,6 +53,8 @@ export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const courseId = Number(id);
   const navigate = useNavigate();
+  // ?child= param in the URL preserves parent context for deep linking (#885)
+  // — no need to read it here, but CoursesPage sets it so browser back works correctly.
   const { user } = useAuth();
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
