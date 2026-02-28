@@ -25,6 +25,26 @@ interface QuizTabProps {
   linkedTasks?: TaskItem[];
 }
 
+function FocusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function EmptyQuizIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M9 9.5a3.5 3.5 0 116 2c0 1.2-1.2 1.5-1.8 2-.3.3-.4.6-.4 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="12.8" cy="17.5" r="0.8" fill="currentColor"/>
+    </svg>
+  );
+}
+
 export function QuizTab({
   quiz,
   generating,
@@ -132,19 +152,22 @@ export function QuizTab({
         </div>
       )}
       <div className="cm-focus-prompt">
-        <input
-          type="text"
-          value={focusPrompt}
-          onChange={(e) => onFocusPromptChange(e.target.value)}
-          placeholder="Focus on... (e.g., photosynthesis and the Calvin cycle)"
-          disabled={generating !== null}
-        />
+        <div className="cm-focus-prompt-inner">
+          <span className="cm-focus-prompt-icon"><FocusIcon /></span>
+          <input
+            type="text"
+            value={focusPrompt}
+            onChange={(e) => onFocusPromptChange(e.target.value)}
+            placeholder="Focus on a specific topic (e.g., photosynthesis, the Calvin cycle)"
+            disabled={generating !== null}
+          />
+        </div>
       </div>
       {quiz && parsedQuiz.length > 0 ? (
-        <>
+        <div className="cm-tab-card">
           <div className="cm-guide-actions">
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
-            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'Download PDF'}</button>
+            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
             <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
@@ -232,7 +255,7 @@ export function QuizTab({
               </div>
             </div>
           )}
-        </>
+        </div>
       ) : generating === 'quiz' ? (
         <div className="cm-inline-generating">
           <div className="cm-inline-spinner" />
@@ -240,13 +263,15 @@ export function QuizTab({
         </div>
       ) : (
         <div className="cm-empty-tab">
-          <p>No quiz generated yet.</p>
+          <div className="cm-empty-tab-icon"><EmptyQuizIcon /></div>
+          <h3>No quiz yet</h3>
+          <p>Generate a practice quiz to test understanding of this material with multiple-choice questions.</p>
           <button
-            className="generate-btn"
+            className="cm-empty-generate-btn"
             onClick={onGenerate}
             disabled={generating !== null || !hasSourceContent}
           >
-            Generate Quiz
+            {'\u2728'} Generate Quiz
           </button>
           {!hasSourceContent && (
             <p className="cm-hint">Add content or upload a document first to generate a quiz.</p>
