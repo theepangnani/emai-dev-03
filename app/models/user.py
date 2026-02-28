@@ -45,6 +45,11 @@ class User(Base):
     consent_preferences = Column(Text, nullable=True)  # JSON string
     consent_given_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Account lockout (brute-force protection)
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    last_failed_login = Column(DateTime(timezone=True), nullable=True)
+
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)

@@ -23,6 +23,11 @@ from app.schemas.course_content import (
     CourseContentUpdate,
     CourseContentResponse,
     CourseContentUpdateResponse,
+    ExtractTasksResponse,
+    ExtractedTaskItem,
+    BulkTaskCreateRequest,
+    BulkTaskCreateResponse,
+    CreatedTaskSummary,
 )
 
 import logging
@@ -212,6 +217,145 @@ async def upload_course_content_file(
             logger.warning("Failed to notify parents of student upload: %s", e)
 
     return content
+
+
+MAX_BULK_FILES = 20  # Maximum files per bulk upload request
+
+
+@router.post("/bulk-upload")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def bulk_upload_materials(
+    request: Request,
+    course_id: int = Form(...),
+    content_type: str = Form("notes"),
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload multiple files as course content in a single request.
+
+    Accepts up to 20 files. Each file is saved and text is extracted.
+    Returns per-file success/failure results.
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    if len(files) > MAX_BULK_FILES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Too many files. Maximum {MAX_BULK_FILES} files per request.",
+        )
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No files provided.",
+        )
+
+    # Normalize content_type
+    normalized_type = content_type.strip().lower()
+    from app.schemas.course_content import VALID_CONTENT_TYPES
+    if normalized_type not in VALID_CONTENT_TYPES:
+        normalized_type = "notes"
+
+    results = []
+    succeeded = 0
+    failed = 0
+
+    for file in files:
+        filename = file.filename or "unknown"
+        try:
+            file_content = await file.read()
+            if len(file_content) > MAX_UPLOAD_SIZE:
+                results.append({
+                    "filename": filename,
+                    "success": False,
+                    "content_id": None,
+                    "error": f"File size exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)} MB limit",
+                })
+                failed += 1
+                continue
+
+            if len(file_content) == 0:
+                results.append({
+                    "filename": filename,
+                    "success": False,
+                    "content_id": None,
+                    "error": "File is empty",
+                })
+                failed += 1
+                continue
+
+            stored_path = save_file(file_content, filename)
+
+            # Extract text from uploaded file
+            extracted_text = ""
+            try:
+                extracted_text = process_file(file_content, filename)
+            except FileProcessingError as e:
+                logger.warning("Text extraction failed for %s: %s", filename, e)
+
+            content_item = CourseContent(
+                course_id=course_id,
+                title=filename.rsplit(".", 1)[0] if "." in filename else filename,
+                content_type=normalized_type,
+                text_content=extracted_text or None,
+                file_path=stored_path,
+                original_filename=filename,
+                file_size=len(file_content),
+                mime_type=file.content_type,
+                created_by_user_id=current_user.id,
+            )
+            db.add(content_item)
+            db.commit()
+            db.refresh(content_item)
+
+            results.append({
+                "filename": filename,
+                "success": True,
+                "content_id": content_item.id,
+                "error": None,
+            })
+            succeeded += 1
+
+        except Exception as e:
+            logger.error("Bulk upload failed for %s: %s", filename, e)
+            db.rollback()
+            results.append({
+                "filename": filename,
+                "success": False,
+                "content_id": None,
+                "error": str(e) if str(e) else "Upload failed",
+            })
+            failed += 1
+
+    # Notify parents when a student uploads materials
+    if current_user.role == UserRole.STUDENT and succeeded > 0:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded {succeeded} file(s)",
+                content=f"{current_user.full_name} uploaded {succeeded} file(s) to {course.name}.",
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{course_id}",
+                source_type="course_content",
+                source_id=None,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to notify parents of student bulk upload: %s", e)
+
+    return {
+        "total": len(files),
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": results,
+    }
 
 
 @router.get("/", response_model=list[CourseContentResponse])
@@ -592,6 +736,195 @@ def restore_course_content(
     db.commit()
     db.refresh(content)
     return content
+
+
+# ============================================
+# AI Task Extraction (#878)
+# ============================================
+
+
+@router.post("/{content_id}/extract-tasks", response_model=ExtractTasksResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def extract_tasks_from_content(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Use AI to extract actionable tasks and deadlines from a course content document.
+
+    Returns a preview of extracted tasks for the user to review and edit before
+    confirming creation. Rate limited to 10 requests per minute.
+    """
+    from app.services.task_extraction_service import extract_tasks_from_document
+
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Must have text content to extract from
+    if not content.text_content or not content.text_content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This content has no extractable text. Upload a text-based document to extract tasks.",
+        )
+
+    try:
+        raw_tasks = await extract_tasks_from_document(
+            content=content.text_content,
+            filename=content.original_filename or content.title,
+        )
+    except Exception as e:
+        logger.error(f"Task extraction failed for content {content_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="AI task extraction failed. Please try again.",
+        )
+
+    tasks = [ExtractedTaskItem(**t) for t in raw_tasks]
+
+    if not tasks:
+        return ExtractTasksResponse(
+            content_id=content_id,
+            filename=content.original_filename,
+            tasks=[],
+            message="No actionable tasks or deadlines found in this document.",
+        )
+
+    return ExtractTasksResponse(
+        content_id=content_id,
+        filename=content.original_filename,
+        tasks=tasks,
+        message=f"Found {len(tasks)} task(s) in the document. Review and edit before creating.",
+    )
+
+
+@router.post("/{content_id}/create-tasks", response_model=BulkTaskCreateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def create_tasks_from_extraction(
+    request: Request,
+    content_id: int,
+    body: BulkTaskCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create tasks from reviewed/edited extraction results.
+
+    Accepts the task list that the user has reviewed and edited in the frontend.
+    Creates Task records linked to the course content.
+    """
+    from app.models.task import Task
+    from app.models.student import Student
+    from app.models.notification import NotificationType
+    from datetime import datetime as dt
+
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    if not body.tasks:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No tasks provided to create.",
+        )
+
+    # Determine task assignment (same pattern as auto_create_tasks_from_dates)
+    assigned_to = None
+    legacy_student_id = None
+    if current_user.role == UserRole.PARENT:
+        child_rows = db.query(parent_students.c.student_id).filter(
+            parent_students.c.parent_id == current_user.id
+        ).all()
+        if child_rows:
+            child_sids = [r[0] for r in child_rows]
+            student_rec = db.query(Student).filter(Student.id.in_(child_sids)).first()
+            if student_rec:
+                assigned_to = student_rec.user_id
+                legacy_student_id = student_rec.id
+
+    created_tasks: list[CreatedTaskSummary] = []
+    course = db.query(Course).filter(Course.id == content.course_id).first()
+
+    for task_data in body.tasks:
+        priority = task_data.priority.lower()
+        if priority not in ("low", "medium", "high"):
+            priority = "medium"
+
+        due_date = None
+        due_date_str = None
+        if task_data.due_date:
+            try:
+                due_date = dt.strptime(task_data.due_date, "%Y-%m-%d")
+                due_date_str = task_data.due_date
+            except (ValueError, TypeError):
+                pass
+
+        # Allow explicit assignee override from request
+        task_assigned_to = task_data.assigned_to_user_id or assigned_to
+
+        try:
+            task = Task(
+                title=task_data.title[:255],
+                description=task_data.description or "Auto-extracted from uploaded document",
+                due_date=due_date,
+                priority=priority,
+                created_by_user_id=current_user.id,
+                assigned_to_user_id=task_assigned_to,
+                parent_id=current_user.id if current_user.role == UserRole.PARENT else None,
+                student_id=legacy_student_id,
+                course_id=content.course_id,
+                course_content_id=content_id,
+            )
+            db.add(task)
+            db.flush()
+
+            created_tasks.append(CreatedTaskSummary(
+                id=task.id,
+                title=task.title,
+                due_date=due_date_str,
+                priority=priority,
+            ))
+            logger.info(
+                f"Created task '{task.title}' from document extraction | "
+                f"content_id={content_id} | task_id={task.id}"
+            )
+        except Exception:
+            logger.exception(f"Failed to create extracted task '{task_data.title}'")
+            db.rollback()
+
+    db.commit()
+
+    # Notify parents when tasks are created from a document
+    if created_tasks and current_user.role == UserRole.STUDENT:
+        try:
+            course_name = course.name if course else "a course"
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"Tasks extracted from class material",
+                content=(
+                    f"{current_user.full_name} extracted {len(created_tasks)} task(s) "
+                    f"from \"{content.title}\" in {course_name}."
+                ),
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{content.course_id}",
+                source_type="course_content",
+                source_id=content_id,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to notify parents of task extraction: {e}")
+
+    return BulkTaskCreateResponse(
+        created_count=len(created_tasks),
+        tasks=created_tasks,
+    )
 
 
 @router.delete("/{content_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)

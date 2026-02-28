@@ -432,7 +432,7 @@ export function ParentDashboard() {
           >
             <GradesSummaryCard
               selectedChildId={pd.selectedChild ?? undefined}
-              onViewDetails={() => pd.navigate('/grades')}
+              onViewDetails={() => pd.navigate(pd.selectedChild ? `/grades?student=${pd.selectedChild}` : '/grades')}
             />
           </CollapsibleSection>
 

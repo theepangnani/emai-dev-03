@@ -189,10 +189,14 @@ export function useChildManagement({
       setSelectedChild(null);
       setChildOverview(null);
       sessionStorage.removeItem('selectedChildId');
+      try { localStorage.removeItem('last_selected_child'); } catch { /* ignore */ }
     } else {
       setSelectedChild(studentId);
       const child = children.find(c => c.student_id === studentId);
-      if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
+      if (child) {
+        sessionStorage.setItem('selectedChildId', String(child.user_id));
+        try { localStorage.setItem('last_selected_child', String(child.user_id)); } catch { /* ignore */ }
+      }
     }
   };
 
