@@ -137,6 +137,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         role=user_data.role if has_roles else None,
         roles=",".join(r.value for r in user_data.roles) if has_roles else "",
         needs_onboarding=not has_roles,
+        onboarding_completed=has_roles,  # Completed if roles were provided at registration
         email_verified=is_google_signup,
         email_verified_at=datetime.now(timezone.utc) if is_google_signup else None,
         google_id=user_data.google_id,
@@ -253,6 +254,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         is_active=user.is_active,
         google_connected=bool(user.google_access_token),
         needs_onboarding=user.needs_onboarding or False,
+        onboarding_completed=user.onboarding_completed or False,
         email_verified=user.email_verified or False,
         created_at=user.created_at,
     )
@@ -368,9 +370,17 @@ def login(
     log_action(db, user_id=user.id, action="login", resource_type="user",
                resource_id=user.id, ip_address=ip)
     db.commit()
-    access_token = create_access_token(data={"sub": str(user.id)})
+    onboarding_done = bool(user.onboarding_completed)
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "onboarding_completed": onboarding_done,
+    })
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        onboarding_completed=onboarding_done,
+    )
 
 
 @router.post("/logout")
@@ -446,6 +456,7 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
         full_name=data.full_name,
         role=role,
         roles=role.value,
+        onboarding_completed=True,  # Invite-based users have roles pre-assigned
         email_verified=True,
         email_verified_at=datetime.now(timezone.utc),
     )
@@ -546,9 +557,12 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     db.commit()
 
     # Return JWT so the user is logged in immediately
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "onboarding_completed": True,
+    })
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return Token(access_token=access_token, refresh_token=refresh_token, onboarding_completed=True)
 
 
 from pydantic import BaseModel as _BaseModel
@@ -653,7 +667,7 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
     return {"message": "Password reset successfully. You can now sign in."}
 
 
-@router.post("/onboarding", response_model=UserResponse)
+@router.post("/onboarding")
 def complete_onboarding(
     body: OnboardingRequest,
     request: Request,
@@ -703,6 +717,7 @@ def complete_onboarding(
     current_user.role = roles[0]
     current_user.set_roles(roles)
     current_user.needs_onboarding = False
+    current_user.onboarding_completed = True
     db.flush()
 
     # Create profile records
@@ -722,7 +737,16 @@ def complete_onboarding(
     db.commit()
     db.refresh(current_user)
 
-    return UserResponse(
+    # Issue a new JWT with the correct role now that onboarding is complete
+    new_access_token = create_access_token(data={
+        "sub": str(current_user.id),
+        "onboarding_completed": True,
+    })
+    new_refresh_token = create_refresh_token(data={"sub": str(current_user.id)})
+
+    from fastapi.responses import JSONResponse as _JSONResponse
+
+    user_data = UserResponse(
         id=current_user.id,
         email=current_user.email or "",
         full_name=current_user.full_name,
@@ -731,9 +755,28 @@ def complete_onboarding(
         is_active=current_user.is_active,
         google_connected=bool(current_user.google_access_token),
         needs_onboarding=False,
+        onboarding_completed=True,
         email_verified=current_user.email_verified or False,
         created_at=current_user.created_at,
     )
+
+    # Return user info along with new tokens
+    response_data = user_data.model_dump(mode="json")
+    response_data["access_token"] = new_access_token
+    response_data["refresh_token"] = new_refresh_token
+
+    return _JSONResponse(content=response_data)
+
+
+@router.get("/onboarding-status")
+def get_onboarding_status(
+    current_user: User = Depends(get_current_user),
+):
+    """Return whether the current user has completed onboarding."""
+    return {
+        "onboarding_completed": bool(current_user.onboarding_completed),
+        "needs_onboarding": bool(current_user.needs_onboarding),
+    }
 
 
 @router.post("/verify-email")

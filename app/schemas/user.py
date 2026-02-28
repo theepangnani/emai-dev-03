@@ -84,6 +84,7 @@ class UserResponse(BaseModel):
     is_active: bool
     google_connected: bool = False
     needs_onboarding: bool = False
+    onboarding_completed: bool = False
     email_verified: bool = False
     created_at: datetime
 
@@ -108,6 +109,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
+    onboarding_completed: bool | None = None
 
 
 class ForgotPasswordRequest(BaseModel):

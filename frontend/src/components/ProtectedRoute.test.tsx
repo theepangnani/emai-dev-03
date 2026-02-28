@@ -36,7 +36,7 @@ describe('ProtectedRoute', () => {
 
   it('renders children when authenticated and no role restriction', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 1, role: 'parent', roles: ['parent'] },
+      user: { id: 1, role: 'parent', roles: ['parent'], needs_onboarding: false, onboarding_completed: true },
       isLoading: false,
     })
     renderProtected()
@@ -45,7 +45,7 @@ describe('ProtectedRoute', () => {
 
   it('renders children when user has matching role', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 1, role: 'teacher', roles: ['teacher', 'parent'] },
+      user: { id: 1, role: 'teacher', roles: ['teacher', 'parent'], needs_onboarding: false, onboarding_completed: true },
       isLoading: false,
     })
     renderProtected(['teacher', 'admin'])
@@ -54,10 +54,28 @@ describe('ProtectedRoute', () => {
 
   it('blocks access when user lacks required role', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 1, role: 'student', roles: ['student'] },
+      user: { id: 1, role: 'student', roles: ['student'], needs_onboarding: false, onboarding_completed: true },
       isLoading: false,
     })
     renderProtected(['admin'])
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
+  })
+
+  it('redirects to onboarding when onboarding_completed is false', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, role: null, roles: [], needs_onboarding: true, onboarding_completed: false },
+      isLoading: false,
+    })
+    renderProtected()
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
+  })
+
+  it('redirects to onboarding when needs_onboarding is true', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, role: null, roles: [], needs_onboarding: true, onboarding_completed: false },
+      isLoading: false,
+    })
+    renderProtected()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
   })
 })

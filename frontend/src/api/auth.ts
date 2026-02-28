@@ -56,6 +56,11 @@ export const authApi = {
     return response.data;
   },
 
+  getOnboardingStatus: async () => {
+    const response = await api.get('/api/auth/onboarding-status');
+    return response.data as { onboarding_completed: boolean; needs_onboarding: boolean };
+  },
+
   verifyEmail: async (token: string) => {
     const response = await api.post('/api/auth/verify-email', { token });
     return response.data as { message: string };
