@@ -1,13 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/auth';
 import { isValidEmail } from '../utils/validation';
 import './Auth.css';
 
+type RegisterMode = 'email' | 'username';
+
 export function Register() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [mode, setMode] = useState<RegisterMode>('email');
   const [formData, setFormData] = useState({
     email: '',
+    username: '',
+    parent_email: '',
     password: '',
     confirmPassword: '',
     full_name: '',
@@ -19,8 +25,14 @@ export function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    message: string;
+  }>({ checking: false, available: null, message: '' });
   const { register } = useAuth();
   const navigate = useNavigate();
+  const usernameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Handle Google OAuth redirect with pre-fill data
   useEffect(() => {
@@ -35,6 +47,7 @@ export function Register() {
         full_name: googleName || '',
       }));
       setGoogleData({ google_id: googleId });
+      setMode('email'); // Google OAuth forces email mode
       // Clear URL params
       setSearchParams({});
     }
@@ -46,13 +59,85 @@ export function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Debounced username availability check
+  const checkUsernameAvailability = useCallback((username: string) => {
+    if (usernameTimerRef.current) {
+      clearTimeout(usernameTimerRef.current);
+    }
+
+    const trimmed = username.trim().toLowerCase();
+
+    if (!trimmed || trimmed.length < 3) {
+      setUsernameStatus({ checking: false, available: null, message: '' });
+      return;
+    }
+
+    setUsernameStatus({ checking: true, available: null, message: 'Checking...' });
+
+    usernameTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await authApi.checkUsername(trimmed);
+        setUsernameStatus({
+          checking: false,
+          available: result.available,
+          message: result.message,
+        });
+      } catch {
+        setUsernameStatus({ checking: false, available: null, message: 'Could not check availability' });
+      }
+    }, 500);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (usernameTimerRef.current) {
+        clearTimeout(usernameTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, username: value }));
+    checkUsernameAvailability(value);
+  };
+
+  const handleModeSwitch = (newMode: RegisterMode) => {
+    if (isGoogleSignup) return; // Google OAuth forces email mode
+    setMode(newMode);
+    setError('');
+    setUsernameStatus({ checking: false, available: null, message: '' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!isValidEmail(formData.email)) {
-      setError('Please enter a valid email address');
-      return;
+    if (mode === 'email') {
+      if (!isValidEmail(formData.email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+    } else {
+      // Username mode validations
+      const trimmedUsername = formData.username.trim().toLowerCase();
+      if (!trimmedUsername || trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+        setError('Username must be 3-20 characters');
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+        setError('Username can only contain letters, numbers, and underscores');
+        return;
+      }
+      if (usernameStatus.available === false) {
+        setError('Please choose an available username');
+        return;
+      }
+      if (!isValidEmail(formData.parent_email)) {
+        setError('Please enter a valid parent email address');
+        return;
+      }
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -63,23 +148,37 @@ export function Register() {
     setIsLoading(true);
 
     try {
-      const registrationData: {
-        email: string;
-        password: string;
-        full_name: string;
-        roles: string[];
-        google_id?: string;
-      } = {
-        email: formData.email,
-        password: formData.password,
-        full_name: formData.full_name,
-        roles: [],
-      };
+      if (mode === 'email') {
+        const registrationData: {
+          email: string;
+          password: string;
+          full_name: string;
+          roles: string[];
+          google_id?: string;
+        } = {
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+          roles: [],
+        };
 
-      if (googleData) registrationData.google_id = googleData.google_id;
+        if (googleData) registrationData.google_id = googleData.google_id;
 
-      await register(registrationData);
-      navigate('/onboarding');
+        await register(registrationData);
+        navigate('/onboarding');
+      } else {
+        // Username mode: auto-set student role
+        const registrationData = {
+          username: formData.username.trim().toLowerCase(),
+          parent_email: formData.parent_email,
+          password: formData.password,
+          full_name: formData.full_name,
+          roles: ['student'] as string[],
+        };
+
+        await register(registrationData);
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       if (detail) {
@@ -101,6 +200,26 @@ export function Register() {
           {isGoogleSignup ? 'Complete your Google account setup' : 'Create your account to get started'}
         </p>
 
+        {/* Mode toggle (hidden during Google signup) */}
+        {!isGoogleSignup && (
+          <div className="auth-mode-toggle">
+            <button
+              type="button"
+              className={`auth-mode-btn ${mode === 'email' ? 'active' : ''}`}
+              onClick={() => handleModeSwitch('email')}
+            >
+              Register with Email
+            </button>
+            <button
+              type="button"
+              className={`auth-mode-btn ${mode === 'username' ? 'active' : ''}`}
+              onClick={() => handleModeSwitch('username')}
+            >
+              Register with Username
+            </button>
+          </div>
+        )}
+
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -117,19 +236,62 @@ export function Register() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              required
-              disabled={isGoogleSignup}
-            />
-          </div>
+          {mode === 'email' ? (
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="you@example.com"
+                required
+                disabled={isGoogleSignup}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="form-group">
+                <label htmlFor="username">Username</label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleUsernameChange}
+                  placeholder="cool_student_42"
+                  required
+                  minLength={3}
+                  maxLength={20}
+                  autoComplete="username"
+                />
+                {formData.username.trim().length >= 3 && (
+                  <div className={`username-status ${
+                    usernameStatus.checking ? 'checking' :
+                    usernameStatus.available === true ? 'available' :
+                    usernameStatus.available === false ? 'taken' : ''
+                  }`}>
+                    {usernameStatus.message}
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="parent_email">Parent Email</label>
+                <input
+                  type="email"
+                  id="parent_email"
+                  name="parent_email"
+                  value={formData.parent_email}
+                  onChange={handleChange}
+                  placeholder="parent@example.com"
+                  required
+                />
+                <span className="form-hint">Your parent will receive a notification to connect with your account.</span>
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
@@ -140,7 +302,7 @@ export function Register() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="--------"
                 required
                 minLength={8}
               />
@@ -175,7 +337,7 @@ export function Register() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="--------"
                 required
               />
               <button
