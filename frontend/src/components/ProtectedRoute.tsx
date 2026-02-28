@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ConsentGateway } from './ConsentGateway';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,5 +34,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
   }
 
-  return <>{children}</>;
+  // ConsentGateway blocks students who haven't given consent (#783)
+  return <ConsentGateway>{children}</ConsentGateway>;
 }

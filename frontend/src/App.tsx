@@ -7,6 +7,7 @@ import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageLoader } from './components/PageLoader';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 import './App.css';
 
 // Retry lazy imports to handle stale chunks after deployment.
@@ -91,6 +92,7 @@ function App() {
         <ToastProvider>
         <BrowserRouter>
           <ErrorBoundary>
+          <CookieConsentBanner />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<Login />} />

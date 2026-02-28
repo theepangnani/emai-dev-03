@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, mcp_config
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -707,6 +707,52 @@ with engine.connect() as conn:
     except Exception:
         conn.rollback()
 
+    # ── users: consent_preferences + consent_given_at columns (#797) ──
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "consent_preferences" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN consent_preferences TEXT"))
+                logger.info("Added 'consent_preferences' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "consent_given_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN consent_given_at {col_type}"))
+                logger.info("Added 'consent_given_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── students: MFIPPA consent columns (#783) ──────────────────────
+    if "students" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "consent_status" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN consent_status VARCHAR(20) DEFAULT 'pending'"))
+                logger.info("Added 'consent_status' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "parent_consent_given_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE students ADD COLUMN parent_consent_given_at {col_type}"))
+                logger.info("Added 'parent_consent_given_at' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "student_consent_given_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE students ADD COLUMN student_consent_given_at {col_type}"))
+                logger.info("Added 'student_consent_given_at' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -830,6 +876,7 @@ app.include_router(link_requests.router, prefix="/api")
 app.include_router(quiz_results.router, prefix="/api")
 app.include_router(onboarding.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
+app.include_router(consent.router, prefix="/api")
 app.include_router(mcp_config.router, prefix="/api")
 
 logger.info("API routes registered at /api")

@@ -172,3 +172,5 @@ export type {
   CourseGradesResponse,
   GradeSyncResponse,
 } from './grades';
+export { consentApi } from './consent';
+export type { ConsentPreferences, ConsentStatus } from './consent';

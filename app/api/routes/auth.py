@@ -193,6 +193,22 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             if teacher:
                 teacher.teacher_type = TeacherType(user_data.teacher_type)
 
+    # Age-based consent status for students (#783 — MFIPPA)
+    if has_roles and UserRole.STUDENT in user_data.roles:
+        student = db.query(Student).filter(Student.user_id == user.id).first()
+        if student and user_data.date_of_birth:
+            student.date_of_birth = user_data.date_of_birth
+            today = datetime.now(timezone.utc).date()
+            age = today.year - user_data.date_of_birth.year - (
+                (today.month, today.day) < (user_data.date_of_birth.month, user_data.date_of_birth.day)
+            )
+            if age < 16:
+                student.consent_status = "parent_only"
+            elif age < 18:
+                student.consent_status = "dual_required"
+            else:
+                student.consent_status = "pending"  # 18+ can give consent themselves
+
     # Student registration: store parent_email and trigger LinkRequest or Invite
     if has_roles and UserRole.STUDENT in user_data.roles and user_data.parent_email:
         student = db.query(Student).filter(Student.user_id == user.id).first()

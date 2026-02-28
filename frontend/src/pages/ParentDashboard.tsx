@@ -16,6 +16,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
+import { ParentConsentCards } from '../components/ParentConsentCards';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -261,6 +262,9 @@ export function ParentDashboard() {
         <>
           {/* Onboarding Setup Checklist (#869) */}
           <SetupChecklist />
+
+          {/* Parent Consent Cards for linked children (#783) */}
+          <ParentConsentCards children={pd.children} />
 
           {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
