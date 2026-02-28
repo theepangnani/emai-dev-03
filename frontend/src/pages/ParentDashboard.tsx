@@ -145,11 +145,11 @@ export function ParentDashboard() {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
       if (next === 'simplified') {
-        const collapsed: SectionStates = { comingUp: false, studentDetail: false, activityFeed: false };
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false, activityFeed: false, grades: false };
         setSectionStates(collapsed);
         saveSectionStates(collapsed);
       } else {
-        const expanded: SectionStates = { comingUp: true, studentDetail: true, activityFeed: true };
+        const expanded: SectionStates = { comingUp: true, studentDetail: true, activityFeed: true, grades: true };
         setSectionStates(expanded);
         saveSectionStates(expanded);
       }
