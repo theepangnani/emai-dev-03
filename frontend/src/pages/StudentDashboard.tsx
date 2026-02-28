@@ -19,6 +19,8 @@ import type { QuickAction } from '../components/RoleQuickActions';
 import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
+import { gradesApi } from '../api/grades';
+import type { ChildGradeSummary } from '../api/grades';
 import './StudentDashboard.css';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -129,6 +131,8 @@ export function StudentDashboard() {
   const [classroomType, setClassroomType] = useState<'school' | 'private'>('school');
 
   // Invite teacher state
+  const [gradeSummary, setGradeSummary] = useState<ChildGradeSummary | null>(null);
+
   const [showInviteTeacherModal, setShowInviteTeacherModal] = useState(false);
   const [inviteTeacherEmail, setInviteTeacherEmail] = useState('');
   const [inviteTeacherLoading, setInviteTeacherLoading] = useState(false);
@@ -275,6 +279,7 @@ export function StudentDashboard() {
       loadStudyGuides(),
       loadTasks(),
       loadNotifications(),
+      loadGradeSummary(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
@@ -321,6 +326,17 @@ export function StudentDashboard() {
       setNotifications(data);
     } catch {
       // Notifications not loaded
+    }
+  };
+
+  const loadGradeSummary = async () => {
+    try {
+      const data = await gradesApi.summary();
+      if (data.children.length > 0) {
+        setGradeSummary(data.children[0]);
+      }
+    } catch {
+      // Grades not loaded — not critical
     }
   };
 
@@ -666,6 +682,12 @@ export function StudentDashboard() {
           )}
           <StreakMilestone streak={streak} />
           <StreakHistory studyGuides={studyGuides} />
+          {gradeSummary && gradeSummary.courses.length > 0 && (
+            <Link to="/grades" className="sd-stat-chip grade" style={{ textDecoration: 'none' }}>
+              <span className="sd-stat-icon">{'\u{1F4CA}'}</span>
+              <span>{gradeSummary.overall_average}% ({gradeSummary.letter_grade})</span>
+            </Link>
+          )}
           <div className="sd-stat-chip">
             <span className="sd-stat-icon">{'\u{1F4DA}'}</span>
             <span>{courses.length} class{courses.length !== 1 ? 'es' : ''}</span>
@@ -941,12 +963,20 @@ export function StudentDashboard() {
         </div>
         {courses.length > 0 ? (
           <div className="sd-course-chips">
-            {courses.map(course => (
-              <Link key={course.id} to={`/courses`} className="sd-course-chip">
-                <span className="sd-course-name">{course.name}</span>
-                {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
-              </Link>
-            ))}
+            {courses.map(course => {
+              const courseGrade = gradeSummary?.courses.find(c => c.course_id === course.id);
+              return (
+                <Link key={course.id} to={`/courses`} className="sd-course-chip">
+                  <span className="sd-course-name">{course.name}</span>
+                  {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
+                  {courseGrade && (
+                    <span className={`sd-grade-tag sd-grade-${courseGrade.color}`}>
+                      {courseGrade.letter_grade}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
             <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
               + Add Course
             </button>

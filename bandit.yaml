@@ -1,0 +1,5 @@
+exclude_dirs:
+  - tests
+  - frontend
+skips:
+  - B101  # assert used in tests

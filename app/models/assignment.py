@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Float, Index, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Float, Index, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
@@ -40,6 +40,12 @@ class StudentAssignment(Base):
     grade = Column(Float, nullable=True)
     status = Column(String(50), default="pending")  # pending, submitted, graded
     submitted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Submission fields (#839)
+    submission_file_path = Column(String(500), nullable=True)
+    submission_file_name = Column(String(255), nullable=True)
+    submission_notes = Column(Text, nullable=True)
+    is_late = Column(Boolean, default=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

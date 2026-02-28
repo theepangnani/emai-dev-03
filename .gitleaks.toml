@@ -1,0 +1,7 @@
+[allowlist]
+description = "ClassBridge allowlist"
+paths = [
+  '''tests/.*''',
+  '''frontend/src/test/.*''',
+  '''.env.example''',
+]

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { coursesApi, courseContentsApi, studyApi, assignmentsApi } from '../api/client';
-import type { CourseContentItem, AssignmentItem } from '../api/client';
+import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionListItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -10,6 +10,8 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import { EditMaterialModal } from '../components/EditMaterialModal';
+import { AssignmentSubmission } from '../components/AssignmentSubmission';
+import '../components/AssignmentSubmission.css';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -77,6 +79,12 @@ export function CourseDetailPage() {
   const [assignMaxPoints, setAssignMaxPoints] = useState('');
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState('');
+
+  // Submission state (#839)
+  const [submissionMap, setSubmissionMap] = useState<Record<number, SubmissionResponse>>({});
+  const [submissionListMap, setSubmissionListMap] = useState<Record<number, SubmissionListItem[]>>({});
+  const [submittingAssignmentId, setSubmittingAssignmentId] = useState<number | null>(null);
+  const [expandedSubmissionsId, setExpandedSubmissionsId] = useState<number | null>(null);
 
   // Edit course modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -159,11 +167,23 @@ export function CourseDetailPage() {
       } catch {
         setContents([]);
       }
+      let loadedAssignments: AssignmentItem[] = [];
       try {
-        const assignData = await assignmentsApi.list(courseId);
-        setAssignments(assignData);
+        loadedAssignments = await assignmentsApi.list(courseId);
+        setAssignments(loadedAssignments);
       } catch {
         setAssignments([]);
+      }
+      // Load submissions for student users (#839)
+      if (user?.role === 'student' && loadedAssignments.length > 0) {
+        const subs: Record<number, SubmissionResponse> = {};
+        for (const a of loadedAssignments) {
+          try {
+            const sub = await assignmentsApi.getSubmission(a.id);
+            subs[a.id] = sub;
+          } catch { /* no submission yet */ }
+        }
+        setSubmissionMap(subs);
       }
       try {
         const roster = await coursesApi.listStudents(courseId);
@@ -746,29 +766,142 @@ export function CourseDetailPage() {
               <p className="course-roster-empty">No assignments yet.</p>
             ) : (
               <div className="course-assignments-list">
-                {assignments.map(a => (
-                  <div key={a.id} className="course-assignment-row">
-                    <div className="course-assignment-info">
-                      <span className="course-assignment-title">{a.title}</span>
-                      {a.description && <span className="course-assignment-desc">{a.description}</span>}
-                    </div>
-                    <div className="course-assignment-meta">
-                      {a.due_date && (
-                        <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
-                          Due {new Date(a.due_date).toLocaleDateString()}
-                        </span>
-                      )}
-                      {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
-                      {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
-                    </div>
-                    {canManageRoster && !a.google_classroom_id && (
-                      <div className="course-assignment-actions">
-                        <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
-                        <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+                {assignments.map(a => {
+                  const sub = submissionMap[a.id];
+                  const isStudent = user?.role === 'student';
+                  return (
+                    <div key={a.id}>
+                      <div className="course-assignment-row">
+                        <div className="course-assignment-info">
+                          <span className="course-assignment-title">{a.title}</span>
+                          {a.description && <span className="course-assignment-desc">{a.description}</span>}
+                        </div>
+                        <div className="course-assignment-meta">
+                          {a.due_date && (
+                            <span className={`course-assignment-due${new Date(a.due_date) < new Date() ? ' overdue' : ''}`}>
+                              Due {new Date(a.due_date).toLocaleDateString()}
+                            </span>
+                          )}
+                          {a.max_points != null && <span className="course-assignment-points">{a.max_points} pts</span>}
+                          {a.google_classroom_id && <span className="course-detail-badge google">GC</span>}
+                          {/* Student submission status badge (#839) */}
+                          {isStudent && sub && sub.status === 'graded' && (
+                            <span className="submission-badge graded">Graded: {sub.grade ?? '—'}</span>
+                          )}
+                          {isStudent && sub && sub.status === 'submitted' && (
+                            <span className={`submission-badge submitted${sub.is_late ? ' late' : ''}`}>
+                              Submitted{sub.is_late ? ' (Late)' : ''}
+                            </span>
+                          )}
+                          {isStudent && (!sub || sub.status === 'pending') && (
+                            <span className="submission-badge not-submitted">Not Submitted</span>
+                          )}
+                        </div>
+                        {/* Student submit button (#839) */}
+                        {isStudent && (
+                          <div className="course-assignment-actions">
+                            <button
+                              className="courses-btn secondary"
+                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              onClick={() => setSubmittingAssignmentId(submittingAssignmentId === a.id ? null : a.id)}
+                            >
+                              {sub && (sub.status === 'submitted' || sub.status === 'graded') ? 'Resubmit' : 'Submit'}
+                            </button>
+                          </div>
+                        )}
+                        {/* Teacher view: show submissions count (#839) */}
+                        {canManageRoster && !isStudent && (
+                          <div className="course-assignment-actions">
+                            <button
+                              className="courses-btn secondary"
+                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              onClick={() => {
+                                if (expandedSubmissionsId === a.id) {
+                                  setExpandedSubmissionsId(null);
+                                } else {
+                                  setExpandedSubmissionsId(a.id);
+                                  // Load submissions for this assignment
+                                  assignmentsApi.listSubmissions(a.id).then(subs => {
+                                    setSubmissionListMap(prev => ({ ...prev, [a.id]: subs }));
+                                  }).catch(() => {});
+                                }
+                              }}
+                            >
+                              Submissions
+                            </button>
+                            {!a.google_classroom_id && (
+                              <>
+                                <button className="content-icon-btn" title="Edit" aria-label="Edit assignment" onClick={() => openEditAssignment(a)}>&#9998;</button>
+                                <button className="content-icon-btn danger" title="Delete" aria-label="Delete assignment" onClick={() => handleDeleteAssignment(a)}>&#128465;</button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {/* Inline submission form for students (#839) */}
+                      {isStudent && submittingAssignmentId === a.id && (
+                        <AssignmentSubmission
+                          assignmentId={a.id}
+                          assignmentTitle={a.title}
+                          dueDate={a.due_date}
+                          submission={sub || null}
+                          onSubmitted={(result) => {
+                            setSubmissionMap(prev => ({ ...prev, [a.id]: result }));
+                            setSubmittingAssignmentId(null);
+                          }}
+                          onClose={() => setSubmittingAssignmentId(null)}
+                        />
+                      )}
+                      {/* Teacher submissions list (#839) */}
+                      {canManageRoster && !isStudent && expandedSubmissionsId === a.id && (
+                        <div className="submission-panel" style={{ marginTop: '8px' }}>
+                          <div className="submission-header">
+                            <h4>Submissions for: {a.title}</h4>
+                            <button className="submission-close-btn" onClick={() => setExpandedSubmissionsId(null)} aria-label="Close">&times;</button>
+                          </div>
+                          {submissionListMap[a.id] ? (
+                            submissionListMap[a.id].length === 0 ? (
+                              <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>No submissions yet.</p>
+                            ) : (
+                              <div className="course-roster-list" style={{ marginTop: '8px' }}>
+                                {submissionListMap[a.id].map(s => (
+                                  <div key={s.student_id} className="course-roster-row" style={{ padding: '8px 0' }}>
+                                    <div className="course-roster-info">
+                                      <span className="course-roster-name">{s.student_name}</span>
+                                      <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>
+                                        {s.status === 'submitted' && s.submitted_at
+                                          ? `Submitted ${new Date(s.submitted_at).toLocaleDateString()}`
+                                          : s.status === 'graded'
+                                            ? `Graded: ${s.grade ?? '—'}`
+                                            : 'Not submitted'}
+                                      </span>
+                                    </div>
+                                    {s.is_late && <span className="submission-badge late">Late</span>}
+                                    {s.status !== 'pending' && (
+                                      <span className={`submission-badge ${s.status}`}>
+                                        {s.status === 'submitted' ? 'Submitted' : s.status === 'graded' ? 'Graded' : s.status}
+                                      </span>
+                                    )}
+                                    {s.has_file && (
+                                      <button
+                                        className="content-action-btn"
+                                        onClick={() => assignmentsApi.downloadSubmission(a.id, s.student_id).catch(() => {})}
+                                      >
+                                        Download
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          ) : (
+                            <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)' }}>Loading...</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>
