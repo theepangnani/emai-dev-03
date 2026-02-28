@@ -33,7 +33,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, TaskTemplate, TaskComment, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
@@ -233,6 +233,32 @@ with engine.connect() as conn:
             try:
                 conn.execute(text(f"ALTER TABLE tasks ADD COLUMN last_reminder_sent_at {col_type}"))
                 logger.info("Added 'last_reminder_sent_at' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── tasks: recurring task fields (#880) ──────────────────
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "recurrence_rule" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN recurrence_rule VARCHAR(50)"))
+                logger.info("Added 'recurrence_rule' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "recurrence_end_date" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE tasks ADD COLUMN recurrence_end_date {col_type}"))
+                logger.info("Added 'recurrence_end_date' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "template_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN template_id INTEGER REFERENCES task_templates(id)"))
+                logger.info("Added 'template_id' column to tasks")
             except Exception:
                 conn.rollback()
         conn.commit()

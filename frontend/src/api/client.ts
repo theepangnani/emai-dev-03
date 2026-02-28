@@ -152,7 +152,7 @@ export type {
   BroadcastItem,
 } from './admin';
 export { tasksApi } from './tasks';
-export type { TaskItem, AssignableUser } from './tasks';
+export type { TaskItem, AssignableUser, TaskTemplate, TaskComment } from './tasks';
 export { searchApi } from './search';
 export type { SearchResultItem, SearchResultGroup, SearchResponse } from './search';
 export { inspirationApi } from './inspiration';
