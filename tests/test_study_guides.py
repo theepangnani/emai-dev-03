@@ -350,3 +350,142 @@ class TestArchiveLifecycle:
         list_resp = client.get("/api/study/guides?include_archived=true", headers=headers)
         ids = [g["id"] for g in list_resp.json()]
         assert guide.id not in ids
+
+
+# ── Auto-task creation from study guide (#902) ────────────────
+
+class TestAutoTaskCreationFromStudyGuide:
+    """Regression tests for #902: tasks must be auto-created when generating study material."""
+
+    def test_auto_create_tasks_sets_parent_id(self, db_session, users):
+        """auto_create_tasks_from_dates must set parent_id on created tasks."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+
+        parent = users["parent"]
+        student = users["student"]
+
+        # Create a dummy study guide to link against
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Auto-task test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        dates = [{"date": "2026-03-15", "title": "Test Deadline", "priority": "high"}]
+        created = auto_create_tasks_from_dates(
+            db_session, dates, parent, guide.id, None, None,
+        )
+
+        assert len(created) == 1
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        assert task is not None
+        assert task.parent_id == parent.id, "parent_id must be set on auto-created tasks"
+        assert task.created_by_user_id == parent.id
+        assert task.assigned_to_user_id == student.id, "should be assigned to linked child"
+
+        # Cleanup
+        db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_auto_create_tasks_sets_student_id(self, db_session, users):
+        """auto_create_tasks_from_dates must set legacy student_id FK."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+
+        parent = users["parent"]
+        student_rec = users["student_rec"]
+
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Student-id test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        dates = [{"date": "2026-04-01", "title": "Student ID Check", "priority": "medium"}]
+        created = auto_create_tasks_from_dates(
+            db_session, dates, parent, guide.id, None, None,
+        )
+
+        assert len(created) == 1
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        assert task.student_id == student_rec.id, "legacy student_id must be set"
+
+        # Cleanup
+        db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_auto_create_tasks_fallback_review_task(self, db_session, users):
+        """When AI returns no critical dates, a fallback 'Review:' task should be created."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+        from datetime import datetime, timezone
+
+        parent = users["parent"]
+
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Fallback test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        # Simulate the fallback that the endpoint creates
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        fallback_dates = [{"date": today_str, "title": "Review: Fallback test", "priority": "medium"}]
+
+        created = auto_create_tasks_from_dates(
+            db_session, fallback_dates, parent, guide.id, None, None,
+        )
+
+        assert len(created) == 1
+        assert created[0]["title"] == "Review: Fallback test"
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        assert task is not None
+        assert task.parent_id == parent.id
+
+        # Cleanup
+        db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_auto_task_visible_in_task_list(self, client, db_session, users):
+        """Auto-created tasks must appear in the task list for the creating parent."""
+        from app.api.routes.study import auto_create_tasks_from_dates
+        from app.models.task import Task
+
+        parent = users["parent"]
+
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=parent.id, title="Visibility test", content="# content",
+            guide_type="study_guide", version=1,
+        )
+        db_session.add(guide)
+        db_session.flush()
+
+        dates = [{"date": "2026-05-01", "title": "Visible Task", "priority": "low"}]
+        created = auto_create_tasks_from_dates(
+            db_session, dates, parent, guide.id, None, None,
+        )
+        db_session.commit()
+
+        headers = _auth(client, parent.email)
+        resp = client.get("/api/tasks/", headers=headers)
+        assert resp.status_code == 200
+        task_titles = [t["title"] for t in resp.json()]
+        assert "Visible Task" in task_titles, "auto-created task must be visible in parent's task list"
+
+        # Cleanup
+        task = db_session.query(Task).filter(Task.id == created[0]["id"]).first()
+        if task:
+            db_session.delete(task)
+        db_session.delete(guide)
+        db_session.commit()
