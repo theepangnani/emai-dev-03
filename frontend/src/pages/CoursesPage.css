@@ -714,3 +714,65 @@
     max-width: 180px;
   }
 }
+
+/* ── Empty state: two-card grid (parent view) ─────────── */
+.courses-empty-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.courses-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 20px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  text-align: center;
+  color: var(--color-ink);
+}
+
+.courses-empty-card:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle, rgba(73, 184, 192, 0.04));
+  transform: translateY(-2px);
+}
+
+.courses-empty-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-surface-alt, #f5f5f5);
+}
+
+.courses-empty-card:hover .courses-empty-card-icon {
+  background: var(--color-accent-subtle, rgba(73, 184, 192, 0.08));
+}
+
+.courses-empty-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--font-display);
+}
+
+.courses-empty-card-desc {
+  font-size: 0.85rem;
+  color: var(--color-ink-muted);
+  max-width: 220px;
+  line-height: 1.4;
+}
+
+@media (max-width: 520px) {
+  .courses-empty-grid {
+    grid-template-columns: 1fr;
+  }
+}

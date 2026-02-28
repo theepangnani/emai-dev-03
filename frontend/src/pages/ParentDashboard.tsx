@@ -11,8 +11,10 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { QuickActionBar } from '../components/QuickActionBar';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
+import { SetupChecklist } from '../components/SetupChecklist';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -255,6 +257,9 @@ export function ParentDashboard() {
         </div>
       ) : (
         <>
+          {/* Onboarding Setup Checklist (#869) */}
+          <SetupChecklist />
+
           {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
@@ -370,6 +375,13 @@ export function ParentDashboard() {
             return null;
           })()}
 
+          {/* Quick Action Bar (#871) */}
+          <QuickActionBar
+            onUploadMaterial={() => pd.setShowStudyModal(true)}
+            onCreateTask={() => pd.setShowCreateTaskModal(true)}
+            onStudyGuide={() => pd.navigate('/course-materials')}
+          />
+
           {/* Coming Up Timeline (#832 - collapsible) */}
           <CollapsibleSection
             title="Coming Up"
@@ -382,6 +394,8 @@ export function ParentDashboard() {
               selectedChild={pd.selectedChild}
               onToggleTask={pd.handleToggleTask}
               onNavigateStudy={pd.handleOneClickStudy}
+              onCreateTask={() => pd.setShowCreateTaskModal(true)}
+              onUploadMaterial={() => pd.setShowStudyModal(true)}
             />
           </CollapsibleSection>
 
