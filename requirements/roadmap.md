@@ -97,7 +97,7 @@
 - [x] **My Kids visual overhaul** — Colored avatars, task progress bars, next-deadline countdowns, quick action buttons (#301) (IMPLEMENTED)
 - [x] **Manual course creation for teachers** — Teachers can create courses (#42) (IMPLEMENTED)
 - [x] **Manual assignment creation for teachers** — Covered by manual assignment CRUD (#49) (IMPLEMENTED)
-- [ ] Multi-Google account support for teachers
+- [x] Multi-Google account support for teachers — TeacherGoogleAccount model, connect/list/label/delete/set-primary endpoints, multi-account course sync via account_id param, inline label editing in TeacherDashboard (IMPLEMENTED)
 - [x] Auto-send invite email to shadow teachers on creation (#946) (IMPLEMENTED — Phase 1.5)
 - [x] Teacher Dashboard course management view with source badges (#947) (IMPLEMENTED — Phase 1.5)
 - [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
@@ -134,7 +134,7 @@
 #### Architecture Foundation (Tier 0)
 - [x] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127) (IMPLEMENTED)
 - [x] **Extract backend services** — Move business logic from route handlers to domain service layer (#128) (IMPLEMENTED)
-- [ ] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129)
+- [x] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129) — BaseRepository[T], TaskRepository (8 methods), CourseContentRepository (8 methods), StudyGuideRepository (10 methods); tasks.py fully adopted; get_task_repo/get_course_content_repo/get_study_guide_repo deps in deps.py (IMPLEMENTED)
 - [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
 - [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
@@ -168,15 +168,15 @@
 #### Testing Gaps (Tier 1)
 - [x] **Frontend unit tests** — 258 tests across 18 files (vitest) (#154) ✅
 - [x] **Missing route tests** — No tests for: google_classroom, study, messages, notifications, teacher_communications, admin, invites, course_contents routes (#155) (IMPLEMENTED)
-- [ ] **PostgreSQL test coverage** — Tests run on SQLite only; misses NOT NULL, Enum, and type divergences (e.g., users.email bug) (#156)
+- [x] **PostgreSQL test coverage** — --pg CLI flag in conftest.py; 7 pg-specific compat tests (nullable email, enum roundtrip, LIKE injection, FK types, booleans, timestamp precision, RETURNING clause) (#156) (IMPLEMENTED)
 
 ### Phase 1.5 (Calendar Extension, Content, Mobile & School Integration)
 - [x] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support) (IMPLEMENTED)
 - [x] Student email identity merging (personal + school email on same account) (#941) (IMPLEMENTED)
 - [ ] School board email integration (when DTAP approved) (#942 — phase-1.5)
 - [x] Extend calendar to Student and Teacher dashboards with role-aware data (#45) (IMPLEMENTED)
-- [ ] Google Calendar push integration (sync tasks/reminders to Google Calendar)
-- [ ] Central document repository
+- [x] Google Calendar push integration — sync tasks to Google Calendar; GET/POST/DELETE /api/google/calendar/* endpoints; calendar hooks in task CRUD (IMPLEMENTED)
+- [x] Central document repository — GET /api/documents/ with RBAC; DocumentsPage with search/filter/type tabs; Documents nav item for all roles (IMPLEMENTED)
 - [x] Manual content upload with OCR (enhanced) — #523 ✅
 - [x] Background periodic Google Classroom course/assignment sync for teachers (opt-in) (#53) (IMPLEMENTED)
 - [x] **Input validation** — Field length limits + whitespace stripping across all endpoints (#142) (IMPLEMENTED)
