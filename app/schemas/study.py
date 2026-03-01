@@ -42,6 +42,7 @@ class StudyGuideResponse(BaseModel):
     guide_type: str
     version: int = 1
     parent_guide_id: int | None = None
+    focus_prompt: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     auto_created_tasks: list[AutoCreatedTask] = []

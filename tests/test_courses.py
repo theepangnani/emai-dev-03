@@ -137,6 +137,39 @@ class TestCourseList:
         resp = client.get("/api/courses/")
         assert resp.status_code == 401
 
+    def test_course_response_serializes_null_classroom_type(self, client, users):
+        """Regression: CourseResponse must not raise a 500 when classroom_type is NULL.
+
+        Root cause: migration added classroom_type as VARCHAR(20) with no DEFAULT, so existing
+        production rows had NULL. CourseResponse declared `classroom_type: str` (non-nullable),
+        causing Pydantic v2 to raise a ValidationError during serialize_response → 500 on
+        GET /api/courses/ → MyKidsPage Promise.all catch reset all sections to 0.
+
+        Fix: changed field to `str | None = "manual"`.
+        """
+        from app.schemas.course import CourseResponse
+        from datetime import datetime, timezone
+        from pydantic import ValidationError
+
+        now = datetime.now(timezone.utc)
+        # Must not raise — previously raised pydantic.ValidationError
+        try:
+            resp = CourseResponse(
+                id=999,
+                name="Test",
+                description=None,
+                subject=None,
+                google_classroom_id=None,
+                classroom_type=None,  # simulates pre-migration NULL rows
+                teacher_id=None,
+                created_at=now,
+            )
+        except ValidationError as e:
+            raise AssertionError(
+                f"CourseResponse raised ValidationError for NULL classroom_type — bug reintroduced:\n{e}"
+            )
+        assert resp.classroom_type is None
+
 
 # ── Get course ────────────────────────────────────────────────
 

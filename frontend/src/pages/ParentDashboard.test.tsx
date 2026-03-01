@@ -32,6 +32,20 @@ const mockTasksDelete = vi.fn()
 const mockGetSupportedFormats = vi.fn()
 const mockCheckDuplicate = vi.fn()
 const mockListGuides = vi.fn()
+const mockGenerateFromFile = vi.fn()
+const mockGenerateGuide = vi.fn()
+const mockCoursesGetDefault = vi.fn()
+const mockCourseContentsUploadFile = vi.fn()
+
+vi.mock('../api/courses', () => ({
+  coursesApi: { getDefault: (...args: any[]) => mockCoursesGetDefault(...args), list: vi.fn().mockResolvedValue([]) },
+  courseContentsApi: {
+    uploadFile: (...args: any[]) => mockCourseContentsUploadFile(...args),
+    create: vi.fn().mockResolvedValue({}),
+    listAll: vi.fn().mockResolvedValue([]),
+  },
+  assignmentsApi: { list: vi.fn().mockResolvedValue([]) },
+}))
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
@@ -73,6 +87,8 @@ vi.mock('../api/client', () => ({
     getSupportedFormats: (...args: any[]) => mockGetSupportedFormats(...args),
     checkDuplicate: (...args: any[]) => mockCheckDuplicate(...args),
     listGuides: (...args: any[]) => mockListGuides(...args),
+    generateFromFile: (...args: any[]) => mockGenerateFromFile(...args),
+    generateGuide: (...args: any[]) => mockGenerateGuide(...args),
   },
   tasksApi: {
     create: (...args: any[]) => mockTasksCreate(...args),
@@ -531,12 +547,10 @@ describe('ParentDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+      // File drop zone and text area render together with the modal
+      expect(screen.getByText(/Drag & drop files here/)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
     })
-
-    // File drop zone should be visible — no mode toggle needed
-    expect(screen.getByText(/Drag & drop a file here/)).toBeInTheDocument()
-    // Text area should also be visible simultaneously
-    expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
     // Mode toggle buttons should NOT exist
     expect(screen.queryByText('Paste Text')).not.toBeInTheDocument()
     expect(screen.queryByText('Upload File')).not.toBeInTheDocument()
@@ -549,5 +563,37 @@ describe('ParentDashboard', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
     })
+  })
+
+  // ── Regression: modal closes immediately on submit (#1010) ───
+  it('closes Upload Documents modal immediately when Generate is clicked with a file (#1010)', async () => {
+    // generateFromFile resolves slowly — modal must NOT wait for it
+    mockGenerateFromFile.mockImplementation(
+      () => new Promise(resolve => setTimeout(() => resolve({ id: 99, guide_type: 'study_guide' }), 500)),
+    )
+    mockCoursesGetDefault.mockResolvedValue({ id: 1, name: 'Default' })
+
+    const user = userEvent.setup()
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => expect(screen.getByText('Course Material')).toBeInTheDocument())
+    await user.click(screen.getByText('Course Material'))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument(),
+    )
+
+    // Attach a file and select Study Guide
+    const file = new File(['content'], 'notes.pdf', { type: 'application/pdf' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    await userEvent.upload(input, file)
+
+    await user.click(screen.getByLabelText('Study Guide'))
+
+    await user.click(screen.getByRole('button', { name: /Upload & Generate/i }))
+
+    // Modal must close immediately — NOT stay open showing "Generating..."
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Upload Documents' })).not.toBeInTheDocument(),
+    )
   })
 })

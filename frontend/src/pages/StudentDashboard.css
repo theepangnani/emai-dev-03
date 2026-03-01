@@ -66,6 +66,14 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s, filter 0.15s;
+}
+
+.sd-urgency-pill:hover {
+  opacity: 0.82;
+  filter: brightness(0.95);
 }
 
 .sd-urgency-pill.overdue {
@@ -81,6 +89,16 @@
 .sd-urgency-pill.week {
   background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
+}
+
+.sd-stat-chip--link {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sd-stat-chip--link:hover {
+  background: var(--color-border);
+  border-color: var(--color-ink-muted);
 }
 
 .sd-hero-stats {
@@ -1081,3 +1099,28 @@
   color: var(--color-text-secondary, #666);
   line-height: 1.4;
 }
+
+/* ── Background generation banner ─────────────────────────────── */
+.sd-generation-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 1000;
+  animation: sd-banner-in 0.2s ease;
+}
+@keyframes sd-banner-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.sd-generation-banner.generating { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-ink-muted); }
+.sd-generation-banner.success { background: rgba(46,125,50,0.1); border: 1px solid rgba(46,125,50,0.3); color: var(--color-success); }
+.sd-generation-banner.error { background: rgba(211,47,47,0.1); border: 1px solid rgba(211,47,47,0.3); color: var(--color-error, #d32f2f); }
+.sd-gen-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 4px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.sd-gen-view-btn { background: var(--color-success); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.sd-gen-dismiss-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; line-height: 1; padding: 0 2px; }

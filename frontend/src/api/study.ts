@@ -19,6 +19,7 @@ export interface StudyGuide {
   guide_type: string;
   version: number;
   parent_guide_id: number | null;
+  focus_prompt: string | null;
   created_at: string;
   archived_at: string | null;
   auto_created_tasks?: AutoCreatedTask[];

@@ -18,6 +18,7 @@ from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.storage_service import get_file_path, delete_file, save_file
 from app.services.file_processor import process_file, FileProcessingError
+from app.core.config import settings
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -170,7 +171,7 @@ def create_course_content(
     return content
 
 
-MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+MAX_UPLOAD_SIZE = settings.max_upload_size_mb * 1024 * 1024
 
 
 def _run_ai_generation_background(

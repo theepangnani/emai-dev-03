@@ -418,7 +418,7 @@ describe('StudentDashboard', () => {
   })
 
   // ── Create Study Material Modal ────────────────────────────────
-  it('opens create study material modal', async () => {
+  it('opens upload documents modal', async () => {
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
@@ -430,13 +430,12 @@ describe('StudentDashboard', () => {
     await user.click(studyCard)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Create Study Material' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
-    expect(screen.getByText('Paste Text')).toBeInTheDocument()
-    expect(screen.getByText('Upload File')).toBeInTheDocument()
+    expect(screen.getByText(/drag & drop files here/i)).toBeInTheDocument()
   })
 
-  it('closes create modal on Cancel', async () => {
+  it('closes upload modal on Cancel', async () => {
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
@@ -448,13 +447,13 @@ describe('StudentDashboard', () => {
     await user.click(studyCard)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Create Study Material' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { level: 2, name: 'Create Study Material' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { level: 2, name: 'Upload Documents' })).not.toBeInTheDocument()
     })
   })
 

@@ -582,3 +582,199 @@ class TestScanContentForDates:
         text = "Part A Due Mar 3\nPart B Due: April 10"
         result = scan_content_for_dates(text, "Multi-part")
         assert len(result) == 2
+
+
+# ── Focus prompt history (#1001) ─────────────────────────────
+
+
+class TestFocusPromptHistory:
+    """Focus prompt is persisted on generation and returned in list/get responses."""
+
+    def test_focus_prompt_saved_on_study_guide(self, db_session, users):
+        """A study guide created with focus_prompt has it persisted in the DB."""
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=users["parent"].id,
+            title="Focus Test Guide",
+            content="# Content",
+            guide_type="study_guide",
+            version=1,
+            focus_prompt="photosynthesis and the Calvin cycle",
+        )
+        db_session.add(guide)
+        db_session.commit()
+        db_session.refresh(guide)
+
+        assert guide.focus_prompt == "photosynthesis and the Calvin cycle"
+
+        # Cleanup
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_focus_prompt_returned_in_list(self, client, db_session, users):
+        """GET /api/study/guides returns focus_prompt on each guide."""
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=users["parent"].id,
+            title="Focus List Test",
+            content="# Content",
+            guide_type="study_guide",
+            version=1,
+            focus_prompt="Newton's laws",
+        )
+        db_session.add(guide)
+        db_session.commit()
+        db_session.refresh(guide)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.get("/api/study/guides", headers=headers)
+        assert resp.status_code == 200
+        match = next((g for g in resp.json() if g["id"] == guide.id), None)
+        assert match is not None
+        assert match["focus_prompt"] == "Newton's laws"
+
+        # Cleanup
+        db_session.delete(guide)
+        db_session.commit()
+
+    def test_focus_prompt_none_when_not_set(self, client, db_session, users):
+        """Guides without a focus_prompt return null in the response."""
+        from app.models.study_guide import StudyGuide
+        guide = StudyGuide(
+            user_id=users["parent"].id,
+            title="No Focus Guide",
+            content="# Content",
+            guide_type="study_guide",
+            version=1,
+        )
+        db_session.add(guide)
+        db_session.commit()
+        db_session.refresh(guide)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.get(f"/api/study/guides/{guide.id}", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["focus_prompt"] is None
+
+        # Cleanup
+        db_session.delete(guide)
+        db_session.commit()
+
+
+# ── Content moderation (#1001) ───────────────────────────────
+
+
+class TestContentModeration:
+    """check_content_safe() returns (True, '') for safe text and (False, reason) for unsafe."""
+
+    def test_safe_text_passes(self):
+        """Normal educational focus text is classified as safe."""
+        from unittest.mock import MagicMock, patch
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = MagicMock(
+            content=[MagicMock(text="SAFE")]
+        )
+        with patch("app.services.ai_service.get_anthropic_client", return_value=mock_client):
+            from app.services.ai_service import check_content_safe
+            safe, reason = check_content_safe("photosynthesis and the light reactions")
+        assert safe is True
+        assert reason == ""
+
+    def test_unsafe_text_blocked(self):
+        """Text classified as UNSAFE returns (False, reason)."""
+        from unittest.mock import MagicMock, patch
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = MagicMock(
+            content=[MagicMock(text="UNSAFE")]
+        )
+        with patch("app.services.ai_service.get_anthropic_client", return_value=mock_client):
+            from app.services.ai_service import check_content_safe
+            safe, reason = check_content_safe("inappropriate content here")
+        assert safe is False
+        assert reason != ""
+
+    def test_api_error_fails_open(self):
+        """If the moderation API call raises, check_content_safe fails open (returns True)."""
+        from unittest.mock import patch
+
+        with patch(
+            "app.services.ai_service.get_anthropic_client",
+            side_effect=Exception("network error"),
+        ):
+            from app.services.ai_service import check_content_safe
+            safe, reason = check_content_safe("some focus text")
+        assert safe is True
+
+    def test_empty_text_skips_check(self):
+        """Empty or whitespace-only text is safe without an API call."""
+        from unittest.mock import patch, MagicMock
+
+        mock_client = MagicMock()
+        with patch("app.services.ai_service.get_anthropic_client", return_value=mock_client):
+            from app.services.ai_service import check_content_safe
+            safe, _ = check_content_safe("")
+            safe2, _ = check_content_safe("   ")
+        assert safe is True
+        assert safe2 is True
+        mock_client.messages.create.assert_not_called()
+
+    def test_generation_blocked_on_unsafe_focus(self, client, users):
+        """POST /api/study/generate returns 400 when focus_prompt is flagged."""
+        from unittest.mock import MagicMock, patch
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = MagicMock(
+            content=[MagicMock(text="UNSAFE")]
+        )
+        headers = _auth(client, users["parent"].email)
+        with patch("app.services.ai_service.get_anthropic_client", return_value=mock_client):
+            resp = client.post(
+                "/api/study/generate",
+                json={
+                    "content": "Photosynthesis converts sunlight to energy.",
+                    "title": "Biology",
+                    "focus_prompt": "inappropriate text",
+                },
+                headers=headers,
+            )
+        assert resp.status_code == 400
+        assert "inappropriate" in resp.json()["detail"].lower() or "appropriate" in resp.json()["detail"].lower()
+
+
+class TestExtractTextRateLimit:
+    """Regression tests for #1003 — /upload/extract-text rate limit too low.
+
+    Before the fix: limit was 5/minute, causing 429 when uploading >5 files via
+    Promise.all() on the frontend. Files after the 5th silently showed
+    '(text extraction failed)' in the study guide content.
+
+    After the fix: limit raised to 30/minute.
+    """
+
+    def test_rate_limit_is_30_per_minute(self):
+        """The extract-text endpoint must be limited to 30/minute, not 5/minute.
+
+        This test inspects the source of the endpoint function directly so it will
+        fail if someone accidentally lowers the limit back to 5/minute.
+        """
+        import inspect
+        from app.api.routes.study import router
+
+        extract_route = next(
+            (r for r in router.routes if getattr(r, "path", "") == "/study/upload/extract-text"),
+            None,
+        )
+        assert extract_route is not None, "/study/upload/extract-text route not found"
+
+        # Unwrap decorator chain to get the original function, then check source
+        func = extract_route.endpoint
+        original = getattr(func, "__wrapped__", func)
+        source = inspect.getsource(original)
+
+        assert '30/minute' in source, (
+            "Expected @limiter.limit('30/minute') on extract_text_from_upload. "
+            "This limit was raised from 5/minute to fix multi-file OCR failures (issue #1003). "
+            f"Current source snippet: {[l.strip() for l in source.splitlines() if 'limit' in l.lower()]}"
+        )

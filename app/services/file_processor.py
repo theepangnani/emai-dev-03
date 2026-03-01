@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from app.core.logging_config import get_logger
+from app.core.config import settings
 
 # Document processing
 import PyPDF2
@@ -41,8 +42,8 @@ try:
 except ImportError:
     PDF2IMAGE_AVAILABLE = False
 
-# Constants
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+# Constants — size limit driven by settings so it's configurable per environment
+MAX_FILE_SIZE = settings.max_upload_size_mb * 1024 * 1024
 SUPPORTED_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.txt', '.md', '.rtf',
     '.xlsx', '.xls', '.csv',
@@ -55,14 +56,48 @@ IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
 logger = get_logger(__name__)
 
+# Magic bytes signatures for binary formats.
+# Each entry maps an extension to a list of accepted prefixes (bytes).
+# Text-based formats (.txt, .md, .csv, .rtf) are omitted — content can start arbitrarily.
+_MAGIC_BYTES: dict[str, list[bytes]] = {
+    '.pdf':  [b'%PDF-'],
+    '.png':  [b'\x89PNG\r\n\x1a\n'],
+    '.jpg':  [b'\xff\xd8\xff'],
+    '.jpeg': [b'\xff\xd8\xff'],
+    '.gif':  [b'GIF87a', b'GIF89a'],
+    '.bmp':  [b'BM'],
+    '.tiff': [b'II*\x00', b'MM\x00*'],
+    '.webp': [b'RIFF'],
+    # ZIP-based (docx, xlsx, pptx, zip all start with PK)
+    '.zip':  [b'PK\x03\x04', b'PK\x05\x06', b'PK\x07\x08'],
+    '.docx': [b'PK\x03\x04'],
+    '.xlsx': [b'PK\x03\x04'],
+    '.pptx': [b'PK\x03\x04'],
+    # Legacy OLE2 binary Office formats (doc, xls, ppt)
+    '.doc':  [b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],
+    '.xls':  [b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],
+    '.ppt':  [b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],
+}
+
 
 class FileProcessingError(Exception):
     """Custom exception for file processing errors."""
     pass
 
 
+def _check_magic_bytes(file_content: bytes, ext: str) -> bool:
+    """Return True if file_content starts with a known-good magic prefix for ext.
+
+    Returns True unconditionally for extensions not in _MAGIC_BYTES (text formats).
+    """
+    expected = _MAGIC_BYTES.get(ext)
+    if not expected:
+        return True  # no magic bytes rule for this type
+    return any(file_content.startswith(sig) for sig in expected)
+
+
 def validate_file(file_content: bytes, filename: str) -> None:
-    """Validate file size and extension."""
+    """Validate file size, extension allowlist, and magic bytes."""
     file_size_mb = len(file_content) / (1024 * 1024)
     logger.debug(f"Validating file: {filename}, size: {file_size_mb:.2f} MB")
 
@@ -77,6 +112,12 @@ def validate_file(file_content: bytes, filename: str) -> None:
         logger.warning(f"Unsupported file type: {ext} for file {filename}")
         raise FileProcessingError(
             f"Unsupported file type: {ext}. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+
+    if not _check_magic_bytes(file_content, ext):
+        logger.warning(f"Magic bytes mismatch for {filename} (claimed ext: {ext})")
+        raise FileProcessingError(
+            f"File content does not match the expected format for {ext} files."
         )
 
 

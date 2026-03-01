@@ -15,6 +15,7 @@
 - **Non-blocking generation**: AI study material generation is fully non-blocking. Modal closes immediately after submission, a pulsing "Generating..." placeholder row appears in the study materials list, and the user can continue working. On success the placeholder is replaced with the real guide; on failure it shows an error with a dismiss button. Works from both Study Guides page and Parent Dashboard (queues generation and navigates to Study Guides page). On the Course Material detail page, generation shows an inline spinner + pulsing message in the content area (no blocking overlay); the view auto-switches to the target tab so users see progress, and tabs remain navigable during generation
 - **Math-aware AI prompts**: Study guide, quiz, and flashcard generation prompts detect math problems, equations, and exercises. When math content is found, the study guide provides step-by-step worked solutions with explanations; quizzes test problem-solving ability with numerical answer choices; flashcards show problems on front and worked solutions on back
 - **Comprehensive docx OCR**: All embedded images in .docx files are OCR'd via Tesseract regardless of how much regular text the document contains. This ensures screenshots of math problems, diagrams with text, and scanned worksheets are always extracted
+- **Focus prompt history**: When a Focus is provided during generation, it is persisted on the `study_guides` record (`focus_prompt` column). The Course Material Detail page pre-populates each tab's focus field from the most recently saved focus for that type, allowing users to reuse and refine without re-typing. Focus text is moderated before generation using a Claude Haiku safety check (K-12 policy: sexual content, violence, hate speech, self-harm, drug use, prompt injection) — fails-open on API error, returns HTTP 400 on violation. **GitHub Issue:** #1001
 
 #### 6.2.1 Study Guide Storage & Management (Phase 1) - IMPLEMENTED
 
@@ -268,9 +269,15 @@ Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 - Supported inputs: PDF, Word, PPTX, text notes - IMPLEMENTED (images/OCR for embedded images in .docx: #523 ✅)
 - Tag content to specific class or subject - IMPLEMENTED
 - AI generates study materials from user-provided content - IMPLEMENTED
+- **Multi-file upload (#991)**: Select multiple files at once; all selected files are combined into ONE course material. Text is extracted from each file and concatenated with per-file headers. Users can keep adding files before clicking Generate/Upload. Drag-and-drop and the file picker both append to the file list - IMPLEMENTED
+- **File upload security hardening (#1006)**: Per-file size limit 20 MB (configurable via `MAX_UPLOAD_SIZE_MB` env var); magic bytes validation prevents extension spoofing (PDF, images, Office, ZIP); 10-file session cap in upload modal with user-facing error; UI hint shows real limits. Phase 2 adds AV scanning and premium limits (#1007) - IMPLEMENTED
+- **Multi-file OCR rate limit fix (#1003)**: `/upload/extract-text` rate limit raised from 5→30 requests/minute; frontend switched from concurrent `Promise.all()` to sequential `for...of` processing to prevent 429 errors when uploading many files at once; 429-specific error message shown to user - IMPLEMENTED (PR #1004)
 - Content privacy controls - pending
 - Version history - pending
 - GCS file storage - pending (#114)
+- **Multi-document per material (#993)**: Store individual file attachments (1-to-many) on a CourseContent record; AI generation uses combined text from all attached docs - PENDING (Phase 2)
+- **Source file list with view/download (#1005)**: When a material is created from multiple uploaded files, list the source files with clickable view/download links - OPEN (Phase 2; deferred from Phase 1, requires 1-to-many file attachment model)
+- **Material grouping & student assignment (#992)**: Group multiple materials into named bundles; parent assigns material/bundle to a specific child - PENDING (Phase 2)
 
 ### 6.4.1 Course Content Types with Reference Links (Phase 1) - IMPLEMENTED
 - Structured content items attached to courses (notes, syllabus, labs, assignments, readings, resources, other)
