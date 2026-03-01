@@ -378,26 +378,6 @@
   border-color: var(--color-ink);
 }
 
-.pd-add-child-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 2px dashed var(--color-border);
-  color: var(--color-ink-muted);
-  background: transparent;
-  flex-shrink: 0;
-}
-
-.pd-add-child-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-accent-subtle);
-  border-style: solid;
-}
-
 /* ============================================
    Child Selector Scroll Wrapper (#830)
    ============================================ */
