@@ -667,9 +667,9 @@ export function StudentDashboard() {
             <p className="sd-hero-subtitle sd-all-clear">You're all caught up. Keep it going!</p>
           ) : (
             <p className="sd-hero-subtitle">
-              {overdue > 0 && <span className="sd-urgency-pill overdue">{overdue} overdue</span>}
-              {dueToday > 0 && <span className="sd-urgency-pill today">{dueToday} due today</span>}
-              {upcoming > 0 && <span className="sd-urgency-pill week">{upcoming} this week</span>}
+              {overdue > 0 && <Link to="/tasks?due=overdue" className="sd-urgency-pill overdue">{overdue} overdue</Link>}
+              {dueToday > 0 && <Link to="/tasks?due=today" className="sd-urgency-pill today">{dueToday} due today</Link>}
+              {upcoming > 0 && <Link to="/tasks?due=week" className="sd-urgency-pill week">{upcoming} this week</Link>}
             </p>
           )}
         </div>
@@ -688,14 +688,14 @@ export function StudentDashboard() {
               <span>{gradeSummary.overall_average}% ({gradeSummary.letter_grade})</span>
             </Link>
           )}
-          <div className="sd-stat-chip">
+          <Link to="/courses" className="sd-stat-chip sd-stat-chip--link" style={{ textDecoration: 'none' }}>
             <span className="sd-stat-icon">{'\u{1F4DA}'}</span>
             <span>{courses.length} class{courses.length !== 1 ? 'es' : ''}</span>
-          </div>
-          <div className="sd-stat-chip">
+          </Link>
+          <Link to="/course-materials" className="sd-stat-chip sd-stat-chip--link" style={{ textDecoration: 'none' }}>
             <span className="sd-stat-icon">{'\u{1F4DD}'}</span>
             <span>{studyGuides.length} material{studyGuides.length !== 1 ? 's' : ''}</span>
-          </div>
+          </Link>
         </div>
       </section>
 
