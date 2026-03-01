@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, courseContentsApi } from '../api/client';
 import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
-import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
-import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import type { InspirationData } from '../components/DashboardLayout';
@@ -14,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
+import { GoogleCalendarSync } from '../components/GoogleCalendarSync';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -58,6 +57,9 @@ export function TeacherDashboard() {
   // Google accounts state
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
   const [removingAccountId, setRemovingAccountId] = useState<number | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
+  const [editingLabelValue, setEditingLabelValue] = useState('');
+  const [savingLabelId, setSavingLabelId] = useState<number | null>(null);
 
   // Sent invites state
   const [sentInvites, setSentInvites] = useState<InviteResponse[]>([]);
@@ -76,13 +78,23 @@ export function TeacherDashboard() {
   const [announceSuccess, setAnnounceSuccess] = useState('');
   const [announcePreview, setAnnouncePreview] = useState(false);
 
+  // Upload material modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadCourseId, setUploadCourseId] = useState<number | ''>('');
+  const [uploadType, setUploadType] = useState('notes');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDragging, setUploadDragging] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+
   // Focus traps for modals (must be after state declarations they reference)
   const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => setShowCreateModal(false));
   const inviteParentModalRef = useFocusTrap<HTMLDivElement>(showInviteParentModal, () => setShowInviteParentModal(false));
   const announceModalRef = useFocusTrap<HTMLDivElement>(showAnnounceModal, () => setShowAnnounceModal(false));
-
-  // Upload / study material generation (shared with Parent experience)
-  const studyTools = useParentStudyTools({ selectedChildUserId: null, navigate });
+  const uploadModalRef = useFocusTrap<HTMLDivElement>(showUploadModal, () => setShowUploadModal(false));
 
   useEffect(() => {
     loadData();
@@ -216,6 +228,31 @@ export function TeacherDashboard() {
     }
   };
 
+  const handleStartEditLabel = (account: GoogleAccount) => {
+    setEditingLabelId(account.id);
+    setEditingLabelValue(account.account_label ?? '');
+  };
+
+  const handleSaveLabel = async (accountId: number) => {
+    setSavingLabelId(accountId);
+    try {
+      await googleApi.updateTeacherAccount(accountId, editingLabelValue.trim() || undefined);
+      setGoogleAccounts(prev =>
+        prev.map(a => a.id === accountId ? { ...a, account_label: editingLabelValue.trim() || null } : a)
+      );
+      setEditingLabelId(null);
+    } catch {
+      // Failed to save label
+    } finally {
+      setSavingLabelId(null);
+    }
+  };
+
+  const handleCancelEditLabel = () => {
+    setEditingLabelId(null);
+    setEditingLabelValue('');
+  };
+
   const handleResendInvite = async (inviteId: number) => {
     setResendingId(inviteId);
     setResendError(null);
@@ -304,6 +341,62 @@ export function TeacherDashboard() {
       setAnnounceError(err.response?.data?.detail || 'Failed to send announcement');
     } finally {
       setAnnounceSending(false);
+    }
+  };
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadCourseId('');
+    setUploadType('notes');
+    setUploadTitle('');
+    setUploadDescription('');
+    setUploadFile(null);
+    setUploadError('');
+    setUploadSuccess('');
+    setUploadDragging(false);
+  };
+
+  const handleUploadMaterial = async () => {
+    if (!uploadCourseId || !uploadFile) return;
+    setUploadLoading(true);
+    setUploadError('');
+    setUploadSuccess('');
+    try {
+      await courseContentsApi.uploadFile(
+        uploadFile,
+        uploadCourseId as number,
+        uploadTitle.trim() || undefined,
+        uploadType,
+      );
+      setUploadSuccess('Material uploaded successfully!');
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+      setTimeout(() => {
+        closeUploadModal();
+      }, 1500);
+    } catch (err: any) {
+      setUploadError(err.response?.data?.detail || 'Failed to upload material');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleUploadDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
+  const handleUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
     }
   };
 
@@ -433,7 +526,7 @@ export function TeacherDashboard() {
               </svg>
             ),
             label: 'Course Material',
-            onClick: () => studyTools.setShowStudyModal(true),
+            onClick: () => setShowUploadModal(true),
           },
         ] satisfies QuickAction[]}
         maxVisible={4}
@@ -583,16 +676,23 @@ export function TeacherDashboard() {
           </section>
         )}
 
-        {/* Google Accounts Section */}
+        {/* Google Calendar Sync Section */}
         {googleConnected && (
+          <section className="section teacher-google-calendar-section">
+            <GoogleCalendarSync googleConnected={googleConnected} />
+          </section>
+        )}
+
+        {/* Google Accounts Section — show when connected or when accounts already exist */}
+        {(googleConnected || googleAccounts.length > 0) && (
           <section className="section teacher-google-accounts-section">
             <div className="section-header">
               <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)}>
                 <span className={`section-chevron${googleAccountsExpanded ? ' expanded' : ''}`}>&#9654;</span>
-                <h3>Google Accounts ({googleAccounts.length})</h3>
+                <h3>Connected Google Accounts ({googleAccounts.length})</h3>
               </button>
               <button className="create-custom-btn" onClick={handleAddGoogleAccount}>
-                + Add Account
+                + Connect Another Account
               </button>
             </div>
             {googleAccountsExpanded && googleAccounts.length > 0 ? (
@@ -600,19 +700,59 @@ export function TeacherDashboard() {
                 {googleAccounts.map((account) => (
                   <div key={account.id} className="google-account-row">
                     <div className="google-account-info">
-                      <span className="google-account-email">{account.google_email}</span>
-                      {account.display_name && (
-                        <span className="google-account-name">{account.display_name}</span>
-                      )}
-                      {account.account_label && (
-                        <span className="google-account-label">{account.account_label}</span>
-                      )}
+                      {/* Primary indicator dot */}
+                      <span
+                        className={`google-account-primary-dot${account.is_primary ? ' is-primary' : ''}`}
+                        title={account.is_primary ? 'Primary account' : 'Secondary account'}
+                      />
+                      <div className="google-account-identity">
+                        <span className="google-account-email">{account.google_email}</span>
+                        {account.display_name && (
+                          <span className="google-account-name">{account.display_name}</span>
+                        )}
+                      </div>
                       {account.is_primary && (
                         <span className="google-account-primary-badge">Primary</span>
                       )}
+                      {/* Inline label editing */}
+                      {editingLabelId === account.id ? (
+                        <span className="google-account-label-edit">
+                          <input
+                            type="text"
+                            className="google-account-label-input"
+                            value={editingLabelValue}
+                            onChange={(e) => setEditingLabelValue(e.target.value)}
+                            placeholder="e.g. School Account"
+                            maxLength={100}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveLabel(account.id);
+                              if (e.key === 'Escape') handleCancelEditLabel();
+                            }}
+                          />
+                          <button
+                            className="text-btn"
+                            onClick={() => handleSaveLabel(account.id)}
+                            disabled={savingLabelId === account.id}
+                          >
+                            {savingLabelId === account.id ? 'Saving...' : 'Save'}
+                          </button>
+                          <button className="text-btn" onClick={handleCancelEditLabel}>
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          className={`google-account-label-btn${account.account_label ? ' has-label' : ''}`}
+                          onClick={() => handleStartEditLabel(account)}
+                          title="Click to edit label"
+                        >
+                          {account.account_label || 'Add label'}
+                        </button>
+                      )}
                       {account.last_sync_at && (
                         <span className="google-account-sync">
-                          Last synced: {new Date(account.last_sync_at).toLocaleDateString()}
+                          Synced {new Date(account.last_sync_at).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -621,7 +761,7 @@ export function TeacherDashboard() {
                         <button
                           className="text-btn"
                           onClick={() => handleSetPrimary(account.id)}
-                          title="Set as primary"
+                          title="Set as primary account"
                         >
                           Set Primary
                         </button>
@@ -630,7 +770,7 @@ export function TeacherDashboard() {
                         className="text-btn danger"
                         onClick={() => handleRemoveAccount(account.id)}
                         disabled={removingAccountId === account.id}
-                        title="Remove account"
+                        title="Remove this Google account"
                       >
                         {removingAccountId === account.id ? 'Removing...' : 'Remove'}
                       </button>
@@ -854,43 +994,112 @@ export function TeacherDashboard() {
           </div>
         </div>
       )}
-      {/* Upload / Study Material Modal — same experience as Parent */}
-      <CreateStudyMaterialModal
-        open={studyTools.showStudyModal}
-        onClose={studyTools.resetStudyModal}
-        onGenerate={studyTools.handleGenerateFromModal}
-        isGenerating={studyTools.isGenerating}
-        courses={courses.map(c => ({ id: c.id, name: c.name }))}
-        duplicateCheck={studyTools.duplicateCheck}
-        onViewExisting={() => {
-          const guide = studyTools.duplicateCheck?.existing_guide;
-          if (guide) {
-            studyTools.resetStudyModal();
-            navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`);
-          }
-        }}
-        onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
-        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
-      />
-      {/* Background generation status banner */}
-      {studyTools.backgroundGeneration && (
-        <div className={`td-generation-banner ${studyTools.backgroundGeneration.status}`}>
-          {studyTools.backgroundGeneration.status === 'generating' && (
-            <span><span className="td-gen-spinner" /> Generating {studyTools.backgroundGeneration.type}...</span>
-          )}
-          {studyTools.backgroundGeneration.status === 'success' && (
-            <>
-              <span>{studyTools.backgroundGeneration.type} ready!</span>
-              <button className="td-gen-view-btn" onClick={() => { navigate('/course-materials'); studyTools.dismissBackgroundGeneration(); }}>View</button>
-              <button className="td-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
-            </>
-          )}
-          {studyTools.backgroundGeneration.status === 'error' && (
-            <>
-              <span>Failed to generate {studyTools.backgroundGeneration.type}</span>
-              <button className="td-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
-            </>
-          )}
+      {/* Upload Material Modal */}
+      {showUploadModal && (
+        <div className="modal-overlay" onClick={closeUploadModal}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Material" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Upload Material</h2>
+            <p className="modal-desc">
+              Upload class notes, tests, or other materials to a course.
+            </p>
+            <div className="modal-form">
+              <label>
+                Course *
+                <select
+                  value={uploadCourseId}
+                  onChange={(e) => { setUploadCourseId(e.target.value ? Number(e.target.value) : ''); setUploadError(''); }}
+                  disabled={uploadLoading}
+                >
+                  <option value="">Select a class...</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Material Type *
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  disabled={uploadLoading}
+                >
+                  <option value="notes">Class Notes</option>
+                  <option value="test">Test / Quiz</option>
+                  <option value="lab">Lab / Project</option>
+                  <option value="assignment">Assignment</option>
+                </select>
+              </label>
+              <label>
+                Title
+                <input
+                  type="text"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="e.g., Chapter 5 Notes"
+                  disabled={uploadLoading}
+                />
+              </label>
+              <label>
+                Description
+                <textarea
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  placeholder="Optional description..."
+                  rows={2}
+                  disabled={uploadLoading}
+                />
+              </label>
+              <div
+                className={`upload-drop-zone${uploadDragging ? ' dragging' : ''}${uploadFile ? ' has-file' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setUploadDragging(true); }}
+                onDragLeave={() => setUploadDragging(false)}
+                onDrop={handleUploadDrop}
+                onClick={() => document.getElementById('teacher-upload-input')?.click()}
+              >
+                {uploadFile ? (
+                  <div className="upload-file-info">
+                    <span className="upload-file-name">{uploadFile.name}</span>
+                    <span className="upload-file-size">({(uploadFile.size / 1024).toFixed(0)} KB)</span>
+                    <button
+                      type="button"
+                      className="upload-file-remove"
+                      onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
+                    >
+                      {'\u00D7'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="upload-drop-prompt">
+                    <span className="upload-drop-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                    </span>
+                    <span>Drag & drop a file here, or click to browse</span>
+                  </div>
+                )}
+                <input
+                  id="teacher-upload-input"
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadFileChange}
+                  disabled={uploadLoading}
+                />
+              </div>
+              {uploadError && <p className="link-error">{uploadError}</p>}
+              {uploadSuccess && <p className="link-success">{uploadSuccess}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={closeUploadModal} disabled={uploadLoading}>
+                {uploadSuccess ? 'Close' : 'Cancel'}
+              </button>
+              <button
+                className="generate-btn"
+                onClick={handleUploadMaterial}
+                disabled={uploadLoading || !uploadCourseId || !uploadFile}
+              >
+                {uploadLoading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </DashboardLayout>

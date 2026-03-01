@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -36,6 +36,7 @@ logger.info("Starting EMAI application...")
 from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, TaskTemplate, TaskComment, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
+from app.models.teacher_google_account import TeacherGoogleAccount  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -259,6 +260,17 @@ with engine.connect() as conn:
             try:
                 conn.execute(text("ALTER TABLE tasks ADD COLUMN template_id INTEGER REFERENCES task_templates(id)"))
                 logger.info("Added 'template_id' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── tasks: google_calendar_event_id column (Google Calendar sync) ──
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "google_calendar_event_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN google_calendar_event_id VARCHAR(255)"))
+                logger.info("Added 'google_calendar_event_id' column to tasks")
             except Exception:
                 conn.rollback()
         conn.commit()
@@ -913,6 +925,7 @@ app.include_router(students.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(google_classroom.router, prefix="/api")
+app.include_router(google_calendar.router, prefix="/api")
 app.include_router(study.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
@@ -933,6 +946,7 @@ app.include_router(onboarding.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
 app.include_router(consent.router, prefix="/api")
 app.include_router(mcp_config.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

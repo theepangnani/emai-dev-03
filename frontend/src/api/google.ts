@@ -38,8 +38,10 @@ export const googleApi = {
     return response.data;
   },
 
-  syncCourses: async (classroomType?: 'school' | 'private') => {
-    const params = classroomType ? { classroom_type: classroomType } : {};
+  syncCourses: async (classroomType?: 'school' | 'private', accountId?: number) => {
+    const params: Record<string, string | number> = {};
+    if (classroomType) params.classroom_type = classroomType;
+    if (accountId !== undefined) params.account_id = accountId;
     const response = await api.post('/api/google/courses/sync', null, { params });
     return response.data;
   },

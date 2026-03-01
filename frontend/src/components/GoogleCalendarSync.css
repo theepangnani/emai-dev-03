@@ -1,0 +1,219 @@
+/* ── Google Calendar Sync Card ──────────────────────────────────── */
+.gcal-sync-card {
+  position: relative;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+.gcal-sync-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gcal-sync-icon {
+  flex-shrink: 0;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+}
+
+.gcal-sync-title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.gcal-sync-title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #14532d;
+}
+
+.gcal-sync-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.4;
+}
+
+.gcal-connected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #15803d;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gcal-sync-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gcal-btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  border: none;
+  line-height: 1.4;
+}
+
+.gcal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gcal-btn--primary {
+  background: #16a34a;
+  color: #fff;
+}
+.gcal-btn--primary:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.gcal-btn--secondary {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.gcal-btn--secondary:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.gcal-btn--danger {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.gcal-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+/* Toast notification */
+.gcal-toast {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: gcal-toast-in 0.2s ease;
+}
+
+@keyframes gcal-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-80%); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(-100%); }
+}
+
+.gcal-toast--success {
+  background: #dcfce7;
+  color: #14532d;
+  border: 1px solid #86efac;
+}
+
+.gcal-toast--error {
+  background: #fef2f2;
+  color: #7f1d1d;
+  border: 1px solid #fca5a5;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .gcal-sync-card {
+    background: linear-gradient(135deg, #052e16 0%, #064e1e 100%);
+    border-color: #166534;
+  }
+
+  .gcal-sync-title {
+    color: #bbf7d0;
+  }
+
+  .gcal-sync-desc {
+    color: #86efac;
+  }
+
+  .gcal-sync-icon {
+    color: #4ade80;
+  }
+
+  .gcal-connected-badge {
+    background: #14532d;
+    border-color: #166534;
+    color: #86efac;
+  }
+
+  .gcal-btn--secondary {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+  .gcal-btn--secondary:hover:not(:disabled) {
+    background: #374151;
+  }
+
+  .gcal-btn--danger {
+    color: #f87171;
+    border-color: #7f1d1d;
+  }
+  .gcal-btn--danger:hover:not(:disabled) {
+    background: #450a0a;
+    border-color: #ef4444;
+  }
+
+  .gcal-toast--success {
+    background: #14532d;
+    color: #bbf7d0;
+    border-color: #166534;
+  }
+
+  .gcal-toast--error {
+    background: #450a0a;
+    color: #fecaca;
+    border-color: #7f1d1d;
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .gcal-sync-card {
+    padding: 12px 14px;
+  }
+
+  .gcal-sync-actions {
+    flex-direction: column;
+  }
+
+  .gcal-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .gcal-toast {
+    white-space: normal;
+    text-align: center;
+    width: calc(100% - 20px);
+  }
+}

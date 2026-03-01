@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -23,7 +24,11 @@ from app.schemas.task import (
 )
 from app.services.audit_service import log_action
 from app.services.notification_service import notify_parents_of_student
+from app.services.google_calendar import sync_task_to_calendar, delete_task_from_calendar
 from app.domains.tasks.services import TaskService
+from app.repositories.task_repository import TaskRepository
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 VALID_PRIORITIES = {"low", "medium", "high"}
@@ -297,48 +302,22 @@ def list_tasks(
     current_user: User = Depends(get_current_user),
 ):
     """List tasks where the current user is creator OR assignee (parents also see children's tasks)."""
-    filters = [
-        Task.created_by_user_id == current_user.id,
-        Task.assigned_to_user_id == current_user.id,
-    ]
+    repo = TaskRepository(db)
 
-    # Parents also see tasks assigned to their linked children
-    if current_user.role == UserRole.PARENT:
-        child_student_ids = [
-            r[0] for r in db.query(parent_students.c.student_id)
-            .filter(parent_students.c.parent_id == current_user.id).all()
-        ]
-        if child_student_ids:
-            child_user_ids = [
-                r[0] for r in db.query(Student.user_id)
-                .filter(Student.id.in_(child_student_ids)).all()
-            ]
-            if child_user_ids:
-                filters.append(Task.assigned_to_user_id.in_(child_user_ids))
+    # Parents pass their own user_id as parent_user_id so the repository
+    # can include tasks assigned to their linked children.
+    parent_user_id = current_user.id if current_user.role == UserRole.PARENT else None
 
-    query = db.query(Task).options(*_task_eager_options()).filter(or_(*filters))
-
-    # Exclude archived tasks by default
-    if not include_archived:
-        query = query.filter(Task.archived_at.is_(None))
-
-    if assigned_to_user_id is not None:
-        query = query.filter(Task.assigned_to_user_id == assigned_to_user_id)
-    if is_completed is not None:
-        query = query.filter(Task.is_completed == is_completed)
-    if priority is not None:
-        query = query.filter(Task.priority == _normalize_priority(priority))
-    if course_id is not None:
-        query = query.filter(Task.course_id == course_id)
-    if study_guide_id is not None:
-        query = query.filter(Task.study_guide_id == study_guide_id)
-
-    # Portable NULL handling across DB backends: non-null due dates first, nulls last.
-    tasks = query.order_by(
-        Task.due_date.is_(None).asc(),
-        Task.due_date.asc(),
-        Task.created_at.desc(),
-    ).all()
+    tasks = repo.list_for_user(
+        user_id=current_user.id,
+        include_archived=include_archived,
+        parent_user_id=parent_user_id,
+        assigned_to_user_id=assigned_to_user_id,
+        is_completed=is_completed,
+        priority=_normalize_priority(priority) if priority else None,
+        course_id=course_id,
+        study_guide_id=study_guide_id,
+    )
 
     # Batch-load comment counts for all returned tasks
     task_ids = [t.id for t in tasks]
@@ -364,7 +343,8 @@ def get_task(
     current_user: User = Depends(get_current_user),
 ):
     """Get a single task by ID. Only accessible to creator or assignee."""
-    task = db.query(Task).filter(Task.id == task_id).first()
+    repo = TaskRepository(db)
+    task = repo.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -422,6 +402,16 @@ def create_task(
     db.commit()
     db.refresh(task)
 
+    # Sync to Google Calendar if user has granted calendar scope and task has a due date
+    if task.due_date:
+        try:
+            event_id = sync_task_to_calendar(current_user, task)
+            if event_id:
+                task.google_calendar_event_id = event_id
+                db.commit()
+        except Exception as _cal_exc:
+            logger.warning("Calendar sync failed for new task %s: %s", task.id, _cal_exc)
+
     # Notify parents if a student created a task
     if current_user.role == UserRole.STUDENT:
         try:
@@ -451,7 +441,8 @@ def update_task(
     current_user: User = Depends(get_current_user),
 ):
     """Update a task. Only the creator can edit. Assignee can only toggle completion."""
-    task = db.query(Task).filter(Task.id == task_id).first()
+    repo = TaskRepository(db)
+    task = repo.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -536,6 +527,17 @@ def update_task(
 
     db.commit()
     db.refresh(task)
+
+    # Sync to Google Calendar if user has calendar scope and task has a due date
+    if task.due_date:
+        try:
+            event_id = sync_task_to_calendar(current_user, task)
+            if event_id and event_id != task.google_calendar_event_id:
+                task.google_calendar_event_id = event_id
+                db.commit()
+        except Exception as _cal_exc:
+            logger.warning("Calendar sync failed on task update %s: %s", task.id, _cal_exc)
+
     return _task_to_response(task)
 
 
@@ -548,18 +550,24 @@ def delete_task(
     current_user: User = Depends(get_current_user),
 ):
     """Soft-delete (archive) a task. Only the creator can archive."""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.created_by_user_id == current_user.id,
-    ).first()
+    repo = TaskRepository(db)
+    task = repo.get_by_creator(task_id, current_user.id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # Capture calendar event ID before archiving
+    cal_event_id = task.google_calendar_event_id
     task_service = TaskService(db)
     task_service.archive_task(task, current_user)
     log_action(db, user_id=current_user.id, action="delete", resource_type="task", resource_id=task.id,
                details={"title": task.title})
     db.commit()
+
+    if cal_event_id:
+        try:
+            delete_task_from_calendar(current_user, cal_event_id)
+        except Exception as _cal_exc:
+            logger.warning("Calendar event deletion failed for task %s: %s", task_id, _cal_exc)
 
 
 @router.patch("/{task_id}/restore", response_model=TaskResponse)
@@ -571,10 +579,8 @@ def restore_task(
     current_user: User = Depends(get_current_user),
 ):
     """Restore an archived task. Only the creator can restore."""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.created_by_user_id == current_user.id,
-    ).first()
+    repo = TaskRepository(db)
+    task = repo.get_by_creator(task_id, current_user.id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -594,17 +600,23 @@ def permanent_delete_task(
     current_user: User = Depends(get_current_user),
 ):
     """Permanently delete an archived task. Only the creator can permanently delete."""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.created_by_user_id == current_user.id,
-    ).first()
+    repo = TaskRepository(db)
+    task = repo.get_by_creator(task_id, current_user.id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     if not task.archived_at:
         raise HTTPException(status_code=400, detail="Task must be archived before permanent deletion")
 
+    cal_event_id = task.google_calendar_event_id
     db.delete(task)
     db.commit()
+
+    # Best-effort: delete the calendar event (task is already gone from DB)
+    if cal_event_id:
+        try:
+            delete_task_from_calendar(current_user, cal_event_id)
+        except Exception as _cal_exc:
+            logger.warning("Calendar event deletion failed for permanently deleted task %s: %s", task_id, _cal_exc)
 
 
 @router.post("/{task_id}/remind")
@@ -621,7 +633,8 @@ def send_task_reminder(
     - Task must be assigned to someone and not completed
     - Rate limited: 1 reminder per task per 24 hours
     """
-    task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task_id).first()
+    repo = TaskRepository(db)
+    task = repo.get_with_relations(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 

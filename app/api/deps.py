@@ -12,6 +12,39 @@ from app.models.user import User, UserRole
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
+# ---------------------------------------------------------------------------
+# Repository dependency factories
+#
+# Usage in route handlers:
+#   from app.api.deps import get_task_repo
+#
+#   @router.get("/")
+#   def list_tasks(repo: TaskRepository = Depends(get_task_repo)):
+#       return repo.list_for_user(...)
+#
+# The factory pattern keeps repository construction out of route bodies and
+# makes it trivial to swap implementations or inject mocks in tests.
+# ---------------------------------------------------------------------------
+
+
+def get_task_repo(db: Session = Depends(get_db)):
+    """FastAPI dependency that returns a TaskRepository bound to the current DB session."""
+    from app.repositories.task_repository import TaskRepository
+    return TaskRepository(db)
+
+
+def get_course_content_repo(db: Session = Depends(get_db)):
+    """FastAPI dependency that returns a CourseContentRepository bound to the current DB session."""
+    from app.repositories.course_content_repository import CourseContentRepository
+    return CourseContentRepository(db)
+
+
+def get_study_guide_repo(db: Session = Depends(get_db)):
+    """FastAPI dependency that returns a StudyGuideRepository bound to the current DB session."""
+    from app.repositories.study_guide_repository import StudyGuideRepository
+    return StudyGuideRepository(db)
+
+
 def get_current_user(
     request: Request,
     bearer_token: str | None = Depends(oauth2_scheme),

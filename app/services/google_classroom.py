@@ -28,6 +28,12 @@ ALL_SCOPES = BASE_SCOPES + GMAIL_SCOPES
 
 GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
+# Calendar scope — requested incrementally via re-consent flow
+CALENDAR_EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"
+
+# All scopes including calendar
+CALENDAR_SCOPES = BASE_SCOPES + [CALENDAR_EVENTS_SCOPE]
+
 
 def get_google_auth_flow(scopes: list[str] | None = None) -> Flow:
     """Create OAuth flow for Google Classroom."""
@@ -145,6 +151,22 @@ def get_email_monitoring_auth_url(state: str | None = None) -> tuple[str, str]:
     so existing Classroom scopes are preserved while adding Gmail access.
     """
     flow = get_google_auth_flow(scopes=ALL_SCOPES)
+    authorization_url, returned_state = flow.authorization_url(
+        access_type="offline",
+        prompt="consent",
+        state=state,
+        include_granted_scopes="true",
+    )
+    return authorization_url, returned_state
+
+
+def get_calendar_auth_url(state: str | None = None) -> tuple[str, str]:
+    """Get OAuth URL for granting Google Calendar access (re-consent).
+
+    Requests BASE_SCOPES + calendar.events with include_granted_scopes so
+    existing Classroom scopes are preserved while adding Calendar access.
+    """
+    flow = get_google_auth_flow(scopes=CALENDAR_SCOPES)
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
