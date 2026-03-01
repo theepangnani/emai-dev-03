@@ -135,16 +135,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
-  const dashboardTitle = useMemo(() => {
-    switch (user?.role) {
-      case 'parent': return "Parent's Dashboard";
-      case 'student': return "Student's Dashboard";
-      case 'teacher': return "Teacher's Dashboard";
-      case 'admin': return "Admin Dashboard";
-      default: return 'Dashboard';
-    }
-  }, [user?.role]);
-
   const navItems = useMemo(() => {
     if (user?.role === 'parent') {
       return [
@@ -296,8 +286,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
             <span />
             <span />
           </button>
-          <img src="/logo-icon.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
-          <h1 className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>{dashboardTitle}</h1>
+          <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
         </div>
         <GlobalSearch />
         <div className="header-right">

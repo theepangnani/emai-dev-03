@@ -269,14 +269,16 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
 
                 # Send invite email (best-effort)
                 try:
+                    from app.services.email_service import wrap_branded_email
                     invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
-                    invite_html = f"""
-                        <h2>Your child has joined ClassBridge</h2>
-                        <p><strong>{user.full_name}</strong> has registered on ClassBridge and listed you as their parent.</p>
-                        <p>Create your parent account to stay connected with their education:</p>
-                        <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
-                        <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
-                    """
+                    invite_body = (
+                        f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">Your child has joined ClassBridge</h2>'
+                        f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>{user.full_name}</strong> has registered on ClassBridge and listed you as their parent.</p>'
+                        f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Create your parent account to stay connected with their education:</p>'
+                        f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+                        f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in 30 days.</p>'
+                    )
+                    invite_html = wrap_branded_email(invite_body)
                     send_email_sync(
                         to_email=user_data.parent_email,
                         subject=f"{user.full_name} invited you to ClassBridge",

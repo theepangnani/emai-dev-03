@@ -67,7 +67,6 @@ const SECTION_STATES_KEY = 'pd-section-states';
 const VIEW_MODE_KEY = 'pd-view-mode';
 
 interface SectionStates {
-  grades: boolean;
   comingUp: boolean;
   studentDetail: boolean;
   activityFeed?: boolean; // deprecated — kept for localStorage compat
@@ -78,8 +77,8 @@ function loadSectionStates(): SectionStates {
     const saved = localStorage.getItem(SECTION_STATES_KEY);
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
-  // First-time defaults: Grades and Coming Up expanded, others collapsed
-  return { grades: true, comingUp: true, studentDetail: false, activityFeed: false };
+  // First-time defaults: Coming Up expanded, others collapsed
+  return { comingUp: true, studentDetail: false, activityFeed: false };
 }
 
 function saveSectionStates(states: SectionStates) {
@@ -141,11 +140,11 @@ export function ParentDashboard() {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
       if (next === 'simplified') {
-        const collapsed: SectionStates = { comingUp: false, studentDetail: false, grades: false };
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false };
         setSectionStates(collapsed);
         saveSectionStates(collapsed);
       } else {
-        const expanded: SectionStates = { comingUp: true, studentDetail: true, grades: true };
+        const expanded: SectionStates = { comingUp: true, studentDetail: true };
         setSectionStates(expanded);
         saveSectionStates(expanded);
       }
@@ -321,20 +320,6 @@ export function ParentDashboard() {
                   </button>
                 );
               })}
-              {/* Add child button — person icon with "+" badge overlay */}
-              <button
-                className="pd-child-tab pd-add-child-btn"
-                onClick={() => pd.setShowLinkModal(true)}
-                aria-label="Add child"
-                title="Add child"
-              >
-                <span className="icon-with-plus" style={{ display: 'inline-flex' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="8.5" cy="7" r="4" />
-                  </svg>
-                </span>
-              </button>
             </div>
           </div>
 

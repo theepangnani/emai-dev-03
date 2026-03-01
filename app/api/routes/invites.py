@@ -16,7 +16,7 @@ from app.models.message import Conversation, Message
 from app.models.notification import Notification, NotificationType
 from app.api.deps import get_current_user, require_role
 from app.schemas.invite import InviteCreate, InviteResponse
-from app.services.email_service import send_email_sync, add_inspiration_to_email
+from app.services.email_service import send_email_sync, add_inspiration_to_email, wrap_branded_email
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -200,25 +200,27 @@ def create_invite(
     role_label = "student" if invite_type == InviteType.STUDENT else "teacher"
 
     if invite_type == InviteType.STUDENT:
-        html_content = f"""
-    <h2>You've been invited to EMAI</h2>
-    <p><strong>{current_user.full_name}</strong> has invited you to join EMAI as a student.</p>
-    <p>Getting started is easy &mdash; just two steps:</p>
-    <ol>
-      <li><strong>Create your account</strong> by clicking the link below</li>
-      <li><strong>Connect your Google Classroom</strong> from your dashboard so your parent can see your courses and teachers</li>
-    </ol>
-    <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
-    <p style="color:#666;font-size:14px;">This invite expires in {expiry_days} days. Your parent is waiting to see your progress!</p>
-    """
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve been invited to ClassBridge</h2>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>{current_user.full_name}</strong> has invited you to join ClassBridge as a student.</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 8px 0;">Getting started is easy &mdash; just two steps:</p>'
+            f'<ol style="color:#333;line-height:1.8;margin:0 0 24px 0;">'
+            f'<li><strong>Create your account</strong> by clicking the link below</li>'
+            f'<li><strong>Connect your Google Classroom</strong> from your dashboard so your parent can see your courses and teachers</li>'
+            f'</ol>'
+            f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+            f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in {expiry_days} days. Your parent is waiting to see your progress!</p>'
+        )
+        html_content = wrap_branded_email(body)
     else:
-        html_content = f"""
-    <h2>You've been invited to EMAI</h2>
-    <p>{current_user.full_name} has invited you to join EMAI as a {role_label}.</p>
-    <p>Click the link below to create your account:</p>
-    <p><a href="{invite_link}">{invite_link}</a></p>
-    <p>This invite expires in {expiry_days} days.</p>
-    """
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve been invited to ClassBridge</h2>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">{current_user.full_name} has invited you to join ClassBridge as a {role_label}.</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Click the link below to create your account:</p>'
+            f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+            f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in {expiry_days} days.</p>'
+        )
+        html_content = wrap_branded_email(body)
 
     # Send invite email (sync call — SendGrid SDK is synchronous)
     try:
@@ -295,13 +297,14 @@ def resend_invite(
     invite_link = f"{settings.frontend_url}/accept-invite?token={invite.token}"
     role_label = invite.invite_type.value if hasattr(invite.invite_type, 'value') else str(invite.invite_type)
     try:
-        html = f"""
-        <h2>Reminder: You've been invited to ClassBridge</h2>
-        <p><strong>{current_user.full_name}</strong> invited you to join ClassBridge as a {role_label}.</p>
-        <p>Click the link below to create your account:</p>
-        <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create My Account</a></p>
-        <p style="color:#666;font-size:14px;">This invite expires in {expiry_days} days.</p>
-        """
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">Reminder: You\'ve been invited to ClassBridge</h2>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>{current_user.full_name}</strong> invited you to join ClassBridge as a {role_label}.</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">Click the link below to create your account:</p>'
+            f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create My Account</a>'
+            f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in {expiry_days} days.</p>'
+        )
+        html = wrap_branded_email(body)
         html = add_inspiration_to_email(html, db, role_label)
         send_email_sync(
             to_email=invite.email,
@@ -396,14 +399,15 @@ def invite_teacher(
     # Send email
     invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
     try:
-        html = f"""
-        <h2>You've Been Invited to ClassBridge</h2>
-        <p>Hi there,</p>
-        <p><strong>{current_user.full_name}</strong>, one of your students, invited you to join ClassBridge.
-        Connect with parents, share announcements, and track student progress.</p>
-        <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create Your Account</a></p>
-        <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
-        """
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve Been Invited to ClassBridge</h2>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">Hi there,</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;"><strong>{current_user.full_name}</strong>, one of your students, invited you to join ClassBridge. '
+            f'Connect with parents, share announcements, and track student progress.</p>'
+            f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create Your Account</a>'
+            f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in 30 days.</p>'
+        )
+        html = wrap_branded_email(body)
         html = add_inspiration_to_email(html, db, "teacher")
         send_email_sync(
             to_email=data.teacher_email,

@@ -178,29 +178,25 @@ def notify_parents_of_student(
 
 
 def _build_notification_email(title: str, content: str, link: str | None) -> str:
-    """Build a simple HTML email for notifications."""
+    """Build a branded HTML email for notifications."""
     from app.core.config import settings
+    from app.services.email_service import wrap_branded_email
 
     link_html = ""
     if link:
         full_url = f"{settings.frontend_url}{link}"
-        link_html = f'<p><a href="{full_url}" style="color: #4F46E5;">View in ClassBridge</a></p>'
+        link_html = (
+            f'<p style="margin:24px 0 0 0;"><a href="{full_url}" '
+            f'style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;'
+            f'padding:12px 24px;border-radius:8px;font-weight:600;">View in ClassBridge</a></p>'
+        )
 
-    return f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #4F46E5; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">ClassBridge</h1>
-        </div>
-        <div style="padding: 30px; background: #ffffff;">
-            <h2 style="color: #1F2937; margin-top: 0;">{title}</h2>
-            <p style="color: #4B5563; line-height: 1.6;">{content}</p>
-            {link_html}
-        </div>
-        <div style="padding: 15px; text-align: center; color: #9CA3AF; font-size: 12px;">
-            ClassBridge — Stay connected with your child's education
-        </div>
-    </div>
-    """
+    body = (
+        f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">{title}</h2>'
+        f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</p>'
+        f'{link_html}'
+    )
+    return wrap_branded_email(body)
 
 
 def _send_as_classbridge_message(
