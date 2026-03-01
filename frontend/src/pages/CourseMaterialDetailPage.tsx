@@ -164,6 +164,17 @@ export function CourseMaterialDetailPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Pre-populate focus prompts from saved history on first load
+  useEffect(() => {
+    if (guides.length === 0) return;
+    const sg = guides.find(g => g.guide_type === 'study_guide');
+    const qz = guides.find(g => g.guide_type === 'quiz');
+    const fc = guides.find(g => g.guide_type === 'flashcards');
+    if (sg?.focus_prompt) setGuideFocusPrompt(prev => prev || sg.focus_prompt!);
+    if (qz?.focus_prompt) setQuizFocusPrompt(prev => prev || qz.focus_prompt!);
+    if (fc?.focus_prompt) setFlashcardsFocusPrompt(prev => prev || fc.focus_prompt!);
+  }, [guides]);
+
   useEffect(() => {
     if (!isParent || !content?.course_id) return;
     studyApi.resolveStudent({ course_id: content.course_id })
