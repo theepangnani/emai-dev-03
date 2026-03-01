@@ -512,25 +512,52 @@ export function StudyGuidesPage() {
     })();
   };
 
+  /** Extract and concatenate text from multiple files using the backend extract endpoint. */
+  const extractCombinedText = async (files: File[]): Promise<string> => {
+    const parts = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const result = await studyApi.extractTextFromFile(f);
+          return `--- [${f.name}] ---\n${result.text}`;
+        } catch {
+          return `--- [${f.name}] ---\n(text extraction failed)`;
+        }
+      })
+    );
+    return parts.join('\n\n');
+  };
+
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     if (generatingRef.current) return;
     lastGenerateParamsRef.current = modalParams;
 
     setIsGenerating(true);
     try {
+      const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
+      const isMultiFile = files.length > 1;
+
       // Upload-only mode: no AI types selected → create course content directly
       if (modalParams.types.length === 0) {
         try {
           const courseId = modalParams.courseId
             ?? (await coursesApi.getDefault()).id;
-          if (modalParams.mode === 'file' && modalParams.file) {
-            // File upload: save original file + extract text on backend
+          if (files.length === 1) {
+            // Single file: upload directly (preserves file metadata on backend)
             await courseContentsApi.uploadFile(
-              modalParams.file,
+              files[0],
               courseId,
               modalParams.title || undefined,
               'notes',
             );
+          } else if (isMultiFile) {
+            // Multiple files → one material: extract text from all, create text-based content
+            const combinedText = await extractCombinedText(files);
+            await courseContentsApi.create({
+              course_id: courseId,
+              title: modalParams.title || files.map(f => f.name).join(', '),
+              text_content: combinedText,
+              content_type: 'notes',
+            });
           } else {
             // Text/paste mode: create content with text only
             await courseContentsApi.create({
@@ -548,8 +575,20 @@ export function StudyGuidesPage() {
         return;
       }
 
+      // Resolve content for AI generation when multiple files are selected
+      let resolvedContent = modalParams.content;
+      let resolvedMode = modalParams.mode;
+      let resolvedFile = modalParams.file;
+
+      if (isMultiFile) {
+        // Multiple files → extract + combine text, then use text mode for AI generation
+        resolvedContent = await extractCombinedText(files);
+        resolvedMode = 'text';
+        resolvedFile = undefined;
+      }
+
       // Check for duplicates only when single type selected (skip for multi-select)
-      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      if (modalParams.types.length === 1 && resolvedMode === 'text' && !modalParams.pastedImages?.length) {
         try {
           const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
@@ -563,11 +602,11 @@ export function StudyGuidesPage() {
       for (const type of modalParams.types) {
         startGeneration({
           title: modalParams.title,
-          content: modalParams.content,
+          content: resolvedContent,
           type,
           focusPrompt: modalParams.focusPrompt,
-          mode: modalParams.mode,
-          file: modalParams.file,
+          mode: resolvedMode,
+          file: resolvedFile,
           pastedImages: modalParams.pastedImages,
           regenerateId: duplicateCheck?.existing_guide?.id,
           courseId: modalParams.courseId,
