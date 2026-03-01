@@ -184,6 +184,9 @@ def add_inspiration_to_email(html_content: str, db, role: str) -> str:
             f'<em>"{msg["text"]}"</em>{author_line}'
             '</div>'
         )
+        # If content is a full HTML document (from wrap_branded_email), inject before </body>
+        if '</body>' in html_content:
+            return html_content.replace('</body>', f'{footer}</body>', 1)
         return html_content + footer
     except Exception:
         return html_content
