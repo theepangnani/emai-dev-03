@@ -117,7 +117,8 @@
 - [x] **Course Material Detail back button** — Add `showBackButton` to DashboardLayout on Course Material Detail page (#696, PR #697) (IMPLEMENTED)
 - [x] **Calendar styles fix on Tasks page** — Copy calendar-collapse CSS from ParentDashboard.css to TasksPage.css after Calendar move (#694, PR #695) (IMPLEMENTED)
 - [x] **Print & Download PDF export** — Print and Download PDF buttons on all 4 Course Material Detail tabs (Document, Study Guide, Quiz, Flashcards); html2pdf.js dynamic import; static print views for quiz/flashcards (#764, PR #763) (IMPLEMENTED)
-- [ ] **Focus prompt history + content moderation** — Persist `focus_prompt` on study guide records; pre-populate focus field from last saved focus on Course Material Detail; Claude Haiku K-12 safety check on all generation paths (#1001)
+- [x] **Focus prompt history + content moderation** — Persist `focus_prompt` on study guide records; pre-populate focus field from last saved focus on Course Material Detail; Claude Haiku K-12 safety check on all generation paths (#1001) (IMPLEMENTED — PR #1002)
+- [ ] **File upload security hardening** — Reduce per-file limit to 20 MB (configurable via `MAX_UPLOAD_SIZE_MB`), magic bytes validation to prevent extension spoofing, 10-file session cap in upload modal (#1006)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
@@ -199,6 +200,7 @@
 - [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
+- [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
 - [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
