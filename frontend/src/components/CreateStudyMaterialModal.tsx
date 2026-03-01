@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { studyApi } from '../api/study';
 import type { SupportedFormats, DuplicateCheckResponse } from '../api/study';
 
-const MAX_FILE_SIZE_MB = 100;
+const MAX_FILE_SIZE_MB = 20;
+const MAX_FILES_PER_SESSION = 10;
 
 interface CourseOption { id: number; name: string; }
 interface MaterialOption { id: number; title: string; }
@@ -121,7 +122,12 @@ export default function CreateStudyMaterialModal({
     setSelectedFiles(prev => {
       const existingNames = new Set(prev.map(f => f.name));
       const newUnique = valid.filter(f => !existingNames.has(f.name));
-      return [...prev, ...newUnique];
+      const merged = [...prev, ...newUnique];
+      if (merged.length > MAX_FILES_PER_SESSION) {
+        setStudyError(`Maximum ${MAX_FILES_PER_SESSION} files per upload. ${merged.length - MAX_FILES_PER_SESSION} file(s) were not added.`);
+        return merged.slice(0, MAX_FILES_PER_SESSION);
+      }
+      return merged;
     });
     // Auto-fill title only when adding the first file and title is empty
     setStudyTitle(prev => {
@@ -317,7 +323,7 @@ export default function CreateStudyMaterialModal({
                 <div className="drop-zone-content">
                   <span className="upload-icon">&#128193;</span>
                   <p>Drag & drop files here, or click to browse</p>
-                  <small>Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP &bull; Multiple files → one material</small>
+                  <small>Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP &bull; Up to {MAX_FILES_PER_SESSION} files, {MAX_FILE_SIZE_MB} MB each</small>
                 </div>
               )}
             </div>
