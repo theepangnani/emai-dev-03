@@ -21,7 +21,7 @@ from app.models.course_content import CourseContent
 from app.models.invite import Invite, InviteType
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
-from app.services.email_service import add_inspiration_to_email, send_email_sync
+from app.services.email_service import add_inspiration_to_email, send_email_sync, wrap_branded_email
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.services.google_classroom import (
@@ -421,14 +421,15 @@ def _auto_invite_shadow_teacher(
                 .replace("{{invite_link}}", invite_link)
             )
         else:
-            html = f"""
-            <h2>You've Been Invited to ClassBridge</h2>
-            <p>Hi {teacher_name or 'there'},</p>
-            <p><strong>{inviter_name}</strong> synced their Google Classroom and your courses were discovered.
-            Join ClassBridge to connect with parents, share announcements, and track student progress.</p>
-            <p><a href="{invite_link}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">Create Your Account</a></p>
-            <p style="color:#666;font-size:14px;">This invite expires in 30 days.</p>
-            """
+            body = (
+                f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve Been Invited to ClassBridge</h2>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">Hi {teacher_name or "there"},</p>'
+                f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;"><strong>{inviter_name}</strong> synced their Google Classroom and your courses were discovered. '
+                f'Join ClassBridge to connect with parents, share announcements, and track student progress.</p>'
+                f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Create Your Account</a>'
+                f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">This invite expires in 30 days.</p>'
+            )
+            html = wrap_branded_email(body)
         html = add_inspiration_to_email(html, db, "teacher")
         send_email_sync(
             to_email=teacher_email,
