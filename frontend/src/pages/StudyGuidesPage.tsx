@@ -557,63 +557,67 @@ export function StudyGuidesPage() {
     if (generatingRef.current) return;
     lastGenerateParamsRef.current = modalParams;
 
+    const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
+    const isMultiFile = files.length > 1;
+
+    // Always close modal immediately — never leave it open in a "Generating..." state.
+    // Background work (duplicate check, extraction, AI generation) continues after close.
+    resetModal();
+
+    // Upload-only mode: run upload/extraction in background
+    if (modalParams.types.length === 0) {
+      const courseId = modalParams.courseId;
+      (async () => {
+        try {
+          const resolvedCourseId = courseId ?? (await coursesApi.getDefault()).id;
+          if (files.length === 1) {
+            // Single file: upload directly (preserves file metadata on backend)
+            await courseContentsApi.uploadFile(
+              files[0],
+              resolvedCourseId,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else if (isMultiFile) {
+            // Multiple files → one material: extract text from all, create text-based content
+            const combinedText = await extractCombinedText(files);
+            await courseContentsApi.create({
+              course_id: resolvedCourseId,
+              title: modalParams.title || files.map(f => f.name).join(', '),
+              text_content: combinedText,
+              content_type: 'notes',
+            });
+          } else {
+            // Text/paste mode: create content with text only
+            await courseContentsApi.create({
+              course_id: resolvedCourseId,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
+          }
+          loadData();
+        } catch {
+          // Silently handle — user will see content list on next load
+        }
+      })();
+      return;
+    }
+
+    // Duplicate check runs after modal close — if found, re-open modal with warning
+    if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      try {
+        const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
+        if (dupResult.exists) {
+          setDuplicateCheck(dupResult);
+          setShowModal(true);
+          return;
+        }
+      } catch { /* continue */ }
+    }
+
     setIsGenerating(true);
     try {
-      const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
-      const isMultiFile = files.length > 1;
-
-      // Upload-only mode: close modal immediately, run upload/extraction in background
-      if (modalParams.types.length === 0) {
-        const courseId = modalParams.courseId;
-        resetModal();
-        (async () => {
-          try {
-            const resolvedCourseId = courseId ?? (await coursesApi.getDefault()).id;
-            if (files.length === 1) {
-              // Single file: upload directly (preserves file metadata on backend)
-              await courseContentsApi.uploadFile(
-                files[0],
-                resolvedCourseId,
-                modalParams.title || undefined,
-                'notes',
-              );
-            } else if (isMultiFile) {
-              // Multiple files → one material: extract text from all, create text-based content
-              const combinedText = await extractCombinedText(files);
-              await courseContentsApi.create({
-                course_id: resolvedCourseId,
-                title: modalParams.title || files.map(f => f.name).join(', '),
-                text_content: combinedText,
-                content_type: 'notes',
-              });
-            } else {
-              // Text/paste mode: create content with text only
-              await courseContentsApi.create({
-                course_id: resolvedCourseId,
-                title: modalParams.title || 'Uploaded material',
-                text_content: modalParams.content || undefined,
-                content_type: 'notes',
-              });
-            }
-            loadData();
-          } catch {
-            // Silently handle — user will see content list on next load
-          }
-        })();
-        return;
-      }
-
-      // Generation path: for multi-file, skip duplicate check (content not extracted yet)
-      if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
-        try {
-          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
-          if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
-        } catch { /* continue */ }
-      }
-
-      setDuplicateCheck(null);
-      resetModal();
-
       // Fan out: one startGeneration() per selected type (parallel)
       // For multi-file, pass files so startGeneration can extract text in the background
       for (const type of modalParams.types) {
