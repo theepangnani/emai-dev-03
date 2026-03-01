@@ -1,3 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests"]
+markers = [
+    "pg: marks tests that require a PostgreSQL database (deselect with -m 'not pg')",
+]

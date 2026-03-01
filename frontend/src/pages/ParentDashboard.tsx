@@ -14,6 +14,8 @@ import type { QuickAction } from '../components/RoleQuickActions';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { SetupChecklist } from '../components/SetupChecklist';
+import { GradesSummaryCard } from '../components/GradesSummaryCard';
+import { ParentConsentCards } from '../components/ParentConsentCards';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -258,6 +260,9 @@ export function ParentDashboard() {
           {/* Onboarding Setup Checklist (#869) */}
           <SetupChecklist />
 
+          {/* Parent Consent Cards for linked children (#783) */}
+          <ParentConsentCards children={pd.children} />
+
           {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
@@ -404,6 +409,18 @@ export function ParentDashboard() {
             ] satisfies QuickAction[]}
             maxVisible={3}
           />
+
+          {/* Grades Overview (#838 - collapsible) */}
+          <CollapsibleSection
+            title="Grades"
+            expanded={sectionStates.grades}
+            onToggle={() => updateSection('grades', !sectionStates.grades)}
+          >
+            <GradesSummaryCard
+              selectedChildId={pd.selectedChild ?? undefined}
+              onViewDetails={() => pd.navigate(pd.selectedChild ? `/grades?student=${pd.selectedChild}` : '/grades')}
+            />
+          </CollapsibleSection>
 
           {/* Coming Up Timeline (#832 - collapsible) */}
           <CollapsibleSection

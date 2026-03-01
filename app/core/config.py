@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # Cookie settings (httpOnly JWT cookies for XSS mitigation)
+    cookie_secure: bool = False  # True in production (HTTPS only); auto-set below
+    cookie_domain: str = ""  # Empty = browser default (current domain)
+
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -47,6 +51,10 @@ class Settings(BaseSettings):
     # Study guide limits
     max_study_guides_per_student: int = 100
     max_study_guides_per_parent: int = 200
+
+    # File upload limits
+    max_upload_size_mb: int = 20       # Max per-file size for course material uploads
+    max_files_per_session: int = 10    # Max files per upload session (enforced on frontend + paste endpoint)
 
     # Audit logging
     audit_log_enabled: bool = True
@@ -73,6 +81,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Auto-set cookie_secure based on environment if not explicitly configured
+if settings.environment == "production":
+    settings.cookie_secure = True
 
 # Validate secret key
 _KNOWN_WEAK_KEYS = {"your-secret-key-change-in-production", "changeme", "secret", ""}

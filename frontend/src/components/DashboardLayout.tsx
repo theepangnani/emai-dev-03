@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
+import { useLastVisitedPage } from '../hooks/useLastVisitedPage';
 import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { GlobalSearch } from './GlobalSearch';
@@ -95,6 +96,11 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
   ),
+  Documents: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -118,6 +124,10 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Track last visited page for session persistence (#886)
+  useLastVisitedPage();
+
   const [unreadCount, setUnreadCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
@@ -135,6 +145,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
+        { label: 'Documents', path: '/documents' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -145,6 +156,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
       { label: 'Materials', path: '/course-materials' },
+      { label: 'Documents', path: '/documents' },
     ];
 
     if (user?.role === 'student') {

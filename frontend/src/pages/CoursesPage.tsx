@@ -53,6 +53,13 @@ export function CoursesPage() {
   const isStudent = user?.role === 'student';
   const urlStudentId = searchParams.get('student_id');
 
+  // Build course detail URL with child context for deep linking (#885)
+  const courseDetailUrl = (courseId: number) => {
+    const childUserId = searchParams.get('child') || localStorage.getItem('last_selected_child');
+    if (isParent && childUserId) return `/courses/${courseId}?child=${childUserId}`;
+    return `/courses/${courseId}`;
+  };
+
   // Student self-enrollment state
   const [enrolledCourses, setEnrolledCourses] = useState<CourseItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<CourseItem[]>([]);
@@ -142,11 +149,14 @@ export function CoursesPage() {
     }
   }, [selectedChild]);
 
-  // Persist selected child to sessionStorage for cross-page consistency
+  // Persist selected child to sessionStorage and localStorage for cross-page/session consistency (#885, #886)
   useEffect(() => {
     if (selectedChild && children.length > 0) {
       const child = children.find(c => c.student_id === selectedChild);
-      if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
+      if (child) {
+        sessionStorage.setItem('selectedChildId', String(child.user_id));
+        try { localStorage.setItem('last_selected_child', String(child.user_id)); } catch { /* ignore */ }
+      }
     }
   }, [selectedChild, children]);
 
@@ -179,7 +189,10 @@ export function CoursesPage() {
           if (match) {
             setSelectedChild(match.student_id);
           } else {
-            const storedUserId = sessionStorage.getItem('selectedChildId');
+            // Check ?child= param (user_id), then localStorage, then sessionStorage (#885)
+            const urlChildUserId = searchParams.get('child');
+            const lastChild = localStorage.getItem('last_selected_child');
+            const storedUserId = urlChildUserId || lastChild || sessionStorage.getItem('selectedChildId');
             const storedMatch = storedUserId ? childrenData.find(c => c.user_id === Number(storedUserId)) : null;
             setSelectedChild(storedMatch ? storedMatch.student_id : childrenData[0].student_id);
           }
@@ -293,7 +306,7 @@ export function CoursesPage() {
         setMyCourses(courses);
       }
       // Navigate to the new course detail page
-      navigate(`/courses/${newCourse.id}`);
+      navigate(courseDetailUrl(newCourse.id));
     } catch (err: any) {
       setCreateError(err.response?.data?.detail || 'Failed to create class');
     } finally {
@@ -602,7 +615,17 @@ export function CoursesPage() {
               <button
                 key={child.student_id}
                 className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-                onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
+                onClick={() => {
+                  const newVal = selectedChild === child.student_id ? null : child.student_id;
+                  setSelectedChild(newVal);
+                  // Sync child selection to URL param (#885)
+                  if (newVal) {
+                    const c = children.find(cc => cc.student_id === newVal);
+                    if (c) { searchParams.set('child', String(c.user_id)); setSearchParams(searchParams, { replace: true }); }
+                  } else {
+                    searchParams.delete('child'); setSearchParams(searchParams, { replace: true });
+                  }
+                }}
               >
                 {child.full_name}
               </button>
@@ -687,7 +710,7 @@ export function CoursesPage() {
                       <div className="course-content-panel">
                         <div className="course-content-header">
                           <h5>Class Materials</h5>
-                          <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                          <button className="courses-btn secondary" onClick={() => navigate(courseDetailUrl(course.id))}>
                             View Details &rarr;
                           </button>
                         </div>
@@ -695,7 +718,7 @@ export function CoursesPage() {
                           <div className="course-content-empty"><p>Loading...</p></div>
                         ) : expandedContents.length === 0 ? (
                           <div className="course-content-empty">
-                            <p>No materials yet. <span style={{ cursor: 'pointer', color: 'var(--color-accent)' }} onClick={() => navigate(`/courses/${course.id}`)}>Add content &rarr;</span></p>
+                            <p>No materials yet. <span style={{ cursor: 'pointer', color: 'var(--color-accent)' }} onClick={() => navigate(courseDetailUrl(course.id))}>Add content &rarr;</span></p>
                           </div>
                         ) : (
                           <div className="course-content-list">
@@ -795,7 +818,7 @@ export function CoursesPage() {
                           <div className="course-content-panel">
                             <div className="course-content-header">
                               <h5>Class Materials</h5>
-                              <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                              <button className="courses-btn secondary" onClick={() => navigate(courseDetailUrl(course.id))}>
                                 View Details &rarr;
                               </button>
                             </div>
@@ -912,8 +935,8 @@ export function CoursesPage() {
                 <div
                   key={course.id}
                   className="course-list-row"
-                  onClick={() => navigate(`/courses/${course.id}`)}
-                  onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${course.id}`))}
+                  onClick={() => navigate(courseDetailUrl(course.id))}
+                  onKeyDown={(e) => handleKeyDown(e, () => navigate(courseDetailUrl(course.id)))}
                   role="button"
                   tabIndex={0}
                 >

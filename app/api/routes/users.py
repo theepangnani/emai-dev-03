@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,6 +12,7 @@ from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
 from app.models.student_email import StudentEmail, EmailType
 from app.schemas.user import UserResponse, SwitchRoleRequest
+from app.schemas.consent import ConsentPreferences, ConsentPreferencesResponse
 from app.schemas.student_email import StudentEmailCreate, StudentEmailResponse, SetPrimaryRequest
 from app.api.deps import get_current_user, require_role
 
@@ -72,6 +74,54 @@ def switch_role(
     db.commit()
     db.refresh(current_user)
     return _user_response(current_user)
+
+
+@router.put("/me/consent-preferences", response_model=ConsentPreferencesResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_consent_preferences(
+    request: Request,
+    preferences: ConsentPreferences,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Store the user's cookie / data-processing consent preferences (#797)."""
+    prefs_dict = {
+        "essential": True,  # Always on
+        "analytics": preferences.analytics,
+        "ai_processing": preferences.ai_processing,
+    }
+    current_user.consent_preferences = json.dumps(prefs_dict)
+    current_user.consent_given_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(current_user)
+    return ConsentPreferencesResponse(
+        essential=True,
+        analytics=preferences.analytics,
+        ai_processing=preferences.ai_processing,
+        consent_given_at=current_user.consent_given_at,
+    )
+
+
+@router.get("/me/consent-preferences", response_model=ConsentPreferencesResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_consent_preferences(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve the user's current consent preferences (#797)."""
+    if current_user.consent_preferences:
+        try:
+            prefs = json.loads(current_user.consent_preferences)
+        except (json.JSONDecodeError, TypeError):
+            prefs = {"essential": True, "analytics": False, "ai_processing": False}
+    else:
+        prefs = {"essential": True, "analytics": False, "ai_processing": False}
+    return ConsentPreferencesResponse(
+        essential=prefs.get("essential", True),
+        analytics=prefs.get("analytics", False),
+        ai_processing=prefs.get("ai_processing", False),
+        consent_given_at=current_user.consent_given_at,
+    )
 
 
 @router.get("/{user_id}", response_model=UserResponse)

@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -33,9 +33,10 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, TaskTemplate, TaskComment, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
+from app.models.teacher_google_account import TeacherGoogleAccount  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -237,6 +238,43 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── tasks: recurring task fields (#880) ──────────────────
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "recurrence_rule" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN recurrence_rule VARCHAR(50)"))
+                logger.info("Added 'recurrence_rule' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "recurrence_end_date" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE tasks ADD COLUMN recurrence_end_date {col_type}"))
+                logger.info("Added 'recurrence_end_date' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "template_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN template_id INTEGER REFERENCES task_templates(id)"))
+                logger.info("Added 'template_id' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── tasks: google_calendar_event_id column (Google Calendar sync) ──
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "google_calendar_event_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN google_calendar_event_id VARCHAR(255)"))
+                logger.info("Added 'google_calendar_event_id' column to tasks")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # Make users.email nullable for students created without email (by parent)
     if "users" in inspector.get_table_names():
         if "sqlite" not in settings.database_url:
@@ -327,6 +365,16 @@ with engine.connect() as conn:
             col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
             conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN archived_at {col_type}"))
             logger.info("Added 'archived_at' column to study_guides")
+        conn.commit()
+
+    if "study_guides" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
+        if "focus_prompt" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN focus_prompt VARCHAR(2000)"))
+                logger.info("Added 'focus_prompt' column to study_guides")
+            except Exception:
+                conn.rollback()
         conn.commit()
 
     # ── users: needs_onboarding column (#412) ───────────────────
@@ -529,6 +577,13 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         conn.commit()
+        # Backfill NULL classroom_type rows (fix for courses added before column had a default)
+        try:
+            conn.execute(text("UPDATE courses SET classroom_type = 'manual' WHERE classroom_type IS NULL"))
+            logger.info("Backfilled NULL classroom_type values to 'manual'")
+        except Exception:
+            conn.rollback()
+        conn.commit()
 
     # ── Phase 1 New Workflow: notifications ACK columns ───────
     if "notifications" in inspector.get_table_names():
@@ -719,6 +774,52 @@ with engine.connect() as conn:
     except Exception:
         conn.rollback()
 
+    # ── users: consent_preferences + consent_given_at columns (#797) ──
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "consent_preferences" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN consent_preferences TEXT"))
+                logger.info("Added 'consent_preferences' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "consent_given_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN consent_given_at {col_type}"))
+                logger.info("Added 'consent_given_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── students: MFIPPA consent columns (#783) ──────────────────────
+    if "students" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "consent_status" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN consent_status VARCHAR(20) DEFAULT 'pending'"))
+                logger.info("Added 'consent_status' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "parent_consent_given_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE students ADD COLUMN parent_consent_given_at {col_type}"))
+                logger.info("Added 'parent_consent_given_at' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "student_consent_given_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE students ADD COLUMN student_consent_given_at {col_type}"))
+                logger.info("Added 'student_consent_given_at' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -824,6 +925,7 @@ app.include_router(students.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(google_classroom.router, prefix="/api")
+app.include_router(google_calendar.router, prefix="/api")
 app.include_router(study.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
@@ -842,8 +944,16 @@ app.include_router(link_requests.router, prefix="/api")
 app.include_router(quiz_results.router, prefix="/api")
 app.include_router(onboarding.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
+app.include_router(consent.router, prefix="/api")
+app.include_router(mcp_config.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
 
 logger.info("API routes registered at /api")
+
+# MCP server — mount after all routers so it can discover endpoints
+from app.mcp import setup_mcp  # noqa: E402
+setup_mcp(app)
+logger.info("MCP server mounted at /mcp")
 
 logger.info("All routers registered")
 

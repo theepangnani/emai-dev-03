@@ -5,12 +5,14 @@ import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionL
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { TaskExtractionModal } from '../components/TaskExtractionModal';
 import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AssignmentSubmission } from '../components/AssignmentSubmission';
+import { BulkImportWizard } from '../components/BulkImportWizard';
 import '../components/AssignmentSubmission.css';
 import './CourseDetailPage.css';
 
@@ -53,6 +55,8 @@ export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const courseId = Number(id);
   const navigate = useNavigate();
+  // ?child= param in the URL preserves parent context for deep linking (#885)
+  // — no need to read it here, but CoursesPage sets it so browser back works correctly.
   const { user } = useAuth();
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
@@ -125,6 +129,9 @@ export function CourseDetailPage() {
   const [uploadAiTool, setUploadAiTool] = useState<'none' | 'study_guide' | 'quiz' | 'flashcards'>('none');
   const [uploadAiCustomPrompt, setUploadAiCustomPrompt] = useState('');
 
+  // Bulk import wizard
+  const [showBulkImport, setShowBulkImport] = useState(false);
+
   // Collapsible sections
   const [materialsExpanded, setMaterialsExpanded] = useState(true);
   const [assignmentsExpanded, setAssignmentsExpanded] = useState(true);
@@ -143,6 +150,12 @@ export function CourseDetailPage() {
     courseContentId?: number;
     title: string;
     label: string;
+  } | null>(null);
+
+  // Task extraction modal (#878)
+  const [extractionContext, setExtractionContext] = useState<{
+    contentId: number;
+    contentTitle: string;
   } | null>(null);
 
   // Guard refs to prevent double-submission
@@ -618,6 +631,9 @@ export function CourseDetailPage() {
               <button className="courses-btn secondary action-icon-btn" onClick={openUploadModal}>
                 <span className="action-icon">&#128228;</span> Upload Document
               </button>
+              <button className="courses-btn secondary action-icon-btn" onClick={() => setShowBulkImport(true)}>
+                <span className="action-icon">&#128193;</span> Import Folder
+              </button>
               <button className="courses-btn secondary action-icon-btn" onClick={() => setTaskModalContext({
                 courseId: courseId,
                 title: `Task for ${course.name}`,
@@ -679,6 +695,19 @@ export function CourseDetailPage() {
                       >
                         {generatingContentId === item.id ? '\u23F3' : '\uD83D\uDCD6'}
                       </button>
+                      {item.text_content && (
+                        <button
+                          className="content-icon-btn"
+                          title="Extract Tasks with AI"
+                          aria-label="Extract tasks from this content using AI"
+                          onClick={() => setExtractionContext({
+                            contentId: item.id,
+                            contentTitle: item.title,
+                          })}
+                        >
+                          &#9889;
+                        </button>
+                      )}
                       <button
                         className="content-icon-btn"
                         title="Create task"
@@ -1182,7 +1211,25 @@ export function CourseDetailPage() {
         courseContentId={taskModalContext?.courseContentId}
         linkedEntityLabel={taskModalContext?.label}
       />
+
+      <TaskExtractionModal
+        open={!!extractionContext}
+        onClose={() => setExtractionContext(null)}
+        contentId={extractionContext?.contentId ?? 0}
+        contentTitle={extractionContext?.contentTitle ?? ''}
+        courseName={course?.name}
+        onCreated={(count) => {
+          alert(`Successfully created ${count} task${count !== 1 ? 's' : ''} from document.`);
+        }}
+      />
       {confirmModal}
+      <BulkImportWizard
+        open={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        courses={course ? [{ id: course.id, name: course.name }] : []}
+        defaultCourseId={courseId}
+        onComplete={loadContents}
+      />
     </DashboardLayout>
   );
 }

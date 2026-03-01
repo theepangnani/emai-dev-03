@@ -1,9 +1,12 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Feb 27, 2026):** 725 total issues — 538 closed (74%), 187 open (26%)
-- **Features built:** 183 enhancements closed
-- **Bugs fixed:** 137 bugs closed
-- **Other closed:** 218 (pilot prep, docs, testing, misc)
+**Summary (as of Feb 28, 2026):** ~785 total issues — 630 closed (80%), 155 open (20%)
+- Phase 1: **0 open issues** (all closed)
+- Phase 1.5: 10 features implemented (on `phase-1.5` branch), 2 remaining (#941, #942)
+- Phase 2: 12 features implemented (on `feature/phase-2` branch), ~40 open issues
+- Consolidated 21 redundant issues into 5 epics (#959-#963)
+- Created 5 gap issues (#964-#968)
+- Tagged scope creep: #678 (phase-2), #941/#942 (phase-1.5)
 
 Current feature issues are tracked in GitHub:
 
@@ -801,12 +804,15 @@ Current feature issues are tracked in GitHub:
 - Issue #806: VASP Compliance: Create formal data classification and inventory
 - Issue #807: VASP Compliance: Implement comprehensive API rate limiting
 
-### Railway Migration (Open)
-- Issue #769: Add Railway URL to Google OAuth Console
-- Issue #770: Update CI/CD pipeline from GCP Cloud Run to Railway
-- Issue #771: Test core features on Railway deployment
-- Issue #772: Custom domain cutover: point classbridge.ca to Railway
-- Issue #773: Decommission GCP Cloud Run and Cloud SQL
+### Railway Migration — Phase 2 Deployment (Open)
+> **Strategy:** `feature/phase-2` branch deploys to Railway via `clazzbridge.com`. `master` stays on GCP Cloud Run via `classbridge.ca`.
+> **Approach:** Railway auto-deploy with GitHub Actions check suites gating.
+
+- Issue #769: Add Railway URL + clazzbridge.com to Google OAuth Console
+- Issue #770: Create deploy-railway.yml CI workflow for feature/phase-2 branch
+- Issue #771: Test core features (Phase 1 + Phase 2) on Railway deployment
+- Issue #772: Custom domain cutover: point clazzbridge.com to Railway
+- Issue #773: Decommission GCP Cloud Run and Cloud SQL (DEFERRED — after full migration)
 - Issue #774: Clean up Railway migration temp files (security)
 
 ### LMS Abstraction & D2L Brightspace Integration (Open)

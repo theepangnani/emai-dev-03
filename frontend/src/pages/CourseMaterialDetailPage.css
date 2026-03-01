@@ -879,6 +879,15 @@
   font-size: 2rem;
 }
 
+.cm-replace-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
 .cm-replace-file-info {
   display: flex;
   align-items: center;
@@ -920,6 +929,26 @@
 
 .cm-replace-clear-btn:hover {
   color: var(--color-danger);
+}
+
+.cm-replace-add-more {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  text-align: left;
+}
+
+.cm-replace-add-more:hover {
+  text-decoration: underline;
+}
+
+.cm-ocr-hint {
+  font-size: 0.8rem;
+  color: var(--color-success, #2e7d32);
+  margin: 0 24px 0.5rem;
 }
 
 .cm-replace-error {

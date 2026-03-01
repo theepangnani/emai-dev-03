@@ -537,6 +537,78 @@
   color: var(--color-ink-muted);
 }
 
+/* Primary status dot (filled = primary, hollow = secondary) */
+.google-account-primary-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink-muted);
+  flex-shrink: 0;
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.google-account-primary-dot.is-primary {
+  background: var(--color-success, #16a34a);
+  border-color: var(--color-success, #16a34a);
+}
+
+/* Identity group (email + display name stacked) */
+.google-account-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* Inline label editing */
+.google-account-label-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.google-account-label-input {
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  outline: none;
+  width: 140px;
+}
+
+.google-account-label-input:focus {
+  border-color: var(--color-accent-strong);
+}
+
+/* Label button (click-to-edit) */
+.google-account-label-btn {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.google-account-label-btn:hover {
+  border-color: var(--color-accent-strong);
+  color: var(--color-accent-strong);
+  background: var(--color-accent-light);
+}
+
+.google-account-label-btn.has-label {
+  border-style: solid;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+  font-weight: 500;
+}
+
 .google-account-actions {
   display: flex;
   gap: 8px;
@@ -871,3 +943,27 @@
     justify-content: space-between;
   }
 }
+
+/* ── Background generation banner ─────────────────────────────── */
+.td-generation-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 1000;
+  animation: td-banner-in 0.2s ease;
+}
+@keyframes td-banner-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.td-generation-banner.generating { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-ink-muted); }
+.td-generation-banner.success { background: rgba(46,125,50,0.1); border: 1px solid rgba(46,125,50,0.3); color: var(--color-success); }
+.td-generation-banner.error { background: rgba(211,47,47,0.1); border: 1px solid rgba(211,47,47,0.3); color: var(--color-error, #d32f2f); }
+.td-gen-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 4px; }
+.td-gen-view-btn { background: var(--color-success); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.td-gen-dismiss-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; line-height: 1; padding: 0 2px; }

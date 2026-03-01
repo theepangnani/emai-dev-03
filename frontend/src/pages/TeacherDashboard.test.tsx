@@ -559,17 +559,15 @@ describe('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
+    // Wait specifically for the rqa-card Messages button (not just the sidebar nav item)
+    let messagesBtn!: HTMLElement
     await waitFor(() => {
-      // Multiple "Messages" buttons exist (sidebar + quick actions), find the quick action one
-      const messagesButtons = screen.getAllByRole('button', { name: 'Messages' })
-      expect(messagesButtons.length).toBeGreaterThanOrEqual(1)
+      const card = Array.from(document.querySelectorAll('.rqa-card')).find(
+        el => el.textContent?.includes('Messages')
+      ) as HTMLElement | undefined
+      expect(card).toBeTruthy()
+      messagesBtn = card!
     })
-
-    // The quick action button has rqa-card class
-    const messagesBtn = Array.from(document.querySelectorAll('.rqa-card')).find(
-      el => el.textContent?.includes('Messages')
-    ) as HTMLElement
-    expect(messagesBtn).toBeTruthy()
     await user.click(messagesBtn)
 
     expect(mockNavigate).toHaveBeenCalledWith('/messages')

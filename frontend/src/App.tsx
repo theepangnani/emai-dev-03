@@ -7,6 +7,7 @@ import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageLoader } from './components/PageLoader';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 import './App.css';
 
 // Retry lazy imports to handle stale chunks after deployment.
@@ -71,6 +72,7 @@ const NotificationsPage = lazyRetry(() => import('./pages/NotificationsPage').th
 const LinkRequestsPage = lazyRetry(() => import('./pages/LinkRequestsPage').then((m) => ({ default: m.LinkRequestsPage })));
 const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((m) => ({ default: m.QuizHistoryPage })));
 const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').then((m) => ({ default: m.EmailSettingsPage })));
+const DocumentsPage = lazyRetry(() => import('./pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +94,7 @@ function App() {
         <ToastProvider>
         <BrowserRouter>
           <ErrorBoundary>
+          <CookieConsentBanner />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -223,6 +226,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documents"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <DocumentsPage />
                   </ProtectedRoute>
                 }
               />

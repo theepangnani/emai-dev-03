@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { tasksApi, parentApi } from '../api/client';
-import type { TaskItem, AssignableUser, ChildSummary } from '../api/client';
+import type { TaskItem, AssignableUser, ChildSummary, TaskTemplate } from '../api/client';
 import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -14,6 +14,7 @@ import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/typ
 import { ListSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import EmptyState from '../components/EmptyState';
+import { TaskComments } from '../components/TaskComments';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -46,8 +47,11 @@ export function TasksPage() {
   const [filterAssignee, setFilterAssignee] = useState<number | 'all'>(() => {
     const navState = location.state as { selectedChild?: number | null } | null;
     if (navState?.selectedChild) return navState.selectedChild;
-    const assignee = searchParams.get('assignee');
+    const assignee = searchParams.get('assignee') || searchParams.get('child');
     if (assignee) return Number(assignee);
+    // Fallback: localStorage (persisted across sessions) then sessionStorage (legacy)
+    const lastChild = localStorage.getItem('last_selected_child');
+    if (lastChild) return Number(lastChild);
     const stored = sessionStorage.getItem('selectedChildId');
     return stored ? Number(stored) : 'all';
   });
@@ -59,7 +63,14 @@ export function TasksPage() {
   const [newDueDate, setNewDueDate] = useState('');
   const [newPriority, setNewPriority] = useState('medium');
   const [newAssignee, setNewAssignee] = useState<number | ''>('');
+  const [newRecurrence, setNewRecurrence] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Templates (#880)
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+
+  // Comments (#881) — track which task's comments are expanded
+  const [expandedCommentTaskId, setExpandedCommentTaskId] = useState<number | null>(null);
 
   // Edit task
   const [editTask, setEditTask] = useState<TaskItem | null>(null);
@@ -94,17 +105,19 @@ export function TasksPage() {
   useEffect(() => {
     loadTasks();
     loadAssignableUsers();
+    loadTemplates();
     if (isParent) loadChildren();
   }, [filterStatus]);
 
-  // Auto-select first child when children load and no specific child is selected
+  // Auto-select first child only when there is exactly one child
   useEffect(() => {
-    if (isParent && children.length > 0 && filterAssignee === 'all') {
+    if (isParent && children.length === 1 && filterAssignee === 'all') {
       const first = children[0];
       setFilterAssignee(first.user_id);
       searchParams.set('assignee', String(first.user_id));
       setSearchParams(searchParams, { replace: true });
       sessionStorage.setItem('selectedChildId', String(first.user_id));
+      try { localStorage.setItem('last_selected_child', String(first.user_id)); } catch { /* ignore */ }
     }
   }, [children]);
 
@@ -148,6 +161,15 @@ export function TasksPage() {
     try {
       const data = await parentApi.getChildren();
       setChildren(data);
+    } catch {
+      // silently fail
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const data = await tasksApi.listTemplates();
+      setTemplates(data);
     } catch {
       // silently fail
     }
@@ -238,12 +260,14 @@ export function TasksPage() {
         due_date: newDueDate || undefined,
         priority: newPriority,
         assigned_to_user_id: newAssignee ? Number(newAssignee) : undefined,
+        recurrence_rule: newRecurrence || undefined,
       });
       setNewTitle('');
       setNewDescription('');
       setNewDueDate('');
       setNewPriority('medium');
       setNewAssignee('');
+      setNewRecurrence('');
       setShowCreate(false);
       loadTasks();
     } catch (err: any) {
@@ -251,6 +275,27 @@ export function TasksPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleSelectTemplate = (templateId: string) => {
+    if (!templateId) return;
+    const tpl = templates.find(t => t.id === Number(templateId));
+    if (tpl) {
+      setNewTitle(tpl.title);
+      setNewDescription(tpl.description || '');
+      setNewPriority(tpl.priority || 'medium');
+    }
+  };
+
+  const recurrenceLabel = (rule: string | null): string => {
+    if (!rule) return '';
+    const labels: Record<string, string> = {
+      daily: 'Daily',
+      weekly: 'Weekly',
+      biweekly: 'Biweekly',
+      monthly: 'Monthly',
+    };
+    return labels[rule] || rule;
   };
 
   const handleToggle = async (task: TaskItem) => {
@@ -446,11 +491,26 @@ export function TasksPage() {
         {/* Child selector pills (parent only) + add action button */}
         {isParent && children.length > 0 ? (
           <div className="tasks-child-selector">
+            {/* "All" button — shown when there are multiple children */}
+            {children.length > 1 && (
+              <button
+                className={`child-tab child-tab-all${filterAssignee === 'all' ? ' active' : ''}`}
+                onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); sessionStorage.removeItem('selectedChildId'); }}
+                title="All children"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </button>
+            )}
             {children.map((child, index) => (
               <button
                 key={child.user_id}
                 className={`child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
-                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
+                onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); try { localStorage.setItem('last_selected_child', String(child.user_id)); } catch { /* ignore */ } }}
               >
                 <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}
@@ -645,83 +705,96 @@ export function TasksPage() {
         ) : (
           <div className="tasks-list">
             {filteredTasks.map(task => (
-              <div key={task.id} className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
-                {loadingTaskId === task.id ? (
-                  <span className="btn-spinner task-row-spinner" />
-                ) : (
-                  <input
-                    type="checkbox"
-                    checked={task.is_completed}
-                    onChange={() => handleToggle(task)}
-                    className="task-row-checkbox"
-                    disabled={!!task.archived_at}
-                  />
-                )}
-                <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
-                  <div className="task-row-title">{task.title}</div>
-                  <div className="task-row-meta">
-                    {task.priority && (
-                      <span className={`task-priority-badge ${task.priority}`} aria-label={`Priority: ${task.priority}`}>
-                        {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
-                      </span>
-                    )}
-                    {task.due_date && (
-                      <span className="task-row-due">{formatDate(task.due_date)}</span>
-                    )}
-                    {task.assignee_name && (
-                      <span className="task-row-assignee">
-                        {isCreator(task) ? `→ ${task.assignee_name}` : `← ${task.creator_name}`}
-                      </span>
-                    )}
-                    {(task.study_guide_title || task.course_content_title || task.course_name) && (
-                      <span
-                        className="task-row-link clickable"
-                        onClick={(e) => { e.stopPropagation(); const route = getLinkedEntityRoute(task); if (route) navigate(route); }}
-                        title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'material' : 'class'}`}
-                      >
-                        {task.study_guide_title
-                          ? `${task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}: ${task.study_guide_title}`
-                          : task.course_content_title
-                            ? `Content: ${task.course_content_title}`
-                            : `Class: ${task.course_name}`}
-                      </span>
-                    )}
+              <div key={task.id} className={`task-row-wrapper${expandedCommentTaskId === task.id ? ' comments-open' : ''}`}>
+                <div className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
+                  {loadingTaskId === task.id ? (
+                    <span className="btn-spinner task-row-spinner" />
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={task.is_completed}
+                      onChange={() => handleToggle(task)}
+                      className="task-row-checkbox"
+                      disabled={!!task.archived_at}
+                    />
+                  )}
+                  <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
+                    <div className="task-row-title">{task.title}</div>
+                    <div className="task-row-meta">
+                      {task.priority && (
+                        <span className={`task-priority-badge ${task.priority}`} aria-label={`Priority: ${task.priority}`}>
+                          {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
+                        </span>
+                      )}
+                      {task.recurrence_rule && (
+                        <span className="task-recurrence-badge" title={`Repeats ${recurrenceLabel(task.recurrence_rule).toLowerCase()}`}>
+                          &#x21BB; {recurrenceLabel(task.recurrence_rule)}
+                        </span>
+                      )}
+                      {task.due_date && (
+                        <span className="task-row-due">{formatDate(task.due_date)}</span>
+                      )}
+                      {task.assignee_name && (
+                        <span className="task-row-assignee">
+                          {isCreator(task) ? `\u2192 ${task.assignee_name}` : `\u2190 ${task.creator_name}`}
+                        </span>
+                      )}
+                      {(task.study_guide_title || task.course_content_title || task.course_name) && (
+                        <span
+                          className="task-row-link clickable"
+                          onClick={(e) => { e.stopPropagation(); const route = getLinkedEntityRoute(task); if (route) navigate(route); }}
+                          title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'material' : 'class'}`}
+                        >
+                          {task.study_guide_title
+                            ? `${task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}: ${task.study_guide_title}`
+                            : task.course_content_title
+                              ? `Content: ${task.course_content_title}`
+                              : `Class: ${task.course_name}`}
+                        </span>
+                      )}
+                      <TaskComments
+                        taskId={task.id}
+                        expanded={expandedCommentTaskId === task.id}
+                        onToggle={() => setExpandedCommentTaskId(prev => prev === task.id ? null : task.id)}
+                        commentCount={task.comment_count ?? 0}
+                      />
+                    </div>
                   </div>
+                  {isCreator(task) && task.archived_at ? (
+                    <div className="task-row-actions">
+                      <button className="task-row-btn restore" onClick={() => handleRestore(task.id)} title="Restore" aria-label="Restore this task">&#8634;</button>
+                      <button className="task-row-btn permanent-delete" onClick={() => handlePermanentDelete(task.id)} title="Delete Forever" aria-label="Permanently delete this task">&#128465;</button>
+                    </div>
+                  ) : isCreator(task) ? (
+                    <div className="task-row-actions">
+                      {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
+                        const { canRemind, label } = getReminderStatus(task);
+                        return (
+                          <>
+                            <button
+                              className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
+                              disabled={!canRemind || remindingTaskId === task.id}
+                              title={label}
+                              aria-label={label}
+                            >
+                              {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
+                            </button>
+                            <button
+                              className="task-row-btn request-completion"
+                              onClick={(e) => { e.stopPropagation(); setRequestCompletionTask(task); }}
+                              title="Request completion"
+                              aria-label="Request child to complete this task"
+                            >
+                              &#9993;
+                            </button>
+                          </>
+                        );
+                      })()}
+                      <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
+                    </div>
+                  ) : null}
                 </div>
-                {isCreator(task) && task.archived_at ? (
-                  <div className="task-row-actions">
-                    <button className="task-row-btn restore" onClick={() => handleRestore(task.id)} title="Restore" aria-label="Restore this task">&#8634;</button>
-                    <button className="task-row-btn permanent-delete" onClick={() => handlePermanentDelete(task.id)} title="Delete Forever" aria-label="Permanently delete this task">&#128465;</button>
-                  </div>
-                ) : isCreator(task) ? (
-                  <div className="task-row-actions">
-                    {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
-                      const { canRemind, label } = getReminderStatus(task);
-                      return (
-                        <>
-                          <button
-                            className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
-                            disabled={!canRemind || remindingTaskId === task.id}
-                            title={label}
-                            aria-label={label}
-                          >
-                            {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
-                          </button>
-                          <button
-                            className="task-row-btn request-completion"
-                            onClick={(e) => { e.stopPropagation(); setRequestCompletionTask(task); }}
-                            title="Request completion"
-                            aria-label="Request child to complete this task"
-                          >
-                            &#9993;
-                          </button>
-                        </>
-                      );
-                    })()}
-                    <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
-                  </div>
-                ) : null}
               </div>
             ))}
           </div>
@@ -736,6 +809,17 @@ export function TasksPage() {
                 <button className="modal-close" onClick={() => setShowCreate(false)}>&times;</button>
               </div>
               <div className="modal-body">
+                {templates.length > 0 && (
+                  <>
+                    <label className="form-label">From Template</label>
+                    <select onChange={e => handleSelectTemplate(e.target.value)} className="form-input" defaultValue="" disabled={creating}>
+                      <option value="">-- Select a template --</option>
+                      {templates.map(t => (
+                        <option key={t.id} value={t.id}>{t.title}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
                 <label className="form-label">Title</label>
                 <input
                   type="text"
@@ -766,6 +850,14 @@ export function TasksPage() {
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
+                </select>
+                <label className="form-label">Recurrence</label>
+                <select value={newRecurrence} onChange={e => setNewRecurrence(e.target.value)} className="form-input">
+                  <option value="">None</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
                 </select>
                 {assignableUsers.length > 0 && (
                   <>

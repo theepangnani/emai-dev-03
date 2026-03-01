@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
+import { GoogleCalendarSync } from '../components/GoogleCalendarSync';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -56,6 +57,9 @@ export function TeacherDashboard() {
   // Google accounts state
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
   const [removingAccountId, setRemovingAccountId] = useState<number | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
+  const [editingLabelValue, setEditingLabelValue] = useState('');
+  const [savingLabelId, setSavingLabelId] = useState<number | null>(null);
 
   // Sent invites state
   const [sentInvites, setSentInvites] = useState<InviteResponse[]>([]);
@@ -222,6 +226,31 @@ export function TeacherDashboard() {
     } catch {
       // Failed to set primary
     }
+  };
+
+  const handleStartEditLabel = (account: GoogleAccount) => {
+    setEditingLabelId(account.id);
+    setEditingLabelValue(account.account_label ?? '');
+  };
+
+  const handleSaveLabel = async (accountId: number) => {
+    setSavingLabelId(accountId);
+    try {
+      await googleApi.updateTeacherAccount(accountId, editingLabelValue.trim() || undefined);
+      setGoogleAccounts(prev =>
+        prev.map(a => a.id === accountId ? { ...a, account_label: editingLabelValue.trim() || null } : a)
+      );
+      setEditingLabelId(null);
+    } catch {
+      // Failed to save label
+    } finally {
+      setSavingLabelId(null);
+    }
+  };
+
+  const handleCancelEditLabel = () => {
+    setEditingLabelId(null);
+    setEditingLabelValue('');
   };
 
   const handleResendInvite = async (inviteId: number) => {
@@ -647,16 +676,23 @@ export function TeacherDashboard() {
           </section>
         )}
 
-        {/* Google Accounts Section */}
+        {/* Google Calendar Sync Section */}
         {googleConnected && (
+          <section className="section teacher-google-calendar-section">
+            <GoogleCalendarSync googleConnected={googleConnected} />
+          </section>
+        )}
+
+        {/* Google Accounts Section — show when connected or when accounts already exist */}
+        {(googleConnected || googleAccounts.length > 0) && (
           <section className="section teacher-google-accounts-section">
             <div className="section-header">
               <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)}>
                 <span className={`section-chevron${googleAccountsExpanded ? ' expanded' : ''}`}>&#9654;</span>
-                <h3>Google Accounts ({googleAccounts.length})</h3>
+                <h3>Connected Google Accounts ({googleAccounts.length})</h3>
               </button>
               <button className="create-custom-btn" onClick={handleAddGoogleAccount}>
-                + Add Account
+                + Connect Another Account
               </button>
             </div>
             {googleAccountsExpanded && googleAccounts.length > 0 ? (
@@ -664,19 +700,59 @@ export function TeacherDashboard() {
                 {googleAccounts.map((account) => (
                   <div key={account.id} className="google-account-row">
                     <div className="google-account-info">
-                      <span className="google-account-email">{account.google_email}</span>
-                      {account.display_name && (
-                        <span className="google-account-name">{account.display_name}</span>
-                      )}
-                      {account.account_label && (
-                        <span className="google-account-label">{account.account_label}</span>
-                      )}
+                      {/* Primary indicator dot */}
+                      <span
+                        className={`google-account-primary-dot${account.is_primary ? ' is-primary' : ''}`}
+                        title={account.is_primary ? 'Primary account' : 'Secondary account'}
+                      />
+                      <div className="google-account-identity">
+                        <span className="google-account-email">{account.google_email}</span>
+                        {account.display_name && (
+                          <span className="google-account-name">{account.display_name}</span>
+                        )}
+                      </div>
                       {account.is_primary && (
                         <span className="google-account-primary-badge">Primary</span>
                       )}
+                      {/* Inline label editing */}
+                      {editingLabelId === account.id ? (
+                        <span className="google-account-label-edit">
+                          <input
+                            type="text"
+                            className="google-account-label-input"
+                            value={editingLabelValue}
+                            onChange={(e) => setEditingLabelValue(e.target.value)}
+                            placeholder="e.g. School Account"
+                            maxLength={100}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveLabel(account.id);
+                              if (e.key === 'Escape') handleCancelEditLabel();
+                            }}
+                          />
+                          <button
+                            className="text-btn"
+                            onClick={() => handleSaveLabel(account.id)}
+                            disabled={savingLabelId === account.id}
+                          >
+                            {savingLabelId === account.id ? 'Saving...' : 'Save'}
+                          </button>
+                          <button className="text-btn" onClick={handleCancelEditLabel}>
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          className={`google-account-label-btn${account.account_label ? ' has-label' : ''}`}
+                          onClick={() => handleStartEditLabel(account)}
+                          title="Click to edit label"
+                        >
+                          {account.account_label || 'Add label'}
+                        </button>
+                      )}
                       {account.last_sync_at && (
                         <span className="google-account-sync">
-                          Last synced: {new Date(account.last_sync_at).toLocaleDateString()}
+                          Synced {new Date(account.last_sync_at).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -685,7 +761,7 @@ export function TeacherDashboard() {
                         <button
                           className="text-btn"
                           onClick={() => handleSetPrimary(account.id)}
-                          title="Set as primary"
+                          title="Set as primary account"
                         >
                           Set Primary
                         </button>
@@ -694,7 +770,7 @@ export function TeacherDashboard() {
                         className="text-btn danger"
                         onClick={() => handleRemoveAccount(account.id)}
                         disabled={removingAccountId === account.id}
-                        title="Remove account"
+                        title="Remove this Google account"
                       >
                         {removingAccountId === account.id ? 'Removing...' : 'Remove'}
                       </button>

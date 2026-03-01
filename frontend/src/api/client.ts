@@ -93,7 +93,7 @@ api.interceptors.response.use(
 // Re-export all API modules and types for backward compatibility
 export { authApi } from './auth';
 export { coursesApi, courseContentsApi, assignmentsApi } from './courses';
-export type { CourseContentItem, CourseContentUpdateResponse, LinkedCourseIdsResponse, LinkedCourseChild, AssignmentItem, SubmissionResponse, SubmissionListItem, TeacherCourseManagement } from './courses';
+export type { CourseContentItem, CourseContentUpdateResponse, LinkedCourseIdsResponse, LinkedCourseChild, AssignmentItem, SubmissionResponse, SubmissionListItem, TeacherCourseManagement, ExtractedTaskItem, ExtractTasksResponse, TaskCreateFromExtraction, CreatedTaskSummary, BulkTaskCreateResponse, UploadOptions, BulkUploadFileResult, BulkUploadResponse } from './courses';
 export { googleApi } from './google';
 export type { GoogleAccount } from './google';
 export { studyApi } from './study';
@@ -154,7 +154,7 @@ export type {
   BroadcastItem,
 } from './admin';
 export { tasksApi } from './tasks';
-export type { TaskItem, AssignableUser } from './tasks';
+export type { TaskItem, AssignableUser, TaskTemplate, TaskComment } from './tasks';
 export { searchApi } from './search';
 export type { SearchResultItem, SearchResultGroup, SearchResponse } from './search';
 export { inspirationApi } from './inspiration';

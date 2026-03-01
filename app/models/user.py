@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.sql import func
 import enum
 
@@ -41,6 +41,10 @@ class User(Base):
 
     # Onboarding setup checklist
     onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Cookie / consent preferences (#797)
+    consent_preferences = Column(Text, nullable=True)  # JSON string
+    consent_given_at = Column(DateTime(timezone=True), nullable=True)
 
     # Account lockout (brute-force protection)
     failed_login_attempts = Column(Integer, default=0)

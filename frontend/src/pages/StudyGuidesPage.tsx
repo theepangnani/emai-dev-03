@@ -25,6 +25,7 @@ interface PendingGeneration {
   focusPrompt?: string;
   mode: 'text' | 'file';
   file?: File;
+  files?: File[];  // multi-file: text extraction happens inside startGeneration background task
   pastedImages?: File[];
   regenerateId?: number;
   courseId?: number;
@@ -463,8 +464,29 @@ export function StudyGuidesPage() {
 
     (async () => {
       try {
+        // Multi-file: extract combined text now that we're running in the background
+        let content = params.content;
+        let mode = params.mode;
+        if (params.files && params.files.length > 1) {
+          const parts: string[] = [];
+          for (const f of params.files) {
+            try {
+              const result = await studyApi.extractTextFromFile(f);
+              parts.push(`--- [${f.name}] ---\n${result.text}`);
+            } catch (err: any) {
+              const status = (err as any)?.response?.status;
+              const detail = status === 429
+                ? 'rate limit exceeded — try again in a moment'
+                : 'text extraction failed';
+              parts.push(`--- [${f.name}] ---\n(${detail})`);
+            }
+          }
+          content = parts.join('\n\n');
+          mode = 'text';
+        }
+
         let result: any;
-        if (params.mode === 'file' && params.file) {
+        if (mode === 'file' && params.file) {
           result = await studyApi.generateFromFile({
             file: params.file, title: params.title || undefined, guide_type: params.type,
             num_questions: params.type === 'quiz' ? 10 : undefined,
@@ -474,7 +496,7 @@ export function StudyGuidesPage() {
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
           result = await studyApi.generateFromTextAndImages({
-            content: params.content,
+            content: content,
             images: params.pastedImages,
             title: params.title || undefined,
             guide_type: params.type,
@@ -485,11 +507,11 @@ export function StudyGuidesPage() {
             focus_prompt: params.focusPrompt,
           });
         } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({ title: params.title, content: params.content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
+          result = await studyApi.generateGuide({ title: params.title, content: content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: params.title, content: params.content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
+          result = await studyApi.generateQuiz({ topic: params.title, content: content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else {
-          result = await studyApi.generateFlashcards({ topic: params.title, content: params.content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
+          result = await studyApi.generateFlashcards({ topic: params.title, content: content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
@@ -512,62 +534,101 @@ export function StudyGuidesPage() {
     })();
   };
 
+  /** Extract and concatenate text from multiple files using the backend extract endpoint.
+   *  Files are processed sequentially to avoid hitting the per-minute rate limit. */
+  const extractCombinedText = async (files: File[]): Promise<string> => {
+    const parts: string[] = [];
+    for (const f of files) {
+      try {
+        const result = await studyApi.extractTextFromFile(f);
+        parts.push(`--- [${f.name}] ---\n${result.text}`);
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const detail = status === 429
+          ? 'rate limit exceeded — try again in a moment'
+          : 'text extraction failed';
+        parts.push(`--- [${f.name}] ---\n(${detail})`);
+      }
+    }
+    return parts.join('\n\n');
+  };
+
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     if (generatingRef.current) return;
     lastGenerateParamsRef.current = modalParams;
 
-    setIsGenerating(true);
-    try {
-      // Upload-only mode: no AI types selected → create course content directly
-      if (modalParams.types.length === 0) {
+    const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
+    const isMultiFile = files.length > 1;
+
+    // Always close modal immediately — never leave it open in a "Generating..." state.
+    // Background work (duplicate check, extraction, AI generation) continues after close.
+    resetModal();
+
+    // Upload-only mode: run upload/extraction in background
+    if (modalParams.types.length === 0) {
+      const courseId = modalParams.courseId;
+      (async () => {
         try {
-          const courseId = modalParams.courseId
-            ?? (await coursesApi.getDefault()).id;
-          if (modalParams.mode === 'file' && modalParams.file) {
-            // File upload: save original file + extract text on backend
+          const resolvedCourseId = courseId ?? (await coursesApi.getDefault()).id;
+          if (files.length === 1) {
+            // Single file: upload directly (preserves file metadata on backend)
             await courseContentsApi.uploadFile(
-              modalParams.file,
-              courseId,
+              files[0],
+              resolvedCourseId,
               modalParams.title || undefined,
               'notes',
             );
+          } else if (isMultiFile) {
+            // Multiple files → one material: extract text from all, create text-based content
+            const combinedText = await extractCombinedText(files);
+            await courseContentsApi.create({
+              course_id: resolvedCourseId,
+              title: modalParams.title || files.map(f => f.name).join(', '),
+              text_content: combinedText,
+              content_type: 'notes',
+            });
           } else {
             // Text/paste mode: create content with text only
             await courseContentsApi.create({
-              course_id: courseId,
+              course_id: resolvedCourseId,
               title: modalParams.title || 'Uploaded material',
               text_content: modalParams.content || undefined,
               content_type: 'notes',
             });
           }
-          resetModal();
           loadData();
         } catch {
-          // Silently handle — user will see content list refresh
+          // Silently handle — user will see content list on next load
         }
-        return;
-      }
+      })();
+      return;
+    }
 
-      // Check for duplicates only when single type selected (skip for multi-select)
-      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
-        try {
-          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
-          if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
-        } catch { /* continue */ }
-      }
+    // Duplicate check runs after modal close — if found, re-open modal with warning
+    if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      try {
+        const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
+        if (dupResult.exists) {
+          setDuplicateCheck(dupResult);
+          setShowModal(true);
+          return;
+        }
+      } catch { /* continue */ }
+    }
 
-      setDuplicateCheck(null);
-      resetModal();
-
+    setIsGenerating(true);
+    try {
       // Fan out: one startGeneration() per selected type (parallel)
+      // For multi-file, pass files so startGeneration can extract text in the background
       for (const type of modalParams.types) {
         startGeneration({
           title: modalParams.title,
           content: modalParams.content,
           type,
           focusPrompt: modalParams.focusPrompt,
-          mode: modalParams.mode,
-          file: modalParams.file,
+          mode: isMultiFile ? 'text' : modalParams.mode,
+          file: isMultiFile ? undefined : modalParams.file,
+          files: isMultiFile ? files : undefined,
           pastedImages: modalParams.pastedImages,
           regenerateId: duplicateCheck?.existing_guide?.id,
           courseId: modalParams.courseId,

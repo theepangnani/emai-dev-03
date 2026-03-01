@@ -1,7 +1,7 @@
 import re
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from datetime import datetime
+from datetime import datetime, date
 
 from app.models.user import UserRole
 
@@ -25,6 +25,7 @@ class UserCreate(BaseModel):
     roles: list[UserRole] = []    # New multi-role field
     teacher_type: str | None = Field(default=None, max_length=50)
     google_id: str | None = Field(default=None, max_length=255)
+    date_of_birth: date | None = None  # Optional DOB for students (#783)
 
     @field_validator('full_name', 'teacher_type', mode='before')
     @classmethod

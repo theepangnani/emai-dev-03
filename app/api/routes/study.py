@@ -37,7 +37,7 @@ from app.schemas.study import (
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
-from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, check_content_safe
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
 from app.services.file_processor import (
@@ -421,6 +421,11 @@ async def generate_study_guide_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a study guide from an assignment or custom content."""
+    if body.focus_prompt:
+        safe, reason = check_content_safe(body.focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
     study_service = StudyService(db)
 
     # Handle versioning
@@ -508,6 +513,7 @@ async def generate_study_guide_endpoint(
         version=version,
         parent_guide_id=parent_guide_id,
         content_hash=content_hash,
+        focus_prompt=body.focus_prompt or None,
     )
     db.add(study_guide)
     db.flush()
@@ -544,6 +550,11 @@ async def generate_quiz_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a practice quiz from an assignment or custom content."""
+    if body.focus_prompt:
+        safe, reason = check_content_safe(body.focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
     study_service = StudyService(db)
 
     # Handle versioning
@@ -620,6 +631,7 @@ async def generate_quiz_endpoint(
         version=version,
         parent_guide_id=parent_guide_id,
         content_hash=content_hash,
+        focus_prompt=body.focus_prompt or None,
     )
     db.add(study_guide)
     db.flush()
@@ -662,6 +674,11 @@ async def generate_flashcards_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate flashcards from an assignment or custom content."""
+    if body.focus_prompt:
+        safe, reason = check_content_safe(body.focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
     study_service = StudyService(db)
 
     # Handle versioning
@@ -738,6 +755,7 @@ async def generate_flashcards_endpoint(
         version=version,
         parent_guide_id=parent_guide_id,
         content_hash=content_hash,
+        focus_prompt=body.focus_prompt or None,
     )
     db.add(study_guide)
     db.flush()
@@ -1081,6 +1099,11 @@ async def generate_from_text_and_images(
             detail="No content provided. Please paste text or include images with readable content."
         )
 
+    if focus_prompt:
+        safe, reason = check_content_safe(focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
     if not title:
         # Generate a sensible default title from the first line of content
         first_line = content.strip().split('\n')[0][:60] if content.strip() else "Pasted Content"
@@ -1107,6 +1130,7 @@ async def generate_from_text_and_images(
                 content=quiz_json,
                 guide_type="quiz",
                 content_hash=study_service.compute_content_hash(f"Quiz: {title}", "quiz"),
+                focus_prompt=focus_prompt or None,
             )
 
         elif guide_type == "flashcards":
@@ -1127,6 +1151,7 @@ async def generate_from_text_and_images(
                 content=cards_json,
                 guide_type="flashcards",
                 content_hash=study_service.compute_content_hash(f"Flashcards: {title}", "flashcards"),
+                focus_prompt=focus_prompt or None,
             )
 
         else:  # study_guide
@@ -1144,6 +1169,7 @@ async def generate_from_text_and_images(
                 content=content_result,
                 guide_type="study_guide",
                 content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
+                focus_prompt=focus_prompt or None,
             )
 
     except json.JSONDecodeError:
@@ -1246,6 +1272,11 @@ async def generate_from_file_upload(
             detail="No text could be extracted from the uploaded file"
         )
 
+    if focus_prompt:
+        safe, reason = check_content_safe(focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
     if not title:
         base_name = file.filename.rsplit('.', 1)[0] if file.filename else "Uploaded File"
         title = base_name
@@ -1271,6 +1302,7 @@ async def generate_from_file_upload(
                 content=quiz_json,
                 guide_type="quiz",
                 content_hash=study_service.compute_content_hash(f"Quiz: {title}", "quiz"),
+                focus_prompt=focus_prompt or None,
             )
 
         elif guide_type == "flashcards":
@@ -1291,6 +1323,7 @@ async def generate_from_file_upload(
                 content=cards_json,
                 guide_type="flashcards",
                 content_hash=study_service.compute_content_hash(f"Flashcards: {title}", "flashcards"),
+                focus_prompt=focus_prompt or None,
             )
 
         else:  # study_guide
@@ -1308,6 +1341,7 @@ async def generate_from_file_upload(
                 content=content,
                 guide_type="study_guide",
                 content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
+                focus_prompt=focus_prompt or None,
             )
 
     except json.JSONDecodeError:
@@ -1367,7 +1401,7 @@ async def generate_from_file_upload(
 
 
 @router.post("/upload/extract-text")
-@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def extract_text_from_upload(
     request: Request,
     file: UploadFile = File(...),

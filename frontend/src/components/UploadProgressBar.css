@@ -1,0 +1,160 @@
+.upload-progress-bar {
+  background: var(--color-surface, #f8f9fa);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 8px 0;
+}
+
+.upload-progress-bar--complete {
+  border-color: var(--color-success, #28a745);
+  background: var(--color-success-bg, #d4edda);
+}
+
+.upload-progress-bar--error {
+  border-color: var(--color-danger, #dc3545);
+  background: var(--color-danger-bg, #f8d7da);
+}
+
+.upload-progress-bar--cancelled {
+  border-color: var(--color-muted, #6c757d);
+  background: var(--color-surface, #f8f9fa);
+  opacity: 0.7;
+}
+
+.upload-progress-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.upload-progress-bar__file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.upload-progress-bar__file-icon {
+  font-size: 1.2em;
+  flex-shrink: 0;
+}
+
+.upload-progress-bar__file-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.upload-progress-bar__file-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text, #212529);
+}
+
+.upload-progress-bar__file-size {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #6c757d);
+}
+
+.upload-progress-bar__actions {
+  flex-shrink: 0;
+}
+
+.upload-progress-bar__cancel-btn,
+.upload-progress-bar__retry-btn {
+  background: none;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--color-text-muted, #6c757d);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.upload-progress-bar__cancel-btn:hover {
+  background: var(--color-danger, #dc3545);
+  color: #fff;
+  border-color: var(--color-danger, #dc3545);
+}
+
+.upload-progress-bar__retry-btn {
+  color: var(--color-accent, #0d6efd);
+  border-color: var(--color-accent, #0d6efd);
+}
+
+.upload-progress-bar__retry-btn:hover {
+  background: var(--color-accent, #0d6efd);
+  color: #fff;
+}
+
+.upload-progress-bar__track {
+  width: 100%;
+  height: 6px;
+  background: var(--color-border, #dee2e6);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.upload-progress-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+  background: var(--color-accent-strong, #2a9fa8);
+}
+
+.upload-progress-bar--complete .upload-progress-bar__fill {
+  background: var(--color-success, #28a745);
+  width: 100% !important;
+}
+
+.upload-progress-bar--error .upload-progress-bar__fill {
+  background: var(--color-danger, #dc3545);
+}
+
+.upload-progress-bar--cancelled .upload-progress-bar__fill {
+  background: var(--color-muted, #6c757d);
+}
+
+.upload-progress-bar__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  min-height: 1.2em;
+}
+
+.upload-progress-bar__percent {
+  font-weight: 600;
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+.upload-progress-bar__eta {
+  color: var(--color-text-muted, #6c757d);
+}
+
+.upload-progress-bar__status-text {
+  color: var(--color-success, #28a745);
+  font-weight: 500;
+}
+
+.upload-progress-bar__status-text--error {
+  color: var(--color-danger, #dc3545);
+}
+
+/* Multi-file progress list */
+.upload-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}

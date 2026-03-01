@@ -69,7 +69,7 @@
 - [x] **Color theme system: Focus mode** — Warm muted tones in `[data-theme="focus"]` for study sessions (IMPLEMENTED)
 - [x] **Flat (non-gradient) default style** — Replace 30+ gradient declarations across 13 CSS files with solid accent colors; make flat the default, gradient opt-in (#486, #487) (IMPLEMENTED)
 - [x] **Mobile: Remove gradient from login button** — Replace expo-linear-gradient with solid colors.primary (#488) (IMPLEMENTED)
-- [ ] **Gradient/flat style toggle** — Optional `[data-style="gradient"]` for users who prefer gradients; ThemeContext extension (#489, low priority)
+- [x] **Gradient/flat style toggle** — Optional `[data-style="gradient"]` for users who prefer gradients; ThemeContext extension (#489) (IMPLEMENTED)
 - [x] **Make student email optional** — parent can create child with name only (no email, no login) (IMPLEMENTED)
 - [x] **Parent creates child** endpoint (`POST /api/parent/children/create`) — name required, email optional (IMPLEMENTED)
 - [x] **Parent creates courses** — allow PARENT role to create courses (private to their children) (IMPLEMENTED)
@@ -79,6 +79,7 @@
 - [x] **Disable auto-sync jobs by default** — all Google Classroom/Gmail sync is manual, on-demand only (IMPLEMENTED)
 - [x] **Multi-role support Phase A** — `roles` column, role switcher, ProtectedRoute checks all roles (#211) (IMPLEMENTED)
 - [x] **Security hardening Phase 2** — Rate limiting, security headers, LIKE injection fix (#140, #141, #184) (IMPLEMENTED)
+- [x] **Multi-file OCR rate limit fix (#1003)** — `/upload/extract-text` rate limit raised from 5→30/min; frontend switched from concurrent `Promise.all()` to sequential processing to prevent 429 errors on multi-file uploads (IMPLEMENTED, PR #1004)
 - [x] **Task reminders** — Daily in-app notifications for upcoming task due dates (#112) (IMPLEMENTED)
 - [x] **Password reset flow** — Email-based JWT token reset with forgot-password UI (#143) (IMPLEMENTED)
 - [x] **Enhanced password management** — OAuth/invite users can use forgot-password; parents can reset child passwords from My Kids (#673) (IMPLEMENTED)
@@ -96,14 +97,14 @@
 - [x] **My Kids visual overhaul** — Colored avatars, task progress bars, next-deadline countdowns, quick action buttons (#301) (IMPLEMENTED)
 - [x] **Manual course creation for teachers** — Teachers can create courses (#42) (IMPLEMENTED)
 - [x] **Manual assignment creation for teachers** — Covered by manual assignment CRUD (#49) (IMPLEMENTED)
-- [ ] Multi-Google account support for teachers
-- [ ] Auto-send invite email to shadow teachers on creation
-- [ ] Teacher Dashboard course management view with source badges
+- [x] Multi-Google account support for teachers — TeacherGoogleAccount model, connect/list/label/delete/set-primary endpoints, multi-account course sync via account_id param, inline label editing in TeacherDashboard (IMPLEMENTED)
+- [x] Auto-send invite email to shadow teachers on creation (#946) (IMPLEMENTED — Phase 1.5)
+- [x] Teacher Dashboard course management view with source badges (#947) (IMPLEMENTED — Phase 1.5)
 - [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
 - [x] **Admin individual messaging** — Send message + email to specific user (#259) (IMPLEMENTED)
 - [x] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260) (IMPLEMENTED)
-- [ ] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412)
-- [ ] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414)
+- [x] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412) (IMPLEMENTED — Phase 1.5)
+- [x] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414) (IMPLEMENTED)
 - [x] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509) (IMPLEMENTED)
 - [x] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510) (IMPLEMENTED)
 - [x] **Parent Dashboard v3: Persistent sidebar** — Replace hamburger with always-visible sidebar on desktop (#541) (IMPLEMENTED — PR #545)
@@ -117,21 +118,23 @@
 - [x] **Course Material Detail back button** — Add `showBackButton` to DashboardLayout on Course Material Detail page (#696, PR #697) (IMPLEMENTED)
 - [x] **Calendar styles fix on Tasks page** — Copy calendar-collapse CSS from ParentDashboard.css to TasksPage.css after Calendar move (#694, PR #695) (IMPLEMENTED)
 - [x] **Print & Download PDF export** — Print and Download PDF buttons on all 4 Course Material Detail tabs (Document, Study Guide, Quiz, Flashcards); html2pdf.js dynamic import; static print views for quiz/flashcards (#764, PR #763) (IMPLEMENTED)
+- [x] **Focus prompt history + content moderation** — Persist `focus_prompt` on study guide records; pre-populate focus field from last saved focus on Course Material Detail; Claude Haiku K-12 safety check on all generation paths (#1001) (IMPLEMENTED — PR #1002)
+- [x] **File upload security hardening** — Reduce per-file limit to 20 MB (configurable via `MAX_UPLOAD_SIZE_MB`), magic bytes validation to prevent extension spoofing, 10-file session cap in upload modal (#1006) (IMPLEMENTED)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
-- [ ] **Student registration with username + parent email** — Username login, parent linking on register (#546)
-- [ ] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547)
-- [ ] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548)
-- [ ] **Parent request assignment completion** — Parent requests student complete assignment (#549)
-- [ ] **Google Classroom school vs private** — classroom_type, download restriction (#550)
-- [ ] **Student/teacher invites + course enrollment** — Student invite teacher, teacher invite student/parent (#551)
-- [ ] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552)
+- [x] **Student registration with username + parent email** — Username login, parent linking on register (#546) (IMPLEMENTED)
+- [x] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547) (IMPLEMENTED)
+- [x] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548) (IMPLEMENTED)
+- [x] **Parent request assignment completion** — Parent requests student complete assignment (#549) (IMPLEMENTED)
+- [x] **Google Classroom school vs private** — classroom_type, download restriction (#550) (IMPLEMENTED)
+- [x] **Student/teacher invites + course enrollment** — Student invite teacher, teacher invite student/parent (#551) (IMPLEMENTED)
+- [x] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552) (IMPLEMENTED)
 
 #### Architecture Foundation (Tier 0)
 - [x] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127) (IMPLEMENTED)
 - [x] **Extract backend services** — Move business logic from route handlers to domain service layer (#128) (IMPLEMENTED)
-- [ ] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129)
+- [x] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129) — BaseRepository[T], TaskRepository (8 methods), CourseContentRepository (8 methods), StudyGuideRepository (10 methods); tasks.py fully adopted; get_task_repo/get_course_content_repo/get_study_guide_repo deps in deps.py (IMPLEMENTED)
 - [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
 - [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
@@ -143,7 +146,7 @@
 - [x] **Rate limiting** — No rate limiting on AI generation, auth, or file upload endpoints; risk of brute force and API quota abuse (#140) (IMPLEMENTED)
 - [x] **CORS hardening** — ~~Currently allows `*` origins; tighten to known frontend domains (#64)~~ ✅ Fixed in #177
 - [x] **Security headers** — Add X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, CSP (#141) (IMPLEMENTED)
-- [ ] **Input validation** — Missing field length limits, URL validation, and sanitization on multiple endpoints (#142)
+- [x] **Input validation** — Field length limits, whitespace stripping, URL validation on all endpoints (#142) (IMPLEMENTED — Phase 1.5)
 - [x] **Password reset flow** — Forgot Password link + email-based reset (#143) — see §6.26
 
 #### Data Integrity & Performance (Tier 0)
@@ -165,17 +168,26 @@
 #### Testing Gaps (Tier 1)
 - [x] **Frontend unit tests** — 258 tests across 18 files (vitest) (#154) ✅
 - [x] **Missing route tests** — No tests for: google_classroom, study, messages, notifications, teacher_communications, admin, invites, course_contents routes (#155) (IMPLEMENTED)
-- [ ] **PostgreSQL test coverage** — Tests run on SQLite only; misses NOT NULL, Enum, and type divergences (e.g., users.email bug) (#156)
+- [x] **PostgreSQL test coverage** — --pg CLI flag in conftest.py; 7 pg-specific compat tests (nullable email, enum roundtrip, LIKE injection, FK types, booleans, timestamp precision, RETURNING clause) (#156) (IMPLEMENTED)
 
 ### Phase 1.5 (Calendar Extension, Content, Mobile & School Integration)
 - [x] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support) (IMPLEMENTED)
-- [ ] Student email identity merging (personal + school email on same account)
-- [ ] School board email integration (when DTAP approved)
+- [x] Student email identity merging (personal + school email on same account) (#941) (IMPLEMENTED)
+- [ ] School board email integration (when DTAP approved) (#942 — phase-1.5)
 - [x] Extend calendar to Student and Teacher dashboards with role-aware data (#45) (IMPLEMENTED)
-- [ ] Google Calendar push integration (sync tasks/reminders to Google Calendar)
-- [ ] Central document repository
+- [x] Google Calendar push integration — sync tasks to Google Calendar; GET/POST/DELETE /api/google/calendar/* endpoints; calendar hooks in task CRUD (IMPLEMENTED)
+- [x] Central document repository — GET /api/documents/ with RBAC; DocumentsPage with search/filter/type tabs; Documents nav item for all roles (IMPLEMENTED)
 - [x] Manual content upload with OCR (enhanced) — #523 ✅
 - [x] Background periodic Google Classroom course/assignment sync for teachers (opt-in) (#53) (IMPLEMENTED)
+- [x] **Input validation** — Field length limits + whitespace stripping across all endpoints (#142) (IMPLEMENTED)
+- [x] **Simplified registration** — Role-free signup form (#412) (IMPLEMENTED)
+- [x] **Message search** — Full-text search with pagination, date filtering, in-thread search (#836) (IMPLEMENTED)
+- [x] **UI polish** — Sidebar labels, mobile quote hiding, muted active nav (#669-#671) (IMPLEMENTED)
+- [x] **Course Material Detail redesign** — Page layout polish + sub-component refactor (#734, #735) (IMPLEMENTED)
+- [x] **Unlinked materials tagging** — Tag and streamline parent-to-child assignment (#623) (IMPLEMENTED)
+- [x] **Focus prompt behavior** — Preserve per-tab state and fix keyboard conflicts (#736) (IMPLEMENTED)
+- [x] **Auto-invite shadow teachers** — 30-day debounce auto-invite email (#946) (IMPLEMENTED)
+- [x] **Teacher course management** — Source badges, comprehensive view (#947) (IMPLEMENTED)
 
 #### Parent UX Simplification (Phase 1.5)
 - [x] Issue #201: Parent UX: Single dashboard API endpoint ✅
@@ -189,19 +201,35 @@
 ### Phase 2
 - [ ] TeachAssist integration
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
-- [ ] Advanced notifications
+- [ ] Advanced notifications (#966)
 - [ ] Notes & project tracking tools
-- [ ] Data privacy & user rights (account deletion, data export, consent)
+- [ ] Data privacy & user rights — Account deletion (#964), data export (#965), consent (#797/#783 — on feature/phase-2)
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
 - [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)
 - [ ] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514)
 - [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
+- [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
-- [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
-- [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
-- [ ] **Parent AI Insights** — Student interest profiling, academic health score, semester reports, engagement analysis (#581)
+- [ ] **AI Exam & Assessment Engine** — Exam prep, mock exams, teacher uploads with AI assessment (#959 — consolidated from #576, #577, #667)
+- [ ] **Student Progress & Report Card Analysis** — Test upload, mark tracking, AI recommendations, parent insights (#960 — consolidated from #575, #581, #663)
+- [ ] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735)
+- [ ] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479)
+
+#### Phase 2 — On `feature/phase-2` Branch (Implemented, Not Yet in Production)
+- [x] **Progressive account lockout** — 5/10/15 failed login thresholds with escalating lockout durations; admin unlock (#796)
+- [x] **httpOnly cookie authentication** — Cookie-based JWT with Bearer header fallback for XSS mitigation (#788)
+- [x] **Cookie consent & MFIPPA age-based consent** — CookieConsentBanner, ConsentGateway, under-16/16-17/18+ rules (#797, #783)
+- [x] **Deep linking & session persistence** — URL query params for child/conversation/student; useSessionState hook (#885, #886)
+- [x] **Bulk folder import** — 5-step wizard, upload progress bars, multi-file drag-and-drop (#877, #883)
+- [x] **AI task extraction** — Extract tasks from uploaded documents using Claude; TaskExtractionModal (#878)
+- [x] **Task templates & comments** — Reusable task templates, recurring tasks, per-task comment threads (#880, #881)
+- [x] **MCP foundation** — fastapi-mcp integration with role-based tool access; 24 tests (#904, #905)
+- [x] **Message search** — Full-text search with pagination, date filtering, in-thread search (#836)
+- [x] **Course Material Detail redesign** — Polished layout with sub-components (#734, #735)
+- [x] **Teacher course management** — Source badges, comprehensive view (#947)
+- [x] **Auto-invite shadow teachers** — 30-day debounce auto-invite (#946)
 
 #### UI/UX Audit — Phase 1 Improvements (#668)
 

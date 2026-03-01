@@ -20,6 +20,7 @@ class StudyGuide(Base):
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)  # Markdown or JSON content
     guide_type = Column(String(50), nullable=False)  # study_guide, quiz, flashcards
+    focus_prompt = Column(String(2000), nullable=True)  # User-provided focus area saved for history
 
     # Versioning
     version = Column(Integer, nullable=False, default=1)

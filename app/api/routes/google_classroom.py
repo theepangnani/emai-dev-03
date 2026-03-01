@@ -203,6 +203,18 @@ def google_callback(
                     params = urlencode({"google_connected": "true", "account_added": "true"})
                     return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
 
+        # Check if this is a calendar connect request (incremental scope grant)
+        if state_data["purpose"] == "calendar_connect" and state_data.get("user_id"):
+            user = db.query(User).filter(User.id == state_data["user_id"]).first()
+            if user:
+                user.google_access_token = tokens["access_token"]
+                if tokens.get("refresh_token"):
+                    user.google_refresh_token = tokens["refresh_token"]
+                _store_granted_scopes(user, tokens.get("granted_scopes", ""))
+                db.commit()
+                params = urlencode({"calendar_connected": "true"})
+                return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
+
         # Check if this is a connect request for existing user
         if state_data["purpose"] in ("connect", "add_account") and state_data.get("user_id"):
             user = db.query(User).filter(User.id == state_data["user_id"]).first()
@@ -564,17 +576,28 @@ def _resolve_teacher_for_course(
     return teacher
 
 
-def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None = None) -> list[dict]:
+def _sync_courses_for_user(
+    user: User,
+    db: Session,
+    classroom_type: str | None = None,
+    google_account: "TeacherGoogleAccount | None" = None,
+) -> list[dict]:
     """Shared course sync logic. Returns list of synced course dicts.
 
     Args:
         classroom_type: If provided ("school" or "private"), overrides auto-detection
                         from teacher type and applies to all synced courses.
+        google_account: If provided, use this specific TeacherGoogleAccount's tokens
+                        instead of the user's primary tokens.
     """
+    # Resolve access/refresh tokens — prefer explicit google_account if supplied
+    access_token = google_account.access_token if google_account else user.google_access_token
+    refresh_token = google_account.refresh_token if google_account else user.google_refresh_token
+
     try:
         google_courses, credentials = list_courses(
-            user.google_access_token,
-            user.google_refresh_token,
+            access_token,
+            refresh_token,
         )
     except Exception as e:
         logger.warning(f"Failed to list Google courses for user {user.id}: {e}")
@@ -789,6 +812,10 @@ def sync_google_courses(
         None,
         description='Override classroom type for synced courses: "school" or "private"',
     ),
+    account_id: int | None = Query(
+        None,
+        description="ID of a specific TeacherGoogleAccount to sync from. Teacher role only.",
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -797,6 +824,9 @@ def sync_google_courses(
     Optional query parameter `classroom_type` overrides auto-detection:
     - "school" — school classroom (students cannot download documents)
     - "private" — private/tutor classroom (full access)
+
+    Optional `account_id` selects a specific linked Google account (for teachers
+    with multiple Google accounts). When omitted, the user's primary tokens are used.
     """
     if not current_user.google_access_token:
         raise HTTPException(
@@ -804,7 +834,23 @@ def sync_google_courses(
             detail="User not connected to Google Classroom",
         )
 
-    result = _sync_courses_for_user(current_user, db, classroom_type=classroom_type)
+    # Resolve which Google account to sync from
+    google_account = None
+    if account_id is not None and current_user.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        if teacher:
+            google_account = (
+                db.query(TeacherGoogleAccount)
+                .filter(
+                    TeacherGoogleAccount.id == account_id,
+                    TeacherGoogleAccount.teacher_id == teacher.id,
+                )
+                .first()
+            )
+            if not google_account:
+                raise HTTPException(status_code=404, detail="Google account not found")
+
+    result = _sync_courses_for_user(current_user, db, classroom_type=classroom_type, google_account=google_account)
 
     log_action(db, user_id=current_user.id, action="sync", resource_type="google_classroom")
     db.commit()
@@ -1107,6 +1153,21 @@ def remove_teacher_google_account(
     )
     if not account:
         raise HTTPException(status_code=404, detail="Google account not found")
+
+    was_primary = account.is_primary
     db.delete(account)
+    db.flush()
+
+    # If the deleted account was primary, promote the oldest remaining account
+    if was_primary:
+        next_primary = (
+            db.query(TeacherGoogleAccount)
+            .filter(TeacherGoogleAccount.teacher_id == teacher.id)
+            .order_by(TeacherGoogleAccount.connected_at)
+            .first()
+        )
+        if next_primary:
+            next_primary.is_primary = True
+
     db.commit()
     return {"status": "ok"}

@@ -7,12 +7,47 @@ from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# auto_error=False so missing Authorization header does NOT 401 immediately —
+# we fall back to httpOnly cookie before raising.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+
+# ---------------------------------------------------------------------------
+# Repository dependency factories
+#
+# Usage in route handlers:
+#   from app.api.deps import get_task_repo
+#
+#   @router.get("/")
+#   def list_tasks(repo: TaskRepository = Depends(get_task_repo)):
+#       return repo.list_for_user(...)
+#
+# The factory pattern keeps repository construction out of route bodies and
+# makes it trivial to swap implementations or inject mocks in tests.
+# ---------------------------------------------------------------------------
+
+
+def get_task_repo(db: Session = Depends(get_db)):
+    """FastAPI dependency that returns a TaskRepository bound to the current DB session."""
+    from app.repositories.task_repository import TaskRepository
+    return TaskRepository(db)
+
+
+def get_course_content_repo(db: Session = Depends(get_db)):
+    """FastAPI dependency that returns a CourseContentRepository bound to the current DB session."""
+    from app.repositories.course_content_repository import CourseContentRepository
+    return CourseContentRepository(db)
+
+
+def get_study_guide_repo(db: Session = Depends(get_db)):
+    """FastAPI dependency that returns a StudyGuideRepository bound to the current DB session."""
+    from app.repositories.study_guide_repository import StudyGuideRepository
+    return StudyGuideRepository(db)
 
 
 def get_current_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
+    bearer_token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
@@ -20,6 +55,17 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    # 1. Prefer explicit Authorization: Bearer header (mobile / API / test clients)
+    token = bearer_token
+
+    # 2. Fall back to httpOnly cookie (web clients — cookie sent automatically)
+    if not token:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         user_id: str = payload.get("sub")
