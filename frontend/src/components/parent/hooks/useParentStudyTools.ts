@@ -42,16 +42,19 @@ export function useParentStudyTools({
   const dismissBackgroundGeneration = () => setBackgroundGeneration(null);
 
   const extractCombinedText = async (files: File[]): Promise<string> => {
-    const parts = await Promise.all(
-      files.map(async (f) => {
-        try {
-          const result = await studyApi.extractTextFromFile(f);
-          return `--- [${f.name}] ---\n${result.text}`;
-        } catch {
-          return `--- [${f.name}] ---\n(text extraction failed)`;
-        }
-      })
-    );
+    const parts: string[] = [];
+    for (const f of files) {
+      try {
+        const result = await studyApi.extractTextFromFile(f);
+        parts.push(`--- [${f.name}] ---\n${result.text}`);
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const detail = status === 429
+          ? 'rate limit exceeded — try again in a moment'
+          : 'text extraction failed';
+        parts.push(`--- [${f.name}] ---\n(${detail})`);
+      }
+    }
     return parts.join('\n\n');
   };
 

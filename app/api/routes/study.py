@@ -1401,7 +1401,7 @@ async def generate_from_file_upload(
 
 
 @router.post("/upload/extract-text")
-@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def extract_text_from_upload(
     request: Request,
     file: UploadFile = File(...),

@@ -468,16 +468,19 @@ export function StudyGuidesPage() {
         let content = params.content;
         let mode = params.mode;
         if (params.files && params.files.length > 1) {
-          const parts = await Promise.all(
-            params.files.map(async (f) => {
-              try {
-                const result = await studyApi.extractTextFromFile(f);
-                return `--- [${f.name}] ---\n${result.text}`;
-              } catch {
-                return `--- [${f.name}] ---\n(text extraction failed)`;
-              }
-            })
-          );
+          const parts: string[] = [];
+          for (const f of params.files) {
+            try {
+              const result = await studyApi.extractTextFromFile(f);
+              parts.push(`--- [${f.name}] ---\n${result.text}`);
+            } catch (err: any) {
+              const status = (err as any)?.response?.status;
+              const detail = status === 429
+                ? 'rate limit exceeded — try again in a moment'
+                : 'text extraction failed';
+              parts.push(`--- [${f.name}] ---\n(${detail})`);
+            }
+          }
           content = parts.join('\n\n');
           mode = 'text';
         }
@@ -531,18 +534,22 @@ export function StudyGuidesPage() {
     })();
   };
 
-  /** Extract and concatenate text from multiple files using the backend extract endpoint. */
+  /** Extract and concatenate text from multiple files using the backend extract endpoint.
+   *  Files are processed sequentially to avoid hitting the per-minute rate limit. */
   const extractCombinedText = async (files: File[]): Promise<string> => {
-    const parts = await Promise.all(
-      files.map(async (f) => {
-        try {
-          const result = await studyApi.extractTextFromFile(f);
-          return `--- [${f.name}] ---\n${result.text}`;
-        } catch {
-          return `--- [${f.name}] ---\n(text extraction failed)`;
-        }
-      })
-    );
+    const parts: string[] = [];
+    for (const f of files) {
+      try {
+        const result = await studyApi.extractTextFromFile(f);
+        parts.push(`--- [${f.name}] ---\n${result.text}`);
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const detail = status === 429
+          ? 'rate limit exceeded — try again in a moment'
+          : 'text extraction failed';
+        parts.push(`--- [${f.name}] ---\n(${detail})`);
+      }
+    }
     return parts.join('\n\n');
   };
 

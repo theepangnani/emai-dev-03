@@ -741,3 +741,40 @@ class TestContentModeration:
             )
         assert resp.status_code == 400
         assert "inappropriate" in resp.json()["detail"].lower() or "appropriate" in resp.json()["detail"].lower()
+
+
+class TestExtractTextRateLimit:
+    """Regression tests for #1003 — /upload/extract-text rate limit too low.
+
+    Before the fix: limit was 5/minute, causing 429 when uploading >5 files via
+    Promise.all() on the frontend. Files after the 5th silently showed
+    '(text extraction failed)' in the study guide content.
+
+    After the fix: limit raised to 30/minute.
+    """
+
+    def test_rate_limit_is_30_per_minute(self):
+        """The extract-text endpoint must be limited to 30/minute, not 5/minute.
+
+        This test inspects the source of the endpoint function directly so it will
+        fail if someone accidentally lowers the limit back to 5/minute.
+        """
+        import inspect
+        from app.api.routes.study import router
+
+        extract_route = next(
+            (r for r in router.routes if getattr(r, "path", "") == "/study/upload/extract-text"),
+            None,
+        )
+        assert extract_route is not None, "/study/upload/extract-text route not found"
+
+        # Unwrap decorator chain to get the original function, then check source
+        func = extract_route.endpoint
+        original = getattr(func, "__wrapped__", func)
+        source = inspect.getsource(original)
+
+        assert '30/minute' in source, (
+            "Expected @limiter.limit('30/minute') on extract_text_from_upload. "
+            "This limit was raised from 5/minute to fix multi-file OCR failures (issue #1003). "
+            f"Current source snippet: {[l.strip() for l in source.splitlines() if 'limit' in l.lower()]}"
+        )
