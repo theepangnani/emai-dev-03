@@ -41,74 +41,6 @@ export function useParentStudyTools({
 
   const dismissBackgroundGeneration = () => setBackgroundGeneration(null);
 
-  const runGenerationInBackground = (params: {
-    title: string;
-    content: string;
-    type: 'study_guide' | 'quiz' | 'flashcards';
-    focusPrompt?: string;
-    mode: string;
-    file?: File;
-    pastedImages?: File[];
-    regenerateId?: number;
-  }) => {
-    const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
-    setBackgroundGeneration({ status: 'generating', type: typeLabel });
-
-    (async () => {
-      try {
-        let result: any;
-        if (params.mode === 'file' && params.file) {
-          result = await studyApi.generateFromFile({
-            file: params.file,
-            title: params.title || undefined,
-            guide_type: params.type,
-            num_questions: params.type === 'quiz' ? 10 : undefined,
-            num_cards: params.type === 'flashcards' ? 15 : undefined,
-            focus_prompt: params.focusPrompt,
-          });
-        } else if (params.pastedImages && params.pastedImages.length > 0) {
-          result = await studyApi.generateFromTextAndImages({
-            content: params.content || '',
-            images: params.pastedImages,
-            title: params.title || undefined,
-            guide_type: params.type,
-            num_questions: params.type === 'quiz' ? 10 : undefined,
-            num_cards: params.type === 'flashcards' ? 15 : undefined,
-            focus_prompt: params.focusPrompt,
-          });
-        } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({
-            title: params.title || undefined,
-            content: params.content || undefined,
-            regenerate_from_id: params.regenerateId,
-            focus_prompt: params.focusPrompt,
-          });
-        } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({
-            topic: params.title || undefined,
-            content: params.content || undefined,
-            num_questions: 10,
-            regenerate_from_id: params.regenerateId,
-            focus_prompt: params.focusPrompt,
-          });
-        } else if (params.type === 'flashcards') {
-          result = await studyApi.generateFlashcards({
-            topic: params.title || undefined,
-            content: params.content || undefined,
-            num_cards: 15,
-            regenerate_from_id: params.regenerateId,
-            focus_prompt: params.focusPrompt,
-          });
-        }
-
-        const resultId = result?.id || result?.course_content_id;
-        setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
-      } catch (err: any) {
-        setBackgroundGeneration({ status: 'error', type: typeLabel, error: err?.message || 'Generation failed' });
-      }
-    })();
-  };
-
   const extractCombinedText = async (files: File[]): Promise<string> => {
     const parts = await Promise.all(
       files.map(async (f) => {
@@ -123,6 +55,81 @@ export function useParentStudyTools({
     return parts.join('\n\n');
   };
 
+  const runGenerationInBackground = (params: {
+    title: string;
+    content: string;
+    type: 'study_guide' | 'quiz' | 'flashcards';
+    focusPrompt?: string;
+    mode: string;
+    file?: File;
+    files?: File[];  // multi-file: text extraction happens inside the background task
+    pastedImages?: File[];
+    regenerateId?: number;
+  }) => {
+    const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
+    setBackgroundGeneration({ status: 'generating', type: typeLabel });
+
+    (async () => {
+      try {
+        // Multi-file: extract combined text now that we're running in the background
+        let content = params.content;
+        if (params.files && params.files.length > 1) {
+          content = await extractCombinedText(params.files);
+        }
+
+        let result: any;
+        if (params.mode === 'file' && params.file) {
+          result = await studyApi.generateFromFile({
+            file: params.file,
+            title: params.title || undefined,
+            guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.pastedImages && params.pastedImages.length > 0) {
+          result = await studyApi.generateFromTextAndImages({
+            content: content || '',
+            images: params.pastedImages,
+            title: params.title || undefined,
+            guide_type: params.type,
+            num_questions: params.type === 'quiz' ? 10 : undefined,
+            num_cards: params.type === 'flashcards' ? 15 : undefined,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.type === 'study_guide') {
+          result = await studyApi.generateGuide({
+            title: params.title || undefined,
+            content: content || undefined,
+            regenerate_from_id: params.regenerateId,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.type === 'quiz') {
+          result = await studyApi.generateQuiz({
+            topic: params.title || undefined,
+            content: content || undefined,
+            num_questions: 10,
+            regenerate_from_id: params.regenerateId,
+            focus_prompt: params.focusPrompt,
+          });
+        } else if (params.type === 'flashcards') {
+          result = await studyApi.generateFlashcards({
+            topic: params.title || undefined,
+            content: content || undefined,
+            num_cards: 15,
+            regenerate_from_id: params.regenerateId,
+            focus_prompt: params.focusPrompt,
+          });
+        }
+
+        const resultId = result?.id || result?.course_content_id;
+        setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
+      } catch (err: any) {
+        setBackgroundGeneration({ status: 'error', type: typeLabel, error: err?.message || 'Generation failed' });
+      }
+    })();
+  };
+
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     setIsGenerating(true);
     try {
@@ -130,49 +137,43 @@ export function useParentStudyTools({
       const isMultiFile = files.length > 1;
 
       if (modalParams.types.length === 0) {
-        try {
-          const defaultCourse = await coursesApi.getDefault();
-          if (files.length === 1) {
-            await courseContentsApi.uploadFile(
-              files[0],
-              defaultCourse.id,
-              modalParams.title || undefined,
-              'notes',
-            );
-          } else if (isMultiFile) {
-            const combinedText = await extractCombinedText(files);
-            await courseContentsApi.create({
-              course_id: defaultCourse.id,
-              title: modalParams.title || files.map(f => f.name).join(', '),
-              text_content: combinedText,
-              content_type: 'notes',
-            });
-          } else {
-            await courseContentsApi.create({
-              course_id: defaultCourse.id,
-              title: modalParams.title || 'Uploaded material',
-              text_content: modalParams.content || undefined,
-              content_type: 'notes',
-            });
-          }
-        } catch { /* continue */ }
+        // Upload-only: close modal immediately, run upload/extraction in background
         setDuplicateCheck(null);
         resetStudyModal();
         navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+        (async () => {
+          try {
+            const defaultCourse = await coursesApi.getDefault();
+            if (files.length === 1) {
+              await courseContentsApi.uploadFile(
+                files[0],
+                defaultCourse.id,
+                modalParams.title || undefined,
+                'notes',
+              );
+            } else if (isMultiFile) {
+              const combinedText = await extractCombinedText(files);
+              await courseContentsApi.create({
+                course_id: defaultCourse.id,
+                title: modalParams.title || files.map(f => f.name).join(', '),
+                text_content: combinedText,
+                content_type: 'notes',
+              });
+            } else {
+              await courseContentsApi.create({
+                course_id: defaultCourse.id,
+                title: modalParams.title || 'Uploaded material',
+                text_content: modalParams.content || undefined,
+                content_type: 'notes',
+              });
+            }
+          } catch { /* silently ignore */ }
+        })();
         return;
       }
 
-      let resolvedContent = modalParams.content;
-      let resolvedMode = modalParams.mode;
-      let resolvedFile = modalParams.file;
-
-      if (isMultiFile) {
-        resolvedContent = await extractCombinedText(files);
-        resolvedMode = 'text';
-        resolvedFile = undefined;
-      }
-
-      if (modalParams.types.length === 1 && resolvedMode === 'text' && !modalParams.pastedImages?.length) {
+      // Generation path: for multi-file, skip duplicate check (content not extracted yet)
+      if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
         try {
           const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
@@ -182,11 +183,12 @@ export function useParentStudyTools({
       for (const type of modalParams.types) {
         runGenerationInBackground({
           title: modalParams.title,
-          content: resolvedContent,
+          content: modalParams.content,
           type,
           focusPrompt: modalParams.focusPrompt,
-          mode: resolvedMode,
-          file: resolvedFile,
+          mode: isMultiFile ? 'text' : modalParams.mode,
+          file: isMultiFile ? undefined : modalParams.file,
+          files: isMultiFile ? files : undefined,
           pastedImages: modalParams.pastedImages,
           regenerateId: duplicateCheck?.existing_guide?.id,
         });
