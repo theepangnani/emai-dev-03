@@ -39,10 +39,11 @@
 }
 
 .header-logo {
-  height: 56px;
+  height: 80px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
+  margin: -18px 0;
 }
 
 .logo {
@@ -1714,7 +1715,8 @@ button.retry-btn:disabled {
   }
 
   .header-logo {
-    height: 36px;
+    height: 44px;
+    margin: -4px 0;
   }
 
   .header-right {
