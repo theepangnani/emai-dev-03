@@ -214,8 +214,8 @@
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
 - [ ] **AI Exam & Assessment Engine** — Exam prep, mock exams, teacher uploads with AI assessment (#959 — consolidated from #576, #577, #667)
 - [ ] **Student Progress & Report Card Analysis** — Test upload, mark tracking, AI recommendations, parent insights (#960 — consolidated from #575, #581, #663)
-- [ ] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735)
-- [ ] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479)
+- [x] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735) (IMPLEMENTED — verified done in Phase 1.5 and feature/phase-2)
+- [x] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479) (IMPLEMENTED)
 
 #### Phase 2 — On `feature/phase-2` Branch (Implemented, Not Yet in Production)
 - [x] **Progressive account lockout** — 5/10/15 failed login thresholds with escalating lockout durations; admin unlock (#796)
@@ -281,7 +281,7 @@
 - [x] **Empty states** — Shared EmptyState component (default/compact variants), replaced 22 inline empty states across 10 pages (#835) ✅
 - [ ] **Teacher dashboard enhancement** — SVG icons, dynamic counts, announcement preview (#833)
 - [ ] **Student engagement** — Streak celebrations, spaced repetition, continue studying (#834)
-- [ ] **Message search** — Search and communication improvements (#836)
+- [x] **Message search** — Search and communication improvements (#836) (IMPLEMENTED)
 - [ ] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837)
 
 **Tier 3 — Backlog:**

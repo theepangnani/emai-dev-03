@@ -90,6 +90,11 @@ class UserResponse(BaseModel):
     onboarding_completed: bool = False
     email_verified: bool = False
     created_at: datetime
+    # Account deletion status (#964)
+    deletion_scheduled_for: datetime | None = None
+    # Subscription / limits (#1007)
+    subscription_tier: str = "free"
+    limits: dict | None = None
 
     @field_validator("roles", mode="before")
     @classmethod

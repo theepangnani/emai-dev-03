@@ -174,3 +174,5 @@ export type {
   CourseGradesResponse,
   GradeSyncResponse,
 } from './grades';
+export { studentApi } from './student';
+export type { StudyActivityResponse } from './student';

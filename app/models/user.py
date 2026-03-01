@@ -46,6 +46,13 @@ class User(Base):
     consent_preferences = Column(Text, nullable=True)  # JSON string
     consent_given_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Account deletion (#964) — GDPR right to erasure
+    deletion_requested_at = Column(DateTime(timezone=True), nullable=True)
+    deletion_scheduled_for = Column(DateTime(timezone=True), nullable=True)  # 30 days after request
+
+    # Data export rate limiting (#965)
+    last_export_requested_at = Column(DateTime(timezone=True), nullable=True)
+
     # Account lockout (brute-force protection)
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
@@ -54,6 +61,12 @@ class User(Base):
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
+
+    # BYOK — user-supplied AI API key, AES-256 encrypted at rest (#578)
+    ai_api_key_encrypted = Column(String(512), nullable=True)
+
+    # Subscription tier (#1007): "free" | "premium"
+    subscription_tier = Column(String(20), nullable=False, server_default="free")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

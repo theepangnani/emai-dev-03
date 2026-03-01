@@ -101,6 +101,26 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
     </svg>
   ),
+  Analytics: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  FAQ: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
+  Account: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -147,8 +167,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'My Kids', path: '/my-kids' },
         { label: 'Documents', path: '/documents' },
         { label: 'Tasks', path: '/tasks' },
+        { label: 'Analytics', path: '/analytics' },
         { label: 'Messages', path: '/messages' },
+        { label: 'FAQ', path: '/faq' },
         { label: 'Help', path: '/help' },
+        { label: 'Account', path: '/settings/account' },
       ];
     }
 
@@ -169,11 +192,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       { label: 'Messages', path: '/messages' },
     );
 
+    if (user?.role === 'student') {
+      items.push({ label: 'Analytics', path: '/analytics' });
+    }
+
     if (user?.role === 'teacher') {
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
     }
 
+    items.push({ label: 'FAQ', path: '/faq' });
     items.push({ label: 'Help', path: '/help' });
+    items.push({ label: 'Account', path: '/settings/account' });
 
     return items;
   }, [user?.role]);

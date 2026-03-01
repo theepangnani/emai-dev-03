@@ -14,6 +14,14 @@ interface User {
   needs_onboarding: boolean;
   onboarding_completed: boolean;
   email_verified: boolean;
+  /** Subscription tier: "free" | "premium" (#1007) */
+  subscription_tier?: string;
+  /** Usage limits for the current tier (#1007) */
+  limits?: {
+    max_upload_size_mb: number;
+    max_session_files: number;
+    max_study_guides: number;
+  };
 }
 
 interface AuthContextType {

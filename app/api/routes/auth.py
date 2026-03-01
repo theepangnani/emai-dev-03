@@ -941,3 +941,326 @@ def resend_verification(
     _send_verification_email(current_user, db)
 
     return {"message": "Verification email sent"}
+
+
+# ---------------------------------------------------------------------------
+# Account Deletion (#964) — GDPR right to erasure
+# ---------------------------------------------------------------------------
+
+class _DeleteAccountRequest(_BaseModel):
+    password: str
+
+
+def _send_deletion_confirmation_email(user: User, scheduled_for: datetime, db: Session) -> None:
+    """Send a deletion confirmation email (best-effort, never raises)."""
+    try:
+        from app.services.email_service import wrap_branded_email
+        from app.core.config import settings as _settings
+        scheduled_str = scheduled_for.strftime("%B %d, %Y")
+        profile_url = f"{_settings.frontend_url}/settings/account"
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">Account Deletion Requested</h2>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">Hi {user.full_name or "there"},</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">'
+            f'We received a request to permanently delete your ClassBridge account. '
+            f'Your account is scheduled for deletion on <strong>{scheduled_str}</strong>.</p>'
+            f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;">'
+            f'If you change your mind, you can cancel this request by logging in and visiting your profile.</p>'
+            f'<a href="{profile_url}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Cancel Deletion</a>'
+            f'<p style="color:#999;font-size:13px;margin:24px 0 0 0;">'
+            f'If you did not request this, please log in immediately and cancel, or contact support.</p>'
+        )
+        html = wrap_branded_email(body)
+        send_email_sync(
+            to_email=user.email,
+            subject="ClassBridge — Account Deletion Scheduled",
+            html_content=html,
+        )
+    except Exception as e:
+        _logger.warning("Failed to send deletion confirmation email to user %s: %s", user.id, e)
+
+
+@router.post("/account/delete-request")
+def request_account_deletion(
+    body: _DeleteAccountRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Request permanent account deletion (GDPR right to erasure).
+
+    Requires current password for confirmation. Schedules deletion for 30 days
+    from now. A confirmation email is sent with a cancel link.
+    """
+    from datetime import timedelta
+
+    # Require password confirmation
+    if not current_user.hashed_password or not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password",
+        )
+
+    now = datetime.now(timezone.utc)
+    scheduled_for = now + timedelta(days=30)
+
+    current_user.deletion_requested_at = now
+    current_user.deletion_scheduled_for = scheduled_for
+
+    log_action(db, user_id=current_user.id, action="deletion_requested", resource_type="user",
+               resource_id=current_user.id,
+               details={"scheduled_for": scheduled_for.isoformat()},
+               ip_address=request.client.host if request.client else None)
+    db.commit()
+
+    # Send confirmation email if user has an email
+    if current_user.email:
+        _send_deletion_confirmation_email(current_user, scheduled_for, db)
+
+    return {
+        "message": "Account deletion scheduled",
+        "scheduled_for": scheduled_for.isoformat(),
+    }
+
+
+@router.delete("/account/delete-request")
+def cancel_account_deletion(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cancel a pending account deletion request."""
+    if not current_user.deletion_requested_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No deletion request found",
+        )
+
+    current_user.deletion_requested_at = None
+    current_user.deletion_scheduled_for = None
+
+    log_action(db, user_id=current_user.id, action="deletion_cancelled", resource_type="user",
+               resource_id=current_user.id,
+               ip_address=request.client.host if request.client else None)
+    db.commit()
+
+    return {"message": "Account deletion cancelled"}
+
+
+# ---------------------------------------------------------------------------
+# Data Export (#965) — GDPR right of access
+# ---------------------------------------------------------------------------
+
+@router.post("/account/export")
+def export_user_data(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export all user data as a downloadable JSON file.
+
+    Rate limited: 1 export per hour per user.
+    Never includes sensitive fields (password hash, google tokens).
+    """
+    from datetime import timedelta
+    import json
+    from fastapi.responses import Response
+
+    # Rate limit: 1 export per hour
+    now = datetime.now(timezone.utc)
+    if current_user.last_export_requested_at:
+        last_export = current_user.last_export_requested_at
+        # Normalize for comparison (SQLite returns naive, PostgreSQL returns aware)
+        last_export_naive = last_export.replace(tzinfo=None)
+        now_naive = now.replace(tzinfo=None)
+        if (now_naive - last_export_naive).total_seconds() < 3600:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="You can only export your data once per hour. Please try again later.",
+            )
+
+    # Update rate limit timestamp before fetching data
+    current_user.last_export_requested_at = now
+    db.commit()
+
+    # Build export payload
+    from sqlalchemy.orm import joinedload, selectinload
+
+    # User profile (no sensitive fields)
+    user_data = {
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "role": current_user.role.value if current_user.role else None,
+        "roles": [r.value for r in current_user.get_roles_list()],
+        "email_verified": current_user.email_verified,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+    }
+
+    # Children (for parents) — resolve via parent_students join table
+    children_data = []
+    if current_user.has_role(UserRole.PARENT):
+        from app.models.student import Student, parent_students as _ps
+        child_student_ids = [
+            row[0] for row in
+            db.query(_ps.c.student_id).filter(_ps.c.parent_id == current_user.id).all()
+        ]
+        if child_student_ids:
+            children = (
+                db.query(Student)
+                .options(joinedload(Student.user))
+                .filter(Student.id.in_(child_student_ids))
+                .all()
+            )
+            for child in children:
+                child_user = child.user
+                children_data.append({
+                    "student_id": child.id,
+                    "user_id": child.user_id,
+                    "name": child_user.full_name if child_user else None,
+                    "email": child_user.email if child_user else None,
+                })
+
+    # Courses (created or enrolled)
+    from app.models.course import Course, student_courses as _sc
+    courses_data = []
+    courses = (
+        db.query(Course)
+        .filter(Course.created_by_user_id == current_user.id)
+        .all()
+    )
+    for c in courses:
+        courses_data.append({
+            "id": c.id,
+            "name": c.name,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+
+    # Enrolled courses (for students)
+    if current_user.has_role(UserRole.STUDENT):
+        from app.models.student import Student as _Student
+        student_rec = db.query(_Student).filter(_Student.user_id == current_user.id).first()
+        if student_rec:
+            enrolled = (
+                db.query(Course)
+                .join(_sc, _sc.c.course_id == Course.id)
+                .filter(_sc.c.student_id == student_rec.id)
+                .all()
+            )
+            existing_ids = {c["id"] for c in courses_data}
+            for c in enrolled:
+                if c.id not in existing_ids:
+                    courses_data.append({
+                        "id": c.id,
+                        "name": c.name,
+                        "enrolled": True,
+                        "created_at": c.created_at.isoformat() if c.created_at else None,
+                    })
+
+    # Tasks
+    from app.models.task import Task
+    tasks_data = []
+    tasks = (
+        db.query(Task)
+        .filter(
+            (Task.created_by_user_id == current_user.id) |
+            (Task.assigned_to_user_id == current_user.id)
+        )
+        .all()
+    )
+    for t in tasks:
+        tasks_data.append({
+            "id": t.id,
+            "title": t.title,
+            "description": t.description,
+            "is_completed": t.is_completed,
+            "priority": t.priority,
+            "due_date": t.due_date.isoformat() if t.due_date else None,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+        })
+
+    # Study guides
+    from app.models.study_guide import StudyGuide
+    study_guides_data = []
+    study_guides = db.query(StudyGuide).filter(StudyGuide.user_id == current_user.id).all()
+    for sg in study_guides:
+        study_guides_data.append({
+            "id": sg.id,
+            "title": sg.title,
+            "guide_type": sg.guide_type,
+            "created_at": sg.created_at.isoformat() if sg.created_at else None,
+        })
+
+    # Messages (conversations where user is participant)
+    from app.models.message import Conversation, Message
+    messages_data = []
+    conversations = (
+        db.query(Conversation)
+        .filter(
+            (Conversation.participant_1_id == current_user.id) |
+            (Conversation.participant_2_id == current_user.id)
+        )
+        .options(selectinload(Conversation.messages))
+        .all()
+    )
+    for conv in conversations:
+        other_id = (
+            conv.participant_2_id
+            if conv.participant_1_id == current_user.id
+            else conv.participant_1_id
+        )
+        for msg in conv.messages:
+            messages_data.append({
+                "conversation_id": conv.id,
+                "message_id": msg.id,
+                "from_me": msg.sender_id == current_user.id,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
+            })
+
+    # Notifications
+    from app.models.notification import Notification
+    notifications_data = []
+    notifications = (
+        db.query(Notification)
+        .filter(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(500)
+        .all()
+    )
+    for n in notifications:
+        notifications_data.append({
+            "id": n.id,
+            "type": n.type.value,
+            "title": n.title,
+            "content": n.content,
+            "read": n.read,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+        })
+
+    export_payload = {
+        "exported_at": now.isoformat(),
+        "user": user_data,
+        "children": children_data,
+        "courses": courses_data,
+        "tasks": tasks_data,
+        "study_guides": study_guides_data,
+        "messages": messages_data,
+        "notifications": notifications_data,
+    }
+
+    log_action(db, user_id=current_user.id, action="data_export", resource_type="user",
+               resource_id=current_user.id,
+               ip_address=request.client.host if request.client else None)
+    db.commit()
+
+    json_bytes = json.dumps(export_payload, indent=2, ensure_ascii=False).encode("utf-8")
+
+    return Response(
+        content=json_bytes,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="classbridge-data-export.json"',
+        },
+    )
