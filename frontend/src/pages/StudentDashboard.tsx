@@ -1,16 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
 import { notificationsApi, type NotificationResponse } from '../api/notifications';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { invitesApi } from '../api/invites';
-import type { StudyGuide, SupportedFormats, DuplicateCheckResponse } from '../api/client';
+import type { StudyGuide } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
-import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
+import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
@@ -22,8 +23,6 @@ import { StreakHistory } from '../components/StreakHistory';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary } from '../api/grades';
 import './StudentDashboard.css';
-
-const MAX_FILE_SIZE_MB = 100;
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -104,21 +103,8 @@ export function StudentDashboard() {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
 
-  // Custom study material modal
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [customTitle, setCustomTitle] = useState('');
-  const [customContent, setCustomContent] = useState('');
-  const [customType, setCustomType] = useState<'study_guide' | 'quiz' | 'flashcards'>('study_guide');
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  // File upload state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadMode, setUploadMode] = useState<'text' | 'file'>('text');
-  const [isDragging, setIsDragging] = useState(false);
-  const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
-  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { confirm, confirmModal } = useConfirm();
+  // Upload / study material generation (shared with Parent experience)
+  const studyTools = useParentStudyTools({ selectedChildUserId: null, navigate });
 
   // Create course modal
   const [showCreateCourseModal, setShowCreateCourseModal] = useState(false);
@@ -137,7 +123,6 @@ export function StudentDashboard() {
   const [inviteTeacherEmail, setInviteTeacherEmail] = useState('');
   const [inviteTeacherLoading, setInviteTeacherLoading] = useState(false);
   const [inviteTeacherMsg, setInviteTeacherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const studyModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => resetModal());
   const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateCourseModal, () => setShowCreateCourseModal(false));
   const inviteTeacherModalRef = useFocusTrap<HTMLDivElement>(showInviteTeacherModal, () => setShowInviteTeacherModal(false));
   const classroomTypeModalRef = useFocusTrap<HTMLDivElement>(showClassroomTypeModal, () => setShowClassroomTypeModal(false));
@@ -401,159 +386,6 @@ export function StudentDashboard() {
     }
   }, [statusMessage]);
 
-  // ── Load supported formats when modal opens ───────────────────
-  useEffect(() => {
-    if (showCreateModal && !supportedFormats) {
-      studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
-    }
-  }, [showCreateModal, supportedFormats]);
-
-  // ── File Upload Handlers ──────────────────────────────────────
-  const handleFileSelect = (file: File) => {
-    const fileSizeMB = file.size / (1024 * 1024);
-    logger.info('File selected for upload', { filename: file.name, sizeMB: fileSizeMB.toFixed(2) });
-
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      logger.warn('File too large', { filename: file.name, sizeMB: fileSizeMB.toFixed(2), maxMB: MAX_FILE_SIZE_MB });
-      setStatusMessage({ type: 'error', text: `File size exceeds ${MAX_FILE_SIZE_MB} MB limit` });
-      return;
-    }
-    setSelectedFile(file);
-    setUploadMode('file');
-    if (!customTitle) {
-      const baseName = file.name.replace(/\.[^/.]+$/, '');
-      setCustomTitle(baseName);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  };
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const clearFileSelection = () => {
-    setSelectedFile(null);
-    setUploadMode('text');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-  const resetModal = () => {
-    setShowCreateModal(false);
-    setCustomTitle('');
-    setCustomContent('');
-    setSelectedFile(null);
-    setUploadMode('text');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // ── Generate Study Material ───────────────────────────────────
-  const handleCreateCustom = async () => {
-    if (uploadMode === 'file') {
-      if (!selectedFile) {
-        setStatusMessage({ type: 'error', text: 'Please select a file to upload' });
-        return;
-      }
-    } else {
-      if (!customContent.trim()) {
-        setStatusMessage({ type: 'error', text: 'Please enter some content' });
-        return;
-      }
-    }
-
-    if (!duplicateCheck) {
-      const ok = await confirm({
-        title: 'Generate Study Material',
-        message: `Generate ${customType.replace('_', ' ')}? This will use AI credits.`,
-        confirmLabel: 'Generate',
-      });
-      if (!ok) return;
-    }
-
-    logger.info('Generating study material', {
-      mode: uploadMode,
-      type: customType,
-      filename: selectedFile?.name,
-      contentLength: customContent.length,
-    });
-
-    if (uploadMode === 'text' && !duplicateCheck) {
-      try {
-        const dupResult = await studyApi.checkDuplicate({
-          title: customTitle || undefined,
-          guide_type: customType,
-        });
-        if (dupResult.exists) {
-          setDuplicateCheck(dupResult);
-          return;
-        }
-      } catch {
-        // Continue with generation if check fails
-      }
-    }
-    setDuplicateCheck(null);
-
-    setIsGenerating(true);
-    try {
-      let result;
-      const regenerateId = duplicateCheck?.existing_guide?.id;
-
-      if (uploadMode === 'file' && selectedFile) {
-        result = await studyApi.generateFromFile({
-          file: selectedFile,
-          title: customTitle || undefined,
-          guide_type: customType,
-          num_questions: 5,
-          num_cards: 10,
-        });
-      } else {
-        if (customType === 'quiz') {
-          result = await studyApi.generateQuiz({
-            topic: customTitle || 'Custom Quiz',
-            content: customContent,
-            num_questions: 5,
-            regenerate_from_id: regenerateId,
-          });
-        } else if (customType === 'flashcards') {
-          result = await studyApi.generateFlashcards({
-            topic: customTitle || 'Custom Flashcards',
-            content: customContent,
-            num_cards: 10,
-            regenerate_from_id: regenerateId,
-          });
-        } else {
-          result = await studyApi.generateGuide({
-            title: customTitle || 'Custom Study Guide',
-            content: customContent,
-            regenerate_from_id: regenerateId,
-          });
-        }
-      }
-
-      logger.info('Study material generated successfully', { id: result.id, type: customType });
-
-      if (customType === 'quiz') {
-        navigate(`/study/quiz/${result.id}`);
-      } else if (customType === 'flashcards') {
-        navigate(`/study/flashcards/${result.id}`);
-      } else {
-        navigate(`/study/guide/${result.id}`);
-      }
-
-      resetModal();
-    } catch (err) {
-      logger.logError(err, 'Failed to generate study material', { mode: uploadMode, type: customType });
-      setStatusMessage({ type: 'error', text: 'Failed to generate study material' });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   // ── Create Course ─────────────────────────────────────────────
   const handleCreateCourse = async () => {
     if (!newCourseName.trim()) return;
@@ -782,7 +614,7 @@ export function StudentDashboard() {
               </svg>
             ),
             label: 'Course Material',
-            onClick: () => { setUploadMode('file'); setShowCreateModal(true); },
+            onClick: () => studyTools.setShowStudyModal(true),
           },
           {
             icon: (
@@ -807,7 +639,7 @@ export function StudentDashboard() {
               </svg>
             ),
             label: 'Study Guide',
-            onClick: () => { setUploadMode('text'); setShowCreateModal(true); },
+            onClick: () => studyTools.setShowStudyModal(true),
           },
           googleConnected ? {
             icon: (
@@ -995,141 +827,44 @@ export function StudentDashboard() {
         )}
       </section>
 
-      {/* ── Create Study Material Modal ──────────────────── */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => resetModal()}>
-          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Study Material" ref={studyModalRef} onClick={(e) => e.stopPropagation()}>
-            <h2>Create Study Material</h2>
-
-            <div className="mode-toggle">
-              <button
-                className={`mode-btn ${uploadMode === 'text' ? 'active' : ''}`}
-                onClick={() => setUploadMode('text')}
-                disabled={isGenerating}
-              >Paste Text</button>
-              <button
-                className={`mode-btn ${uploadMode === 'file' ? 'active' : ''}`}
-                onClick={() => setUploadMode('file')}
-                disabled={isGenerating}
-              >Upload File</button>
-            </div>
-
-            <div className="modal-form">
-              <label>
-                Title (optional)
-                <input
-                  type="text"
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="e.g., Chapter 5 Review"
-                  disabled={isGenerating}
-                />
-              </label>
-
-              {uploadMode === 'text' ? (
-                <label>
-                  Content to study
-                  <textarea
-                    value={customContent}
-                    onChange={(e) => setCustomContent(e.target.value)}
-                    placeholder="Paste your notes, textbook content, or any material you want to study..."
-                    rows={8}
-                    disabled={isGenerating}
-                  />
-                </label>
-              ) : (
-                <div className="file-upload-section">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={handleFileInputChange}
-                    accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip"
-                    style={{ display: 'none' }}
-                    disabled={isGenerating}
-                  />
-                  <div
-                    className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => !isGenerating && fileInputRef.current?.click()}
-                  >
-                    {selectedFile ? (
-                      <div className="selected-file">
-                        <span className="file-icon">{'\u{1F4C4}'}</span>
-                        <div className="file-info">
-                          <span className="file-name">{selectedFile.name}</span>
-                          <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                        <button
-                          className="clear-file-btn"
-                          onClick={(e) => { e.stopPropagation(); clearFileSelection(); }}
-                          disabled={isGenerating}
-                        >x</button>
-                      </div>
-                    ) : (
-                      <div className="drop-zone-content">
-                        <span className="upload-icon">{'\u{1F4C1}'}</span>
-                        <p>Drag & drop a file here, or click to browse</p>
-                        <small>
-                          Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP
-                          <br />Max size: {MAX_FILE_SIZE_MB} MB
-                        </small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <label>
-                Generate as
-                <select
-                  value={customType}
-                  onChange={(e) => setCustomType(e.target.value as 'study_guide' | 'quiz' | 'flashcards')}
-                  disabled={isGenerating}
-                >
-                  <option value="study_guide">Study Guide</option>
-                  <option value="quiz">Practice Quiz</option>
-                  <option value="flashcards">Flashcards</option>
-                </select>
-              </label>
-            </div>
-
-            {duplicateCheck && duplicateCheck.exists && (
-              <div className="duplicate-warning">
-                <p>{duplicateCheck.message}</p>
-                <div className="duplicate-actions">
-                  <button
-                    className="generate-btn"
-                    onClick={() => {
-                      const guide = duplicateCheck.existing_guide!;
-                      resetModal();
-                      navigate(
-                        guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}`
-                          : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}`
-                          : `/study/guide/${guide.id}`
-                      );
-                    }}
-                  >View Existing</button>
-                  <button className="generate-btn" onClick={handleCreateCustom}>Regenerate (New Version)</button>
-                  <button className="cancel-btn" onClick={() => setDuplicateCheck(null)}>Cancel</button>
-                </div>
-              </div>
-            )}
-
-            <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => { resetModal(); setDuplicateCheck(null); }} disabled={isGenerating}>
-                Cancel
-              </button>
-              <button
-                className="generate-btn"
-                onClick={handleCreateCustom}
-                disabled={isGenerating || (uploadMode === 'file' ? !selectedFile : !customContent.trim())}
-              >
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
+      {/* ── Upload / Study Material Modal — same experience as Parent ── */}
+      <CreateStudyMaterialModal
+        open={studyTools.showStudyModal}
+        onClose={studyTools.resetStudyModal}
+        onGenerate={studyTools.handleGenerateFromModal}
+        isGenerating={studyTools.isGenerating}
+        courses={courses.map(c => ({ id: c.id, name: c.name }))}
+        duplicateCheck={studyTools.duplicateCheck}
+        onViewExisting={() => {
+          const guide = studyTools.duplicateCheck?.existing_guide;
+          if (guide) {
+            studyTools.resetStudyModal();
+            navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`);
+          }
+        }}
+        onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
+        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
+        showParentNote={false}
+      />
+      {/* Background generation status banner */}
+      {studyTools.backgroundGeneration && (
+        <div className={`sd-generation-banner ${studyTools.backgroundGeneration.status}`}>
+          {studyTools.backgroundGeneration.status === 'generating' && (
+            <span><span className="sd-gen-spinner" /> Generating {studyTools.backgroundGeneration.type}...</span>
+          )}
+          {studyTools.backgroundGeneration.status === 'success' && (
+            <>
+              <span>{studyTools.backgroundGeneration.type} ready!</span>
+              <button className="sd-gen-view-btn" onClick={() => { navigate('/course-materials'); studyTools.dismissBackgroundGeneration(); }}>View</button>
+              <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
+            </>
+          )}
+          {studyTools.backgroundGeneration.status === 'error' && (
+            <>
+              <span>Failed to generate {studyTools.backgroundGeneration.type}</span>
+              <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
+            </>
+          )}
         </div>
       )}
 
@@ -1249,7 +984,6 @@ export function StudentDashboard() {
           </div>
         </div>
       )}
-      {confirmModal}
     </DashboardLayout>
   );
 }
