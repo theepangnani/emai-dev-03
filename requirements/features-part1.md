@@ -268,9 +268,12 @@ Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 - Supported inputs: PDF, Word, PPTX, text notes - IMPLEMENTED (images/OCR for embedded images in .docx: #523 ✅)
 - Tag content to specific class or subject - IMPLEMENTED
 - AI generates study materials from user-provided content - IMPLEMENTED
+- **Multi-file upload (#991)**: Select multiple files at once; all selected files are combined into ONE course material. Text is extracted from each file and concatenated with per-file headers. Users can keep adding files before clicking Generate/Upload. Drag-and-drop and the file picker both append to the file list - IMPLEMENTED
 - Content privacy controls - pending
 - Version history - pending
 - GCS file storage - pending (#114)
+- **Multi-document per material (#993)**: Store individual file attachments (1-to-many) on a CourseContent record; AI generation uses combined text from all attached docs - PENDING (Phase 2)
+- **Material grouping & student assignment (#992)**: Group multiple materials into named bundles; parent assigns material/bundle to a specific child - PENDING (Phase 2)
 
 ### 6.4.1 Course Content Types with Reference Links (Phase 1) - IMPLEMENTED
 - Structured content items attached to courses (notes, syllabus, labs, assignments, readings, resources, other)

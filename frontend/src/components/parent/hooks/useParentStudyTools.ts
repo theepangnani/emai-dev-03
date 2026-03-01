@@ -109,19 +109,44 @@ export function useParentStudyTools({
     })();
   };
 
+  const extractCombinedText = async (files: File[]): Promise<string> => {
+    const parts = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const result = await studyApi.extractTextFromFile(f);
+          return `--- [${f.name}] ---\n${result.text}`;
+        } catch {
+          return `--- [${f.name}] ---\n(text extraction failed)`;
+        }
+      })
+    );
+    return parts.join('\n\n');
+  };
+
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     setIsGenerating(true);
     try {
+      const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
+      const isMultiFile = files.length > 1;
+
       if (modalParams.types.length === 0) {
         try {
           const defaultCourse = await coursesApi.getDefault();
-          if (modalParams.mode === 'file' && modalParams.file) {
+          if (files.length === 1) {
             await courseContentsApi.uploadFile(
-              modalParams.file,
+              files[0],
               defaultCourse.id,
               modalParams.title || undefined,
               'notes',
             );
+          } else if (isMultiFile) {
+            const combinedText = await extractCombinedText(files);
+            await courseContentsApi.create({
+              course_id: defaultCourse.id,
+              title: modalParams.title || files.map(f => f.name).join(', '),
+              text_content: combinedText,
+              content_type: 'notes',
+            });
           } else {
             await courseContentsApi.create({
               course_id: defaultCourse.id,
@@ -137,7 +162,17 @@ export function useParentStudyTools({
         return;
       }
 
-      if (modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      let resolvedContent = modalParams.content;
+      let resolvedMode = modalParams.mode;
+      let resolvedFile = modalParams.file;
+
+      if (isMultiFile) {
+        resolvedContent = await extractCombinedText(files);
+        resolvedMode = 'text';
+        resolvedFile = undefined;
+      }
+
+      if (modalParams.types.length === 1 && resolvedMode === 'text' && !modalParams.pastedImages?.length) {
         try {
           const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
           if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
@@ -147,11 +182,11 @@ export function useParentStudyTools({
       for (const type of modalParams.types) {
         runGenerationInBackground({
           title: modalParams.title,
-          content: modalParams.content,
+          content: resolvedContent,
           type,
           focusPrompt: modalParams.focusPrompt,
-          mode: modalParams.mode,
-          file: modalParams.file,
+          mode: resolvedMode,
+          file: resolvedFile,
           pastedImages: modalParams.pastedImages,
           regenerateId: duplicateCheck?.existing_guide?.id,
         });

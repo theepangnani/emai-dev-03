@@ -16,6 +16,7 @@ export interface StudyMaterialGenerateParams {
   focusPrompt?: string;
   mode: 'text' | 'file';
   file?: File;
+  files?: File[];
   pastedImages?: File[];
   courseId?: number;
   courseContentId?: number;
@@ -70,7 +71,7 @@ export default function CreateStudyMaterialModal({
   const [selectedTypes, setSelectedTypes] = useState<Set<SelectableType>>(new Set());
   const [focusPrompt, setFocusPrompt] = useState('');
   const [otherPrompt, setOtherPrompt] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [studyError, setStudyError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [supportedFormats, setSupportedFormats] = useState<SupportedFormats | null>(null);
@@ -99,7 +100,7 @@ export default function CreateStudyMaterialModal({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOtherPrompt('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedFile(null);
+    setSelectedFiles([]);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyError('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -109,31 +110,38 @@ export default function CreateStudyMaterialModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [open, initialTitle, initialContent]);
 
-  const handleFileSelect = (file: File) => {
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setStudyError(`File size exceeds ${MAX_FILE_SIZE_MB} MB limit`);
-      return;
+  const addFiles = (incoming: FileList | File[]) => {
+    const toAdd = Array.from(incoming);
+    const oversized = toAdd.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (oversized.length > 0) {
+      setStudyError(`${oversized.map(f => f.name).join(', ')} exceed${oversized.length === 1 ? 's' : ''} the ${MAX_FILE_SIZE_MB} MB limit`);
     }
-    setSelectedFile(file);
-    if (!studyTitle) {
-      setStudyTitle(file.name.replace(/\.[^/.]+$/, ''));
-    }
+    const valid = toAdd.filter(f => f.size <= MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (valid.length === 0) return;
+    setSelectedFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.name));
+      const newUnique = valid.filter(f => !existingNames.has(f.name));
+      return [...prev, ...newUnique];
+    });
+    // Auto-fill title only when adding the first file and title is empty
+    setStudyTitle(prev => {
+      if (!prev && valid.length > 0) return valid[0].name.replace(/\.[^/.]+$/, '');
+      return prev;
+    });
   };
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
+    if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
   };
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const clearFileSelection = () => {
-    setSelectedFile(null);
+    if (e.target.files && e.target.files.length > 0) addFiles(e.target.files);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   // Clipboard paste handler — captures images from email paste
@@ -156,8 +164,9 @@ export default function CreateStudyMaterialModal({
   };
 
   const handleSubmit = () => {
-    // Determine mode: file takes priority if selected, else text/images
-    const effectiveMode: 'text' | 'file' = selectedFile ? 'file' : 'text';
+    // Determine mode: files take priority if any selected, else text/images
+    const hasFiles = selectedFiles.length > 0;
+    const effectiveMode: 'text' | 'file' = hasFiles ? 'file' : 'text';
     if (effectiveMode === 'text' && !studyContent.trim() && pastedImages.length === 0) { setStudyError('Please upload a file, paste content, or paste images'); return; }
     if (selectedTypes.has('other') && !otherPrompt.trim()) { setStudyError('Please describe what you want to generate'); return; }
 
@@ -174,12 +183,15 @@ export default function CreateStudyMaterialModal({
       : focusPrompt.trim() || undefined;
 
     onGenerate({
-      title: studyTitle || 'Uploaded material',
+      title: studyTitle || (selectedFiles.length > 0 ? selectedFiles[0].name.replace(/\.[^/.]+$/, '') : 'Uploaded material'),
       content: studyContent,
       types,
       focusPrompt: effectivePrompt,
       mode: effectiveMode,
-      file: selectedFile ?? undefined,
+      // Legacy single-file field for callers that still use it
+      file: selectedFiles.length === 1 ? selectedFiles[0] : undefined,
+      // Multi-file: pass all selected files (one material combining all)
+      files: selectedFiles.length > 0 ? selectedFiles : undefined,
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
       courseId: selectedCourseId ? (selectedCourseId as number) : undefined,
       courseContentId: selectedMaterialId ? (selectedMaterialId as number) : undefined,
@@ -279,22 +291,33 @@ export default function CreateStudyMaterialModal({
 
           {/* File drop zone — always visible */}
           <div className="file-upload-section">
-            <input ref={fileInputRef} type="file" onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
-            <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
-              {selectedFile ? (
-                <div className="selected-file">
-                  <span className="file-icon">&#128196;</span>
-                  <div className="file-info">
-                    <span className="file-name">{selectedFile.name}</span>
-                    <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                  </div>
-                  <button className="clear-file-btn" onClick={(e) => { e.stopPropagation(); clearFileSelection(); }} disabled={isGenerating}>&times;</button>
+            <input ref={fileInputRef} type="file" multiple onChange={handleFileInputChange} accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip" style={{ display: 'none' }} disabled={isGenerating} />
+            <div className={`drop-zone ${isDragging ? 'dragging' : ''} ${selectedFiles.length > 0 ? 'has-file' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => !isGenerating && fileInputRef.current?.click()}>
+              {selectedFiles.length > 0 ? (
+                <div className="selected-files-list" onClick={(e) => e.stopPropagation()}>
+                  {selectedFiles.map((f, idx) => (
+                    <div key={idx} className="selected-file">
+                      <span className="file-icon">&#128196;</span>
+                      <div className="file-info">
+                        <span className="file-name">{f.name}</span>
+                        <span className="file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                      </div>
+                      <button className="clear-file-btn" onClick={() => !isGenerating && removeFile(idx)} disabled={isGenerating}>&times;</button>
+                    </div>
+                  ))}
+                  <button
+                    className="add-more-files-btn"
+                    onClick={(e) => { e.stopPropagation(); if (!isGenerating) fileInputRef.current?.click(); }}
+                    disabled={isGenerating}
+                  >
+                    + Add more files
+                  </button>
                 </div>
               ) : (
                 <div className="drop-zone-content">
                   <span className="upload-icon">&#128193;</span>
-                  <p>Drag & drop a file here, or click to browse</p>
-                  <small>Supports: PDF, Word, Excel, PowerPoint, Images (photos), Text, ZIP</small>
+                  <p>Drag & drop files here, or click to browse</p>
+                  <small>Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP &bull; Multiple files → one material</small>
                 </div>
               )}
             </div>
@@ -377,9 +400,9 @@ export default function CreateStudyMaterialModal({
           <button
             className="generate-btn"
             onClick={handleSubmit}
-            disabled={isGenerating || (!selectedFile && !studyContent.trim() && pastedImages.length === 0)}
+            disabled={isGenerating || (selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0)}
           >
-            {isGenerating ? <><span className="btn-spinner" /> Generating...</> : selectedTypes.size > 0 ? (selectedTypes.size > 1 ? `Upload & Generate ${selectedTypes.size} Materials` : 'Upload & Generate') : 'Upload'}
+            {isGenerating ? <><span className="btn-spinner" /> Generating...</> : selectedTypes.size > 0 ? (selectedTypes.size > 1 ? `Upload & Generate ${selectedTypes.size} Materials` : 'Upload & Generate') : (selectedFiles.length > 1 ? `Upload ${selectedFiles.length} Files` : 'Upload')}
           </button>
         </div>
       </div>
