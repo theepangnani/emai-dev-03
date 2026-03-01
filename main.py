@@ -529,6 +529,13 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         conn.commit()
+        # Backfill NULL classroom_type rows (fix for courses added before column had a default)
+        try:
+            conn.execute(text("UPDATE courses SET classroom_type = 'manual' WHERE classroom_type IS NULL"))
+            logger.info("Backfilled NULL classroom_type values to 'manual'")
+        except Exception:
+            conn.rollback()
+        conn.commit()
 
     # ── Phase 1 New Workflow: notifications ACK columns ───────
     if "notifications" in inspector.get_table_names():
