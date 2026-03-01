@@ -66,6 +66,14 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s, filter 0.15s;
+}
+
+.sd-urgency-pill:hover {
+  opacity: 0.82;
+  filter: brightness(0.95);
 }
 
 .sd-urgency-pill.overdue {
@@ -81,6 +89,16 @@
 .sd-urgency-pill.week {
   background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
+}
+
+.sd-stat-chip--link {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sd-stat-chip--link:hover {
+  background: var(--color-border);
+  border-color: var(--color-ink-muted);
 }
 
 .sd-hero-stats {
