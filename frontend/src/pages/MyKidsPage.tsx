@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
+import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { isValidEmail } from '../utils/validation';
 import './MyKidsPage.css';
 
@@ -46,6 +47,7 @@ export function MyKidsPage() {
 
   // Collapsible sections
   const [showCourses, setShowCourses] = useState(true);
+  const [showGrades, setShowGrades] = useState(true);
   const [showMaterials, setShowMaterials] = useState(true);
   const [showTasks, setShowTasks] = useState(true);
   const [showTeachers, setShowTeachers] = useState(true);
@@ -762,6 +764,20 @@ export function MyKidsPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* ── Grades ────────────────────────────── */}
+          <div className="mykids-section">
+            <button className="mykids-section-header" onClick={() => setShowGrades(p => !p)}>
+              <span className={`section-chevron${showGrades ? ' expanded' : ''}`}>&#9654;</span>
+              <span className="section-icon" aria-hidden="true">&#128202;</span> Grades
+            </button>
+            {showGrades && (
+              <GradesSummaryCard
+                selectedChildId={selectedChild ?? undefined}
+                onViewDetails={() => navigate('/grades')}
+              />
             )}
           </div>
 

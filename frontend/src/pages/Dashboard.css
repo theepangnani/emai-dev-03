@@ -39,15 +39,10 @@
 }
 
 .header-logo {
-  height: 80px;
+  height: 56px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
-  margin: -18px 0;
-}
-
-[data-theme="dark"] .header-logo {
-  content: url('/logo-icon-dark.png');
 }
 
 .logo {
@@ -1719,12 +1714,7 @@ button.retry-btn:disabled {
   }
 
   .header-logo {
-    height: 44px;
-    margin: -4px 0;
-  }
-
-  .logo {
-    font-size: 16px;
+    height: 36px;
   }
 
   .header-right {

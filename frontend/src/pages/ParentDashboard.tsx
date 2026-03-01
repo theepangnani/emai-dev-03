@@ -14,7 +14,6 @@ import type { QuickAction } from '../components/RoleQuickActions';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { SetupChecklist } from '../components/SetupChecklist';
-import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -66,7 +65,6 @@ const SECTION_STATES_KEY = 'pd-section-states';
 const VIEW_MODE_KEY = 'pd-view-mode';
 
 interface SectionStates {
-  grades: boolean;
   comingUp: boolean;
   studentDetail: boolean;
   activityFeed?: boolean; // deprecated — kept for localStorage compat
@@ -77,8 +75,8 @@ function loadSectionStates(): SectionStates {
     const saved = localStorage.getItem(SECTION_STATES_KEY);
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
-  // First-time defaults: Grades and Coming Up expanded, others collapsed
-  return { grades: true, comingUp: true, studentDetail: false, activityFeed: false };
+  // First-time defaults: Coming Up expanded, others collapsed
+  return { comingUp: true, studentDetail: false, activityFeed: false };
 }
 
 function saveSectionStates(states: SectionStates) {
@@ -140,11 +138,11 @@ export function ParentDashboard() {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
       if (next === 'simplified') {
-        const collapsed: SectionStates = { comingUp: false, studentDetail: false, grades: false };
+        const collapsed: SectionStates = { comingUp: false, studentDetail: false };
         setSectionStates(collapsed);
         saveSectionStates(collapsed);
       } else {
-        const expanded: SectionStates = { comingUp: true, studentDetail: true, grades: true };
+        const expanded: SectionStates = { comingUp: true, studentDetail: true };
         setSectionStates(expanded);
         saveSectionStates(expanded);
       }
@@ -420,18 +418,6 @@ export function ParentDashboard() {
             ] satisfies QuickAction[]}
             maxVisible={3}
           />
-
-          {/* Grades Overview (#838 - collapsible) */}
-          <CollapsibleSection
-            title="Grades"
-            expanded={sectionStates.grades}
-            onToggle={() => updateSection('grades', !sectionStates.grades)}
-          >
-            <GradesSummaryCard
-              selectedChildId={pd.selectedChild ?? undefined}
-              onViewDetails={() => pd.navigate('/grades')}
-            />
-          </CollapsibleSection>
 
           {/* Coming Up Timeline (#832 - collapsible) */}
           <CollapsibleSection
