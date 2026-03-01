@@ -531,12 +531,10 @@ describe('ParentDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+      // File drop zone and text area render together with the modal
+      expect(screen.getByText(/Drag & drop files here/)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
     })
-
-    // File drop zone should be visible — no mode toggle needed
-    expect(screen.getByText(/Drag & drop a file here/)).toBeInTheDocument()
-    // Text area should also be visible simultaneously
-    expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
     // Mode toggle buttons should NOT exist
     expect(screen.queryByText('Paste Text')).not.toBeInTheDocument()
     expect(screen.queryByText('Upload File')).not.toBeInTheDocument()
