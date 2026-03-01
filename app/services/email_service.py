@@ -131,6 +131,40 @@ async def send_email(to_email: str, subject: str, html_content: str) -> bool:
     return send_email_sync(to_email, subject, html_content)
 
 
+def wrap_branded_email(body_html: str) -> str:
+    """Wrap body HTML in the ClassBridge branded email template.
+
+    Matches the same layout used by the Jinja HTML templates in app/templates/:
+    logo, indigo accent bar, white content area, footer.
+    """
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f5f7fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:32px 16px;">
+    <tr>
+      <td style="background:#ffffff;padding:24px 32px 16px 32px;border-radius:16px 16px 0 0;text-align:center;">
+        <img src="https://www.classbridge.ca/classbridge-logo.png" alt="ClassBridge" width="180" style="display:block;margin:0 auto;width:180px;max-width:100%;height:auto;" />
+      </td>
+    </tr>
+    <tr>
+      <td style="height:4px;background:#4f46e5;font-size:0;line-height:0;">&nbsp;</td>
+    </tr>
+    <tr>
+      <td style="background:white;padding:32px;border-radius:0 0 16px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+        {body_html}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px;text-align:center;color:#9CA3AF;font-size:12px;">
+        ClassBridge &mdash; Stay connected with your child's education
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
 def add_inspiration_to_email(html_content: str, db, role: str) -> str:
     """Append a random inspirational message footer to email HTML.
 
@@ -150,6 +184,9 @@ def add_inspiration_to_email(html_content: str, db, role: str) -> str:
             f'<em>"{msg["text"]}"</em>{author_line}'
             '</div>'
         )
+        # If content is a full HTML document (from wrap_branded_email), inject before </body>
+        if '</body>' in html_content:
+            return html_content.replace('</body>', f'{footer}</body>', 1)
         return html_content + footer
     except Exception:
         return html_content

@@ -21,7 +21,7 @@ from app.models.message import Conversation, Message
 from app.schemas.course import CourseCreate, CourseUpdate, CourseResponse, TeacherCourseManagementResponse, AddStudentRequest
 from app.api.deps import get_current_user, require_role, can_access_course
 from app.services.audit_service import log_action
-from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
+from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email, wrap_branded_email
 from app.core.config import settings
 from app.domains.education.services import EducationService
 
@@ -577,11 +577,12 @@ def add_student_to_course(
         # Email notification to student (#254)
         if user.email and getattr(user, 'email_notifications', True):
             try:
-                student_html = f"""
-                <h2>You've been enrolled in {course.name}</h2>
-                <p><strong>{current_user.full_name}</strong> added you to <strong>{course.name}</strong> on ClassBridge.</p>
-                <p><a href="{settings.frontend_url}/courses/{course.id}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">View Course</a></p>
-                """
+                student_body = (
+                    f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'ve been enrolled in {course.name}</h2>'
+                    f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;"><strong>{current_user.full_name}</strong> added you to <strong>{course.name}</strong> on ClassBridge.</p>'
+                    f'<a href="{settings.frontend_url}/courses/{course.id}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">View Course</a>'
+                )
+                student_html = wrap_branded_email(student_body)
                 student_html = add_inspiration_to_email(student_html, db, "student")
                 send_email_sync(user.email, f"Enrolled in {course.name} — ClassBridge", student_html)
             except Exception as e:
@@ -604,11 +605,12 @@ def add_student_to_course(
             ))
             if parent_user.email and getattr(parent_user, 'email_notifications', True):
                 try:
-                    parent_html = f"""
-                    <h2>{user.full_name} was enrolled in a new course</h2>
-                    <p><strong>{current_user.full_name}</strong> added <strong>{user.full_name}</strong> to <strong>{course.name}</strong> on ClassBridge.</p>
-                    <p><a href="{settings.frontend_url}/courses/{course.id}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">View Course</a></p>
-                    """
+                    parent_body = (
+                        f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">{user.full_name} was enrolled in a new course</h2>'
+                        f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;"><strong>{current_user.full_name}</strong> added <strong>{user.full_name}</strong> to <strong>{course.name}</strong> on ClassBridge.</p>'
+                        f'<a href="{settings.frontend_url}/courses/{course.id}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">View Course</a>'
+                    )
+                    parent_html = wrap_branded_email(parent_body)
                     parent_html = add_inspiration_to_email(parent_html, db, "parent")
                     send_email_sync(parent_user.email, f"{user.full_name} enrolled in {course.name} — ClassBridge", parent_html)
                 except Exception as e:
@@ -800,18 +802,14 @@ def send_course_announcement(
     import html as _html
     email_batch = []
     for email, name in email_recipients:
-        html_body = f"""
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-            <h2 style="color:#4f46e5;">{_html.escape(course.name)}: {_html.escape(data.subject)}</h2>
-            <p style="color:#666;font-size:14px;">From {_html.escape(current_user.full_name)}</p>
-            <div style="padding:16px;background:#f8f9fa;border-radius:8px;margin:16px 0;">
-                <p style="font-size:15px;line-height:1.6;">{_html.escape(data.body).replace(chr(10), '<br>')}</p>
-            </div>
-            <p style="color:#999;font-size:13px;">
-                Sent via <a href="{settings.frontend_url}" style="color:#4f46e5;">ClassBridge</a>
-            </p>
-        </div>
-        """
+        body = (
+            f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">{_html.escape(course.name)}: {_html.escape(data.subject)}</h2>'
+            f'<p style="color:#666;font-size:14px;margin:0 0 16px 0;">From {_html.escape(current_user.full_name)}</p>'
+            f'<div style="padding:16px;background:#f8f9fa;border-radius:8px;margin:0 0 16px 0;">'
+            f'<p style="font-size:15px;line-height:1.6;margin:0;">{_html.escape(data.body).replace(chr(10), "<br>")}</p>'
+            f'</div>'
+        )
+        html_body = wrap_branded_email(body)
         html_body = add_inspiration_to_email(html_body, db, "parent")
         email_batch.append((email, f"{course.name}: {data.subject}", html_body))
 

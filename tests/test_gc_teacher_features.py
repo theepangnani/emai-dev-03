@@ -116,7 +116,7 @@ class TestClassroomTypeSync:
         db_session.add(course)
         db_session.flush()
 
-        _set_classroom_type(course, db_session)
+        _set_classroom_type(course, None, db_session)
         assert course.classroom_type == "school"
 
         db_session.rollback()
@@ -130,7 +130,7 @@ class TestClassroomTypeSync:
         db_session.add(course)
         db_session.flush()
 
-        _set_classroom_type(course, db_session)
+        _set_classroom_type(course, None, db_session)
         assert course.classroom_type == "private"
 
         db_session.rollback()
@@ -144,7 +144,7 @@ class TestClassroomTypeSync:
         db_session.add(course)
         db_session.flush()
 
-        _set_classroom_type(course, db_session)
+        _set_classroom_type(course, None, db_session)
         assert course.classroom_type == "private"
 
         db_session.rollback()
@@ -158,7 +158,7 @@ class TestClassroomTypeSync:
         db_session.add(course)
         db_session.flush()
 
-        _set_classroom_type(course, db_session)
+        _set_classroom_type(course, None, db_session)
         assert course.classroom_type == "private"  # unchanged
 
         db_session.rollback()
