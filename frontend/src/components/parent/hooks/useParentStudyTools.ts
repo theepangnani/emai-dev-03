@@ -16,7 +16,7 @@ export function useParentStudyTools({
 }: UseParentStudyToolsParams) {
   // Study tools modal state
   const [showStudyModal, setShowStudyModal] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating] = useState(false);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const [studyModalInitialTitle, setStudyModalInitialTitle] = useState('');
   const [studyModalInitialContent, setStudyModalInitialContent] = useState('');
@@ -134,73 +134,71 @@ export function useParentStudyTools({
   };
 
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
-    setIsGenerating(true);
-    try {
-      const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
-      const isMultiFile = files.length > 1;
+    const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
+    const isMultiFile = files.length > 1;
 
-      if (modalParams.types.length === 0) {
-        // Upload-only: close modal immediately, run upload/extraction in background
-        setDuplicateCheck(null);
-        resetStudyModal();
-        navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
-        (async () => {
-          try {
-            const defaultCourse = await coursesApi.getDefault();
-            if (files.length === 1) {
-              await courseContentsApi.uploadFile(
-                files[0],
-                defaultCourse.id,
-                modalParams.title || undefined,
-                'notes',
-              );
-            } else if (isMultiFile) {
-              const combinedText = await extractCombinedText(files);
-              await courseContentsApi.create({
-                course_id: defaultCourse.id,
-                title: modalParams.title || files.map(f => f.name).join(', '),
-                text_content: combinedText,
-                content_type: 'notes',
-              });
-            } else {
-              await courseContentsApi.create({
-                course_id: defaultCourse.id,
-                title: modalParams.title || 'Uploaded material',
-                text_content: modalParams.content || undefined,
-                content_type: 'notes',
-              });
-            }
-          } catch { /* silently ignore */ }
-        })();
-        return;
-      }
+    // Always close modal immediately — never leave it open in a "Generating..." state.
+    // Background work (duplicate check, extraction, AI generation) continues after close.
+    resetStudyModal();
 
-      // Generation path: for multi-file, skip duplicate check (content not extracted yet)
-      if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+    if (modalParams.types.length === 0) {
+      // Upload-only: navigate then run upload/extraction in background
+      navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+      (async () => {
         try {
-          const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
-          if (dupResult.exists) { setDuplicateCheck(dupResult); return; }
-        } catch { /* Continue */ }
-      }
+          const defaultCourse = await coursesApi.getDefault();
+          if (files.length === 1) {
+            await courseContentsApi.uploadFile(
+              files[0],
+              defaultCourse.id,
+              modalParams.title || undefined,
+              'notes',
+            );
+          } else if (isMultiFile) {
+            const combinedText = await extractCombinedText(files);
+            await courseContentsApi.create({
+              course_id: defaultCourse.id,
+              title: modalParams.title || files.map(f => f.name).join(', '),
+              text_content: combinedText,
+              content_type: 'notes',
+            });
+          } else {
+            await courseContentsApi.create({
+              course_id: defaultCourse.id,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
+          }
+        } catch { /* silently ignore */ }
+      })();
+      return;
+    }
 
-      for (const type of modalParams.types) {
-        runGenerationInBackground({
-          title: modalParams.title,
-          content: modalParams.content,
-          type,
-          focusPrompt: modalParams.focusPrompt,
-          mode: isMultiFile ? 'text' : modalParams.mode,
-          file: isMultiFile ? undefined : modalParams.file,
-          files: isMultiFile ? files : undefined,
-          pastedImages: modalParams.pastedImages,
-          regenerateId: duplicateCheck?.existing_guide?.id,
-        });
-      }
-      setDuplicateCheck(null);
-      resetStudyModal();
-      // Don't navigate — user stays on dashboard
-    } finally {
-      setIsGenerating(false);
+    // Duplicate check runs after modal close — if found, re-open modal with warning
+    if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
+      try {
+        const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
+        if (dupResult.exists) {
+          setDuplicateCheck(dupResult);
+          setShowStudyModal(true);
+          return;
+        }
+      } catch { /* Continue */ }
+    }
+
+    for (const type of modalParams.types) {
+      runGenerationInBackground({
+        title: modalParams.title,
+        content: modalParams.content,
+        type,
+        focusPrompt: modalParams.focusPrompt,
+        mode: isMultiFile ? 'text' : modalParams.mode,
+        file: isMultiFile ? undefined : modalParams.file,
+        files: isMultiFile ? files : undefined,
+        pastedImages: modalParams.pastedImages,
+        regenerateId: duplicateCheck?.existing_guide?.id,
+      });
     }
   };
 
