@@ -107,11 +107,13 @@ def list_children(
         # Derive invite_status
         invite_status = "active"
         invite_id = None
+        invite_link = None
         if user:
             pending_invite = invite_map.get(user.email) if user.email else None
             if pending_invite and not pending_invite.accepted_at:
                 invite_status = "pending"
                 invite_id = pending_invite.id
+                invite_link = f"{settings.frontend_url}/accept-invite?token={pending_invite.token}"
             elif user.hashed_password == UNUSABLE_PASSWORD_HASH:
                 # Account created but child hasn't set password yet
                 invite_status = "pending"
@@ -137,6 +139,7 @@ def list_children(
             active_task_count=task_counts.get(student.user_id, 0),
             invite_status=invite_status,
             invite_id=invite_id,
+            invite_link=invite_link,
         ))
 
     log_action(db, user_id=current_user.id, action="read", resource_type="children", details={"count": len(result)})

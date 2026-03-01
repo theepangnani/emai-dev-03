@@ -87,6 +87,27 @@ class TestListChildren:
         resp = client.get("/api/parent/children", headers=headers)
         assert resp.status_code == 403
 
+    def test_pending_child_has_invite_link_with_token(self, client, users):
+        """Regression: invite_link must include the token so the copied URL works."""
+        headers = _auth(client, users["parent"].email)
+        # Create a child with email (generates a pending invite)
+        create_resp = client.post("/api/parent/children/create", json={
+            "full_name": "Invite Link Kid", "email": "invite_link_regression@test.com",
+        }, headers=headers)
+        assert create_resp.status_code == 200
+
+        # Fetch children list — the pending child must have invite_link with token
+        list_resp = client.get("/api/parent/children", headers=headers)
+        assert list_resp.status_code == 200
+        children = list_resp.json()
+        pending = next((c for c in children if c["email"] == "invite_link_regression@test.com"), None)
+        assert pending is not None, "Invited child not found in children list"
+        assert pending["invite_status"] == "pending"
+        invite_link = pending.get("invite_link")
+        assert invite_link is not None, "invite_link must be populated for pending children"
+        assert "token=" in invite_link, f"invite_link missing token param: {invite_link}"
+        assert "/accept-invite" in invite_link, f"invite_link missing /accept-invite path: {invite_link}"
+
 
 # ── Create child ──────────────────────────────────────────────
 
