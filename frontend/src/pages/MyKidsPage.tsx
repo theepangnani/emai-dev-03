@@ -106,12 +106,21 @@ export function MyKidsPage() {
   const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
   const [resendSuccess, setResendSuccess] = useState<number | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
+  const [openInviteMenuId, setOpenInviteMenuId] = useState<number | null>(null);
 
   // Focus traps for modals
   const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
   const addCourseModalRef = useFocusTrap<HTMLDivElement>(showAddCourseModal);
   const assignCourseModalRef = useFocusTrap<HTMLDivElement>(!!assignCourseModal, () => setAssignCourseModal(null));
   const reassignContentModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
+
+  // Close invite context menu on outside click
+  useEffect(() => {
+    if (!openInviteMenuId) return;
+    const close = () => setOpenInviteMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openInviteMenuId]);
 
   useEffect(() => {
     (async () => {
@@ -586,44 +595,52 @@ export function MyKidsPage() {
               </span>
             </button>
             {child.invite_status === 'pending' && child.invite_id && (
-              <div className="invite-actions">
+              <div className="invite-menu-wrapper">
                 <button
-                  className="invite-action-btn invite-resend-btn"
-                  disabled={resendingInviteId === child.invite_id}
-                  onClick={async (e) => {
+                  className="invite-menu-trigger"
+                  title="Invite options"
+                  onClick={(e) => {
                     e.stopPropagation();
-                    setResendingInviteId(child.invite_id);
-                    setResendSuccess(null);
-                    try {
-                      await invitesApi.resend(child.invite_id!);
-                      setResendSuccess(child.invite_id);
-                      setTimeout(() => setResendSuccess(null), 3000);
-                    } catch {
-                      /* rate limit or other error — silently handled */
-                    } finally {
-                      setResendingInviteId(null);
-                    }
+                    setOpenInviteMenuId(openInviteMenuId === child.invite_id ? null : child.invite_id);
                   }}
                 >
-                  {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? 'Sent!' : 'Resend Invite'}
+                  ···
                 </button>
-                <button
-                  className="invite-action-btn invite-copy-btn"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (child.invite_link) {
-                      await navigator.clipboard.writeText(child.invite_link);
-                    } else {
-                      // Build link from frontend URL + invite flow
-                      const link = `${window.location.origin}/accept-invite`;
-                      await navigator.clipboard.writeText(link);
-                    }
-                    setCopiedInviteId(child.invite_id);
-                    setTimeout(() => setCopiedInviteId(null), 2000);
-                  }}
-                >
-                  {copiedInviteId === child.invite_id ? 'Copied!' : 'Copy Link'}
-                </button>
+                {openInviteMenuId === child.invite_id && (
+                  <div className="invite-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="invite-menu-item"
+                      disabled={resendingInviteId === child.invite_id}
+                      onClick={async () => {
+                        setResendingInviteId(child.invite_id);
+                        setResendSuccess(null);
+                        try {
+                          await invitesApi.resend(child.invite_id!);
+                          setResendSuccess(child.invite_id);
+                          setTimeout(() => setResendSuccess(null), 3000);
+                        } catch {
+                          /* rate limit or other error — silently handled */
+                        } finally {
+                          setResendingInviteId(null);
+                        }
+                      }}
+                    >
+                      {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? '✓ Sent!' : 'Resend Invite'}
+                    </button>
+                    <button
+                      className="invite-menu-item"
+                      onClick={async () => {
+                        const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
+                        await navigator.clipboard.writeText(link);
+                        setCopiedInviteId(child.invite_id);
+                        setOpenInviteMenuId(null);
+                        setTimeout(() => setCopiedInviteId(null), 2000);
+                      }}
+                    >
+                      {copiedInviteId === child.invite_id ? '✓ Copied!' : 'Copy Invite Link'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
