@@ -97,9 +97,9 @@ export function TasksPage() {
     if (isParent) loadChildren();
   }, [filterStatus]);
 
-  // Auto-select first child when children load and no specific child is selected
+  // Auto-select first child only when there is exactly one child
   useEffect(() => {
-    if (isParent && children.length > 0 && filterAssignee === 'all') {
+    if (isParent && children.length === 1 && filterAssignee === 'all') {
       const first = children[0];
       setFilterAssignee(first.user_id);
       searchParams.set('assignee', String(first.user_id));
@@ -446,6 +446,21 @@ export function TasksPage() {
         {/* Child selector pills (parent only) + add action button */}
         {isParent && children.length > 0 ? (
           <div className="tasks-child-selector">
+            {/* "All" button — shown when there are multiple children */}
+            {children.length > 1 && (
+              <button
+                className={`child-tab child-tab-all${filterAssignee === 'all' ? ' active' : ''}`}
+                onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); sessionStorage.removeItem('selectedChildId'); }}
+                title="All children"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </button>
+            )}
             {children.map((child, index) => (
               <button
                 key={child.user_id}

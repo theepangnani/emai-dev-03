@@ -24,6 +24,19 @@
   flex-wrap: wrap;
 }
 
+/* "All children" icon button */
+.child-tab-all {
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.child-tab-all.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
 .child-tab-detail {
   width: 100%;
   font-size: 11px;

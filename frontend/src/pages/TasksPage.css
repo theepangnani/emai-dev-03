@@ -75,6 +75,19 @@
   color: var(--color-ink-muted);
 }
 
+/* "All children" icon button */
+.tasks-child-selector .child-tab-all {
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tasks-child-selector .child-tab-all.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
 /* New Task button (dashboard-style secondary) */
 .tasks-new-btn {
   display: inline-flex;
