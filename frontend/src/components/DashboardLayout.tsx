@@ -281,6 +281,15 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <circle cx="18" cy="8" r="3" fill="currentColor" opacity="0.6"/>
     </svg>
   ),
+  Forum: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      <polyline points="19 11 21 13 23 11"/>
+    </svg>
+  ),
   'Lesson Planner': (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
@@ -384,6 +393,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Progress', path: '/progress' },
         { label: 'Analytics', path: '/analytics' },
         { label: 'Messages', path: '/messages' },
+        { label: 'Forum', path: '/forum' },
         { label: 'My Learning', path: '/personalization' },
         { label: 'AI Email', path: '/email-agent' },
         { label: 'Notes', path: '/notes' },
@@ -430,6 +440,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Progress', path: '/progress' });
       items.push({ label: 'Analytics', path: '/analytics' });
       items.push({ label: 'My Learning', path: '/personalization' });
+      items.push({ label: 'Forum', path: '/forum' });
     }
 
     if (user?.role === 'teacher') {
@@ -442,6 +453,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Lesson Planner', path: '/teacher/lesson-plans' });
       items.push({ label: 'AI Email', path: '/email-agent' });
       items.push({ label: 'Tutor Dashboard', path: '/tutors/dashboard' });
+      items.push({ label: 'Forum', path: '/forum' });
     }
 
     if (user?.role === 'parent' || user?.role === 'teacher') {

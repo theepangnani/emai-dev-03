@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor, forum
 from app.api.routes.billing import router as billing_router, admin_router as admin_billing_router
 from app.api.routes.billing import seed_subscription_plans
 
@@ -72,6 +72,7 @@ from app.models.portfolio import StudentPortfolio, PortfolioItem  # noqa: F401 �
 from app.models.study_timer import StudySession, StudyStreak  # noqa: F401 — ensure tables are created (Pomodoro timer)
 from app.models.grade_prediction import GradePrediction  # noqa: F401 — ensure table is created (Phase 2 AI Grade Prediction)
 from app.models.two_factor import TOTPDevice  # noqa: F401 — ensure table is created (2FA)
+from app.models.forum import ForumCategory, ForumThread, ForumPost, ForumLike  # noqa: F401 — ensure tables are created (Forum)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1080,6 +1081,14 @@ with SessionLocal() as _seed_db:
     except Exception as _e:
         logger.warning("Failed to seed subscription plans at startup: %s", _e)
 
+# ── Seed Forum default categories ──────────────────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.services.forum import seed_default_categories as seed_forum_categories
+        seed_forum_categories(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed forum categories at startup: %s", _e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1242,6 +1251,7 @@ app.include_router(portfolio.router, prefix="/api")
 app.include_router(study_timer.router, prefix="/api")
 app.include_router(grade_prediction.router, prefix="/api")
 app.include_router(two_factor.router, prefix="/api")
+app.include_router(forum.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
