@@ -362,6 +362,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Notes', path: '/notes' },
         { label: 'Projects', path: '/projects' },
         { label: 'Find a Tutor', path: '/tutors' },
+        { label: 'Tutor Match', path: '/tutor-match' },
         { label: 'FAQ', path: '/faq' },
         { label: 'Help', path: '/help' },
         { label: 'LMS Connections', path: '/settings/lms' },
@@ -384,6 +385,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Quiz History', path: '/quiz-history' });
       items.push({ label: 'My Emails', path: '/settings/emails' });
       items.push({ label: 'Find a Tutor', path: '/tutors' });
+      items.push({ label: 'Tutor Match', path: '/tutor-match' });
     }
 
     items.push(
@@ -424,6 +426,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Analytics', path: '/admin/analytics' });
       items.push({ label: 'LMS Admin', path: '/admin/lms' });
       items.push({ label: 'Billing Admin', path: '/admin/billing' });
+      items.push({ label: 'Feature Flags', path: '/admin/feature-flags' });
       items.push({ label: 'My Learning', path: '/personalization' });
       items.push({ label: 'AI Email', path: '/email-agent' });
     }
