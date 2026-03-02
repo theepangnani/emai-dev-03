@@ -108,6 +108,28 @@ def require_role(*roles: UserRole):
     return checker
 
 
+def require_feature(flag_key: str):
+    """FastAPI dependency factory -- returns 404 if the feature flag is disabled.
+
+    Usage::
+
+        @router.get("/my-endpoint")
+        def my_endpoint(
+            _flag=Depends(require_feature("google_classroom")),
+            ...
+        ):
+    """
+    def checker(db: Session = Depends(get_db)):
+        from app.models.feature_flag import FeatureFlag
+        flag = db.query(FeatureFlag).filter(FeatureFlag.key == flag_key).first()
+        if not flag or not flag.is_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Feature not available",
+            )
+    return checker
+
+
 def can_access_course(db: Session, user: User, course_id: int) -> bool:
     """Check if a user has access to a specific course.
 

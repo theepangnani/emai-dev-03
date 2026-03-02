@@ -487,6 +487,15 @@ def seed_default_flags(db: Session) -> None:
             "enabled_roles": [],
             "enabled_tiers": [],
         },
+        {
+            "key": "google_classroom",
+            "name": "Google Classroom",
+            "description": "Enables Google Classroom integration: course sync, assignment sync, grade sync, and teacher account management.",
+            "scope": FlagScope.GLOBAL.value,
+            "is_enabled": True,
+            "enabled_roles": [],
+            "enabled_tiers": [],
+        },
     ]
 
     seeded = 0
