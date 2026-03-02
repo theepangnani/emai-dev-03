@@ -155,7 +155,7 @@ export function ComingUpTimeline({
         {displayed.map(item => {
           const handleItemClick = () => {
             if (item.type === 'task') {
-              navigate('/tasks');
+              navigate(`/tasks/${item.taskId ?? item.id}`);
             } else {
               const orig = assignmentMap.get(item.id);
               if (orig) onNavigateStudy(orig);
@@ -201,7 +201,7 @@ export function ComingUpTimeline({
                       <button
                         className="pd-timeline-study-btn"
                         aria-label={`View ${item.title}`}
-                        onClick={(e) => { e.stopPropagation(); navigate('/tasks'); }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${item.taskId ?? item.id}`); }}
                       >
                         View
                       </button>

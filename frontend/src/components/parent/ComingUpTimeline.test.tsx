@@ -132,8 +132,8 @@ describe('ComingUpTimeline', () => {
     expect(screen.queryByText('Done task')).not.toBeInTheDocument()
   })
 
-  // Regression test for #1049: entire timeline row should be clickable
-  it('clicking a task row navigates to /tasks (regression #1049)', async () => {
+  // Regression test for #1049/#1051: clicking task row navigates to task detail
+  it('clicking a task row navigates to /tasks/:id (regression #1051)', async () => {
     const items: CalendarAssignment[] = [
       {
         id: 1_000_001,
@@ -154,7 +154,7 @@ describe('ComingUpTimeline', () => {
     renderTimeline(items)
     const row = screen.getByText('Clickable task').closest('[role="listitem"]')!
     await userEvent.click(row)
-    expect(mockNavigate).toHaveBeenCalledWith('/tasks')
+    expect(mockNavigate).toHaveBeenCalledWith('/tasks/1')
   })
 
   it('clicking an assignment row calls onNavigateStudy (regression #1049)', async () => {
