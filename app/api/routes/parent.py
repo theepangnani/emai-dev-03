@@ -1687,3 +1687,27 @@ def request_task_completion(
     db.commit()
 
     return {"message": f"Completion request sent to {student_user.full_name} for \"{task.title}\""}
+
+
+# ---------------------------------------------------------------------------
+# Progress alias for parents (#960)
+# ---------------------------------------------------------------------------
+
+@router.get("/children/{student_id}/progress")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_child_progress(
+    request: Request,
+    student_id: int,
+    refresh_ai: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
+):
+    """Progress snapshot for a parent's child — delegates to the students progress endpoint."""
+    from app.api.routes.students import get_student_progress
+    return await get_student_progress(
+        request=request,
+        student_id=student_id,
+        refresh_ai=refresh_ai,
+        db=db,
+        current_user=current_user,
+    )

@@ -213,7 +213,7 @@
 - [x] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007) (IMPLEMENTED)
 - [x] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573) (IMPLEMENTED)
 - [x] **AI Mock Exam Generator** — GPT-4o-mini generates N MCQ questions per topic/difficulty; teacher preview/edit, save, bulk-assign to students; countdown timer ExamPage with question navigator; score reveal + per-question explanation; student dashboard Assigned Exams section; `/teacher/exams` dedicated page; anti-cheat correct_index hiding (#667) (IMPLEMENTED)
-- [x] **Student Progress & Report Card Analysis** — Report card upload + AI mark extraction (#663) implemented; grade entry (#665) implemented (#960 partially IMPLEMENTED — remaining: consolidated analytics dashboard) — consolidated from #575, #581, #663)
+- [x] **Student Progress & Report Card Analysis** — Report card upload + AI mark extraction (#663) implemented; grade entry (#665) implemented; consolidated analytics dashboard at `/progress` with quiz performance bars, teacher grade cards, report card trend, AI insights (24h cache), study streak, assignment stats, parent child-selector (#960 IMPLEMENTED — consolidated from #575, #581, #663)
 - [x] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735) (IMPLEMENTED — verified done in Phase 1.5 and feature/phase-2)
 - [x] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479) (IMPLEMENTED)
 
@@ -384,7 +384,7 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 
 ### Phase 3 (Course Planning & Guidance)
 - [ ] **Ontario Curriculum Management** — Download, parse, and serve Ontario curriculum data; curriculum-aligned analytics and AI anchoring (#571)
-- [ ] **Exam Preparation Engine** — AI-powered personalized prep plans combining curriculum + quiz history + test records (#576)
+- [x] **Exam Preparation Engine** — AI-powered personalized prep plans combining curriculum + quiz history + test records (#576) — **IMPLEMENTED**
 - [x] **School Board Integration** — Board-specific course catalogs, student ↔ board linking, board selection in Edit Child modal; seed 5 Ontario boards (TDSB, PDSB, YRDSB, HDSB, OCDSB) (#511, depends on #113) — **IMPLEMENTED**
 - [x] **Course Catalog Model** — Board-scoped high school course database with prerequisites, credits, grade levels, subject areas, streams, specialized programs (IB/AP/SHSM); seed per-board Ontario OSSD courses (#500) — **IMPLEMENTED**
 - [x] **Academic Plan Model** — Multi-year course plan per student (Grade 9-12) with semester breakdown, planned/in-progress/completed statuses; parent + student CRUD with RBAC (#501) — **IMPLEMENTED**
@@ -394,7 +394,7 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [x] **Multi-Year Planner UI** — Visual Grade 9-12 grid with course cards, prerequisite arrows, subject color coding, graduation progress dashboard, drag-and-drop (#505) — **IMPLEMENTED**
 - [x] **University Pathway Alignment** — Map plans to post-secondary program admission requirements; gap analysis, multi-program comparison; seed top Ontario university programs (#506) — **IMPLEMENTED**
 - [x] **Course Planning Navigation & Dashboard Integration** — Nav links, landing page, My Kids integration, Parent Dashboard quick actions (#507) — **IMPLEMENTED**
-- [ ] **Course Planning Tests** — 20+ backend route tests, 10+ frontend component tests (#508)
+- [x] **Course Planning Tests** — 20+ backend route tests, 10+ frontend component tests (#508) — **IMPLEMENTED**
 - [ ] Multi-language support
 - [ ] Advanced AI personalization
 - [ ] Admin analytics
