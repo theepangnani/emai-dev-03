@@ -1,5 +1,6 @@
 /* ============================================================
-   Study Hub Page — Unified Classes + Materials + Quiz Stats
+   Study Hub Page — Premium Learning Workspace
+   Notion × Linear × Duolingo — structured, purposeful, with personality
    ============================================================ */
 
 /* ── Page shell ──────────────────────────────────────────── */
@@ -15,13 +16,34 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: 16px;
+  padding: 24px 28px;
   margin-bottom: 24px;
+  background: linear-gradient(135deg, var(--color-accent-subtle) 0%, var(--color-surface) 70%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.study-page-header::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: var(--color-accent);
+  opacity: 0.06;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .study-page-header-left {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .study-page-title {
@@ -53,16 +75,21 @@
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
-  transition: background 0.18s, transform 0.18s;
+  transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .study-upload-btn:hover {
   background: var(--color-accent-strong);
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .study-upload-btn:active {
   transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 /* ── Sync error banner ───────────────────────────────────── */
@@ -162,9 +189,10 @@
   transition: background 0.14s, color 0.14s, border-left-color 0.14s;
 }
 
-.study-course-item:hover {
+.study-course-item:hover:not(.active) {
   background: var(--color-surface-alt);
   color: var(--color-ink);
+  border-left-color: var(--color-border);
 }
 
 .study-course-item.active {
@@ -283,6 +311,7 @@
   padding: 14px 16px 16px;
 }
 
+/* Legacy stat grid (kept for compat — replaced by ring layout) */
 .study-progress-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -316,11 +345,50 @@
   color: var(--color-ink-muted);
 }
 
+/* ── Progress Ring Layout ────────────────────────────────── */
+.study-progress-ring-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.study-progress-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.study-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.study-progress-detail-label {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+}
+
+.study-progress-detail-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+}
+
+/* ── Progress Empty State ────────────────────────────────── */
 .study-progress-empty {
   font-size: 12px;
   color: var(--color-ink-muted);
   text-align: center;
   padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   font-style: italic;
 }
 
@@ -328,7 +396,7 @@
   display: block;
   width: 100%;
   padding: 6px 12px;
-  margin-top: 4px;
+  margin-top: 10px;
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -355,7 +423,9 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  border-top: 3px solid var(--course-accent, var(--color-border));
   padding: 20px 24px;
+  transition: border-top-color 0.25s ease;
 }
 
 .study-materials-header {
@@ -371,6 +441,57 @@
   font-family: var(--font-display);
   color: var(--color-ink);
   margin: 0;
+}
+
+/* ── Continue Studying Row ───────────────────────────────── */
+.study-continue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.study-continue-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.study-continue-items {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.study-continue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.study-continue-chip:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-light);
+  color: var(--color-accent-strong);
 }
 
 /* ── Type Filter Pills ───────────────────────────────────── */
@@ -422,17 +543,24 @@
   padding: 14px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   text-align: left;
 }
 
+/* Type-specific left border colors */
+.study-material-card[data-type="study_guide"] { border-left-color: var(--color-accent); }
+.study-material-card[data-type="quiz"] { border-left-color: #f97316; }
+.study-material-card[data-type="flashcards"] { border-left-color: #8b5cf6; }
+.study-material-card[data-type="raw"] { border-left-color: var(--color-ink-muted); }
+
 .study-material-card:hover {
   background: var(--color-surface-alt);
   border-color: var(--color-accent-light);
-  box-shadow: var(--shadow-xs);
-  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px) translateX(2px);
 }
 
 .study-material-card:focus-visible {
@@ -440,12 +568,16 @@
   outline-offset: 2px;
 }
 
+/* ── Material Icon (circle background) ──────────────────── */
 .study-material-icon {
-  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  line-height: 1;
-  width: 32px;
-  text-align: center;
 }
 
 .study-material-info {
@@ -453,7 +585,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .study-material-title {
@@ -466,9 +598,51 @@
 }
 
 .study-material-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   color: var(--color-ink-muted);
-  text-transform: capitalize;
+}
+
+/* ── Type Badge Pills ────────────────────────────────────── */
+.study-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.study-type-study_guide {
+  background: rgba(0, 184, 200, 0.12);
+  color: var(--color-accent);
+}
+
+.study-type-quiz {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+}
+
+.study-type-flashcards {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.study-type-raw,
+.study-type-undefined {
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+/* ── Course label in All view ────────────────────────────── */
+.study-material-course {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  opacity: 0.8;
 }
 
 .study-material-date {
@@ -483,7 +657,6 @@
   display: flex;
   gap: 6px;
   flex-shrink: 0;
-  /* Prevent click-through to card handler */
 }
 
 .study-action-btn {
@@ -494,7 +667,11 @@
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  transition: background 0.14s, color 0.14s, border-color 0.14s, transform 0.1s;
+}
+
+.study-action-btn:active {
+  transform: scale(0.97);
 }
 
 .study-action-btn.primary {
@@ -631,6 +808,7 @@
     align-items: flex-start;
     gap: 10px;
     margin-bottom: 16px;
+    padding: 16px 18px;
   }
 
   .study-upload-btn {
@@ -692,14 +870,12 @@
 
   .study-course-name {
     white-space: nowrap;
-    overflow: visible;
-    text-overflow: clip;
-    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 120px;
   }
 
-  /* Hide sidebar action buttons on mobile — accessible via nav */
+  /* Sidebar action buttons compact on mobile */
   .study-panel-actions {
     flex-direction: row;
     gap: 8px;
@@ -717,12 +893,8 @@
     padding: 12px;
   }
 
-  .study-progress-stats {
-    gap: 6px;
-  }
-
-  .study-progress-value {
-    font-size: 15px;
+  .study-progress-ring-layout {
+    gap: 10px;
   }
 
   /* Materials panel — top border flush with course tabs */
@@ -754,7 +926,19 @@
   .study-material-actions {
     width: 100%;
     justify-content: flex-end;
-    padding-left: 44px; /* align with text, past icon */
+    padding-left: 52px; /* align with text, past icon */
+  }
+
+  /* Continue row scrolls on mobile */
+  .study-continue-items {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .study-continue-items::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -764,8 +948,9 @@
   }
 
   .study-material-icon {
-    font-size: 18px;
-    width: 24px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
   }
 
   .study-material-title {
@@ -776,6 +961,11 @@
     padding: 4px 10px;
     font-size: 11px;
   }
+
+  .study-type-badge {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
 }
 
 /* ── Reduced motion ──────────────────────────────────────── */
@@ -784,11 +974,17 @@
   .study-filter-pill,
   .study-course-item,
   .study-upload-btn,
-  .study-action-btn {
+  .study-action-btn,
+  .study-continue-chip,
+  .study-materials-panel {
     transition: none !important;
   }
 
   .study-material-card:hover {
+    transform: none;
+  }
+
+  .study-upload-btn:hover {
     transform: none;
   }
 

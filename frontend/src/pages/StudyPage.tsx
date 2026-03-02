@@ -31,13 +31,38 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function getContentIcon(contentType: string): string {
-  switch (contentType) {
-    case 'study_guide': return '\u{1F4D6}'; // open book
-    case 'quiz':        return '\u{2753}';   // red question mark
-    case 'flashcards':  return '\u{2728}';   // sparkles
-    default:            return '\u{1F4C4}';  // document
+function getTypeColor(type: string): string {
+  switch (type) {
+    case 'study_guide': return 'var(--color-accent)';
+    case 'quiz': return '#f97316';
+    case 'flashcards': return '#8b5cf6';
+    default: return 'var(--color-ink-muted)';
   }
+}
+
+function ContentTypeIcon({ type, size = 20 }: { type: string; size?: number }) {
+  const color = getTypeColor(type);
+  if (type === 'study_guide') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  );
+  if (type === 'quiz') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3"/>
+    </svg>
+  );
+  if (type === 'flashcards') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="6" width="20" height="14" rx="2"/><path d="M6 2h12a2 2 0 0 1 2 2v2H4V4a2 2 0 0 1 2-2z"/>
+    </svg>
+  );
+  // default: document
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  );
 }
 
 function getContentTypeLabel(contentType: string): string {
@@ -58,6 +83,33 @@ function getDetailPath(item: CourseContentItem): string {
 // if it's not raw, it already has a generated type; if raw, show Generate.
 function isRaw(item: CourseContentItem): boolean {
   return item.content_type === 'raw' || !item.content_type;
+}
+
+// ── Progress Ring Component ───────────────────────────────────────────────────
+
+function ProgressRing({ score, size = 72, strokeWidth = 6 }: { score: number; size?: number; strokeWidth?: number }) {
+  const r = (size - strokeWidth * 2) / 2;
+  const circ = 2 * Math.PI * r;
+  const filled = Math.max(0, Math.min(1, score / 100)) * circ;
+  const cx = size / 2;
+  const cy = size / 2;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-border)" strokeWidth={strokeWidth} />
+      <circle
+        cx={cx} cy={cy} r={r} fill="none"
+        stroke="var(--color-accent)" strokeWidth={strokeWidth}
+        strokeDasharray={`${filled} ${circ - filled}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cy})`}
+        style={{ transition: 'stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1)' }}
+      />
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+        style={{ fontSize: size * 0.22, fontWeight: 700, fill: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}>
+        {score}%
+      </text>
+    </svg>
+  );
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -298,40 +350,31 @@ export function StudyPage() {
   }
 
   function renderProgressSection() {
-    if (statsLoading) {
-      return <div className="skeleton" style={{ height: 72, borderRadius: 8 }} />;
-    }
+    if (statsLoading) return <div className="skeleton" style={{ height: 90, borderRadius: 12 }} />;
     if (!quizStats || quizStats.total_attempts === 0) {
       return (
         <div className="study-progress-empty">
-          <span>Take a quiz to see your progress</span>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-border)" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="2.5"/>
+          </svg>
+          <span>Take a quiz to track your progress</span>
         </div>
       );
     }
-    const trendIcon =
-      quizStats.recent_trend === 'improving' ? '\u2191'
-      : quizStats.recent_trend === 'declining' ? '\u2193'
-      : '\u2192';
-    const trendColor =
-      quizStats.recent_trend === 'improving' ? 'var(--color-success)'
-      : quizStats.recent_trend === 'declining' ? 'var(--color-danger)'
-      : 'var(--color-ink-muted)';
+    const trendIcon = quizStats.recent_trend === 'improving' ? '↑' : quizStats.recent_trend === 'declining' ? '↓' : '→';
+    const trendColor = quizStats.recent_trend === 'improving' ? 'var(--color-success)' : quizStats.recent_trend === 'declining' ? 'var(--color-danger)' : 'var(--color-ink-muted)';
     return (
-      <div className="study-progress-stats">
-        <div className="study-progress-stat">
-          <span className="study-progress-value">{quizStats.average_score}%</span>
-          <span className="study-progress-label">Avg Score</span>
-        </div>
-        <div className="study-progress-stat">
-          <span className="study-progress-value" style={{ color: 'var(--color-success)' }}>{quizStats.best_score}%</span>
-          <span className="study-progress-label">Best</span>
-        </div>
-        <div className="study-progress-stat">
-          <span className="study-progress-value">
-            {quizStats.total_attempts}
-            <span style={{ fontSize: 12, marginLeft: 2, color: trendColor }}>{trendIcon}</span>
-          </span>
-          <span className="study-progress-label">Quizzes</span>
+      <div className="study-progress-ring-layout">
+        <ProgressRing score={quizStats.average_score} />
+        <div className="study-progress-details">
+          <div className="study-progress-row">
+            <span className="study-progress-detail-label">Best</span>
+            <span className="study-progress-detail-value" style={{ color: 'var(--color-success)' }}>{quizStats.best_score}%</span>
+          </div>
+          <div className="study-progress-row">
+            <span className="study-progress-detail-label">Quizzes</span>
+            <span className="study-progress-detail-value">{quizStats.total_attempts} <span style={{ fontSize: 11, color: trendColor }}>{trendIcon}</span></span>
+          </div>
         </div>
       </div>
     );
@@ -365,26 +408,29 @@ export function StudyPage() {
 
   function renderMaterialCard(item: CourseContentItem) {
     const raw = isRaw(item);
-    const icon = getContentIcon(item.content_type);
-    const typeLabel = getContentTypeLabel(item.content_type);
 
     return (
       <div
         key={item.id}
         className="study-material-card"
+        data-type={item.content_type || 'raw'}
         onClick={() => handleMaterialClick(item)}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMaterialClick(item); } }}
-        aria-label={`${item.title} — ${typeLabel}`}
+        aria-label={`${item.title} — ${getContentTypeLabel(item.content_type)}`}
       >
-        <span className="study-material-icon" aria-hidden="true">{icon}</span>
+        <span className="study-material-icon">
+          <ContentTypeIcon type={item.content_type} size={20} />
+        </span>
         <div className="study-material-info">
           <span className="study-material-title">{item.title}</span>
           <span className="study-material-meta">
-            {typeLabel}
+            <span className={`study-type-badge study-type-${item.content_type || 'raw'}`}>
+              {getContentTypeLabel(item.content_type)}
+            </span>
             {item.course_name && selectedCourseId === 'all' && (
-              <> &middot; {item.course_name}</>
+              <span className="study-material-course">{item.course_name}</span>
             )}
           </span>
         </div>
@@ -421,6 +467,25 @@ export function StudyPage() {
         <div className="study-materials-header">
           <h2 className="study-materials-title">{panelTitle}</h2>
         </div>
+
+        {/* Continue studying shortcut */}
+        {selectedCourseId === 'all' && typeFilter === 'all' && filteredMaterials.length > 0 && (
+          <div className="study-continue-row">
+            <span className="study-continue-label">Continue</span>
+            <div className="study-continue-items">
+              {filteredMaterials.slice(0, 2).map(item => (
+                <button
+                  key={item.id}
+                  className="study-continue-chip"
+                  onClick={() => navigate(getDetailPath(item))}
+                >
+                  <ContentTypeIcon type={item.content_type} size={14} />
+                  <span>{item.title.length > 20 ? item.title.slice(0, 20) + '\u2026' : item.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {renderTypeFilters()}
 
@@ -531,9 +596,9 @@ export function StudyPage() {
                 {syncing ? (
                   <><span className="study-spin" aria-hidden="true" /> Syncing...</>
                 ) : googleConnected ? (
-                  <>\u{1F504} Sync Google</>
+                  <>{'\u{1F504}'} Sync Google</>
                 ) : (
-                  <>\u{1F4E1} Connect Google</>
+                  <>{'\u{1F4E1}'} Connect Google</>
                 )}
               </button>
             </div>
@@ -554,7 +619,14 @@ export function StudyPage() {
           </aside>
 
           {/* RIGHT: Materials Panel */}
-          <main className="study-materials-wrapper" aria-label="Study materials">
+          <main
+            className="study-materials-wrapper"
+            style={selectedCourse
+              ? { '--course-accent': getCourseColor(selectedCourse.id, allCourseIds) } as React.CSSProperties
+              : {}
+            }
+            aria-label="Study materials"
+          >
             {renderMaterialsPanel()}
           </main>
 
