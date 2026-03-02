@@ -112,6 +112,7 @@ export type {
   QuizResultSummary,
   QuizHistoryStats,
   ResolvedStudent,
+  StudyGuidePoolStats,
 } from './study';
 export { messagesApi } from './messages';
 export type {
@@ -124,7 +125,7 @@ export type {
   RecipientOption,
 } from './messages';
 export { notificationsApi } from './notifications';
-export type { NotificationResponse, NotificationPreferences } from './notifications';
+export type { NotificationResponse, NotificationPreferences, AdvancedNotificationPreferences, AdvancedNotificationPreferencesResponse } from './notifications';
 export { teacherCommsApi } from './teachers';
 export type {
   TeacherCommunication,

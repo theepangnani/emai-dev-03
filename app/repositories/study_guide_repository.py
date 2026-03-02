@@ -188,6 +188,61 @@ class StudyGuideRepository(BaseRepository[StudyGuide]):
         )
         return self.db.execute(stmt).scalars().first()
 
+    def find_pool_guide(
+        self,
+        content_hash: str,
+        guide_type: str,
+        exclude_user_id: int,
+    ) -> StudyGuide | None:
+        """Search the cross-user content pool for a reusable guide.
+
+        Finds the first non-archived guide with ``content_hash`` and
+        ``guide_type`` belonging to any user OTHER than ``exclude_user_id``
+        (the requesting user).  If found, the caller can clone the guide
+        instead of invoking the AI service — saving the generation cost.
+
+        Note: This intentionally searches across all users — the guide
+        content itself is not user-private; only metadata (user_id) differs.
+        """
+        stmt = (
+            select(StudyGuide)
+            .where(
+                StudyGuide.content_hash == content_hash,
+                StudyGuide.guide_type == guide_type,
+                StudyGuide.user_id != exclude_user_id,
+                StudyGuide.archived_at.is_(None),
+            )
+            .order_by(StudyGuide.created_at.asc())
+        )
+        return self.db.execute(stmt).scalars().first()
+
+    def count_reuses(self) -> int:
+        """Count the number of guides that were reused from the content pool.
+
+        Returns the count of rows where ``source_guide_id IS NOT NULL``.
+        Used by the admin pool stats endpoint.
+        """
+        stmt = (
+            select(sa_func.count())
+            .select_from(StudyGuide)
+            .where(StudyGuide.source_guide_id.isnot(None))
+        )
+        return self.db.execute(stmt).scalar_one()
+
+    def count_total_and_unique(self) -> tuple[int, int]:
+        """Return (total_guides, unique_content_hashes) for dedup stats.
+
+        Used by GET /api/study-guides/pool to compute savings.
+        """
+        total = self.db.execute(
+            select(sa_func.count()).select_from(StudyGuide)
+        ).scalar_one()
+        unique = self.db.execute(
+            select(sa_func.count(StudyGuide.content_hash.distinct())).select_from(StudyGuide)
+            .where(StudyGuide.content_hash.isnot(None))
+        ).scalar_one()
+        return total, unique
+
     def count_for_user(self, user_id: int, *, include_archived: bool = False) -> int:
         """Return the number of study guides owned by ``user_id``.
 

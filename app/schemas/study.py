@@ -42,10 +42,12 @@ class StudyGuideResponse(BaseModel):
     guide_type: str
     version: int = 1
     parent_guide_id: int | None = None
+    source_guide_id: int | None = None  # Set when guide was reused from content pool (#573)
     focus_prompt: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     auto_created_tasks: list[AutoCreatedTask] = []
+    reused: bool = False  # True when guide was served from content pool (no AI cost)
 
     class Config:
         from_attributes = True
@@ -84,8 +86,10 @@ class QuizResponse(BaseModel):
     guide_type: str = "quiz"
     version: int = 1
     parent_guide_id: int | None = None
+    source_guide_id: int | None = None  # Set when reused from content pool (#573)
     created_at: datetime
     auto_created_tasks: list[AutoCreatedTask] = []
+    reused: bool = False  # True when served from content pool (no AI cost)
 
     class Config:
         from_attributes = True
@@ -122,8 +126,10 @@ class FlashcardSetResponse(BaseModel):
     guide_type: str = "flashcards"
     version: int = 1
     parent_guide_id: int | None = None
+    source_guide_id: int | None = None  # Set when reused from content pool (#573)
     created_at: datetime
     auto_created_tasks: list[AutoCreatedTask] = []
+    reused: bool = False  # True when served from content pool (no AI cost)
 
     class Config:
         from_attributes = True
@@ -153,3 +159,11 @@ class DuplicateCheckResponse(BaseModel):
     exists: bool
     existing_guide: StudyGuideResponse | None = None
     message: str | None = None
+
+
+class StudyGuidePoolStats(BaseModel):
+    """Admin-only dedup statistics for the study guide content pool (#573)."""
+    total_guides: int
+    unique_content_hashes: int
+    reuses: int
+    estimated_savings_usd: float

@@ -1,0 +1,208 @@
+/* ── Quick Action FAB (floating speed-dial) (#837) ──────────── */
+
+.qaf-root {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+
+/* ── Backdrop (mobile, taps outside to close) ──── */
+.qaf-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.25);
+  animation: qafFadeIn 0.15s ease-out;
+}
+
+@keyframes qafFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Main FAB button ──────────────────────────── */
+.qaf-main-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent, #49b8c0);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.qaf-main-btn:hover {
+  background: var(--color-accent-strong, #3aa4ac);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: scale(1.06);
+}
+
+.qaf-main-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.qaf-main-btn:focus-visible {
+  outline: 3px solid var(--color-accent, #49b8c0);
+  outline-offset: 3px;
+}
+
+/* Rotate the + icon to × when open */
+.qaf-plus-icon {
+  transition: transform 0.2s ease;
+}
+
+.qaf-main-btn--open .qaf-plus-icon {
+  transform: rotate(45deg);
+}
+
+/* ── Speed-dial action container ─────────────── */
+.qaf-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+  pointer-events: none;
+}
+
+.qaf-actions--open {
+  pointer-events: auto;
+}
+
+/* ── Individual action item (label + button row) */
+.qaf-action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Hidden by default — animated in when open */
+  opacity: 0;
+  transform: scale(0.7) translateY(8px);
+  transition:
+    opacity 0.18s ease calc(var(--i, 0) * 50ms),
+    transform 0.18s ease calc(var(--i, 0) * 50ms);
+}
+
+.qaf-actions--open .qaf-action-item {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* ── Action label tooltip (shown to the left) ─ */
+.qaf-action-label {
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, #1a1a1a);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--font-display, sans-serif);
+  line-height: 1.2;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+/* ── Action circle button ─────────────────────── */
+.qaf-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent, #49b8c0);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.qaf-action-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.qaf-action-btn:active {
+  transform: scale(0.95);
+}
+
+.qaf-action-btn:focus-visible {
+  outline: 3px solid var(--color-accent, #49b8c0);
+  outline-offset: 2px;
+}
+
+/* ── Dark mode ────────────────────────────────── */
+[data-theme='dark'] .qaf-main-btn {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .qaf-action-label {
+  background: var(--color-surface, #1e1e2e);
+  color: var(--color-ink, #e5e7eb);
+  border-color: var(--color-border, #3a3a4a);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .qaf-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* ── Mobile adjustments ───────────────────────── */
+@media (max-width: 768px) {
+  .qaf-root {
+    /* Shift up further on mobile to avoid overlap with system navigation bar */
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+  }
+
+  .qaf-main-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .qaf-action-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .qaf-action-label {
+    font-size: 0.78rem;
+    padding: 4px 8px;
+  }
+}
+
+/* ── Reduced motion ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .qaf-action-item {
+    transition: opacity 0.1s ease !important;
+  }
+
+  .qaf-main-btn,
+  .qaf-action-btn {
+    transition: none !important;
+  }
+
+  .qaf-plus-icon {
+    transition: none !important;
+  }
+}

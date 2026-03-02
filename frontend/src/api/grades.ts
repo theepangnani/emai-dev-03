@@ -56,6 +56,30 @@ export interface GradeSyncResponse {
   message: string;
 }
 
+// --- Google Classroom live grade types (#838) ---
+
+/** A single graded submission fetched live from Google Classroom. */
+export interface ClassroomGradeItem {
+  course_id: number | null;
+  course_name: string;
+  assignment_title: string;
+  assignment_id: number | null;
+  grade: number;
+  max_grade: number;
+  percentage: number;
+  graded_at: string | null;
+}
+
+export interface ClassroomGradesResponse {
+  grades: ClassroomGradeItem[];
+  cached: boolean;
+}
+
+export interface ClassroomCourseGradesResponse {
+  grades: ClassroomGradeItem[];
+  course_id: number;
+}
+
 // --- API ---
 
 export const gradesApi = {
@@ -76,5 +100,27 @@ export const gradesApi = {
   syncGrades: async (courseId: number) => {
     const resp = await api.post(`/api/google/sync-grades/${courseId}`);
     return resp.data as GradeSyncResponse;
+  },
+
+  /**
+   * Fetch live graded submissions from Google Classroom for the current student.
+   * Parents: pass childId (user_id of child) to get grades for a linked child.
+   * Returns [] if Google is not connected or the API call fails.
+   */
+  getGrades: async (childId?: number): Promise<ClassroomGradeItem[]> => {
+    const params: Record<string, unknown> = {};
+    if (childId !== undefined) params.child_id = childId;
+    const resp = await api.get('/api/google/classroom/grades', { params });
+    return (resp.data as ClassroomGradesResponse).grades ?? [];
+  },
+
+  /**
+   * Fetch live graded submissions from Google Classroom for a specific course.
+   */
+  getCourseGrades: async (courseId: number, childId?: number): Promise<ClassroomGradeItem[]> => {
+    const params: Record<string, unknown> = {};
+    if (childId !== undefined) params.child_id = childId;
+    const resp = await api.get(`/api/google/classroom/grades/course/${courseId}`, { params });
+    return (resp.data as ClassroomCourseGradesResponse).grades ?? [];
   },
 };

@@ -1124,3 +1124,107 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 .sd-gen-view-btn { background: var(--color-success); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .sd-gen-dismiss-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; line-height: 1; padding: 0 2px; }
+
+/* ── Recent Grades (#838) ─────────────────────────────────────── */
+.sd-recent-grades .sd-grades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sd-grade-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-raised, #f8f9fa);
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.sd-grade-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sd-grade-assignment {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sd-grade-course {
+  font-size: 12px;
+  color: var(--color-ink-muted, #6b7280);
+}
+
+.sd-grade-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sd-grade-chip--green {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.sd-grade-chip--amber {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+}
+
+.sd-grade-chip--red {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+/* ── Assignment submission (#839) ──────────────── */
+.sd-timeline-submit {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.sd-submit-btn {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.sd-submit-btn:hover {
+  opacity: 0.85;
+}
+
+.sd-submitted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-success-light, #ecfdf5);
+  color: var(--color-success-dark, #166534);
+  border: 1px solid var(--color-success, #22c55e);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}

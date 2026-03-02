@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,9 @@ from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
 from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
+from app.models.assignment import StudentAssignment, Assignment
 from app.schemas.student import StudentCreate, StudentResponse
+from app.schemas.assignment import SubmissionResponse
 from app.api.deps import get_current_user, require_role
 
 router = APIRouter(prefix="/students", tags=["Students"])
@@ -210,3 +212,79 @@ def get_streak(
         longest_streak=student.longest_streak or 0,
         streak_updated=False,
     )
+
+
+@router.get("/{student_id}/submissions", response_model=list[SubmissionResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_student_submissions(
+    request: Request,
+    student_id: int,
+    status_filter: str | None = Query(None, alias="status"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all submissions for a student. Accessible by the student themselves, their linked parents, teachers, and admins."""
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+    # Access control
+    if current_user.role == UserRole.ADMIN:
+        pass  # Admin can see all
+    elif current_user.role == UserRole.STUDENT:
+        if student.user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    elif current_user.role == UserRole.PARENT:
+        link = db.query(parent_students).filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        ).first()
+        if not link:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    elif current_user.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        if teacher:
+            course_ids = [
+                r[0] for r in db.query(Course.id).filter(Course.teacher_id == teacher.id).all()
+            ]
+            enrolled = db.query(student_courses).filter(
+                student_courses.c.student_id == student_id,
+                student_courses.c.course_id.in_(course_ids),
+            ).first() if course_ids else None
+            if not enrolled:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        else:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    query = db.query(StudentAssignment).filter(
+        StudentAssignment.student_id == student_id,
+    )
+    if status_filter:
+        query = query.filter(StudentAssignment.status == status_filter)
+
+    submissions = query.order_by(StudentAssignment.submitted_at.desc().nullslast()).offset(offset).limit(limit).all()
+
+    result = []
+    for sa in submissions:
+        assignment = sa.assignment
+        result.append(SubmissionResponse(
+            id=sa.id,
+            student_id=sa.student_id,
+            assignment_id=sa.assignment_id,
+            status=sa.status,
+            submitted_at=sa.submitted_at,
+            grade=sa.grade,
+            submission_file_name=sa.submission_file_name,
+            submission_notes=sa.submission_notes,
+            is_late=sa.is_late or False,
+            assignment_title=assignment.title if assignment else None,
+            course_name=assignment.course.name if assignment and assignment.course else None,
+            student_name=student.user.full_name if student and student.user else None,
+            has_file=bool(sa.submission_file_path),
+        ))
+
+    return result

@@ -16,6 +16,7 @@ import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { ParentConsentCards } from '../components/ParentConsentCards';
+import { submissionsApi } from '../api/submissions';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -103,6 +104,9 @@ export function ParentDashboard() {
   const [sectionStates, setSectionStates] = useState<SectionStates>(loadSectionStates);
   const [viewMode, setViewMode] = useState<'simplified' | 'full'>(loadViewMode);
 
+  // Submissions this week per child (#839)
+  const [childSubmissionCounts, setChildSubmissionCounts] = useState<Map<number, number>>(new Map());
+
   // Scroll indicator state for child selector (#830)
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -126,6 +130,25 @@ export function ParentDashboard() {
       ro.disconnect();
     };
   }, [updateScrollIndicators, pd.children.length]);
+
+  // Load submissions this week per child (#839)
+  useEffect(() => {
+    if (!pd.children.length) return;
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const counts = new Map<number, number>();
+    Promise.all(
+      pd.children.map(async (child) => {
+        try {
+          const subs = await submissionsApi.getStudentSubmissions(child.student_id, { status: 'submitted', limit: 50 });
+          const thisWeek = subs.filter(s => s.submitted_at && new Date(s.submitted_at) >= weekAgo);
+          counts.set(child.student_id, thisWeek.length);
+        } catch {
+          counts.set(child.student_id, 0);
+        }
+      })
+    ).then(() => setChildSubmissionCounts(new Map(counts)));
+  }, [pd.children]);
 
   const updateSection = useCallback((key: keyof SectionStates, value: boolean) => {
     setSectionStates(prev => {
@@ -301,6 +324,7 @@ export function ParentDashboard() {
               {pd.children.map((child, index) => {
                 const isSelected = pd.selectedChild === child.student_id;
                 const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
+                const submissionCount = childSubmissionCounts.get(child.student_id) ?? 0;
                 // When "All" tab is present, keyboard index is offset by 1
                 const tabKeyIndex = pd.children.length > 1 ? index + 1 : index;
                 return (
@@ -317,6 +341,11 @@ export function ParentDashboard() {
                     {child.full_name}
                     {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
                     {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
+                    {submissionCount > 0 && (
+                      <span className="pd-submissions-badge" aria-label={`${submissionCount} submission${submissionCount !== 1 ? 's' : ''} this week`} title={`${submissionCount} submission${submissionCount !== 1 ? 's' : ''} this week`}>
+                        {submissionCount} sub{submissionCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </button>
                 );
               })}

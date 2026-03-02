@@ -6,6 +6,38 @@ from app.models.notification import NotificationType
 from app.schemas.user import strip_whitespace
 
 
+class AdvancedNotificationPreferences(BaseModel):
+    """Per-type notification preference toggles + digest settings."""
+    # In-app toggles
+    in_app_assignments: bool = True
+    in_app_messages: bool = True
+    in_app_tasks: bool = True
+    in_app_system: bool = True
+    in_app_reminders: bool = True
+    # Email toggles
+    email_assignments: bool = True
+    email_messages: bool = True
+    email_tasks: bool = True
+    email_reminders: bool = True
+    # Digest
+    digest_mode: bool = False
+    digest_hour: int = Field(default=8, ge=0, le=23)
+
+    class Config:
+        from_attributes = True
+
+
+class AdvancedNotificationPreferencesResponse(AdvancedNotificationPreferences):
+    id: int
+    user_id: int
+    last_digest_sent_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 class NotificationCreate(BaseModel):
     user_id: int
     type: NotificationType

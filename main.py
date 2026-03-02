@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -33,7 +33,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, TaskTemplate, TaskComment, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, TaskTemplate, TaskComment, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, NotificationPreference, QuizResult
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.teacher_google_account import TeacherGoogleAccount  # noqa: F401 — ensure table is created
@@ -885,6 +885,17 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── study_guides: source_guide_id column (#573) — content reuse pool ──
+    if "study_guides" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
+        if "source_guide_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN source_guide_id INTEGER REFERENCES study_guides(id)"))
+                logger.info("Added 'source_guide_id' column to study_guides")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # ── users: subscription_tier column (#1007) ──────────────────
     if "users" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("users")}
@@ -1014,6 +1025,7 @@ app.include_router(study.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(notification_preferences.router, prefix="/api")
 app.include_router(teacher_communications.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
@@ -1176,6 +1188,15 @@ async def startup_event():
         process_scheduled_deletions,
         CronTrigger(hour=2, minute=0),
         id="account_deletion_cleanup",
+        replace_existing=True,
+    )
+
+    # Daily notification digest — runs every hour, sends to users whose digest_hour matches (#966)
+    from app.jobs.notification_digest import send_daily_digests
+    scheduler.add_job(
+        send_daily_digests,
+        CronTrigger(minute=0),  # top of every hour
+        id="notification_digest",
         replace_existing=True,
     )
 

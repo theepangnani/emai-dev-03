@@ -1136,6 +1136,18 @@ export function StudyGuidesPage() {
                       <span className="guide-row-meta">
                         {guideTypeLabel(guide.guide_type)}
                         {guide.version > 1 && <span className="version-badge">v{guide.version}</span>}
+                        {guide.source_guide_id != null && (
+                          <span
+                            className="sg-shared-content-badge"
+                            title="Generated from shared content pool — no AI cost"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+                              <path d="M10 2.5a7.5 7.5 0 1 0 7.5 7.5A7.51 7.51 0 0 0 10 2.5zm0 13.33a5.83 5.83 0 1 1 5.83-5.83A5.84 5.84 0 0 1 10 15.83z" fill="currentColor"/>
+                              <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            {' '}Shared
+                          </span>
+                        )}
                         <span className="guide-row-date">{new Date(guide.created_at).toLocaleDateString()}</span>
                       </span>
                     </div>

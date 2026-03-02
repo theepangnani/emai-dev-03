@@ -36,6 +36,28 @@ export interface NotificationPreferences {
   task_reminder_days: string;
 }
 
+export interface AdvancedNotificationPreferences {
+  in_app_assignments: boolean;
+  in_app_messages: boolean;
+  in_app_tasks: boolean;
+  in_app_system: boolean;
+  in_app_reminders: boolean;
+  email_assignments: boolean;
+  email_messages: boolean;
+  email_tasks: boolean;
+  email_reminders: boolean;
+  digest_mode: boolean;
+  digest_hour: number;
+}
+
+export interface AdvancedNotificationPreferencesResponse extends AdvancedNotificationPreferences {
+  id: number;
+  user_id: number;
+  last_digest_sent_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface NotificationSuppressionResponse {
   id: number;
   user_id: number;
@@ -96,5 +118,20 @@ export const notificationsApi = {
 
   deleteSuppression: async (suppressionId: number) => {
     await api.delete(`/api/notifications/suppressions/${suppressionId}`);
+  },
+
+  getPreferences: async () => {
+    const response = await api.get('/api/notifications/preferences');
+    return response.data as AdvancedNotificationPreferencesResponse;
+  },
+
+  updatePreferences: async (data: AdvancedNotificationPreferences) => {
+    const response = await api.put('/api/notifications/preferences', data);
+    return response.data as AdvancedNotificationPreferencesResponse;
+  },
+
+  getDigestPreview: async () => {
+    const response = await api.get('/api/notifications/digest/preview');
+    return response.data as NotificationResponse[];
   },
 };
