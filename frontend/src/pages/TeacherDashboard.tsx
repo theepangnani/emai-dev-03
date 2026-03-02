@@ -561,8 +561,8 @@ export function TeacherDashboard() {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             ),
-            label: 'Course Material',
-            onClick: () => setShowUploadModal(true),
+            label: 'Class Material',
+            onClick: () => studyTools.setShowStudyModal(true),
           },
         ] satisfies QuickAction[]}
         maxVisible={4}

@@ -97,13 +97,13 @@
 - [x] **My Kids visual overhaul** — Colored avatars, task progress bars, next-deadline countdowns, quick action buttons (#301) (IMPLEMENTED)
 - [x] **Manual course creation for teachers** — Teachers can create courses (#42) (IMPLEMENTED)
 - [x] **Manual assignment creation for teachers** — Covered by manual assignment CRUD (#49) (IMPLEMENTED)
-- [x] Multi-Google account support for teachers — TeacherGoogleAccount model, connect/list/label/delete/set-primary endpoints, multi-account course sync via account_id param, inline label editing in TeacherDashboard (IMPLEMENTED)
-- [x] Auto-send invite email to shadow teachers on creation (#946) (IMPLEMENTED — Phase 1.5)
-- [x] Teacher Dashboard course management view with source badges (#947) (IMPLEMENTED — Phase 1.5)
+- [x] **Multi-Google account support for teachers** — TeacherGoogleAccount model, connect/list/label/delete/set-primary endpoints, multi-account course sync via account_id param, inline label editing in TeacherDashboard (IMPLEMENTED)
+- [x] **Auto-send invite email to shadow teachers on creation** — 30-day debounce (#946) (IMPLEMENTED)
+- [x] **Teacher Dashboard course management view with source badges** (#947) (IMPLEMENTED)
 - [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
 - [x] **Admin individual messaging** — Send message + email to specific user (#259) (IMPLEMENTED)
 - [x] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260) (IMPLEMENTED)
-- [x] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412) (IMPLEMENTED — Phase 1.5)
+- [x] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412) (IMPLEMENTED)
 - [x] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414) (IMPLEMENTED)
 - [x] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509) (IMPLEMENTED)
 - [x] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510) (IMPLEMENTED)
@@ -119,7 +119,22 @@
 - [x] **Calendar styles fix on Tasks page** — Copy calendar-collapse CSS from ParentDashboard.css to TasksPage.css after Calendar move (#694, PR #695) (IMPLEMENTED)
 - [x] **Print & Download PDF export** — Print and Download PDF buttons on all 4 Course Material Detail tabs (Document, Study Guide, Quiz, Flashcards); html2pdf.js dynamic import; static print views for quiz/flashcards (#764, PR #763) (IMPLEMENTED)
 - [x] **Focus prompt history + content moderation** — Persist `focus_prompt` on study guide records; pre-populate focus field from last saved focus on Course Material Detail; Claude Haiku K-12 safety check on all generation paths (#1001) (IMPLEMENTED — PR #1002)
-- [x] **File upload security hardening** — Reduce per-file limit to 20 MB (configurable via `MAX_UPLOAD_SIZE_MB`), magic bytes validation to prevent extension spoofing, 10-file session cap in upload modal (#1006) (IMPLEMENTED)
+- [x] **File upload security hardening** — 20 MB per-file limit (configurable via `MAX_UPLOAD_SIZE_MB`), magic bytes validation to prevent extension spoofing, 10-file session cap in upload modal (#1006) (IMPLEMENTED, PR #1008)
+- [x] **Multi-file selection in Upload Documents modal** — Select up to 10 files at once; each file creates a separate course material; drag-and-drop zone; sequential OCR extraction runs in background (#991) (IMPLEMENTED, PR #977)
+- [x] **Multi-file upload extended to Student and Teacher dashboards** — Upload Documents modal with multi-file support and background OCR available to all roles (was Parent-only) (#1015) (IMPLEMENTED, PR #1017)
+- [x] **Clickable dashboard header label CTAs** — Summary stat labels (Assignments, Study Guides, etc.) on all role dashboards navigate to the relevant page with contextual filters pre-applied (#1012) (IMPLEMENTED, PR #1013)
+- [x] **'All Children' filter button on Tasks and My Kids pages** — Dedicated "All" button in child filter row (Tasks page, My Kids page) clears individual child selection and shows aggregated data (#1016) (IMPLEMENTED, PR #1018)
+- [x] **Move Grades section from Parent Dashboard to My Kids page** — Grade history cards relocated to My Kids page per child for better contextual grouping (#980) (IMPLEMENTED)
+- [x] **ClassBridge logo v6.1 in dashboard header** — Updated header logo across all role dashboards (#981) (IMPLEMENTED)
+- [x] **Student UX Simplification** — Unified Study Hub (/study) merging Classes + Materials + Quiz History; nav reduced 8→5; quote on dashboard only; task urgency grouping (#1022-#1029, #1032-#1035) (IMPLEMENTED)
+- [x] **Show today's date on all role dashboards** (#1037) (IMPLEMENTED, PR #1038)
+- [x] **My Kids page reorder + Reset Password to + menu** (#1039) (IMPLEMENTED, PR #1040)
+- [x] **Inspiration message on all dashboard pages** — Show on all pages, not just /dashboard (#1041) (IMPLEMENTED, PR #1042)
+- [x] **Class material titles as clickable links** on CoursesPage (#1043) (IMPLEMENTED, PR #1044)
+- [x] **Case-insensitive email login** (#1045) (IMPLEMENTED, PR #1046)
+- [x] **Coming Up timeline shows tasks** — Tasks now appear alongside assignments in Coming Up section, matching header overdue/due-today counts (#1047) (IMPLEMENTED, PR #1048)
+- [x] **Coming Up timeline clickable rows** — Entire timeline item row is clickable, not just the View/Study button (#1049) (IMPLEMENTED, PR #1050)
+- [x] **Coming Up task detail navigation** — Clicking a task navigates to `/tasks/:id` detail page (#1051) (IMPLEMENTED, PR #1052)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
@@ -189,7 +204,7 @@
 - [x] **Rate limiting** — No rate limiting on AI generation, auth, or file upload endpoints; risk of brute force and API quota abuse (#140) (IMPLEMENTED)
 - [x] **CORS hardening** — ~~Currently allows `*` origins; tighten to known frontend domains (#64)~~ ✅ Fixed in #177
 - [x] **Security headers** — Add X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, CSP (#141) (IMPLEMENTED)
-- [x] **Input validation** — Field length limits, whitespace stripping, URL validation on all endpoints (#142) (IMPLEMENTED — Phase 1.5)
+- [x] **Input validation** — Field length limits, whitespace stripping, URL validation on all endpoints (#142) (IMPLEMENTED)
 - [x] **Password reset flow** — Forgot Password link + email-based reset (#143) — see §6.26
 
 #### Data Integrity & Performance (Tier 0)
@@ -375,6 +390,13 @@ Community-driven help center where users ask questions, provide answers, and adm
 - `/admin/faq` — Admin approval queue + question management
 
 **GitHub Issues:** #437 (models), #438 (schemas), #439 (API routes), #440 (search), #441 (error references), #442 (frontend), #443 (tests), #444 (seed data)
+
+#### Google OAuth Production Launch (March 2026)
+- [x] **Privacy Policy + Terms of Service pages** — `/privacy` and `/terms` live at classbridge.ca (#585, #586) (IMPLEMENTED)
+- [x] **Rename OAuth consent screen** — App name updated from EMAI → ClassBridge; logo, homepage, privacy/ToS links updated (#726) (IMPLEMENTED)
+- [x] **Remove gmail.readonly from initial OAuth scopes** — Incremental auth implemented; gmail.readonly deferred to post-launch to avoid CASA audit (#727) (IMPLEMENTED)
+- [x] **Support email for OAuth consent screen** — classbridge-support Google Group created and set as support email (#757) (IMPLEMENTED)
+- [x] **Google OAuth app published to production** — App moved from Testing → In production; branding verified; all Classroom scopes registered; no sensitive scope review required (#589) (IMPLEMENTED — March 1, 2026)
 
 ### Phase 2 (Mobile App — March 6 Pilot MVP) - IN PROGRESS
 

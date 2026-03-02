@@ -775,6 +775,20 @@
   }
 }
 
+.dashboard-date-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin-bottom: 20px;
+}
+
+.dashboard-date-bar svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));

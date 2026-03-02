@@ -241,7 +241,7 @@ describe('StudyGuidePage', () => {
     renderStudyGuide()
     await waitFor(() => {
       // PageNav provides deterministic back link to Course Materials
-      const navLinks = screen.getAllByText('Course Materials')
+      const navLinks = screen.getAllByText('Class Materials')
       expect(navLinks.length).toBeGreaterThanOrEqual(1)
     })
   })

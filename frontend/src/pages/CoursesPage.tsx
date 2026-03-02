@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { parentApi, coursesApi, courseContentsApi, googleApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
+import { PageNav } from '../components/PageNav';
 import EmptyState from '../components/EmptyState';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import './CoursesPage.css';
@@ -579,6 +580,10 @@ export function CoursesPage() {
       ]}
     >
       <div className="courses-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Classes' },
+        ]} />
         {actionError && (
           <div className="error-banner" style={{ background: '#fef2f2', color: '#991b1b', padding: '8px 16px', borderRadius: '8px', marginBottom: 12 }}>
             {actionError}
@@ -728,7 +733,7 @@ export function CoursesPage() {
                                   <span className={`content-type-badge ${item.content_type}`}>
                                     {CONTENT_TYPE_LABELS[item.content_type] || item.content_type}
                                   </span>
-                                  <span className="content-item-title">{item.title}</span>
+                                  <Link to={`/course-materials/${item.id}`} className="content-item-title content-item-link">{item.title}</Link>
                                   {item.description && <p className="content-item-desc">{item.description}</p>}
                                 </div>
                                 <div className="content-item-actions">
@@ -836,7 +841,7 @@ export function CoursesPage() {
                                       <span className={`content-type-badge ${item.content_type}`}>
                                         {CONTENT_TYPE_LABELS[item.content_type] || item.content_type}
                                       </span>
-                                      <span className="content-item-title">{item.title}</span>
+                                      <Link to={`/course-materials/${item.id}`} className="content-item-title content-item-link">{item.title}</Link>
                                       {item.description && <p className="content-item-desc">{item.description}</p>}
                                     </div>
                                     <div className="content-item-actions">

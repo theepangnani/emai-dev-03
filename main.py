@@ -524,6 +524,17 @@ with engine.connect() as conn:
                     conn.rollback()  # Column may already exist from concurrent instance
         conn.commit()
 
+    # ── Rename "Main Course" → "Main Class" (#1032) ─────────────
+    if "courses" in inspector.get_table_names():
+        try:
+            conn.execute(text(
+                "UPDATE courses SET name = 'Main Class' WHERE name = 'Main Course' AND is_default = TRUE"
+            ))
+            logger.info("Renamed default 'Main Course' to 'Main Class'")
+        except Exception:
+            conn.rollback()
+        conn.commit()
+
     # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
     _apply_cascade_and_unique_migration(conn, inspector)
 
@@ -1063,6 +1074,23 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         conn.commit()
+
+    # ── Normalize emails to lowercase (#1045) ──────────────────
+    # Emails are case-insensitive per RFC 5321. Lowercase all stored emails
+    # and reset lockout for users who may have been locked out due to
+    # case-sensitive matching.
+    try:
+        conn.execute(text("UPDATE users SET email = LOWER(email) WHERE email != LOWER(email)"))
+        conn.execute(text("UPDATE invites SET email = LOWER(email) WHERE email != LOWER(email)"))
+        # Reset lockout state for any users who got locked out from case mismatch
+        conn.execute(text(
+            "UPDATE users SET failed_login_attempts = 0, locked_until = NULL "
+            "WHERE failed_login_attempts > 0"
+        ))
+        conn.commit()
+        logger.info("Normalized user emails to lowercase and reset lockout state (#1045)")
+    except Exception:
+        conn.rollback()
 
 # ── Seed email templates (#513) ──────────────────────────────────────────────
 with SessionLocal() as _seed_db:

@@ -209,7 +209,7 @@ export function FlashcardsPage() {
         <div className="error">{error || 'Flashcards not found'}</div>
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
-          { label: 'Course Materials', to: '/course-materials' },
+          { label: 'Class Materials', to: '/course-materials' },
           ...(guide?.course_content_id
             ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
             : []),
@@ -275,7 +275,7 @@ export function FlashcardsPage() {
       <div className="flashcards-header">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
-          { label: 'Course Materials', to: '/course-materials' },
+          { label: 'Class Materials', to: '/course-materials' },
           ...(guide?.course_content_id
             ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
             : []),

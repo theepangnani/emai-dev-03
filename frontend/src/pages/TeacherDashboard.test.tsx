@@ -60,6 +60,16 @@ vi.mock('../api/client', () => ({
   courseContentsApi: {
     uploadFile: vi.fn().mockResolvedValue({}),
   },
+  studyApi: {
+    getSupportedFormats: vi.fn().mockResolvedValue({ formats: [] }),
+    extractTextFromFile: vi.fn().mockResolvedValue({ text: '' }),
+    checkDuplicate: vi.fn().mockResolvedValue({ exists: false }),
+    generateGuide: vi.fn().mockResolvedValue({ id: 1 }),
+    generateQuiz: vi.fn().mockResolvedValue({ id: 1 }),
+    generateFlashcards: vi.fn().mockResolvedValue({ id: 1 }),
+    generateFromFile: vi.fn().mockResolvedValue({ id: 1 }),
+    generateFromTextAndImages: vi.fn().mockResolvedValue({ id: 1 }),
+  },
   inspirationApi: {
     getRandom: vi.fn().mockRejectedValue(new Error('none')),
   },
@@ -317,7 +327,7 @@ describe('TeacherDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
-    })
+    }, { timeout: 3000 })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
 

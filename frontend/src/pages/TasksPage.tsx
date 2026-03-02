@@ -57,7 +57,7 @@ export function TasksPage() {
   });
 
   // Create task form
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(() => searchParams.get('create') === 'true');
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
@@ -93,11 +93,12 @@ export function TasksPage() {
   const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
   const editModalRef = useFocusTrap<HTMLDivElement>(!!editTask, () => setEditTask(null));
 
-  // Calendar state
+  // Calendar state — default expanded on desktop (>= 768px) when no saved preference
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('calendar_collapsed');
-      return saved !== '0';
+      if (saved !== null) return saved !== '0';
+      return typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     } catch { return true; }
   });
   const [overviews, setOverviews] = useState<ChildOverview[]>([]);
@@ -518,16 +519,23 @@ export function TasksPage() {
               </button>
             ))}
             <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
+              { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/course-materials'), showPlus: true },
               { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
             ]} />
           </div>
         ) : (
           <div className="tasks-child-selector">
-            <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
-              { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
-            ]} />
+            <button
+              className="add-action-trigger has-label"
+              onClick={() => setShowCreate(true)}
+              aria-label="New Task"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+              <span className="add-action-label">New Task</span>
+            </button>
           </div>
         )}
 
@@ -704,8 +712,9 @@ export function TasksPage() {
           />
         ) : (
           <div className="tasks-list">
-            {filteredTasks.map(task => (
-              <div key={task.id} className={`task-row-wrapper${expandedCommentTaskId === task.id ? ' comments-open' : ''}`}>
+            {(() => {
+              const renderTaskRow = (task: TaskItem) => (
+                <div key={task.id} className={`task-row-wrapper${expandedCommentTaskId === task.id ? ' comments-open' : ''}`}>
                 <div className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
                   {loadingTaskId === task.id ? (
                     <span className="btn-spinner task-row-spinner" />
@@ -736,7 +745,7 @@ export function TasksPage() {
                       )}
                       {task.assignee_name && (
                         <span className="task-row-assignee">
-                          {isCreator(task) ? `\u2192 ${task.assignee_name}` : `\u2190 ${task.creator_name}`}
+                          {isCreator(task) ? `→ ${task.assignee_name}` : `← ${task.creator_name}`}
                         </span>
                       )}
                       {(task.study_guide_title || task.course_content_title || task.course_name) && (
@@ -796,7 +805,66 @@ export function TasksPage() {
                   ) : null}
                 </div>
               </div>
-            ))}
+              );
+
+              // Only group when showing 'all' or 'pending' — flat list for completed/archived
+              if (filterStatus === 'completed' || filterStatus === 'archived') {
+                return filteredTasks.map(renderTaskRow);
+              }
+
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const weekFromNow = new Date(today);
+              weekFromNow.setDate(today.getDate() + 7);
+
+              const overdue = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date) < today);
+              const dueToday = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date).toDateString() === today.toDateString());
+              const thisWeek = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date) > today && new Date(t.due_date) <= weekFromNow);
+              const later = filteredTasks.filter(t => !t.is_completed && !t.archived_at && (!t.due_date || new Date(t.due_date) > weekFromNow));
+              const completedGroup = filteredTasks.filter(t => t.is_completed && !t.archived_at);
+              const archivedGroup = filteredTasks.filter(t => !!t.archived_at);
+
+              return (
+                <>
+                  {overdue.length > 0 && (
+                    <>
+                      <div className="task-group-header task-group-overdue">Overdue <span>{overdue.length}</span></div>
+                      {overdue.map(renderTaskRow)}
+                    </>
+                  )}
+                  {dueToday.length > 0 && (
+                    <>
+                      <div className="task-group-header task-group-today">Due Today <span>{dueToday.length}</span></div>
+                      {dueToday.map(renderTaskRow)}
+                    </>
+                  )}
+                  {thisWeek.length > 0 && (
+                    <>
+                      <div className="task-group-header task-group-week">This Week <span>{thisWeek.length}</span></div>
+                      {thisWeek.map(renderTaskRow)}
+                    </>
+                  )}
+                  {later.length > 0 && (
+                    <>
+                      <div className="task-group-header">Later <span>{later.length}</span></div>
+                      {later.map(renderTaskRow)}
+                    </>
+                  )}
+                  {completedGroup.length > 0 && (
+                    <>
+                      <div className="task-group-header">Completed <span>{completedGroup.length}</span></div>
+                      {completedGroup.map(renderTaskRow)}
+                    </>
+                  )}
+                  {archivedGroup.length > 0 && (
+                    <>
+                      <div className="task-group-header">Archived <span>{archivedGroup.length}</span></div>
+                      {archivedGroup.map(renderTaskRow)}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

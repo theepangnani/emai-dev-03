@@ -131,6 +131,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
   ),
+  Study: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+  ),
   Tasks: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 11 12 14 22 4"/>
@@ -498,7 +504,7 @@ const NavIcon = ({ name }: { name: string }) => {
 // Quick action SVG icons — maps sidebar action labels to nav SVGs
 const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Class Material': NAV_SVG.Materials,
-  '+ Course Material': NAV_SVG.Materials,
+  '+ Course Material': NAV_SVG.Materials, // legacy fallback
   '+ Create Class Material': NAV_SVG.Materials,
   '+ Task': NAV_SVG.Tasks,
   '+ Child': NAV_SVG['My Kids'],
@@ -506,6 +512,7 @@ const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Class': NAV_SVG.Classes,
   '+ Add Class': NAV_SVG.Classes,
   '+ Create Study Material': NAV_SVG.Materials,
+  'Create Task': NAV_SVG.Tasks,
 };
 
 export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, headerSlot }: DashboardLayoutProps) {
@@ -579,6 +586,16 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       });
     }
 
+    if (user?.role === 'student') {
+      return [
+        { label: 'Home', path: '/dashboard' },
+        { label: 'Study', path: '/study' },
+        { label: 'Tasks', path: '/tasks' },
+        { label: 'Messages', path: '/messages' },
+        { label: 'Help', path: '/help' },
+      ];
+    }
+
     const items: Array<{ label: string; path: string }> = [
       { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
@@ -586,7 +603,19 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       { label: 'Documents', path: '/documents' },
     ];
 
+    items.push(
+      { label: 'Tasks', path: '/tasks' },
+      { label: 'Messages', path: '/messages' },
+    );
+
     if (user?.role === 'student') {
+      items.push({ label: 'Grades', path: '/grades' });
+      items.push({ label: 'Grade Predictions', path: '/grade-prediction' });
+      items.push({ label: 'Exam Prep', path: '/exam-prep' });
+      items.push({ label: 'Progress', path: '/progress' });
+      items.push({ label: 'Analytics', path: '/analytics' });
+      items.push({ label: 'Wellness', path: '/wellness' });
+      items.push({ label: 'My Learning', path: '/personalization' });
       items.push({ label: 'Portfolio', path: '/portfolio' });
       items.push({ label: 'Achievements', path: '/achievements' });
       items.push({ label: 'Goals', path: '/goals' });
@@ -602,21 +631,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'My Emails', path: '/settings/emails' });
       items.push({ label: 'Find a Tutor', path: '/tutors' });
       items.push({ label: 'Tutor Match', path: '/tutor-match' });
-    }
-
-    items.push(
-      { label: 'Tasks', path: '/tasks' },
-      { label: 'Messages', path: '/messages' },
-    );
-
-    if (user?.role === 'student') {
-      items.push({ label: 'Grades', path: '/grades' });
-      items.push({ label: 'Grade Predictions', path: '/grade-prediction' });
-      items.push({ label: 'Exam Prep', path: '/exam-prep' });
-      items.push({ label: 'Progress', path: '/progress' });
-      items.push({ label: 'Analytics', path: '/analytics' });
-      items.push({ label: 'Wellness', path: '/wellness' });
-      items.push({ label: 'My Learning', path: '/personalization' });
       items.push({ label: 'Forum', path: '/forum' });
     }
 
@@ -979,6 +993,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               <span className="user-role">{user?.role}</span>
             )}
           </div>
+          {user?.role === 'student' && (
+            <Link to="/settings/emails" className="email-settings-link">
+              Email Settings
+            </Link>
+          )}
           <button onClick={logout} className="logout-button">
             Sign Out
           </button>
@@ -1113,6 +1132,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
               <p>{welcomeSubtitle || "Here's your overview"}</p>
             </div>
+          </div>
+        )}
+
+        {location.pathname === '/dashboard' && (
+          <div className="dashboard-date-bar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
         )}
 

@@ -800,6 +800,32 @@
   to { transform: rotate(360deg); }
 }
 
+/* Task urgency group headers */
+.task-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-border);
+  margin: 1rem 0 0.5rem;
+}
+
+.task-group-header span {
+  background: var(--color-surface-alt);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+}
+
+.task-group-overdue { color: var(--color-danger, #dc2626); }
+.task-group-today { color: var(--color-warning, #d97706); }
+.task-group-week { color: var(--color-accent); }
+
 @media (max-width: 480px) {
   .task-row-checkbox::before {
     content: '';

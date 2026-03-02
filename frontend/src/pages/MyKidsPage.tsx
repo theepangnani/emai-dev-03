@@ -661,10 +661,16 @@ export function MyKidsPage() {
           </div>
         ))}
         <AddActionButton actions={[
-          { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
+          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/course-materials'), showPlus: true },
           { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
           { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
           { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
+          ...(selectedChild ? [{ icon: '\u{1F511}', label: 'Reset Password', onClick: () => {
+            setShowResetPassword(true);
+            const child = children.find(c => c.student_id === selectedChild);
+            setResetPwMethod(child?.email ? 'email' : 'direct');
+            setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
+          }}] : []),
         ]} />
       </div>
 
@@ -769,50 +775,6 @@ export function MyKidsPage() {
             );
           })()}
 
-          {/* ── Courses ───────────────────────────── */}
-          <div className="mykids-section">
-            <button className="mykids-section-header" onClick={() => setShowCourses(p => !p)}>
-              <span className={`section-chevron${showCourses ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon" aria-hidden="true">&#128218;</span> Classes ({overview?.courses.length ?? 0})
-            </button>
-            {showCourses && overview && (
-              <div className="mykids-list">
-                {overview.courses.length === 0 ? (
-                  <GoogleClassroomPrompt
-                    childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
-                    childStudentId={selectedChild}
-                    onAddManually={() => setShowAddCourseModal(true)}
-                  />
-                ) : overview.courses.map(c => (
-                  <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{c.name}</span>
-                      <span className="mykids-list-meta">
-                        {c.subject && <span>{c.subject}</span>}
-                        {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
-                      </span>
-                    </div>
-                    <span className="mykids-list-chevron">&#8250;</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Grades ────────────────────────────── */}
-          <div className="mykids-section">
-            <button className="mykids-section-header" onClick={() => setShowGrades(p => !p)}>
-              <span className={`section-chevron${showGrades ? ' expanded' : ''}`}>&#9654;</span>
-              <span className="section-icon" aria-hidden="true">&#128202;</span> Grades
-            </button>
-            {showGrades && (
-              <GradesSummaryCard
-                selectedChildId={selectedChild ?? undefined}
-                onViewDetails={() => navigate('/grades')}
-              />
-            )}
-          </div>
-
           {/* ── Class Materials ───────────────────── */}
           <div className="mykids-section">
             <button className="mykids-section-header" onClick={() => setShowMaterials(p => !p)}>
@@ -837,6 +799,36 @@ export function MyKidsPage() {
                       title="Move to class"
                       onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                     >&#128194;</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Courses ───────────────────────────── */}
+          <div className="mykids-section">
+            <button className="mykids-section-header" onClick={() => setShowCourses(p => !p)}>
+              <span className={`section-chevron${showCourses ? ' expanded' : ''}`}>&#9654;</span>
+              <span className="section-icon" aria-hidden="true">&#128218;</span> Classes ({overview?.courses.length ?? 0})
+            </button>
+            {showCourses && overview && (
+              <div className="mykids-list">
+                {overview.courses.length === 0 ? (
+                  <GoogleClassroomPrompt
+                    childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
+                    childStudentId={selectedChild}
+                    onAddManually={() => setShowAddCourseModal(true)}
+                  />
+                ) : overview.courses.map(c => (
+                  <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
+                    <div className="mykids-list-body">
+                      <span className="mykids-list-title">{c.name}</span>
+                      <span className="mykids-list-meta">
+                        {c.subject && <span>{c.subject}</span>}
+                        {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
+                      </span>
+                    </div>
+                    <span className="mykids-list-chevron">&#8250;</span>
                   </div>
                 ))}
               </div>
@@ -877,6 +869,20 @@ export function MyKidsPage() {
             )}
           </div>
 
+          {/* ── Grades ────────────────────────────── */}
+          <div className="mykids-section">
+            <button className="mykids-section-header" onClick={() => setShowGrades(p => !p)}>
+              <span className={`section-chevron${showGrades ? ' expanded' : ''}`}>&#9654;</span>
+              <span className="section-icon" aria-hidden="true">&#128202;</span> Grades
+            </button>
+            {showGrades && (
+              <GradesSummaryCard
+                selectedChildId={selectedChild ?? undefined}
+                onViewDetails={() => navigate('/grades')}
+              />
+            )}
+          </div>
+
           {/* ── Linked Teachers ────────────────────── */}
           <div className="mykids-section">
             <div className="mykids-section-header-row">
@@ -884,25 +890,12 @@ export function MyKidsPage() {
                 <span className={`section-chevron${showTeachers ? ' expanded' : ''}`}>&#9654;</span>
                 <span className="section-icon" aria-hidden="true">&#128105;&#8205;&#127979;</span> Teachers ({(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length})
               </button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  className="mykids-add-teacher-btn"
-                  onClick={() => {
-                    setShowResetPassword(true);
-                    const child = children.find(c => c.student_id === selectedChild);
-                    setResetPwMethod(child?.email ? 'email' : 'direct');
-                    setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
-                  }}
-                >
-                  Reset Password
-                </button>
-                <button
-                  className="mykids-add-teacher-btn"
-                  onClick={() => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
-                >
-                  + Add Teacher
-                </button>
-              </div>
+              <button
+                className="mykids-add-teacher-btn"
+                onClick={() => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
+              >
+                + Add Teacher
+              </button>
             </div>
             {showTeachers && (
               <div className="mykids-task-list">

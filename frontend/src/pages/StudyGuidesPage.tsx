@@ -836,7 +836,7 @@ export function StudyGuidesPage() {
               </button>
             ))}
             <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => setShowModal(true), showPlus: true },
+              { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => setShowModal(true), showPlus: true },
             ]} />
           </div>
         )}
@@ -1413,12 +1413,12 @@ export function StudyGuidesPage() {
                 ))}
               </div>
               <div className="assign-materials-summary">
-                <strong>Courses to assign:</strong>
+                <strong>Classes to assign:</strong>
                 <ul>
                   {[...new Set(
                     contentItems
                       .filter(c => selectedContentIds.has(c.id))
-                      .map(c => c.course_name || `Course #${c.course_id}`)
+                      .map(c => c.course_name || `Class #${c.course_id}`)
                   )].map(name => (
                     <li key={name}>{name}</li>
                   ))}

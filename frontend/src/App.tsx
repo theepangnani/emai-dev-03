@@ -126,6 +126,8 @@ const NewsletterPage = lazyRetry(() => import('./pages/NewsletterPage').then((m)
 const MeetingSchedulerPage = lazyRetry(() => import('./pages/MeetingSchedulerPage').then((m) => ({ default: m.MeetingSchedulerPage })));
 const LessonSummarizerPage = lazyRetry(() => import('./pages/LessonSummarizerPage').then((m) => ({ default: m.LessonSummarizerPage })));
 const LearningJournalPage = lazyRetry(() => import('./pages/LearningJournalPage').then((m) => ({ default: m.LearningJournalPage })));
+// StudyPage — from dev03/master production
+const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ default: m.StudyPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -229,6 +231,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <QuizHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudyPage />
                   </ProtectedRoute>
                 }
               />

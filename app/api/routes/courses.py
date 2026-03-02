@@ -32,7 +32,7 @@ _template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__f
 
 
 def get_or_create_default_course(db: Session, user: User) -> Course:
-    """Get or create the default 'Main Course' for a user."""
+    """Get or create the default 'Main Class' for a user."""
     course = db.query(Course).filter(
         Course.created_by_user_id == user.id,
         Course.is_default == True,  # noqa: E712
@@ -40,8 +40,8 @@ def get_or_create_default_course(db: Session, user: User) -> Course:
     if course:
         return course
     course = Course(
-        name="Main Course",
-        description="Default course for materials not assigned to a specific course",
+        name="Main Class",
+        description="Default class for materials not assigned to a specific class",
         created_by_user_id=user.id,
         is_private=True,
         is_default=True,

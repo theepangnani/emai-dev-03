@@ -1,12 +1,9 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Feb 28, 2026):** ~785 total issues — 630 closed (80%), 155 open (20%)
-- Phase 1: **0 open issues** (all closed)
-- Phase 1.5: 10 features implemented (on `phase-1.5` branch), 2 remaining (#941, #942)
-- Phase 2: 12 features implemented (on `feature/phase-2` branch), ~40 open issues
-- Consolidated 21 redundant issues into 5 epics (#959-#963)
-- Created 5 gap issues (#964-#968)
-- Tagged scope creep: #678 (phase-2), #941/#942 (phase-1.5)
+**Summary (as of Mar 1, 2026):** 820 total issues — 656 closed (80%), 164 open (20%)
+- **Features built:** 237 enhancements closed
+- **Bugs fixed:** 165 bugs closed
+- **Other closed:** 254 (pilot prep, docs, testing, misc)
 
 Current feature issues are tracked in GitHub:
 
@@ -222,6 +219,16 @@ Current feature issues are tracked in GitHub:
 
 ### Phase 1 - Implemented (Feb 22: Print & PDF Export — #764, PR #763)
 - ~~Issue #764: Print and Download PDF for study materials~~ ✅ (Print + Download PDF buttons on all 4 Course Material Detail tabs; html2pdf.js dynamic import; static print views for quiz all-questions and flashcards all-cards; shared `exportUtils.ts` utility)
+
+### Phase 1 - In Progress (Student UX Simplification Sprint — Mar 2026)
+- Issue #1022: [Student UX] Merge Classes and Materials pages into unified Study Hub (/study) — IN PROGRESS
+- Issue #1023: [Student Nav] Remove Quiz History from primary navigation — embed stats in Study Hub — IN PROGRESS
+- Issue #1024: [Student Nav] Move Email Settings from primary navigation to profile dropdown — IN PROGRESS
+- Issue #1025: [Student UX] Simplify Student Dashboard quick actions — remove secondary setup actions — IN PROGRESS
+- Issue #1026: [UX] Remove inspirational quote from all subpages — show only on Home dashboard — IN PROGRESS
+- Issue #1027: [Student UX] Tasks page: group tasks by urgency, show calendar by default on desktop — IN PROGRESS
+- Issue #1028: [UX] Standardize action button labels across student pages — replace icon-only buttons — PLANNED
+- Issue #1029: [Student Nav] Reduce student navigation from 8 items to 5: Home, Study, Tasks, Messages, Help — IN PROGRESS
 
 ### Phase 1 - Open (Parent Dashboard Redesign — Epic #710)
 - ~~Issue #710: Epic: Parent Dashboard Visual Redesign~~ ✅

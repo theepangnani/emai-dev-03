@@ -10,12 +10,13 @@ type UrgencyLevel = 'overdue' | 'today' | 'upcoming' | 'later';
 interface TimelineItem {
   id: number;
   title: string;
-  type: 'assignment';
+  type: 'assignment' | 'task';
   courseName?: string;
   courseColor?: string;
   childName?: string;
   dueDate: Date;
   urgency: UrgencyLevel;
+  taskId?: number;
 }
 
 interface ComingUpTimelineProps {
@@ -77,20 +78,21 @@ export function ComingUpTimeline({
 
     const items: TimelineItem[] = [];
 
-    // Only assignments (not tasks) — tasks live exclusively in StudentDetailPanel (#929)
     for (const a of calendarAssignments) {
-      if (a.itemType === 'task') continue;
+      // Skip completed tasks (assignments don't have isCompleted)
+      if (a.itemType === 'task' && a.isCompleted) continue;
       const due = a.dueDate;
       if (due >= sevenDaysOut) continue;
       items.push({
         id: a.id,
         title: a.title,
-        type: 'assignment',
+        type: a.itemType === 'task' ? 'task' : 'assignment',
         courseName: a.courseName || undefined,
         courseColor: a.courseColor || undefined,
         childName: a.childName || undefined,
         dueDate: due,
         urgency: getUrgency(due),
+        taskId: a.taskId,
       });
     }
 
@@ -109,7 +111,7 @@ export function ComingUpTimeline({
   const assignmentMap = useMemo(() => {
     const map = new Map<number, CalendarAssignment>();
     for (const a of calendarAssignments) {
-      if (a.itemType !== 'task') map.set(a.id, a);
+      map.set(a.id, a);
     }
     return map;
   }, [calendarAssignments]);
@@ -120,8 +122,8 @@ export function ComingUpTimeline({
     if (onCreateTask) emptyActions.push({ label: 'Create Task', onClick: onCreateTask, variant: 'secondary' as const });
     return (
       <EmptyState
-        title="No upcoming assignments"
-        description="Assignments from Google Classroom will appear here."
+        title="No upcoming items"
+        description="Assignments and tasks will appear here."
         actions={emptyActions}
         variant="compact"
       />
@@ -150,55 +152,78 @@ export function ComingUpTimeline({
       </div>
 
       <div className="pd-timeline" role="list">
-        {displayed.map(item => (
-          <div
-            key={`assignment-${item.id}`}
-            role="listitem"
-            className={`pd-timeline-item ${item.urgency}`}
-          >
-            <div className="pd-timeline-dot" aria-hidden="true" />
-            <div className="pd-timeline-content">
-              <div className="pd-timeline-row">
-                <div className="pd-timeline-info">
-                  <span className="pd-timeline-title">
-                    {item.title}
-                  </span>
-                  <div className="pd-timeline-meta">
-                    <span className={`pd-timeline-date ${item.urgency}`}>
-                      {formatRelativeDate(item.dueDate)}
+        {displayed.map(item => {
+          const handleItemClick = () => {
+            if (item.type === 'task') {
+              navigate(`/tasks/${item.taskId ?? item.id}`);
+            } else {
+              const orig = assignmentMap.get(item.id);
+              if (orig) onNavigateStudy(orig);
+            }
+          };
+          return (
+            <div
+              key={`${item.type}-${item.id}`}
+              role="listitem"
+              className={`pd-timeline-item ${item.urgency}`}
+              onClick={handleItemClick}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="pd-timeline-dot" aria-hidden="true" />
+              <div className="pd-timeline-content">
+                <div className="pd-timeline-row">
+                  <div className="pd-timeline-info">
+                    <span className="pd-timeline-title">
+                      {item.title}
                     </span>
-                    {item.courseName && (
-                      <span
-                        className="pd-timeline-course"
-                        style={item.courseColor ? { borderColor: item.courseColor } : undefined}
-                      >
-                        {item.courseName}
+                    <div className="pd-timeline-meta">
+                      <span className={`pd-timeline-date ${item.urgency}`}>
+                        {formatRelativeDate(item.dueDate)}
                       </span>
-                    )}
-                    <span className="pd-timeline-type assignment">
-                      Assignment
-                    </span>
-                    {!selectedChild && item.childName && (
-                      <span className="pd-timeline-child">{item.childName}</span>
+                      {item.courseName && (
+                        <span
+                          className="pd-timeline-course"
+                          style={item.courseColor ? { borderColor: item.courseColor } : undefined}
+                        >
+                          {item.courseName}
+                        </span>
+                      )}
+                      <span className={`pd-timeline-type ${item.type}`}>
+                        {item.type === 'task' ? 'Task' : 'Assignment'}
+                      </span>
+                      {!selectedChild && item.childName && (
+                        <span className="pd-timeline-child">{item.childName}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pd-timeline-actions">
+                    {item.type === 'task' ? (
+                      <button
+                        className="pd-timeline-study-btn"
+                        aria-label={`View ${item.title}`}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${item.taskId ?? item.id}`); }}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <button
+                        className="pd-timeline-study-btn"
+                        aria-label={`Study ${item.title}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const orig = assignmentMap.get(item.id);
+                          if (orig) onNavigateStudy(orig);
+                        }}
+                      >
+                        Study
+                      </button>
                     )}
                   </div>
                 </div>
-                <div className="pd-timeline-actions">
-                  <button
-                    className="pd-timeline-study-btn"
-                    aria-label={`Study ${item.title}`}
-                    onClick={() => {
-                      const orig = assignmentMap.get(item.id);
-                      if (orig) onNavigateStudy(orig);
-                    }}
-                  >
-                    Study
-                  </button>
-                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {timelineItems.length > 10 && (
           <button
             className="pd-timeline-more"

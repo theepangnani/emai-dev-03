@@ -541,7 +541,7 @@ export function StudentDashboard() {
         name: newCourseName.trim(),
         subject: newCourseSubject.trim() || undefined,
       });
-      setStatusMessage({ type: 'success', text: `Course "${newCourseName}" created!` });
+      setStatusMessage({ type: 'success', text: `Class "${newCourseName}" created!` });
       setShowCreateCourseModal(false);
       setNewCourseName('');
       setNewCourseSubject('');
@@ -653,10 +653,10 @@ export function StudentDashboard() {
         </div>
         <div className="sd-hero-stats">
           {displayStreak > 0 && (
-            <div className="sd-stat-chip streak">
+            <Link to="/tasks" className="sd-stat-chip streak sd-stat-chip--link" style={{ textDecoration: 'none' }}>
               <span className="sd-stat-icon">{'\u{1F525}'}</span>
               <span>{displayStreak} day{displayStreak !== 1 ? 's' : ''}</span>
-            </div>
+            </Link>
           )}
           <StreakMilestone streak={displayStreak} />
           <StreakHistory studyGuides={studyGuides} />
@@ -831,20 +831,8 @@ export function StudentDashboard() {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             ),
-            label: 'Course Material',
+            label: 'Class Material',
             onClick: () => studyTools.setShowStudyModal(true),
-          },
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                <line x1="12" y1="6" x2="12" y2="14" />
-                <line x1="8" y1="10" x2="16" y2="10" />
-              </svg>
-            ),
-            label: 'New Course',
-            onClick: () => setShowCreateCourseModal(true),
           },
           {
             icon: (
@@ -857,7 +845,7 @@ export function StudentDashboard() {
               </svg>
             ),
             label: 'Study Guide',
-            onClick: () => studyTools.setShowStudyModal(true),
+            onClick: () => navigate('/study'),
           },
           {
             icon: (
@@ -871,30 +859,18 @@ export function StudentDashboard() {
             label: 'Prepare for Exam',
             onClick: () => navigate('/exam-prep'),
           },
-          googleConnected ? {
+          {
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
             ),
-            label: isSyncing ? 'Syncing...' : 'Sync Classes',
-            onClick: handleSyncWithTypeChoice,
-            disabled: isSyncing,
-          } : {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            ),
-            label: 'Connect Classroom',
-            onClick: handleConnectGoogle,
-            disabled: isConnecting,
+            label: 'Create Task',
+            onClick: () => navigate('/tasks?create=true'),
           },
         ] satisfies QuickAction[]}
-        maxVisible={5}
+        maxVisible={4}
       />
 
       {/* ── Academic Plan Widget (#505/#507) ─────────────── */}
@@ -1131,7 +1107,7 @@ export function StudentDashboard() {
               icon={'\u{1F4DD}'}
               title="No study materials yet"
               description="Upload class materials or paste your notes to generate study guides."
-              action={{ label: 'Create Study Material', onClick: () => studyTools.setShowStudyModal(true) }}
+              action={{ label: 'Upload Document', onClick: () => studyTools.setShowStudyModal(true) }}
               className="sd-empty"
             />
           )}
@@ -1202,17 +1178,17 @@ export function StudentDashboard() {
               );
             })}
             <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
-              + Add Course
+              + Add Class
             </button>
           </div>
         ) : (
           <EmptyState
-            title="No courses yet"
-            description="Create a course or connect Google Classroom to get started."
+            title="No classes yet"
+            description="Create a class or connect Google Classroom to get started."
             variant="compact"
             className="sd-empty"
             actions={[
-              { label: 'Create Course', onClick: () => setShowCreateCourseModal(true) },
+              { label: 'Create Class', onClick: () => setShowCreateCourseModal(true) },
               ...(!googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
             ]}
           />
@@ -1260,15 +1236,15 @@ export function StudentDashboard() {
         </div>
       )}
 
-      {/* ── Create Course Modal ──────────────────────────── */}
+      {/* ── Create Class Modal ──────────────────────────── */}
       {showCreateCourseModal && (
         <div className="modal-overlay" onClick={() => setShowCreateCourseModal(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Create a Course" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
-            <h2>Create a Course</h2>
-            <p className="modal-desc">Add a course or subject to organize your materials.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create a Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create a Class</h2>
+            <p className="modal-desc">Add a class or subject to organize your materials.</p>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input
                   type="text"
                   value={newCourseName}
@@ -1292,7 +1268,7 @@ export function StudentDashboard() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowCreateCourseModal(false)} disabled={isCreatingCourse}>Cancel</button>
               <button className="generate-btn" onClick={handleCreateCourse} disabled={isCreatingCourse || !newCourseName.trim()}>
-                {isCreatingCourse ? 'Creating...' : 'Create Course'}
+                {isCreatingCourse ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>
