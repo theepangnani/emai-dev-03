@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_role, require_feature
 from app.models.user import User, UserRole
 from app.schemas.resource_library import (
     TeacherResourceCreate,
@@ -68,6 +68,7 @@ def _teacher_or_admin(current_user: User = Depends(get_current_user)) -> User:
 
 @router.get("/subjects", response_model=List[str], summary="List distinct subjects")
 def list_subjects(
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     _current_user: User = Depends(get_current_user),
 ):
@@ -77,6 +78,7 @@ def list_subjects(
 
 @router.get("/stats", summary="Admin: resource library statistics")
 def library_stats(
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -86,6 +88,7 @@ def library_stats(
 
 @router.get("/mine", response_model=List[TeacherResourceResponse], summary="My resources")
 def my_resources(
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -95,6 +98,7 @@ def my_resources(
 
 @router.get("/collections/", response_model=List[ResourceCollectionResponse], summary="List collections")
 def list_collections(
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -124,6 +128,7 @@ def list_collections(
 )
 def create_collection(
     body: ResourceCollectionCreate,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -155,6 +160,7 @@ def create_collection(
 def add_to_collection(
     collection_id: int,
     resource_id: int = Query(..., description="ID of the resource to add"),
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -180,6 +186,7 @@ def add_to_collection(
 )
 def get_collection(
     collection_id: int,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -194,6 +201,7 @@ def get_collection(
 
 @router.get("/", response_model=PaginatedResourceResponse, summary="Search resources")
 def search_resources(
+    _flag=Depends(require_feature("teacher_resources")),
     q: Optional[str] = Query(None, description="Full-text search"),
     subject: Optional[str] = Query(None),
     grade_level: Optional[str] = Query(None),
@@ -241,6 +249,7 @@ def search_resources(
 )
 def create_resource(
     body: TeacherResourceCreate,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -257,6 +266,7 @@ def create_resource(
 @router.get("/{resource_id}", response_model=TeacherResourceResponse, summary="Get resource")
 def get_resource(
     resource_id: int,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(get_current_user),
 ):
@@ -268,6 +278,7 @@ def get_resource(
 def update_resource(
     resource_id: int,
     body: TeacherResourceUpdate,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -279,6 +290,7 @@ def update_resource(
 @router.delete("/{resource_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete resource")
 def delete_resource(
     resource_id: int,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -296,6 +308,7 @@ def delete_resource(
 async def upload_file(
     resource_id: int,
     file: UploadFile = File(...),
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -323,6 +336,7 @@ async def upload_file(
 def rate_resource(
     resource_id: int,
     body: ResourceRatingCreate,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -351,6 +365,7 @@ def rate_resource(
 )
 def remix_resource(
     resource_id: int,
+    _flag=Depends(require_feature("teacher_resources")),
     svc: ResourceLibraryService = Depends(_service),
     current_user: User = Depends(_teacher_or_admin),
 ):
