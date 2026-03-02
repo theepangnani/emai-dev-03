@@ -20,7 +20,8 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 
 def _user_response(user: User) -> UserResponse:
-    """Build a UserResponse with the roles list populated."""
+    """Build a UserResponse with the roles list and subscription limits populated."""
+    from app.core.limits import get_limits
     return UserResponse(
         id=user.id,
         email=user.email or "",
@@ -34,6 +35,9 @@ def _user_response(user: User) -> UserResponse:
         onboarding_completed=user.onboarding_completed or False,
         email_verified=user.email_verified or False,
         created_at=user.created_at,
+        deletion_scheduled_for=getattr(user, "deletion_scheduled_for", None),
+        subscription_tier=getattr(user, "subscription_tier", "free") or "free",
+        limits=get_limits(user),
     )
 
 

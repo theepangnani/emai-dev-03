@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, courseContentsApi } from '../api/client';
-import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, courseContentsApi, teacherCommsApi } from '../api/client';
+import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem, TeacherCommunication } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import type { InspirationData } from '../components/DashboardLayout';
@@ -38,6 +38,8 @@ export function TeacherDashboard() {
   const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
   const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentItem[]>([]);
   const [focusDismissed, setFocusDismissed] = useState(false);
+  const [recentAnnouncements, setRecentAnnouncements] = useState<TeacherCommunication[]>([]);
+  const [expandedAnnouncementIds, setExpandedAnnouncementIds] = useState<Set<number>>(new Set());
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -102,7 +104,7 @@ export function TeacherDashboard() {
 
   const loadData = async () => {
     try {
-      const [coursesData, googleStatus, accountsData, invitesData, unreadData, conversationsData, assignmentsData] = await Promise.allSettled([
+      const [coursesData, googleStatus, accountsData, invitesData, unreadData, conversationsData, assignmentsData, announcementsData] = await Promise.allSettled([
         coursesApi.teachingList(),
         googleApi.getStatus(),
         googleApi.getTeacherAccounts(),
@@ -110,6 +112,7 @@ export function TeacherDashboard() {
         messagesApi.getUnreadCount(),
         messagesApi.listConversations({ limit: 3 }),
         assignmentsApi.list(),
+        teacherCommsApi.list({ page_size: 3, type: 'announcement' }),
       ]);
 
       if (coursesData.status === 'fulfilled') {
@@ -137,6 +140,9 @@ export function TeacherDashboard() {
           .filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) >= now && new Date(a.due_date) <= sevenDays)
           .sort((a: AssignmentItem, b: AssignmentItem) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
         setUpcomingAssignments(upcoming);
+      }
+      if (announcementsData.status === 'fulfilled') {
+        setRecentAnnouncements(announcementsData.value.items.slice(0, 3));
       }
     } finally {
       setLoading(false);
@@ -402,6 +408,18 @@ export function TeacherDashboard() {
 
   const firstName = user?.full_name?.split(' ')[0] ?? '';
 
+  const totalStudents = useMemo(() => courses.reduce((sum, c) => sum + c.student_count, 0), [courses]);
+  const assignmentsDueThisWeek = useMemo(() => upcomingAssignments.length, [upcomingAssignments]);
+
+  const toggleAnnouncementExpand = (id: number) => {
+    setExpandedAnnouncementIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
     if (focusDismissed) return null;
 
@@ -532,6 +550,47 @@ export function TeacherDashboard() {
         maxVisible={4}
       />
 
+      {/* Quick Stats Bar (#833) */}
+      <div className="td-stats-bar">
+        <button type="button" className="td-stat-chip" onClick={() => navigate('/courses')}>
+          <svg className="td-stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span className="td-stat-value">{courses.length}</span>
+          <span className="td-stat-label">{courses.length === 1 ? 'Course' : 'Courses'}</span>
+        </button>
+        <button type="button" className="td-stat-chip" onClick={() => navigate('/courses')}>
+          <svg className="td-stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span className="td-stat-value">{totalStudents}</span>
+          <span className="td-stat-label">{totalStudents === 1 ? 'Student' : 'Students'}</span>
+        </button>
+        <button type="button" className="td-stat-chip" onClick={() => navigate('/courses')}>
+          <svg className="td-stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="8" y1="16" x2="12" y2="16"/>
+          </svg>
+          <span className="td-stat-value">{assignmentsDueThisWeek}</span>
+          <span className="td-stat-label">Due This Week</span>
+        </button>
+        <button type="button" className={`td-stat-chip${unreadCount > 0 ? ' td-stat-chip--alert' : ''}`} onClick={() => navigate('/messages')}>
+          <svg className="td-stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          {unreadCount > 0 && <span className="td-stat-badge">{unreadCount}</span>}
+          <span className="td-stat-value">{unreadCount}</span>
+          <span className="td-stat-label">Unread</span>
+        </button>
+      </div>
+
       {/* Activity Summary */}
       <div className="teacher-activity-summary">
         <div className="teacher-activity-card">
@@ -601,6 +660,62 @@ export function TeacherDashboard() {
           )}
         </div>
       </div>
+
+      {/* Recent Announcements (#833) */}
+      {recentAnnouncements.length > 0 && (
+        <section className="td-announcements-section">
+          <div className="td-announcements-header">
+            <div className="td-announcements-title-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <h3>Recent Announcements</h3>
+            </div>
+            <button type="button" className="teacher-activity-view-all" onClick={() => navigate('/teacher-comms')}>View All</button>
+          </div>
+          <div className="td-announcements-list">
+            {recentAnnouncements.map(ann => {
+              const isExpanded = expandedAnnouncementIds.has(ann.id);
+              const bodyText = ann.body || ann.snippet || '';
+              const isLong = bodyText.length > 180;
+              return (
+                <div key={ann.id} className={`td-announcement-card${!ann.is_read ? ' td-announcement-card--unread' : ''}`}>
+                  <div className="td-announcement-meta">
+                    <span className="td-announcement-from">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      {ann.sender_name || ann.course_name || 'Announcement'}
+                    </span>
+                    {ann.received_at && (
+                      <span className="td-announcement-date">
+                        {new Date(ann.received_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                  {ann.subject && <div className="td-announcement-subject">{ann.subject}</div>}
+                  {bodyText && (
+                    <div className={`td-announcement-body${isExpanded ? ' expanded' : ''}`}>
+                      {bodyText}
+                    </div>
+                  )}
+                  {isLong && (
+                    <button
+                      type="button"
+                      className="td-announcement-expand"
+                      onClick={() => toggleAnnouncementExpand(ann.id)}
+                    >
+                      {isExpanded ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="dashboard-sections">
         {/* Course Management Section (#947) */}

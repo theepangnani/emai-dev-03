@@ -1,4 +1,7 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter, get_user_id_or_ip
@@ -11,6 +14,18 @@ from app.schemas.student import StudentCreate, StudentResponse
 from app.api.deps import get_current_user, require_role
 
 router = APIRouter(prefix="/students", tags=["Students"])
+
+
+# ── Streak Schemas ──────────────────────────────────────────────
+
+class StudyActivityResponse(BaseModel):
+    study_streak_days: int
+    last_study_date: date | None
+    longest_streak: int
+    streak_updated: bool  # True if streak actually changed
+
+    class Config:
+        from_attributes = True
 
 
 @router.post("/", response_model=StudentResponse)
@@ -122,3 +137,76 @@ def get_student(
                     return student
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
+
+@router.post("/study-activity", response_model=StudyActivityResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def record_study_activity(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STUDENT)),
+):
+    """Record that the student studied today. Updates streak counters.
+
+    - If last_study_date is today: no change (idempotent)
+    - If last_study_date is yesterday: increment streak
+    - If last_study_date is older (or null): reset streak to 1
+    - Always updates longest_streak if current exceeds it
+    """
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No student profile found")
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    streak_updated = False
+
+    if student.last_study_date == today:
+        # Already recorded today — idempotent, return current state
+        pass
+    elif student.last_study_date == yesterday:
+        # Consecutive day — extend streak
+        student.study_streak_days = (student.study_streak_days or 0) + 1
+        student.last_study_date = today
+        streak_updated = True
+    else:
+        # Gap or first time — reset streak to 1
+        student.study_streak_days = 1
+        student.last_study_date = today
+        streak_updated = True
+
+    # Update longest streak
+    if student.study_streak_days > (student.longest_streak or 0):
+        student.longest_streak = student.study_streak_days
+        streak_updated = True
+
+    if streak_updated:
+        db.commit()
+        db.refresh(student)
+
+    return StudyActivityResponse(
+        study_streak_days=student.study_streak_days or 0,
+        last_study_date=student.last_study_date,
+        longest_streak=student.longest_streak or 0,
+        streak_updated=streak_updated,
+    )
+
+
+@router.get("/streak", response_model=StudyActivityResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_streak(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STUDENT)),
+):
+    """Get the current student's streak data."""
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No student profile found")
+
+    return StudyActivityResponse(
+        study_streak_days=student.study_streak_days or 0,
+        last_study_date=student.last_study_date,
+        longest_streak=student.longest_streak or 0,
+        streak_updated=False,
+    )

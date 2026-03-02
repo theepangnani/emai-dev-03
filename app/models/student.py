@@ -67,6 +67,11 @@ class Student(Base):
     parent_consent_given_at = Column(DateTime(timezone=True), nullable=True)
     student_consent_given_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Study streak tracking (#834)
+    study_streak_days = Column(Integer, default=0, nullable=False)
+    last_study_date = Column(Date, nullable=True)
+    longest_streak = Column(Integer, default=0, nullable=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

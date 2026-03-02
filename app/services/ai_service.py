@@ -10,12 +10,26 @@ from app.core.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def get_anthropic_client() -> anthropic.Anthropic:
-    """Get configured Anthropic client."""
-    if not settings.anthropic_api_key:
+def get_anthropic_client(user=None) -> anthropic.Anthropic:
+    """Return a configured Anthropic client.
+
+    If *user* has a stored AI API key (BYOK, #578) that key is used; otherwise the
+    platform key from settings is used as a fallback.
+
+    IMPORTANT: The decrypted key is never logged.
+    """
+    api_key = settings.anthropic_api_key
+    if user is not None and getattr(user, "ai_api_key_encrypted", None):
+        try:
+            from app.core.encryption import decrypt_key
+            api_key = decrypt_key(user.ai_api_key_encrypted)
+        except Exception:
+            pass  # silently fall back to platform key
+
+    if not api_key:
         logger.error("Anthropic API key not configured")
         raise ValueError("ANTHROPIC_API_KEY not configured")
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return anthropic.Anthropic(api_key=api_key)
 
 
 def check_content_safe(text: str) -> tuple[bool, str]:
@@ -55,6 +69,7 @@ async def generate_content(
     system_prompt: str = "You are an educational assistant helping students learn effectively.",
     max_tokens: int = 2000,
     temperature: float = 0.7,
+    user=None,
 ) -> str:
     """
     Generate content using Anthropic Claude API.
@@ -64,6 +79,7 @@ async def generate_content(
         system_prompt: The system context for the AI
         max_tokens: Maximum tokens in response
         temperature: Creativity level (0-1)
+        user: Optional User ORM instance; if set and has BYOK key, that key is used (#578)
 
     Returns:
         Generated text content
@@ -73,7 +89,7 @@ async def generate_content(
     logger.debug(f"Prompt length: {len(prompt)} chars")
 
     try:
-        client = get_anthropic_client()
+        client = get_anthropic_client(user)
 
         message = client.messages.create(
             model=settings.claude_model,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
+import { googleApi, coursesApi, assignmentsApi, studyApi, studentApi } from '../api/client';
+import type { StudyActivityResponse } from '../api/client';
 import { notificationsApi, type NotificationResponse } from '../api/notifications';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { invitesApi } from '../api/invites';
@@ -116,6 +117,9 @@ export function StudentDashboard() {
   const [showClassroomTypeModal, setShowClassroomTypeModal] = useState(false);
   const [classroomType, setClassroomType] = useState<'school' | 'private'>('school');
 
+  // Backend streak data (#834)
+  const [backendStreak, setBackendStreak] = useState<StudyActivityResponse | null>(null);
+
   // Invite teacher state
   const [gradeSummary, setGradeSummary] = useState<ChildGradeSummary | null>(null);
 
@@ -229,6 +233,30 @@ export function StudentDashboard() {
 
   const streak = useMemo(() => calculateStreak(studyGuides), [studyGuides]);
 
+  // Use backend streak if available, fall back to locally computed streak
+  const displayStreak = backendStreak ? backendStreak.study_streak_days : streak;
+
+  // Is streak at risk? — last study date was yesterday (streak hasn't been continued today)
+  const streakAtRisk = useMemo(() => {
+    if (!backendStreak?.last_study_date) return false;
+    const lastDate = new Date(backendStreak.last_study_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return lastDate.getTime() === yesterday.getTime() && (backendStreak.study_streak_days ?? 0) >= 2;
+  }, [backendStreak]);
+
+  // Spaced repetition: study guides not accessed in 3+ days (#834)
+  const dueForReview = useMemo(() => {
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    return studyGuides
+      .filter(g => new Date(g.created_at) < threeDaysAgo)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .slice(0, 3);
+  }, [studyGuides]);
+
   // ── Data Loading ──────────────────────────────────────────────
   useEffect(() => {
     const checkGoogleStatus = async () => {
@@ -265,6 +293,7 @@ export function StudentDashboard() {
       loadTasks(),
       loadNotifications(),
       loadGradeSummary(),
+      loadBackendStreak(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
@@ -322,6 +351,15 @@ export function StudentDashboard() {
       }
     } catch {
       // Grades not loaded — not critical
+    }
+  };
+
+  const loadBackendStreak = async () => {
+    try {
+      const data = await studentApi.getStreak();
+      setBackendStreak(data);
+    } catch {
+      // Streak not loaded — not critical (student may not have a profile yet)
     }
   };
 
@@ -506,13 +544,13 @@ export function StudentDashboard() {
           )}
         </div>
         <div className="sd-hero-stats">
-          {streak > 0 && (
+          {displayStreak > 0 && (
             <div className="sd-stat-chip streak">
               <span className="sd-stat-icon">{'\u{1F525}'}</span>
-              <span>{streak} day{streak !== 1 ? 's' : ''}</span>
+              <span>{displayStreak} day{displayStreak !== 1 ? 's' : ''}</span>
             </div>
           )}
-          <StreakMilestone streak={streak} />
+          <StreakMilestone streak={displayStreak} />
           <StreakHistory studyGuides={studyGuides} />
           {gradeSummary && gradeSummary.courses.length > 0 && (
             <Link to="/grades" className="sd-stat-chip grade" style={{ textDecoration: 'none' }}>
@@ -667,8 +705,68 @@ export function StudentDashboard() {
         maxVisible={4}
       />
 
+      {/* ── Streak At Risk Banner (#834) ─────────────────── */}
+      {streakAtRisk && (
+        <div className="sd-streak-at-risk" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>
+            <strong>Keep it up!</strong> Study today to maintain your {displayStreak}-day streak.
+          </span>
+        </div>
+      )}
+
       {/* ── Continue Studying ─────────────────────────────── */}
       <ContinueStudying studyGuides={studyGuides} courses={courses} />
+
+      {/* ── Due for Review (Spaced Repetition) (#834) ─────── */}
+      {dueForReview.length > 0 && (
+        <section className="sd-due-review">
+          <div className="sd-panel-header">
+            <div className="sd-review-title-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <h2>Due for Review</h2>
+            </div>
+            <Link to="/course-materials" className="sd-see-all">See all</Link>
+          </div>
+          <div className="sd-review-list">
+            {dueForReview.map(guide => (
+              <Link
+                key={guide.id}
+                to={
+                  guide.guide_type === 'quiz'
+                    ? `/study/quiz/${guide.id}`
+                    : guide.guide_type === 'flashcards'
+                    ? `/study/flashcards/${guide.id}`
+                    : `/study/guide/${guide.id}`
+                }
+                className="sd-review-card"
+              >
+                <div className="sd-review-card-info">
+                  <span className="sd-review-icon">
+                    {guide.guide_type === 'quiz' ? '\u{2753}' : guide.guide_type === 'flashcards' ? '\u{1F0CF}' : '\u{1F4D6}'}
+                  </span>
+                  <div>
+                    <div className="sd-review-title">{guide.title}</div>
+                    <div className="sd-review-meta">
+                      {guide.guide_type.replace('_', ' ')}
+                      {' \u00B7 '}
+                      Last created {Math.floor((Date.now() - new Date(guide.created_at).getTime()) / 86400000)}d ago
+                    </div>
+                  </div>
+                </div>
+                <span className="sd-review-btn">Review Now</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Main Content Grid ────────────────────────────── */}
       <div className="sd-main-grid">
@@ -766,7 +864,7 @@ export function StudentDashboard() {
               icon={'\u{1F4DD}'}
               title="No study materials yet"
               description="Upload class materials or paste your notes to generate study guides."
-              action={{ label: 'Create Study Material', onClick: () => setShowCreateModal(true) }}
+              action={{ label: 'Create Study Material', onClick: () => studyTools.setShowStudyModal(true) }}
               className="sd-empty"
             />
           )}

@@ -19,13 +19,15 @@ from app.models.course import Course
 from app.models.assignment import Assignment
 from app.models.audit_log import AuditLog
 from app.models.broadcast import Broadcast
+from app.models.email_template import EmailTemplate
 from app.models.message import Conversation, Message
 from app.models.notification import Notification, NotificationType
 from app.api.deps import require_role
 from app.schemas.admin import (
     AdminUserList, AdminStats,
-    BroadcastCreate, BroadcastResponse, BroadcastListItem,
+    BroadcastCreate, BroadcastResponse, BroadcastListItem, BroadcastDetail,
     AdminMessageCreate, AdminMessageResponse,
+    EmailTemplateResponse, EmailTemplateListItem, EmailTemplateUpdate, EmailTemplatePreviewResponse,
 )
 from app.schemas.audit import AuditLogResponse, AuditLogList
 from app.schemas.user import UserResponse
@@ -284,6 +286,52 @@ def update_user_email(
         f"Updated {updated_invites} pending invite(s)."
     )
 
+    return user
+
+
+class UpdateSubscriptionRequest(BaseModel):
+    tier: str  # "free" | "premium"
+
+
+@router.patch("/users/{user_id}/subscription", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_user_subscription(
+    user_id: int,
+    data: UpdateSubscriptionRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Set a user's subscription tier ('free' or 'premium'). Admin only. (#1007)"""
+    if data.tier not in ("free", "premium"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="tier must be 'free' or 'premium'",
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    old_tier = user.subscription_tier
+    user.subscription_tier = data.tier
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="subscription_update",
+        resource_type="user",
+        resource_id=user.id,
+        details={"old_tier": old_tier, "new_tier": data.tier, "target_email": user.email},
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+    db.refresh(user)
+
+    logger.info(
+        "Admin %s set subscription tier for user %s: %s -> %s",
+        current_user.id, user.id, old_tier, data.tier,
+    )
     return user
 
 
@@ -564,3 +612,354 @@ def send_admin_message(
             logger.warning("Failed to send admin message email to user %s", user.id)
 
     return AdminMessageResponse(success=True, email_sent=email_sent)
+
+
+# ── Broadcast resend (#514) ──────────────────────────────────────────────────
+
+@router.get("/broadcasts/{broadcast_id}", response_model=BroadcastDetail)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_broadcast(
+    broadcast_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Get full details of a past broadcast."""
+    broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
+    if not broadcast:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broadcast not found")
+    return broadcast
+
+
+@router.post("/broadcasts/{broadcast_id}/resend", response_model=BroadcastResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+def resend_broadcast(
+    broadcast_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Resend a previous broadcast to all active users. Creates a new broadcast record."""
+    original = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
+    if not original:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broadcast not found")
+
+    active_users = db.query(User).filter(User.is_active == True).all()  # noqa: E712
+
+    # Create new broadcast record for this resend
+    new_broadcast = Broadcast(
+        sender_id=current_user.id,
+        subject=original.subject,
+        body=original.body,
+        recipient_count=len(active_users),
+        email_count=0,
+    )
+    db.add(new_broadcast)
+    db.flush()
+
+    # Create in-app notifications + conversation messages for all active users
+    message_content = f"[Broadcast] {original.subject}\n\n{original.body}"
+    for user in active_users:
+        db.add(Notification(
+            user_id=user.id,
+            type=NotificationType.SYSTEM,
+            title=original.subject,
+            content=original.body,
+        ))
+        if user.id != current_user.id:
+            conv = _get_or_create_conversation(db, current_user.id, user.id, subject=original.subject)
+            db.add(Message(
+                conversation_id=conv.id,
+                sender_id=current_user.id,
+                content=message_content,
+            ))
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="broadcast_resend",
+        resource_type="broadcast",
+        resource_id=new_broadcast.id,
+        details={"subject": original.subject, "original_id": broadcast_id, "recipient_count": len(active_users)},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    email_recipients = [
+        (user.email, user.full_name)
+        for user in active_users
+        if user.email
+    ]
+
+    db.commit()
+
+    email_batch = []
+    for email, name in email_recipients:
+        try:
+            html = _render_broadcast_email(original.subject, original.body, name)
+            html = add_inspiration_to_email(html, db, "parent")
+            email_batch.append((email, f"ClassBridge: {original.subject}", html))
+        except Exception:
+            logger.warning("Failed to render resend broadcast email for %s", email)
+
+    email_count = send_emails_batch(email_batch)
+
+    new_broadcast.email_count = email_count
+    db.commit()
+    db.refresh(new_broadcast)
+
+    logger.info("Broadcast resend %d (original %d): sent %d emails to %d users",
+                new_broadcast.id, broadcast_id, email_count, len(active_users))
+    return new_broadcast
+
+
+# ── Email Template Management (#513) ─────────────────────────────────────────
+
+# In-memory cache: name -> EmailTemplate record dict, refreshed on update/reset
+_template_cache: dict[str, dict] = {}
+
+# Default templates seeded from HTML files. Each entry: (subject, html_file, description)
+_DEFAULT_TEMPLATES: dict[str, tuple[str, str, str]] = {
+    "welcome": (
+        "Welcome to ClassBridge — Let's Get Started!",
+        "welcome.html",
+        "Sent after a new user registers",
+    ),
+    "invite_student": (
+        "You've Been Invited to Join a Course on ClassBridge",
+        "student_course_invite.html",
+        "Sent when a student is invited to a course",
+    ),
+    "invite_teacher": (
+        "You've Been Invited to ClassBridge",
+        "teacher_invite.html",
+        "Sent when a teacher is invited to the platform",
+    ),
+    "password_reset": (
+        "ClassBridge — Reset Your Password",
+        "password_reset.html",
+        "Sent when a user requests a password reset",
+    ),
+    "task_reminder": (
+        "ClassBridge — Task Due Soon",
+        "task_reminder.html",
+        "Sent as a reminder when a task is due soon",
+    ),
+    "message_notification": (
+        "ClassBridge — New Message",
+        "message_notification.html",
+        "Sent when a user receives a new message",
+    ),
+}
+
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "templates"
+
+
+def _load_default_html(filename: str) -> str:
+    """Load default HTML body from the templates directory."""
+    path = _TEMPLATES_DIR / filename
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return f"<p>Template file '{filename}' not found.</p>"
+
+
+def seed_email_templates(db: Session) -> None:
+    """Seed default email templates if they don't exist in DB. Called at startup."""
+    for name, (subject, html_file, description) in _DEFAULT_TEMPLATES.items():
+        existing = db.query(EmailTemplate).filter(EmailTemplate.name == name).first()
+        if not existing:
+            tpl = EmailTemplate(
+                name=name,
+                subject=subject,
+                html_body=_load_default_html(html_file),
+                description=description,
+                is_customized=False,
+            )
+            db.add(tpl)
+    try:
+        db.commit()
+        logger.info("Email templates seeded/verified")
+    except Exception as e:
+        db.rollback()
+        logger.warning("Failed to seed email templates: %s", e)
+
+
+def _refresh_template_cache(db: Session, name: str | None = None) -> None:
+    """Reload one or all templates from DB into the in-memory cache."""
+    global _template_cache
+    if name:
+        tpl = db.query(EmailTemplate).filter(EmailTemplate.name == name).first()
+        if tpl:
+            _template_cache[name] = {
+                "subject": tpl.subject,
+                "html_body": tpl.html_body,
+                "is_customized": tpl.is_customized,
+            }
+    else:
+        templates = db.query(EmailTemplate).all()
+        _template_cache = {
+            t.name: {
+                "subject": t.subject,
+                "html_body": t.html_body,
+                "is_customized": t.is_customized,
+            }
+            for t in templates
+        }
+
+
+def get_email_template(db: Session, name: str) -> dict | None:
+    """Return cached template dict, or None if not found. Falls back to DB if cache miss."""
+    if name not in _template_cache:
+        _refresh_template_cache(db, name)
+    return _template_cache.get(name)
+
+
+@router.get("/email-templates", response_model=list[EmailTemplateListItem])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_email_templates(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """List all email templates."""
+    templates = db.query(EmailTemplate).order_by(EmailTemplate.name).all()
+    return templates
+
+
+@router.get("/email-templates/{name}", response_model=EmailTemplateResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_email_template_endpoint(
+    name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Get a single email template by name."""
+    tpl = db.query(EmailTemplate).filter(EmailTemplate.name == name).first()
+    if not tpl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Template '{name}' not found")
+    return tpl
+
+
+@router.put("/email-templates/{name}", response_model=EmailTemplateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_email_template(
+    name: str,
+    data: EmailTemplateUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Update an email template's subject and body. Marks it as customized."""
+    tpl = db.query(EmailTemplate).filter(EmailTemplate.name == name).first()
+    if not tpl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Template '{name}' not found")
+
+    tpl.subject = data.subject
+    tpl.html_body = data.html_body
+    tpl.text_body = data.text_body
+    tpl.is_customized = True
+    tpl.updated_by_id = current_user.id
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="email_template_update",
+        resource_type="email_template",
+        resource_id=tpl.id,
+        details={"name": name},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    db.commit()
+    db.refresh(tpl)
+
+    # Invalidate cache entry
+    _refresh_template_cache(db, name)
+
+    logger.info("Admin %s updated email template '%s'", current_user.id, name)
+    return tpl
+
+
+@router.post("/email-templates/{name}/preview", response_model=EmailTemplatePreviewResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def preview_email_template(
+    name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Render the template with dummy data and return the HTML string."""
+    tpl = db.query(EmailTemplate).filter(EmailTemplate.name == name).first()
+    if not tpl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Template '{name}' not found")
+
+    # Render with representative dummy values so all placeholders are replaced
+    dummy_vars = {
+        "user_name": "Jane Smith",
+        "recipient_name": "Jane Smith",
+        "sender_name": "John Teacher",
+        "parent_name": "Jane Parent",
+        "child_name": "Alex Student",
+        "inviter_name": "Jane Parent",
+        "course_name": "Grade 10 Math",
+        "app_url": settings.frontend_url,
+        "task_url": f"{settings.frontend_url}/tasks/1",
+        "invite_link": f"{settings.frontend_url}/accept-invite?token=PREVIEW",
+        "reset_url": f"{settings.frontend_url}/reset-password?token=PREVIEW",
+        "verify_url": f"{settings.frontend_url}/verify-email?token=PREVIEW",
+        "task_title": "Chapter 5 Review",
+        "due_date": "March 10, 2026",
+        "days_remaining": "2",
+        "message_preview": "Hi, just wanted to check in about the upcoming test...",
+        "subject": tpl.subject,
+        "body": "(Preview body content)",
+    }
+
+    html = tpl.html_body
+    for key, value in dummy_vars.items():
+        html = html.replace("{{" + key + "}}", value)
+
+    return EmailTemplatePreviewResponse(html=html)
+
+
+@router.post("/email-templates/{name}/reset", response_model=EmailTemplateResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def reset_email_template(
+    name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Reset a template to the default subject and HTML body."""
+    tpl = db.query(EmailTemplate).filter(EmailTemplate.name == name).first()
+    if not tpl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Template '{name}' not found")
+
+    if name not in _DEFAULT_TEMPLATES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"No default available for template '{name}'")
+
+    default_subject, html_file, _ = _DEFAULT_TEMPLATES[name]
+    tpl.subject = default_subject
+    tpl.html_body = _load_default_html(html_file)
+    tpl.text_body = None
+    tpl.is_customized = False
+    tpl.updated_by_id = current_user.id
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="email_template_reset",
+        resource_type="email_template",
+        resource_id=tpl.id,
+        details={"name": name},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    db.commit()
+    db.refresh(tpl)
+
+    # Invalidate cache entry
+    _refresh_template_cache(db, name)
+
+    logger.info("Admin %s reset email template '%s' to default", current_user.id, name)
+    return tpl

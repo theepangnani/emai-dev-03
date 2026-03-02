@@ -56,6 +56,16 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 20       # Max per-file size for course material uploads
     max_files_per_session: int = 10    # Max files per upload session (enforced on frontend + paste endpoint)
 
+    # Subscription tier limits (#1007)
+    # Free tier
+    FREE_MAX_UPLOAD_SIZE_MB: int = 20
+    FREE_MAX_SESSION_FILES: int = 10
+    FREE_MAX_STUDY_GUIDES: int = 100
+    # Premium tier
+    PREMIUM_MAX_UPLOAD_SIZE_MB: int = 50
+    PREMIUM_MAX_SESSION_FILES: int = 25
+    PREMIUM_MAX_STUDY_GUIDES: int = 500
+
     # Audit logging
     audit_log_enabled: bool = True
     audit_log_retention_days: int = 90

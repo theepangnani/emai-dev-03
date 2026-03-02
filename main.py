@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -37,6 +37,7 @@ from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, C
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.teacher_google_account import TeacherGoogleAccount  # noqa: F401 — ensure table is created
+from app.models.email_template import EmailTemplate  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -819,6 +820,89 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         conn.commit()
+        # Study streak columns (#834)
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "study_streak_days" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN study_streak_days INTEGER NOT NULL DEFAULT 0"))
+                logger.info("Added 'study_streak_days' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "last_study_date" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN last_study_date DATE"))
+                logger.info("Added 'last_study_date' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        existing_cols = {c["name"] for c in inspector.get_columns("students")}
+        if "longest_streak" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE students ADD COLUMN longest_streak INTEGER NOT NULL DEFAULT 0"))
+                logger.info("Added 'longest_streak' column to students")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── users: account deletion columns (#964) ────────────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "deletion_requested_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_requested_at {col_type}"))
+                logger.info("Added 'deletion_requested_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "deletion_scheduled_for" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_scheduled_for {col_type}"))
+                logger.info("Added 'deletion_scheduled_for' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        if "last_export_requested_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN last_export_requested_at {col_type}"))
+                logger.info("Added 'last_export_requested_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── users: BYOK encrypted AI key column (#578) ───────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "ai_api_key_encrypted" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_api_key_encrypted VARCHAR(512)"))
+                logger.info("Added 'ai_api_key_encrypted' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── users: subscription_tier column (#1007) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "subscription_tier" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free'"))
+                logger.info("Added 'subscription_tier' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+# ── Seed email templates (#513) ──────────────────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.api.routes.admin import seed_email_templates
+        seed_email_templates(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed email templates at startup: %s", _e)
 
 
 _is_prod = "sqlite" not in settings.database_url
@@ -947,6 +1031,7 @@ app.include_router(grades.router, prefix="/api")
 app.include_router(consent.router, prefix="/api")
 app.include_router(mcp_config.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
+app.include_router(profile.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1082,6 +1167,15 @@ async def startup_event():
         sync_google_classrooms,
         CronTrigger(hour=6, minute=0),
         id="google_classroom_sync",
+        replace_existing=True,
+    )
+
+    # Account deletion cleanup — runs daily at 2 AM (#964)
+    from app.jobs.account_deletion import process_scheduled_deletions
+    scheduler.add_job(
+        process_scheduled_deletions,
+        CronTrigger(hour=2, minute=0),
+        id="account_deletion_cleanup",
         replace_existing=True,
     )
 
