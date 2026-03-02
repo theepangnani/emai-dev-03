@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Parallel Agent Streams
+
+When launching multiple parallel agent streams for feature development, **always** use `isolation: "worktree"` on every Agent tool call. This gives each stream its own isolated git worktree (a separate working directory cloned from the current branch) so streams never write to the same files simultaneously.
+
+**Critical rules for agent prompts:**
+- Each stream agent MUST commit its changes before finishing (use `git add -A && git commit -m "..."` via Bash)
+- If Bash is not available, the agent should note all files changed so the merge agent can pick them up from the worktree path
+- After all streams complete, launch a dedicated merge agent to: read all worktrees, resolve conflicts in hotspot files (main.py, DashboardLayout.tsx, etc.), write merged files to main working directory, commit, then `git worktree remove --force` each worktree
+- Never let streams write directly to `c:/dev/emai/class-bridge-phase-2` (the main working directory) when running in parallel
+
 ## Project Overview
 
 EMAI (ClassBridge) is an AI-powered education management platform connecting parents, students, teachers, and admins. It integrates with Google Classroom, provides AI study tools (guides, quizzes, flashcards), parent-teacher messaging, and teacher email/announcement monitoring.

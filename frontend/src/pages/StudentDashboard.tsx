@@ -28,6 +28,8 @@ import type { SubmissionResponse } from '../api/submissions';
 import { SubmitAssignmentModal } from '../components/SubmitAssignmentModal';
 import { quizAssignmentsApi } from '../api/quizAssignments';
 import type { QuizAssignmentResponse } from '../api/quizAssignments';
+import { mockExamsApi } from '../api/mockExams';
+import type { MockExamAssignment } from '../api/mockExams';
 import './StudentDashboard.css';
 
 function formatRelativeDate(dateStr: string): string {
@@ -131,6 +133,9 @@ export function StudentDashboard() {
 
   // Assigned quizzes from parents (#664)
   const [assignedQuizzes, setAssignedQuizzes] = useState<QuizAssignmentResponse[]>([]);
+
+  // Assigned mock exams (#667)
+  const [assignedExams, setAssignedExams] = useState<MockExamAssignment[]>([]);
 
   // Invite teacher state
   const [gradeSummary, setGradeSummary] = useState<ChildGradeSummary | null>(null);
@@ -309,6 +314,7 @@ export function StudentDashboard() {
       loadRecentGrades(),
       loadBackendStreak(),
       loadAssignedQuizzes(),
+      loadAssignedExams(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
@@ -413,6 +419,16 @@ export function StudentDashboard() {
       setAssignedQuizzes([...data, ...inProgress]);
     } catch {
       // Not critical — student may not have a profile or any assignments yet
+    }
+  };
+
+  const loadAssignedExams = async () => {
+    try {
+      const data = await mockExamsApi.list() as MockExamAssignment[];
+      // Show only assigned or in_progress
+      setAssignedExams(data.filter(e => e.status !== 'completed'));
+    } catch {
+      // Not critical
     }
   };
 
@@ -653,6 +669,43 @@ export function StudentDashboard() {
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Assigned Mock Exams (#667) ───────────────────── */}
+      {assignedExams.length > 0 && (
+        <section className="sd-assigned-quizzes">
+          <h2 className="sd-section-label">Assigned Exams</h2>
+          <div className="sd-assigned-quizzes-list">
+            {assignedExams.map(exam => (
+              <div key={exam.id} className="sd-assigned-quiz-card">
+                <div className="sd-aq-meta">
+                  <span className="sd-aq-difficulty-badge medium">
+                    {exam.num_questions} questions
+                  </span>
+                  {exam.time_limit_minutes != null && (
+                    <span className="sd-aq-difficulty-badge" style={{ background: '#e0e7ff', color: '#4338ca' }}>
+                      {exam.time_limit_minutes} min
+                    </span>
+                  )}
+                  {exam.due_date && (
+                    <span className="sd-aq-due">
+                      Due: {new Date(exam.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+                <p className="sd-aq-title">{exam.exam_title || 'Mock Exam'}</p>
+                {exam.course_name && <p className="sd-aq-course">{exam.course_name}</p>}
+                <button
+                  className="sd-aq-start-btn"
+                  onClick={() => navigate(`/exams/${exam.id}`)}
+                  type="button"
+                >
+                  {exam.status === 'in_progress' ? 'Continue Exam' : 'Start Exam'}
+                </button>
+              </div>
+            ))}
           </div>
         </section>
       )}

@@ -1158,3 +1158,152 @@
 .td-gen-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 4px; }
 .td-gen-view-btn { background: var(--color-success); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .td-gen-dismiss-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; line-height: 1; padding: 0 2px; }
+
+/* Material Type radio group in upload modal (#666) */
+.modal-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.modal-field-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+.upload-material-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.upload-type-radio {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.upload-type-radio input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.upload-type-radio:hover {
+  border-color: var(--color-primary, #1976d2);
+  background: var(--color-surface-hover, rgba(25,118,210,0.04));
+}
+.upload-type-radio.selected {
+  border-color: var(--color-primary, #1976d2);
+  background: var(--color-primary-light, rgba(25,118,210,0.08));
+}
+.upload-type-radio-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.upload-type-radio-desc {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  line-height: 1.3;
+}
+
+/* ── Mock Exams Section (#667) ──────────────────────────────────── */
+.td-mock-exams-section {
+  margin-top: 1.5rem;
+}
+
+.td-mock-exams-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.td-mock-exams-empty {
+  padding: 1rem;
+  color: var(--color-ink-muted);
+  font-size: 0.9rem;
+  background: var(--color-surface-alt, #f9fafb);
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+}
+
+.td-mock-exams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.td-exam-card {
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.15s;
+}
+.td-exam-card:hover {
+  border-color: var(--color-primary, #6366f1);
+}
+
+.td-exam-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.td-exam-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.td-exam-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-exam-meta {
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+  margin: 0.2rem 0 0;
+}
+
+.td-exam-stats {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.td-exam-stat-badge {
+  padding: 0.2rem 0.6rem;
+  background: var(--color-surface-alt, #f3f4f6);
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+.td-exam-stat-done {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.td-exam-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}

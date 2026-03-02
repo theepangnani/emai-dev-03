@@ -839,3 +839,143 @@
     display: none;
   }
 }
+
+/* ============================================================
+   Teacher Grades Section (#665)
+   ============================================================ */
+
+.gp-teacher-grades-section {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--color-border, #e5e7eb);
+}
+
+.gp-section-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #111827);
+  margin: 0 0 0.25rem;
+}
+
+.gp-section-subheading {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0 0 1.25rem;
+}
+
+.gp-teacher-grades-loading,
+.gp-teacher-grades-empty {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #6b7280);
+  padding: 1rem 0;
+}
+
+.gp-teacher-grades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.gp-tg-course {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.gp-tg-course-name {
+  background: var(--color-surface-secondary, #f9fafb);
+  padding: 0.625rem 1rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary, #111827);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.gp-tg-entries {
+  display: flex;
+  flex-direction: column;
+}
+
+.gp-tg-entry {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border, #f3f4f6);
+}
+
+.gp-tg-entry:last-child {
+  border-bottom: none;
+}
+
+.gp-tg-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.gp-tg-assignment-name {
+  font-size: 0.875rem;
+  color: var(--color-text-primary, #374151);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-tg-entry-scores {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.gp-tg-numeric {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Letter grade badges */
+.gp-tg-letter {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+}
+
+.gp-tg-letter--green { background: #d1fae5; color: #065f46; }
+.gp-tg-letter--blue  { background: #dbeafe; color: #1e40af; }
+.gp-tg-letter--amber { background: #fef3c7; color: #92400e; }
+.gp-tg-letter--red   { background: #fee2e2; color: #991b1b; }
+.gp-tg-letter--none  { display: none; }
+
+/* Feedback */
+.gp-tg-feedback-row {
+  margin-top: 0.375rem;
+}
+
+.gp-tg-feedback-toggle {
+  font-size: 0.8125rem;
+  color: var(--color-primary, #4f46e5);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gp-tg-feedback-toggle:hover {
+  color: var(--color-primary-dark, #4338ca);
+}
+
+.gp-tg-feedback-text {
+  margin: 0.375rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #4b5563);
+  line-height: 1.5;
+  background: var(--color-surface-secondary, #f9fafb);
+  border-left: 3px solid var(--color-primary, #4f46e5);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 0.25rem 0.25rem 0;
+}

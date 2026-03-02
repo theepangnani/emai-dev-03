@@ -13,6 +13,9 @@ import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
 import { GoogleCalendarSync } from '../components/GoogleCalendarSync';
+import { GenerateMockExamModal } from '../components/GenerateMockExamModal';
+import { mockExamsApi } from '../api/mockExams';
+import type { MockExam } from '../api/mockExams';
 import './TeacherDashboard.css';
 
 interface Course {
@@ -92,6 +95,10 @@ export function TeacherDashboard() {
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
 
+  // Mock Exams (#667)
+  const [myExams, setMyExams] = useState<MockExam[]>([]);
+  const [showGenerateExamModal, setShowGenerateExamModal] = useState(false);
+
   // Focus traps for modals (must be after state declarations they reference)
   const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateModal, () => setShowCreateModal(false));
   const inviteParentModalRef = useFocusTrap<HTMLDivElement>(showInviteParentModal, () => setShowInviteParentModal(false));
@@ -143,6 +150,14 @@ export function TeacherDashboard() {
       }
       if (announcementsData.status === 'fulfilled') {
         setRecentAnnouncements(announcementsData.value.items.slice(0, 3));
+      }
+
+      // Load mock exams (#667)
+      try {
+        const examsData = await mockExamsApi.list() as MockExam[];
+        setMyExams(examsData);
+      } catch {
+        // Not critical
       }
     } finally {
       setLoading(false);
@@ -373,6 +388,9 @@ export function TeacherDashboard() {
         uploadCourseId as number,
         uploadTitle.trim() || undefined,
         uploadType,
+        undefined,  // ai_tool
+        undefined,  // ai_custom_prompt
+        uploadType, // material_type = same as uploadType for teacher uploads
       );
       setUploadSuccess('Material uploaded successfully!');
       setUploadFile(null);
@@ -904,6 +922,69 @@ export function TeacherDashboard() {
         )}
       </div>
 
+      {/* ── Mock Exams Section (#667) ──────────────────────────── */}
+      <section className="section td-mock-exams-section">
+        <div className="section-header td-mock-exams-header">
+          <h3>Mock Exams ({myExams.length})</h3>
+          <button
+            className="create-custom-btn"
+            onClick={() => setShowGenerateExamModal(true)}
+            type="button"
+          >
+            + Generate Exam
+          </button>
+        </div>
+
+        {myExams.length === 0 ? (
+          <div className="td-mock-exams-empty">
+            <p>No exams created yet. Click "Generate Exam" to create an AI-powered mock exam for your students.</p>
+          </div>
+        ) : (
+          <div className="td-mock-exams-list">
+            {myExams.map(exam => (
+              <div key={exam.id} className="td-exam-card">
+                <div className="td-exam-card-top">
+                  <div className="td-exam-card-info">
+                    <p className="td-exam-title">{exam.title}</p>
+                    <p className="td-exam-meta">
+                      {exam.course_name} &middot; {exam.num_questions} questions &middot; {exam.time_limit_minutes} min
+                    </p>
+                  </div>
+                  <div className="td-exam-stats">
+                    <span className="td-exam-stat-badge">
+                      {exam.assignment_count} assigned
+                    </span>
+                    <span className="td-exam-stat-badge td-exam-stat-done">
+                      {exam.completed_count} completed
+                    </span>
+                  </div>
+                </div>
+                <div className="td-exam-card-actions">
+                  <button
+                    className="text-btn"
+                    type="button"
+                    onClick={() => navigate('/teacher/exams')}
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Generate Exam Modal */}
+      {showGenerateExamModal && (
+        <GenerateMockExamModal
+          courses={courses}
+          onClose={() => setShowGenerateExamModal(false)}
+          onExamSaved={(exam) => {
+            setMyExams(prev => [exam, ...prev]);
+          }}
+        />
+      )}
+
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
@@ -1131,19 +1212,34 @@ export function TeacherDashboard() {
                   ))}
                 </select>
               </label>
-              <label>
-                Material Type *
-                <select
-                  value={uploadType}
-                  onChange={(e) => setUploadType(e.target.value)}
-                  disabled={uploadLoading}
-                >
-                  <option value="notes">Class Notes</option>
-                  <option value="test">Test / Quiz</option>
-                  <option value="lab">Lab / Project</option>
-                  <option value="assignment">Assignment</option>
-                </select>
-              </label>
+              <div className="modal-field-group">
+                <span className="modal-field-label">Material Type *</span>
+                <div className="upload-material-type-grid">
+                  {[
+                    { value: 'notes', label: 'Notes', desc: 'Lecture notes, slides, or reference material. AI study guide offered.' },
+                    { value: 'test', label: 'Test', desc: 'Assessment document. AI will offer exam prep instead of study guide.' },
+                    { value: 'lab', label: 'Lab', desc: 'Lab instructions or project brief.' },
+                    { value: 'assignment', label: 'Assignment', desc: 'Homework or coursework handout.' },
+                    { value: 'report_card', label: 'Report Card', desc: 'Graded report card. AI generation skipped.' },
+                  ].map(({ value, label, desc }) => (
+                    <label
+                      key={value}
+                      className={`upload-type-radio${uploadType === value ? ' selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="upload-material-type"
+                        value={value}
+                        checked={uploadType === value}
+                        onChange={() => setUploadType(value)}
+                        disabled={uploadLoading}
+                      />
+                      <span className="upload-type-radio-label">{label}</span>
+                      <span className="upload-type-radio-desc">{desc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <label>
                 Title
                 <input

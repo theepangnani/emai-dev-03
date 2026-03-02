@@ -6,6 +6,11 @@ from app.schemas.user import strip_whitespace
 
 VALID_CONTENT_TYPES = {"notes", "syllabus", "labs", "assignments", "readings", "resources", "other"}
 
+# Valid material types for #666 type classification
+VALID_MATERIAL_TYPES = {"notes", "test", "lab", "assignment", "report_card"}
+# Material types that are assessments (trigger is_assessment flag)
+ASSESSMENT_MATERIAL_TYPES = {"test"}
+
 
 VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
 
@@ -78,6 +83,8 @@ class CourseContentResponse(BaseModel):
     description: Optional[str]
     text_content: Optional[str] = None
     content_type: str
+    material_type: Optional[str] = None
+    is_assessment: bool = False
     reference_url: Optional[str]
     google_classroom_url: Optional[str]
     created_by_user_id: Optional[int] = None
@@ -88,14 +95,21 @@ class CourseContentResponse(BaseModel):
     mime_type: Optional[str] = None
     has_file: bool = False
     download_restricted: bool = False
+    ai_suggested: bool = True
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
     last_viewed_at: Optional[datetime] = None
 
     @model_validator(mode="after")
-    def compute_has_file(self):
+    def compute_derived_fields(self):
         self.has_file = self.file_path is not None
+        # is_assessment stored as int in SQLite; coerce to bool
+        if isinstance(self.is_assessment, int):
+            self.is_assessment = bool(self.is_assessment)
+        # report_card type: no AI suggestion
+        if self.material_type == "report_card":
+            self.ai_suggested = False
         return self
 
     class Config:

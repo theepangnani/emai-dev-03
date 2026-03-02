@@ -24,6 +24,8 @@ from app.schemas.course_content import (
     CourseContentUpdate,
     CourseContentResponse,
     CourseContentUpdateResponse,
+    VALID_MATERIAL_TYPES,
+    ASSESSMENT_MATERIAL_TYPES,
 )
 
 import logging
@@ -277,6 +279,7 @@ async def upload_course_content_file(
     course_id: int = Form(...),
     title: str = Form(""),
     content_type: str = Form("notes"),
+    material_type: str = Form("notes"),
     ai_tool: str = Form("none"),
     ai_custom_prompt: str = Form(""),
     db: Session = Depends(get_db),
@@ -287,6 +290,7 @@ async def upload_course_content_file(
     Optionally triggers AI study material generation as a background task:
     - ai_tool: "study_guide", "quiz", "flashcards", or "none" (default)
     - ai_custom_prompt: custom instructions for AI generation (optional)
+    - material_type: "notes", "test", "lab", "assignment", "report_card" (#666)
     """
     # Validate ai_tool
     ai_tool_normalized = ai_tool.strip().lower()
@@ -295,6 +299,18 @@ async def upload_course_content_file(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid ai_tool. Must be one of: {', '.join(sorted(VALID_AI_TOOLS))}",
         )
+
+    # Validate material_type (#666)
+    material_type_normalized = material_type.strip().lower() if material_type else "notes"
+    if material_type_normalized not in VALID_MATERIAL_TYPES:
+        material_type_normalized = "notes"
+
+    # report_card type: skip AI generation (#666)
+    if material_type_normalized == "report_card":
+        ai_tool_normalized = "none"
+
+    # assessment flag: test type (#666)
+    is_assessment_val = 1 if material_type_normalized in ASSESSMENT_MATERIAL_TYPES else 0
 
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
@@ -324,6 +340,8 @@ async def upload_course_content_file(
         course_id=course_id,
         title=title or filename,
         content_type=content_type,
+        material_type=material_type_normalized,
+        is_assessment=is_assessment_val,
         text_content=extracted_text or None,
         file_path=stored_path,
         original_filename=filename,
@@ -353,6 +371,7 @@ async def upload_course_content_file(
             logger.warning("Failed to notify parents of student upload: %s", e)
 
     # Trigger AI generation in background if requested (#552)
+    # Skip for report_card type (#666)
     if ai_tool_normalized != "none" and extracted_text:
         background_tasks.add_task(
             _run_ai_generation_background,
@@ -562,6 +581,86 @@ def get_linked_course_ids(
         "course_student_map": course_to_students,
         "children": children_info,
     }
+
+
+@router.get("/teacher-materials")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_teacher_materials(
+    request: Request,
+    material_type: Optional[str] = Query(None, description="Filter by material type (notes/test/lab/assignment/report_card)"),
+    course_id: Optional[int] = Query(None, description="Filter by course ID"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all materials uploaded by the current teacher across all their courses.
+
+    Filterable by material_type and course_id. Returns material_type, file_name,
+    course_name, upload_date, file_size_bytes. Teacher + admin only. (#666)
+    """
+    if current_user.role not in (UserRole.TEACHER, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher or admin access required")
+
+    # Get courses belonging to this teacher
+    from app.models.teacher import Teacher
+    if current_user.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        teacher_course_ids_q = db.query(Course.id).filter(
+            (Course.created_by_user_id == current_user.id) |
+            (teacher is not None and Course.teacher_id == (teacher.id if teacher else -1))
+        )
+        if teacher:
+            teacher_course_ids = [
+                r[0] for r in db.query(Course.id).filter(
+                    (Course.created_by_user_id == current_user.id) |
+                    (Course.teacher_id == teacher.id)
+                ).all()
+            ]
+        else:
+            teacher_course_ids = [
+                r[0] for r in db.query(Course.id).filter(
+                    Course.created_by_user_id == current_user.id
+                ).all()
+            ]
+    else:
+        # Admin sees all
+        teacher_course_ids = [r[0] for r in db.query(Course.id).all()]
+
+    query = (
+        db.query(CourseContent)
+        .filter(
+            CourseContent.course_id.in_(teacher_course_ids),
+            CourseContent.archived_at.is_(None),
+        )
+    )
+
+    if course_id:
+        query = query.filter(CourseContent.course_id == course_id)
+
+    if material_type:
+        query = query.filter(CourseContent.material_type == material_type.strip().lower())
+
+    total = query.count()
+    items = query.order_by(CourseContent.created_at.desc()).offset(offset).limit(limit).all()
+
+    results = []
+    for item in items:
+        results.append({
+            "id": item.id,
+            "title": item.title,
+            "file_name": item.original_filename,
+            "material_type": item.material_type or "notes",
+            "course_id": item.course_id,
+            "course_name": item.course.name if item.course else None,
+            "upload_date": item.created_at.isoformat() if item.created_at else None,
+            "file_size_bytes": item.file_size,
+            "mime_type": item.mime_type,
+            "has_file": item.file_path is not None,
+            "is_assessment": bool(item.is_assessment),
+        })
+
+    return {"total": total, "items": results, "offset": offset, "limit": limit}
 
 
 @router.get("/", response_model=list[CourseContentResponse])
