@@ -18,6 +18,8 @@ import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { ParentConsentCards } from '../components/ParentConsentCards';
 import { submissionsApi } from '../api/submissions';
 import { AssignQuizModal } from '../components/AssignQuizModal';
+import { aiInsightsApi, type LatestInsightResponse } from '../api/aiInsights';
+import { Link } from 'react-router-dom';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -111,6 +113,9 @@ export function ParentDashboard() {
   // Assign Quiz modal (#664)
   const [showAssignQuizModal, setShowAssignQuizModal] = useState(false);
 
+  // AI Insights widget (#581) — latest insight for the selected child
+  const [latestInsight, setLatestInsight] = useState<LatestInsightResponse | null>(null);
+
   // Scroll indicator state for child selector (#830)
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -153,6 +158,20 @@ export function ParentDashboard() {
       })
     ).then(() => setChildSubmissionCounts(new Map(counts)));
   }, [pd.children]);
+
+  // Load latest AI insight for the selected child (#581)
+  useEffect(() => {
+    const childId = pd.selectedChild ?? (pd.children.length === 1 ? pd.children[0].student_id : null);
+    if (!childId) {
+      setLatestInsight(null);
+      return;
+    }
+    let cancelled = false;
+    aiInsightsApi.getLatest(childId)
+      .then(data => { if (!cancelled) setLatestInsight(data); })
+      .catch(() => { if (!cancelled) setLatestInsight(null); });
+    return () => { cancelled = true; };
+  }, [pd.selectedChild, pd.children]);
 
   const updateSection = useCallback((key: keyof SectionStates, value: boolean) => {
     setSectionStates(prev => {
@@ -465,6 +484,48 @@ export function ParentDashboard() {
             ] satisfies QuickAction[]}
             maxVisible={5}
           />
+
+          {/* AI Insights Widget (#581) */}
+          {(() => {
+            const childId = pd.selectedChild ?? (pd.children.length === 1 ? pd.children[0].student_id : null);
+            const childName = pd.selectedChild
+              ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? 'your child')
+              : (pd.children.length === 1 ? pd.children[0].full_name : 'your child');
+            if (!childId) return null;
+            return (
+              <div className="pd-ai-insights-widget">
+                <div className="pd-ai-widget-header">
+                  <span className="pd-ai-widget-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                    </svg>
+                  </span>
+                  <span className="pd-ai-widget-title">AI Insights</span>
+                </div>
+                {latestInsight && latestInsight.exists ? (
+                  <div className="pd-ai-widget-body">
+                    <p className="pd-ai-widget-summary">
+                      {latestInsight.summary.length > 120
+                        ? `${latestInsight.summary.slice(0, 120)}...`
+                        : latestInsight.summary}
+                    </p>
+                    <Link to="/insights" className="pd-ai-widget-link">
+                      View Full Insights &rarr;
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="pd-ai-widget-body pd-ai-widget-body-empty">
+                    <p className="pd-ai-widget-empty-text">
+                      Get AI analysis of <strong>{childName}</strong>'s performance
+                    </p>
+                    <Link to="/insights" className="pd-ai-widget-link">
+                      Generate Insight &rarr;
+                    </Link>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Grades Overview (#838 - collapsible) */}
           <CollapsibleSection

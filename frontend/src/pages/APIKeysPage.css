@@ -1,0 +1,383 @@
+/* APIKeysPage.css — styles for /settings/api-keys (#905) */
+
+.api-keys-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+
+.api-keys-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.api-keys-header-text {
+  flex: 1;
+}
+
+.api-keys-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.api-keys-subtitle {
+  color: var(--text-secondary, #64748b);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.api-keys-create-btn {
+  background: var(--color-primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.api-keys-create-btn:hover {
+  background: var(--color-primary-dark, #4f46e5);
+}
+
+/* ── States ───────────────────────────────────────────────────────── */
+
+.api-keys-loading,
+.api-keys-error {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.api-keys-error {
+  color: #dc2626;
+}
+
+.api-keys-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  border: 2px dashed var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 2rem;
+}
+
+/* ── Table ────────────────────────────────────────────────────────── */
+
+.api-keys-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  margin-bottom: 2rem;
+}
+
+.api-keys-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.api-keys-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary, #f8fafc);
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.api-keys-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #1a1a2e);
+  vertical-align: middle;
+}
+
+.api-keys-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.api-keys-row-revoked td,
+.api-keys-row-expired td {
+  opacity: 0.6;
+}
+
+.api-keys-name {
+  font-weight: 500;
+}
+
+.api-keys-preview code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  background: var(--bg-secondary, #f8fafc);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* ── Status badge ─────────────────────────────────────────────────── */
+
+.api-keys-status {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.api-keys-status-active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.api-keys-status-expired {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.api-keys-status-revoked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ── Revoke button ────────────────────────────────────────────────── */
+
+.api-keys-revoke-btn {
+  background: transparent;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  border-radius: 6px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.api-keys-revoke-btn:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* ── Info box ─────────────────────────────────────────────────────── */
+
+.api-keys-info-box {
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.api-keys-info-box strong {
+  display: block;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.api-keys-info-box p {
+  margin: 0.5rem 0 0;
+}
+
+.api-keys-info-box a {
+  color: var(--color-primary, #6366f1);
+  text-decoration: none;
+}
+
+.api-keys-info-box a:hover {
+  text-decoration: underline;
+}
+
+/* ── Modals ───────────────────────────────────────────────────────── */
+
+.api-keys-modal {
+  width: 100%;
+  max-width: 500px;
+}
+
+.api-keys-modal-desc {
+  color: var(--text-secondary, #64748b);
+  font-size: 0.9rem;
+  margin: 0 0 1.25rem;
+}
+
+.api-keys-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.api-keys-form-field label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.api-keys-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1a1a2e);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.api-keys-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ── One-time key display ─────────────────────────────────────────── */
+
+.api-keys-created-modal {
+  max-width: 560px;
+}
+
+.api-keys-onetime-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+}
+
+.api-keys-created-name {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.api-keys-created-key-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.api-keys-created-key-input {
+  flex: 1;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  background: var(--bg-secondary, #f8fafc);
+  color: var(--text-primary, #1a1a2e);
+  min-width: 0;
+  cursor: text;
+  user-select: all;
+}
+
+.api-keys-copy-btn {
+  background: var(--color-primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.api-keys-copy-btn:hover {
+  background: var(--color-primary-dark, #4f46e5);
+}
+
+.api-keys-copy-btn-success {
+  background: #16a34a;
+}
+
+.api-keys-copy-btn-success:hover {
+  background: #15803d;
+}
+
+.api-keys-created-expires {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #64748b);
+  margin: 0 0 1rem;
+}
+
+/* ── Danger button (for revoke confirm) ───────────────────────────── */
+
+.danger-btn {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.danger-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.danger-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Dark mode ────────────────────────────────────────────────────── */
+
+[data-theme='dark'] .api-keys-title {
+  color: var(--text-primary, #f1f5f9);
+}
+
+[data-theme='dark'] .api-keys-table th {
+  background: var(--bg-secondary, #1e293b);
+}
+
+[data-theme='dark'] .api-keys-preview code {
+  background: var(--bg-secondary, #1e293b);
+}
+
+[data-theme='dark'] .api-keys-created-key-input {
+  background: var(--bg-secondary, #1e293b);
+}
+
+[data-theme='dark'] .api-keys-info-box {
+  background: var(--bg-secondary, #1e293b);
+}
+
+[data-theme='dark'] .api-keys-status-active {
+  background: rgba(22, 163, 74, 0.2);
+}
+
+[data-theme='dark'] .api-keys-status-revoked {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+[data-theme='dark'] .api-keys-onetime-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border-color: #b45309;
+}

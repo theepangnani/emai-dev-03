@@ -1,10 +1,13 @@
 /**
- * Account Settings page — BYOK AI key management (#578) and subscription tier (#1007).
+ * Account Settings page — BYOK AI key management (#578), subscription tier (#1007),
+ * storage usage (#572), and Developer section linking to API Keys (#905).
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profileApi, type AIKeyStatus } from '../api/profile';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { StorageUsageBar } from '../components/StorageUsageBar';
 import { useAuth } from '../context/AuthContext';
 import './AccountSettingsPage.css';
 
@@ -95,6 +98,7 @@ export function AccountSettingsPage() {
               Contact your administrator to upgrade to Premium for higher limits.
             </p>
           )}
+          <StorageUsageBar />
         </section>
 
         {/* ── BYOK AI API Key ──────────────────────────────────── */}
@@ -144,6 +148,18 @@ export function AccountSettingsPage() {
               )}
             </>
           )}
+        </section>
+
+        {/* ── Developer ─────────────────────────────────────────── */}
+        <section className="account-settings-section">
+          <h2 className="account-settings-section-title">Developer</h2>
+          <p className="account-settings-section-desc">
+            Manage API keys for accessing ClassBridge from external tools such as Claude Desktop
+            and custom integrations via the MCP server.
+          </p>
+          <Link to="/settings/api-keys" className="account-btn account-btn-secondary account-developer-link">
+            Manage API Keys
+          </Link>
         </section>
       </div>
 

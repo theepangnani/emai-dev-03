@@ -18,6 +18,8 @@ from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.storage_service import get_file_path, delete_file, save_file
 from app.services.file_processor import process_file, FileProcessingError
+from app.services.storage import get_storage_service
+from app.models.stored_document import StoredDocument
 from app.core.config import settings
 from app.schemas.course_content import (
     CourseContentCreate,
@@ -352,6 +354,31 @@ async def upload_course_content_file(
     db.add(content)
     db.commit()
     db.refresh(content)
+
+    # Persist raw file to storage service and record StoredDocument (#572)
+    try:
+        _storage = get_storage_service()
+        _stored = _storage.store_file(
+            user_id=current_user.id,
+            data=file_content,
+            original_name=filename,
+            content_type=file.content_type,
+            folder="uploads",
+        )
+        db_doc = StoredDocument(
+            user_id=current_user.id,
+            course_content_id=content.id,
+            storage_key=_stored.key,
+            original_name=filename,
+            content_type=_stored.content_type,
+            size_bytes=_stored.size_bytes,
+            sha256=_stored.sha256,
+            folder="uploads",
+        )
+        db.add(db_doc)
+        db.commit()
+    except Exception as _e:
+        logger.warning("Failed to persist file to storage service (#572): %s", _e)
 
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:

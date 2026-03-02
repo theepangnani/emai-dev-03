@@ -92,6 +92,12 @@ const CurriculumPage = lazyRetry(() => import('./pages/CurriculumPage').then((m)
 const AdminAnalyticsPage = lazyRetry(() => import('./pages/AdminAnalyticsPage').then(m => ({ default: m.AdminAnalyticsPage })));
 const SampleExamsPage = lazyRetry(() => import('./pages/SampleExamsPage').then((m) => ({ default: m.SampleExamsPage })));
 const LMSConnectionsPage = lazyRetry(() => import('./pages/LMSConnectionsPage').then((m) => ({ default: m.LMSConnectionsPage })));
+const AIInsightsPage = lazyRetry(() => import('./pages/AIInsightsPage').then((m) => ({ default: m.AIInsightsPage })));
+const TutorMarketplacePage = lazyRetry(() => import('./pages/TutorMarketplacePage').then((m) => ({ default: m.TutorMarketplacePage })));
+const TutorProfilePage = lazyRetry(() => import('./pages/TutorProfilePage').then((m) => ({ default: m.TutorProfilePage })));
+const TutorDashboardPage = lazyRetry(() => import('./pages/TutorDashboardPage').then((m) => ({ default: m.TutorDashboardPage })));
+const AdminLMSPage = lazyRetry(() => import('./pages/AdminLMSPage').then((m) => ({ default: m.AdminLMSPage })));
+const APIKeysPage = lazyRetry(() => import('./pages/APIKeysPage').then((m) => ({ default: m.APIKeysPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -485,6 +491,54 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student', 'parent', 'teacher', 'admin']}>
                     <LMSConnectionsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/insights"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <AIInsightsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tutors"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <TutorMarketplacePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tutors/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <TutorProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tutors/dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher']}>
+                    <TutorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/lms"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminLMSPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/api-keys"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <APIKeysPage />
                   </ProtectedRoute>
                 }
               />

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -1264,3 +1264,124 @@ def export_user_data(
             "Content-Disposition": 'attachment; filename="classbridge-data-export.json"',
         },
     )
+
+
+# ── API Key management (#905) ─────────────────────────────────────────────────
+
+import secrets as _secrets
+import string as _string
+from pydantic import BaseModel as _BaseModel, Field as _Field
+from app.models.api_key import APIKey as _APIKey
+from app.core.security import get_password_hash as _hash_key, verify_password as _verify_key
+
+
+class CreateAPIKeyRequest(_BaseModel):
+    name: str = _Field(..., min_length=1, max_length=100)
+    expires_days: int | None = _Field(None, ge=1, le=365)
+
+
+class APIKeyCreatedResponse(_BaseModel):
+    id: int
+    name: str
+    key: str          # full key — shown ONCE only
+    prefix: str
+    created_at: datetime
+    expires_at: datetime | None
+
+
+class APIKeyListItem(_BaseModel):
+    id: int
+    name: str
+    prefix: str
+    created_at: datetime
+    last_used_at: datetime | None
+    expires_at: datetime | None
+    is_active: bool
+
+
+def _generate_raw_key() -> str:
+    """Generate a cryptographically random cbk_<32 chars> key."""
+    alphabet = _string.ascii_letters + _string.digits
+    random_part = ''.join(_secrets.choice(alphabet) for _ in range(32))
+    return f"cbk_{random_part}"
+
+
+@router.post("/api-keys", response_model=APIKeyCreatedResponse, status_code=201)
+@limiter.limit("10/minute", key_func=lambda request: str(request.client.host))
+def create_api_key(
+    request: Request,
+    body: CreateAPIKeyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new API key for the authenticated user. The full key is returned ONCE."""
+    raw_key = _generate_raw_key()
+    prefix = raw_key[:8]          # "cbk_a1b2"
+    key_hash = _hash_key(raw_key)
+
+    expires_at = None
+    if body.expires_days is not None:
+        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=body.expires_days)
+
+    api_key = _APIKey(
+        user_id=current_user.id,
+        key_hash=key_hash,
+        key_prefix=prefix,
+        name=body.name,
+        expires_at=expires_at,
+    )
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+
+    return APIKeyCreatedResponse(
+        id=api_key.id,
+        name=api_key.name,
+        key=raw_key,
+        prefix=prefix,
+        created_at=api_key.created_at,
+        expires_at=api_key.expires_at,
+    )
+
+
+@router.get("/api-keys", response_model=list[APIKeyListItem])
+def list_api_keys(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all API keys for the authenticated user (hashes never returned)."""
+    keys = (
+        db.query(_APIKey)
+        .filter(_APIKey.user_id == current_user.id)
+        .order_by(_APIKey.created_at.desc())
+        .all()
+    )
+    return [
+        APIKeyListItem(
+            id=k.id,
+            name=k.name,
+            prefix=k.key_prefix,
+            created_at=k.created_at,
+            last_used_at=k.last_used_at,
+            expires_at=k.expires_at,
+            is_active=k.is_active,
+        )
+        for k in keys
+    ]
+
+
+@router.delete("/api-keys/{key_id}", status_code=204)
+def revoke_api_key(
+    key_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Revoke (soft-delete) an API key. Owner only."""
+    api_key = db.query(_APIKey).filter(
+        _APIKey.id == key_id,
+        _APIKey.user_id == current_user.id,
+    ).first()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.is_active = False
+    db.commit()

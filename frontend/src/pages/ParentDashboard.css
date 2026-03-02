@@ -2201,3 +2201,66 @@
 .pd-gen-dismiss-btn:hover {
   opacity: 1;
 }
+
+/* ── AI Insights Widget (#581) ─────────────────────────────────────── */
+
+.pd-ai-insights-widget {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary, #6c63ff);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 16px;
+  margin-bottom: 4px;
+}
+
+.pd-ai-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.pd-ai-widget-icon {
+  color: var(--color-primary, #6c63ff);
+  display: flex;
+  align-items: center;
+}
+
+.pd-ai-widget-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pd-ai-widget-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pd-ai-widget-summary {
+  font-size: 0.875rem;
+  color: var(--color-text, #1a1a2e);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.pd-ai-widget-empty-text {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0;
+}
+
+.pd-ai-widget-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary, #6c63ff);
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.pd-ai-widget-link:hover {
+  text-decoration: underline;
+}
