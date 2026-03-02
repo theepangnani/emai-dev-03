@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.mcp import SAFE_OPERATIONS
 from app.mcp.auth import get_tools_for_role
 from app.models.user import User
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/mcp", tags=["mcp"])
 @router.get("/config")
 def get_mcp_config(
     request: Request,
+    _flag=Depends(require_feature("mcp_tools")),
     current_user: User = Depends(get_current_user),
 ):
     """Return MCP server URL and available tools for the authenticated user.

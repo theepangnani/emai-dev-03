@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.db.database import get_db
 from app.models.personalization import PersonalizationProfile
 from app.models.student import Student, parent_students
@@ -125,6 +125,7 @@ def _load_preferences(user_id: int, db: Session) -> dict:
 
 @router.get("/recommendations")
 async def get_recommendations(
+    _flag=Depends(require_feature("tutor_marketplace")),
     limit: int = Query(10, ge=1, le=50),
     include_ai: bool = Query(False, description="Generate AI explanation for each match (slower)"),
     db: Session = Depends(get_db),
@@ -162,6 +163,7 @@ async def get_recommendations(
 @router.post("/score/{tutor_id}")
 async def score_tutor(
     tutor_id: int,
+    _flag=Depends(require_feature("tutor_marketplace")),
     include_ai: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT, UserRole.PARENT, UserRole.ADMIN)),
@@ -194,6 +196,7 @@ async def score_tutor(
 @router.post("/preferences")
 def update_preferences(
     payload: TutorMatchPreferenceUpdate,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -234,6 +237,7 @@ def update_preferences(
 
 @router.get("/preferences")
 def get_preferences(
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -265,6 +269,7 @@ def get_preferences(
 @router.get("/compatibility/{tutor_id}")
 async def get_compatibility(
     tutor_id: int,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT, UserRole.PARENT, UserRole.ADMIN)),
 ):
@@ -304,6 +309,7 @@ async def get_compatibility(
 @router.get("/children/{student_id}/recommendations")
 async def get_child_recommendations(
     student_id: int,
+    _flag=Depends(require_feature("tutor_marketplace")),
     limit: int = Query(10, ge=1, le=50),
     include_ai: bool = Query(False),
     db: Session = Depends(get_db),
