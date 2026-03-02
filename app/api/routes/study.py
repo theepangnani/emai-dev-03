@@ -1259,7 +1259,9 @@ def update_study_guide(
 
 
 @router.get("/upload/formats")
-def get_upload_formats():
+def get_upload_formats(
+    _flag=Depends(require_feature("ai_study_tools")),
+):
     """Get information about supported file upload formats."""
     return get_supported_formats()
 
@@ -1277,6 +1279,7 @@ async def generate_from_text_and_images(
     course_content_id: Optional[int] = Form(None),
     focus_prompt: Optional[str] = Form(None),
     images: List[UploadFile] = File(default=[]),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1463,6 +1466,7 @@ async def generate_from_file_upload(
     course_id: Optional[int] = Form(None),
     course_content_id: Optional[int] = Form(None),
     focus_prompt: Optional[str] = Form(None),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1637,6 +1641,7 @@ async def generate_from_file_upload(
 async def extract_text_from_upload(
     request: Request,
     file: UploadFile = File(...),
+    _flag=Depends(require_feature("ai_study_tools")),
     current_user: User = Depends(get_current_user),
 ):
     """Extract text from an uploaded file without generating study material."""

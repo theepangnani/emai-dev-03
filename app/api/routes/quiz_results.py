@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func as sql_func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.course import student_courses
@@ -66,6 +66,7 @@ def _get_target_user_ids(
 def save_quiz_result(
     request: Request,
     data: QuizResultCreate,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -145,6 +146,7 @@ def list_quiz_results(
     student_user_id: int | None = Query(None, description="Filter by child (parent only)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -175,6 +177,7 @@ def list_quiz_results(
 def get_quiz_stats(
     request: Request,
     student_user_id: int | None = Query(None, description="Filter by child (parent only)"),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -250,6 +253,7 @@ def resolve_student_for_quiz(
     request: Request,
     course_id: int | None = Query(None),
     study_guide_id: int | None = Query(None),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -297,6 +301,7 @@ def resolve_student_for_quiz(
 def get_quiz_result(
     request: Request,
     result_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -318,6 +323,7 @@ def get_quiz_result(
 def delete_quiz_result(
     request: Request,
     result_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
