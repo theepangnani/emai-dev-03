@@ -20,7 +20,7 @@ from app.schemas.notification import (
     AdvancedNotificationPreferencesResponse,
     NotificationResponse,
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.core.rate_limit import limiter, get_user_id_or_ip
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ def _get_or_create_preferences(db: Session, user_id: int) -> NotificationPrefere
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_preferences(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -60,6 +61,7 @@ def get_preferences(
 def update_preferences(
     request: Request,
     data: AdvancedNotificationPreferences,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -95,6 +97,7 @@ def update_preferences(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def digest_preview(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

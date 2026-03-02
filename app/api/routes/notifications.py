@@ -16,7 +16,7 @@ from app.schemas.notification import (
     NotificationSuppressionResponse,
     UnreadCountResponse,
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_notifications(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     unread_only: bool = Query(False),
@@ -63,6 +64,7 @@ def list_notifications(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_unread_count(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -83,6 +85,7 @@ def get_unread_count(
 def mark_as_read(
     request: Request,
     notification_id: int,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -109,6 +112,7 @@ def mark_as_read(
 def acknowledge_notification(
     request: Request,
     notification_id: int,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -140,6 +144,7 @@ def acknowledge_notification(
 def suppress_notification(
     request: Request,
     notification_id: int,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -189,6 +194,7 @@ def suppress_notification(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def mark_all_as_read(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -211,6 +217,7 @@ def mark_all_as_read(
 def delete_notification(
     request: Request,
     notification_id: int,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -235,6 +242,7 @@ def delete_notification(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_notification_settings(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     current_user: User = Depends(get_current_user),
 ):
     """Get notification preferences for the current user."""
@@ -252,6 +260,7 @@ def get_notification_settings(
 def update_notification_settings(
     request: Request,
     prefs: NotificationPreferences,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -275,6 +284,7 @@ def update_notification_settings(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_suppressions(
     request: Request,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -293,6 +303,7 @@ def list_suppressions(
 def delete_suppression(
     request: Request,
     suppression_id: int,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
