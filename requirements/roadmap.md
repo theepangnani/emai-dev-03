@@ -355,7 +355,7 @@ See §9 Mobile App Development for detailed specification.
 - [ ] Pilot launch (March 6)
 
 **Deferred to Phase 3+ (post-pilot):**
-- Push notifications (Firebase) — Issues #314-#318, #334-#335
+- [x] **Push notifications (Firebase)** — FCM HTTP v1 API; PushToken model (web/iOS/Android); service account OAuth2 auth; send_to_token/user/users/multicast; auto-deactivate invalid tokens; POST /api/push/register + unregister + tokens; admin send + stats endpoints; WebPushService (frontend); PushNotificationSetup banner component; integrated with notification creation flow (#314-#318)
 - API versioning — Issue #311 (not needed when you control both clients)
 - File uploads — Issues #319-#320, #333
 - App Store / Play Store submission — Issues #343-#346
@@ -363,6 +363,10 @@ See §9 Mobile App Development for detailed specification.
 - Offline mode — Issue #337
 
 **GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
+
+### Phase 2+ (Push Notifications Foundation)
+
+- [x] **Push Notifications Foundation** — Firebase Cloud Messaging (FCM) push notifications for web + mobile; PushToken model (web/iOS/Android platforms, device_name, app_version, is_active, last_used_at); PushNotificationService with OAuth2 service account auth; FCM HTTP v1 API; send_to_token/user/users/multicast methods; auto-deactivate invalid tokens on 404/UNREGISTERED; POST /api/push/register (upsert), DELETE /api/push/unregister, GET /api/push/tokens; admin POST /api/admin/push/send (multi-user) + GET /api/admin/push/stats (by platform); WebPushService frontend class (dynamic Firebase JS SDK import, VAPID key, onMessage handler); PushNotificationSetup banner component (permission request, localStorage dismiss/enable tracking, success/denied states); send_push_for_notification() integration hook; Firebase env vars documented in frontend/.env.example; FIREBASE_PROJECT_ID / FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_VAPID_PUBLIC_KEY in backend config (IMPLEMENTED)
 
 ### Phase 2+ (Multi-LMS Integration) — #22-#29
 
