@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer
 from app.api.routes.billing import router as billing_router, admin_router as admin_billing_router
 from app.api.routes.billing import seed_subscription_plans
 
@@ -69,6 +69,7 @@ from app.models.tutor_match_preference import TutorMatchPreference  # noqa: F401
 from app.models.feature_flag import FeatureFlag, UserFeatureOverride  # noqa: F401 — ensure tables are created (Batch 10)
 from app.models.push_token import PushToken  # noqa: F401 — ensure table is created (Batch 10)
 from app.models.portfolio import StudentPortfolio, PortfolioItem  # noqa: F401 — ensure tables are created (portfolio feature)
+from app.models.study_timer import StudySession, StudyStreak  # noqa: F401 — ensure tables are created (Pomodoro timer)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1236,6 +1237,7 @@ app.include_router(push_notifications.router, prefix="/api")
 app.include_router(push_notifications.admin_router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(portfolio.router, prefix="/api")
+app.include_router(study_timer.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

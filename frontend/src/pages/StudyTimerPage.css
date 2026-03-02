@@ -1,0 +1,371 @@
+/* ─── Study Timer Page ─────────────────────────────────────────────────────── */
+
+.study-timer-page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ─── Mode tabs ───────────────────────────────────────────────────────────── */
+
+.timer-mode-tabs {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.timer-mode-tab {
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: 2px solid var(--color-border, #d1d5db);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.timer-mode-tab.active {
+  border-color: var(--color-primary, #4f46e5);
+  background: var(--color-primary, #4f46e5);
+  color: #fff;
+}
+
+.timer-mode-tab:hover:not(.active) {
+  border-color: var(--color-primary, #4f46e5);
+  color: var(--color-primary, #4f46e5);
+}
+
+/* ─── Circular timer ──────────────────────────────────────────────────────── */
+
+.timer-circle-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.timer-svg {
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.timer-track {
+  fill: none;
+  stroke: var(--color-border, #e5e7eb);
+}
+
+.timer-progress {
+  fill: none;
+  stroke: var(--color-primary, #4f46e5);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 0.3s;
+}
+
+.timer-progress.break-mode {
+  stroke: #10b981;
+}
+
+.timer-center-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.timer-time-display {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text, #111827);
+  line-height: 1;
+}
+
+.timer-label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 0.25rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.timer-circle-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Controls ────────────────────────────────────────────────────────────── */
+
+.timer-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.timer-btn {
+  padding: 0.65rem 2rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.timer-btn:active {
+  transform: scale(0.97);
+}
+
+.timer-btn-primary {
+  background: var(--color-primary, #4f46e5);
+  color: #fff;
+  min-width: 110px;
+}
+
+.timer-btn-primary:hover {
+  background: var(--color-primary-dark, #4338ca);
+}
+
+.timer-btn-secondary {
+  background: var(--color-surface-hover, #f3f4f6);
+  color: var(--color-text, #374151);
+  border: 1px solid var(--color-border, #d1d5db);
+}
+
+.timer-btn-secondary:hover {
+  background: var(--color-border, #e5e7eb);
+}
+
+/* ─── Course selector ─────────────────────────────────────────────────────── */
+
+.timer-course-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timer-course-selector label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+  font-weight: 500;
+}
+
+.timer-course-select {
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #d1d5db);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #374151);
+  font-size: 0.9rem;
+  min-width: 220px;
+  cursor: pointer;
+}
+
+/* ─── Stats panel ─────────────────────────────────────────────────────────── */
+
+.timer-stats-panel {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.timer-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.timer-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.timer-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text, #111827);
+  line-height: 1;
+}
+
+.timer-stat-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── 7-day bar chart ─────────────────────────────────────────────────────── */
+
+.timer-chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timer-chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.timer-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  height: 80px;
+}
+
+.timer-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.timer-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--color-primary, #4f46e5);
+  opacity: 0.85;
+  min-height: 2px;
+  transition: height 0.4s ease;
+}
+
+.timer-bar.today-bar {
+  background: #10b981;
+  opacity: 1;
+}
+
+.timer-bar-day {
+  font-size: 0.65rem;
+  color: var(--color-text-secondary, #9ca3af);
+  text-transform: uppercase;
+}
+
+/* ─── Streak card ─────────────────────────────────────────────────────────── */
+
+.timer-streak-card {
+  background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+[data-theme="dark"] .timer-streak-card {
+  background: linear-gradient(135deg, #451a03 0%, #422006 100%);
+  border-color: #7c3e12;
+}
+
+.timer-streak-flame {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.timer-streak-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.timer-streak-current {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ea580c;
+}
+
+.timer-streak-label {
+  font-size: 0.85rem;
+  color: #9a3412;
+  font-weight: 500;
+}
+
+.timer-streak-best {
+  font-size: 0.8rem;
+  color: #b45309;
+  margin-top: 0.1rem;
+}
+
+[data-theme="dark"] .timer-streak-current {
+  color: #fb923c;
+}
+
+[data-theme="dark"] .timer-streak-label,
+[data-theme="dark"] .timer-streak-best {
+  color: #fbbf24;
+}
+
+/* ─── Session complete banner ─────────────────────────────────────────────── */
+
+.timer-complete-banner {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #065f46;
+  font-size: 0.95rem;
+}
+
+[data-theme="dark"] .timer-complete-banner {
+  background: #064e3b;
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+/* ─── Loading / error states ─────────────────────────────────────────────── */
+
+.timer-loading {
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+  padding: 2rem;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .timer-time-display {
+    font-size: 2.25rem;
+  }
+
+  .timer-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+
+  .timer-stat-value {
+    font-size: 1.4rem;
+  }
+
+  .timer-btn {
+    padding: 0.6rem 1.4rem;
+    font-size: 0.9rem;
+  }
+}

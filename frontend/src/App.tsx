@@ -106,6 +106,7 @@ const AdminBillingPage = lazyRetry(() => import('./pages/AdminBillingPage').then
 const TutorMatchPage = lazyRetry(() => import('./pages/TutorMatchPage').then((m) => ({ default: m.TutorMatchPage })));
 const AdminFeatureFlagsPage = lazyRetry(() => import('./pages/AdminFeatureFlagsPage').then((m) => ({ default: m.AdminFeatureFlagsPage })));
 const StudentPortfolioPage = lazyRetry(() => import('./pages/StudentPortfolioPage').then((m) => ({ default: m.StudentPortfolioPage })));
+const StudyTimerPage = lazyRetry(() => import('./pages/StudyTimerPage').then((m) => ({ default: m.StudyTimerPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -611,6 +612,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student', 'parent']}>
                     <StudentPortfolioPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-timer"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudyTimerPage />
                   </ProtectedRoute>
                 }
               />

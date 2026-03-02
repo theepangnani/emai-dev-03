@@ -309,6 +309,15 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M8 10h8M8 14h5"/>
     </svg>
   ),
+  'Study Timer': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="13" r="8"/>
+      <path d="M12 9v4l2.5 2.5"/>
+      <path d="M5 3L3 5"/>
+      <path d="M19 3l2 2"/>
+      <path d="M12 3V1"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -389,6 +398,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Portfolio', path: '/portfolio' });
       items.push({ label: 'Course Planning', path: '/course-planning' });
       items.push({ label: 'Course Planner', path: '/planner' });
+      items.push({ label: 'Study Timer', path: '/study-timer' });
       items.push({ label: 'Quiz History', path: '/quiz-history' });
       items.push({ label: 'My Emails', path: '/settings/emails' });
       items.push({ label: 'Find a Tutor', path: '/tutors' });
