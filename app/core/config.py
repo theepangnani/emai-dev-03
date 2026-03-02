@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""  # Gmail App Password
 
+    # Stripe payment integration
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_publishable_key: str = ""
+
     # Shadow teacher auto-invite (#946)
     auto_invite_shadow_teachers: bool = True
 

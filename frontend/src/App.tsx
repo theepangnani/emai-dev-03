@@ -98,6 +98,11 @@ const TutorProfilePage = lazyRetry(() => import('./pages/TutorProfilePage').then
 const TutorDashboardPage = lazyRetry(() => import('./pages/TutorDashboardPage').then((m) => ({ default: m.TutorDashboardPage })));
 const AdminLMSPage = lazyRetry(() => import('./pages/AdminLMSPage').then((m) => ({ default: m.AdminLMSPage })));
 const APIKeysPage = lazyRetry(() => import('./pages/APIKeysPage').then((m) => ({ default: m.APIKeysPage })));
+const EmailAgentPage = lazyRetry(() => import('./pages/EmailAgentPage'));
+const LessonPlannerPage = lazyRetry(() => import('./pages/LessonPlannerPage').then((m) => ({ default: m.LessonPlannerPage })));
+const PersonalizationPage = lazyRetry(() => import('./pages/PersonalizationPage'));
+const BillingPage = lazyRetry(() => import('./pages/BillingPage').then((m) => ({ default: m.BillingPage })));
+const AdminBillingPage = lazyRetry(() => import('./pages/AdminBillingPage').then((m) => ({ default: m.AdminBillingPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -539,6 +544,46 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
                     <APIKeysPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/email-agent"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'teacher', 'student', 'admin']}>
+                    <EmailAgentPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/lesson-plans"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <LessonPlannerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/personalization"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent', 'admin']}>
+                    <PersonalizationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/billing"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <BillingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/billing"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminBillingPage />
                   </ProtectedRoute>
                 }
               />

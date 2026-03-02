@@ -268,6 +268,41 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
     </svg>
   ),
+  'AI Email': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+      <circle cx="18" cy="8" r="3" fill="currentColor" opacity="0.6"/>
+    </svg>
+  ),
+  'Lesson Planner': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <line x1="9" y1="12" x2="15" y2="12"/>
+      <line x1="9" y1="16" x2="11" y2="16"/>
+    </svg>
+  ),
+  'My Learning': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+      <path d="M12 6v6l4 2"/>
+    </svg>
+  ),
+  'Billing': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+      <line x1="1" y1="10" x2="23" y2="10"/>
+    </svg>
+  ),
+  'Billing Admin': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+      <rect x="1" y="1" width="6" height="6" rx="1"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -322,12 +357,15 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Progress', path: '/progress' },
         { label: 'Analytics', path: '/analytics' },
         { label: 'Messages', path: '/messages' },
+        { label: 'My Learning', path: '/personalization' },
+        { label: 'AI Email', path: '/email-agent' },
         { label: 'Notes', path: '/notes' },
         { label: 'Projects', path: '/projects' },
         { label: 'Find a Tutor', path: '/tutors' },
         { label: 'FAQ', path: '/faq' },
         { label: 'Help', path: '/help' },
         { label: 'LMS Connections', path: '/settings/lms' },
+        { label: 'Billing', path: '/settings/billing' },
         { label: 'API Keys', path: '/settings/api-keys' },
         { label: 'Account', path: '/settings/account' },
       ];
@@ -358,6 +396,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Exam Prep', path: '/exam-prep' });
       items.push({ label: 'Progress', path: '/progress' });
       items.push({ label: 'Analytics', path: '/analytics' });
+      items.push({ label: 'My Learning', path: '/personalization' });
     }
 
     if (user?.role === 'teacher') {
@@ -367,7 +406,13 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Grade Entry', path: '/teacher/grades' });
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
       items.push({ label: 'Curriculum', path: '/curriculum' });
+      items.push({ label: 'Lesson Planner', path: '/teacher/lesson-plans' });
+      items.push({ label: 'AI Email', path: '/email-agent' });
       items.push({ label: 'Tutor Dashboard', path: '/tutors/dashboard' });
+    }
+
+    if (user?.role === 'parent' || user?.role === 'teacher') {
+      // Already added in parent block above; add for teacher here if not parent
     }
 
     items.push({ label: 'Notes', path: '/notes' });
@@ -378,9 +423,13 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     if (user?.role === 'admin') {
       items.push({ label: 'Analytics', path: '/admin/analytics' });
       items.push({ label: 'LMS Admin', path: '/admin/lms' });
+      items.push({ label: 'Billing Admin', path: '/admin/billing' });
+      items.push({ label: 'My Learning', path: '/personalization' });
+      items.push({ label: 'AI Email', path: '/email-agent' });
     }
 
     items.push({ label: 'LMS Connections', path: '/settings/lms' });
+    items.push({ label: 'Billing', path: '/settings/billing' });
     items.push({ label: 'API Keys', path: '/settings/api-keys' });
     items.push({ label: 'Account', path: '/settings/account' });
 

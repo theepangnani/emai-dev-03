@@ -199,7 +199,7 @@
 - [x] Issue #207: Parent Dashboard: Collapsible/expandable calendar section (IMPLEMENTED — defaults to collapsed, #544)
 
 ### Phase 2
-- [ ] TeachAssist integration
+- [x] **TeachAssist Integration** — TeachAssist-compatible lesson planning tool for Ontario teachers; LessonPlan model (LRP/Unit/Daily types, 3-part lesson, Ontario curriculum expectations, assessment strategies, differentiation); AI-generate learning goals + 3-part lesson (GPT-4o-mini); TeachAssist XML/CSV import parser; LessonPlannerPage at /teacher/lesson-plans; template system (IMPLEMENTED)
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [x] **Advanced notifications** — per-type in-app/email toggles, daily digest mode with configurable hour, NotificationPreferencesPage, digest APScheduler job (#966) — IMPLEMENTED
 - [x] **Notes & project tracking tools** — Color-coded note cards (masonry grid, pinnable, linkable), Project tracker with milestone checklists and progress bars (IMPLEMENTED)
@@ -379,6 +379,8 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 **Implementation Status:**
 - [x] **Multi-LMS Provider Framework (#22)** — LMSConnection + LMSInstitution models, provider registry (Google Classroom, Brightspace stub, Canvas stub), seeded 5 Ontario Brightspace institutions (TDSB/PDSB/YRDSB/HDSB/OCDSB), lms_provider/lms_external_id columns on Course/Assignment/CourseContent (IMPLEMENTED)
 - [x] **Multi-LMS Connection Management API (#23)** — List providers, list/create/update/delete connections, LMS Connections UI at /settings/lms (IMPLEMENTED)
+- [x] **Brightspace OAuth2 Service (#24)** — BrightspaceOAuthClient (auth URL, code exchange, token refresh) + BrightspaceAPIClient (courses, assignments, materials, grades, announcements); httpx with retry + rate limiting (IMPLEMENTED)
+- [x] **Brightspace LMSProvider Adapter (#25)** — Full BrightspaceAdapter implementing LMSProvider protocol; sync_courses/assignments/materials/grades; registered in provider registry; 15+ tests (IMPLEMENTED)
 - [x] **Admin LMS Institution Management (#28)** — Admin page at /admin/lms: create/edit/deactivate institutions, view all user connections by institution, connection stats by provider, manual sync trigger (IMPLEMENTED)
 - [x] **Multi-LMS Sync Orchestration (#27)** — 15-minute APScheduler job syncing all active connections; per-connection sync with error tracking; stale detection (7-day threshold); manual trigger endpoint /api/admin/lms/sync/trigger (IMPLEMENTED)
 
@@ -445,19 +447,19 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [x] **Sample Exams/Tests Upload + AI Assessment (#577)** — Teacher uploads exam (PDF/doc); AI assesses quality (overall score 0-100, strengths/weaknesses, difficulty distribution, curriculum coverage, question quality); is_public toggle for student practice mode; SampleExamsPage with assessment modal and practice mode (IMPLEMENTED)
 - [x] **API Key Management UI** — Create/list/revoke API keys for MCP access; bcrypt-hashed keys with cbk_ prefix; one-time key display with copy button; APIKeysPage at /settings/api-keys; Account Settings Developer section link; nav item for all roles (IMPLEMENTED)
 - [x] **Multi-language support foundation** — i18n system with English + French (Canadian); t() function + useTranslation hook; 70+ translated strings across navigation, actions, dashboard, auth, errors, API keys; LanguageToggle EN/FR button in DashboardLayout header; locale stored in localStorage + user profile DB column; /api/profile/locale endpoint (IMPLEMENTED)
-- [ ] Advanced AI personalization
-- [ ] Admin analytics
+- [x] **Advanced AI Personalization** — PersonalizationProfile per student (learning style with AI detection, preferred difficulty/session length/time); SubjectMastery scoring (quiz*0.4 + grade*0.4 + study_freq*0.2) with beginner/developing/proficient/advanced levels + trend; AdaptiveDifficulty (consecutive correct/incorrect adjustment); AI-generated study recommendations; PersonalizationPage with mastery bars, learning style card, recommendations panel; parent view of child mastery (IMPLEMENTED)
+- [x] **Admin analytics** — See Admin Analytics Dashboard above (IMPLEMENTED)
 
 ### Phase 4 (Tutor Marketplace)
 - [x] **Tutor Marketplace Foundation** — TutorProfile model (bio, subjects, rates, availability, verified status, ratings); TutorBooking model (request → accept/decline → review flow); search/filter API; TutorMarketplacePage with filter bar + booking modal; TutorProfilePage with reviews; Teacher TutorDashboardPage with request management (IMPLEMENTED)
 - [ ] AI tutor matching
-- [ ] Payment integration
+- [x] **Payment integration (Stripe)** — SubscriptionPlan + UserSubscription models; StripeService wrapper (customer, checkout session, billing portal, cancel, webhook); Stripe Checkout for monthly/yearly premium; Billing Portal for self-service management; webhook handler (checkout.completed, subscription.updated/deleted, invoice.failed); BillingPage at /settings/billing; AdminBillingPage at /admin/billing with MRR stats; 7-day free trial (IMPLEMENTED)
 
 ### Phase 5 (AI Email Agent)
-- [ ] AI email sending
-- [ ] Reply ingestion
-- [ ] AI summaries
-- [ ] Searchable archive
+- [x] **AI email sending** — AI-drafted email composition (GPT-4o-mini via Anthropic Claude); tone selection (formal/friendly/concise/empathetic); EN/FR; improve draft instructions; send via SendGrid; EmailThread + EmailMessage models (IMPLEMENTED)
+- [x] **Reply ingestion** — SendGrid Inbound Parse webhook; thread matching by Message-ID/subject; EmailMessage records for inbound (IMPLEMENTED)
+- [x] **AI summaries** — Thread-level AI summaries (2-4 sentences); action item extraction; reply suggestions (IMPLEMENTED)
+- [x] **Searchable archive** — Full-text search across threads/messages; filter by from/to/date; tab-based inbox UI (Inbox/Sent/Drafts/Archived) (IMPLEMENTED)
 
 ---
 

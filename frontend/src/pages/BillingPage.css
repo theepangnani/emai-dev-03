@@ -1,0 +1,438 @@
+/* ============================================================
+   BillingPage.css — Subscription & Billing page styles
+   ============================================================ */
+
+.billing-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.billing-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1a202c);
+  margin: 0 0 1.5rem 0;
+}
+
+/* ─── Banners ──────────────────────────────────────────────── */
+
+.billing-success-banner {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+}
+
+.billing-error-banner {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+}
+
+/* ─── Current plan row ─────────────────────────────────────── */
+
+.billing-current-plan {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  font-size: 1.05rem;
+}
+
+.billing-current-plan-label {
+  color: var(--color-text-secondary, #4a5568);
+  font-weight: 500;
+}
+
+.billing-tier-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.billing-tier-badge--free {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.billing-tier-badge--premium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.billing-divider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 1.5rem 0;
+}
+
+/* ─── Loading ──────────────────────────────────────────────── */
+
+.billing-loading {
+  text-align: center;
+  color: var(--color-text-secondary, #4a5568);
+  padding: 2rem;
+}
+
+/* ─── Plan cards grid ──────────────────────────────────────── */
+
+.billing-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.billing-plan-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: box-shadow 0.15s ease;
+}
+
+.billing-plan-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.billing-plan-card--premium {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.billing-plan-card--current {
+  border-color: #6366f1;
+}
+
+.billing-plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.billing-plan-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+}
+
+.billing-plan-star {
+  color: #f59e0b;
+  margin-right: 0.15rem;
+}
+
+.billing-current-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ─── Pricing ──────────────────────────────────────────────── */
+
+.billing-plan-pricing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.billing-plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.billing-plan-price--yearly {
+  opacity: 0.65;
+}
+
+.billing-price-amount {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1a202c;
+  line-height: 1;
+}
+
+.billing-price-amount--small {
+  font-size: 1.25rem;
+}
+
+.billing-price-period {
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+/* ─── Features list ────────────────────────────────────────── */
+
+.billing-plan-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.billing-plan-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.billing-feature-check {
+  color: #10b981;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ─── Plan action buttons ──────────────────────────────────── */
+
+.billing-plan-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────── */
+
+.billing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 7px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  text-align: center;
+}
+
+.billing-btn--primary {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.billing-btn--primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.billing-btn--secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.billing-btn--secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.billing-btn--danger {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.billing-btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.billing-btn--disabled,
+.billing-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.billing-save-badge {
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ─── Subscription details ─────────────────────────────────── */
+
+.billing-subscription-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.billing-subscription-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+}
+
+.billing-subscription-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.billing-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.billing-info-label {
+  color: #4a5568;
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.billing-info-value {
+  color: #1a202c;
+}
+
+.billing-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.billing-status-badge--active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.billing-status-badge--trialing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.billing-status-badge--past_due {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.billing-status-badge--canceled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.billing-status-badge--incomplete {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.billing-cancel-notice {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.625rem 1rem;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.billing-trial-notice {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.625rem 1rem;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.billing-management-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ─── Cancel modal ─────────────────────────────────────────── */
+
+.billing-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.billing-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.billing-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 0.75rem 0;
+}
+
+.billing-modal-body {
+  color: #4a5568;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem 0;
+}
+
+.billing-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ─── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .billing-page {
+    padding: 1.25rem 1rem;
+  }
+
+  .billing-plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-management-actions {
+    flex-direction: column;
+  }
+
+  .billing-modal-actions {
+    flex-direction: column-reverse;
+  }
+}
