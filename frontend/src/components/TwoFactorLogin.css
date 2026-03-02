@@ -1,0 +1,183 @@
+/* ============================================================
+   TwoFactorLogin component styles
+   ============================================================ */
+
+/* Full-screen overlay to sit on top of the login form */
+.tfa-login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: tfa-fade-in 0.15s ease;
+}
+
+@keyframes tfa-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Card */
+.tfa-login-card {
+  background: var(--card-bg, #fff);
+  border-radius: 20px;
+  padding: 40px 36px;
+  max-width: 400px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 25%);
+  animation: tfa-slide-up 0.2s ease;
+}
+
+@keyframes tfa-slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Icon */
+.tfa-login-icon {
+  color: var(--primary, #4f46e5);
+  margin-bottom: 4px;
+}
+
+/* Text */
+.tfa-login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text, #111827);
+  margin: 0;
+  text-align: center;
+}
+
+.tfa-login-subtitle {
+  font-size: 14px;
+  color: var(--text-muted, #6b7280);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Code input */
+.tfa-login-input {
+  width: 100%;
+  max-width: 200px;
+  text-align: center;
+  font-size: 28px;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.3em;
+  padding: 14px 16px;
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: var(--input-bg, #fff);
+  color: var(--text, #111827);
+}
+
+.tfa-login-input:focus {
+  border-color: var(--primary, #4f46e5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #4f46e5) 15%, transparent);
+}
+
+/* Error */
+.tfa-login-error {
+  font-size: 13px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  width: 100%;
+  margin: 0;
+}
+
+/* Buttons */
+.tfa-login-btn-primary,
+.tfa-login-btn-ghost,
+.tfa-login-btn-cancel {
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.tfa-login-btn-primary {
+  background: var(--primary, #4f46e5);
+  color: #fff;
+}
+
+.tfa-login-btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark, #4338ca);
+}
+
+.tfa-login-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tfa-login-btn-ghost {
+  background: none;
+  color: var(--primary, #4f46e5);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border, #e5e7eb);
+}
+
+.tfa-login-btn-ghost:hover {
+  background: var(--surface-secondary, #f3f4f6);
+}
+
+.tfa-login-btn-cancel {
+  background: none;
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px;
+}
+
+.tfa-login-btn-cancel:hover {
+  color: var(--text, #111827);
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  .tfa-login-card {
+    background: var(--card-bg, #1f2937);
+  }
+
+  .tfa-login-title {
+    color: var(--text, #f9fafb);
+  }
+
+  .tfa-login-input {
+    background: var(--input-bg, #374151);
+    color: var(--text, #f9fafb);
+    border-color: var(--border, #4b5563);
+  }
+
+  .tfa-login-btn-ghost {
+    border-color: var(--border, #4b5563);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .tfa-login-card {
+    padding: 28px 20px;
+  }
+
+  .tfa-login-input {
+    max-width: 100%;
+  }
+}

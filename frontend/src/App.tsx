@@ -108,6 +108,7 @@ const AdminFeatureFlagsPage = lazyRetry(() => import('./pages/AdminFeatureFlagsP
 const StudentPortfolioPage = lazyRetry(() => import('./pages/StudentPortfolioPage').then((m) => ({ default: m.StudentPortfolioPage })));
 const StudyTimerPage = lazyRetry(() => import('./pages/StudyTimerPage').then((m) => ({ default: m.StudyTimerPage })));
 const GradePredictionPage = lazyRetry(() => import('./pages/GradePredictionPage').then((m) => ({ default: m.GradePredictionPage })));
+const TwoFactorSetupPage = lazyRetry(() => import('./pages/TwoFactorSetupPage').then((m) => ({ default: m.TwoFactorSetupPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -629,6 +630,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student', 'parent']}>
                     <GradePredictionPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/2fa"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <TwoFactorSetupPage />
                   </ProtectedRoute>
                 }
               />

@@ -1,0 +1,367 @@
+/* ============================================================
+   TwoFactorSetupPage styles
+   ============================================================ */
+
+.tfa-page {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+/* Breadcrumb */
+.tfa-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  color: var(--text-muted, #6b7280);
+}
+
+.tfa-breadcrumb-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary, #4f46e5);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tfa-breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.tfa-breadcrumb-sep {
+  color: var(--text-muted, #6b7280);
+}
+
+/* Card */
+.tfa-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+}
+
+/* Icons */
+.tfa-shield-icon,
+.tfa-check-icon {
+  color: var(--primary, #4f46e5);
+  margin-bottom: 4px;
+}
+
+.tfa-check-icon--green {
+  color: #22c55e;
+}
+
+/* Step indicator */
+.tfa-step-indicator {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary, #4f46e5);
+  background: color-mix(in srgb, var(--primary, #4f46e5) 10%, transparent);
+  padding: 4px 12px;
+  border-radius: 99px;
+  align-self: flex-start;
+}
+
+/* Text */
+.tfa-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text, #111827);
+  margin: 0;
+  text-align: center;
+}
+
+.tfa-title--danger {
+  color: #dc2626;
+}
+
+.tfa-subtitle {
+  font-size: 15px;
+  color: var(--text-muted, #6b7280);
+  text-align: center;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Benefits list */
+.tfa-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tfa-benefits li {
+  font-size: 14px;
+  color: var(--text-secondary, #374151);
+  padding-left: 24px;
+  position: relative;
+}
+
+.tfa-benefits li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #22c55e;
+  font-weight: 700;
+}
+
+/* QR code */
+.tfa-qr-container {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tfa-qr-image {
+  max-width: 220px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/* Secret box */
+.tfa-secret-box {
+  width: 100%;
+  background: var(--surface-secondary, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.tfa-secret-label {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 6px;
+}
+
+.tfa-secret-code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--text, #111827);
+  word-break: break-all;
+  display: block;
+}
+
+.tfa-secret-toggle {
+  font-size: 13px;
+  color: var(--primary, #4f46e5);
+}
+
+/* Code input */
+.tfa-code-input {
+  width: 100%;
+  max-width: 220px;
+  text-align: center;
+  font-size: 28px;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.3em;
+  padding: 14px 16px;
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  background: var(--input-bg, #fff);
+  color: var(--text, #111827);
+}
+
+.tfa-code-input:focus {
+  border-color: var(--primary, #4f46e5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #4f46e5) 15%, transparent);
+}
+
+/* Backup codes grid */
+.tfa-backup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.tfa-backup-code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  background: var(--surface-secondary, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 10px 8px;
+  color: var(--text, #111827);
+}
+
+/* Warning text */
+.tfa-warning {
+  font-size: 13px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  margin: 0;
+}
+
+/* Error */
+.tfa-error {
+  font-size: 14px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  width: 100%;
+  margin: 0;
+}
+
+/* URI fallback */
+.tfa-uri-fallback {
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--text-muted, #6b7280);
+  text-align: center;
+}
+
+/* Navigation row */
+.tfa-nav-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* Buttons */
+.tfa-btn-primary,
+.tfa-btn-secondary,
+.tfa-btn-ghost,
+.tfa-btn-danger {
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.tfa-btn-primary {
+  background: var(--primary, #4f46e5);
+  color: #fff;
+  width: 100%;
+}
+
+.tfa-btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark, #4338ca);
+}
+
+.tfa-btn-secondary {
+  background: var(--surface-secondary, #f3f4f6);
+  color: var(--text, #111827);
+  border: 1px solid var(--border, #e5e7eb);
+  width: 100%;
+}
+
+.tfa-btn-secondary:hover:not(:disabled) {
+  background: var(--border, #e5e7eb);
+}
+
+.tfa-btn-ghost {
+  background: none;
+  color: var(--text-muted, #6b7280);
+  border: 1px solid var(--border, #e5e7eb);
+}
+
+.tfa-btn-ghost:hover:not(:disabled) {
+  background: var(--surface-secondary, #f3f4f6);
+}
+
+.tfa-btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.tfa-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.tfa-btn-primary:disabled,
+.tfa-btn-secondary:disabled,
+.tfa-btn-ghost:disabled,
+.tfa-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .tfa-card {
+    background: var(--card-bg, #1f2937);
+    border-color: var(--border, #374151);
+  }
+
+  .tfa-title {
+    color: var(--text, #f9fafb);
+  }
+
+  .tfa-subtitle,
+  .tfa-breadcrumb {
+    color: var(--text-muted, #9ca3af);
+  }
+
+  .tfa-code-input {
+    background: var(--input-bg, #374151);
+    color: var(--text, #f9fafb);
+    border-color: var(--border, #4b5563);
+  }
+
+  .tfa-backup-code,
+  .tfa-secret-box {
+    background: var(--surface-secondary, #374151);
+    border-color: var(--border, #4b5563);
+    color: var(--text, #f9fafb);
+  }
+
+  .tfa-secret-code {
+    color: var(--text, #f9fafb);
+  }
+
+  .tfa-btn-secondary {
+    background: var(--surface-secondary, #374151);
+    color: var(--text, #f9fafb);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .tfa-card {
+    padding: 28px 20px;
+  }
+
+  .tfa-backup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tfa-code-input {
+    max-width: 100%;
+  }
+}

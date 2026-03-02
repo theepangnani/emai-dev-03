@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { googleApi } from '../api/client';
+import { googleApi, authApi } from '../api/client';
+import { TwoFactorLogin } from '../components/TwoFactorLogin';
 import './Auth.css';
 
 export function Login() {
@@ -13,7 +14,8 @@ export function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
-  const { user, login, loginWithToken } = useAuth();
+  const [twoFATempToken, setTwoFATempToken] = useState<string | null>(null);
+  const { user, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -90,7 +92,21 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      await login(identifier, password);
+      // Call authApi.login directly so we can inspect the raw response.
+      // The server may return { requires_2fa: true, temp_token } when 2FA is
+      // enabled — in that case we show the TwoFactorLogin overlay instead of
+      // completing the login immediately.
+      const data = await authApi.login(identifier, password);
+
+      if (data.requires_2fa && data.temp_token) {
+        // 2FA required — show the code entry overlay
+        setTwoFATempToken(data.temp_token);
+        setIsLoading(false);
+        return;
+      }
+
+      // Normal login — store tokens and load the user
+      loginWithToken(data.access_token, data.refresh_token);
       setLockoutSeconds(0);
       setRemainingAttempts(null);
       navigate('/dashboard');
@@ -130,8 +146,30 @@ export function Login() {
     }
   };
 
+  // Handle successful 2FA code verification
+  const handle2FASuccess = useCallback(
+    (accessToken: string, refreshToken: string | undefined, onboardingCompleted: boolean | undefined) => {
+      loginWithToken(accessToken, refreshToken);
+      setTwoFATempToken(null);
+      if (onboardingCompleted === false) {
+        navigate('/onboarding');
+      } else {
+        navigate('/dashboard');
+      }
+    },
+    [loginWithToken, navigate],
+  );
+
   return (
     <div className="auth-container">
+      {/* 2FA overlay — shown when the server requires a TOTP code after password check */}
+      {twoFATempToken && (
+        <TwoFactorLogin
+          tempToken={twoFATempToken}
+          onSuccess={handle2FASuccess}
+          onCancel={() => setTwoFATempToken(null)}
+        />
+      )}
       <div className="auth-card">
         <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
         <h1 className="auth-title">Welcome to ClassBridge</h1>
