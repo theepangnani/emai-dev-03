@@ -142,7 +142,7 @@
 - [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
 - [ ] **Frontend DDD modules** — Reorganize into domain directories (#133)
-- [ ] **Domain events** — Add event system for cross-context communication (#134)
+- [x] **Domain events** (#134) — Lightweight synchronous in-process EventBus; DomainEvent base class; 15+ typed events (StudyGuideGenerated, QuizCompleted, SubscriptionChanged, TutorBookingRequested, LMSSyncCompleted, etc.); default handlers for cross-context reactions (quiz→mastery invalidation, subscription→onboarding, booking→notification); admin events API (recent events, stats, test publish); 15+ tests (IMPLEMENTED)
 
 #### Security & Hardening (Tier 0)
 - [x] **Authorization gaps** — `list_students()` returns ALL students to any auth user; `get_user()` has no permission check; `list_assignments()` not filtered by course access (#139) (IMPLEMENTED)
