@@ -23,6 +23,42 @@ from app.services.email_service import send_email_sync
 logger = logging.getLogger(__name__)
 
 
+# Lazy import to avoid circular imports
+def _get_or_create_notif_prefs(db: Session, user_id: int):
+    """Load (or create) NotificationPreference for a user. Returns None on error."""
+    try:
+        from app.models.notification_preference import NotificationPreference
+        prefs = db.query(NotificationPreference).filter(
+            NotificationPreference.user_id == user_id
+        ).first()
+        if prefs is None:
+            prefs = NotificationPreference(user_id=user_id)
+            db.add(prefs)
+            db.flush()  # get ID without full commit — caller owns the transaction
+        return prefs
+    except Exception as e:
+        logger.warning(f"Could not load/create notification preferences for user {user_id}: {e}")
+        return None
+
+
+def _type_to_pref_key(notification_type: NotificationType) -> str:
+    """Map a NotificationType to the preference key prefix (assignments/messages/tasks/system/reminders)."""
+    _map = {
+        NotificationType.ASSIGNMENT_DUE: "assignments",
+        NotificationType.GRADE_POSTED: "assignments",
+        NotificationType.PROJECT_DUE: "assignments",
+        NotificationType.ASSESSMENT_UPCOMING: "assignments",
+        NotificationType.MATERIAL_UPLOADED: "assignments",
+        NotificationType.STUDY_GUIDE_CREATED: "assignments",
+        NotificationType.MESSAGE: "messages",
+        NotificationType.TASK_DUE: "tasks",
+        NotificationType.SYSTEM: "system",
+        NotificationType.LINK_REQUEST: "system",
+        NotificationType.PARENT_REQUEST: "system",
+    }
+    return _map.get(notification_type, "system")
+
+
 def send_multi_channel_notification(
     db: Session,
     recipient: User,
@@ -73,10 +109,23 @@ def send_multi_channel_notification(
             )
             return None
 
+    # Load advanced notification preferences — fall back gracefully on any error
+    try:
+        adv_prefs = _get_or_create_notif_prefs(db, recipient.id)
+        pref_key = _type_to_pref_key(notification_type)
+        in_app_enabled = getattr(adv_prefs, f"in_app_{pref_key}", True) if adv_prefs else True
+        email_enabled = getattr(adv_prefs, f"email_{pref_key}", True) if adv_prefs else True
+        digest_mode = adv_prefs.digest_mode if adv_prefs else False
+    except Exception as _e:
+        logger.warning(f"Error reading advanced prefs for user {recipient.id}: {_e}")
+        in_app_enabled = True
+        email_enabled = True
+        digest_mode = False
+
     notification = None
 
-    # Channel 1: In-app notification bell
-    if "app_notification" in channels:
+    # Channel 1: In-app notification bell (skip if per-type in-app is disabled)
+    if "app_notification" in channels and in_app_enabled:
         notification = Notification(
             user_id=recipient.id,
             type=notification_type,
@@ -92,8 +141,8 @@ def send_multi_channel_notification(
             notification.next_reminder_at = datetime.now(timezone.utc) + timedelta(hours=24)
         db.add(notification)
 
-    # Channel 2: Email
-    if "email" in channels and recipient.email and recipient.email_notifications:
+    # Channel 2: Email — skip if per-type email disabled or digest mode is on
+    if "email" in channels and recipient.email and recipient.email_notifications and email_enabled and not digest_mode:
         try:
             email_html = _build_notification_email(title, content, link)
             send_email_sync(recipient.email, title, email_html)

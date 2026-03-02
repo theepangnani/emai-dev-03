@@ -14,7 +14,7 @@ from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.user import User, UserRole
 from app.models.course import Course, student_courses
 from app.models.assignment import Assignment
-from app.models.student import Student
+from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
 from app.models.teacher_google_account import TeacherGoogleAccount
 from app.models.course_content import CourseContent
@@ -31,6 +31,7 @@ from app.services.google_classroom import (
     list_courses,
     get_course_work,
     get_course_work_materials,
+    get_classroom_service,
     list_course_teachers,
     GMAIL_READONLY_SCOPE,
 )
@@ -1132,6 +1133,251 @@ def sync_grades_for_course(
     db.commit()
 
     return {"synced": synced, "errors": errors, "message": message}
+
+
+# ── Grade integration (#838) ─────────────────────────────────────────────────
+
+# 15-minute in-memory grade cache keyed by user_id (or child user_id for parents)
+# Value: (grade_list, fetched_at)
+_grade_cache: dict[int, tuple[list, datetime]] = {}
+_GRADE_CACHE_TTL = 900  # 15 minutes
+
+
+def _fetch_grades_from_classroom(
+    user: User,
+    db: Session,
+    course_filter_id: int | None = None,
+) -> list[dict]:
+    """Fetch graded student submissions from Google Classroom for *user*.
+
+    Returns a list of grade dicts.  If Google is not connected or the API call
+    fails, returns an empty list rather than raising.
+    """
+    if not user.google_access_token:
+        return []
+
+    try:
+        google_courses, credentials = list_courses(
+            user.google_access_token,
+            user.google_refresh_token,
+        )
+        update_user_tokens(user, credentials, db)
+    except Exception as e:
+        logger.warning(f"Grade fetch: failed to list Google courses for user {user.id}: {e}")
+        return []
+
+    grades: list[dict] = []
+
+    for gc in google_courses:
+        gc_course_id = gc.get("id")
+        if not gc_course_id:
+            continue
+
+        # If caller requested a specific course, skip others
+        if course_filter_id is not None:
+            local_course = db.query(Course).filter(
+                Course.id == course_filter_id,
+                Course.google_classroom_id == gc_course_id,
+            ).first()
+            if not local_course:
+                continue
+
+        course_name = gc.get("name", "Unknown Course")
+
+        # Fetch all coursework for this course
+        try:
+            coursework, cw_credentials = get_course_work(
+                user.google_access_token,
+                gc_course_id,
+                user.google_refresh_token,
+            )
+            update_user_tokens(user, cw_credentials, db)
+        except Exception as e:
+            logger.warning(f"Grade fetch: failed to list courseWork for {gc_course_id}: {e}")
+            continue
+
+        for cw in coursework:
+            cw_id = cw.get("id")
+            if not cw_id:
+                continue
+
+            # Fetch submissions for this coursework item
+            try:
+                service, svc_credentials = get_classroom_service(
+                    user.google_access_token,
+                    user.google_refresh_token,
+                )
+                update_user_tokens(user, svc_credentials, db)
+                result = (
+                    service.courses()
+                    .courseWork()
+                    .studentSubmissions()
+                    .list(
+                        courseId=gc_course_id,
+                        courseWorkId=cw_id,
+                        states=["RETURNED"],
+                    )
+                    .execute()
+                )
+                submissions = result.get("studentSubmissions", [])
+            except Exception as e:
+                logger.debug(f"Grade fetch: failed to list submissions for cw {cw_id}: {e}")
+                continue
+
+            for sub in submissions:
+                assigned_grade = sub.get("assignedGrade")
+                if assigned_grade is None:
+                    continue  # Not yet graded
+
+                max_points = cw.get("maxPoints") or 100
+                try:
+                    grade_val = float(assigned_grade)
+                    max_val = float(max_points)
+                    percentage = round((grade_val / max_val) * 100, 1) if max_val > 0 else 0.0
+                except (TypeError, ValueError, ZeroDivisionError):
+                    percentage = 0.0
+
+                update_time = sub.get("updateTime") or sub.get("creationTime")
+
+                # Resolve local course_id
+                local_course = db.query(Course).filter(
+                    Course.google_classroom_id == gc_course_id
+                ).first()
+                local_course_id = local_course.id if local_course else None
+
+                # Resolve local assignment_id
+                local_assignment = None
+                if local_course_id:
+                    local_assignment = db.query(Assignment).filter(
+                        Assignment.google_classroom_id == cw_id
+                    ).first()
+
+                grades.append({
+                    "course_id": local_course_id,
+                    "course_name": course_name,
+                    "assignment_title": cw.get("title", "Untitled Assignment"),
+                    "assignment_id": local_assignment.id if local_assignment else None,
+                    "grade": grade_val,
+                    "max_grade": max_val,
+                    "percentage": percentage,
+                    "graded_at": update_time,
+                })
+
+    # Sort by graded_at descending (most recent first)
+    grades.sort(key=lambda g: g.get("graded_at") or "", reverse=True)
+    return grades
+
+
+@router.get("/classroom/grades")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def get_classroom_grades(
+    request: Request,
+    child_id: int | None = Query(None, description="For parents: the user_id of the child student"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fetch graded submissions from Google Classroom for the current student.
+
+    - STUDENT: returns their own grades
+    - PARENT: pass ?child_id=<student_user_id> to get grades for a linked child
+    Results are cached per user for 15 minutes to avoid hammering the Classroom API.
+    """
+    # Resolve which user's Google credentials to use
+    target_user = current_user
+
+    if current_user.role == UserRole.PARENT and child_id is not None:
+        # Verify parent-child link before fetching
+        child_student = (
+            db.query(Student)
+            .filter(Student.user_id == child_id)
+            .first()
+        )
+        if not child_student:
+            raise HTTPException(status_code=404, detail="Child not found")
+        # Check that current_user is a linked parent
+        linked = (
+            db.execute(
+                parent_students.select().where(
+                    parent_students.c.parent_id == current_user.id,
+                    parent_students.c.student_id == child_student.id,
+                )
+            ).first()
+        )
+        if not linked:
+            raise HTTPException(status_code=403, detail="Not a linked parent of this student")
+
+        child_user = db.query(User).filter(User.id == child_id).first()
+        if not child_user:
+            raise HTTPException(status_code=404, detail="Child user not found")
+        target_user = child_user
+
+    elif current_user.role not in (UserRole.STUDENT, UserRole.PARENT):
+        raise HTTPException(status_code=403, detail="Only students and parents can access grades")
+
+    # Check cache
+    cache_key = target_user.id
+    cached = _grade_cache.get(cache_key)
+    if cached:
+        grades_list, fetched_at = cached
+        age = (datetime.now(timezone.utc) - fetched_at).total_seconds()
+        if age < _GRADE_CACHE_TTL:
+            return {"grades": grades_list, "cached": True}
+
+    grades = _fetch_grades_from_classroom(target_user, db)
+
+    # Store in cache
+    _grade_cache[cache_key] = (grades, datetime.now(timezone.utc))
+
+    return {"grades": grades, "cached": False}
+
+
+@router.get("/classroom/grades/course/{course_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def get_classroom_grades_for_course(
+    request: Request,
+    course_id: int,
+    child_id: int | None = Query(None, description="For parents: the user_id of the child student"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fetch graded submissions from Google Classroom for a specific course.
+
+    Filtered to the given local course_id.  Same auth rules as /classroom/grades.
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Resolve target user (same logic as above)
+    target_user = current_user
+
+    if current_user.role == UserRole.PARENT and child_id is not None:
+        child_student = (
+            db.query(Student)
+            .filter(Student.user_id == child_id)
+            .first()
+        )
+        if not child_student:
+            raise HTTPException(status_code=404, detail="Child not found")
+        linked = (
+            db.execute(
+                parent_students.select().where(
+                    parent_students.c.parent_id == current_user.id,
+                    parent_students.c.student_id == child_student.id,
+                )
+            ).first()
+        )
+        if not linked:
+            raise HTTPException(status_code=403, detail="Not a linked parent of this student")
+        child_user = db.query(User).filter(User.id == child_id).first()
+        if not child_user:
+            raise HTTPException(status_code=404, detail="Child user not found")
+        target_user = child_user
+    elif current_user.role not in (UserRole.STUDENT, UserRole.PARENT):
+        raise HTTPException(status_code=403, detail="Only students and parents can access grades")
+
+    grades = _fetch_grades_from_classroom(target_user, db, course_filter_id=course_id)
+    return {"grades": grades, "course_id": course_id}
 
 
 @router.delete("/teacher/accounts/{account_id}")

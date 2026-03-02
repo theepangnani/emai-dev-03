@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminApi } from '../api/client';
-import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
+import { adminApi, studyApi } from '../api/client';
+import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem, StudyGuidePoolStats } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useDebounce } from '../utils/useDebounce';
@@ -32,6 +32,9 @@ export function AdminDashboard() {
 
   // Trend indicators
   const [trends, setTrends] = useState<TrendCounts>({ total: 0, student: 0, teacher: 0, classes: 0 });
+
+  // Study guide pool stats (#573)
+  const [poolStats, setPoolStats] = useState<StudyGuidePoolStats | null>(null);
 
   // Recent activity
   const [recentActivity, setRecentActivity] = useState<AuditLogItem[]>([]);
@@ -73,10 +76,11 @@ export function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const [statsData, allUsersData, auditData] = await Promise.allSettled([
+      const [statsData, allUsersData, auditData, poolData] = await Promise.allSettled([
         adminApi.getStats(),
         adminApi.getUsers({ limit: 5000 }),
         adminApi.getAuditLogs({ limit: 5 }),
+        studyApi.getPoolStats(),
       ]);
 
       if (statsData.status === 'fulfilled') {
@@ -100,6 +104,10 @@ export function AdminDashboard() {
 
       if (auditData.status === 'fulfilled') {
         setRecentActivity(auditData.value.items);
+      }
+
+      if (poolData.status === 'fulfilled') {
+        setPoolStats(poolData.value);
       }
     } catch {
       // Failed to load stats
@@ -246,6 +254,19 @@ export function AdminDashboard() {
           <h3>Classes</h3>
           <p className="card-value">{stats?.total_courses ?? 0}</p>
           <p className="card-label">Total classes</p>
+        </div>
+
+        <div className="dashboard-card">
+          <div className="card-icon" aria-hidden="true">&#9851;</div>
+          <h3>AI Cost Savings</h3>
+          <p className="card-value">
+            {poolStats != null ? `$${poolStats.estimated_savings_usd.toFixed(2)}` : '—'}
+          </p>
+          <p className="card-label">
+            {poolStats != null
+              ? `${poolStats.reuses} guide${poolStats.reuses !== 1 ? 's' : ''} reused from pool`
+              : 'Study guide reuse pool'}
+          </p>
         </div>
       </div>
 

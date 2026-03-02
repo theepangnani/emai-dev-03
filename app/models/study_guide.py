@@ -27,6 +27,10 @@ class StudyGuide(Base):
     parent_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True)
     content_hash = Column(String(64), nullable=True)  # SHA-256 for duplicate detection
 
+    # Repository reuse (#573) — when a guide is cloned from the shared content pool,
+    # this points to the original guide that was reused (avoiding a new AI generation).
+    source_guide_id = Column(Integer, ForeignKey("study_guides.id"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -35,7 +39,19 @@ class StudyGuide(Base):
     assignment = relationship("Assignment", backref="study_guides")
     course = relationship("Course", backref="study_guides")
     course_content = relationship("CourseContent", backref="study_guides")
-    parent_guide = relationship("StudyGuide", remote_side=[id], backref="child_versions", passive_deletes=True)
+    parent_guide = relationship(
+        "StudyGuide",
+        foreign_keys=[parent_guide_id],
+        remote_side=[id],
+        backref="child_versions",
+        passive_deletes=True,
+    )
+    source_guide = relationship(
+        "StudyGuide",
+        foreign_keys=[source_guide_id],
+        remote_side=[id],
+        backref="reused_copies",
+    )
 
     __table_args__ = (
         Index("ix_study_guides_user", "user_id"),

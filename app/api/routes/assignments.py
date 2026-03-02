@@ -483,6 +483,64 @@ def list_submissions(
     return result
 
 
+@router.delete("/{assignment_id}/submission", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def unsubmit_assignment(
+    request: Request,
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retract a submission. Only allowed if status is 'submitted' (not returned/graded). Students only."""
+    if current_user.role != UserRole.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can unsubmit assignments",
+        )
+
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found")
+
+    sa = (
+        db.query(StudentAssignment)
+        .filter(
+            StudentAssignment.student_id == student.id,
+            StudentAssignment.assignment_id == assignment_id,
+        )
+        .first()
+    )
+    if not sa:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No submission found")
+
+    if sa.status not in ("submitted", "pending"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot unsubmit: submission has already been returned or graded",
+        )
+
+    # Delete file if present
+    if sa.submission_file_path:
+        try:
+            delete_file(sa.submission_file_path)
+        except Exception as e:
+            logger.warning("Failed to delete submission file %s: %s", sa.submission_file_path, e)
+
+    sa.status = "pending"
+    sa.submitted_at = None
+    sa.submission_file_path = None
+    sa.submission_file_name = None
+    sa.submission_notes = None
+    sa.is_late = False
+
+    db.commit()
+    return {"detail": "Submission retracted"}
+
+
 @router.get("/{assignment_id}/submission/download")
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def download_submission_file(

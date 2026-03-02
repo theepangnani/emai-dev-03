@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
@@ -70,6 +71,14 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    notification_preferences = relationship(
+        "NotificationPreference",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     def has_google_scope(self, scope: str) -> bool:
         """Check if user has been granted a specific Google OAuth scope."""

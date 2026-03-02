@@ -201,7 +201,7 @@
 ### Phase 2
 - [ ] TeachAssist integration
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
-- [ ] Advanced notifications (#966)
+- [x] **Advanced notifications** — per-type in-app/email toggles, daily digest mode with configurable hour, NotificationPreferencesPage, digest APScheduler job (#966) — IMPLEMENTED
 - [ ] Notes & project tracking tools
 - [x] **Data privacy & user rights** — Account deletion (#964) with 30-day grace period + anonymization job, data export (#965) with JSON download, consent on feature/phase-2 (IMPLEMENTED)
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
@@ -211,7 +211,7 @@
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [x] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; AES-256 encrypted storage (Fernet), seamless fallback to platform key; `/settings/account` page (#578) (IMPLEMENTED)
 - [x] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007) (IMPLEMENTED)
-- [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
+- [x] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573) (IMPLEMENTED)
 - [ ] **AI Exam & Assessment Engine** — Exam prep, mock exams, teacher uploads with AI assessment (#959 — consolidated from #576, #577, #667)
 - [ ] **Student Progress & Report Card Analysis** — Test upload, mark tracking, AI recommendations, parent insights (#960 — consolidated from #575, #581, #663)
 - [x] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735) (IMPLEMENTED — verified done in Phase 1.5 and feature/phase-2)
@@ -282,11 +282,11 @@
 - [x] **Teacher dashboard enhancement** — Quick stats bar (courses/students/due/messages), recent announcements section with expand/collapse (#833) (IMPLEMENTED)
 - [x] **Student engagement** — Backend streak tracking (study_streak_days, last_study_date, longest_streak), streak-at-risk banner, Due for Review section (#834) (IMPLEMENTED)
 - [x] **Message search** — Search and communication improvements (#836) (IMPLEMENTED)
-- [ ] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837)
+- [x] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837) (IMPLEMENTED)
 
 **Tier 3 — Backlog:**
-- [ ] **Grade integration** — Display grades from Google Classroom (#838)
-- [ ] **Assignment submission** — Allow students to submit work (#839)
+- [x] **Grade integration** — Display grades from Google Classroom (#838) -- IMPLEMENTED
+- [x] **Assignment submission** — Allow students to submit work (#839) -- IMPLEMENTED
 
 #### 6.28 FAQ / Knowledge Base (Phase 2) -- COMPLETE
 

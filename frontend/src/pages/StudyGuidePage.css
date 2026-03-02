@@ -76,6 +76,27 @@
   font-size: 0.8rem;
 }
 
+/* Shared Content pool badge (#573) */
+.sg-shared-content-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid #a5d6a7;
+  cursor: default;
+  white-space: nowrap;
+}
+[data-theme="dark"] .sg-shared-content-badge {
+  background: #1b3a1f;
+  color: #81c784;
+  border-color: #388e3c;
+}
+
 /* Icon action buttons */
 .sg-icon-actions {
   display: flex;

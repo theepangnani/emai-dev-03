@@ -22,7 +22,10 @@ import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
 import { gradesApi } from '../api/grades';
-import type { ChildGradeSummary } from '../api/grades';
+import type { ChildGradeSummary, ClassroomGradeItem } from '../api/grades';
+import { submissionsApi } from '../api/submissions';
+import type { SubmissionResponse } from '../api/submissions';
+import { SubmitAssignmentModal } from '../components/SubmitAssignmentModal';
 import './StudentDashboard.css';
 
 function formatRelativeDate(dateStr: string): string {
@@ -120,8 +123,13 @@ export function StudentDashboard() {
   // Backend streak data (#834)
   const [backendStreak, setBackendStreak] = useState<StudyActivityResponse | null>(null);
 
+  // Assignment submission modal (#839)
+  const [submitModalAssignment, setSubmitModalAssignment] = useState<Assignment | null>(null);
+  const [submissionsMap, setSubmissionsMap] = useState<Map<number, SubmissionResponse>>(new Map());
+
   // Invite teacher state
   const [gradeSummary, setGradeSummary] = useState<ChildGradeSummary | null>(null);
+  const [recentGrades, setRecentGrades] = useState<ClassroomGradeItem[]>([]);
 
   const [showInviteTeacherModal, setShowInviteTeacherModal] = useState(false);
   const [inviteTeacherEmail, setInviteTeacherEmail] = useState('');
@@ -293,6 +301,7 @@ export function StudentDashboard() {
       loadTasks(),
       loadNotifications(),
       loadGradeSummary(),
+      loadRecentGrades(),
       loadBackendStreak(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
@@ -311,9 +320,27 @@ export function StudentDashboard() {
     try {
       const data = await assignmentsApi.list();
       setAssignments(data);
+      // Load existing submissions in background (best effort)
+      loadSubmissions(data).catch(() => { /* ignore */ });
     } catch {
       // Assignments not loaded
     }
+  };
+
+  const loadSubmissions = async (assignmentList: Assignment[]) => {
+    if (!assignmentList.length) return;
+    const map = new Map<number, SubmissionResponse>();
+    await Promise.all(
+      assignmentList.map(async (a) => {
+        try {
+          const sub = await submissionsApi.getSubmission(a.id);
+          map.set(a.id, sub);
+        } catch {
+          // 404 means no submission yet — that's fine
+        }
+      })
+    );
+    setSubmissionsMap(map);
   };
 
   const loadStudyGuides = async () => {
@@ -351,6 +378,15 @@ export function StudentDashboard() {
       }
     } catch {
       // Grades not loaded — not critical
+    }
+  };
+
+  const loadRecentGrades = async () => {
+    try {
+      const data = await gradesApi.getGrades();
+      setRecentGrades(data.slice(0, 5));
+    } catch {
+      // Google not connected or grades unavailable — hide section gracefully
     }
   };
 
@@ -778,35 +814,60 @@ export function StudentDashboard() {
           </div>
           {timelineItems.length > 0 ? (
             <div className="sd-timeline">
-              {timelineItems.slice(0, 8).map(item => (
-                <div
-                  key={item.id}
-                  className={`sd-timeline-item ${item.urgency}`}
-                  onClick={() => {
-                    if (item.type === 'task') navigate(`/tasks/${item.sourceId}`);
-                  }}
-                  role={item.type === 'task' ? 'button' : undefined}
-                  tabIndex={item.type === 'task' ? 0 : undefined}
-                >
-                  <div className="sd-timeline-dot" />
-                  <div className="sd-timeline-content">
-                    <span className="sd-timeline-title">{item.title}</span>
-                    <div className="sd-timeline-meta">
-                      {item.dueDate && (
-                        <span className={`sd-timeline-date ${item.urgency}`}>
-                          {formatRelativeDate(item.dueDate)}
+              {timelineItems.slice(0, 8).map(item => {
+                const submission = item.type === 'assignment' ? submissionsMap.get(item.sourceId) : undefined;
+                const isSubmitted = submission && (submission.status === 'submitted' || submission.status === 'graded' || submission.status === 'returned');
+                const sourceAssignment = item.type === 'assignment' ? assignments.find(a => a.id === item.sourceId) : undefined;
+                return (
+                  <div
+                    key={item.id}
+                    className={`sd-timeline-item ${item.urgency}`}
+                    onClick={() => {
+                      if (item.type === 'task') navigate(`/tasks/${item.sourceId}`);
+                    }}
+                    role={item.type === 'task' ? 'button' : undefined}
+                    tabIndex={item.type === 'task' ? 0 : undefined}
+                  >
+                    <div className="sd-timeline-dot" />
+                    <div className="sd-timeline-content">
+                      <span className="sd-timeline-title">{item.title}</span>
+                      <div className="sd-timeline-meta">
+                        {item.dueDate && (
+                          <span className={`sd-timeline-date ${item.urgency}`}>
+                            {formatRelativeDate(item.dueDate)}
+                          </span>
+                        )}
+                        {item.courseName && (
+                          <span className="sd-timeline-course">{item.courseName}</span>
+                        )}
+                        <span className={`sd-timeline-type ${item.type}`}>
+                          {item.type === 'assignment' ? 'Assignment' : 'Task'}
                         </span>
-                      )}
-                      {item.courseName && (
-                        <span className="sd-timeline-course">{item.courseName}</span>
-                      )}
-                      <span className={`sd-timeline-type ${item.type}`}>
-                        {item.type === 'assignment' ? 'Assignment' : 'Task'}
-                      </span>
+                      </div>
                     </div>
+                    {item.type === 'assignment' && (
+                      <div className="sd-timeline-submit">
+                        {isSubmitted ? (
+                          <span className="sd-submitted-badge">
+                            {submission?.status === 'graded' ? 'Graded' : 'Submitted'}
+                          </span>
+                        ) : (
+                          <button
+                            className="sd-submit-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (sourceAssignment) setSubmitModalAssignment(sourceAssignment);
+                            }}
+                            aria-label={`Submit ${item.title}`}
+                          >
+                            Submit
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {timelineItems.length > 8 && (
                 <Link to="/tasks" className="sd-timeline-more">
                   +{timelineItems.length - 8} more items
@@ -870,6 +931,33 @@ export function StudentDashboard() {
           )}
         </section>
       </div>
+
+      {/* ── Recent Grades (#838) ─────────────────────────── */}
+      {recentGrades.length > 0 && (
+        <section className="sd-panel sd-recent-grades">
+          <div className="sd-panel-header">
+            <h2>Recent Grades</h2>
+            <Link to="/grades" className="sd-see-all">View All</Link>
+          </div>
+          <div className="sd-grades-list">
+            {recentGrades.map((g, idx) => {
+              const pct = g.percentage;
+              const chipColor = pct >= 80 ? 'green' : pct >= 60 ? 'amber' : 'red';
+              return (
+                <div key={idx} className="sd-grade-row">
+                  <div className="sd-grade-row-info">
+                    <span className="sd-grade-assignment">{g.assignment_title}</span>
+                    <span className="sd-grade-course">{g.course_name}</span>
+                  </div>
+                  <span className={`sd-grade-chip sd-grade-chip--${chipColor}`}>
+                    {g.grade}/{g.max_grade} &mdash; {pct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Courses Section ──────────────────────────────── */}
       <section className="sd-panel sd-courses">
@@ -1081,6 +1169,24 @@ export function StudentDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Submit Assignment Modal (#839) ────────────────── */}
+      {submitModalAssignment && (
+        <SubmitAssignmentModal
+          assignmentId={submitModalAssignment.id}
+          assignmentTitle={submitModalAssignment.title}
+          dueDate={submitModalAssignment.due_date}
+          existingSubmission={submissionsMap.get(submitModalAssignment.id) ?? null}
+          onSubmitted={(sub) => {
+            setSubmissionsMap(prev => {
+              const next = new Map(prev);
+              next.set(submitModalAssignment.id, sub);
+              return next;
+            });
+          }}
+          onClose={() => setSubmitModalAssignment(null)}
+        />
       )}
     </DashboardLayout>
   );

@@ -9,6 +9,9 @@ import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
+import { QuickActionFAB } from './QuickActionFAB';
+import type { FABAction } from './QuickActionFAB';
+import { CreateTaskModal } from './CreateTaskModal';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -121,6 +124,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <circle cx="12" cy="7" r="4"/>
     </svg>
   ),
+  Grades: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -157,6 +166,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [showFabTaskModal, setShowFabTaskModal] = useState(false);
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
@@ -167,6 +177,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'My Kids', path: '/my-kids' },
         { label: 'Documents', path: '/documents' },
         { label: 'Tasks', path: '/tasks' },
+        { label: 'Grades', path: '/grades' },
         { label: 'Analytics', path: '/analytics' },
         { label: 'Messages', path: '/messages' },
         { label: 'FAQ', path: '/faq' },
@@ -193,6 +204,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     );
 
     if (user?.role === 'student') {
+      items.push({ label: 'Grades', path: '/grades' });
       items.push({ label: 'Analytics', path: '/analytics' });
     }
 
@@ -270,6 +282,151 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const persistentQuickActions = useMemo(() => {
     return sidebarActions || [];
   }, [sidebarActions]);
+
+  // Paths where the FAB should not be shown
+  const FAB_EXCLUDED_PATHS = ['/login', '/register', '/onboarding', '/admin'];
+  const showFAB = user !== null && !FAB_EXCLUDED_PATHS.some(p => location.pathname.startsWith(p));
+
+  // Role-specific FAB actions
+  const fabActions = useMemo((): FABAction[] => {
+    if (!user) return [];
+
+    // Common SVG icon helpers (inline to avoid importing a large icon library)
+    const IconTask = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polyline points="9 11 12 14 22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    );
+    const IconStudyGuide = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </svg>
+    );
+    const IconMessage = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    );
+    const IconAddChild = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <line x1="19" y1="8" x2="19" y2="14" />
+        <line x1="22" y1="11" x2="16" y2="11" />
+      </svg>
+    );
+    const IconSync = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10" />
+        <polyline points="1 20 1 14 7 14" />
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+      </svg>
+    );
+    const IconFlashcards = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    );
+    const IconUpload = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="17 8 12 3 7 8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
+    );
+    const IconBroadcast = (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    );
+
+    if (user.role === 'parent') {
+      return [
+        {
+          label: 'Add Task',
+          icon: IconTask,
+          onClick: () => setShowFabTaskModal(true),
+        },
+        {
+          label: 'Study Guide',
+          icon: IconStudyGuide,
+          onClick: () => navigate('/courses?action=study-guide'),
+        },
+        {
+          label: 'Send Message',
+          icon: IconMessage,
+          onClick: () => navigate('/messages?compose=true'),
+        },
+        {
+          label: 'Add Child',
+          icon: IconAddChild,
+          onClick: () => navigate('/dashboard?add-child=true'),
+        },
+        {
+          label: 'Sync Classroom',
+          icon: IconSync,
+          onClick: () => navigate('/courses?action=sync'),
+        },
+      ];
+    }
+
+    if (user.role === 'student') {
+      return [
+        {
+          label: 'Study Guide',
+          icon: IconStudyGuide,
+          onClick: () => navigate('/courses?action=study-guide'),
+        },
+        {
+          label: 'Add Task',
+          icon: IconTask,
+          onClick: () => setShowFabTaskModal(true),
+        },
+        {
+          label: 'Flashcards',
+          icon: IconFlashcards,
+          onClick: () => navigate('/course-materials?tab=flashcards'),
+        },
+        {
+          label: 'Send Message',
+          icon: IconMessage,
+          onClick: () => navigate('/messages?compose=true'),
+        },
+      ];
+    }
+
+    if (user.role === 'teacher') {
+      return [
+        {
+          label: 'Upload Material',
+          icon: IconUpload,
+          onClick: () => navigate('/course-materials?action=upload'),
+        },
+        {
+          label: 'Send Message',
+          icon: IconMessage,
+          onClick: () => navigate('/messages?compose=true'),
+        },
+        {
+          label: 'Add Task',
+          icon: IconTask,
+          onClick: () => setShowFabTaskModal(true),
+        },
+        {
+          label: 'Broadcast',
+          icon: IconBroadcast,
+          onClick: () => navigate('/dashboard?action=broadcast'),
+        },
+      ];
+    }
+
+    return [];
+  }, [user, navigate]);
 
   const handleNavClick = useCallback((path: string) => {
     navigate(path);
@@ -518,6 +675,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       {user?.role === 'teacher' && (
         <OnboardingTour steps={TEACHER_TOUR_STEPS} storageKey="tour_completed_teacher" />
       )}
+
+      {/* Quick Action FAB (#837) — fixed floating speed-dial, hidden on admin/auth pages */}
+      {showFAB && fabActions.length > 0 && (
+        <QuickActionFAB actions={fabActions} />
+      )}
+
+      {/* CreateTaskModal triggered from the FAB (#837) */}
+      <CreateTaskModal
+        open={showFabTaskModal}
+        onClose={() => setShowFabTaskModal(false)}
+      />
       </div>
     </>
   );

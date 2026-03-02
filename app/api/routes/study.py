@@ -21,6 +21,7 @@ from app.models.student import Student, parent_students
 from app.models.course import student_courses
 from app.models.task import Task
 from app.models.user import User, UserRole
+from app.repositories.study_guide_repository import StudyGuideRepository
 from app.schemas.study import (
     StudyGuideCreate,
     StudyGuideUpdate,
@@ -34,8 +35,9 @@ from app.schemas.study import (
     DuplicateCheckRequest,
     DuplicateCheckResponse,
     AutoCreatedTask,
+    StudyGuidePoolStats,
 )
-from app.api.deps import get_current_user, can_access_course
+from app.api.deps import get_current_user, can_access_course, require_role
 from app.services.audit_service import log_action
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, check_content_safe
 from app.services.notification_service import notify_parents_of_student
@@ -378,6 +380,47 @@ def auto_create_tasks_from_dates(
 
 
 # ============================================
+# Content Pool Helpers (#573)
+# ============================================
+
+COST_PER_GENERATION_USD = 0.002  # Estimated cost per AI generation saved
+
+
+def _clone_from_pool(
+    db: Session,
+    pool_guide: StudyGuide,
+    user: User,
+    title: str,
+    course_id: int | None,
+    course_content_id: int | None,
+    content_hash: str,
+    focus_prompt: str | None = None,
+) -> StudyGuide:
+    """Clone an existing guide from the content pool for the current user.
+
+    Creates a new StudyGuide row that copies ``content``, ``guide_type``,
+    and ``content_hash`` from ``pool_guide`` but is owned by ``user``.
+    Sets ``source_guide_id`` to track reuse lineage.  No AI call needed.
+    """
+    enforce_study_guide_limit(db, user)
+    cloned = StudyGuide(
+        user_id=user.id,
+        title=title,
+        content=pool_guide.content,
+        guide_type=pool_guide.guide_type,
+        content_hash=content_hash,
+        course_id=course_id,
+        course_content_id=course_content_id,
+        source_guide_id=pool_guide.id,
+        version=1,
+        focus_prompt=focus_prompt or None,
+    )
+    db.add(cloned)
+    db.flush()
+    return cloned
+
+
+# ============================================
 # Duplicate Detection
 # ============================================
 
@@ -405,6 +448,33 @@ def check_duplicate(
         )
 
     return DuplicateCheckResponse(exists=False)
+
+
+# ============================================
+# Content Pool Stats (#573)
+# ============================================
+
+
+@router.get("/pool", response_model=StudyGuidePoolStats)
+def get_pool_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """Admin-only: return dedup statistics for the shared study guide content pool.
+
+    Reports total guides generated, unique content hashes, number of reuses
+    (guides served from the pool without an AI call), and estimated cost savings.
+    """
+    repo = StudyGuideRepository(db)
+    total, unique = repo.count_total_and_unique()
+    reuses = repo.count_reuses()
+    savings = reuses * COST_PER_GENERATION_USD
+    return StudyGuidePoolStats(
+        total_guides=total,
+        unique_content_hashes=unique,
+        reuses=reuses,
+        estimated_savings_usd=round(savings, 4),
+    )
 
 
 # ============================================
@@ -466,6 +536,46 @@ async def generate_study_guide_endpoint(
             detail="Please provide assignment_id or content to generate a study guide",
         )
 
+    # Compute content hash for dedup / pool lookup
+    content_hash = study_service.compute_content_hash(title, "study_guide", body.assignment_id)
+
+    # ── Dedup check 1: same user, recent submission (double-click guard) ──
+    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
+    if existing:
+        resp = StudyGuideResponse.model_validate(existing)
+        return resp
+
+    # ── Dedup check 2: cross-user content pool (#573) ──────────────────
+    # Only apply when not regenerating an existing guide (which has intentional new content)
+    study_guide_repo = StudyGuideRepository(db)
+    pool_guide = None if body.regenerate_from_id else study_guide_repo.find_pool_guide(
+        content_hash, "study_guide", exclude_user_id=current_user.id
+    )
+    if pool_guide:
+        # Resolve course + content first so cloned guide is fully categorized
+        resolved_course_id, resolved_cc_id = ensure_course_and_content(
+            db, current_user, title, description,
+            course_id=body.course_id or (course.id if course else None),
+            course_content_id=body.course_content_id,
+        )
+        study_guide = _clone_from_pool(
+            db, pool_guide, current_user, title,
+            course_id=resolved_course_id,
+            course_content_id=resolved_cc_id,
+            content_hash=content_hash,
+            focus_prompt=body.focus_prompt,
+        )
+        study_guide.assignment_id = body.assignment_id
+        study_guide.parent_guide_id = parent_guide_id
+        study_guide.version = version
+        log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=study_guide.id, details={"guide_type": "study_guide", "reused": True, "source_id": pool_guide.id})
+        db.commit()
+        db.refresh(study_guide)
+        _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+        resp = StudyGuideResponse.model_validate(study_guide)
+        resp.reused = True
+        return resp
+
     # Generate study guide using AI
     try:
         raw_content = await generate_study_guide(
@@ -486,12 +596,6 @@ async def generate_study_guide_endpoint(
 
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)
-
-    # Deduplicate: return existing if same hash was created recently
-    content_hash = study_service.compute_content_hash(title, "study_guide", body.assignment_id)
-    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
-    if existing:
-        return existing
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -581,6 +685,53 @@ async def generate_quiz_endpoint(
             detail="Please provide assignment_id or content to generate a quiz",
         )
 
+    quiz_title = f"Quiz: {topic}"
+
+    # Compute content hash for dedup / pool lookup
+    content_hash = study_service.compute_content_hash(quiz_title, "quiz", body.assignment_id)
+
+    # ── Dedup check 1: same user, recent submission (double-click guard) ──
+    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
+    if existing:
+        existing_questions = [QuizQuestion(**q) for q in json.loads(existing.content)]
+        return QuizResponse(
+            id=existing.id, title=existing.title, questions=existing_questions,
+            guide_type="quiz", version=existing.version,
+            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
+        )
+
+    # ── Dedup check 2: cross-user content pool (#573) ──────────────────
+    study_guide_repo = StudyGuideRepository(db)
+    pool_guide = None if body.regenerate_from_id else study_guide_repo.find_pool_guide(
+        content_hash, "quiz", exclude_user_id=current_user.id
+    )
+    if pool_guide:
+        resolved_course_id, resolved_cc_id = ensure_course_and_content(
+            db, current_user, quiz_title, content,
+            course_id=body.course_id,
+            course_content_id=body.course_content_id,
+        )
+        study_guide = _clone_from_pool(
+            db, pool_guide, current_user, quiz_title,
+            course_id=resolved_course_id,
+            course_content_id=resolved_cc_id,
+            content_hash=content_hash,
+            focus_prompt=body.focus_prompt,
+        )
+        study_guide.assignment_id = body.assignment_id
+        study_guide.parent_guide_id = parent_guide_id
+        study_guide.version = version
+        db.commit()
+        db.refresh(study_guide)
+        _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+        pool_questions = [QuizQuestion(**q) for q in json.loads(study_guide.content)]
+        return QuizResponse(
+            id=study_guide.id, title=study_guide.title, questions=pool_questions,
+            guide_type="quiz", version=study_guide.version,
+            parent_guide_id=study_guide.parent_guide_id, created_at=study_guide.created_at,
+            reused=True,
+        )
+
     # Generate quiz using AI
     critical_dates = []
     try:
@@ -600,20 +751,9 @@ async def generate_quiz_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Deduplicate: return existing if same hash was created recently
-    content_hash = study_service.compute_content_hash(f"Quiz: {topic}", "quiz", body.assignment_id)
-    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
-    if existing:
-        existing_questions = [QuizQuestion(**q) for q in json.loads(existing.content)]
-        return QuizResponse(
-            id=existing.id, title=existing.title, questions=existing_questions,
-            guide_type="quiz", version=existing.version,
-            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
-        )
-
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
-        db, current_user, f"Quiz: {topic}", content,
+        db, current_user, quiz_title, content,
         course_id=body.course_id,
         course_content_id=body.course_content_id,
     )
@@ -625,7 +765,7 @@ async def generate_quiz_endpoint(
         assignment_id=body.assignment_id,
         course_id=resolved_course_id,
         course_content_id=resolved_cc_id,
-        title=f"Quiz: {topic}",
+        title=quiz_title,
         content=quiz_json,
         guide_type="quiz",
         version=version,
@@ -638,10 +778,10 @@ async def generate_quiz_endpoint(
 
     # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
     if not critical_dates:
-        critical_dates = scan_content_for_dates(content, f"Quiz: {topic}")
+        critical_dates = scan_content_for_dates(content, quiz_title)
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        critical_dates = [{"date": today_str, "title": f"Review: Quiz: {topic}", "priority": "medium"}]
+        critical_dates = [{"date": today_str, "title": f"Review: {quiz_title}", "priority": "medium"}]
 
     created_tasks = auto_create_tasks_from_dates(
         db, critical_dates, current_user, study_guide.id,
@@ -705,6 +845,53 @@ async def generate_flashcards_endpoint(
             detail="Please provide assignment_id or content to generate flashcards",
         )
 
+    cards_title = f"Flashcards: {topic}"
+
+    # Compute content hash for dedup / pool lookup
+    content_hash = study_service.compute_content_hash(cards_title, "flashcards", body.assignment_id)
+
+    # ── Dedup check 1: same user, recent submission (double-click guard) ──
+    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
+    if existing:
+        existing_cards = [Flashcard(**c) for c in json.loads(existing.content)]
+        return FlashcardSetResponse(
+            id=existing.id, title=existing.title, cards=existing_cards,
+            guide_type="flashcards", version=existing.version,
+            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
+        )
+
+    # ── Dedup check 2: cross-user content pool (#573) ──────────────────
+    study_guide_repo = StudyGuideRepository(db)
+    pool_guide = None if body.regenerate_from_id else study_guide_repo.find_pool_guide(
+        content_hash, "flashcards", exclude_user_id=current_user.id
+    )
+    if pool_guide:
+        resolved_course_id, resolved_cc_id = ensure_course_and_content(
+            db, current_user, cards_title, content,
+            course_id=body.course_id,
+            course_content_id=body.course_content_id,
+        )
+        study_guide = _clone_from_pool(
+            db, pool_guide, current_user, cards_title,
+            course_id=resolved_course_id,
+            course_content_id=resolved_cc_id,
+            content_hash=content_hash,
+            focus_prompt=body.focus_prompt,
+        )
+        study_guide.assignment_id = body.assignment_id
+        study_guide.parent_guide_id = parent_guide_id
+        study_guide.version = version
+        db.commit()
+        db.refresh(study_guide)
+        _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+        pool_cards = [Flashcard(**c) for c in json.loads(study_guide.content)]
+        return FlashcardSetResponse(
+            id=study_guide.id, title=study_guide.title, cards=pool_cards,
+            guide_type="flashcards", version=study_guide.version,
+            parent_guide_id=study_guide.parent_guide_id, created_at=study_guide.created_at,
+            reused=True,
+        )
+
     # Generate flashcards using AI
     critical_dates = []
     try:
@@ -724,20 +911,9 @@ async def generate_flashcards_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Deduplicate: return existing if same hash was created recently
-    content_hash = study_service.compute_content_hash(f"Flashcards: {topic}", "flashcards", body.assignment_id)
-    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
-    if existing:
-        existing_cards = [Flashcard(**c) for c in json.loads(existing.content)]
-        return FlashcardSetResponse(
-            id=existing.id, title=existing.title, cards=existing_cards,
-            guide_type="flashcards", version=existing.version,
-            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
-        )
-
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
-        db, current_user, f"Flashcards: {topic}", content,
+        db, current_user, cards_title, content,
         course_id=body.course_id,
         course_content_id=body.course_content_id,
     )
@@ -749,7 +925,7 @@ async def generate_flashcards_endpoint(
         assignment_id=body.assignment_id,
         course_id=resolved_course_id,
         course_content_id=resolved_cc_id,
-        title=f"Flashcards: {topic}",
+        title=cards_title,
         content=cards_json,
         guide_type="flashcards",
         version=version,
@@ -762,10 +938,10 @@ async def generate_flashcards_endpoint(
 
     # Auto-create tasks from critical dates (or fallback: scan source content, then generic review)
     if not critical_dates:
-        critical_dates = scan_content_for_dates(content, f"Flashcards: {topic}")
+        critical_dates = scan_content_for_dates(content, cards_title)
     if not critical_dates:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        critical_dates = [{"date": today_str, "title": f"Review: Flashcards: {topic}", "priority": "medium"}]
+        critical_dates = [{"date": today_str, "title": f"Review: {cards_title}", "priority": "medium"}]
 
     created_tasks = auto_create_tasks_from_dates(
         db, critical_dates, current_user, study_guide.id,

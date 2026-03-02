@@ -74,6 +74,7 @@ const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((
 const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').then((m) => ({ default: m.EmailSettingsPage })));
 const DocumentsPage = lazyRetry(() => import('./pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
 const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
+const NotificationPreferencesPage = lazyRetry(() => import('./pages/NotificationPreferencesPage').then((m) => ({ default: m.NotificationPreferencesPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -323,6 +324,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
                     <AccountSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications/preferences"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <NotificationPreferencesPage />
                   </ProtectedRoute>
                 }
               />

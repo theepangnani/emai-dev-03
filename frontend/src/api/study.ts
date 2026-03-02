@@ -19,10 +19,21 @@ export interface StudyGuide {
   guide_type: string;
   version: number;
   parent_guide_id: number | null;
+  /** Set when this guide was cloned from the shared content pool (#573). */
+  source_guide_id: number | null;
   focus_prompt: string | null;
   created_at: string;
   archived_at: string | null;
   auto_created_tasks?: AutoCreatedTask[];
+  /** True when the guide was served from the content pool with no AI call. */
+  reused?: boolean;
+}
+
+export interface StudyGuidePoolStats {
+  total_guides: number;
+  unique_content_hashes: number;
+  reuses: number;
+  estimated_savings_usd: number;
 }
 
 export interface DuplicateCheckResponse {
@@ -283,5 +294,11 @@ export const studyApi = {
   resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
     const response = await api.get('/api/quiz-results/resolve-student', { params });
     return response.data as ResolvedStudent | null;
+  },
+
+  // Content pool stats (admin only) — #573
+  getPoolStats: async () => {
+    const response = await api.get('/api/study/pool');
+    return response.data as StudyGuidePoolStats;
   },
 };

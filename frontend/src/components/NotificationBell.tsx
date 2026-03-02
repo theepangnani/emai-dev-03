@@ -258,6 +258,9 @@ export function NotificationBell() {
             <Link to="/notifications" className="notif-view-all" onClick={() => setIsOpen(false)}>
               View All Notifications
             </Link>
+            <Link to="/notifications/preferences" className="notif-settings-link" onClick={() => setIsOpen(false)}>
+              Notification Settings
+            </Link>
           </div>
         </div>
       )}
