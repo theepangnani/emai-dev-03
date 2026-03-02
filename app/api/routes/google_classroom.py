@@ -19,7 +19,7 @@ from app.models.teacher import Teacher
 from app.models.teacher_google_account import TeacherGoogleAccount
 from app.models.course_content import CourseContent
 from app.models.invite import Invite, InviteType
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.services.audit_service import log_action
 from app.services.email_service import add_inspiration_to_email, send_email_sync, wrap_branded_email
 from app.core.config import settings
@@ -303,7 +303,11 @@ def google_callback(
 
 @router.get("/status")
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
-def google_status(request: Request, current_user: User = Depends(get_current_user)):
+def google_status(
+    request: Request,
+    _flag=Depends(require_feature("google_classroom")),
+    current_user: User = Depends(get_current_user),
+):
     """Check if user has connected Google Classroom."""
     return {
         "connected": bool(current_user.google_access_token),
@@ -332,6 +336,7 @@ def google_disconnect(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_google_courses(
     request: Request,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -809,6 +814,7 @@ def _sync_assignments_for_course(course: Course, user: User, db: Session) -> int
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_courses(
     request: Request,
+    _flag=Depends(require_feature("google_classroom")),
     classroom_type: str | None = Query(
         None,
         description='Override classroom type for synced courses: "school" or "private"',
@@ -879,6 +885,7 @@ def sync_google_courses(
 def get_google_assignments(
     request: Request,
     course_id: str,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -906,6 +913,7 @@ def get_google_assignments(
 def sync_google_assignments(
     request: Request,
     google_course_id: str,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -982,6 +990,7 @@ def sync_google_assignments(
 def sync_google_materials(
     request: Request,
     google_course_id: str,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1021,6 +1030,7 @@ def sync_google_materials(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_teacher_google_accounts(
     request: Request,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
@@ -1053,6 +1063,7 @@ def list_teacher_google_accounts(
 def update_teacher_google_account(
     request: Request,
     account_id: int,
+    _flag=Depends(require_feature("google_classroom")),
     label: str | None = Query(None),
     set_primary: bool = Query(False),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
@@ -1084,6 +1095,7 @@ def update_teacher_google_account(
 @router.post("/sync-grades/{course_id}")
 def sync_grades_for_course(
     course_id: int,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1272,6 +1284,7 @@ def _fetch_grades_from_classroom(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def get_classroom_grades(
     request: Request,
+    _flag=Depends(require_feature("google_classroom")),
     child_id: int | None = Query(None, description="For parents: the user_id of the child student"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1336,6 +1349,7 @@ def get_classroom_grades(
 def get_classroom_grades_for_course(
     request: Request,
     course_id: int,
+    _flag=Depends(require_feature("google_classroom")),
     child_id: int | None = Query(None, description="For parents: the user_id of the child student"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1385,6 +1399,7 @@ def get_classroom_grades_for_course(
 def remove_teacher_google_account(
     request: Request,
     account_id: int,
+    _flag=Depends(require_feature("google_classroom")),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):

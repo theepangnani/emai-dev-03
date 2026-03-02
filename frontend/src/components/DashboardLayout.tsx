@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
 import { useLastVisitedPage } from '../hooks/useLastVisitedPage';
