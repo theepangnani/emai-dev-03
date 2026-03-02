@@ -395,7 +395,7 @@ export function StudentDashboard() {
         name: newCourseName.trim(),
         subject: newCourseSubject.trim() || undefined,
       });
-      setStatusMessage({ type: 'success', text: `Course "${newCourseName}" created!` });
+      setStatusMessage({ type: 'success', text: `Class "${newCourseName}" created!` });
       setShowCreateCourseModal(false);
       setNewCourseName('');
       setNewCourseSubject('');
@@ -507,10 +507,10 @@ export function StudentDashboard() {
         </div>
         <div className="sd-hero-stats">
           {streak > 0 && (
-            <div className="sd-stat-chip streak">
+            <Link to="/tasks" className="sd-stat-chip streak sd-stat-chip--link" style={{ textDecoration: 'none' }}>
               <span className="sd-stat-icon">{'\u{1F525}'}</span>
               <span>{streak} day{streak !== 1 ? 's' : ''}</span>
-            </div>
+            </Link>
           )}
           <StreakMilestone streak={streak} />
           <StreakHistory studyGuides={studyGuides} />
@@ -613,7 +613,7 @@ export function StudentDashboard() {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             ),
-            label: 'Course Material',
+            label: 'Class Material',
             onClick: () => studyTools.setShowStudyModal(true),
           },
           {
@@ -627,10 +627,20 @@ export function StudentDashboard() {
               </svg>
             ),
             label: 'Study Guide',
-            onClick: () => studyTools.setShowStudyModal(true),
+            onClick: () => navigate('/study'),
+          },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+            ),
+            label: 'Create Task',
+            onClick: () => navigate('/tasks?create=true'),
           },
         ] satisfies QuickAction[]}
-        maxVisible={2}
+        maxVisible={3}
       />
 
       {/* ── Continue Studying ─────────────────────────────── */}
@@ -776,17 +786,17 @@ export function StudentDashboard() {
               );
             })}
             <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
-              + Add Course
+              + Add Class
             </button>
           </div>
         ) : (
           <EmptyState
-            title="No courses yet"
-            description="Create a course or connect Google Classroom to get started."
+            title="No classes yet"
+            description="Create a class or connect Google Classroom to get started."
             variant="compact"
             className="sd-empty"
             actions={[
-              { label: 'Create Course', onClick: () => setShowCreateCourseModal(true) },
+              { label: 'Create Class', onClick: () => setShowCreateCourseModal(true) },
               ...(!googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
             ]}
           />
@@ -834,15 +844,15 @@ export function StudentDashboard() {
         </div>
       )}
 
-      {/* ── Create Course Modal ──────────────────────────── */}
+      {/* ── Create Class Modal ──────────────────────────── */}
       {showCreateCourseModal && (
         <div className="modal-overlay" onClick={() => setShowCreateCourseModal(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Create a Course" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
-            <h2>Create a Course</h2>
-            <p className="modal-desc">Add a course or subject to organize your materials.</p>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create a Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create a Class</h2>
+            <p className="modal-desc">Add a class or subject to organize your materials.</p>
             <div className="modal-form">
               <label>
-                Course Name *
+                Class Name *
                 <input
                   type="text"
                   value={newCourseName}
@@ -866,7 +876,7 @@ export function StudentDashboard() {
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowCreateCourseModal(false)} disabled={isCreatingCourse}>Cancel</button>
               <button className="generate-btn" onClick={handleCreateCourse} disabled={isCreatingCourse || !newCourseName.trim()}>
-                {isCreatingCourse ? 'Creating...' : 'Create Course'}
+                {isCreatingCourse ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>

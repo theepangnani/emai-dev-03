@@ -378,7 +378,7 @@ export function ParentDashboard() {
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                 ),
-                label: 'Course Material',
+                label: 'Class Material',
                 onClick: () => pd.setShowStudyModal(true),
               },
               {

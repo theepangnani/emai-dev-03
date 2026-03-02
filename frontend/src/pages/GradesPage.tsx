@@ -154,9 +154,9 @@ export function GradesPage() {
                   }
                   setSearchParams(params, { replace: true });
                 }}
-                aria-label="Filter by course"
+                aria-label="Filter by class"
               >
-                <option value="">All Courses</option>
+                <option value="">All Classes</option>
                 {allCourses.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -222,7 +222,7 @@ export function GradesPage() {
                 {/* Course grade table */}
                 <div className="gp-courses-table">
                   <div className="gp-table-header">
-                    <span className="gp-th course">Course</span>
+                    <span className="gp-th course">Class</span>
                     <span className="gp-th grade">Grade</span>
                     <span className="gp-th avg">Average</span>
                     <span className="gp-th progress">Progress</span>

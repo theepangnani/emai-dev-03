@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
+import { PageNav } from '../components/PageNav';
 import EmptyState from '../components/EmptyState';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import './CoursesPage.css';
@@ -566,6 +567,10 @@ export function CoursesPage() {
       ]}
     >
       <div className="courses-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Classes' },
+        ]} />
         {actionError && (
           <div className="error-banner" style={{ background: '#fef2f2', color: '#991b1b', padding: '8px 16px', borderRadius: '8px', marginBottom: 12 }}>
             {actionError}

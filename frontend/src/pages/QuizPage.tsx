@@ -126,7 +126,7 @@ export function QuizPage() {
         <div className="error">{error || 'Quiz not found'}</div>
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
-          { label: 'Course Materials', to: '/course-materials' },
+          { label: 'Class Materials', to: '/course-materials' },
           ...(guide?.course_content_id
             ? [{ label: guide.title.replace(/^Quiz:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
             : []),
@@ -143,7 +143,7 @@ export function QuizPage() {
       <div className="quiz-header">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
-          { label: 'Course Materials', to: '/course-materials' },
+          { label: 'Class Materials', to: '/course-materials' },
           ...(guide?.course_content_id
             ? [{ label: guide.title.replace(/^Quiz:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
             : []),

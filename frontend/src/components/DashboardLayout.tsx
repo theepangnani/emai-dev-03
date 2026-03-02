@@ -110,7 +110,7 @@ const NavIcon = ({ name }: { name: string }) => {
 // Quick action SVG icons — maps sidebar action labels to nav SVGs
 const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Class Material': NAV_SVG.Materials,
-  '+ Course Material': NAV_SVG.Materials,
+  '+ Course Material': NAV_SVG.Materials, // legacy fallback
   '+ Create Class Material': NAV_SVG.Materials,
   '+ Task': NAV_SVG.Tasks,
   '+ Child': NAV_SVG['My Kids'],
@@ -118,6 +118,7 @@ const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Class': NAV_SVG.Classes,
   '+ Add Class': NAV_SVG.Classes,
   '+ Create Study Material': NAV_SVG.Materials,
+  'Create Task': NAV_SVG.Tasks,
 };
 
 export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, headerSlot }: DashboardLayoutProps) {

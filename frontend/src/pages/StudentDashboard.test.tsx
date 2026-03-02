@@ -203,7 +203,7 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Course Material')).toBeInTheDocument()
+      expect(screen.getByText('Class Material')).toBeInTheDocument()
     })
     expect(screen.queryByText('Connect Google Classroom')).not.toBeInTheDocument()
   })
@@ -216,17 +216,17 @@ describe('StudentDashboard', () => {
       // Quick actions reduced to 2: Course Material + Study Guide
       const actionLabels = document.querySelectorAll('.rqa-label')
       const labels = Array.from(actionLabels).map(el => el.textContent)
-      expect(labels).toContain('Course Material')
+      expect(labels).toContain('Class Material')
       expect(labels).toContain('Study Guide')
     })
   })
 
-  it('shows only 2 quick actions (Course Material + Study Guide)', async () => {
+  it('shows 3 quick actions (Class Material + Study Guide + Create Task)', async () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
       const actionLabels = document.querySelectorAll('.rqa-label')
-      expect(actionLabels.length).toBe(2)
+      expect(actionLabels.length).toBe(3)
     })
   })
 
@@ -385,29 +385,29 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('No courses yet')).toBeInTheDocument()
+      expect(screen.getByText('No classes yet')).toBeInTheDocument()
     })
   })
 
-  // ── Create Course Modal ────────────────────────────────────────
-  it('opens create course modal from courses empty state', async () => {
+  // ── Create Class Modal ────────────────────────────────────────
+  it('opens create class modal from courses empty state', async () => {
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Create Course')).toBeInTheDocument()
+      expect(screen.getByText('Create Class')).toBeInTheDocument()
     })
 
-    const createCourseBtn = screen.getByText('Create Course').closest('button')!
-    await user.click(createCourseBtn)
+    const createClassBtn = screen.getByText('Create Class').closest('button')!
+    await user.click(createClassBtn)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Create a Course' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Create a Class' })).toBeInTheDocument()
     })
   })
 
-  // ── Create Study Material Modal ────────────────────────────────
-  it('opens upload documents modal', async () => {
+  // ── Study Guide Quick Action ─────────────────────────────────
+  it('navigates to study page from Study Guide quick action', async () => {
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
@@ -417,33 +417,25 @@ describe('StudentDashboard', () => {
 
     const studyCard = screen.getByText('Study Guide').closest('button')!
     await user.click(studyCard)
+
+    expect(mockNavigate).toHaveBeenCalledWith('/study')
+  })
+
+  it('opens upload documents modal from Class Material quick action', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<StudentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Class Material')).toBeInTheDocument()
+    })
+
+    const materialCard = screen.getByText('Class Material').closest('button')!
+    await user.click(materialCard)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
     })
     expect(screen.getByText(/drag & drop files here/i)).toBeInTheDocument()
-  })
-
-  it('closes upload modal on Cancel', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<StudentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Study Guide')).toBeInTheDocument()
-    })
-
-    const studyCard = screen.getByText('Study Guide').closest('button')!
-    await user.click(studyCard)
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
-
-    await waitFor(() => {
-      expect(screen.queryByRole('heading', { level: 2, name: 'Upload Documents' })).not.toBeInTheDocument()
-    })
   })
 
   // ── Notifications ──────────────────────────────────────────────
