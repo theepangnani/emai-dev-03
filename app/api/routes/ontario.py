@@ -42,7 +42,11 @@ router = APIRouter(prefix="/ontario", tags=["Ontario Course Catalog"])
 
 @router.get("/boards", response_model=list[OntarioBoardResponse])
 def list_boards(
+<<<<<<< HEAD
     _flag=Depends(require_feature("course_planning")),
+=======
+    _flag=Depends(require_feature("school_board_integration")),
+>>>>>>> worktree-agent-a3073767
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -58,6 +62,7 @@ def list_boards(
 @router.get("/boards/{board_id}/courses", response_model=CourseCatalogPage)
 def list_board_courses(
     board_id: int,
+    _flag=Depends(require_feature("school_board_integration")),
     grade: Optional[int] = Query(default=None, ge=9, le=12, description="Filter by grade level (9–12)"),
     subject: Optional[str] = Query(default=None, description="Filter by subject area (partial match)"),
     pathway: Optional[str] = Query(default=None, description="Filter by pathway code: U, C, M, E, O"),
@@ -117,7 +122,11 @@ def list_board_courses(
 @router.get("/courses/{course_code}", response_model=CourseCatalogResponse)
 def get_course_detail(
     course_code: str,
+<<<<<<< HEAD
     _flag=Depends(require_feature("course_planning")),
+=======
+    _flag=Depends(require_feature("school_board_integration")),
+>>>>>>> worktree-agent-a3073767
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -145,7 +154,11 @@ def get_course_detail(
 @router.post("/student/board", response_model=StudentBoardResponse, status_code=status.HTTP_201_CREATED)
 def link_student_board(
     payload: StudentBoardLink,
+<<<<<<< HEAD
     _flag=Depends(require_feature("course_planning")),
+=======
+    _flag=Depends(require_feature("school_board_integration")),
+>>>>>>> worktree-agent-a3073767
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -213,6 +226,7 @@ def link_student_board(
 
 @router.get("/student/board", response_model=StudentBoardResponse)
 def get_student_board(
+    _flag=Depends(require_feature("school_board_integration")),
     student_id: Optional[int] = Query(default=None, description="For parents/admins: specify the student"),
     _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
