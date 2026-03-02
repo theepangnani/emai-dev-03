@@ -116,6 +116,16 @@ const WritingAssistantPage = lazyRetry(() => import('./pages/WritingAssistantPag
 const ReminderPreferencesPage = lazyRetry(() => import('./pages/ReminderPreferencesPage').then((m) => ({ default: m.ReminderPreferencesPage })));
 const ResourceLibraryPage = lazyRetry(() => import('./pages/ResourceLibraryPage').then((m) => ({ default: m.ResourceLibraryPage })));
 const ClassroomImportPage = lazyRetry(() => import('./pages/ClassroomImportPage').then((m) => ({ default: m.ClassroomImportPage })));
+const PeerReviewPage = lazyRetry(() => import('./pages/PeerReviewPage').then((m) => ({ default: m.PeerReviewPage })));
+const StudentGoalsPage = lazyRetry(() => import('./pages/StudentGoalsPage').then((m) => ({ default: m.StudentGoalsPage })));
+const HomeworkHelperPage = lazyRetry(() => import('./pages/HomeworkHelperPage').then((m) => ({ default: m.HomeworkHelperPage })));
+const AttendancePage = lazyRetry(() => import('./pages/AttendancePage').then((m) => ({ default: m.AttendancePage })));
+const WellnessPage = lazyRetry(() => import('./pages/WellnessPage').then((m) => ({ default: m.WellnessPage })));
+const AchievementsPage = lazyRetry(() => import('./pages/AchievementsPage').then((m) => ({ default: m.AchievementsPage })));
+const NewsletterPage = lazyRetry(() => import('./pages/NewsletterPage').then((m) => ({ default: m.NewsletterPage })));
+const MeetingSchedulerPage = lazyRetry(() => import('./pages/MeetingSchedulerPage').then((m) => ({ default: m.MeetingSchedulerPage })));
+const LessonSummarizerPage = lazyRetry(() => import('./pages/LessonSummarizerPage').then((m) => ({ default: m.LessonSummarizerPage })));
+const LearningJournalPage = lazyRetry(() => import('./pages/LearningJournalPage').then((m) => ({ default: m.LearningJournalPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -686,6 +696,86 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
                     <ClassroomImportPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/peer-review"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'teacher', 'parent', 'admin']}>
+                    <PeerReviewPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/goals"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <StudentGoalsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/homework-help"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <HomeworkHelperPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/attendance"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'parent', 'student', 'admin']}>
+                    <AttendancePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/wellness"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <WellnessPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/achievements"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <AchievementsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <NewsletterPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/meetings"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'teacher']}>
+                    <MeetingSchedulerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/lesson-summarizer"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'admin']}>
+                    <LessonSummarizerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/journal"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <LearningJournalPage />
                   </ProtectedRoute>
                 }
               />

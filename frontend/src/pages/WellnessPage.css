@@ -1,0 +1,456 @@
+/* =========================================================
+   WellnessPage — Daily Check-in & Trend Analytics
+   ========================================================= */
+
+.wellness-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  font-family: inherit;
+}
+
+.wellness-page__title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.wellness-page__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #666);
+  margin-bottom: 1.75rem;
+}
+
+/* ── Card shell ──────────────────────────────────────────── */
+.wellness-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.wellness-card__heading {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 1.1rem;
+  color: var(--text-primary, #1a1a1a);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Mood selector ───────────────────────────────────────── */
+.mood-selector {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--surface-alt, #f9fafb);
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  min-width: 80px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #555);
+}
+
+.mood-btn:hover {
+  transform: translateY(-2px);
+  border-color: #a78bfa;
+}
+
+.mood-btn--selected {
+  border-width: 2.5px;
+  transform: translateY(-2px);
+}
+
+.mood-btn__emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+/* Mood colours */
+.mood-btn[data-mood="great"] { --mood-color: #22c55e; }
+.mood-btn[data-mood="good"]  { --mood-color: #84cc16; }
+.mood-btn[data-mood="okay"]  { --mood-color: #eab308; }
+.mood-btn[data-mood="struggling"]  { --mood-color: #f97316; }
+.mood-btn[data-mood="overwhelmed"] { --mood-color: #ef4444; }
+
+.mood-btn--selected[data-mood="great"]      { background: #dcfce7; border-color: #22c55e; color: #166534; }
+.mood-btn--selected[data-mood="good"]       { background: #f0fdf4; border-color: #84cc16; color: #3f6212; }
+.mood-btn--selected[data-mood="okay"]       { background: #fefce8; border-color: #eab308; color: #854d0e; }
+.mood-btn--selected[data-mood="struggling"] { background: #fff7ed; border-color: #f97316; color: #9a3412; }
+.mood-btn--selected[data-mood="overwhelmed"]{ background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+
+/* ── Energy selector ─────────────────────────────────────── */
+.energy-selector {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.25rem;
+}
+
+.energy-btn {
+  flex: 1;
+  padding: 0.6rem 0.5rem;
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--surface-alt, #f9fafb);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  color: var(--text-secondary, #555);
+}
+
+.energy-btn:hover { border-color: #a78bfa; }
+.energy-btn--selected { font-weight: 600; }
+
+.energy-btn[data-energy="high"].energy-btn--selected  { background: #dcfce7; border-color: #22c55e; color: #166534; }
+.energy-btn[data-energy="medium"].energy-btn--selected{ background: #fefce8; border-color: #eab308; color: #854d0e; }
+.energy-btn[data-energy="low"].energy-btn--selected   { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+
+/* ── Stress slider ───────────────────────────────────────── */
+.stress-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stress-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+}
+
+.stress-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    #22c55e 0%,
+    #84cc16 25%,
+    #eab308 50%,
+    #f97316 75%,
+    #ef4444 100%
+  );
+}
+
+.stress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid #6366f1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.stress-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.stress-value-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  background: #6366f1;
+  align-self: center;
+}
+
+/* ── Optional fields ─────────────────────────────────────── */
+.wellness-optional-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 540px) {
+  .wellness-optional-grid { grid-template-columns: 1fr; }
+}
+
+.wellness-field label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #555);
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wellness-field input[type="number"],
+.wellness-field textarea {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--surface-alt, #f9fafb);
+  color: var(--text-primary, #1a1a1a);
+  box-sizing: border-box;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+
+.wellness-field input:focus,
+.wellness-field textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #fff;
+}
+
+/* ── Private toggle ──────────────────────────────────────── */
+.private-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.private-toggle-row label {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+}
+
+/* ── Submit button ───────────────────────────────────────── */
+.wellness-submit-btn {
+  width: 100%;
+  padding: 0.85rem;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.wellness-submit-btn:hover:not(:disabled) {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+.wellness-submit-btn:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+}
+
+/* ── Confirmation animation ──────────────────────────────── */
+.wellness-confirm {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.wellness-confirm__icon {
+  font-size: 3rem;
+  animation: wellnessPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.wellness-confirm__msg {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #22c55e;
+  margin-top: 0.5rem;
+}
+
+@keyframes wellnessPopIn {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── 7-day trend ─────────────────────────────────────────── */
+.trend-timeline {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.trend-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.trend-day__label {
+  font-size: 0.68rem;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trend-day__dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border: 2px solid transparent;
+}
+
+.trend-day__dot--empty {
+  background: var(--surface-alt, #f3f4f6);
+  border-color: var(--border, #e5e7eb);
+}
+
+.trend-day__dot--great      { background: #dcfce7; border-color: #22c55e; }
+.trend-day__dot--good       { background: #f0fdf4; border-color: #84cc16; }
+.trend-day__dot--okay       { background: #fefce8; border-color: #eab308; }
+.trend-day__dot--struggling { background: #fff7ed; border-color: #f97316; }
+.trend-day__dot--overwhelmed{ background: #fef2f2; border-color: #ef4444; }
+
+.trend-day__stress-bar {
+  height: 4px;
+  width: 32px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #22c55e, #ef4444);
+  position: relative;
+  overflow: hidden;
+}
+
+.trend-day__stress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: #6366f1;
+  opacity: 0.85;
+}
+
+/* ── Stats row ───────────────────────────────────────────── */
+.wellness-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .wellness-stats-row { grid-template-columns: 1fr 1fr; }
+}
+
+.wellness-stat-tile {
+  background: var(--surface-alt, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+
+.wellness-stat-tile__val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #6366f1;
+  line-height: 1;
+}
+
+.wellness-stat-tile__label {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #888);
+  margin-top: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Alert banner ────────────────────────────────────────── */
+.wellness-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #fff7ed;
+  border: 1.5px solid #f97316;
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #9a3412;
+}
+
+.wellness-alert-banner__icon { font-size: 1.4rem; }
+
+/* ── Parent: child selector ──────────────────────────────── */
+.child-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.child-selector-row label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: var(--text-secondary, #555);
+}
+
+.child-selector-row select {
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--surface-alt, #f9fafb);
+  color: var(--text-primary, #1a1a1a);
+  cursor: pointer;
+}
+
+/* ── Section label ───────────────────────────────────────── */
+.wellness-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary, #888);
+  margin-bottom: 0.6rem;
+}
+
+/* ── Loading / empty ─────────────────────────────────────── */
+.wellness-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary, #aaa);
+  font-size: 0.95rem;
+}
+
+.wellness-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary, #aaa);
+  font-size: 0.9rem;
+}
