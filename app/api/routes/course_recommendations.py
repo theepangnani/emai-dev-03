@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.academic_plan import AcademicPlan, PlanCourse
@@ -228,6 +228,7 @@ def _serialize_rec(rec: CourseRecommendation) -> RecommendationsResponse:
 async def generate_course_recommendations(
     request: Request,
     body: GenerateRecommendationsRequest,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT, UserRole.PARENT, UserRole.ADMIN)),
 ):
@@ -351,6 +352,7 @@ Return ONLY the JSON — no markdown, no explanation."""
 def get_latest_recommendations(
     request: Request,
     plan_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -410,6 +412,7 @@ def get_university_pathways(
         description="Comma-separated list of program names to check (e.g. 'Computer Science,Engineering'). "
                     "Omit to check all programs.",
     ),
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

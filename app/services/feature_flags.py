@@ -39,6 +39,7 @@ FLAG_AI_PERSONALIZATION = "ai_personalization"
 FLAG_BRIGHTSPACE_LMS = "brightspace_lms"
 FLAG_STRIPE_BILLING = "stripe_billing"
 FLAG_MCP_TOOLS = "mcp_tools"
+FLAG_COURSE_PLANNING = "course_planning"
 FLAG_BETA_FEATURES = "beta_features"
 
 # ─── Simple in-process cache (TTL: 60 seconds) ────────────────────────────────

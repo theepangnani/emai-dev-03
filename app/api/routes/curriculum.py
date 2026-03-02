@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.db.database import get_db
 from app.models.curriculum import CurriculumExpectation
 from app.models.user import User
@@ -59,6 +59,7 @@ class CourseListItem(BaseModel):
 
 @router.get("/courses", response_model=list[CourseListItem])
 def list_curriculum_courses(
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -95,6 +96,7 @@ def list_curriculum_courses(
 @router.get("/{course_code}", response_model=CurriculumCourseResponse)
 def get_curriculum_for_course(
     course_code: str,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -147,6 +149,7 @@ def get_curriculum_for_course(
 def search_curriculum_expectations(
     course_code: str,
     q: Optional[str] = Query(None, min_length=1, max_length=200),
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
