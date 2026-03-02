@@ -571,10 +571,10 @@ export function StudyPage() {
         <div className="study-layout">
 
           {/* LEFT: Courses Panel */}
-          <aside className="study-courses-panel" aria-label="Courses">
+          <aside className="study-courses-panel" aria-label="Classes">
             <div className="study-panel-section">
-              <h2 className="study-panel-label">COURSES</h2>
-              <div className="study-course-list" role="listbox" aria-label="Select a course">
+              <h2 className="study-panel-label">CLASSES</h2>
+              <div className="study-course-list" role="listbox" aria-label="Select a class">
                 {renderCourseList()}
               </div>
             </div>

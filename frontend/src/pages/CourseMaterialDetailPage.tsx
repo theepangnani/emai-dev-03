@@ -316,10 +316,10 @@ export function CourseMaterialDetailPage() {
     if (!content) return;
     try {
       await parentApi.assignCoursesToChild(childStudentId, [content.course_id]);
-      showToast(`Assigned "${content.course_name || 'course'}" to child`);
+      showToast(`Assigned "${content.course_name || 'class'}" to child`);
       setIsUnlinked(false);
     } catch {
-      showToast('Failed to assign course to child');
+      showToast('Failed to assign class to child');
     }
   };
 
@@ -351,7 +351,7 @@ export function CourseMaterialDetailPage() {
       <div className="cm-detail-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
-          { label: 'Course Materials', to: '/course-materials' },
+          { label: 'Class Materials', to: '/course-materials' },
           { label: content?.title || 'Material' },
         ]} />
 

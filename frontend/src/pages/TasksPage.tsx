@@ -53,7 +53,7 @@ export function TasksPage() {
   });
 
   // Create task form
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(() => searchParams.get('create') === 'true');
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
@@ -474,16 +474,23 @@ export function TasksPage() {
               </button>
             ))}
             <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
+              { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/course-materials'), showPlus: true },
               { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
             ]} />
           </div>
         ) : (
           <div className="tasks-child-selector">
-            <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Course Material', onClick: () => navigate('/course-materials'), showPlus: true },
-              { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
-            ]} />
+            <button
+              className="add-action-trigger has-label"
+              onClick={() => setShowCreate(true)}
+              aria-label="New Task"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+              <span className="add-action-label">New Task</span>
+            </button>
           </div>
         )}
 

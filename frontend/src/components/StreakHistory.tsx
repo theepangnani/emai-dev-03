@@ -11,7 +11,7 @@ const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
  * Compute which of the last 7 days had study activity.
  * Returns an array of 7 booleans, index 0 = 6 days ago, index 6 = today.
  */
-function getLast7DaysActivity(guides: StudyGuide[]): { label: string; active: boolean }[] {
+function getLast7DaysActivity(guides: StudyGuide[]): { label: string; dateNum: number; active: boolean }[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -24,7 +24,7 @@ function getLast7DaysActivity(guides: StudyGuide[]): { label: string; active: bo
     })
   );
 
-  const days: { label: string; active: boolean }[] = [];
+  const days: { label: string; dateNum: number; active: boolean }[] = [];
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
@@ -33,6 +33,7 @@ function getLast7DaysActivity(guides: StudyGuide[]): { label: string; active: bo
     const labelIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     days.push({
       label: DAY_LABELS[labelIndex],
+      dateNum: date.getDate(),
       active: studyDates.has(date.toDateString()),
     });
   }
@@ -57,7 +58,7 @@ export function StreakHistory({ studyGuides }: StreakHistoryProps) {
               title={day.active ? 'Studied' : 'No activity'}
               aria-label={`${day.label}: ${day.active ? 'studied' : 'no activity'}`}
             />
-            <span className="streak-history-label">{day.label}</span>
+            <span className="streak-history-label">{day.label} {day.dateNum}</span>
           </div>
         ))}
       </div>

@@ -436,6 +436,17 @@ with engine.connect() as conn:
                     conn.rollback()  # Column may already exist from concurrent instance
         conn.commit()
 
+    # ── Rename "Main Course" → "Main Class" (#1032) ─────────────
+    if "courses" in inspector.get_table_names():
+        try:
+            conn.execute(text(
+                "UPDATE courses SET name = 'Main Class' WHERE name = 'Main Course' AND is_default = TRUE"
+            ))
+            logger.info("Renamed default 'Main Course' to 'Main Class'")
+        except Exception:
+            conn.rollback()
+        conn.commit()
+
     # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
     _apply_cascade_and_unique_migration(conn, inspector)
 

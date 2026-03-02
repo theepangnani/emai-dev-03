@@ -147,9 +147,9 @@ export function TeacherCourseManagement({
     return (
       <section className="section tcm-section">
         <div className="section-header">
-          <h3>Course Management</h3>
+          <h3>Class Management</h3>
         </div>
-        <div className="tcm-loading">Loading course data...</div>
+        <div className="tcm-loading">Loading class data...</div>
       </section>
     );
   }
@@ -159,7 +159,7 @@ export function TeacherCourseManagement({
       <div className="section-header">
         <button className="collapse-toggle" onClick={() => setExpanded(v => !v)}>
           <span className={`section-chevron${expanded ? ' expanded' : ''}`}>&#9654;</span>
-          <h3>Course Management ({courses.length})</h3>
+          <h3>Class Management ({courses.length})</h3>
         </button>
         <div className="section-header-actions">
           {googleConnected && (

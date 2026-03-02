@@ -569,7 +569,7 @@ export function CourseDetailPage() {
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Classes', to: '/courses' },
-          { label: course?.name || 'Course' },
+          { label: course?.name || 'Class' },
         ]} />
 
         {/* Course header */}
