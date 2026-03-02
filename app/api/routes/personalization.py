@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role
+from app.api.deps import require_feature, require_role
 from app.db.database import get_db
 from app.models.personalization import (
     AdaptiveDifficulty,
@@ -223,6 +223,7 @@ def _is_mastery_stale(masteries: list[SubjectMastery]) -> bool:
 
 @router.get("/profile", response_model=PersonalizationProfileResponse)
 def get_profile(
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -236,6 +237,7 @@ def get_profile(
 @router.put("/profile", response_model=PersonalizationProfileResponse)
 def update_profile(
     data: PersonalizationProfileUpdate,
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -273,6 +275,7 @@ def update_profile(
 
 @router.get("/mastery", response_model=list[SubjectMasteryResponse])
 def get_mastery(
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -294,6 +297,7 @@ def get_mastery(
 
 @router.post("/mastery/refresh", response_model=list[SubjectMasteryResponse])
 def refresh_mastery(
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -307,6 +311,7 @@ def refresh_mastery(
 @router.get("/mastery/{subject_code}", response_model=SubjectMasteryResponse)
 def get_subject_mastery(
     subject_code: str,
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -332,6 +337,7 @@ def get_subject_mastery(
 def get_difficulty(
     subject_code: str,
     content_type: str,
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -377,6 +383,7 @@ def report_attempt(
     subject_code: str,
     content_type: str,
     body: AttemptFeedbackRequest,
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -407,6 +414,7 @@ def report_attempt(
 
 @router.post("/analyze")
 async def analyze_student(
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -442,6 +450,7 @@ async def analyze_student(
 
 @router.get("/recommendations", response_model=RecommendationsResponse)
 def get_recommendations(
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
