@@ -489,6 +489,7 @@ def get_recommendations(
 )
 def get_child_mastery(
     student_id: int,
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
@@ -514,6 +515,7 @@ def get_child_mastery(
 )
 def get_child_profile(
     student_id: int,
+    _flag=Depends(require_feature("ai_personalization")),
     current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
