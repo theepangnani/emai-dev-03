@@ -82,11 +82,12 @@ export function TasksPage() {
   const createModalRef = useFocusTrap<HTMLDivElement>(showCreate, () => setShowCreate(false));
   const editModalRef = useFocusTrap<HTMLDivElement>(!!editTask, () => setEditTask(null));
 
-  // Calendar state
+  // Calendar state — default expanded on desktop (>= 768px) when no saved preference
   const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('calendar_collapsed');
-      return saved !== '0';
+      if (saved !== null) return saved !== '0';
+      return typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     } catch { return true; }
   });
   const [overviews, setOverviews] = useState<ChildOverview[]>([]);
@@ -659,86 +660,139 @@ export function TasksPage() {
           />
         ) : (
           <div className="tasks-list">
-            {filteredTasks.map(task => (
-              <div key={task.id} className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
-                {loadingTaskId === task.id ? (
-                  <span className="btn-spinner task-row-spinner" />
-                ) : (
-                  <input
-                    type="checkbox"
-                    checked={task.is_completed}
-                    onChange={() => handleToggle(task)}
-                    className="task-row-checkbox"
-                    disabled={!!task.archived_at}
-                  />
-                )}
-                <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
-                  <div className="task-row-title">{task.title}</div>
-                  <div className="task-row-meta">
-                    {task.priority && (
-                      <span className={`task-priority-badge ${task.priority}`} aria-label={`Priority: ${task.priority}`}>
-                        {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
-                      </span>
-                    )}
-                    {task.due_date && (
-                      <span className="task-row-due">{formatDate(task.due_date)}</span>
-                    )}
-                    {task.assignee_name && (
-                      <span className="task-row-assignee">
-                        {isCreator(task) ? `→ ${task.assignee_name}` : `← ${task.creator_name}`}
-                      </span>
-                    )}
-                    {(task.study_guide_title || task.course_content_title || task.course_name) && (
-                      <span
-                        className="task-row-link clickable"
-                        onClick={(e) => { e.stopPropagation(); const route = getLinkedEntityRoute(task); if (route) navigate(route); }}
-                        title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'material' : 'class'}`}
-                      >
-                        {task.study_guide_title
-                          ? `${task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}: ${task.study_guide_title}`
-                          : task.course_content_title
-                            ? `Content: ${task.course_content_title}`
-                            : `Class: ${task.course_name}`}
-                      </span>
-                    )}
+            {(() => {
+              const renderTaskRow = (task: TaskItem) => (
+                <div key={task.id} className={`task-row${task.is_completed ? ' completed' : ''}${task.archived_at ? ' archived' : ''}`}>
+                  {loadingTaskId === task.id ? (
+                    <span className="btn-spinner task-row-spinner" />
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={task.is_completed}
+                      onChange={() => handleToggle(task)}
+                      className="task-row-checkbox"
+                      disabled={!!task.archived_at}
+                    />
+                  )}
+                  <div className="task-row-body" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
+                    <div className="task-row-title">{task.title}</div>
+                    <div className="task-row-meta">
+                      {task.priority && (
+                        <span className={`task-priority-badge ${task.priority}`} aria-label={`Priority: ${task.priority}`}>
+                          {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
+                        </span>
+                      )}
+                      {task.due_date && (
+                        <span className="task-row-due">{formatDate(task.due_date)}</span>
+                      )}
+                      {task.assignee_name && (
+                        <span className="task-row-assignee">
+                          {isCreator(task) ? `→ ${task.assignee_name}` : `← ${task.creator_name}`}
+                        </span>
+                      )}
+                      {(task.study_guide_title || task.course_content_title || task.course_name) && (
+                        <span
+                          className="task-row-link clickable"
+                          onClick={(e) => { e.stopPropagation(); const route = getLinkedEntityRoute(task); if (route) navigate(route); }}
+                          title={`Go to ${task.study_guide_title ? (task.study_guide_type === 'quiz' ? 'quiz' : task.study_guide_type === 'flashcards' ? 'flashcards' : 'study guide') : task.course_content_title ? 'material' : 'class'}`}
+                        >
+                          {task.study_guide_title
+                            ? `${task.study_guide_type === 'quiz' ? 'Quiz' : task.study_guide_type === 'flashcards' ? 'Flashcards' : 'Study Guide'}: ${task.study_guide_title}`
+                            : task.course_content_title
+                              ? `Content: ${task.course_content_title}`
+                              : `Class: ${task.course_name}`}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {isCreator(task) && task.archived_at ? (
+                    <div className="task-row-actions">
+                      <button className="task-row-btn restore" onClick={() => handleRestore(task.id)} title="Restore" aria-label="Restore this task">&#8634;</button>
+                      <button className="task-row-btn permanent-delete" onClick={() => handlePermanentDelete(task.id)} title="Delete Forever" aria-label="Permanently delete this task">&#128465;</button>
+                    </div>
+                  ) : isCreator(task) ? (
+                    <div className="task-row-actions">
+                      {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
+                        const { canRemind, label } = getReminderStatus(task);
+                        return (
+                          <>
+                            <button
+                              className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
+                              disabled={!canRemind || remindingTaskId === task.id}
+                              title={label}
+                              aria-label={label}
+                            >
+                              {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
+                            </button>
+                            <button
+                              className="task-row-btn request-completion"
+                              onClick={(e) => { e.stopPropagation(); setRequestCompletionTask(task); }}
+                              title="Request completion"
+                              aria-label="Request child to complete this task"
+                            >
+                              &#9993;
+                            </button>
+                          </>
+                        );
+                      })()}
+                      <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
+                    </div>
+                  ) : null}
                 </div>
-                {isCreator(task) && task.archived_at ? (
-                  <div className="task-row-actions">
-                    <button className="task-row-btn restore" onClick={() => handleRestore(task.id)} title="Restore" aria-label="Restore this task">&#8634;</button>
-                    <button className="task-row-btn permanent-delete" onClick={() => handlePermanentDelete(task.id)} title="Delete Forever" aria-label="Permanently delete this task">&#128465;</button>
-                  </div>
-                ) : isCreator(task) ? (
-                  <div className="task-row-actions">
-                    {isParent && task.assigned_to_user_id && !task.is_completed && (() => {
-                      const { canRemind, label } = getReminderStatus(task);
-                      return (
-                        <>
-                          <button
-                            className={`task-row-btn remind${!canRemind ? ' reminded' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); handleRemind(task); }}
-                            disabled={!canRemind || remindingTaskId === task.id}
-                            title={label}
-                            aria-label={label}
-                          >
-                            {remindingTaskId === task.id ? <span className="btn-spinner" /> : '\uD83D\uDD14'} {canRemind ? '' : label}
-                          </button>
-                          <button
-                            className="task-row-btn request-completion"
-                            onClick={(e) => { e.stopPropagation(); setRequestCompletionTask(task); }}
-                            title="Request completion"
-                            aria-label="Request child to complete this task"
-                          >
-                            &#9993;
-                          </button>
-                        </>
-                      );
-                    })()}
-                    <button className="task-row-btn" onClick={() => openEdit(task)} title="Edit" aria-label="Edit this task">&#9998;</button>
-                  </div>
-                ) : null}
-              </div>
-            ))}
+              );
+
+              // Only group when showing 'all' or 'pending' — flat list for completed/archived
+              if (filterStatus === 'completed' || filterStatus === 'archived') {
+                return filteredTasks.map(renderTaskRow);
+              }
+
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const weekFromNow = new Date(today);
+              weekFromNow.setDate(today.getDate() + 7);
+
+              const overdue = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date) < today);
+              const dueToday = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date).toDateString() === today.toDateString());
+              const thisWeek = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date) > today && new Date(t.due_date) <= weekFromNow);
+              const later = filteredTasks.filter(t => !t.is_completed && !t.archived_at && (!t.due_date || new Date(t.due_date) > weekFromNow));
+              const completedGroup = filteredTasks.filter(t => t.is_completed && !t.archived_at);
+
+              return (
+                <>
+                  {overdue.length > 0 && (
+                    <>
+                      <div className="task-group-header task-group-overdue">Overdue <span>{overdue.length}</span></div>
+                      {overdue.map(renderTaskRow)}
+                    </>
+                  )}
+                  {dueToday.length > 0 && (
+                    <>
+                      <div className="task-group-header task-group-today">Due Today <span>{dueToday.length}</span></div>
+                      {dueToday.map(renderTaskRow)}
+                    </>
+                  )}
+                  {thisWeek.length > 0 && (
+                    <>
+                      <div className="task-group-header task-group-week">This Week <span>{thisWeek.length}</span></div>
+                      {thisWeek.map(renderTaskRow)}
+                    </>
+                  )}
+                  {later.length > 0 && (
+                    <>
+                      <div className="task-group-header">Later <span>{later.length}</span></div>
+                      {later.map(renderTaskRow)}
+                    </>
+                  )}
+                  {completedGroup.length > 0 && (
+                    <>
+                      <div className="task-group-header">Completed <span>{completedGroup.length}</span></div>
+                      {completedGroup.map(renderTaskRow)}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

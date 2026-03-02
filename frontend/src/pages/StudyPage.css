@@ -1,0 +1,998 @@
+/* ============================================================
+   Study Hub Page — Premium Learning Workspace
+   Notion × Linear × Duolingo — structured, purposeful, with personality
+   ============================================================ */
+
+/* ── Page shell ──────────────────────────────────────────── */
+.study-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 4px;
+}
+
+/* ── Page Header ─────────────────────────────────────────── */
+.study-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, var(--color-accent-subtle) 0%, var(--color-surface) 70%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.study-page-header::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: var(--color-accent);
+  opacity: 0.06;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.study-page-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.study-page-title {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.study-page-subtitle {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.study-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.study-upload-btn:hover {
+  background: var(--color-accent-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.study-upload-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Sync error banner ───────────────────────────────────── */
+.study-sync-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  font-size: 14px;
+}
+
+.study-sync-error-dismiss {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: var(--color-danger);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.study-sync-error-dismiss:hover {
+  opacity: 1;
+}
+
+/* ── Two-column layout ───────────────────────────────────── */
+.study-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Left Panel (Courses) ────────────────────────────────── */
+.study-courses-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  position: sticky;
+  top: 80px; /* clear the nav */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.study-panel-section {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.study-panel-section:last-child {
+  border-bottom: none;
+}
+
+.study-panel-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+  margin: 0 0 10px;
+}
+
+/* ── Course List ─────────────────────────────────────────── */
+.study-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.study-course-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-left-color 0.14s;
+}
+
+.study-course-item:hover:not(.active) {
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+  border-left-color: var(--color-border);
+}
+
+.study-course-item.active {
+  background: var(--color-accent-subtle);
+  color: var(--color-ink);
+  font-weight: 600;
+  border-left-color: var(--color-accent);
+}
+
+.study-course-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.study-course-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.study-course-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.study-course-item.active .study-course-count {
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+}
+
+.study-my-materials {
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+}
+
+.study-empty-sidebar-text {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 4px 0 0;
+  text-align: center;
+}
+
+.study-course-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Sidebar Action Buttons ──────────────────────────────── */
+.study-panel-actions {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.study-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.study-sidebar-btn:hover:not(:disabled) {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-light);
+  color: var(--color-accent-strong);
+}
+
+.study-sidebar-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes study-spin {
+  to { transform: rotate(360deg); }
+}
+
+.study-spin {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: study-spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+/* ── Progress Section ────────────────────────────────────── */
+.study-progress {
+  padding: 14px 16px 16px;
+}
+
+/* Legacy stat grid (kept for compat — replaced by ring layout) */
+.study-progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.study-progress-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+}
+
+.study-progress-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  line-height: 1.1;
+}
+
+.study-progress-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-muted);
+}
+
+/* ── Progress Ring Layout ────────────────────────────────── */
+.study-progress-ring-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.study-progress-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.study-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.study-progress-detail-label {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+}
+
+.study-progress-detail-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+}
+
+/* ── Progress Empty State ────────────────────────────────── */
+.study-progress-empty {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  text-align: center;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-style: italic;
+}
+
+.study-progress-history-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.study-progress-history-btn:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-light);
+}
+
+/* ── Right Panel (Materials) ─────────────────────────────── */
+.study-materials-wrapper {
+  min-width: 0;
+}
+
+.study-materials-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  border-top: 3px solid var(--course-accent, var(--color-border));
+  padding: 20px 24px;
+  transition: border-top-color 0.25s ease;
+}
+
+.study-materials-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.study-materials-title {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* ── Continue Studying Row ───────────────────────────────── */
+.study-continue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.study-continue-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.study-continue-items {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.study-continue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.study-continue-chip:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-light);
+  color: var(--color-accent-strong);
+}
+
+/* ── Type Filter Pills ───────────────────────────────────── */
+.study-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.study-filter-pill {
+  padding: 5px 14px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.study-filter-pill:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-light);
+  color: var(--color-accent-strong);
+}
+
+.study-filter-pill.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Material Cards ──────────────────────────────────────── */
+.study-materials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.study-material-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  text-align: left;
+}
+
+/* Type-specific left border colors */
+.study-material-card[data-type="study_guide"] { border-left-color: var(--color-accent); }
+.study-material-card[data-type="quiz"] { border-left-color: #f97316; }
+.study-material-card[data-type="flashcards"] { border-left-color: #8b5cf6; }
+.study-material-card[data-type="raw"] { border-left-color: var(--color-ink-muted); }
+
+.study-material-card:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-accent-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px) translateX(2px);
+}
+
+.study-material-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Material Icon (circle background) ──────────────────── */
+.study-material-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.study-material-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.study-material-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.study-material-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ── Type Badge Pills ────────────────────────────────────── */
+.study-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.study-type-study_guide {
+  background: rgba(0, 184, 200, 0.12);
+  color: var(--color-accent);
+}
+
+.study-type-quiz {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+}
+
+.study-type-flashcards {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.study-type-raw,
+.study-type-undefined {
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+/* ── Course label in All view ────────────────────────────── */
+.study-material-course {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  opacity: 0.8;
+}
+
+.study-material-date {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Material Action Buttons ─────────────────────────────── */
+.study-material-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.study-action-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.14s, color 0.14s, border-color 0.14s, transform 0.1s;
+}
+
+.study-action-btn:active {
+  transform: scale(0.97);
+}
+
+.study-action-btn.primary {
+  background: var(--color-accent);
+  color: #fff;
+  border: 1px solid var(--color-accent);
+}
+
+.study-action-btn.primary:hover {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+.study-action-btn.secondary {
+  background: transparent;
+  color: var(--color-accent-strong);
+  border: 1px solid var(--color-accent-light);
+}
+
+.study-action-btn.secondary:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
+/* ── Loading skeletons ───────────────────────────────────── */
+.study-materials-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Skeleton utility class (re-use the global one if available) */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-alt) 25%, var(--color-border) 50%, var(--color-surface-alt) 75%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+/* ── Empty State ─────────────────────────────────────────── */
+.study-materials-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  gap: 8px;
+}
+
+.study-empty-icon {
+  font-size: 40px;
+  line-height: 1;
+  opacity: 0.55;
+  margin-bottom: 4px;
+}
+
+.study-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.study-empty-desc {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  max-width: 300px;
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.study-empty-cta {
+  padding: 8px 20px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s, transform 0.15s;
+}
+
+.study-empty-cta:hover {
+  background: var(--color-accent-strong);
+  transform: translateY(-1px);
+}
+
+/* ── Bottom Upload CTA ───────────────────────────────────── */
+.study-upload-cta-row {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.study-upload-cta-btn {
+  padding: 8px 20px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.study-upload-cta-btn:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  border-style: solid;
+}
+
+/* ============================================================
+   Responsive — Mobile (< 768px): stack vertically
+   Courses become a horizontal scrolling tab row at top
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .study-page {
+    padding: 0;
+  }
+
+  .study-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+  }
+
+  .study-upload-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Stack columns vertically */
+  .study-layout {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* Left panel becomes a horizontal scroll row at the top */
+  .study-courses-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-bottom: none;
+  }
+
+  /* Only show the course list section on mobile — move progress below */
+  .study-panel-section {
+    padding: 12px 12px 10px;
+  }
+
+  /* Courses become horizontal scroll tabs */
+  .study-course-list {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 4px;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    padding-bottom: 4px;
+  }
+
+  .study-course-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .study-course-item {
+    flex-direction: row;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    padding: 6px 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .study-course-item.active {
+    border-bottom-color: var(--color-accent);
+    border-left-color: transparent;
+    background: var(--color-accent-subtle);
+  }
+
+  .study-course-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  /* Sidebar action buttons compact on mobile */
+  .study-panel-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .study-sidebar-btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  /* Progress section compact on mobile */
+  .study-progress {
+    padding: 12px;
+  }
+
+  .study-progress-ring-layout {
+    gap: 10px;
+  }
+
+  /* Materials panel — top border flush with course tabs */
+  .study-materials-wrapper {
+    margin-top: 0;
+  }
+
+  .study-materials-panel {
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    border-top: 1px solid var(--color-border);
+    padding: 16px;
+  }
+
+  .study-materials-title {
+    font-size: 15px;
+  }
+
+  /* Material cards: hide date on narrow screens */
+  .study-material-date {
+    display: none;
+  }
+
+  /* Stack actions below info */
+  .study-material-card {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .study-material-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-left: 52px; /* align with text, past icon */
+  }
+
+  /* Continue row scrolls on mobile */
+  .study-continue-items {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .study-continue-items::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .study-page-title {
+    font-size: 22px;
+  }
+
+  .study-material-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .study-material-title {
+    font-size: 13px;
+  }
+
+  .study-action-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .study-type-badge {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .study-material-card,
+  .study-filter-pill,
+  .study-course-item,
+  .study-upload-btn,
+  .study-action-btn,
+  .study-continue-chip,
+  .study-materials-panel {
+    transition: none !important;
+  }
+
+  .study-material-card:hover {
+    transform: none;
+  }
+
+  .study-upload-btn:hover {
+    transform: none;
+  }
+
+  .study-spin {
+    animation: none;
+  }
+
+  .skeleton {
+    animation: none;
+  }
+}

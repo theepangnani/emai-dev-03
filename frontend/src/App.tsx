@@ -71,6 +71,8 @@ const NotificationsPage = lazyRetry(() => import('./pages/NotificationsPage').th
 const LinkRequestsPage = lazyRetry(() => import('./pages/LinkRequestsPage').then((m) => ({ default: m.LinkRequestsPage })));
 const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((m) => ({ default: m.QuizHistoryPage })));
 const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').then((m) => ({ default: m.EmailSettingsPage })));
+// StudyPage will be created by another agent — lazy import registered here for the /study route
+const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ default: m.StudyPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -172,6 +174,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <QuizHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudyPage />
                   </ProtectedRoute>
                 }
               />
