@@ -71,6 +71,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
   ),
+  Study: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+  ),
   Tasks: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 11 12 14 22 4"/>
@@ -141,16 +147,21 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       ];
     }
 
+    if (user?.role === 'student') {
+      return [
+        { label: 'Home', path: '/dashboard' },
+        { label: 'Study', path: '/study' },
+        { label: 'Tasks', path: '/tasks' },
+        { label: 'Messages', path: '/messages' },
+        { label: 'Help', path: '/help' },
+      ];
+    }
+
     const items: Array<{ label: string; path: string }> = [
       { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
       { label: 'Materials', path: '/course-materials' },
     ];
-
-    if (user?.role === 'student') {
-      items.push({ label: 'Quiz History', path: '/quiz-history' });
-      items.push({ label: 'My Emails', path: '/settings/emails' });
-    }
 
     items.push(
       { label: 'Tasks', path: '/tasks' },
@@ -317,6 +328,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               <span className="user-role">{user?.role}</span>
             )}
           </div>
+          {user?.role === 'student' && (
+            <Link to="/settings/emails" className="email-settings-link">
+              Email Settings
+            </Link>
+          )}
           <button onClick={logout} className="logout-button">
             Sign Out
           </button>
@@ -439,7 +455,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
         ) : (
           <div className="welcome-section">
-            {inspiration && (
+            {location.pathname === '/dashboard' && inspiration && (
               <div className="welcome-inspiration">
                 <h2 className="inspiration-text">"{inspiration.text}"</h2>
                 {inspiration.author && (
@@ -447,7 +463,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
                 )}
               </div>
             )}
-            <div className={`welcome-fallback${inspiration ? ' has-inspiration' : ''}`}>
+            <div className={`welcome-fallback${location.pathname === '/dashboard' && inspiration ? ' has-inspiration' : ''}`}>
               <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
               <p>{welcomeSubtitle || "Here's your overview"}</p>
             </div>
