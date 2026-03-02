@@ -394,8 +394,8 @@ All outgoing emails from ClassBridge should include a role-based inspirational m
   ```
 
 **Sub-tasks:**
-- [ ] Backend: Add inspiration message injection to email service (#260)
-- [ ] Templates: Update all 8+ email templates with inspiration footer (#260)
+- [x] Backend: Add inspiration message injection to email service (#260) (IMPLEMENTED)
+- [x] Templates: Update all 8+ email templates with inspiration footer (#260) (IMPLEMENTED)
 
 ### 6.42 Admin Messaging Improvements: Notification Modal, User-to-Admin Messaging (Phase 1)
 
