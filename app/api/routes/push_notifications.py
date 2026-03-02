@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.push_token import PushToken, DevicePlatform
@@ -81,6 +81,7 @@ class AdminPushStatsResponse(BaseModel):
 def register_push_token(
     request: Request,
     body: RegisterTokenRequest,
+    _flag=Depends(require_feature("push_notifications")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -135,6 +136,7 @@ def register_push_token(
 def unregister_push_token(
     request: Request,
     body: UnregisterTokenRequest,
+    _flag=Depends(require_feature("push_notifications")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -160,6 +162,7 @@ def unregister_push_token(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def list_push_tokens(
     request: Request,
+    _flag=Depends(require_feature("push_notifications")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -186,6 +189,7 @@ def list_push_tokens(
 async def admin_send_push(
     request: Request,
     body: AdminSendRequest,
+    _flag=Depends(require_feature("push_notifications")),
     db: Session = Depends(get_db),
     _admin: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -210,6 +214,7 @@ async def admin_send_push(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def admin_push_stats(
     request: Request,
+    _flag=Depends(require_feature("push_notifications")),
     db: Session = Depends(get_db),
     _admin: User = Depends(require_role(UserRole.ADMIN)),
 ):
