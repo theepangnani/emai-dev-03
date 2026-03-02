@@ -135,6 +135,9 @@
 - [x] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127) (IMPLEMENTED)
 - [x] **Extract backend services** — Move business logic from route handlers to domain service layer (#128) (IMPLEMENTED)
 - [x] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129) — BaseRepository[T], TaskRepository (8 methods), CourseContentRepository (8 methods), StudyGuideRepository (10 methods); tasks.py fully adopted; get_task_repo/get_course_content_repo/get_study_guide_repo deps in deps.py (IMPLEMENTED)
+
+#### Feature Flag System
+- [x] **Admin Feature Flags** — FeatureFlag model (global/tier/role/user/beta scopes); UserFeatureOverride (per-user overrides with expiry); FeatureFlagService evaluation engine with rollout % support; admin CRUD API + override management; AdminFeatureFlagsPage at /admin/feature-flags; useFeatureFlag React hook (60s cache); 8 predefined flags seeded (ai_email_agent, tutor_marketplace, lesson_planner, ai_personalization, brightspace_lms, stripe_billing, mcp_tools, beta_features) (IMPLEMENTED)
 - [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
 - [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
