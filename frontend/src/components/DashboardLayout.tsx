@@ -15,6 +15,7 @@ import { QuickActionFAB } from './QuickActionFAB';
 import type { FABAction } from './QuickActionFAB';
 import { CreateTaskModal } from './CreateTaskModal';
 import { OfflineIndicator } from './OfflineIndicator';
+import { getMyXP } from '../api/gamification';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {

@@ -17,7 +17,7 @@ from app.db.database import get_db
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.user import User
 from app.models.task import Task
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.services.google_calendar import (
     CALENDAR_SCOPE,
     sync_task_to_calendar,
@@ -35,6 +35,7 @@ router = APIRouter(prefix="/google/calendar", tags=["Google Calendar"])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def calendar_status(
     request: Request,
+    _flag=Depends(require_feature("google_calendar")),
     current_user: User = Depends(get_current_user),
 ):
     """Check if the user has connected Google and granted calendar scope."""
@@ -50,6 +51,7 @@ def calendar_status(
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def calendar_connect(
     request: Request,
+    _flag=Depends(require_feature("google_calendar")),
     current_user: User = Depends(get_current_user),
 ):
     """Return an OAuth URL that grants the calendar.events scope.
@@ -67,6 +69,7 @@ def calendar_connect(
 @limiter.limit("20/minute", key_func=get_user_id_or_ip)
 def calendar_sync(
     request: Request,
+    _flag=Depends(require_feature("google_calendar")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -119,6 +122,7 @@ def calendar_sync(
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def calendar_disconnect(
     request: Request,
+    _flag=Depends(require_feature("google_calendar")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
