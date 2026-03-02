@@ -22,7 +22,7 @@ from app.models.grade_entry import GradeEntry, _letter_grade
 from app.models.notification import Notification, NotificationType
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ def _assert_teacher_course_access(db: Session, teacher_user: User, course_id: in
 def get_course_grade_matrix(
     request: Request,
     course_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
@@ -187,6 +188,7 @@ def get_course_grade_matrix(
 def bulk_upsert_grades(
     request: Request,
     body: BulkUpsertRequest,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
@@ -293,6 +295,7 @@ def bulk_upsert_grades(
 def get_student_grades(
     request: Request,
     student_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -369,6 +372,7 @@ def get_student_grades(
 def publish_course_grades(
     request: Request,
     course_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
