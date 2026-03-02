@@ -11,6 +11,11 @@ Routes:
   GET    /api/lms/connections/{id}/status    — sync status for a connection
   POST   /api/lms/connections/{id}/sync      — sync a single connection (owner only)
 
+Moodle token-based connect flow:
+  GET    /api/lms/moodle/connect             — return token entry instructions
+  POST   /api/lms/moodle/connect             — validate token, create LMSConnection
+  POST   /api/lms/moodle/{id}/refresh        — re-validate token, update connection
+
 Admin routes:
   GET    /api/admin/lms/institutions              — list all institutions (admin)
   POST   /api/admin/lms/institutions              — create institution (admin)
@@ -950,6 +955,288 @@ async def canvas_refresh_token(
     db.refresh(conn)
 
     logger.info("Refreshed Canvas token for connection %s", connection_id)
+    return _connection_out(conn)
+
+
+# ---------------------------------------------------------------------------
+# Moodle token-based connect flow
+# ---------------------------------------------------------------------------
+
+
+class MoodleConnectBody(BaseModel):
+    institution_id: int
+    token: str
+
+
+@router.get(
+    "/moodle/connect",
+    summary="Get Moodle token entry instructions",
+)
+async def moodle_connect_info(
+    institution_id: int = Query(..., description="LMSInstitution ID to connect to"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return token entry instructions for connecting a Moodle instance.
+
+    Moodle does not support OAuth2 Authorization Code flow.  Instead the user
+    must generate a Web Service token in their Moodle admin panel and paste it
+    into ClassBridge.
+
+    Returns JSON with:
+      - institution_id: int
+      - connect_url:    str  — URL to Moodle token management page
+      - instructions:   str  — human-readable guidance
+    """
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    if inst.provider != "moodle":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Institution {institution_id} is not a Moodle institution.",
+        )
+    if not inst.is_active:
+        raise HTTPException(status_code=422, detail="Institution is not active.")
+
+    base_url = (inst.base_url or "").rstrip("/")
+    token_page = f"{base_url}/admin/settings.php?section=webservicetokens" if base_url else ""
+
+    logger.info(
+        "User %s requested Moodle connect instructions for institution %s",
+        current_user.id,
+        institution_id,
+    )
+    return {
+        "institution_id": institution_id,
+        "connect_url": token_page,
+        "instructions": (
+            "Enter your Moodle Web Service token below.  "
+            "To generate a token, go to your Moodle site "
+            "Administration → Plugins → Web services → Manage tokens, "
+            "and create a token for the 'moodle_mobile_app' service."
+        ),
+    }
+
+
+@router.post(
+    "/moodle/connect",
+    response_model=ConnectionOut,
+    status_code=201,
+    summary="Connect Moodle via Web Service token",
+)
+async def moodle_connect_token(
+    body: MoodleConnectBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ConnectionOut:
+    """Validate a Moodle Web Service token and create (or update) an LMSConnection.
+
+    The token is validated by calling core_webservice_get_site_info on the
+    institution's Moodle base URL.  On success the connection is created with
+    status="connected" and the token is stored in access_token_enc.
+
+    Args (JSON body):
+        institution_id: LMSInstitution.id for the Moodle instance.
+        token:          Moodle Web Service token string.
+
+    Returns:
+        The created or updated LMSConnection.
+
+    Raises:
+        404: Institution not found.
+        422: Institution is not Moodle, is inactive, or token is invalid.
+    """
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == body.institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    if inst.provider != "moodle":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Institution {body.institution_id} is not a Moodle institution.",
+        )
+    if not inst.is_active:
+        raise HTTPException(status_code=422, detail="Institution is not active.")
+
+    if not body.token or not body.token.strip():
+        raise HTTPException(status_code=422, detail="Token must not be empty.")
+
+    base_url = (inst.base_url or "").rstrip("/")
+    if not base_url:
+        raise HTTPException(
+            status_code=422,
+            detail="Institution has no base_url configured.",
+        )
+
+    # Validate the token against Moodle
+    from app.services.moodle import MoodleAPIClient
+    client = MoodleAPIClient(base_url=base_url, token=body.token.strip())
+    try:
+        site_info = await client.get_site_info()
+    except Exception as exc:
+        logger.warning(
+            "Moodle token validation failed for user %s institution %s: %s",
+            current_user.id,
+            body.institution_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=f"Moodle token validation failed: {exc}",
+        ) from exc
+
+    if not site_info or "exception" in site_info:
+        raise HTTPException(
+            status_code=422,
+            detail="Moodle rejected the token.  Please check the token and try again.",
+        )
+
+    external_user_id = str(site_info.get("userid", ""))
+
+    # Upsert LMSConnection
+    conn = (
+        db.query(LMSConnection)
+        .filter(
+            LMSConnection.user_id == current_user.id,
+            LMSConnection.institution_id == body.institution_id,
+            LMSConnection.provider == "moodle",
+        )
+        .first()
+    )
+
+    if conn is None:
+        conn = LMSConnection(
+            user_id=current_user.id,
+            institution_id=body.institution_id,
+            provider="moodle",
+            status="connected",
+            access_token_enc=body.token.strip(),
+            external_user_id=external_user_id or None,
+        )
+        db.add(conn)
+        logger.info(
+            "Created Moodle LMSConnection for user %s institution %s (userid=%s)",
+            current_user.id,
+            body.institution_id,
+            external_user_id,
+        )
+    else:
+        conn.access_token_enc = body.token.strip()
+        conn.status = "connected"
+        conn.sync_error = None
+        conn.external_user_id = external_user_id or conn.external_user_id
+        conn.updated_at = datetime.now(timezone.utc)
+        logger.info(
+            "Updated Moodle LMSConnection %s for user %s (userid=%s)",
+            conn.id,
+            current_user.id,
+            external_user_id,
+        )
+
+    db.commit()
+    db.refresh(conn)
+    return _connection_out(conn)
+
+
+@router.post(
+    "/moodle/{connection_id}/refresh",
+    response_model=ConnectionOut,
+    summary="Re-validate Moodle token and update connection",
+)
+async def moodle_refresh_token(
+    connection_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ConnectionOut:
+    """Re-validate the stored Moodle token and update last_synced_at.
+
+    Since Moodle tokens do not expire (unless manually revoked), this endpoint
+    re-validates the existing token by calling core_webservice_get_site_info.
+    On success it resets status to "connected" and clears any sync_error.
+
+    Returns:
+        The updated LMSConnection.
+
+    Raises:
+        404: Connection not found.
+        403: Not authorized to refresh this connection.
+        422: Connection is not Moodle, or has no token stored.
+        502: Moodle token re-validation failed (token may have been revoked).
+    """
+    conn = db.query(LMSConnection).filter(LMSConnection.id == connection_id).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found.")
+
+    is_admin = current_user.roles and "admin" in current_user.roles
+    if conn.user_id != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to refresh this connection."
+        )
+
+    if conn.provider != "moodle":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Connection {connection_id} is not a Moodle connection.",
+        )
+
+    if not conn.institution:
+        raise HTTPException(
+            status_code=422,
+            detail="Connection has no associated institution — cannot re-validate token.",
+        )
+
+    if not conn.access_token_enc:
+        raise HTTPException(
+            status_code=422,
+            detail="No token stored.  Please re-connect via /moodle/connect.",
+        )
+
+    base_url = (conn.institution.base_url or "").rstrip("/")
+    if not base_url:
+        raise HTTPException(
+            status_code=422,
+            detail="Institution has no base_url configured.",
+        )
+
+    from app.services.moodle import MoodleAPIClient
+    client = MoodleAPIClient(base_url=base_url, token=conn.access_token_enc)
+    try:
+        site_info = await client.get_site_info()
+    except Exception as exc:
+        conn.status = "expired"
+        conn.sync_error = str(exc)
+        db.commit()
+        logger.error(
+            "Moodle token re-validation failed for connection %s: %s",
+            connection_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Moodle token re-validation failed: {exc}",
+        ) from exc
+
+    if not site_info or "exception" in site_info:
+        conn.status = "expired"
+        conn.sync_error = "Token rejected by Moodle."
+        db.commit()
+        raise HTTPException(
+            status_code=422,
+            detail="Moodle rejected the token.  Please re-connect with a new token.",
+        )
+
+    conn.status = "connected"
+    conn.sync_error = None
+    conn.last_sync_at = datetime.now(timezone.utc)
+    conn.updated_at = datetime.now(timezone.utc)
+    external_user_id = str(site_info.get("userid", ""))
+    if external_user_id:
+        conn.external_user_id = external_user_id
+
+    db.commit()
+    db.refresh(conn)
+
+    logger.info("Re-validated Moodle token for connection %s", connection_id)
     return _connection_out(conn)
 
 

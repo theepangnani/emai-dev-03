@@ -223,6 +223,7 @@
 - [x] **Admin Analytics Dashboard** — Overview stats (users/content/engagement/privacy), user growth chart (30 days), content breakdown, engagement metrics, privacy compliance summary; admin-only at /admin/analytics (IMPLEMENTED)
 
 #### Phase 2 — On `feature/phase-2` Branch (Implemented, Not Yet in Production)
+- [x] **PWA offline mode** — vite-plugin-pwa + Workbox service worker; CacheFirst for study guides/flashcards, NetworkFirst for assignments/API; install prompt banner (7-day dismiss, localStorage); offline indicator fixed bottom bar; offline.html fallback page; usePWAInstall hook (IMPLEMENTED)
 - [x] **Progressive account lockout** — 5/10/15 failed login thresholds with escalating lockout durations; admin unlock (#796)
 - [x] **httpOnly cookie authentication** — Cookie-based JWT with Bearer header fallback for XSS mitigation (#788)
 - [x] **Cookie consent & MFIPPA age-based consent** — CookieConsentBanner, ConsentGateway, under-16/16-17/18+ rules (#797, #783)
@@ -274,6 +275,10 @@
 - [x] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665) (IMPLEMENTED)
 - [x] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666) IMPLEMENTED
 - [x] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667) (IMPLEMENTED)
+
+#### Phase 2 — Classroom Data Import (#56)
+
+- [ ] **Classroom Data Import — Multi-Pathway Migration** — ImportSession foundation, copy-paste AI parser, screenshot/photo AI import, email forward parser, ICS calendar import, CSV template import, MCP import tools, ImportReviewWizard, ClassroomImportPage hub (#56, #57-#67)
 
 #### UI/UX HCD Assessment — Phase 2 Improvements (#827)
 
@@ -392,6 +397,7 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 - [x] **Multi-LMS Sync Orchestration (#27)** — 15-minute APScheduler job syncing all active connections; per-connection sync with error tracking; stale detection (7-day threshold); manual trigger endpoint /api/admin/lms/sync/trigger (IMPLEMENTED)
 - [x] **Multi-LMS Connection Manager UI (#26)** — Provider catalog grid (Google/Brightspace/Canvas cards) with connection status, course count, last sync time; institution selector modal for Brightspace with search and pre-seeded Ontario boards (TDSB/PDSB/YRDSB/HDSB/OCDSB); OAuth connect flow with redirect (Google → /api/google/connect, Brightspace → /api/lms/brightspace/connect); Sync Now / Disconnect actions with confirmation; connected provider detail panel slide-in with synced courses count, error display, and sync feedback; per-connection sync trigger (POST /api/lms/connections/{id}/sync); lmsConnectionsApi.syncConnection() + searchInstitutions() added to frontend API client (IMPLEMENTED)
 - [x] **Canvas LMS Adapter** — CanvasOAuthClient (auth URL, code exchange, token refresh); CanvasAPIClient (courses, modules, assignments, grades, announcements, files); link-header pagination; full CanvasAdapter implementing LMSProvider; OAuth2 endpoints /canvas/connect + /callback + /refresh; registered in provider registry; 15+ tests (IMPLEMENTED)
+- [x] **Moodle LMS Adapter** — MoodleOAuthClient (token-based auth via /login/token.php, validate_token via core_webservice_get_site_info, get_auth_url for manual token entry flow); MoodleAPIClient (get_site_info, get_courses via core_enrol_get_users_courses, get_assignments via mod_assign_get_assignments, get_grades via gradereport_overview_get_course_grade, get_announcements via mod_forum_get_forum_discussions, get_files via core_course_get_contents); Moodle error response handling (HTTP 200 with exception body); full MoodleAdapter implementing LMSProvider with sync_courses/assignments/materials/grades; Unix timestamp parsing (parse_unix_timestamp); module content type mapping (map_module_content_type); token-based connect endpoints GET+POST /moodle/connect + POST /moodle/{id}/refresh; registered in provider registry; 30+ tests (IMPLEMENTED)
 
 **Recommended implementation order:**
 1. **#29** Feasibility Study (research — DONE in issue body)

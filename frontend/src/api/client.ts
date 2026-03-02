@@ -177,3 +177,4 @@ export type {
 } from './grades';
 export { studentApi } from './student';
 export type { StudyActivityResponse } from './student';
+export { classroomImportApi } from './classroomImport';

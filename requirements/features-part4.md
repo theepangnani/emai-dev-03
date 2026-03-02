@@ -410,3 +410,244 @@ Comprehensive test suite and end-user setup documentation.
 | AI Tutor Agent | `create_study_plan`, `get_study_recommendations`, `analyze_study_effectiveness` | #909 |
 | Communication | `list_conversations`, `get_conversation_messages`, `send_message`, `get_teacher_communication_summary`, `get_unread_count` | #910 |
 | Auto-exposed | ~15 read endpoints via fastapi-mcp | #904 |
+
+---
+
+### 6.55 Classroom Data Import — Multi-Pathway Migration (Phase 2) — #56
+
+Enable parents and students to import school board Google Classroom data into ClassBridge **without direct API access**. School boards often block third-party OAuth apps and Google Takeout, leaving parents with no programmatic way to access their child's classroom data. This feature provides 7 creative ingestion pathways that converge on a unified import review pipeline.
+
+**Epic Issue:** #56
+**GitHub Issues:** #56 (epic), #57-#67 (sub-tasks)
+
+**Business Value:**
+- **Accessibility:** Parents can access school data regardless of school board API restrictions
+- **Zero friction:** Copy-paste and screenshot pathways require no technical knowledge
+- **Automation:** Email forwarding provides set-and-forget data sync
+- **AI-native:** MCP integration allows conversational data import via Claude Desktop
+- **Flexibility:** Multiple pathways ensure at least one works for every family's situation
+
+**Technical Stack:**
+- Claude Vision API (screenshot extraction)
+- Claude/OpenAI API (copy-paste text parsing)
+- `icalendar` Python library (ICS parsing)
+- SendGrid Inbound Parse (email forwarding)
+- Existing LMS canonical models (`CanonicalCourse`, `CanonicalAssignment`, `CanonicalMaterial`)
+- Existing `file_processor.py` Vision OCR pipeline
+
+---
+
+#### 6.55.1 ImportSession Model + Core Service (#57)
+
+Shared foundation for all import pathways — a staging area where AI-parsed records await user review before committing to the database.
+
+**ImportSession Model:**
+- `source_type`: screenshot | copypaste | email | csv | ics | bookmarklet
+- `status`: processing | ready_for_review | imported | failed
+- `raw_data`: original input (text, base64 images, email body, etc.)
+- `parsed_data`: AI-extracted structured JSON
+- `reviewed_data`: user-edited JSON ready for commit
+- Counters: `courses_created`, `assignments_created`, `materials_created`
+
+**Core Service (`classroom_import_service.py`):**
+- `create_session()` → `parse_with_ai()` → `preview()` → `commit()`
+- Commit produces `CanonicalCourse/Assignment/Material` and upserts to DB
+- Hash-based deduplication: `sha256(title + course_name + due_date)` as `lms_external_id`
+- All records tagged `lms_provider="manual_import"`
+
+**Routes (`/api/import/`):**
+- `GET /api/import/sessions` — list user's import sessions
+- `GET /api/import/sessions/{id}` — get session with parsed preview
+- `PATCH /api/import/sessions/{id}` — user edits reviewed data
+- `POST /api/import/sessions/{id}/commit` — commit to DB
+- `DELETE /api/import/sessions/{id}` — cancel/delete
+
+**Key Files:**
+- `app/models/import_session.py` — SQLAlchemy model
+- `app/schemas/classroom_import.py` — Pydantic schemas
+- `app/api/routes/classroom_import.py` — API routes
+- `app/services/classroom_import_service.py` — core service
+
+**Sub-tasks:**
+- [ ] ImportSession SQLAlchemy model with startup migration
+- [ ] Pydantic request/response schemas
+- [ ] Core service with create/parse/preview/commit/dedup
+- [ ] Session CRUD routes
+- [ ] Register router in main.py
+
+---
+
+#### 6.55.2 Copy-Paste AI Parser (#58)
+
+**Highest impact, lowest friction.** Parent does Ctrl+A on a Google Classroom page and pastes text into ClassBridge. AI parses unstructured text into structured assignments, materials, and announcements.
+
+**Implementation:**
+1. `POST /api/import/copypaste` accepts `{ text, source_hint, student_id }`
+2. Source hints: `assignment_list`, `assignment_detail`, `stream`, `people`, `auto`
+3. AI prompt extracts: courses, assignments (with due dates/points), materials, announcements
+4. Handles relative dates ("Due tomorrow" → absolute date)
+5. Creates ImportSession → AI parsing → ready_for_review
+
+**Frontend:** `CopyPasteImporter.tsx` — large textarea + source hint dropdown + "Import" button
+
+**Sub-tasks:**
+- [ ] AI prompt design for Google Classroom text patterns
+- [ ] `parse_copypaste()` service function
+- [ ] `/copypaste` route
+- [ ] `CopyPasteImporter.tsx` component
+
+---
+
+#### 6.55.3 Screenshot/Photo AI Import (#59)
+
+**Most "magical" pathway.** Parent takes phone photos or screenshots of Google Classroom pages. Claude Vision extracts structured data from the UI.
+
+**Implementation:**
+1. `POST /api/import/screenshot` accepts multiple images (max 10, 10MB each)
+2. Reuses `_ocr_images_with_vision()` pattern from `file_processor.py`
+3. Specialized Vision prompt detects Google Classroom UI: assignment cards, announcements, materials, grades
+4. Batches all screenshots in single Vision call (handles scrolled pages, deduplicates overlapping items)
+5. Creates ImportSession → Vision extraction → ready_for_review
+
+**Frontend:** `ScreenshotImporter.tsx` — image drop zone with thumbnails + source hint
+
+**Sub-tasks:**
+- [ ] Vision prompt design for Google Classroom UI
+- [ ] `parse_screenshots()` service function
+- [ ] `/screenshot` route
+- [ ] `ScreenshotImporter.tsx` component
+
+---
+
+#### 6.55.4 ImportReviewWizard (#60)
+
+Unified review UI where all pathways converge. Users review, edit, and confirm AI-extracted data before committing.
+
+**Steps:**
+1. **Processing** — spinner while AI extracts
+2. **Review/Edit** — tabbed view (Courses | Assignments | Materials | Announcements | Grades), inline editing, include/exclude toggles, duplicate badges, course mapping dropdown
+3. **Confirm** — summary counts
+4. **Summary** — success/failure counts, links to created records, "Import More" button
+
+**Frontend:** `ImportReviewWizard.tsx` + `classroomImport.ts` API client
+
+**Sub-tasks:**
+- [ ] `classroomImport.ts` API client functions
+- [ ] `ImportReviewWizard.tsx` multi-step component
+- [ ] Inline editing and course mapping UI
+- [ ] Dedup badge detection
+
+---
+
+#### 6.55.5 Email Forward Parser (#61)
+
+**Set-and-forget pathway.** Parent sets up Gmail filter to auto-forward Google Classroom notification emails to a ClassBridge address. System parses assignment notifications, guardian summaries, and grade alerts.
+
+**Implementation:**
+1. SendGrid Inbound Parse webhook at `POST /api/import/email-forward`
+2. Detects Google Classroom email patterns (assignment, due date, guardian summary, grade)
+3. Regex parsing primary, AI fallback for complex emails
+4. Unique forwarding address per user: `import+{user_hash}@classbridge.app`
+
+**Frontend:** `EmailForwardSetup.tsx` — forwarding address display + Gmail filter instructions
+
+**Sub-tasks:**
+- [ ] `classroom_email_parser.py` service
+- [ ] Email forward webhook route
+- [ ] `EmailForwardSetup.tsx` component
+
+---
+
+#### 6.55.6 Google Calendar ICS Import (#62)
+
+**Quick win.** Google Classroom due dates appear in Google Calendar. Student exports calendar as .ics file and uploads to ClassBridge.
+
+**Implementation:**
+1. `POST /api/import/ics` accepts .ics/.ical files
+2. `ics_parser.py` using `icalendar` library
+3. Extracts: SUMMARY (title + course), DTSTART (due date), UID (dedup key)
+4. Groups events by course name → CanonicalCourse + CanonicalAssignment
+5. Limitation: captures titles + dates only (not descriptions/materials)
+
+**Frontend:** `ICSImporter.tsx` — file upload + export instructions
+
+**Sub-tasks:**
+- [ ] `ics_parser.py` service
+- [ ] `/ics` route
+- [ ] `ICSImporter.tsx` component
+- [ ] Add `icalendar` to requirements.txt
+
+---
+
+#### 6.55.7 CSV Template Import (#63)
+
+**Maximum control.** Downloadable CSV templates that parents fill in manually from what they see in Google Classroom.
+
+**Templates:** assignments.csv, materials.csv, grades.csv
+
+**Implementation:**
+1. `GET /api/import/templates/csv` — download blank templates
+2. `POST /api/import/csv` — upload filled CSV
+3. `csv_import_parser.py` — flexible column mapping (follows `teachassist_parser.py` pattern)
+
+**Frontend:** `CSVImporter.tsx` — template download + file upload
+
+**Sub-tasks:**
+- [ ] CSV template design (3 types)
+- [ ] `csv_import_parser.py` service
+- [ ] Template download + CSV upload routes
+- [ ] `CSVImporter.tsx` component
+
+---
+
+#### 6.55.8 Student OAuth Fallback UX (#64)
+
+Frontend-only change. When student's school Google account OAuth fails (403), show helpful error and guide to alternative import pathways.
+
+**Sub-tasks:**
+- [ ] Detect OAuth 403 in LMS connection flow
+- [ ] Error card with alternative pathway links
+
+---
+
+#### 6.55.9 MCP Import Tools (#65)
+
+Expose import capabilities via MCP server for conversational data migration through Claude Desktop.
+
+**New MCP Tools (`app/mcp/tools/import.py`):**
+- `import_from_text` — parse pasted text, return structured preview
+- `import_from_image` — parse base64 images, return structured preview
+- `commit_import_session` — finalize reviewed session
+- `list_import_sessions` — show pending/completed imports
+
+**New MCP Resource:**
+- `import://sessions/{session_id}` — read session data for review
+
+**Sub-tasks:**
+- [ ] `app/mcp/tools/import.py` tool definitions
+- [ ] Register in `app/mcp/routes.py`
+
+---
+
+#### 6.55.10 ClassroomImportPage + Navigation (#66)
+
+Main entry point page with pathway cards and navigation integration.
+
+**Frontend:** `ClassroomImportPage.tsx` — grid of pathway cards (Copy & Paste, Screenshot, Email Forward, Calendar, CSV, Google Account)
+
+**Navigation:**
+- "Import Data" in parent/student sidebar (DashboardLayout)
+- "Import from Classroom" button on CourseDetailPage
+- "Alternative Import Methods" on LMSConnectionsPage
+
+**Sub-tasks:**
+- [ ] `ClassroomImportPage.tsx` hub page
+- [ ] Sidebar navigation entry
+- [ ] CourseDetailPage integration
+- [ ] LMSConnectionsPage fallback section
+
+---
+
+#### 6.55.11 Browser Bookmarklet (#67) — Deferred to Phase 3
+
+JavaScript bookmarklet that runs on classroom.google.com, extracts DOM content, and posts to ClassBridge API. Deferred due to maintenance burden (Google can change DOM at any time).

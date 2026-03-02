@@ -1,0 +1,425 @@
+/* ─── Grade Prediction Page ──────────────────────────────────────────────── */
+
+.grade-prediction-page {
+  padding: 0 1.5rem 2rem;
+  max-width: 1100px;
+}
+
+/* ─── Summary Bar ─────────────────────────────────────────────────────────── */
+
+.gp-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.gp-summary-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.gp-summary-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #6b7280);
+}
+
+.gp-summary-card__value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1.1;
+}
+
+.gp-summary-card__sub {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.gp-summary-card--at-risk {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.gp-summary-card--at-risk .gp-summary-card__label {
+  color: #dc2626;
+}
+
+.gp-summary-card--at-risk .gp-summary-card__value {
+  color: #dc2626;
+  font-size: 1rem;
+}
+
+/* ─── Controls Row ────────────────────────────────────────────────────────── */
+
+.gp-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.gp-controls__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0;
+  flex: 1;
+}
+
+.gp-child-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.gp-child-selector label {
+  font-weight: 600;
+  color: var(--text-secondary, #374151);
+}
+
+.gp-child-selector select {
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+}
+
+.gp-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.gp-refresh-btn:hover:not(:disabled) {
+  background: var(--primary-dark, #4f46e5);
+}
+
+.gp-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Prediction Cards Grid ───────────────────────────────────────────────── */
+
+.gp-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ─── Individual Prediction Card ─────────────────────────────────────────── */
+
+.gp-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: box-shadow 0.15s ease;
+}
+
+.gp-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.gp-card--green {
+  border-left: 4px solid #22c55e;
+}
+
+.gp-card--yellow {
+  border-left: 4px solid #f59e0b;
+}
+
+.gp-card--red {
+  border-left: 4px solid #ef4444;
+}
+
+/* Card header */
+.gp-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.gp-card__course-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0;
+  flex: 1;
+}
+
+.gp-card__trend {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.gp-card__trend--improving {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.gp-card__trend--stable {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.gp-card__trend--declining {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.gp-trend-arrow {
+  font-size: 1rem;
+}
+
+/* Grade display */
+.gp-card__grade-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.gp-card__grade {
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.gp-card__grade--green { color: #16a34a; }
+.gp-card__grade--yellow { color: #d97706; }
+.gp-card__grade--red { color: #dc2626; }
+
+.gp-card__grade-pct {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Confidence bar */
+.gp-confidence {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.gp-confidence__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #9ca3af);
+}
+
+.gp-confidence__bar-track {
+  height: 6px;
+  background: var(--border-color, #e5e7eb);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.gp-confidence__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary, #6366f1);
+  transition: width 0.6s ease;
+}
+
+.gp-confidence__value {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  align-self: flex-end;
+}
+
+/* AI Factors list */
+.gp-card__factors {
+  border-top: 1px solid var(--border-color, #f3f4f6);
+  padding-top: 0.85rem;
+}
+
+.gp-card__factors-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 0.5rem;
+}
+
+.gp-factors-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gp-factors-list li {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #374151);
+  padding-left: 1rem;
+  position: relative;
+  line-height: 1.45;
+}
+
+.gp-factors-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--primary, #6366f1);
+  font-size: 0.75rem;
+}
+
+/* Refresh button inside card */
+.gp-card__refresh-btn {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 7px;
+  border: 1px solid var(--border-color, #d1d5db);
+  background: transparent;
+  color: var(--text-secondary, #374151);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.gp-card__refresh-btn:hover:not(:disabled) {
+  background: var(--bg-hover, #f9fafb);
+}
+
+.gp-card__refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Skeleton Loader ─────────────────────────────────────────────────────── */
+
+.gp-skeleton {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@keyframes gp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.gp-skeleton-line {
+  background: var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  animation: gp-pulse 1.4s ease-in-out infinite;
+}
+
+/* ─── Empty / Error States ────────────────────────────────────────────────── */
+
+.gp-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.gp-empty__icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.gp-empty h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 0.35rem;
+}
+
+.gp-empty p {
+  font-size: 0.875rem;
+  margin: 0 0 1.25rem;
+}
+
+.gp-generate-btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.gp-generate-btn:hover:not(:disabled) {
+  background: var(--primary-dark, #4f46e5);
+}
+
+.gp-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gp-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .gp-summary-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .gp-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .grade-prediction-page {
+    padding: 0 0.75rem 2rem;
+  }
+}

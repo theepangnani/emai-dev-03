@@ -105,6 +105,15 @@ const BillingPage = lazyRetry(() => import('./pages/BillingPage').then((m) => ({
 const AdminBillingPage = lazyRetry(() => import('./pages/AdminBillingPage').then((m) => ({ default: m.AdminBillingPage })));
 const TutorMatchPage = lazyRetry(() => import('./pages/TutorMatchPage').then((m) => ({ default: m.TutorMatchPage })));
 const AdminFeatureFlagsPage = lazyRetry(() => import('./pages/AdminFeatureFlagsPage').then((m) => ({ default: m.AdminFeatureFlagsPage })));
+const StudentPortfolioPage = lazyRetry(() => import('./pages/StudentPortfolioPage').then((m) => ({ default: m.StudentPortfolioPage })));
+const StudyTimerPage = lazyRetry(() => import('./pages/StudyTimerPage').then((m) => ({ default: m.StudyTimerPage })));
+const GradePredictionPage = lazyRetry(() => import('./pages/GradePredictionPage').then((m) => ({ default: m.GradePredictionPage })));
+const TwoFactorSetupPage = lazyRetry(() => import('./pages/TwoFactorSetupPage').then((m) => ({ default: m.TwoFactorSetupPage })));
+const ForumPage = lazyRetry(() => import('./pages/ForumPage').then((m) => ({ default: m.ForumPage })));
+const WritingAssistantPage = lazyRetry(() => import('./pages/WritingAssistantPage').then((m) => ({ default: m.WritingAssistantPage })));
+const ReminderPreferencesPage = lazyRetry(() => import('./pages/ReminderPreferencesPage').then((m) => ({ default: m.ReminderPreferencesPage })));
+const ResourceLibraryPage = lazyRetry(() => import('./pages/ResourceLibraryPage').then((m) => ({ default: m.ResourceLibraryPage })));
+const ClassroomImportPage = lazyRetry(() => import('./pages/ClassroomImportPage').then((m) => ({ default: m.ClassroomImportPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -602,6 +611,78 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminFeatureFlagsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/portfolio"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <StudentPortfolioPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-timer"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudyTimerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/grade-prediction"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <GradePredictionPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/2fa"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <TwoFactorSetupPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/forum"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'teacher', 'student', 'admin']}>
+                    <ForumPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/writing-assistant"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <WritingAssistantPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/reminders"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <ReminderPreferencesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/resources"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <ResourceLibraryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/import"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <ClassroomImportPage />
                   </ProtectedRoute>
                 }
               />

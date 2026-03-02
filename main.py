@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor, forum, writing_assistance, smart_reminders, resource_library, classroom_import
 from app.api.routes.billing import router as billing_router, admin_router as admin_billing_router
 from app.api.routes.billing import seed_subscription_plans
 
@@ -40,6 +40,7 @@ from app.models.quiz_assignment import QuizAssignment  # noqa: F401 — ensure t
 from app.models.grade_entry import GradeEntry  # noqa: F401 — ensure table is created
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
+from app.models.import_session import ImportSession  # noqa: F401 — ensure table is created
 from app.models.teacher_google_account import TeacherGoogleAccount  # noqa: F401 — ensure table is created
 from app.models.email_template import EmailTemplate  # noqa: F401 — ensure table is created
 from app.models.report_card import ReportCard  # noqa: F401 — ensure table is created
@@ -68,6 +69,14 @@ from app.models.subscription import SubscriptionPlan, UserSubscription  # noqa: 
 from app.models.tutor_match_preference import TutorMatchPreference  # noqa: F401 — ensure table is created (Batch 10)
 from app.models.feature_flag import FeatureFlag, UserFeatureOverride  # noqa: F401 — ensure tables are created (Batch 10)
 from app.models.push_token import PushToken  # noqa: F401 — ensure table is created (Batch 10)
+from app.models.portfolio import StudentPortfolio, PortfolioItem  # noqa: F401 — ensure tables are created (portfolio feature)
+from app.models.study_timer import StudySession, StudyStreak  # noqa: F401 — ensure tables are created (Pomodoro timer)
+from app.models.grade_prediction import GradePrediction  # noqa: F401 — ensure table is created (Phase 2 AI Grade Prediction)
+from app.models.two_factor import TOTPDevice  # noqa: F401 — ensure table is created (2FA)
+from app.models.forum import ForumCategory, ForumThread, ForumPost, ForumLike  # noqa: F401 — ensure tables are created (Forum)
+from app.models.writing_assistance import WritingAssistanceSession, WritingTemplate  # noqa: F401 — ensure tables are created (Writing Assistant)
+from app.models.smart_reminder import ReminderLog, ReminderPreference  # noqa: F401 — ensure tables are created (Smart Reminders v2)
+from app.models.resource_library import TeacherResource, ResourceRating, ResourceCollection  # noqa: F401 — ensure tables are created (Resource Library)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1076,6 +1085,22 @@ with SessionLocal() as _seed_db:
     except Exception as _e:
         logger.warning("Failed to seed subscription plans at startup: %s", _e)
 
+# ── Seed Forum default categories ──────────────────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.services.forum import seed_default_categories as seed_forum_categories
+        seed_forum_categories(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed forum categories at startup: %s", _e)
+
+# ── Seed writing templates (Writing Assistant) ─────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.services.writing_assistance import seed_templates as seed_writing_templates
+        seed_writing_templates(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed writing templates at startup: %s", _e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1234,6 +1259,15 @@ app.include_router(feature_flags.admin_router, prefix="/api")
 app.include_router(push_notifications.router, prefix="/api")
 app.include_router(push_notifications.admin_router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(portfolio.router, prefix="/api")
+app.include_router(study_timer.router, prefix="/api")
+app.include_router(grade_prediction.router, prefix="/api")
+app.include_router(two_factor.router, prefix="/api")
+app.include_router(forum.router, prefix="/api")
+app.include_router(writing_assistance.router, prefix="/api")
+app.include_router(smart_reminders.router, prefix="/api")
+app.include_router(resource_library.router, prefix="/api")
+app.include_router(classroom_import.router)
 
 logger.info("API routes registered at /api")
 
@@ -1403,6 +1437,15 @@ async def startup_event():
     # Multi-LMS sync — every 15 minutes; syncs all active connections, detects stale ones (#27)
     from app.jobs.lms_sync import schedule_lms_sync
     schedule_lms_sync(scheduler, get_db)
+
+    # Smart Reminders v2 — runs every 3 hours to cover HIGH (3h before due) and CRITICAL urgency windows
+    from app.jobs.smart_reminders_job import run_smart_reminders_job
+    scheduler.add_job(
+        run_smart_reminders_job,
+        CronTrigger(hour="*/3"),
+        id="smart_reminders",
+        replace_existing=True,
+    )
 
     start_scheduler()
     logger.info("EMAI application started successfully")

@@ -19,6 +19,7 @@ from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.schemas.two_factor import TOTPLoginRequest as TOTPLoginRequestBody
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -444,6 +445,27 @@ def login(
     user.locked_until = None
     user.last_failed_login = None
 
+    # Check if 2FA is enabled for this user BEFORE issuing a full JWT
+    from app.models.two_factor import TOTPDevice as _TOTPDevice
+    totp_device = db.query(_TOTPDevice).filter(
+        _TOTPDevice.user_id == user.id,
+        _TOTPDevice.is_enabled == True,  # noqa: E712
+    ).first()
+
+    if totp_device:
+        # Issue a short-lived "2FA pending" temp token — full JWT withheld
+        log_action(db, user_id=user.id, action="login_2fa_pending", resource_type="user",
+                   resource_id=user.id, ip_address=ip)
+        db.commit()
+        temp_token = create_access_token(
+            data={"sub": str(user.id), "2fa_pending": True},
+            expires_delta=timedelta(minutes=5),
+        )
+        return JSONResponse(content={
+            "requires_2fa": True,
+            "temp_token": temp_token,
+        })
+
     log_action(db, user_id=user.id, action="login", resource_type="user",
                resource_id=user.id, ip_address=ip)
     db.commit()
@@ -456,6 +478,105 @@ def login(
 
     # Return token in JSON body (backward compat for mobile/existing clients)
     # AND set httpOnly cookies for web clients (XSS mitigation)
+    token_data = Token(access_token=access_token, refresh_token=refresh_token, onboarding_completed=onboarding_done)
+    response = JSONResponse(content=token_data.model_dump())
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
+
+
+@router.post("/login/2fa")
+@limiter.limit("5/minute")
+def login_2fa(
+    request: Request,
+    body: TOTPLoginRequestBody,
+    db: Session = Depends(get_db),
+):
+    """Complete the 2FA login flow.
+
+    Accepts the short-lived *temp_token* (returned by POST /auth/login when 2FA
+    is required) together with a 6-digit TOTP *code* (or a backup code).  On
+    success returns a full JWT pair and sets httpOnly cookies.
+    """
+    from jose import JWTError, jwt as _jwt
+    from app.schemas.two_factor import TOTPLoginRequest as _TOTPLoginRequest
+    from app.models.two_factor import TOTPDevice as _TOTPDevice
+    from app.services.two_factor import TwoFactorService as _TF
+
+    credentials_exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired 2FA token.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    # Decode and validate the temp token
+    try:
+        payload = _jwt.decode(body.temp_token, settings.secret_key, algorithms=[settings.algorithm])
+    except JWTError:
+        raise credentials_exc
+
+    if not payload.get("2fa_pending"):
+        raise credentials_exc
+
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise credentials_exc
+
+    user = db.query(User).filter(User.id == int(user_id_str)).first()
+    if not user or not user.is_active:
+        raise credentials_exc
+
+    # Fetch the enabled TOTP device
+    totp_device = db.query(_TOTPDevice).filter(
+        _TOTPDevice.user_id == user.id,
+        _TOTPDevice.is_enabled == True,  # noqa: E712
+    ).first()
+    if not totp_device:
+        raise credentials_exc
+
+    code = body.code.strip()
+    code_ok = False
+    backup_used = False
+
+    try:
+        secret = _TF.get_device_secret(totp_device)
+        code_ok = _TF.verify_totp(secret, code)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        )
+
+    if not code_ok:
+        # Try backup code
+        if _TF.verify_backup_code(totp_device, code):
+            _TF.use_backup_code(totp_device, code, db)
+            code_ok = True
+            backup_used = True
+
+    if not code_ok:
+        ip = request.client.host if request.client else None
+        log_action(db, user_id=user.id, action="login_2fa_failed", resource_type="user",
+                   resource_id=user.id, ip_address=ip)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid 2FA code.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    ip = request.client.host if request.client else None
+    log_action(db, user_id=user.id, action="login", resource_type="user",
+               resource_id=user.id,
+               details={"backup_code_used": backup_used},
+               ip_address=ip)
+    db.commit()
+
+    onboarding_done = bool(user.onboarding_completed)
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "onboarding_completed": onboarding_done,
+    })
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
     token_data = Token(access_token=access_token, refresh_token=refresh_token, onboarding_completed=onboarding_done)
     response = JSONResponse(content=token_data.model_dump())
     _set_auth_cookies(response, access_token, refresh_token)

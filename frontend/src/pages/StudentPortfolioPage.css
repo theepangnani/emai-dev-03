@@ -1,0 +1,502 @@
+/* ============================================================
+   StudentPortfolioPage.css — Student curated portfolio styles
+   ============================================================ */
+
+.pf-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ----------------------------------------------------------------
+   Header card
+   ---------------------------------------------------------------- */
+
+.pf-header-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.pf-header-display {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pf-header-text {
+  flex: 1 1 200px;
+}
+
+.pf-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.pf-description {
+  margin: 0 0 0.5rem;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.pf-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.pf-visibility {
+  font-weight: 600;
+}
+.pf-visibility.public {
+  color: #059669;
+}
+.pf-visibility.private {
+  color: #6b7280;
+}
+
+.pf-header-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Edit form inside header */
+.pf-header-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pf-title-input {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.pf-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ----------------------------------------------------------------
+   Toolbar
+   ---------------------------------------------------------------- */
+
+.pf-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ----------------------------------------------------------------
+   AI Summary Panel
+   ---------------------------------------------------------------- */
+
+.pf-summary-panel {
+  position: relative;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 1.25rem 3rem 1.25rem 1.5rem;
+}
+
+.pf-summary-panel.pf-summary-error {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.pf-summary-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #3b82f6;
+  margin-bottom: 0.5rem;
+}
+
+.pf-summary-text {
+  margin: 0;
+  color: var(--text-primary, #111827);
+  line-height: 1.65;
+  font-size: 0.95rem;
+}
+
+.pf-summary-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1;
+  padding: 0;
+}
+
+.pf-summary-close:hover {
+  color: var(--text-primary, #111827);
+}
+
+/* ----------------------------------------------------------------
+   Items grid
+   ---------------------------------------------------------------- */
+
+.pf-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* ----------------------------------------------------------------
+   Item card
+   ---------------------------------------------------------------- */
+
+.pf-item-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem 0.85rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: grab;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pf-item-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #93c5fd;
+}
+
+.pf-item-card.pf-item-dragging {
+  opacity: 0.5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: scale(1.02);
+}
+
+.pf-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Type badges */
+.pf-type-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pf-type-study_guide  { background: #eff6ff; color: #2563eb; }
+.pf-type-quiz_result  { background: #f0fdf4; color: #16a34a; }
+.pf-type-assignment   { background: #fef9c3; color: #b45309; }
+.pf-type-document     { background: #f5f3ff; color: #7c3aed; }
+.pf-type-note         { background: #fff7ed; color: #c2410c; }
+.pf-type-achievement  { background: #fdf2f8; color: #9d174d; }
+
+.pf-item-remove {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1;
+  padding: 0 0.15rem;
+  border-radius: 4px;
+  transition: color 0.1s, background 0.1s;
+}
+
+.pf-item-remove:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.pf-item-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  line-height: 1.4;
+}
+
+.pf-item-reflection {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pf-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+}
+
+.pf-tag {
+  background: var(--tag-bg, #f3f4f6);
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.pf-item-drag-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--text-muted, #9ca3af);
+  margin-top: 0.25rem;
+  user-select: none;
+}
+
+/* ----------------------------------------------------------------
+   Empty state
+   ---------------------------------------------------------------- */
+
+.pf-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.pf-empty-icon {
+  margin-bottom: 1rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.pf-empty-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary, #111827);
+}
+
+.pf-empty-hint {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Loading / error states
+   ---------------------------------------------------------------- */
+
+.pf-loading,
+.pf-error-state {
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.95rem;
+}
+
+.pf-error-state {
+  color: #dc2626;
+}
+
+/* ----------------------------------------------------------------
+   Modal overlay
+   ---------------------------------------------------------------- */
+
+.pf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pf-modal {
+  background: var(--card-bg, #fff);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.pf-modal-title {
+  margin: 0 0 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.pf-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pf-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+/* ----------------------------------------------------------------
+   Shared form elements
+   ---------------------------------------------------------------- */
+
+.pf-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.pf-input,
+.pf-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary, #111827);
+  background: var(--input-bg, #fff);
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.pf-input:focus,
+.pf-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.pf-textarea {
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.pf-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Buttons
+   ---------------------------------------------------------------- */
+
+.pf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.pf-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pf-btn-primary {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.pf-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.pf-btn-secondary {
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #111827);
+  border-color: var(--border-color, #e5e7eb);
+}
+
+.pf-btn-secondary:hover:not(:disabled) {
+  background: var(--hover-bg, #f9fafb);
+}
+
+.pf-btn-outline {
+  background: transparent;
+  color: #6b7280;
+  border-color: var(--border-color, #e5e7eb);
+}
+
+.pf-btn-outline:hover:not(:disabled) {
+  background: var(--hover-bg, #f9fafb);
+  color: var(--text-primary, #111827);
+}
+
+/* ----------------------------------------------------------------
+   Responsive
+   ---------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .pf-container {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .pf-header-card {
+    padding: 1.25rem 1.25rem;
+  }
+
+  .pf-title {
+    font-size: 1.35rem;
+  }
+
+  .pf-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pf-toolbar .pf-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pf-items-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-modal {
+    padding: 1.5rem;
+  }
+}

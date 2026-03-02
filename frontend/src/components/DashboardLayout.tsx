@@ -13,6 +13,7 @@ import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STE
 import { QuickActionFAB } from './QuickActionFAB';
 import type { FABAction } from './QuickActionFAB';
 import { CreateTaskModal } from './CreateTaskModal';
+import { OfflineIndicator } from './OfflineIndicator';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -268,11 +269,26 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
     </svg>
   ),
+  'Two-Factor Auth': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <polyline points="9 12 11 14 15 10"/>
+    </svg>
+  ),
   'AI Email': (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
       <polyline points="22,6 12,13 2,6"/>
       <circle cx="18" cy="8" r="3" fill="currentColor" opacity="0.6"/>
+    </svg>
+  ),
+  Forum: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      <polyline points="19 11 21 13 23 11"/>
     </svg>
   ),
   'Lesson Planner': (
@@ -283,10 +299,32 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="9" y1="16" x2="11" y2="16"/>
     </svg>
   ),
+  'Resource Library': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <line x1="9" y1="8" x2="15" y2="8"/>
+      <line x1="9" y1="12" x2="15" y2="12"/>
+      <circle cx="17" cy="17" r="3"/>
+      <line x1="19.5" y1="19.5" x2="21" y2="21"/>
+    </svg>
+  ),
   'My Learning': (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
       <path d="M12 6v6l4 2"/>
+    </svg>
+  ),
+  'Grade Predictions': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ),
+  'Writing Assistant': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      <circle cx="20" cy="4" r="1" fill="currentColor"/>
     </svg>
   ),
   'Billing': (
@@ -301,6 +339,28 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="12" y1="20" x2="12" y2="4"/>
       <line x1="6" y1="20" x2="6" y2="14"/>
       <rect x="1" y="1" width="6" height="6" rx="1"/>
+    </svg>
+  ),
+  Portfolio: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v16l-7-3-7 3V7"/>
+      <path d="M8 10h8M8 14h5"/>
+    </svg>
+  ),
+  'Study Timer': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="13" r="8"/>
+      <path d="M12 9v4l2.5 2.5"/>
+      <path d="M5 3L3 5"/>
+      <path d="M19 3l2 2"/>
+      <path d="M12 3V1"/>
+    </svg>
+  ),
+  'Reminder Settings': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      <line x1="12" y1="2" x2="12" y2="4"/>
     </svg>
   ),
 };
@@ -349,6 +409,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
         { label: 'AI Insights', path: '/insights' },
+        { label: 'Grade Predictions', path: '/grade-prediction' },
         { label: 'Course Planning', path: '/course-planning' },
         { label: 'Documents', path: '/documents' },
         { label: 'Report Cards', path: '/report-cards' },
@@ -357,6 +418,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Progress', path: '/progress' },
         { label: 'Analytics', path: '/analytics' },
         { label: 'Messages', path: '/messages' },
+        { label: 'Forum', path: '/forum' },
         { label: 'My Learning', path: '/personalization' },
         { label: 'AI Email', path: '/email-agent' },
         { label: 'Notes', path: '/notes' },
@@ -368,6 +430,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'LMS Connections', path: '/settings/lms' },
         { label: 'Billing', path: '/settings/billing' },
         { label: 'API Keys', path: '/settings/api-keys' },
+        { label: 'Two-Factor Auth', path: '/settings/2fa' },
+        { label: 'Reminder Settings', path: '/settings/reminders' },
         { label: 'Account', path: '/settings/account' },
       ];
     }
@@ -380,9 +444,12 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     ];
 
     if (user?.role === 'student') {
+      items.push({ label: 'Portfolio', path: '/portfolio' });
       items.push({ label: 'Course Planning', path: '/course-planning' });
       items.push({ label: 'Course Planner', path: '/planner' });
+      items.push({ label: 'Study Timer', path: '/study-timer' });
       items.push({ label: 'Quiz History', path: '/quiz-history' });
+      items.push({ label: 'Writing Assistant', path: '/writing-assistant' });
       items.push({ label: 'My Emails', path: '/settings/emails' });
       items.push({ label: 'Find a Tutor', path: '/tutors' });
       items.push({ label: 'Tutor Match', path: '/tutor-match' });
@@ -395,10 +462,12 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'student') {
       items.push({ label: 'Grades', path: '/grades' });
+      items.push({ label: 'Grade Predictions', path: '/grade-prediction' });
       items.push({ label: 'Exam Prep', path: '/exam-prep' });
       items.push({ label: 'Progress', path: '/progress' });
       items.push({ label: 'Analytics', path: '/analytics' });
       items.push({ label: 'My Learning', path: '/personalization' });
+      items.push({ label: 'Forum', path: '/forum' });
     }
 
     if (user?.role === 'teacher') {
@@ -409,8 +478,10 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
       items.push({ label: 'Curriculum', path: '/curriculum' });
       items.push({ label: 'Lesson Planner', path: '/teacher/lesson-plans' });
+      items.push({ label: 'Resource Library', path: '/resources' });
       items.push({ label: 'AI Email', path: '/email-agent' });
       items.push({ label: 'Tutor Dashboard', path: '/tutors/dashboard' });
+      items.push({ label: 'Forum', path: '/forum' });
     }
 
     if (user?.role === 'parent' || user?.role === 'teacher') {
@@ -434,6 +505,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     items.push({ label: 'LMS Connections', path: '/settings/lms' });
     items.push({ label: 'Billing', path: '/settings/billing' });
     items.push({ label: 'API Keys', path: '/settings/api-keys' });
+    items.push({ label: 'Two-Factor Auth', path: '/settings/2fa' });
+    items.push({ label: 'Reminder Settings', path: '/settings/reminders' });
     items.push({ label: 'Account', path: '/settings/account' });
 
     return items;
@@ -907,6 +980,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         open={showFabTaskModal}
         onClose={() => setShowFabTaskModal(false)}
       />
+
+      {/* Offline status indicator — fixed bottom bar */}
+      <OfflineIndicator />
       </div>
     </>
   );
