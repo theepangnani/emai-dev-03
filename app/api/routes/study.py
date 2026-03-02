@@ -7,6 +7,8 @@ from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
+from app.models.curriculum import CurriculumExpectation
+
 from app.core.config import settings
 from app.core.utils import escape_like
 from app.core.rate_limit import limiter, get_user_id_or_ip
@@ -536,6 +538,46 @@ async def generate_study_guide_endpoint(
             detail="Please provide assignment_id or content to generate a study guide",
         )
 
+    # ── Fetch Ontario curriculum expectations for anchoring (#571) ──────────
+    # Derive a course code from the course name or subject (e.g. "MCR3U Functions" → "MCR3U")
+    curriculum_expectations: list[str] = []
+    curriculum_course_code: str | None = None
+    try:
+        # Extract a candidate course code: uppercase token of 5–7 chars matching Ontario pattern
+        candidate_code: str | None = None
+        if course:
+            import re as _re
+            for token in (course.name or "").split():
+                if _re.match(r'^[A-Z]{2,4}\d[A-Z0-9]\d?$', token.upper()):
+                    candidate_code = token.upper()
+                    break
+            if not candidate_code and course.subject:
+                for token in course.subject.split():
+                    if _re.match(r'^[A-Z]{2,4}\d[A-Z0-9]\d?$', token.upper()):
+                        candidate_code = token.upper()
+                        break
+        if candidate_code:
+            # Find top 5 most relevant expectations by keyword overlap with description
+            all_exp = (
+                db.query(CurriculumExpectation)
+                .filter(CurriculumExpectation.course_code == candidate_code)
+                .all()
+            )
+            if all_exp:
+                desc_words = set((description or "").lower().split())
+                title_words = set(title.lower().split())
+                search_words = desc_words | title_words
+                def _relevance(exp: CurriculumExpectation) -> int:
+                    exp_words = set(exp.description.lower().split())
+                    return len(search_words & exp_words)
+                scored = sorted(all_exp, key=_relevance, reverse=True)
+                top5 = [e for e in scored[:5] if _relevance(e) > 0] or scored[:3]
+                curriculum_expectations = [e.description for e in top5]
+                curriculum_course_code = candidate_code
+    except Exception as _curr_err:
+        # Fail-open: never block study guide generation over curriculum lookup
+        logger.warning("Curriculum expectation lookup failed (non-blocking): %s", _curr_err)
+
     # Compute content hash for dedup / pool lookup
     content_hash = study_service.compute_content_hash(title, "study_guide", body.assignment_id)
 
@@ -585,6 +627,8 @@ async def generate_study_guide_endpoint(
             due_date=due_date,
             custom_prompt=body.custom_prompt,
             focus_prompt=body.focus_prompt,
+            curriculum_expectations=curriculum_expectations or None,
+            course_code=curriculum_course_code,
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED

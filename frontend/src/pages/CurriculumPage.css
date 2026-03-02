@@ -1,0 +1,350 @@
+/* CurriculumPage — Ontario Curriculum Management (#571) */
+
+.curriculum-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 0 48px;
+}
+
+/* Header */
+.curriculum-header {
+  margin-bottom: 24px;
+}
+
+.curriculum-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 6px;
+}
+
+.curriculum-subtitle {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Controls row */
+.curriculum-controls {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.curriculum-course-selector,
+.curriculum-search-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.curriculum-course-selector {
+  flex: 0 0 auto;
+  min-width: 280px;
+}
+
+.curriculum-search-bar {
+  flex: 1;
+  min-width: 200px;
+}
+
+.curriculum-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.curriculum-select {
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.curriculum-select:hover,
+.curriculum-select:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.curriculum-search-input {
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.curriculum-search-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+/* Course info bar */
+.curriculum-course-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.curriculum-course-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.curriculum-course-code {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: 0.03em;
+}
+
+.curriculum-grade {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-raised, var(--color-border));
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.curriculum-count {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.curriculum-toggle-all-btn {
+  font-size: 13px;
+  padding: 5px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: none;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.curriculum-toggle-all-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Strand accordion */
+.curriculum-strands {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.curriculum-strand {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.curriculum-strand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.curriculum-strand-header:hover {
+  background: var(--color-surface-hover, rgba(0,0,0,0.04));
+}
+
+.curriculum-chevron {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  transition: transform 0.2s;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.curriculum-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.curriculum-strand-name {
+  font-weight: 600;
+  color: var(--color-ink);
+  flex: 1;
+}
+
+.curriculum-strand-count {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+/* Expectations list */
+.curriculum-expectations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.curriculum-expectation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  line-height: 1.5;
+  transition: background 0.1s;
+}
+
+.curriculum-expectation:last-child {
+  border-bottom: none;
+}
+
+.curriculum-expectation:hover {
+  background: var(--color-surface-hover, rgba(0,0,0,0.03));
+}
+
+.curriculum-expectation.overall {
+  background: var(--color-accent-faint, rgba(99, 102, 241, 0.04));
+}
+
+.curriculum-exp-code {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  white-space: nowrap;
+  min-width: 36px;
+  padding-top: 1px;
+}
+
+.curriculum-exp-desc {
+  font-size: 13px;
+  color: var(--color-ink);
+  flex: 1;
+}
+
+.curriculum-exp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.curriculum-exp-badge.overall {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* Loading / empty states */
+.curriculum-loading,
+.curriculum-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
+.curriculum-clear-search-btn {
+  margin-top: 10px;
+  padding: 7px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: none;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.curriculum-clear-search-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Placeholder when no course selected */
+.curriculum-placeholder {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--color-ink-muted);
+}
+
+.curriculum-placeholder-icon {
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.curriculum-placeholder h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 8px;
+}
+
+.curriculum-placeholder p {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Content wrapper */
+.curriculum-content {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .curriculum-controls {
+    flex-direction: column;
+  }
+
+  .curriculum-course-selector,
+  .curriculum-search-bar {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .curriculum-select {
+    width: 100%;
+  }
+
+  .curriculum-course-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

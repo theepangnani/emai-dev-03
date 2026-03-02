@@ -202,7 +202,7 @@
 - [ ] TeachAssist integration
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [x] **Advanced notifications** — per-type in-app/email toggles, daily digest mode with configurable hour, NotificationPreferencesPage, digest APScheduler job (#966) — IMPLEMENTED
-- [ ] Notes & project tracking tools
+- [x] **Notes & project tracking tools** — Color-coded note cards (masonry grid, pinnable, linkable), Project tracker with milestone checklists and progress bars (IMPLEMENTED)
 - [x] **Data privacy & user rights** — Account deletion (#964) with 30-day grace period + anonymization job, data export (#965) with JSON download, consent on feature/phase-2 (IMPLEMENTED)
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
 - [x] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513) (IMPLEMENTED)
@@ -355,6 +355,41 @@ See §9 Mobile App Development for detailed specification.
 
 **GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
 
+### Phase 2+ (Multi-LMS Integration) — #22-#29
+
+Multi-LMS provider support enabling students to connect to multiple learning management systems simultaneously (Google Classroom, Brightspace, and future providers).
+
+| # | Feature | Issue | Phase | Value Add | Dependencies |
+|---|---------|-------|-------|-----------|-------------|
+| 1 | **Feasibility Study: Brightspace Integration** | #29 | 2+ | **Research** — Confirm API capabilities for materials, announcements, grades, assignments download. Documented: FULLY FEASIBLE. | None |
+| 2 | **Multi-LMS Provider Framework** | #22 | 2+ | **Infrastructure** — LMSConnection model, LMSInstitution model, generic lms_provider/lms_external_id columns on Course/Assignment/CourseContent, provider registry. Foundation for all multi-LMS work. | Existing #775/#776 |
+| 3 | **Multi-LMS Connection Management API** | #23 | 2+ | **Core** — OAuth flows, CRUD endpoints for connections, provider discovery, institution search. Universal callback handler. | #22 |
+| 4 | **Brightspace OAuth2 Service** | #24 | 2+ | **Integration** — Brightspace-specific OAuth2 + REST API client (`app/services/brightspace.py`). Handles per-institution URLs, pagination, rate limiting. | #22 |
+| 5 | **Brightspace LMSProvider Adapter** | #25 | 2+ | **Integration** — Implements LMSProvider interface for Brightspace. Translates Brightspace API → canonical models. Registered in provider registry. | #24, #22 |
+| 6 | **Multi-LMS Connection Manager UI** | #26 | 2+ | **UX** — Settings page to manage connections, connect flow with institution selector, provider badges on courses, filter by provider. | #23, #25 |
+| 7 | **Multi-LMS Sync Orchestration** | #27 | 2+ | **Infrastructure** — Unified background sync across all providers, per-connection status tracking, stale detection, deduplication. | #22, #25 |
+| 8 | **Admin LMS Institution Management** | #28 | 2+ | **Admin** — Admin page to register school board Brightspace instances, manage OAuth credentials, seed Ontario boards. | #22 |
+
+**Recommended implementation order:**
+1. **#29** Feasibility Study (research — DONE in issue body)
+2. **#22** Multi-LMS Provider Framework (infrastructure prerequisite)
+3. **#23** Multi-LMS Connection API (backend endpoints)
+4. **#24** Brightspace OAuth2 Service (Brightspace-specific)
+5. **#25** Brightspace Adapter (canonical model translation)
+6. **#28** Admin Institution Management (admin config)
+7. **#26** Multi-LMS UI (frontend)
+8. **#27** Multi-LMS Sync Orchestration (background jobs)
+
+**User Story (Student):**
+> As a student, I can connect to multiple LMS providers from my Settings page:
+> 1. Connect my school's Google Classroom (TDSB)
+> 2. Connect my school's Brightspace (PDSB)
+> 3. Connect my private tutor's Google Classroom (Mr. Khan)
+> 4. Connect any other supported LMS provider
+> All courses, assignments, grades, and materials from all providers appear unified in my dashboard.
+
+---
+
 ### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
 
 New features that deepen ClassBridge's AI capabilities, build a data foundation for student insights, and reduce platform costs.
@@ -383,7 +418,7 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 9. **#576** Exam Prep Engine (capstone — combines all data sources)
 
 ### Phase 3 (Course Planning & Guidance)
-- [ ] **Ontario Curriculum Management** — Download, parse, and serve Ontario curriculum data; curriculum-aligned analytics and AI anchoring (#571)
+- [x] **Ontario Curriculum Management** — Store Ontario curriculum expectations, serve via REST API, curriculum-anchored AI study guide generation, CurriculumPage at /curriculum, collapsible panel in CourseDetailPage (#571) — **IMPLEMENTED**
 - [x] **Exam Preparation Engine** — AI-powered personalized prep plans combining curriculum + quiz history + test records (#576) — **IMPLEMENTED**
 - [x] **School Board Integration** — Board-specific course catalogs, student ↔ board linking, board selection in Edit Child modal; seed 5 Ontario boards (TDSB, PDSB, YRDSB, HDSB, OCDSB) (#511, depends on #113) — **IMPLEMENTED**
 - [x] **Course Catalog Model** — Board-scoped high school course database with prerequisites, credits, grade levels, subject areas, streams, specialized programs (IB/AP/SHSM); seed per-board Ontario OSSD courses (#500) — **IMPLEMENTED**

@@ -88,6 +88,7 @@ const StudentProgressPage = lazyRetry(() => import('./pages/StudentProgressPage'
 const ExamPrepPage = lazyRetry(() => import('./pages/ExamPrepPage').then((m) => ({ default: m.ExamPrepPage })));
 const NotesPage = lazyRetry(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })));
 const ProjectsPage = lazyRetry(() => import('./pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
+const CurriculumPage = lazyRetry(() => import('./pages/CurriculumPage').then((m) => ({ default: m.CurriculumPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -449,6 +450,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student', 'parent', 'teacher']}>
                     <ProjectsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/curriculum"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <CurriculumPage />
                   </ProtectedRoute>
                 }
               />
