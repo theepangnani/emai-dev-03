@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -51,6 +51,9 @@ from app.models.curriculum import CurriculumExpectation  # noqa: F401 — ensure
 from app.models.exam_prep_plan import ExamPrepPlan  # noqa: F401 — ensure table is created (#576)
 from app.models.note import Note  # noqa: F401 — ensure table is created
 from app.models.project import Project, ProjectMilestone  # noqa: F401 — ensure tables are created
+from app.models.sample_exam import SampleExam  # noqa: F401 — ensure table is created (#577)
+from app.models.lms_institution import LMSInstitution  # noqa: F401 — ensure table is created (#22)
+from app.models.lms_connection import LMSConnection  # noqa: F401 — ensure table is created (#22)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -939,6 +942,84 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── sample_exams: ensure table has all expected columns (#577) ────────────
+    if "sample_exams" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("sample_exams")}
+        for col_name, col_def in [
+            ("description", "TEXT"),
+            ("original_content", "TEXT"),
+            ("file_name", "VARCHAR(500)"),
+            ("assessment_json", "TEXT"),
+            ("assessment_generated_at", "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"),
+            ("exam_type", "VARCHAR(50) DEFAULT 'sample'"),
+            ("difficulty_level", "VARCHAR(20)"),
+            ("is_public", "BOOLEAN DEFAULT FALSE" if "sqlite" not in settings.database_url else "INTEGER DEFAULT 0"),
+        ]:
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(text(f"ALTER TABLE sample_exams ADD COLUMN {col_name} {col_def}"))
+                    logger.info("Added '%s' column to sample_exams", col_name)
+                except Exception:
+                    conn.rollback()
+        conn.commit()
+
+    # ── Multi-LMS: lms_provider + lms_external_id on courses (#22) ───────────
+    if "courses" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("courses")}
+        if "lms_provider" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE courses ADD COLUMN lms_provider VARCHAR(50)"))
+                logger.info("Added 'lms_provider' column to courses")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        existing_cols = {c["name"] for c in inspector.get_columns("courses")}
+        if "lms_external_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE courses ADD COLUMN lms_external_id VARCHAR(255)"))
+                logger.info("Added 'lms_external_id' column to courses")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Multi-LMS: lms_provider + lms_external_id on assignments (#22) ───────
+    if "assignments" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("assignments")}
+        if "lms_provider" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE assignments ADD COLUMN lms_provider VARCHAR(50)"))
+                logger.info("Added 'lms_provider' column to assignments")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        existing_cols = {c["name"] for c in inspector.get_columns("assignments")}
+        if "lms_external_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE assignments ADD COLUMN lms_external_id VARCHAR(255)"))
+                logger.info("Added 'lms_external_id' column to assignments")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+    # ── Multi-LMS: lms_provider + lms_external_id on course_contents (#22) ──
+    if "course_contents" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        if "lms_provider" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN lms_provider VARCHAR(50)"))
+                logger.info("Added 'lms_provider' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        if "lms_external_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN lms_external_id VARCHAR(255)"))
+                logger.info("Added 'lms_external_id' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 # ── Seed email templates (#513) ──────────────────────────────────────────────
 with SessionLocal() as _seed_db:
     try:
@@ -1103,6 +1184,9 @@ app.include_router(curriculum.router, prefix="/api")
 app.include_router(exam_prep.router, prefix="/api")
 app.include_router(notes.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
+app.include_router(admin_analytics.router, prefix="/api")
+app.include_router(sample_exams.router, prefix="/api")
+app.include_router(lms_connections.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

@@ -216,6 +216,7 @@
 - [x] **Student Progress & Report Card Analysis** — Report card upload + AI mark extraction (#663) implemented; grade entry (#665) implemented; consolidated analytics dashboard at `/progress` with quiz performance bars, teacher grade cards, report card trend, AI insights (24h cache), study streak, assignment stats, parent child-selector (#960 IMPLEMENTED — consolidated from #575, #581, #663)
 - [x] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735) (IMPLEMENTED — verified done in Phase 1.5 and feature/phase-2)
 - [x] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479) (IMPLEMENTED)
+- [x] **Admin Analytics Dashboard** — Overview stats (users/content/engagement/privacy), user growth chart (30 days), content breakdown, engagement metrics, privacy compliance summary; admin-only at /admin/analytics (IMPLEMENTED)
 
 #### Phase 2 — On `feature/phase-2` Branch (Implemented, Not Yet in Production)
 - [x] **Progressive account lockout** — 5/10/15 failed login thresholds with escalating lockout durations; admin unlock (#796)
@@ -226,6 +227,10 @@
 - [x] **AI task extraction** — Extract tasks from uploaded documents using Claude; TaskExtractionModal (#878)
 - [x] **Task templates & comments** — Reusable task templates, recurring tasks, per-task comment threads (#880, #881)
 - [x] **MCP foundation** — fastapi-mcp integration with role-based tool access; 24 tests (#904, #905)
+- [x] **MCP Student Academic Context Resources (#906)** — profile, assignments, study-history, weak-areas resources + get_student_summary + identify_knowledge_gaps tools (IMPLEMENTED)
+- [x] **MCP Google Classroom Tools (#907)** — list courses, assignments, materials, grades, sync trigger, sync status (IMPLEMENTED)
+- [x] **MCP Study Material Generation Tools (#908)** — list, get, search, generate guide/quiz/flashcards, convert; content_hash dedup; rate limiting (IMPLEMENTED)
+- [x] **MCP AI Tutor Agent (#909)** — create_study_plan (auto-creates Tasks), get_study_recommendations, analyze_study_effectiveness; aggregates all student context (IMPLEMENTED)
 - [x] **Message search** — Full-text search with pagination, date filtering, in-thread search (#836)
 - [x] **Course Material Detail redesign** — Polished layout with sub-components (#734, #735)
 - [x] **Teacher course management** — Source badges, comprehensive view (#947)
@@ -370,6 +375,10 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 | 7 | **Multi-LMS Sync Orchestration** | #27 | 2+ | **Infrastructure** — Unified background sync across all providers, per-connection status tracking, stale detection, deduplication. | #22, #25 |
 | 8 | **Admin LMS Institution Management** | #28 | 2+ | **Admin** — Admin page to register school board Brightspace instances, manage OAuth credentials, seed Ontario boards. | #22 |
 
+**Implementation Status:**
+- [x] **Multi-LMS Provider Framework (#22)** — LMSConnection + LMSInstitution models, provider registry (Google Classroom, Brightspace stub, Canvas stub), seeded 5 Ontario Brightspace institutions (TDSB/PDSB/YRDSB/HDSB/OCDSB), lms_provider/lms_external_id columns on Course/Assignment/CourseContent (IMPLEMENTED)
+- [x] **Multi-LMS Connection Management API (#23)** — List providers, list/create/update/delete connections, LMS Connections UI at /settings/lms (IMPLEMENTED)
+
 **Recommended implementation order:**
 1. **#29** Feasibility Study (research — DONE in issue body)
 2. **#22** Multi-LMS Provider Framework (infrastructure prerequisite)
@@ -430,6 +439,7 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [x] **University Pathway Alignment** — Map plans to post-secondary program admission requirements; gap analysis, multi-program comparison; seed top Ontario university programs (#506) — **IMPLEMENTED**
 - [x] **Course Planning Navigation & Dashboard Integration** — Nav links, landing page, My Kids integration, Parent Dashboard quick actions (#507) — **IMPLEMENTED**
 - [x] **Course Planning Tests** — 20+ backend route tests, 10+ frontend component tests (#508) — **IMPLEMENTED**
+- [x] **Sample Exams/Tests Upload + AI Assessment (#577)** — Teacher uploads exam (PDF/doc); AI assesses quality (overall score 0-100, strengths/weaknesses, difficulty distribution, curriculum coverage, question quality); is_public toggle for student practice mode; SampleExamsPage with assessment modal and practice mode (IMPLEMENTED)
 - [ ] Multi-language support
 - [ ] Advanced AI personalization
 - [ ] Admin analytics

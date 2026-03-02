@@ -1,0 +1,871 @@
+/* Sample Exams Page (#577) */
+
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+.sep-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sep-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sep-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.25rem;
+}
+
+.sep-subtitle {
+  color: var(--color-text-secondary, #666);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.sep-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.sep-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sep-btn-primary {
+  background: var(--color-accent, #6c63ff);
+  color: #fff;
+}
+
+.sep-btn-primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.sep-btn-secondary {
+  background: var(--color-surface-secondary, #f0f0f5);
+  color: var(--color-text-primary, #1a1a2e);
+  border: 1px solid var(--color-border, #ddd);
+}
+
+.sep-btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover, #e4e4ee);
+}
+
+.sep-btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary, #666);
+  border: 1px solid var(--color-border, #ddd);
+}
+
+.sep-btn-danger {
+  background: var(--color-danger, #e53e3e);
+  color: #fff;
+}
+
+.sep-btn-danger:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.sep-btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+/* ── Filters ─────────────────────────────────────────────────────────────── */
+.sep-filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.sep-filter-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #1a1a2e);
+  font-size: 0.9rem;
+  min-width: 160px;
+}
+
+.sep-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #555);
+  cursor: pointer;
+}
+
+/* ── Error banner ────────────────────────────────────────────────────────── */
+.sep-error-banner {
+  background: var(--color-danger-light, #fff5f5);
+  border: 1px solid var(--color-danger, #e53e3e);
+  color: var(--color-danger, #e53e3e);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sep-error-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--color-danger, #e53e3e);
+  padding: 0 0.25rem;
+}
+
+/* ── Loading / Empty states ──────────────────────────────────────────────── */
+.sep-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--color-text-secondary, #888);
+  font-size: 1rem;
+}
+
+.sep-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--color-text-secondary, #888);
+}
+
+.sep-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.sep-empty h3 {
+  font-size: 1.3rem;
+  color: var(--color-text-primary, #1a1a2e);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Card grid ───────────────────────────────────────────────────────────── */
+.sep-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .sep-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .sep-card-grid {
+    grid-template-columns: 1fr;
+  }
+  .sep-page {
+    padding: 1rem;
+  }
+}
+
+/* ── Individual card ─────────────────────────────────────────────────────── */
+.sep-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s;
+}
+
+.sep-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sep-card-body {
+  padding: 1.25rem;
+  flex: 1;
+}
+
+.sep-card-top {
+  margin-bottom: 0.6rem;
+}
+
+.sep-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.5rem;
+  line-height: 1.3;
+}
+
+.sep-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sep-card-description {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #666);
+  margin: 0.5rem 0;
+  line-height: 1.4;
+  /* Limit to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sep-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #999);
+  margin: 0.75rem 0;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.sep-card-file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70%;
+}
+
+.sep-card-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+
+.sep-card-footer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface-secondary, #f8f9fb);
+  flex-wrap: wrap;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.sep-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.sep-badge-course {
+  background: var(--color-accent-light, #e8e6ff);
+  color: var(--color-accent, #6c63ff);
+}
+
+.sep-badge-type {
+  background: var(--color-info-light, #e6f3ff);
+  color: var(--color-info, #2b6cb0);
+}
+
+/* Coverage breadth/depth badges */
+.sep-badge-excellent {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.sep-badge-good {
+  background: #bee3f8;
+  color: #2a69ac;
+}
+
+.sep-badge-fair {
+  background: #fefcbf;
+  color: #975a16;
+}
+
+.sep-badge-poor {
+  background: #fed7d7;
+  color: #9b2c2c;
+}
+
+/* ── Score badges ────────────────────────────────────────────────────────── */
+.sep-score-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.sep-score-green {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.sep-score-amber {
+  background: #fefcbf;
+  color: #975a16;
+}
+
+.sep-score-red {
+  background: #fed7d7;
+  color: #9b2c2c;
+}
+
+.sep-score-none {
+  background: var(--color-surface-secondary, #f0f0f5);
+  color: var(--color-text-secondary, #888);
+}
+
+/* ── Public toggle ───────────────────────────────────────────────────────── */
+.sep-public-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #666);
+  cursor: pointer;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────────────────── */
+.sep-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.sep-modal {
+  background: var(--color-surface, #fff);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sep-upload-modal {
+  max-width: 560px;
+}
+
+.sep-assessment-modal {
+  max-width: 780px;
+}
+
+.sep-practice-modal {
+  max-width: 680px;
+}
+
+.sep-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.sep-modal-header h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.sep-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-text-secondary, #888);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.sep-modal-close:hover {
+  background: var(--color-surface-secondary, #f0f0f5);
+}
+
+.sep-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface-secondary, #f8f9fb);
+  flex-wrap: wrap;
+}
+
+/* ── Upload form ─────────────────────────────────────────────────────────── */
+.sep-upload-form {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sep-dropzone {
+  border: 2px dashed var(--color-border, #d0d0dd);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--color-surface-secondary, #f8f9fb);
+}
+
+.sep-dropzone:hover,
+.sep-dropzone-active {
+  border-color: var(--color-accent, #6c63ff);
+  background: var(--color-accent-light, #ede9ff);
+}
+
+.sep-dropzone-filled {
+  border-color: var(--color-success, #38a169);
+  background: #f0fff4;
+}
+
+.sep-dropzone-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.sep-dropzone-prompt p {
+  margin: 0.25rem 0;
+  color: var(--color-text-secondary, #666);
+}
+
+.sep-dropzone-prompt small {
+  color: var(--color-text-muted, #aaa);
+}
+
+.sep-dropzone-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sep-dropzone-filename {
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.sep-dropzone-size {
+  color: var(--color-text-secondary, #888);
+  font-size: 0.85rem;
+}
+
+.sep-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sep-form-group label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #444);
+}
+
+.sep-required {
+  color: var(--color-danger, #e53e3e);
+}
+
+.sep-form-group input,
+.sep-form-group textarea,
+.sep-form-group select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.sep-form-group input:focus,
+.sep-form-group textarea:focus,
+.sep-form-group select:focus {
+  outline: none;
+  border-color: var(--color-accent, #6c63ff);
+  box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.15);
+}
+
+.sep-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .sep-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sep-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.sep-form-error {
+  color: var(--color-danger, #e53e3e);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── Assessment modal body ───────────────────────────────────────────────── */
+.sep-assessment-body {
+  overflow-y: auto;
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sep-score-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.sep-score-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 4px solid currentColor;
+}
+
+.sep-score-circle.sep-score-green {
+  background: #c6f6d5;
+  color: #276749;
+  border-color: #276749;
+}
+
+.sep-score-circle.sep-score-amber {
+  background: #fefcbf;
+  color: #975a16;
+  border-color: #975a16;
+}
+
+.sep-score-circle.sep-score-red {
+  background: #fed7d7;
+  color: #9b2c2c;
+  border-color: #9b2c2c;
+}
+
+.sep-score-number {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sep-score-label {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.sep-summary {
+  flex: 1;
+  color: var(--color-text-secondary, #555);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.sep-sw-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .sep-sw-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sep-strengths-box,
+.sep-weaknesses-box {
+  background: var(--color-surface-secondary, #f8f9fb);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.sep-strengths-box h4,
+.sep-weaknesses-box h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.sep-strengths-box ul,
+.sep-weaknesses-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sep-strength-item,
+.sep-weakness-item {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.sep-check {
+  color: var(--color-success, #38a169);
+  font-weight: 700;
+  margin-right: 0.3rem;
+}
+
+.sep-warn {
+  color: #d69e2e;
+  margin-right: 0.3rem;
+}
+
+/* ── Section headings ────────────────────────────────────────────────────── */
+.sep-section h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.75rem;
+}
+
+/* ── Difficulty chart ────────────────────────────────────────────────────── */
+.sep-difficulty-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.sep-diff-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sep-diff-label {
+  width: 55px;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.sep-diff-bar-track {
+  flex: 1;
+  height: 16px;
+  background: var(--color-surface-secondary, #f0f0f5);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sep-diff-bar {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.4s ease;
+}
+
+.sep-diff-easy {
+  background: #68d391;
+}
+
+.sep-diff-medium {
+  background: #f6c560;
+}
+
+.sep-diff-hard {
+  background: #fc8181;
+}
+
+.sep-diff-pct {
+  font-size: 0.82rem;
+  font-weight: 600;
+  width: 36px;
+  text-align: right;
+  color: var(--color-text-secondary, #666);
+}
+
+.sep-suggestion-list {
+  list-style: disc;
+  padding-left: 1.2rem;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #666);
+}
+
+/* ── Coverage ────────────────────────────────────────────────────────────── */
+.sep-coverage-badges {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.sep-coverage-list {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.sep-coverage-list ul {
+  list-style: disc;
+  padding-left: 1.2rem;
+  margin: 0.25rem 0 0;
+  color: var(--color-text-secondary, #666);
+}
+
+/* ── Question quality table ──────────────────────────────────────────────── */
+.sep-qq-summary {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.sep-qq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.sep-qq-table th,
+.sep-qq-table td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  color: var(--color-text-secondary, #555);
+}
+
+.sep-qq-table th {
+  font-weight: 700;
+  color: var(--color-text-primary, #1a1a2e);
+  background: var(--color-surface-secondary, #f8f9fb);
+}
+
+/* ── Recommendations ─────────────────────────────────────────────────────── */
+.sep-recommendation-list {
+  padding-left: 1.2rem;
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-secondary, #555);
+  line-height: 1.7;
+}
+
+/* ── Practice modal ──────────────────────────────────────────────────────── */
+.sep-practice-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sep-practice-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.sep-practice-q {
+  background: var(--color-surface-secondary, #f8f9fb);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.sep-practice-q-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+}
+
+.sep-practice-answer {
+  width: 100%;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.88rem;
+  resize: vertical;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #1a1a2e);
+  box-sizing: border-box;
+}
+
+.sep-practice-answer:focus {
+  outline: none;
+  border-color: var(--color-accent, #6c63ff);
+  box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.15);
+}
+
+.sep-practice-done {
+  text-align: center;
+  padding: 2rem;
+}
+
+.sep-practice-done-icon {
+  font-size: 3rem;
+  color: var(--color-success, #38a169);
+  margin-bottom: 1rem;
+}
+
+.sep-practice-done h3 {
+  font-size: 1.3rem;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.5rem;
+}
+
+/* ── Shared helpers ──────────────────────────────────────────────────────── */
+.sep-muted {
+  color: var(--color-text-muted, #aaa);
+  font-style: italic;
+}
+
+.sep-ai-note {
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #aaa);
+  margin: 0.75rem 0 0;
+}

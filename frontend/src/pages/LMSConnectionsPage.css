@@ -1,0 +1,584 @@
+/* LMSConnectionsPage.css — styles for /settings/lms */
+
+/* ── Page Layout ──────────────────────────────────────────────────────────── */
+
+.lms-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.lms-page__header {
+  margin-bottom: 2rem;
+}
+
+.lms-page__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a1a);
+  margin: 0 0 0.5rem;
+}
+
+.lms-page__subtitle {
+  color: var(--text-secondary, #555);
+  margin: 0;
+  font-size: 0.95rem;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+/* ── Section ──────────────────────────────────────────────────────────────── */
+
+.lms-section {
+  margin-bottom: 2.5rem;
+}
+
+.lms-section__title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* ── Provider logo placeholder ───────────────────────────────────────────── */
+
+.lms-provider-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #fff;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* ── Status badge ─────────────────────────────────────────────────────────── */
+
+.lms-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lms-badge--connected {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.lms-badge--expired {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.lms-badge--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.lms-badge--disconnected {
+  background: var(--surface-2, #f3f4f6);
+  color: var(--text-muted, #6b7280);
+}
+
+/* ── Connected connection cards ───────────────────────────────────────────── */
+
+.lms-connections-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .lms-connections-grid {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+}
+
+.lms-connection-card {
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.15s;
+}
+
+.lms-connection-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.lms-connection-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lms-connection-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lms-connection-card__name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary, #1a1a1a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lms-connection-card__url {
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lms-connection-card__label-row {
+  font-size: 0.85rem;
+}
+
+.lms-connection-card__label-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px dashed var(--border-color, #d1d5db);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-secondary, #555);
+  font-size: 0.85rem;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.lms-connection-card__label-display:hover {
+  background: var(--surface-2, #f9fafb);
+  border-color: var(--primary-color, #4f46e5);
+}
+
+.lms-placeholder {
+  color: var(--text-muted, #9ca3af);
+  font-style: italic;
+}
+
+.lms-connection-card__label-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.lms-connection-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.lms-connection-card__error {
+  color: #dc2626;
+  cursor: help;
+}
+
+.lms-connection-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Provider cards (Add Connection section) ──────────────────────────────── */
+
+.lms-providers-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.lms-provider-card {
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.15s;
+}
+
+.lms-provider-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.lms-provider-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lms-provider-card__name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.lms-provider-card__description {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #555);
+  margin: 0;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.lms-provider-card__note {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0;
+}
+
+.lms-provider-card__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Coming Soon tooltip ──────────────────────────────────────────────────── */
+
+.lms-coming-soon-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.lms-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 0.78rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  max-width: 220px;
+  white-space: normal;
+  line-height: 1.4;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.lms-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.lms-btn {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #d1d5db);
+  background: var(--surface-1, #fff);
+  color: var(--text-primary, #374151);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.lms-btn:hover:not(:disabled) {
+  background: var(--surface-2, #f3f4f6);
+}
+
+.lms-btn--primary {
+  background: var(--primary-color, #4f46e5);
+  border-color: var(--primary-color, #4f46e5);
+  color: #fff;
+}
+
+.lms-btn--primary:hover:not(:disabled) {
+  background: var(--primary-hover, #4338ca);
+  border-color: var(--primary-hover, #4338ca);
+}
+
+.lms-btn--danger {
+  background: transparent;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.lms-btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.lms-btn--disabled,
+.lms-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lms-btn--sm {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+/* ── Form inputs ──────────────────────────────────────────────────────────── */
+
+.lms-input,
+.lms-select,
+.lms-label-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--surface-1, #fff);
+  color: var(--text-primary, #1a1a1a);
+  transition: border-color 0.12s, box-shadow 0.12s;
+  box-sizing: border-box;
+}
+
+.lms-input:focus,
+.lms-select:focus,
+.lms-label-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #4f46e5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.lms-label-input {
+  width: 200px;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+
+.lms-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.lms-modal {
+  background: var(--surface-1, #fff);
+  border-radius: 16px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.lms-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lms-modal__header h2 {
+  margin: 0;
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.lms-modal__close {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.lms-modal__close:hover {
+  color: var(--text-primary, #1a1a1a);
+}
+
+.lms-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lms-modal__field label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #374151);
+}
+
+.lms-modal__hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0;
+}
+
+.lms-modal__error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.lms-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* ── Loading / empty / error states ──────────────────────────────────────── */
+
+.lms-loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+.lms-empty {
+  background: var(--surface-2, #f9fafb);
+  border: 1px dashed var(--border-color, #d1d5db);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+.lms-error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  color: #991b1b;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Dark mode ────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  .lms-page__title,
+  .lms-section__title,
+  .lms-connection-card__name,
+  .lms-provider-card__name,
+  .lms-modal__header h2 {
+    color: #f9fafb;
+  }
+
+  .lms-page__subtitle,
+  .lms-provider-card__description,
+  .lms-connection-card__label-display {
+    color: #9ca3af;
+  }
+
+  .lms-connection-card,
+  .lms-provider-card,
+  .lms-modal {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .lms-empty {
+    background: #111827;
+    border-color: #374151;
+    color: #6b7280;
+  }
+
+  .lms-input,
+  .lms-select,
+  .lms-label-input {
+    background: #111827;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .lms-btn {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .lms-btn:hover:not(:disabled) {
+    background: #374151;
+  }
+
+  .lms-section__title {
+    border-bottom-color: #374151;
+  }
+}
+
+/* [data-theme='dark'] support for ThemeContext */
+[data-theme='dark'] .lms-page__title,
+[data-theme='dark'] .lms-section__title,
+[data-theme='dark'] .lms-connection-card__name,
+[data-theme='dark'] .lms-provider-card__name,
+[data-theme='dark'] .lms-modal__header h2 {
+  color: #f9fafb;
+}
+
+[data-theme='dark'] .lms-page__subtitle,
+[data-theme='dark'] .lms-provider-card__description,
+[data-theme='dark'] .lms-connection-card__label-display {
+  color: #9ca3af;
+}
+
+[data-theme='dark'] .lms-connection-card,
+[data-theme='dark'] .lms-provider-card,
+[data-theme='dark'] .lms-modal {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme='dark'] .lms-empty {
+  background: #111827;
+  border-color: #374151;
+  color: #6b7280;
+}
+
+[data-theme='dark'] .lms-input,
+[data-theme='dark'] .lms-select,
+[data-theme='dark'] .lms-label-input {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+[data-theme='dark'] .lms-btn {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+[data-theme='dark'] .lms-btn:hover:not(:disabled) {
+  background: #374151;
+}
+
+[data-theme='dark'] .lms-section__title {
+  border-bottom-color: #374151;
+}

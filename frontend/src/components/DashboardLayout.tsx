@@ -218,6 +218,22 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="10" y1="12" x2="16" y2="12"/>
     </svg>
   ),
+  'Sample Exams': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="9" y1="12" x2="15" y2="12"/>
+      <line x1="9" y1="16" x2="12" y2="16"/>
+      <circle cx="17" cy="17" r="3"/>
+      <line x1="19.5" y1="19.5" x2="21" y2="21"/>
+    </svg>
+  ),
+  'LMS Connections': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -275,6 +291,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Projects', path: '/projects' },
         { label: 'FAQ', path: '/faq' },
         { label: 'Help', path: '/help' },
+        { label: 'LMS Connections', path: '/settings/lms' },
         { label: 'Account', path: '/settings/account' },
       ];
     }
@@ -307,6 +324,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'teacher') {
       items.push({ label: 'Mock Exams', path: '/teacher/exams' });
+      items.push({ label: 'Sample Exams', path: '/teacher/exams/samples' });
       items.push({ label: 'My Materials', path: '/teacher/materials' });
       items.push({ label: 'Grade Entry', path: '/teacher/grades' });
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
@@ -317,6 +335,12 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     items.push({ label: 'Projects', path: '/projects' });
     items.push({ label: 'FAQ', path: '/faq' });
     items.push({ label: 'Help', path: '/help' });
+
+    if (user?.role === 'admin') {
+      items.push({ label: 'Analytics', path: '/admin/analytics' });
+    }
+
+    items.push({ label: 'LMS Connections', path: '/settings/lms' });
     items.push({ label: 'Account', path: '/settings/account' });
 
     return items;
