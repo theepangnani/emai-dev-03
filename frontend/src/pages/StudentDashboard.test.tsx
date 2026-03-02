@@ -203,7 +203,7 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Sync Classes')).toBeInTheDocument()
+      expect(screen.getByText('Course Material')).toBeInTheDocument()
     })
     expect(screen.queryByText('Connect Google Classroom')).not.toBeInTheDocument()
   })
@@ -213,31 +213,28 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      // Quick action cards use RoleQuickActions with rqa-label class
+      // Quick actions reduced to 2: Course Material + Study Guide
       const actionLabels = document.querySelectorAll('.rqa-label')
       const labels = Array.from(actionLabels).map(el => el.textContent)
       expect(labels).toContain('Course Material')
-      expect(labels).toContain('New Course')
       expect(labels).toContain('Study Guide')
     })
   })
 
-  it('shows Sync Classes action when Google is connected', async () => {
-    mockGetStatus.mockResolvedValue({ connected: true })
-    renderWithProviders(<StudentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Sync Classes')).toBeInTheDocument()
-    })
-  })
-
-  it('shows Connect Classroom action when Google is not connected', async () => {
+  it('shows only 2 quick actions (Course Material + Study Guide)', async () => {
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
       const actionLabels = document.querySelectorAll('.rqa-label')
-      const labels = Array.from(actionLabels).map(el => el.textContent)
-      expect(labels).toContain('Connect Classroom')
+      expect(actionLabels.length).toBe(2)
+    })
+  })
+
+  it('shows Connect Classroom in courses empty state when Google is not connected', async () => {
+    renderWithProviders(<StudentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Connect Classroom')).toBeInTheDocument()
     })
   })
 
@@ -267,22 +264,14 @@ describe('StudentDashboard', () => {
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true })
   })
 
-  it('handles Sync Classes', async () => {
+  it('handles Sync Classes via google_connected callback', async () => {
+    mockSearchParams.set('google_connected', 'true')
     mockGetStatus.mockResolvedValue({ connected: true })
     mockSyncCourses.mockResolvedValue({ message: 'Synced 3 courses' })
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
-    // Click the sync action card
-    await waitFor(() => {
-      expect(screen.getByText('Sync Classes')).toBeInTheDocument()
-    })
-
-    // Find and click the sync action card — opens classroom type modal
-    const syncCard = screen.getByText('Sync Classes').closest('button')!
-    await user.click(syncCard)
-
-    // Classroom type modal appears — confirm with default selection
+    // google_connected param triggers classroom type modal
     await waitFor(() => {
       expect(screen.getByText('School Classroom')).toBeInTheDocument()
     })
@@ -401,16 +390,16 @@ describe('StudentDashboard', () => {
   })
 
   // ── Create Course Modal ────────────────────────────────────────
-  it('opens create course modal from quick action', async () => {
+  it('opens create course modal from courses empty state', async () => {
     const user = userEvent.setup()
     renderWithProviders(<StudentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('New Course')).toBeInTheDocument()
+      expect(screen.getByText('Create Course')).toBeInTheDocument()
     })
 
-    const newCourseCard = screen.getByText('New Course').closest('button')!
-    await user.click(newCourseCard)
+    const createCourseBtn = screen.getByText('Create Course').closest('button')!
+    await user.click(createCourseBtn)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Create a Course' })).toBeInTheDocument()
