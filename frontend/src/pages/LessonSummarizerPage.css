@@ -1,0 +1,677 @@
+/* ---------------------------------------------------------------------------
+   LessonSummarizerPage — Split-panel layout with concept cards,
+   question accordion, action item checkboxes, and history sidebar.
+--------------------------------------------------------------------------- */
+
+/* Root layout: sidebar + main area */
+.ls-root {
+  display: flex;
+  gap: 0;
+  height: 100%;
+  min-height: calc(100vh - 140px);
+}
+
+/* ---------------------------------------------------------------------------
+   History Sidebar
+--------------------------------------------------------------------------- */
+.ls-history-sidebar {
+  width: 240px;
+  min-width: 200px;
+  max-width: 260px;
+  background: var(--card-bg, #fff);
+  border-right: 1px solid var(--border-color, #e5e7eb);
+  padding: 1rem 0.75rem;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.ls-history-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 0.75rem;
+}
+
+.ls-history-loading,
+.ls-history-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted, #9ca3af);
+  padding: 0.5rem 0;
+}
+
+.ls-history-item {
+  position: relative;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ls-history-item:hover {
+  background: var(--hover-bg, #f3f4f6);
+}
+
+.ls-history-item.active {
+  background: var(--primary-light, #eff6ff);
+  border-color: var(--primary, #3b82f6);
+}
+
+.ls-history-item-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.ls-history-item-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.ls-history-item-course {
+  font-size: 0.72rem;
+  color: var(--primary, #3b82f6);
+  margin-top: 0.15rem;
+}
+
+.ls-history-delete {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: none;
+}
+
+.ls-history-item:hover .ls-history-delete {
+  display: block;
+}
+
+.ls-history-delete:hover {
+  color: var(--danger, #ef4444);
+  background: var(--danger-light, #fee2e2);
+}
+
+/* ---------------------------------------------------------------------------
+   Main content area
+--------------------------------------------------------------------------- */
+.ls-main {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Input Panel (left half of main)
+--------------------------------------------------------------------------- */
+.ls-input-panel {
+  flex: 0 0 420px;
+  max-width: 460px;
+  min-width: 340px;
+  padding: 1.5rem;
+  border-right: 1px solid var(--border-color, #e5e7eb);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ls-panel-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 0.25rem;
+}
+
+.ls-panel-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 1rem;
+  line-height: 1.45;
+}
+
+.ls-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.ls-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #374151);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ls-word-count {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted, #9ca3af);
+}
+
+.ls-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary, #111827);
+  background: var(--input-bg, #fff);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.ls-input:focus {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* Input type tabs */
+.ls-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ls-tab {
+  padding: 0.35rem 0.7rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-color, #d1d5db);
+  background: transparent;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: var(--text-secondary, #374151);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ls-tab.active {
+  background: var(--primary, #3b82f6);
+  border-color: var(--primary, #3b82f6);
+  color: #fff;
+}
+
+.ls-tab:not(.active):hover {
+  background: var(--hover-bg, #f3f4f6);
+}
+
+/* Notes textarea */
+.ls-notes-row {
+  flex: 1;
+}
+
+.ls-textarea {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-primary, #111827);
+  background: var(--input-bg, #fff);
+  resize: vertical;
+  min-height: 220px;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ls-textarea:focus {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+.ls-error {
+  font-size: 0.82rem;
+  color: var(--danger, #ef4444);
+  margin: 0.25rem 0;
+}
+
+.ls-summarize-btn {
+  margin-top: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  background: var(--primary, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.ls-summarize-btn:hover:not(:disabled) {
+  background: var(--primary-dark, #2563eb);
+  transform: translateY(-1px);
+}
+
+.ls-summarize-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Result Panel (right half of main)
+--------------------------------------------------------------------------- */
+.ls-result-panel {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ls-result-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.ls-result-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.ls-result-course {
+  font-size: 0.8rem;
+  background: var(--primary-light, #eff6ff);
+  color: var(--primary, #3b82f6);
+  border-radius: 12px;
+  padding: 0.2rem 0.6rem;
+  font-weight: 500;
+}
+
+/* Generic section block */
+.ls-section {
+  margin-bottom: 1.5rem;
+}
+
+.ls-section-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary, #374151);
+  margin: 0 0 0.35rem;
+}
+
+.ls-section-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #9ca3af);
+  margin: 0 0 0.6rem;
+}
+
+/* Summary card */
+.ls-summary-card {
+  background: linear-gradient(135deg, var(--primary-light, #eff6ff) 0%, #f0fdf4 100%);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--primary, #3b82f6);
+}
+
+.ls-summary-text {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+/* Key Concepts grid */
+.ls-concepts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.ls-concept-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.ls-concept-card:hover {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 2px 8px rgba(59,130,246,0.1);
+}
+
+.ls-concept-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ls-concept-term {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.ls-concept-toggle {
+  font-size: 0.7rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.ls-concept-definition {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #374151);
+  margin: 0.5rem 0 0;
+}
+
+/* Study Questions accordion */
+.ls-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ls-question-item {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ls-question-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  background: var(--card-bg, #fff);
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.ls-question-row:hover {
+  background: var(--hover-bg, #f9fafb);
+}
+
+.ls-question-num {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary, #3b82f6);
+  flex-shrink: 0;
+  min-width: 1.25rem;
+}
+
+.ls-question-text {
+  flex: 1;
+  font-size: 0.88rem;
+  color: var(--text-primary, #111827);
+  line-height: 1.5;
+}
+
+.ls-question-hint {
+  font-size: 0.75rem;
+  color: var(--primary, #3b82f6);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ls-question-hint-text {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+  background: var(--hover-bg, #f9fafb);
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* Action items */
+.ls-action-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ls-action-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--card-bg, #fff);
+  transition: background 0.15s;
+}
+
+.ls-action-item.done {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.ls-action-item.done .ls-action-label {
+  text-decoration: line-through;
+  color: var(--text-muted, #9ca3af);
+}
+
+.ls-action-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary, #3b82f6);
+  flex-shrink: 0;
+}
+
+.ls-action-label {
+  font-size: 0.88rem;
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+/* Date timeline */
+.ls-date-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ls-date-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+}
+
+.ls-date-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: var(--accent-light, #fef3c7);
+  color: var(--accent, #d97706);
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ls-date-event {
+  font-size: 0.88rem;
+  color: var(--text-primary, #111827);
+}
+
+/* Flashcard button section */
+.ls-flashcard-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.ls-flashcard-btn {
+  padding: 0.55rem 1.2rem;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ls-flashcard-btn:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.ls-flashcard-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ls-flashcard-msg {
+  font-size: 0.82rem;
+  color: var(--success, #10b981);
+  margin: 0;
+}
+
+/* Empty / loading states */
+.ls-empty-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  gap: 1rem;
+  text-align: center;
+}
+
+.ls-empty-icon {
+  color: var(--text-muted, #d1d5db);
+}
+
+.ls-empty-text {
+  font-size: 0.92rem;
+  color: var(--text-muted, #6b7280);
+  max-width: 320px;
+  line-height: 1.55;
+}
+
+.ls-generating-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid var(--border-color, #e5e7eb);
+  border-top-color: var(--primary, #3b82f6);
+  border-radius: 50%;
+  animation: ls-spin 0.8s linear infinite;
+}
+
+@keyframes ls-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ls-generating-text {
+  font-size: 0.92rem;
+  color: var(--text-muted, #6b7280);
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive
+--------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .ls-root {
+    flex-direction: column;
+  }
+
+  .ls-history-sidebar {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    overflow-y: visible;
+  }
+
+  .ls-history-title {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+
+  .ls-history-item {
+    margin-bottom: 0;
+    min-width: 140px;
+    flex: 0 0 auto;
+  }
+
+  .ls-main {
+    flex-direction: column;
+  }
+
+  .ls-input-panel {
+    flex: unset;
+    max-width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+  }
+
+  .ls-concepts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ls-input-panel {
+    padding: 1rem;
+  }
+
+  .ls-result-panel {
+    padding: 1rem;
+  }
+
+  .ls-tabs {
+    gap: 0.25rem;
+  }
+
+  .ls-tab {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.55rem;
+  }
+}

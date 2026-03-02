@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor, forum, writing_assistance, smart_reminders, resource_library, classroom_import
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor, forum, writing_assistance, smart_reminders, resource_library, classroom_import, peer_review, student_goals, homework_help, attendance, wellness, gamification, newsletters, meeting_scheduler, lesson_summary, learning_journal
 from app.api.routes.billing import router as billing_router, admin_router as admin_billing_router
 from app.api.routes.billing import seed_subscription_plans
 
@@ -77,6 +77,16 @@ from app.models.forum import ForumCategory, ForumThread, ForumPost, ForumLike  #
 from app.models.writing_assistance import WritingAssistanceSession, WritingTemplate  # noqa: F401 — ensure tables are created (Writing Assistant)
 from app.models.smart_reminder import ReminderLog, ReminderPreference  # noqa: F401 — ensure tables are created (Smart Reminders v2)
 from app.models.resource_library import TeacherResource, ResourceRating, ResourceCollection  # noqa: F401 — ensure tables are created (Resource Library)
+from app.models.peer_review import PeerReviewAssignment, PeerReviewSubmission, PeerReview, PeerReviewAllocation  # noqa: F401 — ensure tables are created (Peer Review)
+from app.models.student_goal import StudentGoal, GoalMilestone  # noqa: F401 — ensure tables are created (Student Goals)
+from app.models.homework_help import HomeworkSession, HomeworkSavedSolution  # noqa: F401 — ensure tables are created (AI Homework Helper)
+from app.models.attendance import AttendanceRecord, AttendanceAlert  # noqa: F401 — ensure tables are created (Attendance Tracker)
+from app.models.wellness import WellnessCheckIn, WellnessAlert  # noqa: F401 — ensure tables are created (Student Wellness Check-in)
+from app.models.gamification import BadgeDefinition, UserBadge, UserXP, XPTransaction  # noqa: F401 — ensure gamification tables are created
+from app.models.newsletter import Newsletter, NewsletterTemplate  # noqa: F401 — ensure tables are created (Newsletter)
+from app.models.meeting_scheduler import TeacherAvailability, MeetingBooking  # noqa: F401 — ensure tables are created (Meeting Scheduler)
+from app.models.lesson_summary import LessonSummary  # noqa: F401 — ensure table is created (Lesson Summarizer)
+from app.models.learning_journal import JournalEntry, JournalReflectionPrompt  # noqa: F401 — ensure tables are created (Learning Journal)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1101,6 +1111,30 @@ with SessionLocal() as _seed_db:
     except Exception as _e:
         logger.warning("Failed to seed writing templates at startup: %s", _e)
 
+# ── Seed gamification badges ────────────────────────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.services.gamification import seed_default_badges as _seed_badges
+        _seed_badges(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed gamification badges at startup: %s", _e)
+
+# ── Seed newsletter templates ────────────────────────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.services.newsletter_service import NewsletterService as _NewsletterService
+        _NewsletterService().seed_templates(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed newsletter templates at startup: %s", _e)
+
+# ── Seed learning journal reflection prompts ───────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.services.learning_journal import LearningJournalService as _LJService
+        _LJService.seed_prompts(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed learning journal prompts at startup: %s", _e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1268,6 +1302,16 @@ app.include_router(writing_assistance.router, prefix="/api")
 app.include_router(smart_reminders.router, prefix="/api")
 app.include_router(resource_library.router, prefix="/api")
 app.include_router(classroom_import.router)
+app.include_router(peer_review.router, prefix="/api")
+app.include_router(student_goals.router, prefix="/api")
+app.include_router(homework_help.router, prefix="/api")
+app.include_router(attendance.router, prefix="/api")
+app.include_router(wellness.router, prefix="/api")
+app.include_router(gamification.router, prefix="/api")
+app.include_router(newsletters.router, prefix="/api")
+app.include_router(meeting_scheduler.router, prefix="/api")
+app.include_router(lesson_summary.router, prefix="/api")
+app.include_router(learning_journal.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

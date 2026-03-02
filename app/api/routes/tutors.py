@@ -24,7 +24,7 @@ from pydantic import BaseModel, validator
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.models.user import User, UserRole
 from app.models.tutor_profile import TutorProfile
 from app.models.tutor_booking import TutorBooking
@@ -209,6 +209,7 @@ def _create_notification(db: Session, user_id: int, title: str, content: str, li
 
 @router.get("/profile/me")
 def get_my_tutor_profile(
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
@@ -221,6 +222,7 @@ def get_my_tutor_profile(
 
 @router.get("/bookings/mine")
 def get_my_bookings(
+    _flag=Depends(require_feature("tutor_marketplace")),
     status: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -241,6 +243,7 @@ def get_my_bookings(
 @router.post("/profile", status_code=201)
 def create_tutor_profile(
     payload: TutorProfileCreate,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
@@ -283,6 +286,7 @@ def create_tutor_profile(
 @router.patch("/profile")
 def update_tutor_profile(
     payload: TutorProfileUpdate,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
@@ -311,6 +315,7 @@ def update_tutor_profile(
 def respond_to_booking(
     booking_id: int,
     payload: BookingRespond,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
 ):
@@ -353,6 +358,7 @@ def respond_to_booking(
 def review_booking(
     booking_id: int,
     payload: BookingReview,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -396,6 +402,7 @@ def review_booking(
 
 @router.get("/")
 def search_tutors(
+    _flag=Depends(require_feature("tutor_marketplace")),
     subject: Optional[str] = Query(None, description="Filter by subject (case-insensitive LIKE)"),
     grade_level: Optional[str] = Query(None, description="Filter by grade level"),
     max_rate: Optional[float] = Query(None, description="Max hourly rate in CAD"),
@@ -440,6 +447,7 @@ def search_tutors(
 @router.get("/{tutor_id}")
 def get_tutor(
     tutor_id: int,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -453,6 +461,7 @@ def get_tutor(
 @router.get("/{tutor_id}/bookings")
 def get_tutor_bookings(
     tutor_id: int,
+    _flag=Depends(require_feature("tutor_marketplace")),
     status: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -480,6 +489,7 @@ def get_tutor_bookings(
 def book_tutor(
     tutor_id: int,
     payload: BookingCreate,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -549,6 +559,7 @@ def book_tutor(
 @router.patch("/{tutor_id}/verify")
 def verify_tutor(
     tutor_id: int,
+    _flag=Depends(require_feature("tutor_marketplace")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):

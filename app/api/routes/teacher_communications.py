@@ -15,7 +15,7 @@ from app.schemas.teacher_communication import (
     TeacherCommunicationList,
     EmailMonitoringStatus,
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.services.google_classroom import get_email_monitoring_auth_url, GMAIL_READONLY_SCOPE
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/teacher-communications", tags=["Teacher Communicatio
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_communications(
     request: Request,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     type: CommunicationType | None = None,
@@ -75,6 +76,7 @@ def list_communications(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_monitoring_status(
     request: Request,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -104,6 +106,7 @@ def get_monitoring_status(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_email_monitoring_auth(
     request: Request,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     current_user: User = Depends(get_current_user),
 ):
     """Get OAuth URL for granting email monitoring permissions."""
@@ -117,6 +120,7 @@ def get_email_monitoring_auth(
 def get_communication(
     request: Request,
     comm_id: int,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -142,6 +146,7 @@ def get_communication(
 def mark_as_read(
     request: Request,
     comm_id: int,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -161,6 +166,7 @@ def mark_as_read(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def trigger_sync(
     request: Request,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -183,6 +189,7 @@ def reply_to_communication(
     request: Request,
     comm_id: int,
     data: ReplyRequest,
+    _flag=Depends(require_feature("teacher_email_monitoring")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

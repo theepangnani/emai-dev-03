@@ -29,7 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.core.config import settings
 from app.db.database import get_db
 from app.models.subscription import SubscriptionPlan, SubscriptionStatus, UserSubscription
@@ -172,7 +172,7 @@ def _get_free_plan(db: Session) -> SubscriptionPlan:
 
 
 @router.get("/api/billing/plans", response_model=list[PlanResponse])
-def list_plans(db: Session = Depends(get_db)):
+def list_plans(_flag=Depends(require_feature("stripe_billing")), db: Session = Depends(get_db)):
     """Return all active subscription plans with feature lists."""
     plans = (
         db.query(SubscriptionPlan)
@@ -185,6 +185,7 @@ def list_plans(db: Session = Depends(get_db)):
 
 @router.get("/api/billing/subscription", response_model=Optional[SubscriptionResponse])
 def get_subscription(
+    _flag=Depends(require_feature("stripe_billing")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -217,6 +218,7 @@ def get_subscription(
 @router.post("/api/billing/checkout", response_model=CheckoutResponse)
 def create_checkout_session(
     body: CheckoutRequest,
+    _flag=Depends(require_feature("stripe_billing")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -283,6 +285,7 @@ def create_checkout_session(
 
 @router.post("/api/billing/portal", response_model=PortalResponse)
 def create_billing_portal(
+    _flag=Depends(require_feature("stripe_billing")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -317,6 +320,7 @@ def create_billing_portal(
 
 @router.post("/api/billing/cancel")
 def cancel_subscription(
+    _flag=Depends(require_feature("stripe_billing")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -568,6 +572,7 @@ admin_router = APIRouter(tags=["admin-billing"])
 
 @admin_router.get("/api/admin/billing/stats", response_model=BillingStatsResponse)
 def admin_billing_stats(
+    _flag=Depends(require_feature("stripe_billing")),
     _admin: User = Depends(require_role(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
@@ -630,6 +635,7 @@ def admin_billing_stats(
 
 @admin_router.get("/api/admin/billing/subscriptions", response_model=AdminSubscriptionList)
 def admin_list_subscriptions(
+    _flag=Depends(require_feature("stripe_billing")),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     _admin: User = Depends(require_role(UserRole.ADMIN)),

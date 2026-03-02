@@ -20,7 +20,7 @@ from app.schemas.assignment import (
     SubmissionResponse,
     SubmissionListItem,
 )
-from app.api.deps import get_current_user, can_access_course
+from app.api.deps import get_current_user, can_access_course, require_feature
 from app.services.storage_service import save_file, get_file_path, delete_file
 
 logger = logging.getLogger(__name__)
@@ -134,6 +134,7 @@ def _to_response(assignment: Assignment) -> dict:
 def create_assignment(
     request: Request,
     assignment_data: AssignmentCreate,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -156,6 +157,7 @@ def update_assignment(
     request: Request,
     assignment_id: int,
     data: AssignmentUpdate,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -180,6 +182,7 @@ def update_assignment(
 def delete_assignment(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -199,6 +202,7 @@ def delete_assignment(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_assignments(
     request: Request,
+    _flag=Depends(require_feature("grade_tracking")),
     course_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -224,6 +228,7 @@ def list_assignments(
 def get_assignment(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -285,6 +290,7 @@ def _to_submission_response(sa: StudentAssignment) -> dict:
 async def submit_assignment(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     file: UploadFile = File(None),
     notes: str = Form(None),
     db: Session = Depends(get_db),
@@ -398,6 +404,7 @@ async def submit_assignment(
 def get_submission(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -437,6 +444,7 @@ def get_submission(
 def list_submissions(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -488,6 +496,7 @@ def list_submissions(
 def unsubmit_assignment(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -546,6 +555,7 @@ def unsubmit_assignment(
 def download_submission_file(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

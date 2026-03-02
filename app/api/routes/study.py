@@ -39,7 +39,7 @@ from app.schemas.study import (
     AutoCreatedTask,
     StudyGuidePoolStats,
 )
-from app.api.deps import get_current_user, can_access_course, require_role
+from app.api.deps import get_current_user, can_access_course, require_role, require_feature
 from app.services.audit_service import log_action
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, check_content_safe
 from app.services.notification_service import notify_parents_of_student
@@ -430,6 +430,7 @@ def _clone_from_pool(
 @router.post("/check-duplicate", response_model=DuplicateCheckResponse)
 def check_duplicate(
     request: DuplicateCheckRequest,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -459,6 +460,7 @@ def check_duplicate(
 
 @router.get("/pool", response_model=StudyGuidePoolStats)
 def get_pool_stats(
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
@@ -489,6 +491,7 @@ def get_pool_stats(
 async def generate_study_guide_endpoint(
     request: Request,
     body: StudyGuideCreate,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -694,6 +697,7 @@ async def generate_study_guide_endpoint(
 async def generate_quiz_endpoint(
     request: Request,
     body: QuizGenerateRequest,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -854,6 +858,7 @@ async def generate_quiz_endpoint(
 async def generate_flashcards_endpoint(
     request: Request,
     body: FlashcardGenerateRequest,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1016,6 +1021,7 @@ async def generate_flashcards_endpoint(
 
 @router.get("/guides", response_model=list[StudyGuideResponse])
 def list_study_guides(
+    _flag=Depends(require_feature("ai_study_tools")),
     guide_type: str | None = None,
     course_id: int | None = None,
     course_content_id: int | None = None,
@@ -1076,6 +1082,7 @@ def list_study_guides(
 @router.get("/guides/{guide_id}", response_model=StudyGuideResponse)
 def get_study_guide(
     guide_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1115,6 +1122,7 @@ def get_study_guide(
 @router.get("/guides/{guide_id}/versions", response_model=list[StudyGuideResponse])
 def list_guide_versions(
     guide_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1149,6 +1157,7 @@ def list_guide_versions(
 @router.delete("/guides/{guide_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_study_guide(
     guide_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1173,6 +1182,7 @@ def delete_study_guide(
 @router.patch("/guides/{guide_id}/restore", response_model=StudyGuideResponse)
 def restore_study_guide(
     guide_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1194,6 +1204,7 @@ def restore_study_guide(
 @router.delete("/guides/{guide_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
 def permanent_delete_study_guide(
     guide_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1216,6 +1227,7 @@ def permanent_delete_study_guide(
 def update_study_guide(
     guide_id: int,
     update: StudyGuideUpdate,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1247,7 +1259,9 @@ def update_study_guide(
 
 
 @router.get("/upload/formats")
-def get_upload_formats():
+def get_upload_formats(
+    _flag=Depends(require_feature("ai_study_tools")),
+):
     """Get information about supported file upload formats."""
     return get_supported_formats()
 
@@ -1265,6 +1279,7 @@ async def generate_from_text_and_images(
     course_content_id: Optional[int] = Form(None),
     focus_prompt: Optional[str] = Form(None),
     images: List[UploadFile] = File(default=[]),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1451,6 +1466,7 @@ async def generate_from_file_upload(
     course_id: Optional[int] = Form(None),
     course_content_id: Optional[int] = Form(None),
     focus_prompt: Optional[str] = Form(None),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1625,6 +1641,7 @@ async def generate_from_file_upload(
 async def extract_text_from_upload(
     request: Request,
     file: UploadFile = File(...),
+    _flag=Depends(require_feature("ai_study_tools")),
     current_user: User = Depends(get_current_user),
 ):
     """Extract text from an uploaded file without generating study material."""

@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.models.lesson_plan import LessonPlan, LessonPlanType
 from app.models.teacher import Teacher
 from app.models.user import User, UserRole
@@ -144,6 +144,7 @@ def _apply_payload(plan: LessonPlan, data: dict) -> None:
 
 @router.get("/templates")
 def list_templates(
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     _current_user: User = Depends(_teacher_or_admin),
 ):
@@ -159,6 +160,7 @@ def list_templates(
 
 @router.get("/")
 def list_lesson_plans(
+    _flag=Depends(require_feature("lesson_planner")),
     plan_type: Optional[str] = Query(None),
     course_id: Optional[int] = Query(None),
     grade_level: Optional[str] = Query(None),
@@ -189,6 +191,7 @@ def list_lesson_plans(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_lesson_plan(
     payload: LessonPlanCreate,
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -207,6 +210,7 @@ def create_lesson_plan(
 @router.get("/{plan_id}")
 def get_lesson_plan(
     plan_id: int,
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -220,6 +224,7 @@ def get_lesson_plan(
 def update_lesson_plan(
     plan_id: int,
     payload: LessonPlanUpdate,
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -238,6 +243,7 @@ def update_lesson_plan(
 @router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lesson_plan(
     plan_id: int,
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -252,6 +258,7 @@ def delete_lesson_plan(
 @router.post("/{plan_id}/duplicate", status_code=status.HTTP_201_CREATED)
 def duplicate_lesson_plan(
     plan_id: int,
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -308,6 +315,7 @@ def duplicate_lesson_plan(
 @router.post("/import", status_code=status.HTTP_201_CREATED)
 async def import_lesson_plans(
     file: UploadFile = File(...),
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):
@@ -359,6 +367,7 @@ async def import_lesson_plans(
 @router.post("/{plan_id}/ai-generate")
 async def ai_generate_lesson_plan(
     plan_id: int,
+    _flag=Depends(require_feature("lesson_planner")),
     db: Session = Depends(get_db),
     current_user: User = Depends(_teacher_or_admin),
 ):

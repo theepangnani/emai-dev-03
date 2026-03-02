@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role, get_db
+from app.api.deps import get_current_user, require_role, require_feature, get_db
 from app.models.user import User, UserRole
 from app.schemas.forum import (
     ForumCategoryResponse,
@@ -22,6 +22,7 @@ def _get_service(db: Session = Depends(get_db)) -> ForumService:
 
 @router.get("/forum/categories", response_model=list[ForumCategoryResponse])
 def list_categories(
+    _flag=Depends(require_feature("parent_forum")),
     board_id: int | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     service: ForumService = Depends(_get_service),
@@ -33,6 +34,7 @@ def list_categories(
 @router.get("/forum/categories/{category_id}/threads", response_model=ForumListResponse)
 def list_threads(
     category_id: int,
+    _flag=Depends(require_feature("parent_forum")),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -45,6 +47,7 @@ def list_threads(
 @router.post("/forum/threads", response_model=ForumThreadResponse, status_code=status.HTTP_201_CREATED)
 def create_thread(
     data: ForumThreadCreate,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(require_role(
         UserRole.PARENT, UserRole.TEACHER, UserRole.STUDENT
     )),
@@ -57,6 +60,7 @@ def create_thread(
 @router.get("/forum/threads/{thread_id}")
 def get_thread(
     thread_id: int,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(get_current_user),
     service: ForumService = Depends(_get_service),
 ):
@@ -72,6 +76,7 @@ def get_thread(
 def create_post(
     thread_id: int,
     data: ForumPostCreate,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(require_role(
         UserRole.PARENT, UserRole.TEACHER, UserRole.STUDENT
     )),
@@ -91,6 +96,7 @@ def create_post(
 @router.post("/forum/posts/{post_id}/like")
 def like_post(
     post_id: int,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(get_current_user),
     service: ForumService = Depends(_get_service),
 ):
@@ -101,6 +107,7 @@ def like_post(
 @router.delete("/forum/threads/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_thread(
     thread_id: int,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     service: ForumService = Depends(_get_service),
 ):
@@ -113,6 +120,7 @@ def delete_thread(
 @router.patch("/forum/threads/{thread_id}/pin", response_model=ForumThreadResponse)
 def pin_thread(
     thread_id: int,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     service: ForumService = Depends(_get_service),
 ):
@@ -126,6 +134,7 @@ def pin_thread(
 @router.patch("/forum/threads/{thread_id}/lock", response_model=ForumThreadResponse)
 def lock_thread(
     thread_id: int,
+    _flag=Depends(require_feature("parent_forum")),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     service: ForumService = Depends(_get_service),
 ):
@@ -138,6 +147,7 @@ def lock_thread(
 
 @router.get("/forum/search", response_model=ForumListResponse)
 def search_threads(
+    _flag=Depends(require_feature("parent_forum")),
     q: str = Query(..., min_length=1),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),

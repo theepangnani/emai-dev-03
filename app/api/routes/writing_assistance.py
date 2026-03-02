@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.writing_assistance import (
@@ -37,6 +37,7 @@ _any_user = get_current_user
 @router.post("/analyze", response_model=WritingAnalysisResponse)
 async def analyze_writing(
     body: WritingAnalysisRequest,
+    _flag=Depends(require_feature("ai_writing_assistant")),
     current_user: User = Depends(_any_user),
     db: Session = Depends(get_db),
 ) -> WritingAnalysisResponse:
@@ -61,6 +62,7 @@ async def analyze_writing(
 @router.post("/improve", response_model=WritingImproveResponse)
 async def improve_writing(
     body: WritingImproveRequest,
+    _flag=Depends(require_feature("ai_writing_assistant")),
     current_user: User = Depends(_any_user),
     db: Session = Depends(get_db),
 ) -> WritingImproveResponse:
@@ -81,6 +83,7 @@ async def improve_writing(
 
 @router.get("/sessions", response_model=list[WritingSessionSummary])
 def list_sessions(
+    _flag=Depends(require_feature("ai_writing_assistant")),
     current_user: User = Depends(_any_user),
     db: Session = Depends(get_db),
 ) -> list[WritingSessionSummary]:
@@ -91,6 +94,7 @@ def list_sessions(
 @router.get("/sessions/{session_id}", response_model=WritingSessionDetail)
 def get_session(
     session_id: int,
+    _flag=Depends(require_feature("ai_writing_assistant")),
     current_user: User = Depends(_any_user),
     db: Session = Depends(get_db),
 ) -> WritingSessionDetail:
@@ -100,6 +104,7 @@ def get_session(
 
 @router.get("/templates", response_model=list[WritingTemplateResponse])
 def list_templates(
+    _flag=Depends(require_feature("ai_writing_assistant")),
     current_user: User = Depends(_any_user),
     db: Session = Depends(get_db),
 ) -> list[WritingTemplateResponse]:

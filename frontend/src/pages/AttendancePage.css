@@ -1,0 +1,391 @@
+/* =========================================================
+   AttendancePage.css — Status color system, roster table,
+   calendar dots, and report bar chart
+   ========================================================= */
+
+/* Status colour palette */
+:root {
+  --att-present: #22c55e;
+  --att-present-bg: #dcfce7;
+  --att-absent: #ef4444;
+  --att-absent-bg: #fee2e2;
+  --att-late: #f59e0b;
+  --att-late-bg: #fef3c7;
+  --att-excused: #3b82f6;
+  --att-excused-bg: #dbeafe;
+}
+
+/* ---- Container & headings ---- */
+.att-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.att-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary, #111827);
+}
+
+.att-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+  color: var(--text-secondary, #374151);
+}
+
+/* ---- Tabs ---- */
+.att-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.att-tab {
+  padding: 0.5rem 1.25rem;
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary, #374151);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.att-tab:hover {
+  background: var(--bg-hover, #f3f4f6);
+}
+
+.att-tab--active {
+  background: var(--primary, #6366f1);
+  color: #fff;
+  border-color: var(--primary, #6366f1);
+}
+
+/* ---- Controls row ---- */
+.att-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.att-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.att-control-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #6b7280);
+}
+
+.att-control-group select,
+.att-control-group input[type="date"] {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #111827);
+}
+
+/* ---- Mark-all button ---- */
+.att-mark-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.att-mark-all-btn {
+  padding: 0.45rem 1rem;
+  background: var(--att-present);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.att-mark-all-btn:hover {
+  opacity: 0.87;
+}
+
+/* ---- Roster / report table ---- */
+.att-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.att-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-surface-alt, #f9fafb);
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  font-weight: 600;
+  color: var(--text-secondary, #374151);
+  white-space: nowrap;
+}
+
+.att-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  vertical-align: middle;
+}
+
+.att-table tr:hover td {
+  background: var(--bg-hover, #f3f4f6);
+}
+
+.att-student-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---- Status buttons ---- */
+.att-status-group {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.att-btn {
+  padding: 0.3rem 0.6rem;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  background: transparent;
+}
+
+/* Default (unselected) muted styles */
+.att-present { color: var(--att-present); border-color: var(--att-present); }
+.att-absent  { color: var(--att-absent);  border-color: var(--att-absent);  }
+.att-late    { color: var(--att-late);    border-color: var(--att-late);    }
+.att-excused { color: var(--att-excused); border-color: var(--att-excused); }
+
+/* Active (selected) filled styles */
+.att-present.att-btn--active { background: var(--att-present); color: #fff; }
+.att-absent.att-btn--active  { background: var(--att-absent);  color: #fff; }
+.att-late.att-btn--active    { background: var(--att-late);    color: #fff; }
+.att-excused.att-btn--active { background: var(--att-excused); color: #fff; }
+
+/* ---- Note input ---- */
+.att-note-input {
+  width: 100%;
+  min-width: 140px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 5px;
+  font-size: 0.8rem;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #111827);
+}
+
+/* ---- Submit ---- */
+.att-submit-btn {
+  display: block;
+  margin-top: 1rem;
+  padding: 0.65rem 1.75rem;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.att-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.att-submit-btn:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+/* ---- Messages ---- */
+.att-msg {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.att-msg--ok  { background: var(--att-present-bg); color: #166534; }
+.att-msg--err { background: var(--att-absent-bg);  color: #991b1b; }
+
+/* ---- Empty states ---- */
+.att-empty {
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.9rem;
+}
+
+.att-empty-sub {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ---- Report table column colours ---- */
+.att-cell-present { color: var(--att-present); font-weight: 600; }
+.att-cell-absent  { color: var(--att-absent);  font-weight: 600; }
+.att-cell-late    { color: var(--att-late);    font-weight: 600; }
+.att-cell-excused { color: var(--att-excused); font-weight: 600; }
+
+/* ---- Percentage bar ---- */
+.att-pct-bar-wrap {
+  position: relative;
+  width: 120px;
+  height: 18px;
+  background: var(--bg-surface-alt, #f3f4f6);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.att-pct-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--att-present);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.att-pct-label {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #111;
+  text-shadow: 0 0 3px rgba(255,255,255,0.6);
+}
+
+/* ---- Summary cards (student/parent view) ---- */
+.att-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.att-card {
+  border-radius: 10px;
+  padding: 1.1rem 1rem;
+  text-align: center;
+}
+
+.att-card--present { background: var(--att-present-bg); }
+.att-card--absent  { background: var(--att-absent-bg);  }
+.att-card--late    { background: var(--att-late-bg);    }
+.att-card--excused { background: var(--att-excused-bg); }
+
+.att-card-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.att-card--present .att-card-value { color: #15803d; }
+.att-card--absent  .att-card-value { color: #b91c1c; }
+.att-card--late    .att-card-value { color: #b45309; }
+.att-card--excused .att-card-value { color: #1d4ed8; }
+
+.att-card-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #4b5563);
+}
+
+/* ---- Monthly calendar ---- */
+.att-calendar {
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.att-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.att-calendar-header .att-calendar-dow {
+  padding: 0.5rem 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg-surface-alt, #f9fafb);
+  color: var(--text-secondary, #6b7280);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.att-calendar-cell {
+  padding: 0.55rem 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-primary, #111827);
+  border: 1px solid var(--border-color, #f3f4f6);
+  min-height: 44px;
+}
+
+.att-calendar-cell--empty {
+  background: var(--bg-surface-alt, #fafafa);
+}
+
+/* Report table title */
+.att-report-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-secondary, #374151);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+  .att-status-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .att-table th:nth-child(3),
+  .att-table td:nth-child(3) {
+    display: none;
+  }
+
+  .att-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .att-pct-bar-wrap {
+    width: 80px;
+  }
+}

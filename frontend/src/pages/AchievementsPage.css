@@ -1,0 +1,553 @@
+/* ============================================================
+   AchievementsPage.css — Gamification badge showcase styles
+   ============================================================ */
+
+.achievements-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ----------------------------------------------------------
+   XP Card
+   ---------------------------------------------------------- */
+
+.achievements-xp-card {
+  background: linear-gradient(135deg, var(--color-primary, #6366f1) 0%, #8b5cf6 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+}
+
+.achievements-xp-level {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.level-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.level-badge--sm {
+  background: var(--color-primary, #6366f1);
+  color: #fff;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.6rem;
+}
+
+.achievements-xp-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.xp-total {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.xp-week {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+/* XP Bar */
+.xp-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.xp-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.xp-bar-label {
+  font-size: 0.82rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.achievements-badge-count {
+  font-size: 0.88rem;
+  opacity: 0.85;
+}
+
+/* ----------------------------------------------------------
+   Tabs
+   ---------------------------------------------------------- */
+
+.achievements-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--color-border, #e5e7eb);
+}
+
+.achievements-tab {
+  background: none;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text-muted, #6b7280);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.achievements-tab:hover {
+  color: var(--color-primary, #6366f1);
+}
+
+.achievements-tab.active {
+  color: var(--color-primary, #6366f1);
+  border-bottom-color: var(--color-primary, #6366f1);
+}
+
+/* ----------------------------------------------------------
+   Badge Grid + Category Filter
+   ---------------------------------------------------------- */
+
+.badge-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.badge-cat-btn {
+  background: var(--color-bg-secondary, #f3f4f6);
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text-muted, #6b7280);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.badge-cat-btn:hover {
+  background: var(--color-primary-light, #eef2ff);
+  color: var(--color-primary, #6366f1);
+}
+
+.badge-cat-btn.active {
+  background: var(--color-primary, #6366f1);
+  color: #fff;
+  border-color: var(--color-primary, #6366f1);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 1rem;
+}
+
+/* Badge Cards */
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.25rem 0.75rem 1rem;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  background: var(--color-bg-card, #fff);
+  gap: 0.4rem;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-card--earned {
+  border-color: var(--color-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12), 0 4px 14px rgba(99, 102, 241, 0.15);
+}
+
+.badge-card--earned:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 8px 22px rgba(99, 102, 241, 0.22);
+}
+
+.badge-card--earned::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.badge-card--locked {
+  filter: grayscale(0.7);
+  opacity: 0.65;
+  border-color: var(--color-border, #e5e7eb);
+}
+
+.badge-card-emoji {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.badge-card-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text, #111827);
+}
+
+.badge-card-desc {
+  font-size: 0.76rem;
+  color: var(--color-text-muted, #6b7280);
+  line-height: 1.4;
+}
+
+.badge-card-date {
+  font-size: 0.72rem;
+  color: var(--color-primary, #6366f1);
+  font-weight: 500;
+}
+
+.badge-card-locked-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted, #9ca3af);
+  font-style: italic;
+}
+
+.badge-card-xp {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* ----------------------------------------------------------
+   XP History
+   ---------------------------------------------------------- */
+
+.xp-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.xp-history-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-card, #fff);
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  font-size: 0.9rem;
+}
+
+.xp-history-amount {
+  font-weight: 700;
+  min-width: 60px;
+  text-align: right;
+}
+
+.xp-history-amount.positive {
+  color: #10b981;
+}
+
+.xp-history-amount.negative {
+  color: #ef4444;
+}
+
+.xp-history-reason {
+  flex: 1;
+  color: var(--color-text, #111827);
+}
+
+.xp-history-date {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #9ca3af);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------
+   Leaderboard
+   ---------------------------------------------------------- */
+
+.leaderboard-opt-in-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.opt-in-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.opt-in-toggle input[type='checkbox'] {
+  accent-color: var(--color-primary, #6366f1);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Podium */
+.leaderboard-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.podium-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  max-width: 140px;
+}
+
+.podium-crown {
+  font-size: 1.5rem;
+}
+
+.podium-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text, #111827);
+  text-align: center;
+}
+
+.podium-level {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.podium-block {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #fff;
+  border-radius: 8px 8px 0 0;
+}
+
+.podium-1st .podium-block {
+  height: 90px;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.podium-2nd .podium-block {
+  height: 70px;
+  background: linear-gradient(135deg, #94a3b8, #cbd5e1);
+  box-shadow: 0 4px 10px rgba(148, 163, 184, 0.3);
+}
+
+.podium-3rd .podium-block {
+  height: 55px;
+  background: linear-gradient(135deg, #b45309, #d97706);
+  box-shadow: 0 4px 10px rgba(180, 83, 9, 0.3);
+}
+
+.podium-xp {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+/* Table */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.leaderboard-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #9ca3af);
+  border-bottom: 2px solid var(--color-border, #e5e7eb);
+}
+
+.leaderboard-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--color-border, #f3f4f6);
+  vertical-align: middle;
+}
+
+.leaderboard-table tr.leaderboard-top3 td {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.leaderboard-rank {
+  font-weight: 700;
+  font-size: 1rem;
+  min-width: 40px;
+}
+
+.leaderboard-name {
+  font-weight: 500;
+}
+
+.leaderboard-xp {
+  font-weight: 600;
+  color: var(--color-primary, #6366f1);
+}
+
+/* ----------------------------------------------------------
+   Toast notifications
+   ---------------------------------------------------------- */
+
+.badge-toast-stack {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transform: translateX(0);
+  opacity: 1;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.badge-toast-stack.fading {
+  opacity: 0;
+  transform: translateX(60px);
+}
+
+.badge-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--color-bg-card, #fff);
+  border: 2px solid var(--color-primary, #6366f1);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  min-width: 260px;
+  max-width: 340px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  animation: slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.badge-toast-emoji {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.badge-toast-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.88rem;
+}
+
+.badge-toast-body strong {
+  color: var(--color-primary, #6366f1);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-toast-xp {
+  color: #f59e0b;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.badge-toast-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--color-text-muted, #9ca3af);
+  line-height: 1;
+  padding: 0.1rem 0.2rem;
+  flex-shrink: 0;
+}
+
+.badge-toast-close:hover {
+  color: var(--color-text, #111827);
+}
+
+/* ----------------------------------------------------------
+   Empty state
+   ---------------------------------------------------------- */
+
+.achievements-empty {
+  text-align: center;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 0.95rem;
+  padding: 2rem 1rem;
+}
+
+/* ----------------------------------------------------------
+   Responsive
+   ---------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .achievements-xp-card {
+    padding: 1.1rem 1.2rem;
+  }
+
+  .badge-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  .leaderboard-podium {
+    display: none; /* hide on very small screens */
+  }
+}

@@ -108,6 +108,34 @@ def require_role(*roles: UserRole):
     return checker
 
 
+def require_feature(flag_key: str):
+    """Dependency factory that gates a route behind a feature flag.
+
+    Returns 404 (not 403) so disabled features appear non-existent.
+    Usage::
+
+        @router.get("/endpoint")
+        def my_endpoint(
+            _flag=Depends(require_feature("google_classroom")),
+            user: User = Depends(get_current_user),
+        ):
+            ...
+    """
+    def checker(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ):
+        from app.services.feature_flags import get_feature_flag_service
+        svc = get_feature_flag_service()
+        if not svc.is_enabled(flag_key, current_user, db):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Not found",
+            )
+        return current_user
+    return checker
+
+
 def can_access_course(db: Session, user: User, course_id: int) -> bool:
     """Check if a user has access to a specific course.
 

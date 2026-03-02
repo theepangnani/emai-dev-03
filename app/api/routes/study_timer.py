@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role, get_db
+from app.api.deps import get_current_user, get_db, require_feature, require_role
 from app.models.user import User, UserRole
 from app.models.study_timer import StudySession
 from app.schemas.study_timer import (
@@ -31,6 +31,7 @@ _service = StudyTimerService()
 )
 def start_session(
     payload: StudySessionCreate,
+    _flag=Depends(require_feature("student_engagement")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -55,6 +56,7 @@ def start_session(
 )
 def end_session(
     session_id: int,
+    _flag=Depends(require_feature("student_engagement")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -77,6 +79,7 @@ def end_session(
     response_model=List[StudySessionResponse],
 )
 def list_sessions(
+    _flag=Depends(require_feature("student_engagement")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -101,6 +104,7 @@ def list_sessions(
     response_model=StudyStreakResponse,
 )
 def get_streak(
+    _flag=Depends(require_feature("student_engagement")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -119,6 +123,7 @@ def get_streak(
     response_model=StudyStatsResponse,
 )
 def get_stats(
+    _flag=Depends(require_feature("student_engagement")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -137,6 +142,7 @@ def get_stats(
 )
 def get_child_stats(
     student_id: int,
+    _flag=Depends(require_feature("student_engagement")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
 ):

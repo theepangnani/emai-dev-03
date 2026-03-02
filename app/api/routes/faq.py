@@ -9,7 +9,7 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.faq import FAQQuestion, FAQAnswer, FAQAnswerStatus, FAQQuestionStatus
 from app.models.notification import Notification, NotificationType
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.schemas.faq import (
     FAQQuestionCreate, FAQQuestionUpdate, FAQQuestionResponse, FAQQuestionDetail,
     FAQQuestionPin, FAQAdminQuestionCreate,
@@ -102,6 +102,7 @@ def _notify_user(db: Session, user_id: int, title: str, content: str, link: str)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_questions(
     request: Request,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     category: str | None = Query(None),
     status: str | None = Query(None),
     search: str | None = Query(None),
@@ -144,6 +145,7 @@ def list_questions(
 def get_by_error_code(
     request: Request,
     code: str,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -162,6 +164,7 @@ def get_by_error_code(
 def get_question(
     request: Request,
     question_id: int,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -203,6 +206,7 @@ def get_question(
 def create_question(
     request: Request,
     data: FAQQuestionCreate,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -229,6 +233,7 @@ def update_question(
     request: Request,
     question_id: int,
     data: FAQQuestionUpdate,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -265,6 +270,7 @@ def update_question(
 def delete_question(
     request: Request,
     question_id: int,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -292,6 +298,7 @@ def submit_answer(
     request: Request,
     question_id: int,
     data: FAQAnswerCreate,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -344,6 +351,7 @@ def update_answer(
     request: Request,
     answer_id: int,
     data: FAQAnswerUpdate,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -376,6 +384,7 @@ def update_answer(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_pending_answers(
     request: Request,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -399,6 +408,7 @@ def list_pending_answers(
 def approve_answer(
     request: Request,
     answer_id: int,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -441,6 +451,7 @@ def approve_answer(
 def reject_answer(
     request: Request,
     answer_id: int,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -479,6 +490,7 @@ def toggle_pin(
     request: Request,
     question_id: int,
     data: FAQQuestionPin,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -503,6 +515,7 @@ def toggle_pin(
 def mark_official(
     request: Request,
     answer_id: int,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -539,6 +552,7 @@ def mark_official(
 def admin_delete_answer(
     request: Request,
     answer_id: int,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -558,6 +572,7 @@ def admin_delete_answer(
 def create_official_faq(
     request: Request,
     data: FAQAdminQuestionCreate,
+    _flag=Depends(require_feature("faq_knowledge_base")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):

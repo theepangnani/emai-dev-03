@@ -37,7 +37,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import func as sa_func, or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.core.config import settings
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
@@ -290,6 +290,7 @@ def _bump_thread_stats(thread: EmailThread, sent_at: datetime) -> None:
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_threads(
     request: Request,
+    _flag=Depends(require_feature("ai_email_agent")),
     tab: Optional[str] = Query(None, description="inbox | sent | drafts | archived"),
     tag: Optional[str] = Query(None, description="Filter by tag"),
     archived: Optional[bool] = Query(None),
@@ -325,6 +326,7 @@ def list_threads(
 def get_thread(
     request: Request,
     thread_id: int,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -343,6 +345,7 @@ def get_thread(
 def archive_thread(
     request: Request,
     thread_id: int,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -366,6 +369,7 @@ def archive_thread(
 async def send_message(
     request: Request,
     data: SendMessageRequest,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -439,6 +443,7 @@ async def send_message(
 def get_message(
     request: Request,
     message_id: int,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -461,6 +466,7 @@ def get_message(
 async def ai_draft(
     request: Request,
     data: AIDraftRequest,
+    _flag=Depends(require_feature("ai_email_agent")),
     current_user: User = Depends(get_current_user),
 ):
     """Draft a new email using AI.
@@ -482,6 +488,7 @@ async def ai_draft(
 async def ai_improve(
     request: Request,
     data: AIImproveRequest,
+    _flag=Depends(require_feature("ai_email_agent")),
     current_user: User = Depends(get_current_user),
 ):
     """Improve an existing draft based on an instruction."""
@@ -498,6 +505,7 @@ async def ai_improve(
 async def summarize_thread(
     request: Request,
     thread_id: int,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -524,6 +532,7 @@ async def summarize_thread(
 async def suggest_reply(
     request: Request,
     thread_id: int,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -568,6 +577,7 @@ async def suggest_reply(
 async def extract_action_items(
     request: Request,
     thread_id: int,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -593,6 +603,7 @@ async def extract_action_items(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def search_emails(
     request: Request,
+    _flag=Depends(require_feature("ai_email_agent")),
     q: Optional[str] = Query(None, min_length=2, max_length=200),
     from_addr: Optional[str] = Query(None, alias="from"),
     to_addr: Optional[str] = Query(None, alias="to"),
@@ -657,6 +668,7 @@ def search_emails(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def get_stats(
     request: Request,
+    _flag=Depends(require_feature("ai_email_agent")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

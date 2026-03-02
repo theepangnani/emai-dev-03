@@ -136,8 +136,48 @@
 - [x] **Extract backend services** — Move business logic from route handlers to domain service layer (#128) (IMPLEMENTED)
 - [x] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129) — BaseRepository[T], TaskRepository (8 methods), CourseContentRepository (8 methods), StudyGuideRepository (10 methods); tasks.py fully adopted; get_task_repo/get_course_content_repo/get_study_guide_repo deps in deps.py (IMPLEMENTED)
 
-#### Feature Flag System
+#### Feature Flag System (#32)
+
+**Infrastructure (COMPLETE):**
 - [x] **Admin Feature Flags** — FeatureFlag model (global/tier/role/user/beta scopes); UserFeatureOverride (per-user overrides with expiry); FeatureFlagService evaluation engine with rollout % support; admin CRUD API + override management; AdminFeatureFlagsPage at /admin/feature-flags; useFeatureFlag React hook (60s cache); 8 predefined flags seeded (ai_email_agent, tutor_marketplace, lesson_planner, ai_personalization, brightspace_lms, stripe_billing, mcp_tools, beta_features) (IMPLEMENTED)
+
+**Remaining Foundation:**
+- [ ] **`require_feature()` backend dependency (#35)** — FastAPI `Depends()` factory that returns 404 when a feature flag is OFF; add to `app/api/deps.py`
+- [ ] **`<FeatureGate>` frontend component (#38)** — Conditional render component with optional fallback; complements existing `useFeatureFlag()` hook
+
+**Comprehensive Feature Guards (~30 flags for ALL Phase 1+ features):**
+
+*Phase 1 Core Guards:*
+- [ ] Guard: Google Classroom Integration (#69) — `google_classroom` flag
+- [ ] Guard: AI Study Tools (#70) — `ai_study_tools` flag
+- [ ] Guard: Parent-Teacher Messaging (#71) — `messaging` flag
+- [ ] Guard: Teacher Email Monitoring (#72) — `teacher_email_monitoring` flag
+- [ ] Guard: Notification System & Smart Reminders (#73) — `notification_system` flag
+
+*Phase 1.5-2 Guards:*
+- [ ] Guard: Google Calendar Sync (#74) — `google_calendar` flag
+- [ ] Guard: Document Repository (#75) — `document_repository` flag
+- [ ] Guard: Grade Tracking & Submissions (#76) — `grade_tracking` flag
+- [ ] Guard: PWA Offline Mode (#77) — `pwa_offline` flag
+- [ ] Guard: Notes & Project Tracking (#78) — `notes_projects` flag
+- [ ] Guard: FAQ / Knowledge Base (#79) — `faq_knowledge_base` flag
+
+*Phase 2+ Guards:*
+- [ ] Guard: Push Notifications (#80) — `push_notifications` flag
+- [ ] Guard: Multi-LMS Connections (#81) — `multi_lms` flag
+- [ ] Guard: Existing seeded flags — AI Email, Stripe, Lesson Planner, AI Personalization (#82)
+
+*Phase 3 Guards:*
+- [ ] Guard: School Board Integration (#40) — `school_board_integration` flag (OFF by default)
+- [ ] Guard: MCP Integration (#41) — `mcp_tools` flag
+- [ ] Guard: Tutor Marketplace + Brightspace LMS (#42) — `tutor_marketplace` + `brightspace_lms` flags
+- [ ] Guard: Course Planning & Guidance (#83) — `course_planning` flag
+- [ ] Guard: AI Writing Assistant + Mock Exams (#84) — `ai_writing_assistant` + `ai_mock_exams` flags
+- [ ] Guard: Parent Forum + Teacher Resources (#85) — `parent_forum` + `teacher_resources` flags
+- [ ] Guard: Inspiration Messages + Student Engagement (#86) — `inspiration_messages` + `student_engagement` flags
+
+*Testing:*
+- [ ] Feature flags unit + integration tests (#43)
 - [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
 - [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
@@ -488,7 +528,7 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 | 5 | Firebase Push Notifications | #54 | In Progress |
 
 - [ ] **AI tutor matching (#50)** — TutorMatchingEngine with weighted scoring (subject expertise, availability, rating, price, learning style compatibility); PersonalizationProfile integration; TutorMatchPage at /student/find-tutor
-- [ ] **Admin feature flag system (#51)** — FeatureFlag model, FeatureFlagService with in-memory cache, require_feature() backend dependency, public /api/features/enabled endpoint, AdminFeatureFlagsPage, useFeatureFlag hook and FeatureGate component; guards for Tutor Marketplace, Brightspace LMS, MCP integration, School Board integration (issues #33-#43)
+- [ ] **Admin feature flag system (#51, #32)** — Infrastructure COMPLETE (model, service, admin API, admin page, hook); remaining: `require_feature()` backend dependency (#35), `<FeatureGate>` frontend component (#38), seed expansion to ~30 flags, comprehensive guards for ALL Phase 1+ features (#69-#86, #40-#43)
 - [ ] **Canvas LMS adapter + Multi-LMS Connection Manager UI (#52)** — CanvasOAuthClient, CanvasAPIClient, CanvasAdapter implementing LMSProvider; OAuth2 flow endpoints; Multi-LMS Connection Manager UI with provider catalog, institution selector, connection status dashboard (addresses #26)
 - [ ] **Domain events system (#53)** — EventBus with async publish/subscribe, 15+ typed domain events (AssignmentCreated, GradeSynced, UserEnrolled, etc.), cross-context handlers, admin events API for audit trail
 - [ ] **Firebase push notifications (#54)** — PushToken model, PushNotificationService with FCM HTTP v1, WebPushService frontend (service worker, permission flow), PushNotificationSetup component in user settings (addresses #314-#318)

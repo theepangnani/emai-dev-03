@@ -2204,3 +2204,21 @@ button.retry-btn:disabled {
     transition-duration: 0.01ms !important;
   }
 }
+
+.header-xp-badge {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: opacity 0.15s;
+  width: fit-content;
+}
+
+.header-xp-badge:hover {
+  opacity: 0.85;
+}

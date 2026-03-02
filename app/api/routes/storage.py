@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.db.database import get_db
 from app.models.stored_document import StoredDocument
 from app.models.user import User
@@ -38,6 +38,7 @@ def _get_quota_bytes(user: User) -> int:
 @router.get("/files/{key:path}")
 def serve_file(
     key: str,
+    _flag=Depends(require_feature("document_repository")),
     current_user: User = Depends(get_current_user),
     _db: Session = Depends(get_db),
 ):
@@ -75,6 +76,7 @@ def serve_file(
 
 @router.get("/usage")
 def get_usage(
+    _flag=Depends(require_feature("document_repository")),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -106,6 +108,7 @@ def get_usage(
 
 @router.get("/quota")
 def get_quota(
+    _flag=Depends(require_feature("document_repository")),
     current_user: User = Depends(get_current_user),
 ):
     """Return quota limits for the user's subscription tier."""

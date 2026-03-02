@@ -32,6 +32,36 @@ logger = logging.getLogger(__name__)
 
 # ─── Pre-defined flag key constants ───────────────────────────────────────────
 
+# Phase 1 Core
+FLAG_GOOGLE_CLASSROOM = "google_classroom"
+FLAG_AI_STUDY_TOOLS = "ai_study_tools"
+FLAG_MESSAGING = "messaging"
+FLAG_TEACHER_EMAIL_MONITORING = "teacher_email_monitoring"
+FLAG_NOTIFICATION_SYSTEM = "notification_system"
+FLAG_INSPIRATION_MESSAGES = "inspiration_messages"
+
+# Phase 1.5-2
+FLAG_GOOGLE_CALENDAR = "google_calendar"
+FLAG_DOCUMENT_REPOSITORY = "document_repository"
+FLAG_GRADE_TRACKING = "grade_tracking"
+FLAG_PWA_OFFLINE = "pwa_offline"
+FLAG_NOTES_PROJECTS = "notes_projects"
+FLAG_FAQ_KNOWLEDGE_BASE = "faq_knowledge_base"
+
+# Phase 2+
+FLAG_PUSH_NOTIFICATIONS = "push_notifications"
+FLAG_MULTI_LMS = "multi_lms"
+
+# Phase 3
+FLAG_SCHOOL_BOARD_INTEGRATION = "school_board_integration"
+FLAG_COURSE_PLANNING = "course_planning"
+FLAG_AI_WRITING_ASSISTANT = "ai_writing_assistant"
+FLAG_AI_MOCK_EXAMS = "ai_mock_exams"
+FLAG_PARENT_FORUM = "parent_forum"
+FLAG_TEACHER_RESOURCES = "teacher_resources"
+FLAG_STUDENT_ENGAGEMENT = "student_engagement"
+
+# Phase 4+ (original 8 flags)
 FLAG_AI_EMAIL_AGENT = "ai_email_agent"
 FLAG_TUTOR_MARKETPLACE = "tutor_marketplace"
 FLAG_LESSON_PLANNER = "lesson_planner"

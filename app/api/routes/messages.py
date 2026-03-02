@@ -25,7 +25,7 @@ from app.schemas.message import (
     UnreadCountResponse,
 )
 from app.core.utils import escape_like
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
 from app.core.config import settings
@@ -278,6 +278,7 @@ def _build_conversation_detail(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def search_messages(
     request: Request,
+    _flag=Depends(require_feature("messaging")),
     q: str = Query(..., min_length=2, max_length=100),
     conversation_id: int | None = Query(None, description="Filter by conversation"),
     date_from: datetime | None = Query(None, description="Filter messages from this date (ISO 8601)"),
@@ -417,6 +418,7 @@ def search_messages(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_valid_recipients(
     request: Request,
+    _flag=Depends(require_feature("messaging")),
     q: str | None = Query(None, min_length=2, max_length=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -662,6 +664,7 @@ def get_valid_recipients(
 def create_conversation(
     request: Request,
     data: ConversationCreate,
+    _flag=Depends(require_feature("messaging")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -766,6 +769,7 @@ def create_conversation(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_conversations(
     request: Request,
+    _flag=Depends(require_feature("messaging")),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     q: str | None = Query(None, min_length=2, max_length=100),
@@ -897,6 +901,7 @@ def list_conversations(
 def get_conversation(
     request: Request,
     conversation_id: int,
+    _flag=Depends(require_feature("messaging")),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -941,6 +946,7 @@ def send_message(
     request: Request,
     conversation_id: int,
     data: MessageCreate,
+    _flag=Depends(require_feature("messaging")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -995,6 +1001,7 @@ def send_message(
 def mark_conversation_read(
     request: Request,
     conversation_id: int,
+    _flag=Depends(require_feature("messaging")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1032,6 +1039,7 @@ def mark_conversation_read(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_unread_count(
     request: Request,
+    _flag=Depends(require_feature("messaging")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

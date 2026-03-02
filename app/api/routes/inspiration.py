@@ -7,7 +7,7 @@ from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.inspiration_message import InspirationMessage
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.services.inspiration_service import get_random_message, seed_messages
 from app.schemas.inspiration import (
     InspirationMessageResponse,
@@ -25,6 +25,7 @@ router = APIRouter(prefix="/inspiration", tags=["Inspiration"])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def random_message(
     request: Request,
+    _flag=Depends(require_feature("inspiration_messages")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -43,6 +44,7 @@ def random_message(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_messages(
     request: Request,
+    _flag=Depends(require_feature("inspiration_messages")),
     role: str | None = None,
     is_active: bool | None = None,
     skip: int = Query(0, ge=0),
@@ -65,6 +67,7 @@ def list_messages(
 def create_message(
     request: Request,
     body: InspirationMessageCreate,
+    _flag=Depends(require_feature("inspiration_messages")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -91,6 +94,7 @@ def update_message(
     request: Request,
     message_id: int,
     body: InspirationMessageUpdate,
+    _flag=Depends(require_feature("inspiration_messages")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -116,6 +120,7 @@ def update_message(
 def delete_message(
     request: Request,
     message_id: int,
+    _flag=Depends(require_feature("inspiration_messages")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -133,6 +138,7 @@ def delete_message(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def reseed_messages(
     request: Request,
+    _flag=Depends(require_feature("inspiration_messages")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
