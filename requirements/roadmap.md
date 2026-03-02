@@ -207,7 +207,8 @@
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
 - [x] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513) (IMPLEMENTED)
 - [x] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514) (IMPLEMENTED)
-- [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
+- [x] **Course Materials Storage (#572)** — Local filesystem adapter (GCS-ready interface); FileStorageService with per-user quotas (500 MB free / 5 GB premium); StoredDocument model; GET /api/storage/files/{key} serve endpoint; storage usage + quota APIs; StorageUsageBar component in Account Settings; documents upload now persists raw files (IMPLEMENTED)
+- [x] **Parent AI Insights (#581)** — Holistic child academic analysis (strengths, concerns, subject trends, learning style note, parent action items); GPT-4o-mini powered; on-demand generation; insight history; Parent Dashboard quick action widget; /insights page for parents (IMPLEMENTED)
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [x] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; AES-256 encrypted storage (Fernet), seamless fallback to platform key; `/settings/account` page (#578) (IMPLEMENTED)
 - [x] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007) (IMPLEMENTED)
@@ -378,6 +379,8 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 **Implementation Status:**
 - [x] **Multi-LMS Provider Framework (#22)** — LMSConnection + LMSInstitution models, provider registry (Google Classroom, Brightspace stub, Canvas stub), seeded 5 Ontario Brightspace institutions (TDSB/PDSB/YRDSB/HDSB/OCDSB), lms_provider/lms_external_id columns on Course/Assignment/CourseContent (IMPLEMENTED)
 - [x] **Multi-LMS Connection Management API (#23)** — List providers, list/create/update/delete connections, LMS Connections UI at /settings/lms (IMPLEMENTED)
+- [x] **Admin LMS Institution Management (#28)** — Admin page at /admin/lms: create/edit/deactivate institutions, view all user connections by institution, connection stats by provider, manual sync trigger (IMPLEMENTED)
+- [x] **Multi-LMS Sync Orchestration (#27)** — 15-minute APScheduler job syncing all active connections; per-connection sync with error tracking; stale detection (7-day threshold); manual trigger endpoint /api/admin/lms/sync/trigger (IMPLEMENTED)
 
 **Recommended implementation order:**
 1. **#29** Feasibility Study (research — DONE in issue body)
@@ -440,16 +443,14 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [x] **Course Planning Navigation & Dashboard Integration** — Nav links, landing page, My Kids integration, Parent Dashboard quick actions (#507) — **IMPLEMENTED**
 - [x] **Course Planning Tests** — 20+ backend route tests, 10+ frontend component tests (#508) — **IMPLEMENTED**
 - [x] **Sample Exams/Tests Upload + AI Assessment (#577)** — Teacher uploads exam (PDF/doc); AI assesses quality (overall score 0-100, strengths/weaknesses, difficulty distribution, curriculum coverage, question quality); is_public toggle for student practice mode; SampleExamsPage with assessment modal and practice mode (IMPLEMENTED)
-- [ ] Multi-language support
+- [x] **API Key Management UI** — Create/list/revoke API keys for MCP access; bcrypt-hashed keys with cbk_ prefix; one-time key display with copy button; APIKeysPage at /settings/api-keys; Account Settings Developer section link; nav item for all roles (IMPLEMENTED)
+- [x] **Multi-language support foundation** — i18n system with English + French (Canadian); t() function + useTranslation hook; 70+ translated strings across navigation, actions, dashboard, auth, errors, API keys; LanguageToggle EN/FR button in DashboardLayout header; locale stored in localStorage + user profile DB column; /api/profile/locale endpoint (IMPLEMENTED)
 - [ ] Advanced AI personalization
 - [ ] Admin analytics
 
 ### Phase 4 (Tutor Marketplace)
-- [ ] Private tutor profiles (availability, rates, subjects)
-- [ ] Parent/student tutor search and discovery
+- [x] **Tutor Marketplace Foundation** — TutorProfile model (bio, subjects, rates, availability, verified status, ratings); TutorBooking model (request → accept/decline → review flow); search/filter API; TutorMarketplacePage with filter bar + booking modal; TutorProfilePage with reviews; Teacher TutorDashboardPage with request management (IMPLEMENTED)
 - [ ] AI tutor matching
-- [ ] Booking workflow
-- [ ] Ratings & reviews
 - [ ] Payment integration
 
 ### Phase 5 (AI Email Agent)

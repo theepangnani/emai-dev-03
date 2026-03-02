@@ -284,6 +284,9 @@ export function AdminDashboard() {
           <Link to="/admin/faq" className="admin-audit-link">
             Manage FAQ &rarr;
           </Link>
+          <Link to="/admin/lms" className="admin-audit-link">
+            LMS Management &rarr;
+          </Link>
           <button
             className="admin-audit-link"
             onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}

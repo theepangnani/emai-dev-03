@@ -1,4 +1,4 @@
-"""LMS Connections API routes — Multi-LMS Provider Framework (#22, #23).
+"""LMS Connections API routes — Multi-LMS Provider Framework (#22, #23, #27, #28).
 
 Routes:
   GET    /api/lms/providers                  — list available providers
@@ -9,16 +9,27 @@ Routes:
   PATCH  /api/lms/connections/{id}           — update label or status
   DELETE /api/lms/connections/{id}           — remove connection
   GET    /api/lms/connections/{id}/status    — sync status for a connection
+  POST   /api/lms/connections/{id}/sync      — sync a single connection (owner only)
+
+Admin routes:
+  GET    /api/admin/lms/institutions              — list all institutions (admin)
+  POST   /api/admin/lms/institutions              — create institution (admin)
+  PATCH  /api/admin/lms/institutions/{id}         — update institution (admin)
+  DELETE /api/admin/lms/institutions/{id}         — deactivate institution (admin, soft-delete)
+  GET    /api/admin/lms/institutions/{id}/connections — connections for an institution (admin)
+  GET    /api/admin/lms/stats                     — connection counts by provider + institution
+  POST   /api/admin/lms/sync/trigger              — manually trigger full sync (admin)
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -182,7 +193,7 @@ def _connection_out(conn: LMSConnection) -> ConnectionOut:
     )
 
 
-VALID_STATUSES = {"connected", "expired", "error", "disconnected"}
+VALID_STATUSES = {"connected", "expired", "error", "disconnected", "stale"}
 VALID_PROVIDERS = {"google_classroom", "brightspace", "canvas", "moodle"}
 
 
@@ -415,3 +426,336 @@ def get_connection_status(
         raise HTTPException(status_code=403, detail="Not authorized to view this connection.")
 
     return conn  # type: ignore[return-value]
+
+
+@router.post(
+    "/connections/{connection_id}/sync",
+    response_model=ConnectionStatusOut,
+    summary="Sync a single LMS connection (owner only)",
+)
+async def sync_single_connection_endpoint(
+    connection_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ConnectionStatusOut:
+    """Trigger an immediate sync for one of the current user's connections."""
+    conn = db.query(LMSConnection).filter(LMSConnection.id == connection_id).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found.")
+
+    is_admin = current_user.roles and "admin" in current_user.roles
+    if conn.user_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to sync this connection.")
+
+    from app.jobs.lms_sync import sync_single_connection
+    try:
+        await sync_single_connection(conn, db)
+    except Exception as exc:
+        logger.error("Manual sync failed for connection %s: %s", connection_id, exc)
+        raise HTTPException(status_code=500, detail=f"Sync failed: {exc}") from exc
+
+    db.refresh(conn)
+    return conn  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# Admin router — all routes under /admin/lms
+# ---------------------------------------------------------------------------
+
+admin_router = APIRouter(prefix="/admin/lms", tags=["Admin — LMS Management"])
+
+
+# --- Pydantic schemas for admin operations ---
+
+
+class InstitutionUpdate(BaseModel):
+    name: Optional[str] = None
+    provider: Optional[str] = None
+    base_url: Optional[str] = None
+    region: Optional[str] = None
+    is_active: Optional[bool] = None
+    metadata_json: Optional[str] = None
+
+
+class AdminConnectionOut(BaseModel):
+    """Richer connection view for admin lists (includes user email)."""
+    id: int
+    user_id: int
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    institution_id: Optional[int]
+    provider: str
+    label: Optional[str]
+    status: str
+    last_sync_at: Optional[datetime]
+    sync_error: Optional[str]
+    courses_synced: int
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
+class LMSStatsOut(BaseModel):
+    total_connections: int
+    by_provider: dict[str, dict[str, int]]
+    by_institution: list[dict[str, Any]]
+    last_sync_summary: dict[str, int]
+
+
+class SyncTriggerOut(BaseModel):
+    synced: int
+    errors: int
+    message: str
+
+
+# --- Helpers ---
+
+
+def _admin_conn_out(conn: LMSConnection) -> AdminConnectionOut:
+    user = conn.user
+    return AdminConnectionOut(
+        id=conn.id,
+        user_id=conn.user_id,
+        user_email=user.email if user else None,
+        user_name=user.full_name if user else None,
+        institution_id=conn.institution_id,
+        provider=conn.provider,
+        label=conn.label,
+        status=conn.status,
+        last_sync_at=conn.last_sync_at,
+        sync_error=conn.sync_error,
+        courses_synced=conn.courses_synced,
+        created_at=conn.created_at,
+        updated_at=conn.updated_at,
+    )
+
+
+# --- Admin institution CRUD ---
+
+
+@admin_router.get(
+    "/institutions",
+    response_model=list[InstitutionOut],
+    summary="List all institutions (admin)",
+)
+def admin_list_institutions(
+    provider: Optional[str] = Query(None),
+    include_inactive: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> list[InstitutionOut]:
+    """Return all LMS institutions including inactive ones (admin view)."""
+    q = db.query(LMSInstitution)
+    if not include_inactive:
+        q = q.filter(LMSInstitution.is_active.is_(True))
+    if provider:
+        q = q.filter(LMSInstitution.provider == provider)
+    return q.order_by(LMSInstitution.name).all()
+
+
+@admin_router.post(
+    "/institutions",
+    response_model=InstitutionOut,
+    status_code=201,
+    summary="Create institution (admin)",
+)
+def admin_create_institution(
+    body: InstitutionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> InstitutionOut:
+    """Create a new LMS institution record.  Admin-only."""
+    if body.provider not in VALID_PROVIDERS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown provider '{body.provider}'. Valid: {sorted(VALID_PROVIDERS)}",
+        )
+    inst = LMSInstitution(
+        name=body.name,
+        provider=body.provider,
+        base_url=body.base_url,
+        region=body.region,
+        is_active=body.is_active,
+        metadata_json=body.metadata_json,
+    )
+    db.add(inst)
+    db.commit()
+    db.refresh(inst)
+    logger.info("Admin %s created LMS institution: %s", current_user.id, inst.name)
+    return inst
+
+
+@admin_router.patch(
+    "/institutions/{institution_id}",
+    response_model=InstitutionOut,
+    summary="Update institution (admin)",
+)
+def admin_update_institution(
+    institution_id: int,
+    body: InstitutionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> InstitutionOut:
+    """Partially update an LMS institution.  Admin-only."""
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+
+    if body.name is not None:
+        inst.name = body.name
+    if body.provider is not None:
+        if body.provider not in VALID_PROVIDERS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown provider '{body.provider}'. Valid: {sorted(VALID_PROVIDERS)}",
+            )
+        inst.provider = body.provider
+    if body.base_url is not None:
+        inst.base_url = body.base_url
+    if body.region is not None:
+        inst.region = body.region
+    if body.is_active is not None:
+        inst.is_active = body.is_active
+    if body.metadata_json is not None:
+        inst.metadata_json = body.metadata_json
+
+    db.commit()
+    db.refresh(inst)
+    logger.info("Admin %s updated LMS institution %s", current_user.id, institution_id)
+    return inst
+
+
+@admin_router.delete(
+    "/institutions/{institution_id}",
+    status_code=204,
+    summary="Deactivate institution (admin, soft-delete)",
+)
+def admin_deactivate_institution(
+    institution_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> None:
+    """Soft-delete: set is_active=False on the institution.  Admin-only."""
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    inst.is_active = False
+    db.commit()
+    logger.info("Admin %s deactivated LMS institution %s", current_user.id, institution_id)
+
+
+@admin_router.get(
+    "/institutions/{institution_id}/connections",
+    response_model=list[AdminConnectionOut],
+    summary="List all user connections for an institution (admin)",
+)
+def admin_list_institution_connections(
+    institution_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> list[AdminConnectionOut]:
+    """Return all LMS connections tied to a specific institution."""
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    connections = (
+        db.query(LMSConnection)
+        .filter(LMSConnection.institution_id == institution_id)
+        .order_by(LMSConnection.created_at)
+        .all()
+    )
+    return [_admin_conn_out(c) for c in connections]
+
+
+# --- Stats ---
+
+
+@admin_router.get(
+    "/stats",
+    response_model=LMSStatsOut,
+    summary="LMS connection stats by provider + institution (admin)",
+)
+def admin_lms_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> LMSStatsOut:
+    """Return aggregated connection counts by provider and institution."""
+    all_connections = db.query(LMSConnection).all()
+    total = len(all_connections)
+
+    # Counts by provider → status
+    by_provider: dict[str, dict[str, int]] = {}
+    for conn in all_connections:
+        prov = conn.provider
+        status = conn.status
+        if prov not in by_provider:
+            by_provider[prov] = {}
+        by_provider[prov][status] = by_provider[prov].get(status, 0) + 1
+
+    # Active connections per institution
+    institutions = db.query(LMSInstitution).all()
+    by_institution: list[dict[str, Any]] = []
+    for inst in institutions:
+        active_count = (
+            db.query(func.count(LMSConnection.id))
+            .filter(
+                LMSConnection.institution_id == inst.id,
+                LMSConnection.status == "connected",
+            )
+            .scalar()
+            or 0
+        )
+        by_institution.append({
+            "institution_id": inst.id,
+            "name": inst.name,
+            "active_connections": active_count,
+        })
+
+    # Last-hour sync summary
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    synced_last_hour = sum(
+        1
+        for c in all_connections
+        if c.last_sync_at and c.last_sync_at.replace(tzinfo=timezone.utc) >= one_hour_ago
+    )
+    errors_last_hour = sum(
+        1
+        for c in all_connections
+        if c.last_sync_at
+        and c.last_sync_at.replace(tzinfo=timezone.utc) >= one_hour_ago
+        and c.status == "error"
+    )
+
+    return LMSStatsOut(
+        total_connections=total,
+        by_provider=by_provider,
+        by_institution=by_institution,
+        last_sync_summary={
+            "synced_last_hour": synced_last_hour,
+            "errors_last_hour": errors_last_hour,
+        },
+    )
+
+
+# --- Manual sync trigger ---
+
+
+@admin_router.post(
+    "/sync/trigger",
+    response_model=SyncTriggerOut,
+    summary="Manually trigger full LMS sync (admin)",
+)
+async def admin_trigger_full_sync(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+) -> SyncTriggerOut:
+    """Immediately run sync_all_connections outside of the scheduler."""
+    from app.jobs.lms_sync import sync_all_connections
+    result = await sync_all_connections(db)
+    logger.info("Admin %s manually triggered full LMS sync: %s", current_user.id, result)
+    return SyncTriggerOut(
+        synced=result["synced"],
+        errors=result["errors"],
+        message=f"Sync complete: {result['synced']} synced, {result['errors']} errors.",
+    )

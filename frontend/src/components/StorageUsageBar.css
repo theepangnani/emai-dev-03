@@ -1,0 +1,60 @@
+.storage-usage-bar {
+  margin-top: 16px;
+}
+
+.storage-usage-loading {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.storage-usage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.storage-usage-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.storage-usage-numbers {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.storage-usage-percent {
+  color: #9ca3af;
+}
+
+.storage-bar-track {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.storage-bar-fill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.storage-bar-warning {
+  background: #f59e0b;
+}
+
+.storage-bar-danger {
+  background: #ef4444;
+}
+
+.storage-upgrade-hint {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  margin: 6px 0 0;
+}

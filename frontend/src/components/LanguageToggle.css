@@ -1,0 +1,32 @@
+/* LanguageToggle.css */
+
+.language-toggle {
+  background: transparent;
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #1a1a2e);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.language-toggle:hover {
+  background: var(--bg-secondary, #f8fafc);
+  border-color: var(--color-primary, #6366f1);
+  color: var(--color-primary, #6366f1);
+}
+
+[data-theme='dark'] .language-toggle {
+  border-color: var(--border-color, #334155);
+  color: var(--text-primary, #f1f5f9);
+}
+
+[data-theme='dark'] .language-toggle:hover {
+  background: var(--bg-secondary, #1e293b);
+  border-color: var(--color-primary, #818cf8);
+  color: var(--color-primary, #818cf8);
+}

@@ -72,12 +72,21 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Language / locale preference — "en" or "fr" (#i18n)
+    locale = Column(String(10), nullable=False, server_default="en")
+
     # Relationships
     notification_preferences = relationship(
         "NotificationPreference",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
+    )
+    api_keys = relationship(
+        "APIKey",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
     )
 
     def has_google_scope(self, scope: str) -> bool:

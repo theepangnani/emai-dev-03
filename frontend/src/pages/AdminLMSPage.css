@@ -1,0 +1,456 @@
+/* AdminLMSPage.css — Admin LMS Management (#27, #28) */
+
+.alms-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+.alms-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.alms-page__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0;
+}
+
+/* ── Error / Loading ── */
+.alms-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.alms-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.alms-empty {
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
+  padding: 16px 0;
+}
+
+/* ── Stats row ── */
+.alms-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.alms-stat-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 20px 16px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.alms-stat-card--green {
+  border-left: 4px solid #22c55e;
+}
+
+.alms-stat-card--red {
+  border-left: 4px solid #ef4444;
+}
+
+.alms-stat-card--blue {
+  border-left: 4px solid #3b82f6;
+}
+
+.alms-stat-card__value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.alms-stat-card__label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 4px;
+}
+
+/* ── Sections ── */
+.alms-section {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.alms-section__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0 0 16px;
+}
+
+/* ── Table ── */
+.alms-table-wrapper {
+  overflow-x: auto;
+}
+
+.alms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.alms-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  white-space: nowrap;
+}
+
+.alms-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-primary, #1a1a2e);
+  vertical-align: top;
+}
+
+.alms-table__row--inactive td {
+  opacity: 0.5;
+}
+
+.alms-table__url {
+  max-width: 200px;
+  word-break: break-all;
+  font-size: 0.8rem;
+}
+
+.alms-table__sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 2px;
+}
+
+.alms-table__error {
+  font-size: 0.75rem;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+.alms-table__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.alms-none {
+  color: var(--text-secondary, #6b7280);
+}
+
+.alms-link {
+  color: var(--primary-color, #5b4ff5);
+  text-decoration: none;
+}
+
+.alms-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Status badges ── */
+.alms-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.alms-badge--connected {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.alms-badge--expired {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.alms-badge--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.alms-badge--stale {
+  background: #fde68a;
+  color: #92400e;
+}
+
+.alms-badge--disconnected {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* ── Provider stats ── */
+.alms-provider-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.alms-provider-stat-card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 150px;
+}
+
+.alms-provider-stat-card__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+  margin-bottom: 8px;
+}
+
+.alms-provider-stat-card__counts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alms-provider-stat-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.alms-provider-stat-card__count {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary, #1a1a2e);
+}
+
+/* ── Sync section ── */
+.alms-sync-section {
+  border-left: 4px solid #6366f1;
+}
+
+.alms-sync-desc {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+  margin: 0 0 16px;
+}
+
+.alms-sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.alms-sync-time {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.alms-sync-result {
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.alms-sync-result--ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.alms-sync-result--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.alms-sync-summary {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Buttons ── */
+.alms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #1a1a2e);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.alms-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.alms-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.alms-btn--primary {
+  background: #5b4ff5;
+  border-color: #5b4ff5;
+  color: #fff;
+}
+
+.alms-btn--primary:hover:not(:disabled) {
+  background: #4a3fd4;
+  border-color: #4a3fd4;
+}
+
+.alms-btn--danger {
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.alms-btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.alms-btn--sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+/* ── Modal ── */
+.alms-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.alms-modal {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.alms-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.alms-modal__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.alms-modal__close {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.alms-modal__body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.alms-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.alms-modal__error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* ── Form fields ── */
+.alms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alms-field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.alms-field--checkbox label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.alms-input,
+.alms-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--text-primary, #1a1a2e);
+  background: var(--input-bg, #fff);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.alms-input:focus,
+.alms-select:focus {
+  border-color: #5b4ff5;
+  box-shadow: 0 0 0 3px rgba(91, 79, 245, 0.12);
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .alms-table__row--inactive td {
+    opacity: 0.4;
+  }
+}

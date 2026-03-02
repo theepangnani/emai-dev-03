@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -54,6 +54,11 @@ from app.models.project import Project, ProjectMilestone  # noqa: F401 — ensur
 from app.models.sample_exam import SampleExam  # noqa: F401 — ensure table is created (#577)
 from app.models.lms_institution import LMSInstitution  # noqa: F401 — ensure table is created (#22)
 from app.models.lms_connection import LMSConnection  # noqa: F401 — ensure table is created (#22)
+from app.models.stored_document import StoredDocument  # noqa: F401 — ensure table is created (#572)
+from app.models.ai_insight import AIInsight  # noqa: F401 — ensure table is created (#581)
+from app.models.tutor_profile import TutorProfile  # noqa: F401 — ensure table is created (Phase 4)
+from app.models.tutor_booking import TutorBooking  # noqa: F401 — ensure table is created (Phase 4)
+from app.models.api_key import APIKey  # noqa: F401 — ensure table is created (#905)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -923,6 +928,17 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── users: locale column (i18n, #phase-2) ────────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "locale" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN locale VARCHAR(10) NOT NULL DEFAULT 'en'"))
+                logger.info("Added 'locale' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # ── course_contents: material_type + is_assessment columns (#666) ──
     if "course_contents" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
@@ -1187,6 +1203,10 @@ app.include_router(projects.router, prefix="/api")
 app.include_router(admin_analytics.router, prefix="/api")
 app.include_router(sample_exams.router, prefix="/api")
 app.include_router(lms_connections.router, prefix="/api")
+app.include_router(lms_connections.admin_router, prefix="/api")
+app.include_router(storage.router, prefix="/api")
+app.include_router(ai_insights.router, prefix="/api")
+app.include_router(tutors.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1346,6 +1366,11 @@ async def startup_event():
     # Teacher comm sync disabled — all syncs are manual/on-demand per parent-first platform design
     # from app.jobs.teacher_comm_sync import check_teacher_communications
     # scheduler.add_job(check_teacher_communications, IntervalTrigger(minutes=15), id="teacher_comm_sync", replace_existing=True)
+
+    # Multi-LMS sync — every 15 minutes; syncs all active connections, detects stale ones (#27)
+    from app.jobs.lms_sync import schedule_lms_sync
+    schedule_lms_sync(scheduler, get_db)
+
     start_scheduler()
     logger.info("EMAI application started successfully")
 

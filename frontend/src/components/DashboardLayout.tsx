@@ -7,6 +7,7 @@ import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
 import { QuickActionFAB } from './QuickActionFAB';
@@ -234,6 +235,39 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
     </svg>
   ),
+  'AI Insights': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+  'Find a Tutor': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+      <circle cx="19" cy="19" r="3"/>
+      <line x1="21" y1="21" x2="19.5" y2="19.5"/>
+    </svg>
+  ),
+  'Tutor Dashboard': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+      <polyline points="16 11 18 13 22 9"/>
+    </svg>
+  ),
+  'LMS Admin': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+      <line x1="8" y1="21" x2="16" y2="21"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
+      <path d="M6 8h.01M6 12h.01M10 8h8M10 12h8"/>
+    </svg>
+  ),
+  'API Keys': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -279,6 +313,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
+        { label: 'AI Insights', path: '/insights' },
         { label: 'Course Planning', path: '/course-planning' },
         { label: 'Documents', path: '/documents' },
         { label: 'Report Cards', path: '/report-cards' },
@@ -289,9 +324,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Messages', path: '/messages' },
         { label: 'Notes', path: '/notes' },
         { label: 'Projects', path: '/projects' },
+        { label: 'Find a Tutor', path: '/tutors' },
         { label: 'FAQ', path: '/faq' },
         { label: 'Help', path: '/help' },
         { label: 'LMS Connections', path: '/settings/lms' },
+        { label: 'API Keys', path: '/settings/api-keys' },
         { label: 'Account', path: '/settings/account' },
       ];
     }
@@ -308,6 +345,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Course Planner', path: '/planner' });
       items.push({ label: 'Quiz History', path: '/quiz-history' });
       items.push({ label: 'My Emails', path: '/settings/emails' });
+      items.push({ label: 'Find a Tutor', path: '/tutors' });
     }
 
     items.push(
@@ -329,6 +367,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Grade Entry', path: '/teacher/grades' });
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
       items.push({ label: 'Curriculum', path: '/curriculum' });
+      items.push({ label: 'Tutor Dashboard', path: '/tutors/dashboard' });
     }
 
     items.push({ label: 'Notes', path: '/notes' });
@@ -338,9 +377,11 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'admin') {
       items.push({ label: 'Analytics', path: '/admin/analytics' });
+      items.push({ label: 'LMS Admin', path: '/admin/lms' });
     }
 
     items.push({ label: 'LMS Connections', path: '/settings/lms' });
+    items.push({ label: 'API Keys', path: '/settings/api-keys' });
     items.push({ label: 'Account', path: '/settings/account' });
 
     return items;
@@ -610,6 +651,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         </div>
         <GlobalSearch />
         <div className="header-right">
+          <LanguageToggle />
           <ThemeToggle />
           <NotificationBell />
           <div className="user-chip" ref={roleSwitcherRef}>

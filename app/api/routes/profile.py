@@ -1,10 +1,11 @@
 """
-Profile management endpoints: BYOK AI key management (#578).
+Profile management endpoints: BYOK AI key management (#578) and locale preference (#i18n).
 
 Routes:
     GET    /api/profile/ai-key    — check whether a key is stored
     PUT    /api/profile/ai-key    — save / replace encrypted key
     DELETE /api/profile/ai-key    — remove stored key
+    PUT    /api/profile/locale    — update language preference ("en" | "fr")
 """
 import logging
 
@@ -30,6 +31,14 @@ class AIKeyRequest(BaseModel):
 class AIKeyStatusResponse(BaseModel):
     has_key: bool
     key_preview: str | None  # e.g. "sk-...****" or null
+
+
+class LocaleUpdateRequest(BaseModel):
+    locale: str  # "en" or "fr"
+
+
+class LocaleUpdateResponse(BaseModel):
+    locale: str
 
 
 @router.get("/ai-key", response_model=AIKeyStatusResponse)
@@ -93,3 +102,24 @@ def delete_ai_key(
     current_user.ai_api_key_encrypted = None
     db.commit()
     # 204 — no body
+
+
+@router.put("/locale", response_model=LocaleUpdateResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_locale(
+    request: Request,
+    body: LocaleUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the user's language/locale preference."""
+    allowed = {"en", "fr"}
+    if body.locale not in allowed:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(
+            status_code=422,
+            detail=f"locale must be one of: {', '.join(sorted(allowed))}",
+        )
+    current_user.locale = body.locale
+    db.commit()
+    return LocaleUpdateResponse(locale=current_user.locale)
