@@ -451,8 +451,19 @@ export function ParentDashboard() {
                 label: 'Assign Quiz',
                 onClick: () => setShowAssignQuizModal(true),
               },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                ),
+                label: 'Plan Courses',
+                onClick: () => pd.navigate('/course-planning'),
+              },
             ] satisfies QuickAction[]}
-            maxVisible={4}
+            maxVisible={5}
           />
 
           {/* Grades Overview (#838 - collapsible) */}
