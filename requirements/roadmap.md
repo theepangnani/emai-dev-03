@@ -119,7 +119,14 @@
 - [x] **Calendar styles fix on Tasks page** — Copy calendar-collapse CSS from ParentDashboard.css to TasksPage.css after Calendar move (#694, PR #695) (IMPLEMENTED)
 - [x] **Print & Download PDF export** — Print and Download PDF buttons on all 4 Course Material Detail tabs (Document, Study Guide, Quiz, Flashcards); html2pdf.js dynamic import; static print views for quiz/flashcards (#764, PR #763) (IMPLEMENTED)
 - [x] **Focus prompt history + content moderation** — Persist `focus_prompt` on study guide records; pre-populate focus field from last saved focus on Course Material Detail; Claude Haiku K-12 safety check on all generation paths (#1001) (IMPLEMENTED — PR #1002)
-- [ ] **File upload security hardening** — Reduce per-file limit to 20 MB (configurable via `MAX_UPLOAD_SIZE_MB`), magic bytes validation to prevent extension spoofing, 10-file session cap in upload modal (#1006)
+- [x] **File upload security hardening** — 20 MB per-file limit (configurable via `MAX_UPLOAD_SIZE_MB`), magic bytes validation to prevent extension spoofing, 10-file session cap in upload modal (#1006) (IMPLEMENTED, PR #1008)
+- [x] **Multi-file selection in Upload Documents modal** — Select up to 10 files at once; each file creates a separate course material; drag-and-drop zone; sequential OCR extraction runs in background (#991) (IMPLEMENTED, PR #977)
+- [x] **Multi-file upload extended to Student and Teacher dashboards** — Upload Documents modal with multi-file support and background OCR available to all roles (was Parent-only) (#1015) (IMPLEMENTED, PR #1017)
+- [x] **Clickable dashboard header label CTAs** — Summary stat labels (Assignments, Study Guides, etc.) on all role dashboards navigate to the relevant page with contextual filters pre-applied (#1012) (IMPLEMENTED, PR #1013)
+- [x] **'All Children' filter button on Tasks and My Kids pages** — Dedicated "All" button in child filter row (Tasks page, My Kids page) clears individual child selection and shows aggregated data (#1016) (IMPLEMENTED, PR #1018)
+- [x] **Move Grades section from Parent Dashboard to My Kids page** — Grade history cards relocated to My Kids page per child for better contextual grouping (#980) (IMPLEMENTED)
+- [x] **ClassBridge logo v6.1 in dashboard header** — Updated header logo across all role dashboards (#981) (IMPLEMENTED)
+- [ ] **Student UX Simplification** — Unified Study Hub (/study) merging Classes + Materials + Quiz History; nav reduced 8→5; quote on dashboard only; task urgency grouping (#1022, #1023, #1024, #1025, #1026, #1027, #1029)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)

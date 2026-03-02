@@ -250,6 +250,34 @@ The Student Dashboard uses a **focused command center layout**: hero greeting wi
 - **Onboarding Card**: Shown when student has no materials or courses
 - All CSS classes use `sd-` prefix for scoping
 
+#### Student Dashboard v3 — UX Simplification (Mar 2026)
+**GitHub Issues:** #1022, #1023, #1024, #1025, #1026, #1027, #1029
+
+**Navigation restructure:** Student sidebar reduced from 8 items to 5:
+- Home (/dashboard)
+- Study (/study) — NEW unified Study Hub
+- Tasks (/tasks)
+- Messages (/messages)
+- Help (/help)
+
+Removed from sidebar:
+- Classes → merged into Study Hub
+- Materials → merged into Study Hub
+- Quiz History → embedded as progress stats in Study Hub
+- My Emails → moved to profile dropdown as "Email Settings"
+
+**Study Hub (/study):** New unified page merging:
+- Course list (left panel, selectable)
+- Materials per course (right panel, filterable by type)
+- Upload Material inline per course
+- Quiz progress stats (avg score, best score, attempt count)
+
+**Design Principles:**
+- Inspirational quote shown only on Home dashboard (not subpages)
+- Dashboard quick actions reduced to 2: Upload Material + Study Guide
+- Tasks grouped by urgency: Overdue / Today / This Week / Later
+- Calendar visible by default on desktop (≥768px)
+
 ### Parent Dashboard Redesign Roadmap (v4 — Planned)
 
 **GitHub Epic:** #710
