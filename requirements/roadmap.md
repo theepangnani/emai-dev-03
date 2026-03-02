@@ -203,14 +203,14 @@
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [ ] Advanced notifications (#966)
 - [ ] Notes & project tracking tools
-- [ ] Data privacy & user rights — Account deletion (#964), data export (#965), consent (#797/#783 — on feature/phase-2)
+- [x] **Data privacy & user rights** — Account deletion (#964) with 30-day grace period + anonymization job, data export (#965) with JSON download, consent on feature/phase-2 (IMPLEMENTED)
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
-- [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)
-- [ ] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514)
+- [x] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513) (IMPLEMENTED)
+- [x] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514) (IMPLEMENTED)
 - [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
-- [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
-- [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
+- [x] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; AES-256 encrypted storage (Fernet), seamless fallback to platform key; `/settings/account` page (#578) (IMPLEMENTED)
+- [x] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007) (IMPLEMENTED)
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
 - [ ] **AI Exam & Assessment Engine** — Exam prep, mock exams, teacher uploads with AI assessment (#959 — consolidated from #576, #577, #667)
 - [ ] **Student Progress & Report Card Analysis** — Test upload, mark tracking, AI recommendations, parent insights (#960 — consolidated from #575, #581, #663)
@@ -279,8 +279,8 @@
 
 **Tier 2 — Important:**
 - [x] **Empty states** — Shared EmptyState component (default/compact variants), replaced 22 inline empty states across 10 pages (#835) ✅
-- [ ] **Teacher dashboard enhancement** — SVG icons, dynamic counts, announcement preview (#833)
-- [ ] **Student engagement** — Streak celebrations, spaced repetition, continue studying (#834)
+- [x] **Teacher dashboard enhancement** — Quick stats bar (courses/students/due/messages), recent announcements section with expand/collapse (#833) (IMPLEMENTED)
+- [x] **Student engagement** — Backend streak tracking (study_streak_days, last_study_date, longest_streak), streak-at-risk banner, Due for Review section (#834) (IMPLEMENTED)
 - [x] **Message search** — Search and communication improvements (#836) (IMPLEMENTED)
 - [ ] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837)
 
