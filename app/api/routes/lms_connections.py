@@ -40,7 +40,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.models.user import User, UserRole
 from app.models.lms_institution import LMSInstitution
 from app.models.lms_connection import LMSConnection
@@ -212,6 +212,7 @@ VALID_PROVIDERS = {"google_classroom", "brightspace", "canvas", "moodle"}
 
 @router.get("/providers", summary="List all registered LMS providers")
 def get_providers(
+    _flag=Depends(require_feature("multi_lms")),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
     """Return metadata for all providers registered in the LMS registry."""
@@ -225,6 +226,7 @@ def get_providers(
 
 @router.get("/institutions", response_model=list[InstitutionOut], summary="List institutions")
 def get_institutions(
+    _flag=Depends(require_feature("multi_lms")),
     provider: Optional[str] = Query(None, description="Filter by provider string"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -248,6 +250,7 @@ def get_institutions(
 )
 def create_institution(
     body: InstitutionCreate,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ) -> InstitutionOut:
@@ -279,6 +282,7 @@ def create_institution(
 
 @router.get("/connections", response_model=list[ConnectionOut], summary="List user's connections")
 def list_connections(
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ConnectionOut]:
@@ -300,6 +304,7 @@ def list_connections(
 )
 def create_connection(
     body: ConnectionCreate,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionOut:
@@ -361,6 +366,7 @@ def create_connection(
 def update_connection(
     connection_id: int,
     body: ConnectionUpdate,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionOut:
@@ -397,6 +403,7 @@ def update_connection(
 )
 def delete_connection(
     connection_id: int,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -421,6 +428,7 @@ def delete_connection(
 )
 def get_connection_status(
     connection_id: int,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionStatusOut:
@@ -443,6 +451,7 @@ def get_connection_status(
 )
 async def sync_single_connection_endpoint(
     connection_id: int,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionStatusOut:
@@ -482,6 +491,7 @@ _brightspace_oauth_state: dict[str, dict] = {}
 )
 async def brightspace_connect(
     institution_id: int = Query(..., description="LMSInstitution ID to connect to"),
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RedirectResponse:
@@ -636,6 +646,7 @@ async def brightspace_callback(
 )
 async def brightspace_refresh_token(
     connection_id: int,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionOut:
@@ -728,6 +739,7 @@ _canvas_oauth_state: dict[str, dict] = {}
 )
 async def canvas_connect(
     institution_id: int = Query(..., description="LMSInstitution ID to connect to"),
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RedirectResponse:
@@ -882,6 +894,7 @@ async def canvas_callback(
 )
 async def canvas_refresh_token(
     connection_id: int,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionOut:
@@ -974,6 +987,7 @@ class MoodleConnectBody(BaseModel):
 )
 async def moodle_connect_info(
     institution_id: int = Query(..., description="LMSInstitution ID to connect to"),
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -1027,6 +1041,7 @@ async def moodle_connect_info(
 )
 async def moodle_connect_token(
     body: MoodleConnectBody,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionOut:
@@ -1145,6 +1160,7 @@ async def moodle_connect_token(
 )
 async def moodle_refresh_token(
     connection_id: int,
+    _flag=Depends(require_feature("multi_lms")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConnectionOut:
