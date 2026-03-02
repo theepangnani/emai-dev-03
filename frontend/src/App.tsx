@@ -75,6 +75,11 @@ const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').th
 const DocumentsPage = lazyRetry(() => import('./pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
 const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
 const NotificationPreferencesPage = lazyRetry(() => import('./pages/NotificationPreferencesPage').then((m) => ({ default: m.NotificationPreferencesPage })));
+const ReportCardsPage = lazyRetry(() => import('./pages/ReportCardsPage').then((m) => ({ default: m.ReportCardsPage })));
+const GradeEntryPage = lazyRetry(() => import('./pages/GradeEntryPage').then((m) => ({ default: m.GradeEntryPage })));
+const TeacherMaterialsPage = lazyRetry(() => import('./pages/TeacherMaterialsPage').then((m) => ({ default: m.TeacherMaterialsPage })));
+const ExamPage = lazyRetry(() => import('./pages/ExamPage').then((m) => ({ default: m.ExamPage })));
+const TeacherExamsPage = lazyRetry(() => import('./pages/TeacherExamsPage').then((m) => ({ default: m.TeacherExamsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -240,6 +245,14 @@ function App() {
                 }
               />
               <Route
+                path="/report-cards"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ReportCardsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/audit-log"
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
@@ -276,6 +289,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TeacherCommsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/grades"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <GradeEntryPage />
                   </ProtectedRoute>
                 }
               />
@@ -332,6 +353,30 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
                     <NotificationPreferencesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/materials"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <TeacherMaterialsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/exams/:assignmentId"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <ExamPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/exams"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <TeacherExamsPage />
                   </ProtectedRoute>
                 }
               />

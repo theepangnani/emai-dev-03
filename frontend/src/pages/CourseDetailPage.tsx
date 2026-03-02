@@ -661,6 +661,11 @@ export function CourseDetailPage() {
                         <span className={`content-type-badge ${item.content_type}`}>
                           {CONTENT_TYPES.find(t => t.value === item.content_type)?.label || item.content_type}
                         </span>
+                        {item.material_type && (
+                          <span className={`material-type-badge material-type-${item.material_type}`}>
+                            {item.material_type === 'report_card' ? 'Report Card' : item.material_type.charAt(0).toUpperCase() + item.material_type.slice(1)}
+                          </span>
+                        )}
                         {item.google_classroom_material_id && (
                           <span className="course-detail-badge google">Google Classroom</span>
                         )}

@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { gradesApi } from '../api/grades';
 import type { ClassroomGradeItem } from '../api/grades';
+import { gradeEntriesApi } from '../api/gradeEntries';
+import type { StudentGradesResponse, TeacherGradeEntry } from '../api/gradeEntries';
 import { parentApi } from '../api/parent';
 import type { ChildSummary } from '../api/parent';
+import { api } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageSkeleton } from '../components/Skeleton';
 import './GradesPage.css';
@@ -24,6 +27,14 @@ function formatGradedAt(dateStr: string | null): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function teacherGradeColor(letter: string | null): 'green' | 'blue' | 'amber' | 'red' | 'none' {
+  if (!letter) return 'none';
+  if (letter.startsWith('A')) return 'green';
+  if (letter.startsWith('B')) return 'blue';
+  if (letter.startsWith('C')) return 'amber';
+  return 'red';
+}
+
 export function GradesPage() {
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles?.includes('parent') ?? false);
@@ -31,11 +42,17 @@ export function GradesPage() {
   // Children (for parents)
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChildUserId, setSelectedChildUserId] = useState<number | null>(null);
+  const [selectedChildStudentId, setSelectedChildStudentId] = useState<number | null>(null);
 
   // Data
   const [grades, setGrades] = useState<ClassroomGradeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Teacher Grades state
+  const [teacherGrades, setTeacherGrades] = useState<StudentGradesResponse | null>(null);
+  const [teacherGradesLoading, setTeacherGradesLoading] = useState(false);
+  const [expandedTeacherFeedback, setExpandedTeacherFeedback] = useState<Set<number>>(new Set());
 
   // UI state
   const [sortMode, setSortMode] = useState<SortMode>('recent');
@@ -50,7 +67,9 @@ export function GradesPage() {
         if (kids.length > 0 && selectedChildUserId === null) {
           const storedId = sessionStorage.getItem('selectedChildId');
           const match = storedId ? kids.find(k => k.user_id === Number(storedId)) : null;
-          setSelectedChildUserId(match ? match.user_id : kids[0].user_id);
+          const selected = match ?? kids[0];
+          setSelectedChildUserId(selected.user_id);
+          setSelectedChildStudentId(selected.student_id);
         }
       })
       .catch(() => {});
@@ -61,6 +80,51 @@ export function GradesPage() {
     if (isParent && selectedChildUserId === null) return;
     loadGrades(isParent ? (selectedChildUserId ?? undefined) : undefined);
   }, [isParent, selectedChildUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load teacher-entered grades
+  useEffect(() => {
+    if (isParent) {
+      // Parent: wait until we have the child's student_id
+      if (selectedChildStudentId !== null) {
+        loadTeacherGrades(selectedChildStudentId);
+      }
+    } else {
+      // Student: fetch own student record first then load grades
+      loadTeacherGradesForSelf();
+    }
+  }, [isParent, selectedChildStudentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadTeacherGradesForSelf() {
+    setTeacherGradesLoading(true);
+    try {
+      // Resolve student_id from the current user
+      const resp = await api.get('/api/students/me');
+      const studentId: number = resp.data?.id;
+      if (studentId) {
+        const data = await gradeEntriesApi.getStudentGrades(studentId);
+        setTeacherGrades(data);
+      } else {
+        setTeacherGrades(null);
+      }
+    } catch {
+      setTeacherGrades(null);
+    } finally {
+      setTeacherGradesLoading(false);
+    }
+  }
+
+  async function loadTeacherGrades(studentId: number) {
+    setTeacherGradesLoading(true);
+    try {
+      const data = await gradeEntriesApi.getStudentGrades(studentId);
+      setTeacherGrades(data);
+    } catch {
+      // Non-fatal: just don't show teacher grades section
+      setTeacherGrades(null);
+    } finally {
+      setTeacherGradesLoading(false);
+    }
+  }
 
   async function loadGrades(childId?: number) {
     setLoading(true);
@@ -82,6 +146,15 @@ export function GradesPage() {
       setLoading(false);
     }
   }
+
+  const toggleTeacherFeedback = (entryId: number) => {
+    setExpandedTeacherFeedback(prev => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  };
 
   // Group grades by course and apply sort
   const courseGroups = useMemo(() => {
@@ -120,9 +193,10 @@ export function GradesPage() {
     });
   };
 
-  const handleChildSelect = (userId: number) => {
-    setSelectedChildUserId(userId);
-    sessionStorage.setItem('selectedChildId', String(userId));
+  const handleChildSelect = (child: ChildSummary) => {
+    setSelectedChildUserId(child.user_id);
+    setSelectedChildStudentId(child.student_id);
+    sessionStorage.setItem('selectedChildId', String(child.user_id));
   };
 
   const totalGraded = grades.length;
@@ -161,7 +235,7 @@ export function GradesPage() {
               <button
                 key={child.user_id}
                 className={`gp-child-pill${selectedChildUserId === child.user_id ? ' active' : ''}`}
-                onClick={() => handleChildSelect(child.user_id)}
+                onClick={() => handleChildSelect(child)}
               >
                 {child.full_name}
               </button>
@@ -261,6 +335,72 @@ export function GradesPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Teacher Grades section — published grades entered directly by teachers (#665) */}
+        {(isParent ? selectedChildStudentId !== null : true) && (
+          <div className="gp-teacher-grades-section">
+            <h2 className="gp-section-heading">Teacher Grades</h2>
+            <p className="gp-section-subheading">Grades entered directly by your teacher</p>
+
+            {teacherGradesLoading ? (
+              <div className="gp-teacher-grades-loading">Loading teacher grades...</div>
+            ) : !teacherGrades || teacherGrades.courses.length === 0 ? (
+              <div className="gp-teacher-grades-empty">
+                No teacher-entered grades published yet.
+              </div>
+            ) : (
+              <div className="gp-teacher-grades-list">
+                {teacherGrades.courses.map(course => (
+                  <div key={course.course_id} className="gp-tg-course">
+                    <div className="gp-tg-course-name">{course.course_name}</div>
+                    <div className="gp-tg-entries">
+                      {course.grades.map((entry: TeacherGradeEntry) => {
+                        const color = teacherGradeColor(entry.letter_grade);
+                        const hasFeedback = entry.feedback && entry.feedback.trim().length > 0;
+                        const feedbackOpen = expandedTeacherFeedback.has(entry.id);
+                        return (
+                          <div key={entry.id} className="gp-tg-entry">
+                            <div className="gp-tg-entry-header">
+                              <span className="gp-tg-assignment-name">
+                                {entry.assignment_title ?? (entry.term ? `Term: ${entry.term}` : 'Grade')}
+                              </span>
+                              <div className="gp-tg-entry-scores">
+                                {entry.grade !== null && (
+                                  <span className="gp-tg-numeric">
+                                    {entry.grade}/{entry.max_grade}
+                                  </span>
+                                )}
+                                {entry.letter_grade && (
+                                  <span className={`gp-tg-letter gp-tg-letter--${color}`}>
+                                    {entry.letter_grade}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {hasFeedback && (
+                              <div className="gp-tg-feedback-row">
+                                <button
+                                  className="gp-tg-feedback-toggle"
+                                  onClick={() => toggleTeacherFeedback(entry.id)}
+                                  aria-expanded={feedbackOpen}
+                                >
+                                  {feedbackOpen ? 'Hide feedback' : 'Show feedback'}
+                                </button>
+                                {feedbackOpen && (
+                                  <p className="gp-tg-feedback-text">{entry.feedback}</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

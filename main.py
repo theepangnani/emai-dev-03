@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -34,10 +34,14 @@ logger.info("Starting EMAI application...")
 
 # Create database tables
 from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, TaskTemplate, TaskComment, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, NotificationPreference, QuizResult
+from app.models.quiz_assignment import QuizAssignment  # noqa: F401 — ensure table is created
+from app.models.grade_entry import GradeEntry  # noqa: F401 — ensure table is created
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.teacher_google_account import TeacherGoogleAccount  # noqa: F401 — ensure table is created
 from app.models.email_template import EmailTemplate  # noqa: F401 — ensure table is created
+from app.models.report_card import ReportCard  # noqa: F401 — ensure table is created
+from app.models.mock_exam import MockExam, MockExamAssignment  # noqa: F401 — ensure tables are created (#667)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -907,6 +911,25 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── course_contents: material_type + is_assessment columns (#666) ──
+    if "course_contents" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        if "material_type" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN material_type VARCHAR(50)"))
+                logger.info("Added 'material_type' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        if "is_assessment" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_assessment INTEGER DEFAULT 0"))
+                logger.info("Added 'is_assessment' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 # ── Seed email templates (#513) ──────────────────────────────────────────────
 with SessionLocal() as _seed_db:
     try:
@@ -1044,6 +1067,10 @@ app.include_router(consent.router, prefix="/api")
 app.include_router(mcp_config.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(profile.router, prefix="/api")
+app.include_router(quiz_assignments.router, prefix="/api")
+app.include_router(grade_entries.router, prefix="/api")
+app.include_router(report_cards.router, prefix="/api")
+app.include_router(mock_exams.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

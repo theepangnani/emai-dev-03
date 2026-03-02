@@ -38,6 +38,11 @@ class CourseContent(Base):
     file_size = Column(Integer, nullable=True)
     mime_type = Column(String(100), nullable=True)
 
+    # Material type classification (#666): notes, test, lab, assignment, report_card
+    material_type = Column(String(50), nullable=True)
+    # Flag for assessment content (test/quiz types) (#666)
+    is_assessment = Column(Integer, nullable=True, default=0)  # 0=False, 1=True (SQLite compat)
+
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

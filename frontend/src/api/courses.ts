@@ -9,6 +9,9 @@ export interface CourseContentItem {
   description: string | null;
   text_content: string | null;
   content_type: string;
+  material_type: string | null;
+  is_assessment: boolean;
+  ai_suggested: boolean;
   reference_url: string | null;
   google_classroom_url: string | null;
   created_by_user_id: number | null;
@@ -21,6 +24,28 @@ export interface CourseContentItem {
   updated_at: string | null;
   archived_at: string | null;
   last_viewed_at: string | null;
+}
+
+// Teacher Materials types (#666)
+export interface TeacherMaterialItem {
+  id: number;
+  title: string;
+  file_name: string | null;
+  material_type: string;
+  course_id: number;
+  course_name: string | null;
+  upload_date: string | null;
+  file_size_bytes: number | null;
+  mime_type: string | null;
+  has_file: boolean;
+  is_assessment: boolean;
+}
+
+export interface TeacherMaterialsResponse {
+  total: number;
+  items: TeacherMaterialItem[];
+  offset: number;
+  limit: number;
 }
 
 export interface CourseContentUpdateResponse extends CourseContentItem {
@@ -248,18 +273,24 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
-  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string, aiTool?: string, aiCustomPrompt?: string) => {
+  uploadFile: async (file: File, courseId: number, title?: string, contentType?: string, aiTool?: string, aiCustomPrompt?: string, materialType?: string) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('course_id', String(courseId));
     if (title) formData.append('title', title);
     if (contentType) formData.append('content_type', contentType);
+    if (materialType) formData.append('material_type', materialType);
     if (aiTool && aiTool !== 'none') formData.append('ai_tool', aiTool);
     if (aiCustomPrompt) formData.append('ai_custom_prompt', aiCustomPrompt);
     const response = await api.post('/api/course-contents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data as CourseContentItem;
+  },
+
+  getTeacherMaterials: async (params?: { material_type?: string; course_id?: number; limit?: number; offset?: number }) => {
+    const response = await api.get('/api/course-contents/teacher-materials', { params: params || {} });
+    return response.data as TeacherMaterialsResponse;
   },
 
   update: async (id: number, data: {

@@ -489,6 +489,22 @@
 .content-type-badge.resources { background: var(--color-success-light); color: var(--badge-resources); }
 .content-type-badge.assignments { background: var(--color-danger-light); color: var(--badge-assignments); }
 
+/* Material type badges (#666) */
+.material-type-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+.material-type-badge.material-type-notes { background: rgba(25,118,210,0.12); color: #1565c0; }
+.material-type-badge.material-type-test { background: rgba(211,47,47,0.12); color: #c62828; }
+.material-type-badge.material-type-lab { background: rgba(123,31,162,0.12); color: #6a1b9a; }
+.material-type-badge.material-type-assignment { background: rgba(245,124,0,0.12); color: #e65100; }
+.material-type-badge.material-type-report_card { background: rgba(46,125,50,0.12); color: #1b5e20; }
+
 /* Student Roster */
 
 .course-roster-empty {
