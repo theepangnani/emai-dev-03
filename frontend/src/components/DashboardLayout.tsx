@@ -289,6 +289,11 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M12 6v6l4 2"/>
     </svg>
   ),
+  'Grade Predictions': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ),
   'Billing': (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
@@ -364,6 +369,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
         { label: 'AI Insights', path: '/insights' },
+        { label: 'Grade Predictions', path: '/grade-prediction' },
         { label: 'Course Planning', path: '/course-planning' },
         { label: 'Documents', path: '/documents' },
         { label: 'Report Cards', path: '/report-cards' },
@@ -412,6 +418,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'student') {
       items.push({ label: 'Grades', path: '/grades' });
+      items.push({ label: 'Grade Predictions', path: '/grade-prediction' });
       items.push({ label: 'Exam Prep', path: '/exam-prep' });
       items.push({ label: 'Progress', path: '/progress' });
       items.push({ label: 'Analytics', path: '/analytics' });

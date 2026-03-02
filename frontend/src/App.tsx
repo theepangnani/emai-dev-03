@@ -107,6 +107,7 @@ const TutorMatchPage = lazyRetry(() => import('./pages/TutorMatchPage').then((m)
 const AdminFeatureFlagsPage = lazyRetry(() => import('./pages/AdminFeatureFlagsPage').then((m) => ({ default: m.AdminFeatureFlagsPage })));
 const StudentPortfolioPage = lazyRetry(() => import('./pages/StudentPortfolioPage').then((m) => ({ default: m.StudentPortfolioPage })));
 const StudyTimerPage = lazyRetry(() => import('./pages/StudyTimerPage').then((m) => ({ default: m.StudyTimerPage })));
+const GradePredictionPage = lazyRetry(() => import('./pages/GradePredictionPage').then((m) => ({ default: m.GradePredictionPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -620,6 +621,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
                     <StudyTimerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/grade-prediction"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <GradePredictionPage />
                   </ProtectedRoute>
                 }
               />
