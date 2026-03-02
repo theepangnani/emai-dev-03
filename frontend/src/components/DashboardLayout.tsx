@@ -456,7 +456,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
         ) : (
           <div className="welcome-section">
-            {location.pathname === '/dashboard' && inspiration && (
+            {inspiration && (
               <div className="welcome-inspiration">
                 <h2 className="inspiration-text">"{inspiration.text}"</h2>
                 {inspiration.author && (
@@ -464,7 +464,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
                 )}
               </div>
             )}
-            <div className={`welcome-fallback${location.pathname === '/dashboard' && inspiration ? ' has-inspiration' : ''}`}>
+            <div className={`welcome-fallback${inspiration ? ' has-inspiration' : ''}`}>
               <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
               <p>{welcomeSubtitle || "Here's your overview"}</p>
             </div>
