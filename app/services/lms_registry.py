@@ -8,6 +8,7 @@ On import this module auto-registers:
   - GoogleClassroomAdapter (delegates to existing /api/google/* flow)
   - BrightspaceAdapter    (full implementation — OAuth + sync, #24/#25)
   - CanvasAdapter          (full implementation — OAuth + sync, Canvas LMS)
+  - MoodleAdapter          (full implementation — token auth + sync, Moodle LMS)
 """
 
 from __future__ import annotations
@@ -863,6 +864,439 @@ class CanvasAdapter:
         return mapping.get(item_type, "other")
 
 
+class MoodleAdapter:
+    """Full adapter for Moodle LMS.
+
+    Moodle uses token-based authentication (not OAuth2 Authorization Code flow).
+    The connect flow is handled by dedicated endpoints in
+    app/api/routes/lms_connections.py:
+      GET  /api/lms/moodle/connect  — returns token entry instructions
+      POST /api/lms/moodle/connect  — validate token, create LMSConnection
+      POST /api/lms/moodle/{id}/refresh — re-validate token
+
+    This adapter is responsible for syncing courses, assignments, materials,
+    and grades once a valid token is stored on the LMSConnection record.
+    """
+
+    provider_id = "moodle"
+    display_name = "Moodle"
+    supports_oauth = False
+    requires_institution_url = True
+
+    def get_auth_url(self, user_id: int, redirect_uri: str) -> str:
+        """Return the Moodle manual token entry URL.
+
+        Since Moodle does not use OAuth2, this returns the ClassBridge
+        token entry endpoint rather than a provider redirect URL.
+        """
+        return f"/api/lms/moodle/connect?redirect_uri={redirect_uri}"
+
+    def exchange_code(self, code: str, redirect_uri: str) -> dict:
+        """Not applicable — Moodle uses token-based auth, not OAuth2 codes."""
+        raise NotImplementedError(
+            "Moodle uses token-based authentication.  Use the "
+            "/api/lms/moodle/connect POST endpoint with a token instead."
+        )
+
+    async def sync_courses(self, connection, db) -> list:
+        """Fetch Moodle courses and upsert Course records.
+
+        Fetches all courses the user is enrolled in via
+        core_enrol_get_users_courses, then upserts Course records with
+        lms_provider="moodle".
+
+        Field mapping:
+          - fullname   → name
+          - shortname  → subject_code
+          - summary    → description
+
+        Args:
+            connection: LMSConnection with access_token_enc (Moodle token),
+                        institution.base_url.
+            db:         SQLAlchemy Session.
+
+        Returns:
+            List of persisted Course ORM instances.
+        """
+        from app.services.moodle import MoodleAPIClient
+        from app.models.course import Course
+
+        client, user_id = await self._make_client_with_userid(connection)
+        if not client:
+            return []
+
+        try:
+            moodle_courses = await client.get_courses(user_id)
+        except Exception as exc:
+            logger.warning("MoodleAdapter: failed to fetch courses: %s", exc)
+            return []
+
+        courses: list = []
+        for moodle_course in moodle_courses:
+            course_id = str(moodle_course.get("id", ""))
+            name = moodle_course.get("fullname", "Untitled Course")
+            subject_code = moodle_course.get("shortname", "")
+            description = moodle_course.get("summary", "")
+
+            if not course_id:
+                continue
+
+            # Strip HTML from summary if present
+            import re as _re
+            description = _re.sub(r"<[^>]+>", "", description).strip() if description else ""
+
+            course = (
+                db.query(Course)
+                .filter(
+                    Course.lms_provider == "moodle",
+                    Course.lms_external_id == course_id,
+                )
+                .first()
+            )
+            if course is None:
+                course = Course(
+                    name=name,
+                    description=description or None,
+                    subject_code=subject_code or None,
+                    lms_provider="moodle",
+                    lms_external_id=course_id,
+                    classroom_type="school",
+                )
+                db.add(course)
+                logger.debug("MoodleAdapter: created course %s (%s)", name, course_id)
+            else:
+                course.name = name
+                if description:
+                    course.description = description
+                if subject_code:
+                    course.subject_code = subject_code
+                logger.debug("MoodleAdapter: updated course %s (%s)", name, course_id)
+
+            courses.append(course)
+
+        db.commit()
+        for course in courses:
+            db.refresh(course)
+
+        logger.info(
+            "MoodleAdapter.sync_courses: synced %d courses (connection=%s)",
+            len(courses),
+            connection.id,
+        )
+        return courses
+
+    async def sync_assignments(self, connection, db) -> list:
+        """Fetch Moodle assignments and upsert Assignment records.
+
+        Iterates over all Moodle courses synced for this connection and fetches
+        assignments for each.
+
+        Field mapping:
+          - name                → title
+          - duedate (Unix ts)   → due_date (UTC datetime, 0 = None)
+          - grade               → max_points
+          - intro               → description
+
+        Args:
+            connection: LMSConnection
+            db:         SQLAlchemy Session
+
+        Returns:
+            List of persisted Assignment ORM instances.
+        """
+        from app.services.moodle import MoodleAPIClient, parse_unix_timestamp
+        from app.models.course import Course
+        from app.models.assignment import Assignment
+
+        client, _ = await self._make_client_with_userid(connection)
+        if not client:
+            return []
+
+        courses = (
+            db.query(Course)
+            .filter(Course.lms_provider == "moodle")
+            .all()
+        )
+        assignments: list = []
+
+        for course in courses:
+            course_id = course.lms_external_id
+            if not course_id:
+                continue
+
+            try:
+                moodle_assignments = await client.get_assignments(course_id)
+            except Exception as exc:
+                logger.warning(
+                    "MoodleAdapter: failed to fetch assignments for course %s: %s",
+                    course_id,
+                    exc,
+                )
+                continue
+
+            for moodle_assignment in moodle_assignments:
+                assignment_id = str(moodle_assignment.get("id", ""))
+                title = moodle_assignment.get("name", "Untitled Assignment")
+                if not assignment_id:
+                    continue
+
+                duedate_ts = moodle_assignment.get("duedate", 0)
+                due_date = parse_unix_timestamp(duedate_ts)
+
+                grade_raw = moodle_assignment.get("grade")
+                try:
+                    max_points = float(grade_raw) if grade_raw is not None else None
+                except (TypeError, ValueError):
+                    max_points = None
+
+                assignment = (
+                    db.query(Assignment)
+                    .filter(
+                        Assignment.lms_provider == "moodle",
+                        Assignment.lms_external_id == assignment_id,
+                    )
+                    .first()
+                )
+                if assignment is None:
+                    assignment = Assignment(
+                        title=title,
+                        course_id=course.id,
+                        lms_provider="moodle",
+                        lms_external_id=assignment_id,
+                        due_date=due_date,
+                        max_points=max_points,
+                    )
+                    db.add(assignment)
+                else:
+                    assignment.title = title
+                    assignment.due_date = due_date
+                    if max_points is not None:
+                        assignment.max_points = max_points
+
+                assignments.append(assignment)
+
+        db.commit()
+        for a in assignments:
+            db.refresh(a)
+
+        logger.info(
+            "MoodleAdapter.sync_assignments: synced %d assignments (connection=%s)",
+            len(assignments),
+            connection.id,
+        )
+        return assignments
+
+    async def sync_materials(self, connection, db) -> list:
+        """Fetch Moodle course contents and upsert CourseContent records.
+
+        Iterates course sections + modules, extracting modules with known
+        content types (resource, url, page, folder, book, wiki).
+
+        Field mapping:
+          - module.name    → title
+          - module.modname → content_type (via map_module_content_type)
+          - content.fileurl / module.url → reference_url
+
+        Args:
+            connection: LMSConnection
+            db:         SQLAlchemy Session
+
+        Returns:
+            List of persisted CourseContent ORM instances.
+        """
+        from app.services.moodle import MoodleAPIClient, map_module_content_type
+        from app.models.course import Course
+        from app.models.course_content import CourseContent
+
+        client, _ = await self._make_client_with_userid(connection)
+        if not client:
+            return []
+
+        courses = (
+            db.query(Course)
+            .filter(Course.lms_provider == "moodle")
+            .all()
+        )
+        materials: list = []
+
+        _MATERIAL_MODS = {"resource", "url", "page", "folder", "book", "wiki"}
+
+        for course in courses:
+            course_id = course.lms_external_id
+            if not course_id:
+                continue
+
+            try:
+                sections = await client.get_course_contents(course_id)
+            except Exception as exc:
+                logger.warning(
+                    "MoodleAdapter: failed to fetch contents for course %s: %s",
+                    course_id,
+                    exc,
+                )
+                continue
+
+            for section in sections:
+                for module in section.get("modules", []):
+                    modname = module.get("modname", "")
+                    if modname not in _MATERIAL_MODS:
+                        continue
+
+                    module_id = str(module.get("id", ""))
+                    title = module.get("name", "Untitled Material")
+                    if not module_id:
+                        continue
+
+                    # Extract URL — for "url" modules use the first content item
+                    url = ""
+                    contents = module.get("contents", [])
+                    if contents:
+                        first = contents[0]
+                        url = first.get("fileurl") or first.get("url", "")
+
+                    content_type = map_module_content_type(modname)
+
+                    content = (
+                        db.query(CourseContent)
+                        .filter(
+                            CourseContent.lms_provider == "moodle",
+                            CourseContent.lms_external_id == module_id,
+                        )
+                        .first()
+                    )
+                    if content is None:
+                        content = CourseContent(
+                            course_id=course.id,
+                            title=title,
+                            reference_url=url or None,
+                            content_type=content_type,
+                            lms_provider="moodle",
+                            lms_external_id=module_id,
+                        )
+                        db.add(content)
+                    else:
+                        content.title = title
+                        content.reference_url = url or None
+
+                    materials.append(content)
+
+        db.commit()
+        for m in materials:
+            db.refresh(m)
+
+        logger.info(
+            "MoodleAdapter.sync_materials: synced %d materials (connection=%s)",
+            len(materials),
+            connection.id,
+        )
+        return materials
+
+    async def sync_grades(self, connection, db) -> None:
+        """Fetch Moodle grade overview and update Assignment records.
+
+        For each Moodle course, fetches the grade overview and updates the
+        grade field on matched Assignment records.
+
+        Args:
+            connection: LMSConnection
+            db:         SQLAlchemy Session
+        """
+        from app.services.moodle import MoodleAPIClient
+        from app.models.course import Course
+        from app.models.assignment import Assignment
+
+        client, _ = await self._make_client_with_userid(connection)
+        if not client:
+            return
+
+        courses = (
+            db.query(Course)
+            .filter(Course.lms_provider == "moodle")
+            .all()
+        )
+
+        for course in courses:
+            course_id = course.lms_external_id
+            if not course_id:
+                continue
+
+            try:
+                grade_data = await client.get_grades(course_id)
+            except Exception as exc:
+                logger.warning(
+                    "MoodleAdapter: failed to fetch grades for course %s: %s",
+                    course_id,
+                    exc,
+                )
+                continue
+
+            if not grade_data or "exception" in grade_data:
+                continue
+
+            # grade_data may have "grade" as a string
+            grade_str = grade_data.get("grade")
+            if grade_str is None:
+                continue
+
+            # Update assignments in this course that lack a grade
+            course_assignments = (
+                db.query(Assignment)
+                .filter(
+                    Assignment.course_id == course.id,
+                    Assignment.lms_provider == "moodle",
+                    Assignment.grade.is_(None),
+                )
+                .all()
+            )
+            for assignment in course_assignments:
+                assignment.grade = str(grade_str)
+
+        db.commit()
+        logger.info(
+            "MoodleAdapter.sync_grades: completed for connection=%s",
+            connection.id,
+        )
+
+    # ── Private helpers ──────────────────────────────────────────────────
+
+    @staticmethod
+    async def _make_client_with_userid(connection) -> "tuple[MoodleAPIClient | None, int]":
+        """Construct a MoodleAPIClient and retrieve the Moodle user ID.
+
+        The user ID is required for get_courses().  We retrieve it by calling
+        get_site_info() which also validates the token.
+
+        Returns:
+            (MoodleAPIClient, user_id) tuple, or (None, 0) on failure.
+        """
+        from app.services.moodle import MoodleAPIClient
+
+        base_url = ""
+        if connection.institution and connection.institution.base_url:
+            base_url = connection.institution.base_url
+
+        token = connection.access_token_enc or ""
+        if not base_url or not token:
+            logger.warning(
+                "MoodleAdapter: missing base_url or token for connection %s",
+                connection.id,
+            )
+            return None, 0
+
+        client = MoodleAPIClient(base_url=base_url, token=token)
+        try:
+            site_info = await client.get_site_info()
+            user_id = site_info.get("userid", 0)
+            return client, int(user_id)
+        except Exception as exc:
+            logger.warning(
+                "MoodleAdapter: failed to get site info for connection %s: %s",
+                connection.id,
+                exc,
+            )
+            return None, 0
+
+
 # ---------------------------------------------------------------------------
 # Registry helpers
 # ---------------------------------------------------------------------------
@@ -900,3 +1334,4 @@ def list_providers() -> list[dict]:
 register_provider(GoogleClassroomAdapter())
 register_provider(BrightspaceAdapter())
 register_provider(CanvasAdapter())
+register_provider(MoodleAdapter())
