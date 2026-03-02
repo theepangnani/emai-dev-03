@@ -110,6 +110,7 @@ const StudyTimerPage = lazyRetry(() => import('./pages/StudyTimerPage').then((m)
 const GradePredictionPage = lazyRetry(() => import('./pages/GradePredictionPage').then((m) => ({ default: m.GradePredictionPage })));
 const TwoFactorSetupPage = lazyRetry(() => import('./pages/TwoFactorSetupPage').then((m) => ({ default: m.TwoFactorSetupPage })));
 const ForumPage = lazyRetry(() => import('./pages/ForumPage').then((m) => ({ default: m.ForumPage })));
+const WritingAssistantPage = lazyRetry(() => import('./pages/WritingAssistantPage').then((m) => ({ default: m.WritingAssistantPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -647,6 +648,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'teacher', 'student', 'admin']}>
                     <ForumPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/writing-assistant"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <WritingAssistantPage />
                   </ProtectedRoute>
                 }
               />
