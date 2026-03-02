@@ -1,0 +1,719 @@
+/* ── Personalization Page ─────────────────────────────────────────────────── */
+
+.pers-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 0 48px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.pers-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.pers-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pers-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text, #1a1a2e);
+  margin: 0;
+}
+
+.pers-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0;
+}
+
+/* ── Error banner ────────────────────────────────────────────────────────── */
+
+.pers-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.pers-error-dismiss {
+  background: none;
+  border: none;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+/* ── Skeleton loader ─────────────────────────────────────────────────────── */
+
+.pers-skeleton-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.pers-sk-card {
+  height: 240px;
+  border-radius: 14px;
+}
+
+.pers-sk-card--wide {
+  height: 300px;
+}
+
+.pers-sk-card--full {
+  grid-column: 1 / -1;
+  height: 180px;
+}
+
+/* ── Skeleton base ───────────────────────────────────────────────────────── */
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Layout grids ────────────────────────────────────────────────────────── */
+
+.pers-top-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 860px) {
+  .pers-top-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pers-skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pers-sk-card--full {
+    grid-column: 1;
+  }
+}
+
+/* ── Card base ───────────────────────────────────────────────────────────── */
+
+.pers-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.pers-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text, #1a1a2e);
+  margin: 0 0 16px;
+}
+
+.pers-empty-text {
+  color: var(--color-text-muted, #6b7280);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.pers-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.pers-btn--primary {
+  padding: 10px 20px;
+  background: var(--color-primary, #6c63ff);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.pers-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-dark, #5751e0);
+}
+
+.pers-btn--primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.pers-btn--ghost {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--color-primary, #6c63ff);
+  border: 1.5px solid var(--color-primary, #6c63ff);
+  font-size: 0.875rem;
+}
+
+.pers-btn--ghost:hover {
+  background: rgba(108, 99, 255, 0.07);
+}
+
+.pers-btn--sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.pers-analyze-btn {
+  white-space: nowrap;
+}
+
+.pers-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pers-spin 0.65s linear infinite;
+}
+
+@keyframes pers-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Learning Style Card ─────────────────────────────────────────────────── */
+
+.pers-style-card {
+  margin-bottom: 0;
+}
+
+.pers-style-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.pers-style-icon-large {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.pers-style-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text, #1a1a2e);
+  margin: 0;
+}
+
+.pers-style-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0;
+  max-width: 220px;
+}
+
+.pers-confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.pers-confidence-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #6b7280);
+  white-space: nowrap;
+}
+
+.pers-confidence-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pers-confidence-bar {
+  height: 100%;
+  background: var(--color-primary, #6c63ff);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.pers-confidence-pct {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #6b7280);
+  width: 32px;
+  text-align: right;
+}
+
+.pers-style-change-btn {
+  margin-top: 4px;
+  align-self: center;
+}
+
+/* Style editing */
+.pers-style-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pers-style-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pers-style-option:hover {
+  border-color: var(--color-primary, #6c63ff);
+  background: rgba(108, 99, 255, 0.04);
+}
+
+.pers-style-option--active {
+  border-color: var(--color-primary, #6c63ff);
+  background: rgba(108, 99, 255, 0.08);
+}
+
+.pers-style-option-icon {
+  font-size: 1.25rem;
+}
+
+.pers-style-option-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text, #1a1a2e);
+}
+
+.pers-style-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ── Mastery Panel ───────────────────────────────────────────────────────── */
+
+.pers-mastery-card {
+  margin-bottom: 0;
+}
+
+.pers-mastery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.pers-mastery-header .pers-card-title {
+  margin-bottom: 0;
+}
+
+.pers-mastery-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pers-mastery-item {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pers-mastery-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.1s;
+  text-align: left;
+}
+
+.pers-mastery-row:hover {
+  background: var(--color-surface-hover, #f8fafc);
+}
+
+.pers-mastery-name {
+  flex: 0 0 140px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text, #1a1a2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pers-mastery-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pers-mastery-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* Mastery color coding */
+.mastery-beginner   { background: #ef4444; }  /* red */
+.mastery-developing { background: #f59e0b; }  /* amber */
+.mastery-proficient { background: #3b82f6; }  /* blue */
+.mastery-advanced   { background: #22c55e; }  /* green */
+
+.pers-mastery-pct {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text, #1a1a2e);
+  width: 36px;
+  text-align: right;
+}
+
+.pers-mastery-trend {
+  font-size: 0.9rem;
+  font-weight: 700;
+  width: 18px;
+  text-align: center;
+}
+
+.trend-up     { color: #22c55e; }
+.trend-down   { color: #ef4444; }
+.trend-stable { color: #9ca3af; }
+
+/* Mastery detail expand */
+.pers-mastery-detail {
+  padding: 8px 10px 12px 150px;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface-hover, #f8fafc);
+}
+
+.pers-mastery-detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.pers-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pers-detail-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #9ca3af);
+}
+
+.pers-detail-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text, #1a1a2e);
+}
+
+.pers-mastery-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+.pers-next-topics .pers-detail-label {
+  margin-bottom: 4px;
+}
+
+.pers-topics-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pers-topic-item {
+  font-size: 0.825rem;
+  color: var(--color-text, #374151);
+  padding-left: 12px;
+  position: relative;
+}
+
+.pers-topic-item::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary, #6c63ff);
+}
+
+/* ── Recommendations Panel ───────────────────────────────────────────────── */
+
+.pers-recs-card {
+  /* inherits .pers-card */
+}
+
+.pers-recs-summary {
+  font-size: 0.9rem;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0 0 16px;
+  font-style: italic;
+}
+
+.pers-recs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.pers-recs-section {
+  /* no extra styles needed */
+}
+
+.pers-recs-section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #9ca3af);
+  margin: 0 0 8px;
+}
+
+.pers-recs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pers-recs-item {
+  font-size: 0.875rem;
+  color: var(--color-text, #374151);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.pers-recs-item--weak {
+  background: #fef2f2;
+  border-left: 3px solid #ef4444;
+}
+
+.pers-recs-item--topic {
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+}
+
+/* Study schedule */
+.pers-schedule {
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  padding-top: 16px;
+}
+
+.pers-schedule .pers-recs-section-title {
+  margin-bottom: 12px;
+}
+
+.pers-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.pers-schedule-day {
+  background: var(--color-surface-hover, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pers-schedule-day-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-primary, #6c63ff);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pers-schedule-day-task {
+  font-size: 0.8rem;
+  color: var(--color-text, #374151);
+}
+
+.pers-recs-generated {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #9ca3af);
+  margin: 12px 0 0;
+}
+
+/* ── Preferences Panel ───────────────────────────────────────────────────── */
+
+.pers-prefs-card {
+  /* inherits .pers-card */
+}
+
+.pers-prefs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.pers-prefs-header .pers-card-title {
+  margin-bottom: 0;
+}
+
+.pers-prefs-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.pers-prefs-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pers-prefs-key {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #9ca3af);
+}
+
+.pers-prefs-val {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text, #1a1a2e);
+}
+
+.pers-prefs-val--cap {
+  text-transform: capitalize;
+}
+
+.pers-prefs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 360px;
+}
+
+.pers-prefs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pers-prefs-label {
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: var(--color-text, #374151);
+}
+
+.pers-prefs-input,
+.pers-prefs-select {
+  padding: 8px 10px;
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1a1a2e);
+  font-size: 0.9rem;
+}
+
+.pers-prefs-input:focus,
+.pers-prefs-select:focus {
+  outline: 2px solid var(--color-primary, #6c63ff);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.pers-prefs-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .pers-title {
+    font-size: 1.4rem;
+  }
+
+  .pers-mastery-name {
+    flex: 0 0 100px;
+    font-size: 0.8rem;
+  }
+
+  .pers-mastery-detail {
+    padding-left: 10px;
+  }
+
+  .pers-recs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pers-schedule-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pers-prefs-display {
+    gap: 16px;
+  }
+}

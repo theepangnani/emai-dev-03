@@ -34,6 +34,9 @@ aiofiles>=24.1.0
 # Email
 sendgrid>=6.10.0
 
+# Stripe payment integration
+stripe>=7.0.0
+
 # Scheduling
 apscheduler>=3.10.0
 

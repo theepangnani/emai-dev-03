@@ -1,0 +1,261 @@
+/* ============================================================
+   AdminBillingPage.css — Admin billing dashboard styles
+   ============================================================ */
+
+.abp-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.abp-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1a202c);
+  margin: 0 0 1.75rem 0;
+}
+
+/* ─── Loading / error / empty ──────────────────────────────── */
+
+.abp-loading,
+.abp-empty {
+  color: var(--color-text-secondary, #4a5568);
+  padding: 1.5rem 0;
+  font-size: 0.95rem;
+}
+
+.abp-error {
+  color: #991b1b;
+  padding: 1rem;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+/* ─── Stats grid ───────────────────────────────────────────── */
+
+.abp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2.25rem;
+}
+
+.abp-stat-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: box-shadow 0.15s ease;
+}
+
+.abp-stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.abp-stat-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.abp-stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1a202c;
+  line-height: 1.1;
+}
+
+.abp-stat-sub {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-top: 0.1rem;
+}
+
+/* ─── Section ──────────────────────────────────────────────── */
+
+.abp-section {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.abp-section-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f9fafb;
+}
+
+/* ─── Table ────────────────────────────────────────────────── */
+
+.abp-table-wrapper {
+  overflow-x: auto;
+}
+
+.abp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.abp-table-th {
+  text-align: left;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #f9fafb;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.abp-table-row {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s ease;
+}
+
+.abp-table-row:last-child {
+  border-bottom: none;
+}
+
+.abp-table-row:hover {
+  background: #f9fafb;
+}
+
+.abp-table-cell {
+  padding: 0.85rem 1.25rem;
+  color: #374151;
+  vertical-align: top;
+}
+
+.abp-cell-user {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.abp-user-name {
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.abp-user-email {
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+/* ─── Status badges ────────────────────────────────────────── */
+
+.abp-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.abp-status-badge--active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.abp-status-badge--trialing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.abp-status-badge--past_due {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.abp-status-badge--canceled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.abp-status-badge--incomplete {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* ─── Pagination ───────────────────────────────────────────── */
+
+.abp-pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.abp-page-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.abp-page-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.abp-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.abp-page-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.abp-total-count {
+  padding: 0.625rem 1.5rem;
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin: 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* ─── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .abp-page {
+    padding: 1.25rem 1rem;
+  }
+
+  .abp-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .abp-table-th,
+  .abp-table-cell {
+    padding: 0.65rem 0.875rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .abp-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

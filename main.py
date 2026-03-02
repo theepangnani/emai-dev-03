@@ -16,7 +16,9 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization
+from app.api.routes.billing import router as billing_router, admin_router as admin_billing_router
+from app.api.routes.billing import seed_subscription_plans
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -59,6 +61,10 @@ from app.models.ai_insight import AIInsight  # noqa: F401 — ensure table is cr
 from app.models.tutor_profile import TutorProfile  # noqa: F401 — ensure table is created (Phase 4)
 from app.models.tutor_booking import TutorBooking  # noqa: F401 — ensure table is created (Phase 4)
 from app.models.api_key import APIKey  # noqa: F401 — ensure table is created (#905)
+from app.models.email_thread import EmailThread, EmailMessage  # noqa: F401 — ensure tables are created (Phase 5)
+from app.models.lesson_plan import LessonPlan  # noqa: F401 — ensure table is created (Phase 2 TeachAssist)
+from app.models.personalization import PersonalizationProfile, SubjectMastery, AdaptiveDifficulty  # noqa: F401 — ensure tables are created (Phase 3 AI Personalization)
+from app.models.subscription import SubscriptionPlan, UserSubscription  # noqa: F401 — ensure tables are created (Phase 4 Stripe)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1060,6 +1066,13 @@ with SessionLocal() as _seed_db:
     except Exception as _e:
         logger.warning("Failed to seed Ontario curriculum expectations at startup: %s", _e)
 
+# ── Seed Stripe subscription plans (Phase 4) ──────────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        seed_subscription_plans(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed subscription plans at startup: %s", _e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1207,6 +1220,11 @@ app.include_router(lms_connections.admin_router, prefix="/api")
 app.include_router(storage.router, prefix="/api")
 app.include_router(ai_insights.router, prefix="/api")
 app.include_router(tutors.router, prefix="/api")
+app.include_router(email_agent.router, prefix="/api")
+app.include_router(lesson_plans.router, prefix="/api")
+app.include_router(personalization.router, prefix="/api")
+app.include_router(billing_router)
+app.include_router(admin_billing_router)
 
 logger.info("API routes registered at /api")
 

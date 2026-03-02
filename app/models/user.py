@@ -88,6 +88,12 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="dynamic",
     )
+    subscription = relationship(
+        "UserSubscription",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     def has_google_scope(self, scope: str) -> bool:
         """Check if user has been granted a specific Google OAuth scope."""

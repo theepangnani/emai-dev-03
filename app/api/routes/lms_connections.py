@@ -24,10 +24,12 @@ Admin routes:
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -38,6 +40,7 @@ from app.models.user import User, UserRole
 from app.models.lms_institution import LMSInstitution
 from app.models.lms_connection import LMSConnection
 from app.services.lms_registry import list_providers, get_provider
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -456,6 +459,252 @@ async def sync_single_connection_endpoint(
 
     db.refresh(conn)
     return conn  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# Brightspace OAuth2 flow  (#24)
+# ---------------------------------------------------------------------------
+
+# In-memory state store: state_token → {"user_id": int, "institution_id": int}
+# In production this should be replaced with a short-TTL cache (e.g. Redis).
+_brightspace_oauth_state: dict[str, dict] = {}
+
+
+@router.get(
+    "/brightspace/connect",
+    summary="Initiate Brightspace OAuth2 Authorization Code flow",
+    response_class=RedirectResponse,
+)
+async def brightspace_connect(
+    institution_id: int = Query(..., description="LMSInstitution ID to connect to"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RedirectResponse:
+    """Redirect the authenticated user to their institution's Brightspace OAuth
+    consent page.
+
+    The institution must exist, be active, and have provider="brightspace".
+    OAuth credentials (client_id, client_secret) must be stored in the
+    institution's metadata_json field as {"client_id": "...", "client_secret": "..."}.
+
+    After the user grants consent, Brightspace redirects to /api/lms/brightspace/callback.
+    """
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    if inst.provider != "brightspace":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Institution {institution_id} is not a Brightspace institution.",
+        )
+    if not inst.is_active:
+        raise HTTPException(status_code=422, detail="Institution is not active.")
+
+    state = secrets.token_urlsafe(32)
+    _brightspace_oauth_state[state] = {
+        "user_id": current_user.id,
+        "institution_id": institution_id,
+    }
+
+    redirect_uri = f"{settings.frontend_url}/api/lms/brightspace/callback"
+
+    from app.services.brightspace import BrightspaceOAuthClient
+    oauth = BrightspaceOAuthClient()
+    auth_url = oauth.generate_auth_url(institution=inst, redirect_uri=redirect_uri, state=state)
+
+    logger.info(
+        "User %s initiating Brightspace OAuth for institution %s",
+        current_user.id,
+        institution_id,
+    )
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@router.get(
+    "/brightspace/callback",
+    response_model=ConnectionOut,
+    summary="Handle Brightspace OAuth2 callback — exchange code for tokens",
+)
+async def brightspace_callback(
+    code: str = Query(..., description="Authorization code from Brightspace"),
+    state: str = Query(..., description="CSRF state token"),
+    db: Session = Depends(get_db),
+) -> ConnectionOut:
+    """Exchange the authorization code for tokens and create (or update) an
+    LMSConnection record for the user.
+
+    The state parameter is validated against the in-memory store populated by
+    the /connect endpoint.  On success the connection status is set to
+    "connected" and tokens are stored.
+
+    Note: This endpoint does NOT require a JWT because the user arrives here
+    via a browser redirect from Brightspace.  Identity is established via the
+    state token which was associated with a user_id during /connect.
+    """
+    state_data = _brightspace_oauth_state.pop(state, None)
+    if not state_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired OAuth state token.  Please restart the connection flow.",
+        )
+
+    user_id: int = state_data["user_id"]
+    institution_id: int = state_data["institution_id"]
+
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+
+    redirect_uri = f"{settings.frontend_url}/api/lms/brightspace/callback"
+
+    from app.services.brightspace import BrightspaceOAuthClient
+    oauth = BrightspaceOAuthClient()
+    try:
+        tokens = await oauth.exchange_code(
+            institution=inst,
+            code=code,
+            redirect_uri=redirect_uri,
+        )
+    except Exception as exc:
+        logger.error(
+            "Brightspace token exchange failed for user %s institution %s: %s",
+            user_id,
+            institution_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to exchange authorization code: {exc}",
+        ) from exc
+
+    # Upsert LMSConnection
+    conn = (
+        db.query(LMSConnection)
+        .filter(
+            LMSConnection.user_id == user_id,
+            LMSConnection.institution_id == institution_id,
+            LMSConnection.provider == "brightspace",
+        )
+        .first()
+    )
+
+    expires_in_seconds: int = tokens.get("expires_in", 3600)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
+
+    if conn is None:
+        conn = LMSConnection(
+            user_id=user_id,
+            institution_id=institution_id,
+            provider="brightspace",
+            status="connected",
+            access_token_enc=tokens.get("access_token", ""),
+            refresh_token_enc=tokens.get("refresh_token", ""),
+            token_expires_at=expires_at,
+        )
+        db.add(conn)
+        logger.info(
+            "Created Brightspace LMSConnection for user %s institution %s",
+            user_id,
+            institution_id,
+        )
+    else:
+        conn.access_token_enc = tokens.get("access_token", "")
+        conn.refresh_token_enc = tokens.get("refresh_token", "")
+        conn.token_expires_at = expires_at
+        conn.status = "connected"
+        conn.sync_error = None
+        logger.info(
+            "Updated Brightspace LMSConnection %s for user %s",
+            conn.id,
+            user_id,
+        )
+
+    db.commit()
+    db.refresh(conn)
+    return _connection_out(conn)
+
+
+@router.post(
+    "/brightspace/{connection_id}/refresh",
+    response_model=ConnectionOut,
+    summary="Refresh Brightspace access token",
+)
+async def brightspace_refresh_token(
+    connection_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ConnectionOut:
+    """Use the stored refresh token to obtain a new Brightspace access token.
+
+    Updates the connection record with the new token and expiry, resets
+    status to "connected", and clears any previous sync_error.
+
+    Returns the updated connection.
+    """
+    conn = db.query(LMSConnection).filter(LMSConnection.id == connection_id).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found.")
+
+    is_admin = current_user.roles and "admin" in current_user.roles
+    if conn.user_id != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to refresh this connection."
+        )
+
+    if conn.provider != "brightspace":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Connection {connection_id} is not a Brightspace connection.",
+        )
+
+    if not conn.institution:
+        raise HTTPException(
+            status_code=422,
+            detail="Connection has no associated institution — cannot refresh token.",
+        )
+
+    if not conn.refresh_token_enc:
+        raise HTTPException(
+            status_code=422,
+            detail="No refresh token stored.  Please re-authenticate via /connect.",
+        )
+
+    from app.services.brightspace import BrightspaceOAuthClient
+    oauth = BrightspaceOAuthClient()
+    try:
+        tokens = await oauth.refresh_access_token(
+            institution=conn.institution,
+            refresh_token=conn.refresh_token_enc,
+        )
+    except Exception as exc:
+        conn.status = "expired"
+        conn.sync_error = str(exc)
+        db.commit()
+        logger.error(
+            "Brightspace token refresh failed for connection %s: %s",
+            connection_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Token refresh failed: {exc}",
+        ) from exc
+
+    expires_in_seconds: int = tokens.get("expires_in", 3600)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
+
+    conn.access_token_enc = tokens.get("access_token", "")
+    conn.refresh_token_enc = tokens.get("refresh_token", conn.refresh_token_enc)
+    conn.token_expires_at = expires_at
+    conn.status = "connected"
+    conn.sync_error = None
+    conn.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(conn)
+
+    logger.info("Refreshed Brightspace token for connection %s", connection_id)
+    return _connection_out(conn)
 
 
 # ---------------------------------------------------------------------------
