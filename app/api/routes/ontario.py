@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.db.database import get_db
 from app.models.ontario_board import OntarioBoard
 from app.models.course_catalog import CourseCatalogItem
@@ -42,6 +42,7 @@ router = APIRouter(prefix="/ontario", tags=["Ontario Course Catalog"])
 
 @router.get("/boards", response_model=list[OntarioBoardResponse])
 def list_boards(
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -63,6 +64,7 @@ def list_board_courses(
     search: Optional[str] = Query(default=None, description="Search in course code or name"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -115,6 +117,7 @@ def list_board_courses(
 @router.get("/courses/{course_code}", response_model=CourseCatalogResponse)
 def get_course_detail(
     course_code: str,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -142,6 +145,7 @@ def get_course_detail(
 @router.post("/student/board", response_model=StudentBoardResponse, status_code=status.HTTP_201_CREATED)
 def link_student_board(
     payload: StudentBoardLink,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -210,6 +214,7 @@ def link_student_board(
 @router.get("/student/board", response_model=StudentBoardResponse)
 def get_student_board(
     student_id: Optional[int] = Query(default=None, description="For parents/admins: specify the student"),
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

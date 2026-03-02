@@ -22,7 +22,7 @@ from app.db.database import get_db
 from app.models.academic_plan import AcademicPlan, PlanCourse
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.schemas.academic_plan import (
     AcademicPlanCreate,
     AcademicPlanResponse,
@@ -178,6 +178,7 @@ def _fetch_catalog_course(db: Session, course_code: str) -> dict[str, Any] | Non
 def create_plan(
     request: Request,
     body: AcademicPlanCreate,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -216,6 +217,7 @@ def create_plan(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_plans(
     request: Request,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -242,6 +244,7 @@ def list_plans(
 def get_plan(
     request: Request,
     plan_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -260,6 +263,7 @@ def update_plan(
     request: Request,
     plan_id: int,
     body: AcademicPlanUpdate,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -291,6 +295,7 @@ def update_plan(
 def delete_plan(
     request: Request,
     plan_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -311,6 +316,7 @@ def add_course(
     request: Request,
     plan_id: int,
     body: PlanCourseCreate,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -420,6 +426,7 @@ def remove_course(
     request: Request,
     plan_id: int,
     plan_course_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -448,6 +455,7 @@ def remove_course(
 def validate_plan(
     request: Request,
     plan_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

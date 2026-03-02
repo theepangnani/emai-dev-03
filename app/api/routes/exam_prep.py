@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy import func as sql_func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.core.rate_limit import get_user_id_or_ip, limiter
 from app.db.database import get_db
 from app.models.course import Course
@@ -345,6 +345,7 @@ Requirements:
 async def generate_exam_prep_plan(
     request: Request,
     body: ExamPrepGenerateRequest,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -456,6 +457,7 @@ async def generate_exam_prep_plan(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_exam_prep_plans(
     request: Request,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -481,6 +483,7 @@ def list_exam_prep_plans(
 def get_exam_prep_plan(
     request: Request,
     plan_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -494,6 +497,7 @@ def get_exam_prep_plan(
 def archive_exam_prep_plan(
     request: Request,
     plan_id: int,
+    _flag=Depends(require_feature("course_planning")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
