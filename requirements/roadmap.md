@@ -223,6 +223,7 @@
 - [x] **Admin Analytics Dashboard** — Overview stats (users/content/engagement/privacy), user growth chart (30 days), content breakdown, engagement metrics, privacy compliance summary; admin-only at /admin/analytics (IMPLEMENTED)
 
 #### Phase 2 — On `feature/phase-2` Branch (Implemented, Not Yet in Production)
+- [x] **PWA offline mode** — vite-plugin-pwa + Workbox service worker; CacheFirst for study guides/flashcards, NetworkFirst for assignments/API; install prompt banner (7-day dismiss, localStorage); offline indicator fixed bottom bar; offline.html fallback page; usePWAInstall hook (IMPLEMENTED)
 - [x] **Progressive account lockout** — 5/10/15 failed login thresholds with escalating lockout durations; admin unlock (#796)
 - [x] **httpOnly cookie authentication** — Cookie-based JWT with Bearer header fallback for XSS mitigation (#788)
 - [x] **Cookie consent & MFIPPA age-based consent** — CookieConsentBanner, ConsentGateway, under-16/16-17/18+ rules (#797, #783)

@@ -13,6 +13,7 @@ import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STE
 import { QuickActionFAB } from './QuickActionFAB';
 import type { FABAction } from './QuickActionFAB';
 import { CreateTaskModal } from './CreateTaskModal';
+import { OfflineIndicator } from './OfflineIndicator';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -979,6 +980,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         open={showFabTaskModal}
         onClose={() => setShowFabTaskModal(false)}
       />
+
+      {/* Offline status indicator — fixed bottom bar */}
+      <OfflineIndicator />
       </div>
     </>
   );
