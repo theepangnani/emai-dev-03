@@ -18,7 +18,7 @@ from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.notification import Notification, NotificationType
 from app.models.quiz_assignment import QuizAssignment
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.schemas.quiz_assignment import (
     QuizAssignmentCreate,
@@ -101,6 +101,7 @@ def _assert_parent_owns_student(db: Session, parent_user_id: int, student_id: in
 def assign_quiz(
     request: Request,
     body: QuizAssignmentCreate,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -185,6 +186,7 @@ def list_quiz_assignments(
     request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
     student_id: int | None = Query(default=None),
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -228,6 +230,7 @@ def complete_quiz_assignment(
     request: Request,
     assignment_id: int,
     body: QuizAssignmentComplete,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -298,6 +301,7 @@ def complete_quiz_assignment(
 def cancel_quiz_assignment(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("ai_study_tools")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
