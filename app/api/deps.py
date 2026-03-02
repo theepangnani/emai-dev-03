@@ -108,6 +108,32 @@ def require_role(*roles: UserRole):
     return checker
 
 
+def require_feature(flag_key: str):
+    """Dependency factory that rejects requests when a feature flag is disabled.
+
+    Usage:
+        @router.get("/something")
+        def my_route(_flag=Depends(require_feature("school_board_integration")), ...):
+            ...
+
+    Returns the boolean evaluation result (True) when the flag is enabled.
+    Raises 403 when the flag is disabled for the requesting user.
+    """
+    def checker(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> bool:
+        from app.services.feature_flags import get_feature_flag_service
+        svc = get_feature_flag_service()
+        if not svc.is_enabled(flag_key, current_user, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Feature '{flag_key}' is not enabled",
+            )
+        return True
+    return checker
+
+
 def can_access_course(db: Session, user: User, course_id: int) -> bool:
     """Check if a user has access to a specific course.
 

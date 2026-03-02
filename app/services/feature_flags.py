@@ -40,6 +40,7 @@ FLAG_BRIGHTSPACE_LMS = "brightspace_lms"
 FLAG_STRIPE_BILLING = "stripe_billing"
 FLAG_MCP_TOOLS = "mcp_tools"
 FLAG_BETA_FEATURES = "beta_features"
+FLAG_SCHOOL_BOARD_INTEGRATION = "school_board_integration"
 
 # ─── Simple in-process cache (TTL: 60 seconds) ────────────────────────────────
 

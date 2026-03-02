@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.db.database import get_db
 from app.models.ontario_board import OntarioBoard
 from app.models.course_catalog import CourseCatalogItem
@@ -42,6 +42,7 @@ router = APIRouter(prefix="/ontario", tags=["Ontario Course Catalog"])
 
 @router.get("/boards", response_model=list[OntarioBoardResponse])
 def list_boards(
+    _flag=Depends(require_feature("school_board_integration")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -57,6 +58,7 @@ def list_boards(
 @router.get("/boards/{board_id}/courses", response_model=CourseCatalogPage)
 def list_board_courses(
     board_id: int,
+    _flag=Depends(require_feature("school_board_integration")),
     grade: Optional[int] = Query(default=None, ge=9, le=12, description="Filter by grade level (9–12)"),
     subject: Optional[str] = Query(default=None, description="Filter by subject area (partial match)"),
     pathway: Optional[str] = Query(default=None, description="Filter by pathway code: U, C, M, E, O"),
@@ -115,6 +117,7 @@ def list_board_courses(
 @router.get("/courses/{course_code}", response_model=CourseCatalogResponse)
 def get_course_detail(
     course_code: str,
+    _flag=Depends(require_feature("school_board_integration")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -142,6 +145,7 @@ def get_course_detail(
 @router.post("/student/board", response_model=StudentBoardResponse, status_code=status.HTTP_201_CREATED)
 def link_student_board(
     payload: StudentBoardLink,
+    _flag=Depends(require_feature("school_board_integration")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -209,6 +213,7 @@ def link_student_board(
 
 @router.get("/student/board", response_model=StudentBoardResponse)
 def get_student_board(
+    _flag=Depends(require_feature("school_board_integration")),
     student_id: Optional[int] = Query(default=None, description="For parents/admins: specify the student"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

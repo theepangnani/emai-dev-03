@@ -487,6 +487,15 @@ def seed_default_flags(db: Session) -> None:
             "enabled_roles": [],
             "enabled_tiers": [],
         },
+        {
+            "key": "school_board_integration",
+            "name": "School Board Integration",
+            "description": "Enables Ontario school board endpoints (course catalog, student-board linking). OFF by default; requires DTAP approval.",
+            "scope": FlagScope.GLOBAL.value,
+            "is_enabled": False,
+            "enabled_roles": [],
+            "enabled_tiers": [],
+        },
     ]
 
     seeded = 0
