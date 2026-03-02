@@ -8,6 +8,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageLoader } from './components/PageLoader';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import './App.css';
 
 // Retry lazy imports to handle stale chunks after deployment.
@@ -135,6 +137,7 @@ function App() {
         <ToastProvider>
         <BrowserRouter>
           <ErrorBoundary>
+          <PWAInstallBanner />
           <CookieConsentBanner />
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -689,6 +692,7 @@ function App() {
               <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </Suspense>
+          <OfflineIndicator />
           </ErrorBoundary>
         </BrowserRouter>
         </ToastProvider>

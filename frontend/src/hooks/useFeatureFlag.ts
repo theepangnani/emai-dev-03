@@ -26,6 +26,7 @@ export const FLAG_BRIGHTSPACE_LMS = 'brightspace_lms';
 export const FLAG_STRIPE_BILLING = 'stripe_billing';
 export const FLAG_MCP_TOOLS = 'mcp_tools';
 export const FLAG_BETA_FEATURES = 'beta_features';
+export const FLAG_PWA_OFFLINE = 'pwa_offline';
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { usePWAInstall } from '../hooks/usePWA'
+import { useFeatureFlag, FLAG_PWA_OFFLINE } from '../hooks/useFeatureFlag'
 import './PWAInstallBanner.css'
 
 const DISMISSED_KEY = 'pwa_banner_dismissed_until'
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export function PWAInstallBanner() {
+  const pwaEnabled = useFeatureFlag(FLAG_PWA_OFFLINE)
   const { canInstall, promptInstall } = usePWAInstall()
   const [visible, setVisible] = useState(false)
 
@@ -16,6 +18,7 @@ export function PWAInstallBanner() {
     setVisible(true)
   }, [canInstall])
 
+  if (!pwaEnabled) return null
   if (!visible) return null
 
   const handleInstall = async () => {

@@ -1,9 +1,12 @@
 import { usePWAInstall } from '../hooks/usePWA'
+import { useFeatureFlag, FLAG_PWA_OFFLINE } from '../hooks/useFeatureFlag'
 import './OfflineIndicator.css'
 
 export function OfflineIndicator() {
+  const pwaEnabled = useFeatureFlag(FLAG_PWA_OFFLINE)
   const { isOffline } = usePWAInstall()
 
+  if (!pwaEnabled) return null
   if (!isOffline) return null
 
   return (
