@@ -108,6 +108,32 @@ def require_role(*roles: UserRole):
     return checker
 
 
+def require_feature(flag_key: str):
+    """Dependency factory that returns 404 if the given feature flag is disabled.
+
+    Usage::
+
+        @router.get("/example")
+        def example(
+            _flag=Depends(require_feature("my_feature")),
+            ...
+        ):
+    """
+    def checker(
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ):
+        from app.services.feature_flags import get_feature_flag_service
+
+        svc = get_feature_flag_service()
+        if not svc.is_enabled(flag_key, current_user, db):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Feature not available",
+            )
+    return checker
+
+
 def can_access_course(db: Session, user: User, course_id: int) -> bool:
     """Check if a user has access to a specific course.
 
