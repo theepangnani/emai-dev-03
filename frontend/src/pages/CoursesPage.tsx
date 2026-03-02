@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { parentApi, coursesApi, courseContentsApi, googleApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -710,7 +710,7 @@ export function CoursesPage() {
                                   <span className={`content-type-badge ${item.content_type}`}>
                                     {CONTENT_TYPE_LABELS[item.content_type] || item.content_type}
                                   </span>
-                                  <span className="content-item-title">{item.title}</span>
+                                  <Link to={`/course-materials/${item.id}`} className="content-item-title content-item-link">{item.title}</Link>
                                   {item.description && <p className="content-item-desc">{item.description}</p>}
                                 </div>
                                 <div className="content-item-actions">
@@ -818,7 +818,7 @@ export function CoursesPage() {
                                       <span className={`content-type-badge ${item.content_type}`}>
                                         {CONTENT_TYPE_LABELS[item.content_type] || item.content_type}
                                       </span>
-                                      <span className="content-item-title">{item.title}</span>
+                                      <Link to={`/course-materials/${item.id}`} className="content-item-title content-item-link">{item.title}</Link>
                                       {item.description && <p className="content-item-desc">{item.description}</p>}
                                     </div>
                                     <div className="content-item-actions">
