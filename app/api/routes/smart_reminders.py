@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.db.database import get_db
 from app.models.smart_reminder import ReminderLog, ReminderPreference, ReminderUrgency
 from app.models.user import User, UserRole
@@ -101,6 +101,7 @@ def _get_or_create_preferences(db: Session, user_id: int) -> ReminderPreference:
 
 @router.get("/preferences", response_model=ReminderPreferenceOut)
 def get_reminder_preferences(
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ReminderPreferenceOut:
@@ -112,6 +113,7 @@ def get_reminder_preferences(
 @router.put("/preferences", response_model=ReminderPreferenceOut)
 def update_reminder_preferences(
     payload: ReminderPreferenceUpdate,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ReminderPreferenceOut:
@@ -140,6 +142,7 @@ def update_reminder_preferences(
 @router.get("/logs", response_model=list[ReminderLogOut])
 def get_reminder_logs(
     limit: int = 50,
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ReminderLogOut]:
@@ -157,6 +160,7 @@ def get_reminder_logs(
 
 @router.post("/test", response_model=TriggerResultOut)
 def trigger_reminder_run(
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ) -> TriggerResultOut:
@@ -176,6 +180,7 @@ def trigger_reminder_run(
 
 @router.get("/stats", response_model=ReminderStatsOut)
 def get_reminder_stats(
+    _flag=Depends(require_feature("notification_system")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ) -> ReminderStatsOut:
