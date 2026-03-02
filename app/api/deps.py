@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User, UserRole
+from app.services.feature_flags import FeatureFlagService, get_feature_flag_service
 
 # auto_error=False so missing Authorization header does NOT 401 immediately —
 # we fall back to httpOnly cookie before raising.
@@ -105,6 +106,29 @@ def require_role(*roles: UserRole):
                 detail="Insufficient permissions",
             )
         return current_user
+    return checker
+
+
+def require_feature(flag_key: str):
+    """Dependency factory that returns 404 if the feature flag is disabled for the current user.
+
+    Usage in route handlers:
+        @router.get("/some-endpoint")
+        def handler(
+            _flag=Depends(require_feature("my_feature")),
+            ...
+        ):
+    """
+    def checker(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+        svc: FeatureFlagService = Depends(get_feature_flag_service),
+    ):
+        if not svc.is_enabled(flag_key, current_user, db):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Feature not available",
+            )
     return checker
 
 
