@@ -98,13 +98,13 @@
 - [x] **Manual course creation for teachers** — Teachers can create courses (#42) (IMPLEMENTED)
 - [x] **Manual assignment creation for teachers** — Covered by manual assignment CRUD (#49) (IMPLEMENTED)
 - [ ] Multi-Google account support for teachers
-- [ ] Auto-send invite email to shadow teachers on creation
-- [ ] Teacher Dashboard course management view with source badges
+- [x] **Auto-send invite email to shadow teachers on creation** — 30-day debounce (#946) (IMPLEMENTED)
+- [x] **Teacher Dashboard course management view with source badges** (#947) (IMPLEMENTED)
 - [x] **Admin broadcast messaging** — Send message + email to all users (#258) (IMPLEMENTED)
 - [x] **Admin individual messaging** — Send message + email to specific user (#259) (IMPLEMENTED)
 - [x] **Inspirational messages in emails** — Add role-based inspiration quotes to all outgoing emails (#260) (IMPLEMENTED)
-- [ ] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412)
-- [ ] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414)
+- [x] **Simplified registration** — Remove role selection from signup form, collect only name/email/password (#412) (IMPLEMENTED)
+- [x] **Post-login onboarding** — Role selection + teacher type after first login (#413, #414) (IMPLEMENTED)
 - [x] **Welcome email on registration** — Branded welcome email with feature highlights sent after signup (#509) (IMPLEMENTED)
 - [x] **Verification acknowledgement email** — Marketing email with feature showcase sent after email verification (#510) (IMPLEMENTED)
 - [x] **Parent Dashboard v3: Persistent sidebar** — Replace hamburger with always-visible sidebar on desktop (#541) (IMPLEMENTED — PR #545)
@@ -126,17 +126,25 @@
 - [x] **'All Children' filter button on Tasks and My Kids pages** — Dedicated "All" button in child filter row (Tasks page, My Kids page) clears individual child selection and shows aggregated data (#1016) (IMPLEMENTED, PR #1018)
 - [x] **Move Grades section from Parent Dashboard to My Kids page** — Grade history cards relocated to My Kids page per child for better contextual grouping (#980) (IMPLEMENTED)
 - [x] **ClassBridge logo v6.1 in dashboard header** — Updated header logo across all role dashboards (#981) (IMPLEMENTED)
-- [ ] **Student UX Simplification** — Unified Study Hub (/study) merging Classes + Materials + Quiz History; nav reduced 8→5; quote on dashboard only; task urgency grouping (#1022, #1023, #1024, #1025, #1026, #1027, #1029)
+- [x] **Student UX Simplification** — Unified Study Hub (/study) merging Classes + Materials + Quiz History; nav reduced 8→5; quote on dashboard only; task urgency grouping (#1022-#1029, #1032-#1035) (IMPLEMENTED)
+- [x] **Show today's date on all role dashboards** (#1037) (IMPLEMENTED, PR #1038)
+- [x] **My Kids page reorder + Reset Password to + menu** (#1039) (IMPLEMENTED, PR #1040)
+- [x] **Inspiration message on all dashboard pages** — Show on all pages, not just /dashboard (#1041) (IMPLEMENTED, PR #1042)
+- [x] **Class material titles as clickable links** on CoursesPage (#1043) (IMPLEMENTED, PR #1044)
+- [x] **Case-insensitive email login** (#1045) (IMPLEMENTED, PR #1046)
+- [x] **Coming Up timeline shows tasks** — Tasks now appear alongside assignments in Coming Up section, matching header overdue/due-today counts (#1047) (IMPLEMENTED, PR #1048)
+- [x] **Coming Up timeline clickable rows** — Entire timeline item row is clickable, not just the View/Study button (#1049) (IMPLEMENTED, PR #1050)
+- [x] **Coming Up task detail navigation** — Clicking a task navigates to `/tasks/:id` detail page (#1051) (IMPLEMENTED, PR #1052)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
-- [ ] **Student registration with username + parent email** — Username login, parent linking on register (#546)
-- [ ] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547)
-- [ ] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548)
+- [x] **Student registration with username + parent email** — Username login, parent linking on register (#546) (IMPLEMENTED)
+- [x] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547) (IMPLEMENTED)
+- [x] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548) (IMPLEMENTED)
 - [ ] **Parent request assignment completion** — Parent requests student complete assignment (#549)
-- [ ] **Google Classroom school vs private** — classroom_type, download restriction (#550)
+- [x] **Google Classroom school vs private** — classroom_type, download restriction (#550) (IMPLEMENTED)
 - [ ] **Student/teacher invites + course enrollment** — Student invite teacher, teacher invite student/parent (#551)
-- [ ] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552)
+- [x] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552) (IMPLEMENTED)
 
 #### Architecture Foundation (Tier 0)
 - [x] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127) (IMPLEMENTED)
@@ -153,7 +161,7 @@
 - [x] **Rate limiting** — No rate limiting on AI generation, auth, or file upload endpoints; risk of brute force and API quota abuse (#140) (IMPLEMENTED)
 - [x] **CORS hardening** — ~~Currently allows `*` origins; tighten to known frontend domains (#64)~~ ✅ Fixed in #177
 - [x] **Security headers** — Add X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, CSP (#141) (IMPLEMENTED)
-- [ ] **Input validation** — Missing field length limits, URL validation, and sanitization on multiple endpoints (#142)
+- [x] **Input validation** — Field length limits, whitespace stripping on multiple endpoints (#142) (IMPLEMENTED)
 - [x] **Password reset flow** — Forgot Password link + email-based reset (#143) — see §6.26
 
 #### Data Integrity & Performance (Tier 0)
@@ -179,7 +187,7 @@
 
 ### Phase 1.5 (Calendar Extension, Content, Mobile & School Integration)
 - [x] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support) (IMPLEMENTED)
-- [ ] Student email identity merging (personal + school email on same account)
+- [x] Student email identity merging (personal + school email on same account) (#941) (IMPLEMENTED)
 - [ ] School board email integration (when DTAP approved)
 - [x] Extend calendar to Student and Teacher dashboards with role-aware data (#45) (IMPLEMENTED)
 - [ ] Google Calendar push integration (sync tasks/reminders to Google Calendar)
@@ -264,7 +272,7 @@
 - [x] **Empty states** — Shared EmptyState component (default/compact variants), replaced 22 inline empty states across 10 pages (#835) ✅
 - [ ] **Teacher dashboard enhancement** — SVG icons, dynamic counts, announcement preview (#833)
 - [ ] **Student engagement** — Streak celebrations, spaced repetition, continue studying (#834)
-- [ ] **Message search** — Search and communication improvements (#836)
+- [x] **Message search** — Search with pagination, date filtering, and in-thread search (#836) (IMPLEMENTED)
 - [ ] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837)
 
 **Tier 3 — Backlog:**
@@ -304,6 +312,13 @@ Community-driven help center where users ask questions, provide answers, and adm
 - `/admin/faq` — Admin approval queue + question management
 
 **GitHub Issues:** #437 (models), #438 (schemas), #439 (API routes), #440 (search), #441 (error references), #442 (frontend), #443 (tests), #444 (seed data)
+
+#### Google OAuth Production Launch (March 2026)
+- [x] **Privacy Policy + Terms of Service pages** — `/privacy` and `/terms` live at classbridge.ca (#585, #586) (IMPLEMENTED)
+- [x] **Rename OAuth consent screen** — App name updated from EMAI → ClassBridge; logo, homepage, privacy/ToS links updated (#726) (IMPLEMENTED)
+- [x] **Remove gmail.readonly from initial OAuth scopes** — Incremental auth implemented; gmail.readonly deferred to post-launch to avoid CASA audit (#727) (IMPLEMENTED)
+- [x] **Support email for OAuth consent screen** — classbridge-support Google Group created and set as support email (#757) (IMPLEMENTED)
+- [x] **Google OAuth app published to production** — App moved from Testing → In production; branding verified; all Classroom scopes registered; no sensitive scope review required (#589) (IMPLEMENTED — March 1, 2026)
 
 ### Phase 2 (Mobile App — March 6 Pilot MVP) - IN PROGRESS
 
