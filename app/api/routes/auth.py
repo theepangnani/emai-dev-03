@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import insert
+from sqlalchemy import func, insert
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -93,9 +93,13 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     if pw_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=pw_error)
 
+    # Normalize email to lowercase (emails are case-insensitive per RFC 5321)
+    if user_data.email:
+        user_data.email = user_data.email.lower()
+
     # Check if email already exists
     if user_data.email:
-        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        existing_user = db.query(User).filter(func.lower(User.email) == user_data.email).first()
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -299,15 +303,15 @@ def login(
     # Detect email vs username by checking for '@'
     identifier = form_data.username
     if "@" in identifier:
-        # Email lookup
-        user = db.query(User).filter(User.email == identifier).first()
+        # Email lookup (case-insensitive — emails are case-insensitive per RFC 5321)
+        user = db.query(User).filter(func.lower(User.email) == identifier.lower()).first()
     else:
         # Username lookup (case-insensitive)
         normalized = identifier.lower()
         user = db.query(User).filter(User.username == normalized).first()
         if not user:
             # Fallback: try email without @ (shouldn't happen, but be safe)
-            user = db.query(User).filter(User.email == identifier).first()
+            user = db.query(User).filter(func.lower(User.email) == identifier.lower()).first()
 
     # If user not found, reject immediately (no lockout info to leak)
     if not user:
@@ -638,7 +642,7 @@ def _render(template: str, **kwargs: str) -> str:
 @limiter.limit("3/minute")
 def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Send a password reset email. Always returns 200 to avoid user enumeration."""
-    user = db.query(User).filter(User.email == body.email).first()
+    user = db.query(User).filter(func.lower(User.email) == body.email.lower()).first()
 
     if not user:
         _logger.warning("pwd_reset: no account found for requested email")
@@ -676,7 +680,7 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
     if not email:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
@@ -811,7 +815,7 @@ def verify_email(body: EmailVerifyRequest, request: Request, db: Session = Depen
     if not email:
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
 
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
 

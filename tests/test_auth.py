@@ -323,3 +323,42 @@ class TestPasswordReset:
             "token": token, "new_password": "weak",
         })
         assert resp.status_code in (400, 422)
+
+
+# ── Case-insensitive email login regression tests (#1045) ────
+
+class TestCaseInsensitiveEmailLogin:
+    """Emails are case-insensitive per RFC 5321. Login must work regardless of case."""
+
+    def test_login_with_different_case_email(self, client):
+        """Register with mixed-case email, login with different case — should succeed."""
+        # Register with lowercase
+        _register(client, "casetest@example.com")
+        # Login with UPPERCASE — must succeed
+        login = client.post("/api/auth/login", data={
+            "username": "CASETEST@EXAMPLE.COM", "password": PASSWORD,
+        })
+        assert login.status_code == 200, f"Case-insensitive login failed: {login.text}"
+        assert "access_token" in login.json()
+
+    def test_login_mixed_case_email(self, client):
+        """Register with mixed-case, login with opposite case."""
+        _register(client, "MixedCase@Example.COM")
+        login = client.post("/api/auth/login", data={
+            "username": "mixedcase@example.com", "password": PASSWORD,
+        })
+        assert login.status_code == 200, f"Case-insensitive login failed: {login.text}"
+
+    def test_registration_normalizes_email_to_lowercase(self, client):
+        """Emails should be stored as lowercase during registration."""
+        resp = _register(client, "UPPER@EXAMPLE.COM")
+        assert resp.status_code == 200
+        assert resp.json()["email"] == "upper@example.com"
+
+    def test_duplicate_email_different_case_rejected(self, client):
+        """Registering with same email in different case should fail."""
+        resp1 = _register(client, "dupcase@example.com")
+        assert resp1.status_code == 200
+        resp2 = _register(client, "DUPCASE@EXAMPLE.COM")
+        assert resp2.status_code == 400
+        assert "already registered" in resp2.json()["detail"].lower()
