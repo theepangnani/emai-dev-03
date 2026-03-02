@@ -757,6 +757,7 @@ export function TasksPage() {
               const thisWeek = filteredTasks.filter(t => !t.is_completed && !t.archived_at && t.due_date && new Date(t.due_date) > today && new Date(t.due_date) <= weekFromNow);
               const later = filteredTasks.filter(t => !t.is_completed && !t.archived_at && (!t.due_date || new Date(t.due_date) > weekFromNow));
               const completedGroup = filteredTasks.filter(t => t.is_completed && !t.archived_at);
+              const archivedGroup = filteredTasks.filter(t => !!t.archived_at);
 
               return (
                 <>
@@ -788,6 +789,12 @@ export function TasksPage() {
                     <>
                       <div className="task-group-header">Completed <span>{completedGroup.length}</span></div>
                       {completedGroup.map(renderTaskRow)}
+                    </>
+                  )}
+                  {archivedGroup.length > 0 && (
+                    <>
+                      <div className="task-group-header">Archived <span>{archivedGroup.length}</span></div>
+                      {archivedGroup.map(renderTaskRow)}
                     </>
                   )}
                 </>
