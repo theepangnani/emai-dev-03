@@ -26,6 +26,8 @@ import type { ChildGradeSummary, ClassroomGradeItem } from '../api/grades';
 import { submissionsApi } from '../api/submissions';
 import type { SubmissionResponse } from '../api/submissions';
 import { SubmitAssignmentModal } from '../components/SubmitAssignmentModal';
+import { quizAssignmentsApi } from '../api/quizAssignments';
+import type { QuizAssignmentResponse } from '../api/quizAssignments';
 import './StudentDashboard.css';
 
 function formatRelativeDate(dateStr: string): string {
@@ -126,6 +128,9 @@ export function StudentDashboard() {
   // Assignment submission modal (#839)
   const [submitModalAssignment, setSubmitModalAssignment] = useState<Assignment | null>(null);
   const [submissionsMap, setSubmissionsMap] = useState<Map<number, SubmissionResponse>>(new Map());
+
+  // Assigned quizzes from parents (#664)
+  const [assignedQuizzes, setAssignedQuizzes] = useState<QuizAssignmentResponse[]>([]);
 
   // Invite teacher state
   const [gradeSummary, setGradeSummary] = useState<ChildGradeSummary | null>(null);
@@ -303,6 +308,7 @@ export function StudentDashboard() {
       loadGradeSummary(),
       loadRecentGrades(),
       loadBackendStreak(),
+      loadAssignedQuizzes(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
@@ -396,6 +402,17 @@ export function StudentDashboard() {
       setBackendStreak(data);
     } catch {
       // Streak not loaded — not critical (student may not have a profile yet)
+    }
+  };
+
+  const loadAssignedQuizzes = async () => {
+    try {
+      const data = await quizAssignmentsApi.list({ status: 'assigned' });
+      // Also include in_progress
+      const inProgress = await quizAssignmentsApi.list({ status: 'in_progress' });
+      setAssignedQuizzes([...data, ...inProgress]);
+    } catch {
+      // Not critical — student may not have a profile or any assignments yet
     }
   };
 
@@ -604,6 +621,41 @@ export function StudentDashboard() {
           </Link>
         </div>
       </section>
+
+      {/* ── Assigned Quizzes (#664) ──────────────────────── */}
+      {assignedQuizzes.length > 0 && (
+        <section className="sd-assigned-quizzes">
+          <h2 className="sd-section-label">Assigned Quizzes</h2>
+          <div className="sd-assigned-quizzes-list">
+            {assignedQuizzes.map(qa => {
+              const difficultyClass = qa.difficulty === 'easy' ? 'easy' : qa.difficulty === 'hard' ? 'hard' : 'medium';
+              const difficultyLabel = qa.difficulty.charAt(0).toUpperCase() + qa.difficulty.slice(1);
+              return (
+                <div key={qa.id} className="sd-assigned-quiz-card">
+                  <div className="sd-aq-meta">
+                    <span className={`sd-aq-difficulty-badge ${difficultyClass}`}>{difficultyLabel}</span>
+                    {qa.due_date && (
+                      <span className="sd-aq-due">
+                        Due: {new Date(qa.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                  <p className="sd-aq-title">{qa.study_guide_title || 'Quiz'}</p>
+                  {qa.course_name && <p className="sd-aq-course">{qa.course_name}</p>}
+                  {qa.note && <p className="sd-aq-note">"{qa.note}"</p>}
+                  <button
+                    className="sd-aq-start-btn"
+                    onClick={() => navigate(`/study/quiz/${qa.study_guide_id}?assignment=${qa.id}`)}
+                    type="button"
+                  >
+                    Start Quiz
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Notification Alerts ──────────────────────────── */}
       {actionableNotifications.length > 0 && (

@@ -260,8 +260,8 @@
 
 #### Phase 2 — New Feature Requirements (#668)
 
-- [ ] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663)
-- [ ] **Parent-assigned quizzes with complexity levels** — Easy/Medium/Hard difficulty, notification + tracking (#664)
+- [x] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663) (IMPLEMENTED)
+- [x] **Parent-assigned quizzes with complexity levels** — Easy/Medium/Hard difficulty, notification + tracking (#664) IMPLEMENTED
 - [ ] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665)
 - [ ] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666)
 - [ ] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667)

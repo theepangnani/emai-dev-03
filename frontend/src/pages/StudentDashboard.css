@@ -1228,3 +1228,127 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* ── Assigned Quizzes Section (#664) ─────────── */
+.sd-assigned-quizzes {
+  margin-bottom: 24px;
+}
+
+.sd-assigned-quizzes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.sd-assigned-quiz-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.15s;
+}
+
+.sd-assigned-quiz-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sd-aq-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sd-aq-difficulty-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sd-aq-difficulty-badge.easy {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sd-aq-difficulty-badge.medium {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.sd-aq-difficulty-badge.hard {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sd-aq-due {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.sd-aq-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.sd-aq-course {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.sd-aq-note {
+  font-size: 12px;
+  color: var(--color-accent, #4f46e5);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.sd-aq-start-btn {
+  margin-top: 6px;
+  padding: 7px 14px;
+  background: var(--color-accent, #4f46e5);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.sd-aq-start-btn:hover {
+  background: var(--color-accent-dark, #4338ca);
+  transform: translateY(-1px);
+}
+
+.sd-aq-start-btn:active {
+  transform: translateY(0);
+}
+
+@media (prefers-color-scheme: dark) {
+  .sd-aq-difficulty-badge.easy {
+    background: rgba(21, 128, 61, 0.2);
+    color: #4ade80;
+  }
+  .sd-aq-difficulty-badge.medium {
+    background: rgba(161, 98, 7, 0.2);
+    color: #facc15;
+  }
+  .sd-aq-difficulty-badge.hard {
+    background: rgba(185, 28, 28, 0.2);
+    color: #f87171;
+  }
+}

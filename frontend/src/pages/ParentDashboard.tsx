@@ -17,6 +17,7 @@ import { SetupChecklist } from '../components/SetupChecklist';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { ParentConsentCards } from '../components/ParentConsentCards';
 import { submissionsApi } from '../api/submissions';
+import { AssignQuizModal } from '../components/AssignQuizModal';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -106,6 +107,9 @@ export function ParentDashboard() {
 
   // Submissions this week per child (#839)
   const [childSubmissionCounts, setChildSubmissionCounts] = useState<Map<number, number>>(new Map());
+
+  // Assign Quiz modal (#664)
+  const [showAssignQuizModal, setShowAssignQuizModal] = useState(false);
 
   // Scroll indicator state for child selector (#830)
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -435,8 +439,20 @@ export function ParentDashboard() {
                 label: 'Study Guide',
                 onClick: () => pd.navigate('/course-materials'),
               },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                    <rect x="9" y="3" width="6" height="4" rx="2" />
+                    <line x1="9" y1="12" x2="15" y2="12" />
+                    <line x1="9" y1="16" x2="12" y2="16" />
+                  </svg>
+                ),
+                label: 'Assign Quiz',
+                onClick: () => setShowAssignQuizModal(true),
+              },
             ] satisfies QuickAction[]}
-            maxVisible={3}
+            maxVisible={4}
           />
 
           {/* Grades Overview (#838 - collapsible) */}
@@ -880,6 +896,34 @@ export function ParentDashboard() {
         onCreated={() => { pd.setShowCreateTaskModal(false); pd.loadDashboard(); }}
       />
       {pd.confirmModal}
+
+      {/* Assign Quiz Modal (#664) */}
+      {(() => {
+        const activeChild = pd.selectedChild
+          ? pd.children.find(c => c.student_id === pd.selectedChild)
+          : pd.children.length === 1 ? pd.children[0] : null;
+        return showAssignQuizModal && activeChild ? (
+          <AssignQuizModal
+            open={showAssignQuizModal}
+            onClose={() => setShowAssignQuizModal(false)}
+            studentId={activeChild.student_id}
+            studentName={activeChild.full_name}
+            childUserId={activeChild.user_id}
+            onAssigned={() => setShowAssignQuizModal(false)}
+          />
+        ) : showAssignQuizModal && !activeChild ? (
+          /* No child selected — prompt the user to pick one */
+          <div className="modal-overlay" onClick={() => setShowAssignQuizModal(false)}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label="Select a child" onClick={e => e.stopPropagation()}>
+              <h2>Select a Child</h2>
+              <p className="modal-desc">Please select one of your children from the tabs above before assigning a quiz.</p>
+              <div className="modal-actions">
+                <button className="cancel-btn" onClick={() => setShowAssignQuizModal(false)}>Close</button>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
     </DashboardLayout>
   );
 }
