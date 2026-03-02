@@ -276,6 +276,10 @@
 - [x] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666) IMPLEMENTED
 - [x] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667) (IMPLEMENTED)
 
+#### Phase 2 — Classroom Data Import (#56)
+
+- [ ] **Classroom Data Import — Multi-Pathway Migration** — ImportSession foundation, copy-paste AI parser, screenshot/photo AI import, email forward parser, ICS calendar import, CSV template import, MCP import tools, ImportReviewWizard, ClassroomImportPage hub (#56, #57-#67)
+
 #### UI/UX HCD Assessment — Phase 2 Improvements (#827)
 
 **Assessment Report:** [docs/ClassBridge_UI_UX_Assessment_Report.docx](../docs/ClassBridge_UI_UX_Assessment_Report.docx)

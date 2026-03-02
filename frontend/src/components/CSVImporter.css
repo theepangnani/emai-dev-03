@@ -1,0 +1,358 @@
+/* CSVImporter component styles */
+
+.csv-importer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.csvi-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.csvi-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.csvi-description {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+/* Tabs */
+.csvi-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.csvi-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.csvi-tab:hover {
+  color: var(--color-accent-strong);
+}
+
+.csvi-tab.active {
+  color: var(--color-accent-strong);
+  border-bottom-color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+/* Template panel */
+.csvi-template-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.csvi-template-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+/* Preview table wrapper */
+.csvi-preview-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+}
+
+.csvi-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  background: var(--color-surface);
+}
+
+.csvi-preview-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.csvi-preview-table td {
+  padding: 7px 12px;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.csvi-preview-table tbody tr:nth-child(even) {
+  background: var(--color-surface-alt);
+}
+
+.csvi-preview-table tbody tr:nth-child(odd) {
+  background: var(--color-surface);
+}
+
+.csvi-preview-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.csvi-empty-cell {
+  color: var(--color-ink-muted);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+/* Download template button */
+.csvi-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.csvi-download-btn:hover {
+  background: var(--color-accent);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-xs);
+}
+
+.csvi-download-btn svg {
+  flex-shrink: 0;
+}
+
+/* Drop zone */
+.csvi-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 28px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  outline: none;
+}
+
+.csvi-drop-zone:hover,
+.csvi-drop-zone:focus-visible {
+  border-color: var(--color-accent);
+  background: rgba(73, 184, 192, 0.04);
+}
+
+.csvi-drop-zone.drag-over {
+  border-color: var(--color-accent-strong);
+  background: rgba(73, 184, 192, 0.08);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.csvi-drop-zone.has-file {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: rgba(73, 184, 192, 0.04);
+  padding: 16px 20px;
+}
+
+/* Drop zone content (no file) */
+.csvi-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.csvi-upload-icon {
+  color: var(--color-ink-muted);
+  opacity: 0.6;
+}
+
+.csvi-drop-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.csvi-drop-hint {
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+}
+
+/* File info (file selected) */
+.csvi-file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.csvi-file-icon {
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+
+.csvi-file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.csvi-file-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csvi-file-size {
+  font-size: 0.78rem;
+  color: var(--color-ink-muted);
+}
+
+.csvi-file-remove {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.csvi-file-remove:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+}
+
+/* Error */
+.csvi-error {
+  color: var(--color-danger);
+  font-size: 0.88rem;
+  padding: 10px 14px;
+  background: var(--color-danger-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(214, 69, 69, 0.2);
+}
+
+/* Actions */
+.csvi-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Loading state */
+.csvi-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.csvi-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: csvi-spin 0.7s linear infinite;
+}
+
+@keyframes csvi-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .csv-importer {
+    gap: 16px;
+  }
+
+  .csvi-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .csvi-tab {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .csvi-template-panel {
+    padding: 12px;
+  }
+
+  .csvi-preview-table th,
+  .csvi-preview-table td {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .csvi-drop-zone {
+    padding: 20px 16px;
+  }
+
+  .csvi-actions {
+    flex-direction: column-reverse;
+  }
+
+  .csvi-actions .generate-btn,
+  .csvi-actions .cancel-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .csvi-title {
+    font-size: 1.1rem;
+  }
+
+  .csvi-download-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

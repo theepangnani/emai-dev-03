@@ -1,0 +1,684 @@
+/* ===========================================================================
+ * ImportReviewWizard — Unified import review wizard (#60)
+ * Follows the BulkImportWizard CSS pattern with project design tokens.
+ * =========================================================================== */
+
+/* ── Overlay & container ──────────────────────────────────────────────────── */
+
+.irw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 16px;
+}
+
+.irw-wizard {
+  background: var(--color-bg, #fff);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header & step indicator ──────────────────────────────────────────────── */
+
+.irw-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  flex-shrink: 0;
+}
+
+.irw-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text, #212529);
+  white-space: nowrap;
+}
+
+.irw-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.irw-step-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.irw-step-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--color-surface, #f0f0f0);
+  color: var(--color-text-muted, #6c757d);
+  border: 2px solid var(--color-border, #dee2e6);
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.irw-step-dot.active {
+  background: var(--color-accent-strong, #2a9fa8);
+  color: #fff;
+  border-color: var(--color-accent-strong, #2a9fa8);
+}
+
+.irw-step-dot.done {
+  background: var(--color-success, #28a745);
+  color: #fff;
+  border-color: var(--color-success, #28a745);
+}
+
+.irw-step-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #6c757d);
+  white-space: nowrap;
+}
+
+.irw-step-label.active {
+  color: var(--color-accent-strong, #2a9fa8);
+  font-weight: 600;
+}
+
+.irw-step-label.done {
+  color: var(--color-success, #28a745);
+}
+
+.irw-step-connector {
+  width: 24px;
+  height: 2px;
+  background: var(--color-border, #dee2e6);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.irw-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-text-muted, #6c757d);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.irw-close-btn:hover {
+  background: var(--color-surface, #f0f0f0);
+  color: var(--color-text, #212529);
+}
+
+/* ── Content area ─────────────────────────────────────────────────────────── */
+
+.irw-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px 24px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.irw-description {
+  color: var(--color-text-muted, #6c757d);
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* ── Global error ─────────────────────────────────────────────────────────── */
+
+.irw-error {
+  color: var(--color-danger, #dc3545);
+  font-size: 0.88rem;
+  padding: 10px 14px;
+  background: var(--color-danger-bg, #f8d7da);
+  border-radius: 8px;
+  margin: 0 24px;
+}
+
+/* ── Step 1: Processing / spinner ─────────────────────────────────────────── */
+
+.irw-processing {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.irw-processing h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-text, #212529);
+}
+
+.irw-processing-sub {
+  color: var(--color-text-muted, #6c757d);
+  font-size: 0.88rem;
+  max-width: 360px;
+}
+
+.irw-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--color-border, #dee2e6);
+  border-top-color: var(--color-accent-strong, #2a9fa8);
+  border-radius: 50%;
+  animation: irw-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes irw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Step 2: Tabs ─────────────────────────────────────────────────────────── */
+
+.irw-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--color-border, #dee2e6);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.irw-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #6c757d);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.irw-tab:hover {
+  color: var(--color-text, #212529);
+}
+
+.irw-tab.active {
+  color: var(--color-accent-strong, #2a9fa8);
+  border-bottom-color: var(--color-accent-strong, #2a9fa8);
+  font-weight: 600;
+}
+
+.irw-tab.empty {
+  opacity: 0.5;
+}
+
+.irw-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-surface, #f0f0f0);
+  color: var(--color-text-muted, #6c757d);
+}
+
+.irw-tab.active .irw-tab-badge {
+  background: var(--color-accent-bg, #f0fafb);
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+/* ── Select / deselect all ────────────────────────────────────────────────── */
+
+.irw-select-all {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.irw-link-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent, #0d6efd);
+  cursor: pointer;
+  font-size: 0.84rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.irw-link-btn:hover {
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+.irw-selected-count {
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #6c757d);
+  margin-left: auto;
+}
+
+/* ── Table wrapper ────────────────────────────────────────────────────────── */
+
+.irw-table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 8px;
+}
+
+.irw-empty-tab {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--color-text-muted, #6c757d);
+  font-size: 0.92rem;
+}
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+
+.irw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.irw-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.irw-table th {
+  background: var(--color-surface, #f8f9fa);
+  color: var(--color-text-muted, #6c757d);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  white-space: nowrap;
+}
+
+.irw-th-check {
+  width: 36px;
+}
+
+.irw-th-status {
+  width: 120px;
+}
+
+.irw-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border, #eee);
+  vertical-align: middle;
+  color: var(--color-text, #212529);
+}
+
+/* Alternating row colors */
+.irw-table tbody tr:nth-child(even) {
+  background: var(--color-surface, #f8f9fa);
+}
+
+.irw-table tbody tr:hover {
+  background: var(--color-accent-bg, #f0fafb);
+}
+
+.irw-row-excluded {
+  opacity: 0.45;
+}
+
+.irw-row-excluded td {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-muted, #6c757d);
+}
+
+/* Checkbox in table */
+.irw-table td input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent-strong, #2a9fa8);
+}
+
+/* ── Editable cell ────────────────────────────────────────────────────────── */
+
+.irw-cell-value {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.irw-cell-editable {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.irw-cell-editable:hover {
+  background: var(--color-accent-bg, #f0fafb);
+  outline: 1px dashed var(--color-accent-strong, #2a9fa8);
+}
+
+.irw-cell-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--color-accent-strong, #2a9fa8);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #212529);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(42, 159, 168, 0.2);
+}
+
+/* ── Duplicate badge ──────────────────────────────────────────────────────── */
+
+.irw-badge-duplicate {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #856404;
+  background: #fff3cd;
+  border-radius: 10px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ── Course mapping dropdown ──────────────────────────────────────────────── */
+
+.irw-course-mapping {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 4px;
+  font-size: 0.82rem;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #212529);
+  cursor: pointer;
+  max-width: 120px;
+}
+
+.irw-course-mapping:focus {
+  outline: none;
+  border-color: var(--color-accent-strong, #2a9fa8);
+  box-shadow: 0 0 0 2px rgba(42, 159, 168, 0.2);
+}
+
+/* ── Step 3: Confirm ──────────────────────────────────────────────────────── */
+
+.irw-confirm {
+  align-items: center;
+}
+
+.irw-confirm h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--color-text, #212529);
+}
+
+.irw-confirm-summary {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--color-surface, #f8f9fa);
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.irw-confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.irw-confirm-label {
+  font-size: 0.92rem;
+  color: var(--color-text, #212529);
+}
+
+.irw-confirm-count {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-muted, #6c757d);
+  min-width: 32px;
+  text-align: center;
+}
+
+.irw-confirm-count.has-items {
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+.irw-import-btn {
+  font-size: 1rem;
+  padding: 10px 32px;
+}
+
+/* ── Step 4: Summary ──────────────────────────────────────────────────────── */
+
+.irw-summary {
+  align-items: center;
+  text-align: center;
+}
+
+.irw-summary-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.irw-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-success, #28a745);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.irw-summary-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--color-success, #28a745);
+}
+
+.irw-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.irw-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+}
+
+.irw-stat-number {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+.irw-stat-label {
+  font-size: 0.76rem;
+  color: var(--color-text-muted, #6c757d);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.irw-summary-errors {
+  width: 100%;
+  max-width: 500px;
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--color-danger-bg, #f8d7da);
+  border-radius: 8px;
+  border: 1px solid var(--color-danger, #dc3545);
+}
+
+.irw-summary-errors h4 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--color-danger, #dc3545);
+}
+
+.irw-summary-errors ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.84rem;
+  color: var(--color-danger, #dc3545);
+}
+
+.irw-summary-errors li {
+  margin-bottom: 4px;
+}
+
+.irw-summary-actions {
+  justify-content: center;
+}
+
+/* ── Actions bar ──────────────────────────────────────────────────────────── */
+
+.irw-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border, #dee2e6);
+  flex-shrink: 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .irw-wizard {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .irw-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px 12px;
+  }
+
+  .irw-title {
+    font-size: 1.05rem;
+  }
+
+  .irw-steps {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .irw-step-label {
+    display: none;
+  }
+
+  .irw-step-connector {
+    width: 16px;
+  }
+
+  .irw-close-btn {
+    order: 2;
+  }
+
+  .irw-content {
+    padding: 14px 16px 16px;
+  }
+
+  .irw-tabs {
+    gap: 2px;
+  }
+
+  .irw-tab {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+  }
+
+  .irw-table th,
+  .irw-table td {
+    padding: 6px 8px;
+    font-size: 0.82rem;
+  }
+
+  .irw-summary-stats {
+    gap: 14px;
+  }
+
+  .irw-stat-number {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .irw-step-dot {
+    width: 26px;
+    height: 26px;
+    font-size: 0.7rem;
+  }
+
+  .irw-tab-badge {
+    display: none;
+  }
+
+  .irw-table-wrapper {
+    font-size: 0.8rem;
+  }
+
+  .irw-confirm-summary {
+    max-width: 100%;
+  }
+}

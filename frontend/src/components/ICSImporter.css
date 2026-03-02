@@ -1,0 +1,340 @@
+/* ICSImporter (#62) — Calendar .ics file import component */
+
+.ics-importer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Header ─────────────────────────── */
+.ics-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ics-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-ink);
+  line-height: 1.3;
+}
+
+.ics-description {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+/* ── Collapsible instructions ───────── */
+.ics-instructions-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.ics-instructions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--color-surface-alt);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.ics-instructions-toggle:hover {
+  background: var(--color-border);
+}
+
+.ics-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--color-ink-muted);
+}
+
+.ics-chevron.open {
+  transform: rotate(90deg);
+}
+
+.ics-steps {
+  margin: 0;
+  padding: 12px 14px 14px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-ink);
+  line-height: 1.5;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.ics-steps li {
+  padding-left: 4px;
+}
+
+.ics-steps a {
+  color: var(--color-accent-strong);
+  text-decoration: none;
+}
+
+.ics-steps a:hover {
+  text-decoration: underline;
+}
+
+/* ── Drop zone ──────────────────────── */
+.ics-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--color-surface);
+  outline: none;
+}
+
+.ics-drop-zone:hover,
+.ics-drop-zone:focus-visible {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.ics-drop-zone.dragging {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-light);
+}
+
+.ics-drop-zone.has-file {
+  cursor: default;
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+  padding: 20px;
+}
+
+.ics-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ics-calendar-icon {
+  color: var(--color-ink-muted);
+}
+
+.ics-drop-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.ics-drop-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ── File selected ──────────────────── */
+.ics-file-selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.ics-file-icon {
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+
+.ics-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  min-width: 0;
+}
+
+.ics-file-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.ics-file-size {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.ics-file-remove {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  padding: 4px;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.ics-file-remove:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* ── Error ──────────────────────────── */
+.ics-error {
+  padding: 10px 14px;
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+/* ── Info box ───────────────────────── */
+.ics-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
+  border-radius: var(--radius-sm);
+}
+
+.ics-info-icon {
+  color: var(--color-info);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ics-info-box p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink);
+  line-height: 1.5;
+}
+
+.ics-info-box strong {
+  color: var(--color-ink);
+}
+
+/* ── Actions ────────────────────────── */
+.ics-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.ics-btn-cancel {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.ics-btn-cancel:hover:not(:disabled) {
+  border-color: var(--color-ink-muted);
+  color: var(--color-ink);
+}
+
+.ics-btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ics-btn-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-accent-strong);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  transition: opacity 0.12s, background 0.12s;
+}
+
+.ics-btn-import:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.ics-btn-import:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ────────────────────────── */
+.ics-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ics-spin 0.6s linear infinite;
+}
+
+@keyframes ics-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Responsive ─────────────────────── */
+@media (max-width: 480px) {
+  .ics-drop-zone {
+    padding: 24px 16px;
+  }
+
+  .ics-drop-zone.has-file {
+    padding: 16px;
+  }
+
+  .ics-file-selected {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ics-file-info {
+    text-align: center;
+  }
+
+  .ics-actions {
+    flex-direction: column-reverse;
+  }
+
+  .ics-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}

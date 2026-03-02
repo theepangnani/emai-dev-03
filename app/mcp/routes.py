@@ -14,6 +14,7 @@ from app.mcp.resources.student import router as student_resources_router
 from app.mcp.resources.student import tools_router as student_tools_router
 from app.mcp.tools.google_classroom import router as classroom_router
 from app.mcp.tools.google_classroom import sync_router as classroom_sync_router
+from app.mcp.tools.import_tools import router as import_tools_router
 
 
 def register_mcp_routes(app: FastAPI) -> None:
@@ -22,3 +23,4 @@ def register_mcp_routes(app: FastAPI) -> None:
     app.include_router(student_tools_router, prefix="/api")
     app.include_router(classroom_router, prefix="/api")
     app.include_router(classroom_sync_router, prefix="/api")
+    app.include_router(import_tools_router, prefix="/api")

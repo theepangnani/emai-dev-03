@@ -113,6 +113,7 @@ const ForumPage = lazyRetry(() => import('./pages/ForumPage').then((m) => ({ def
 const WritingAssistantPage = lazyRetry(() => import('./pages/WritingAssistantPage').then((m) => ({ default: m.WritingAssistantPage })));
 const ReminderPreferencesPage = lazyRetry(() => import('./pages/ReminderPreferencesPage').then((m) => ({ default: m.ReminderPreferencesPage })));
 const ResourceLibraryPage = lazyRetry(() => import('./pages/ResourceLibraryPage').then((m) => ({ default: m.ResourceLibraryPage })));
+const ClassroomImportPage = lazyRetry(() => import('./pages/ClassroomImportPage').then((m) => ({ default: m.ClassroomImportPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -674,6 +675,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['teacher', 'admin']}>
                     <ResourceLibraryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/import"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <ClassroomImportPage />
                   </ProtectedRoute>
                 }
               />

@@ -1,0 +1,388 @@
+/* ── ClassroomImportPage ─────────────────────────────── */
+
+.ci-page {
+  max-width: 1100px;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+
+.ci-header {
+  margin-bottom: 28px;
+}
+
+.ci-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+}
+
+.ci-subtitle {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin: 0;
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+/* ── Back link (active pathway view) ────────────────── */
+
+.ci-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-primary, #1976d2);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 20px;
+  transition: opacity 0.15s;
+}
+
+.ci-back-link:hover {
+  opacity: 0.75;
+}
+
+/* ── Importer container ─────────────────────────────── */
+
+.ci-importer-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: 24px;
+}
+
+/* ── Pathway cards grid ─────────────────────────────── */
+
+.ci-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.ci-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  width: 100%;
+  font-family: inherit;
+}
+
+.ci-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-accent, #49b8c0);
+  transform: translateY(-2px);
+}
+
+.ci-card:focus-visible {
+  outline: 2px solid var(--color-accent, #49b8c0);
+  outline-offset: 2px;
+}
+
+/* Card icon */
+.ci-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.ci-card-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.ci-card-icon-clipboard {
+  background: rgba(25, 118, 210, 0.1);
+  color: #1565c0;
+}
+
+.ci-card-icon-camera {
+  background: rgba(156, 39, 176, 0.1);
+  color: #7b1fa2;
+}
+
+.ci-card-icon-mail {
+  background: rgba(46, 125, 50, 0.1);
+  color: #2e7d32;
+}
+
+.ci-card-icon-calendar {
+  background: rgba(245, 124, 0, 0.1);
+  color: #e65100;
+}
+
+.ci-card-icon-table {
+  background: rgba(0, 121, 107, 0.1);
+  color: #00695c;
+}
+
+.ci-card-icon-google {
+  background: rgba(66, 133, 244, 0.1);
+  color: #4285f4;
+}
+
+/* Card body */
+.ci-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ci-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+}
+
+.ci-card-desc {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 0 0 2px;
+  line-height: 1.4;
+}
+
+.ci-card-hint {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin: 0;
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* Card action label */
+.ci-card-action {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-accent, #49b8c0);
+  color: #fff;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+
+.ci-card:hover .ci-card-action {
+  background: var(--color-accent-strong, #3a9ca3);
+}
+
+/* Google card variant */
+.ci-card-google .ci-card-action {
+  background: #4285f4;
+}
+
+.ci-card-google:hover .ci-card-action {
+  background: #3367d6;
+}
+
+/* ── Recent Imports section ─────────────────────────── */
+
+.ci-recent {
+  margin-top: 8px;
+}
+
+.ci-recent-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+}
+
+.ci-recent-loading {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
+.ci-recent-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 20px;
+  color: var(--color-ink-muted);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md, 10px);
+}
+
+.ci-recent-empty svg {
+  opacity: 0.35;
+}
+
+.ci-recent-empty p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Error */
+.ci-error {
+  background: rgba(211, 47, 47, 0.08);
+  border: 1px solid rgba(211, 47, 47, 0.2);
+  color: var(--color-error, #c62828);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* ── Sessions table ─────────────────────────────────── */
+
+.ci-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border);
+}
+
+.ci-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.ci-table th {
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ci-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-ink);
+  vertical-align: middle;
+}
+
+.ci-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ci-table-row-clickable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.ci-table-row-clickable:hover td {
+  background: var(--color-surface-hover, rgba(0, 0, 0, 0.02));
+}
+
+.ci-table-row-clickable:focus-visible {
+  outline: 2px solid var(--color-accent, #49b8c0);
+  outline-offset: -2px;
+}
+
+/* Source cell */
+.ci-cell-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ci-source-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: var(--color-ink-muted);
+}
+
+.ci-source-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Items count */
+.ci-cell-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Date cell */
+.ci-cell-date {
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+
+/* ── Status badges ──────────────────────────────────── */
+
+.ci-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ci-status-processing {
+  background: rgba(245, 166, 35, 0.15);
+  color: #b57d00;
+}
+
+.ci-status-review {
+  background: rgba(25, 118, 210, 0.12);
+  color: #1565c0;
+}
+
+.ci-status-imported {
+  background: rgba(46, 125, 50, 0.12);
+  color: #1b5e20;
+}
+
+.ci-status-failed {
+  background: rgba(211, 47, 47, 0.12);
+  color: #c62828;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .ci-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .ci-card {
+    padding: 16px;
+  }
+
+  .ci-importer-container {
+    padding: 16px;
+  }
+
+  .ci-table th:nth-child(3),
+  .ci-table td:nth-child(3) {
+    display: none;
+  }
+}
