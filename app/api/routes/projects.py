@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.database import get_db
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.models.user import User, UserRole
 from app.models.project import Project, ProjectMilestone
 from app.models.student import Student, parent_students
@@ -125,6 +125,7 @@ def _assert_project_ownership(project: Project, current_user: User, db: Session)
 
 @router.get("/")
 def list_projects(
+    _flag=Depends(require_feature("notes_projects")),
     student_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -154,6 +155,7 @@ def list_projects(
 @router.post("/", status_code=201)
 def create_project(
     payload: ProjectCreate,
+    _flag=Depends(require_feature("notes_projects")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -192,6 +194,7 @@ def create_project(
 def update_project(
     project_id: int,
     payload: ProjectUpdate,
+    _flag=Depends(require_feature("notes_projects")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -234,6 +237,7 @@ def update_project(
 @router.delete("/{project_id}", status_code=204)
 def archive_project(
     project_id: int,
+    _flag=Depends(require_feature("notes_projects")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -254,6 +258,7 @@ def archive_project(
 def add_milestone(
     project_id: int,
     payload: MilestoneCreate,
+    _flag=Depends(require_feature("notes_projects")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -288,6 +293,7 @@ def update_milestone(
     project_id: int,
     milestone_id: int,
     payload: MilestoneUpdate,
+    _flag=Depends(require_feature("notes_projects")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -334,6 +340,7 @@ def update_milestone(
 def delete_milestone(
     project_id: int,
     milestone_id: int,
+    _flag=Depends(require_feature("notes_projects")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
