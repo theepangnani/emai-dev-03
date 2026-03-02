@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor, forum, writing_assistance
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects, admin_analytics, sample_exams, lms_connections, storage, ai_insights, tutors, email_agent, lesson_plans, personalization, tutor_matching, feature_flags, push_notifications, events, portfolio, study_timer, grade_prediction, two_factor, forum, writing_assistance, smart_reminders
 from app.api.routes.billing import router as billing_router, admin_router as admin_billing_router
 from app.api.routes.billing import seed_subscription_plans
 
@@ -74,6 +74,7 @@ from app.models.grade_prediction import GradePrediction  # noqa: F401 — ensure
 from app.models.two_factor import TOTPDevice  # noqa: F401 — ensure table is created (2FA)
 from app.models.forum import ForumCategory, ForumThread, ForumPost, ForumLike  # noqa: F401 — ensure tables are created (Forum)
 from app.models.writing_assistance import WritingAssistanceSession, WritingTemplate  # noqa: F401 — ensure tables are created (Writing Assistant)
+from app.models.smart_reminder import ReminderLog, ReminderPreference  # noqa: F401 — ensure tables are created (Smart Reminders v2)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1262,6 +1263,7 @@ app.include_router(grade_prediction.router, prefix="/api")
 app.include_router(two_factor.router, prefix="/api")
 app.include_router(forum.router, prefix="/api")
 app.include_router(writing_assistance.router, prefix="/api")
+app.include_router(smart_reminders.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1431,6 +1433,15 @@ async def startup_event():
     # Multi-LMS sync — every 15 minutes; syncs all active connections, detects stale ones (#27)
     from app.jobs.lms_sync import schedule_lms_sync
     schedule_lms_sync(scheduler, get_db)
+
+    # Smart Reminders v2 — runs every 3 hours to cover HIGH (3h before due) and CRITICAL urgency windows
+    from app.jobs.smart_reminders_job import run_smart_reminders_job
+    scheduler.add_job(
+        run_smart_reminders_job,
+        CronTrigger(hour="*/3"),
+        id="smart_reminders",
+        replace_existing=True,
+    )
 
     start_scheduler()
     logger.info("EMAI application started successfully")

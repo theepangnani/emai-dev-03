@@ -345,6 +345,13 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M12 3V1"/>
     </svg>
   ),
+  'Reminder Settings': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      <line x1="12" y1="2" x2="12" y2="4"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -413,6 +420,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Billing', path: '/settings/billing' },
         { label: 'API Keys', path: '/settings/api-keys' },
         { label: 'Two-Factor Auth', path: '/settings/2fa' },
+        { label: 'Reminder Settings', path: '/settings/reminders' },
         { label: 'Account', path: '/settings/account' },
       ];
     }
@@ -486,6 +494,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     items.push({ label: 'Billing', path: '/settings/billing' });
     items.push({ label: 'API Keys', path: '/settings/api-keys' });
     items.push({ label: 'Two-Factor Auth', path: '/settings/2fa' });
+    items.push({ label: 'Reminder Settings', path: '/settings/reminders' });
     items.push({ label: 'Account', path: '/settings/account' });
 
     return items;

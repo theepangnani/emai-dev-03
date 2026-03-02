@@ -111,6 +111,7 @@ const GradePredictionPage = lazyRetry(() => import('./pages/GradePredictionPage'
 const TwoFactorSetupPage = lazyRetry(() => import('./pages/TwoFactorSetupPage').then((m) => ({ default: m.TwoFactorSetupPage })));
 const ForumPage = lazyRetry(() => import('./pages/ForumPage').then((m) => ({ default: m.ForumPage })));
 const WritingAssistantPage = lazyRetry(() => import('./pages/WritingAssistantPage').then((m) => ({ default: m.WritingAssistantPage })));
+const ReminderPreferencesPage = lazyRetry(() => import('./pages/ReminderPreferencesPage').then((m) => ({ default: m.ReminderPreferencesPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -656,6 +657,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
                     <WritingAssistantPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/reminders"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher', 'admin']}>
+                    <ReminderPreferencesPage />
                   </ProtectedRoute>
                 }
               />
