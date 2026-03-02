@@ -454,10 +454,10 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [ ] Payment integration
 
 ### Phase 5 (AI Email Agent)
-- [ ] AI email sending
-- [ ] Reply ingestion
-- [ ] AI summaries
-- [ ] Searchable archive
+- [x] **AI email sending** — AI-drafted email composition (GPT-4o-mini via Anthropic Claude); tone selection (formal/friendly/concise/empathetic); EN/FR; improve draft instructions; send via SendGrid; EmailThread + EmailMessage models (IMPLEMENTED)
+- [x] **Reply ingestion** — SendGrid Inbound Parse webhook; thread matching by Message-ID/subject; EmailMessage records for inbound (IMPLEMENTED)
+- [x] **AI summaries** — Thread-level AI summaries (2-4 sentences); action item extraction; reply suggestions (IMPLEMENTED)
+- [x] **Searchable archive** — Full-text search across threads/messages; filter by from/to/date; tab-based inbox UI (Inbox/Sent/Drafts/Archived) (IMPLEMENTED)
 
 ---
 
