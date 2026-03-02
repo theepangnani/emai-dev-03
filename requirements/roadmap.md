@@ -135,11 +135,14 @@
 - [x] **Split api/client.ts** — Break 794-LOC monolith into domain-specific API modules (#127) (IMPLEMENTED)
 - [x] **Extract backend services** — Move business logic from route handlers to domain service layer (#128) (IMPLEMENTED)
 - [x] **Repository pattern** — Introduce data access layer abstracting SQLAlchemy queries (#129) — BaseRepository[T], TaskRepository (8 methods), CourseContentRepository (8 methods), StudyGuideRepository (10 methods); tasks.py fully adopted; get_task_repo/get_course_content_repo/get_study_guide_repo deps in deps.py (IMPLEMENTED)
+
+#### Feature Flag System
+- [x] **Admin Feature Flags** — FeatureFlag model (global/tier/role/user/beta scopes); UserFeatureOverride (per-user overrides with expiry); FeatureFlagService evaluation engine with rollout % support; admin CRUD API + override management; AdminFeatureFlagsPage at /admin/feature-flags; useFeatureFlag React hook (60s cache); 8 predefined flags seeded (ai_email_agent, tutor_marketplace, lesson_planner, ai_personalization, brightspace_lms, stripe_billing, mcp_tools, beta_features) (IMPLEMENTED)
 - [x] **Split ParentDashboard** — Break 1668-LOC component into composable sub-components (#130, #657) ✅ (extracted useParentDashboard hook + TodaysFocusHeader + AlertBanner + StudentDetailPanel + QuickActionsBar; ParentDashboard.tsx now 544 LOC)
 - [x] **Activate TanStack Query** — Replace manual useState/useEffect data fetching with React Query hooks (#131) (IMPLEMENTED)
 - [ ] **Backend DDD modules** — Reorganize into bounded context directories (#132)
 - [ ] **Frontend DDD modules** — Reorganize into domain directories (#133)
-- [ ] **Domain events** — Add event system for cross-context communication (#134)
+- [x] **Domain events** (#134) — Lightweight synchronous in-process EventBus; DomainEvent base class; 15+ typed events (StudyGuideGenerated, QuizCompleted, SubscriptionChanged, TutorBookingRequested, LMSSyncCompleted, etc.); default handlers for cross-context reactions (quiz→mastery invalidation, subscription→onboarding, booking→notification); admin events API (recent events, stats, test publish); 15+ tests (IMPLEMENTED)
 
 #### Security & Hardening (Tier 0)
 - [x] **Authorization gaps** — `list_students()` returns ALL students to any auth user; `get_user()` has no permission check; `list_assignments()` not filtered by course access (#139) (IMPLEMENTED)
@@ -199,7 +202,7 @@
 - [x] Issue #207: Parent Dashboard: Collapsible/expandable calendar section (IMPLEMENTED — defaults to collapsed, #544)
 
 ### Phase 2
-- [x] **TeachAssist Integration** — TeachAssist-compatible lesson planning tool for Ontario teachers; LessonPlan model (LRP/Unit/Daily types, 3-part lesson, Ontario curriculum expectations, assessment strategies, differentiation); AI-generate learning goals + 3-part lesson (GPT-4o-mini); TeachAssist XML/CSV import parser; LessonPlannerPage at /teacher/lesson-plans; template system (IMPLEMENTED)
+- [x] **TeachAssist Integration (#46)** — TeachAssist-compatible lesson planning tool for Ontario teachers; LessonPlan model (LRP/Unit/Daily types, 3-part lesson, Ontario curriculum expectations, assessment strategies, differentiation); AI-generate learning goals + 3-part lesson (GPT-4o-mini); TeachAssist XML/CSV import parser; LessonPlannerPage at /teacher/lesson-plans; template system (IMPLEMENTED)
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [x] **Advanced notifications** — per-type in-app/email toggles, daily digest mode with configurable hour, NotificationPreferencesPage, digest APScheduler job (#966) — IMPLEMENTED
 - [x] **Notes & project tracking tools** — Color-coded note cards (masonry grid, pinnable, linkable), Project tracker with milestone checklists and progress bars (IMPLEMENTED)
@@ -352,7 +355,7 @@ See §9 Mobile App Development for detailed specification.
 - [ ] Pilot launch (March 6)
 
 **Deferred to Phase 3+ (post-pilot):**
-- Push notifications (Firebase) — Issues #314-#318, #334-#335
+- [x] **Push notifications (Firebase)** — FCM HTTP v1 API; PushToken model (web/iOS/Android); service account OAuth2 auth; send_to_token/user/users/multicast; auto-deactivate invalid tokens; POST /api/push/register + unregister + tokens; admin send + stats endpoints; WebPushService (frontend); PushNotificationSetup banner component; integrated with notification creation flow (#314-#318)
 - API versioning — Issue #311 (not needed when you control both clients)
 - File uploads — Issues #319-#320, #333
 - App Store / Play Store submission — Issues #343-#346
@@ -360,6 +363,10 @@ See §9 Mobile App Development for detailed specification.
 - Offline mode — Issue #337
 
 **GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
+
+### Phase 2+ (Push Notifications Foundation)
+
+- [x] **Push Notifications Foundation** — Firebase Cloud Messaging (FCM) push notifications for web + mobile; PushToken model (web/iOS/Android platforms, device_name, app_version, is_active, last_used_at); PushNotificationService with OAuth2 service account auth; FCM HTTP v1 API; send_to_token/user/users/multicast methods; auto-deactivate invalid tokens on 404/UNREGISTERED; POST /api/push/register (upsert), DELETE /api/push/unregister, GET /api/push/tokens; admin POST /api/admin/push/send (multi-user) + GET /api/admin/push/stats (by platform); WebPushService frontend class (dynamic Firebase JS SDK import, VAPID key, onMessage handler); PushNotificationSetup banner component (permission request, localStorage dismiss/enable tracking, success/denied states); send_push_for_notification() integration hook; Firebase env vars documented in frontend/.env.example; FIREBASE_PROJECT_ID / FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_VAPID_PUBLIC_KEY in backend config (IMPLEMENTED)
 
 ### Phase 2+ (Multi-LMS Integration) — #22-#29
 
@@ -372,7 +379,7 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 | 3 | **Multi-LMS Connection Management API** | #23 | 2+ | **Core** — OAuth flows, CRUD endpoints for connections, provider discovery, institution search. Universal callback handler. | #22 |
 | 4 | **Brightspace OAuth2 Service** | #24 | 2+ | **Integration** — Brightspace-specific OAuth2 + REST API client (`app/services/brightspace.py`). Handles per-institution URLs, pagination, rate limiting. | #22 |
 | 5 | **Brightspace LMSProvider Adapter** | #25 | 2+ | **Integration** — Implements LMSProvider interface for Brightspace. Translates Brightspace API → canonical models. Registered in provider registry. | #24, #22 |
-| 6 | **Multi-LMS Connection Manager UI** | #26 | 2+ | **UX** — Settings page to manage connections, connect flow with institution selector, provider badges on courses, filter by provider. | #23, #25 |
+| 6 | **Multi-LMS Connection Manager UI** | #26 | 2+ | **UX** — Settings page to manage connections, connect flow with institution selector, provider badges on courses, filter by provider. | #23, #25 | In Progress — tracked in #52 (Canvas adapter + UI, Batch 10) |
 | 7 | **Multi-LMS Sync Orchestration** | #27 | 2+ | **Infrastructure** — Unified background sync across all providers, per-connection status tracking, stale detection, deduplication. | #22, #25 |
 | 8 | **Admin LMS Institution Management** | #28 | 2+ | **Admin** — Admin page to register school board Brightspace instances, manage OAuth credentials, seed Ontario boards. | #22 |
 
@@ -383,6 +390,8 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 - [x] **Brightspace LMSProvider Adapter (#25)** — Full BrightspaceAdapter implementing LMSProvider protocol; sync_courses/assignments/materials/grades; registered in provider registry; 15+ tests (IMPLEMENTED)
 - [x] **Admin LMS Institution Management (#28)** — Admin page at /admin/lms: create/edit/deactivate institutions, view all user connections by institution, connection stats by provider, manual sync trigger (IMPLEMENTED)
 - [x] **Multi-LMS Sync Orchestration (#27)** — 15-minute APScheduler job syncing all active connections; per-connection sync with error tracking; stale detection (7-day threshold); manual trigger endpoint /api/admin/lms/sync/trigger (IMPLEMENTED)
+- [x] **Multi-LMS Connection Manager UI (#26)** — Provider catalog grid (Google/Brightspace/Canvas cards) with connection status, course count, last sync time; institution selector modal for Brightspace with search and pre-seeded Ontario boards (TDSB/PDSB/YRDSB/HDSB/OCDSB); OAuth connect flow with redirect (Google → /api/google/connect, Brightspace → /api/lms/brightspace/connect); Sync Now / Disconnect actions with confirmation; connected provider detail panel slide-in with synced courses count, error display, and sync feedback; per-connection sync trigger (POST /api/lms/connections/{id}/sync); lmsConnectionsApi.syncConnection() + searchInstitutions() added to frontend API client (IMPLEMENTED)
+- [x] **Canvas LMS Adapter** — CanvasOAuthClient (auth URL, code exchange, token refresh); CanvasAPIClient (courses, modules, assignments, grades, announcements, files); link-header pagination; full CanvasAdapter implementing LMSProvider; OAuth2 endpoints /canvas/connect + /callback + /refresh; registered in provider registry; 15+ tests (IMPLEMENTED)
 
 **Recommended implementation order:**
 1. **#29** Feasibility Study (research — DONE in issue body)
@@ -391,7 +400,7 @@ Multi-LMS provider support enabling students to connect to multiple learning man
 4. **#24** Brightspace OAuth2 Service (Brightspace-specific)
 5. **#25** Brightspace Adapter (canonical model translation)
 6. **#28** Admin Institution Management (admin config)
-7. **#26** Multi-LMS UI (frontend)
+7. **#26** Multi-LMS UI (frontend) — tracked in #52 (Canvas adapter + UI, Batch 10, IN PROGRESS)
 8. **#27** Multi-LMS Sync Orchestration (background jobs)
 
 **User Story (Student):**
@@ -447,19 +456,36 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [x] **Sample Exams/Tests Upload + AI Assessment (#577)** — Teacher uploads exam (PDF/doc); AI assesses quality (overall score 0-100, strengths/weaknesses, difficulty distribution, curriculum coverage, question quality); is_public toggle for student practice mode; SampleExamsPage with assessment modal and practice mode (IMPLEMENTED)
 - [x] **API Key Management UI** — Create/list/revoke API keys for MCP access; bcrypt-hashed keys with cbk_ prefix; one-time key display with copy button; APIKeysPage at /settings/api-keys; Account Settings Developer section link; nav item for all roles (IMPLEMENTED)
 - [x] **Multi-language support foundation** — i18n system with English + French (Canadian); t() function + useTranslation hook; 70+ translated strings across navigation, actions, dashboard, auth, errors, API keys; LanguageToggle EN/FR button in DashboardLayout header; locale stored in localStorage + user profile DB column; /api/profile/locale endpoint (IMPLEMENTED)
-- [x] **Advanced AI Personalization** — PersonalizationProfile per student (learning style with AI detection, preferred difficulty/session length/time); SubjectMastery scoring (quiz*0.4 + grade*0.4 + study_freq*0.2) with beginner/developing/proficient/advanced levels + trend; AdaptiveDifficulty (consecutive correct/incorrect adjustment); AI-generated study recommendations; PersonalizationPage with mastery bars, learning style card, recommendations panel; parent view of child mastery (IMPLEMENTED)
+- [x] **Advanced AI Personalization (#47)** — PersonalizationProfile per student (learning style with AI detection, preferred difficulty/session length/time); SubjectMastery scoring (quiz*0.4 + grade*0.4 + study_freq*0.2) with beginner/developing/proficient/advanced levels + trend; AdaptiveDifficulty (consecutive correct/incorrect adjustment); AI-generated study recommendations; PersonalizationPage with mastery bars, learning style card, recommendations panel; parent view of child mastery (IMPLEMENTED)
 - [x] **Admin analytics** — See Admin Analytics Dashboard above (IMPLEMENTED)
 
 ### Phase 4 (Tutor Marketplace)
 - [x] **Tutor Marketplace Foundation** — TutorProfile model (bio, subjects, rates, availability, verified status, ratings); TutorBooking model (request → accept/decline → review flow); search/filter API; TutorMarketplacePage with filter bar + booking modal; TutorProfilePage with reviews; Teacher TutorDashboardPage with request management (IMPLEMENTED)
-- [ ] AI tutor matching
+- [x] **AI tutor matching** — TutorMatchingEngine with weighted scoring (subject coverage 35%, grade match 20%, rating 20%, learning style 15%, price 10%); personalization integration (SubjectMastery weak areas + learning style); AI-generated match explanations; TutorMatchPage at /tutors/match with match score bars; TutorMatchPreference model; parent view of child matches (IMPLEMENTED)
 - [x] **Payment integration (Stripe)** — SubscriptionPlan + UserSubscription models; StripeService wrapper (customer, checkout session, billing portal, cancel, webhook); Stripe Checkout for monthly/yearly premium; Billing Portal for self-service management; webhook handler (checkout.completed, subscription.updated/deleted, invoice.failed); BillingPage at /settings/billing; AdminBillingPage at /admin/billing with MRR stats; 7-day free trial (IMPLEMENTED)
 
-### Phase 5 (AI Email Agent)
 - [x] **AI email sending** — AI-drafted email composition (GPT-4o-mini via Anthropic Claude); tone selection (formal/friendly/concise/empathetic); EN/FR; improve draft instructions; send via SendGrid; EmailThread + EmailMessage models (IMPLEMENTED)
 - [x] **Reply ingestion** — SendGrid Inbound Parse webhook; thread matching by Message-ID/subject; EmailMessage records for inbound (IMPLEMENTED)
 - [x] **AI summaries** — Thread-level AI summaries (2-4 sentences); action item extraction; reply suggestions (IMPLEMENTED)
 - [x] **Searchable archive** — Full-text search across threads/messages; filter by from/to/date; tab-based inbox UI (Inbox/Sent/Drafts/Archived) (IMPLEMENTED)
+
+---
+
+### Batch 10 (In Progress) — #50-#54
+
+| # | Feature | Issue | Status |
+|---|---------|-------|--------|
+| 1 | AI Tutor Matching | #50 | In Progress |
+| 2 | Admin Feature Flag System | #51 | In Progress |
+| 3 | Canvas LMS Adapter + Multi-LMS Connection Manager UI (#26) | #52 | In Progress |
+| 4 | Domain Events System | #53 | In Progress |
+| 5 | Firebase Push Notifications | #54 | In Progress |
+
+- [ ] **AI tutor matching (#50)** — TutorMatchingEngine with weighted scoring (subject expertise, availability, rating, price, learning style compatibility); PersonalizationProfile integration; TutorMatchPage at /student/find-tutor
+- [ ] **Admin feature flag system (#51)** — FeatureFlag model, FeatureFlagService with in-memory cache, require_feature() backend dependency, public /api/features/enabled endpoint, AdminFeatureFlagsPage, useFeatureFlag hook and FeatureGate component; guards for Tutor Marketplace, Brightspace LMS, MCP integration, School Board integration (issues #33-#43)
+- [ ] **Canvas LMS adapter + Multi-LMS Connection Manager UI (#52)** — CanvasOAuthClient, CanvasAPIClient, CanvasAdapter implementing LMSProvider; OAuth2 flow endpoints; Multi-LMS Connection Manager UI with provider catalog, institution selector, connection status dashboard (addresses #26)
+- [ ] **Domain events system (#53)** — EventBus with async publish/subscribe, 15+ typed domain events (AssignmentCreated, GradeSynced, UserEnrolled, etc.), cross-context handlers, admin events API for audit trail
+- [ ] **Firebase push notifications (#54)** — PushToken model, PushNotificationService with FCM HTTP v1, WebPushService frontend (service worker, permission flow), PushNotificationSetup component in user settings (addresses #314-#318)
 
 ---
 

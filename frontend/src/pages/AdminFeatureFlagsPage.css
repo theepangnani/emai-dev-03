@@ -1,0 +1,486 @@
+/* ── Admin Feature Flags Page ─────────────────────────────────────────────── */
+
+.aff-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 0 48px;
+}
+
+/* Header row */
+.aff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.aff-header--sub {
+  margin-top: 32px;
+}
+
+.aff-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.aff-subtitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.aff-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Buttons */
+.aff-btn-primary {
+  padding: 8px 18px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.aff-btn-primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.aff-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aff-btn-secondary {
+  padding: 8px 16px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.aff-btn-secondary:hover {
+  background: var(--color-border);
+}
+
+.aff-btn-edit {
+  padding: 5px 12px;
+  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.1));
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-light, rgba(99, 102, 241, 0.3));
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.aff-btn-edit:hover {
+  opacity: 0.8;
+}
+
+.aff-btn-delete {
+  padding: 5px 10px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.aff-btn-delete:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.aff-btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aff-btn-remove {
+  padding: 4px 10px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  transition: opacity 0.15s;
+}
+
+.aff-btn-remove:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.aff-btn-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Section wrapper */
+.aff-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Table */
+.aff-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.aff-table th {
+  background: var(--color-surface-alt);
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.aff-table td {
+  padding: 13px 16px;
+  font-size: 14px;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.aff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.aff-table tr:hover td {
+  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.04));
+}
+
+/* Flag cell */
+.aff-flag-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.aff-flag-key {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+}
+
+.aff-flag-desc {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin-top: 4px;
+  max-width: 280px;
+}
+
+.aff-details-cell {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+/* Scope badge */
+.aff-scope-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.aff-scope--global {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+.aff-scope--tier {
+  background: rgba(244, 128, 31, 0.12);
+  color: #f4801f;
+}
+
+.aff-scope--role {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.aff-scope--user {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.aff-scope--beta {
+  background: rgba(236, 72, 153, 0.12);
+  color: #ec4899;
+}
+
+/* Status toggle button */
+.aff-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  letter-spacing: 0.03em;
+}
+
+.aff-status-toggle:hover {
+  opacity: 0.8;
+}
+
+.aff-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.aff-status--on {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.aff-status--off {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6b7280;
+}
+
+.aff-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Actions cell */
+.aff-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Empty / loading */
+.aff-loading {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
+.aff-empty {
+  padding: 48px;
+  text-align: center;
+  color: var(--color-ink-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.aff-empty-text {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Errors */
+.aff-error {
+  color: var(--color-error, #ef4444);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.aff-error--page {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+
+.aff-modal {
+  max-width: 560px;
+  width: 100%;
+}
+
+.aff-modal h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  color: var(--color-ink);
+}
+
+.aff-modal h2 code {
+  font-size: 16px;
+  font-family: monospace;
+  background: var(--color-surface-alt);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Form groups */
+.aff-form-group {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.aff-form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.aff-form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.aff-form-group--half {
+  flex: 1;
+  min-width: 180px;
+}
+
+.aff-input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.aff-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.aff-textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.aff-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.aff-select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.aff-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Rollout slider */
+.aff-rollout-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aff-slider {
+  flex: 1;
+  accent-color: var(--color-accent);
+}
+
+.aff-rollout-val {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 36px;
+  text-align: right;
+  color: var(--color-ink);
+}
+
+/* Toggle checkbox label */
+.aff-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+/* Checkbox group */
+.aff-checkbox-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.aff-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+/* Hint text */
+.aff-hint {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin: 2px 0 0;
+}

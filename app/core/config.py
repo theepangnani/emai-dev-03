@@ -90,6 +90,15 @@ class Settings(BaseSettings):
     # File storage
     upload_dir: str = "./uploads"
 
+    # Firebase Cloud Messaging (FCM) push notifications
+    # Leave empty to disable push — in-app + email notifications still work.
+    firebase_project_id: str = ""
+    # Full JSON string of a Google service account key file with
+    # firebase.messaging scope.  Store in .env as a single-line JSON string.
+    firebase_service_account_json: str = ""
+    # VAPID public key for Web Push (generated in Firebase Console)
+    firebase_vapid_public_key: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"

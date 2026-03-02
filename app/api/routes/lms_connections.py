@@ -708,6 +708,252 @@ async def brightspace_refresh_token(
 
 
 # ---------------------------------------------------------------------------
+# Canvas OAuth2 flow
+# ---------------------------------------------------------------------------
+
+# In-memory state store: state_token → {"user_id": int, "institution_id": int}
+# In production this should be replaced with a short-TTL cache (e.g. Redis).
+_canvas_oauth_state: dict[str, dict] = {}
+
+
+@router.get(
+    "/canvas/connect",
+    summary="Initiate Canvas OAuth2 Authorization Code flow",
+    response_class=RedirectResponse,
+)
+async def canvas_connect(
+    institution_id: int = Query(..., description="LMSInstitution ID to connect to"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RedirectResponse:
+    """Redirect the authenticated user to their institution's Canvas OAuth
+    consent page.
+
+    The institution must exist, be active, and have provider="canvas".
+    OAuth credentials (client_id, client_secret) must be stored in the
+    institution's metadata_json field as {"client_id": "...", "client_secret": "..."}.
+
+    After the user grants consent, Canvas redirects to /api/lms/canvas/callback.
+    """
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    if inst.provider != "canvas":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Institution {institution_id} is not a Canvas institution.",
+        )
+    if not inst.is_active:
+        raise HTTPException(status_code=422, detail="Institution is not active.")
+
+    state = secrets.token_urlsafe(32)
+    _canvas_oauth_state[state] = {
+        "user_id": current_user.id,
+        "institution_id": institution_id,
+    }
+
+    redirect_uri = f"{settings.frontend_url}/api/lms/canvas/callback"
+
+    from app.services.canvas import CanvasOAuthClient
+    oauth = CanvasOAuthClient()
+    auth_url = oauth.generate_auth_url(institution=inst, redirect_uri=redirect_uri, state=state)
+
+    logger.info(
+        "User %s initiating Canvas OAuth for institution %s",
+        current_user.id,
+        institution_id,
+    )
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@router.get(
+    "/canvas/callback",
+    response_model=ConnectionOut,
+    summary="Handle Canvas OAuth2 callback — exchange code for tokens",
+)
+async def canvas_callback(
+    code: str = Query(..., description="Authorization code from Canvas"),
+    state: str = Query(..., description="CSRF state token"),
+    db: Session = Depends(get_db),
+) -> ConnectionOut:
+    """Exchange the authorization code for tokens and create (or update) an
+    LMSConnection record for the user.
+
+    The state parameter is validated against the in-memory store populated by
+    the /connect endpoint.  On success the connection status is set to
+    "connected" and tokens are stored.
+
+    Note: This endpoint does NOT require a JWT because the user arrives here
+    via a browser redirect from Canvas.  Identity is established via the
+    state token which was associated with a user_id during /connect.
+    """
+    state_data = _canvas_oauth_state.pop(state, None)
+    if not state_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired OAuth state token.  Please restart the connection flow.",
+        )
+
+    user_id: int = state_data["user_id"]
+    institution_id: int = state_data["institution_id"]
+
+    inst = db.query(LMSInstitution).filter(LMSInstitution.id == institution_id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+
+    redirect_uri = f"{settings.frontend_url}/api/lms/canvas/callback"
+
+    from app.services.canvas import CanvasOAuthClient
+    oauth = CanvasOAuthClient()
+    try:
+        tokens = await oauth.exchange_code(
+            institution=inst,
+            code=code,
+            redirect_uri=redirect_uri,
+        )
+    except Exception as exc:
+        logger.error(
+            "Canvas token exchange failed for user %s institution %s: %s",
+            user_id,
+            institution_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to exchange authorization code: {exc}",
+        ) from exc
+
+    # Upsert LMSConnection
+    conn = (
+        db.query(LMSConnection)
+        .filter(
+            LMSConnection.user_id == user_id,
+            LMSConnection.institution_id == institution_id,
+            LMSConnection.provider == "canvas",
+        )
+        .first()
+    )
+
+    expires_in_seconds: int = tokens.get("expires_in", 3600)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
+
+    if conn is None:
+        conn = LMSConnection(
+            user_id=user_id,
+            institution_id=institution_id,
+            provider="canvas",
+            status="connected",
+            access_token_enc=tokens.get("access_token", ""),
+            refresh_token_enc=tokens.get("refresh_token", ""),
+            token_expires_at=expires_at,
+        )
+        db.add(conn)
+        logger.info(
+            "Created Canvas LMSConnection for user %s institution %s",
+            user_id,
+            institution_id,
+        )
+    else:
+        conn.access_token_enc = tokens.get("access_token", "")
+        conn.refresh_token_enc = tokens.get("refresh_token", "")
+        conn.token_expires_at = expires_at
+        conn.status = "connected"
+        conn.sync_error = None
+        logger.info(
+            "Updated Canvas LMSConnection %s for user %s",
+            conn.id,
+            user_id,
+        )
+
+    db.commit()
+    db.refresh(conn)
+    return _connection_out(conn)
+
+
+@router.post(
+    "/canvas/{connection_id}/refresh",
+    response_model=ConnectionOut,
+    summary="Refresh Canvas access token",
+)
+async def canvas_refresh_token(
+    connection_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ConnectionOut:
+    """Use the stored refresh token to obtain a new Canvas access token.
+
+    Updates the connection record with the new token and expiry, resets
+    status to "connected", and clears any previous sync_error.
+
+    Returns the updated connection.
+    """
+    conn = db.query(LMSConnection).filter(LMSConnection.id == connection_id).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found.")
+
+    is_admin = current_user.roles and "admin" in current_user.roles
+    if conn.user_id != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to refresh this connection."
+        )
+
+    if conn.provider != "canvas":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Connection {connection_id} is not a Canvas connection.",
+        )
+
+    if not conn.institution:
+        raise HTTPException(
+            status_code=422,
+            detail="Connection has no associated institution — cannot refresh token.",
+        )
+
+    if not conn.refresh_token_enc:
+        raise HTTPException(
+            status_code=422,
+            detail="No refresh token stored.  Please re-authenticate via /connect.",
+        )
+
+    from app.services.canvas import CanvasOAuthClient
+    oauth = CanvasOAuthClient()
+    try:
+        tokens = await oauth.refresh_access_token(
+            institution=conn.institution,
+            refresh_token=conn.refresh_token_enc,
+        )
+    except Exception as exc:
+        conn.status = "expired"
+        conn.sync_error = str(exc)
+        db.commit()
+        logger.error(
+            "Canvas token refresh failed for connection %s: %s",
+            connection_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Token refresh failed: {exc}",
+        ) from exc
+
+    expires_in_seconds: int = tokens.get("expires_in", 3600)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
+
+    conn.access_token_enc = tokens.get("access_token", "")
+    conn.refresh_token_enc = tokens.get("refresh_token", conn.refresh_token_enc)
+    conn.token_expires_at = expires_at
+    conn.status = "connected"
+    conn.sync_error = None
+    conn.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(conn)
+
+    logger.info("Refreshed Canvas token for connection %s", connection_id)
+    return _connection_out(conn)
+
+
+# ---------------------------------------------------------------------------
 # Admin router — all routes under /admin/lms
 # ---------------------------------------------------------------------------
 

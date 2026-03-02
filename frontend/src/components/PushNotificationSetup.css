@@ -1,0 +1,116 @@
+/* PushNotificationSetup — slide-in banner at the bottom of the viewport */
+
+.push-setup-banner {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  width: min(90vw, 480px);
+
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+
+  animation: push-banner-slide-in 0.3s ease-out;
+}
+
+@keyframes push-banner-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.push-setup-banner__icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.push-setup-banner__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.push-setup-banner__text {
+  font-size: 0.875rem;
+  color: var(--text-primary, #1a202c);
+  line-height: 1.5;
+}
+
+.push-setup-banner__text--success {
+  color: var(--success-color, #22c55e);
+  font-weight: 600;
+}
+
+.push-setup-banner__text--warning {
+  color: var(--warning-color, #f59e0b);
+}
+
+.push-setup-banner__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.push-setup-banner__btn {
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s ease;
+}
+
+.push-setup-banner__btn:hover {
+  opacity: 0.85;
+}
+
+.push-setup-banner__btn--primary {
+  background: var(--accent-color, #4f46e5);
+  color: #ffffff;
+}
+
+.push-setup-banner__btn--secondary {
+  background: var(--bg-secondary, #f1f5f9);
+  color: var(--text-primary, #1a202c);
+}
+
+/* Dark mode */
+[data-theme='dark'] .push-setup-banner {
+  background: var(--bg-card, #1e1e2e);
+  border-color: var(--border-color, #374151);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .push-setup-banner__btn--secondary {
+  background: var(--bg-secondary, #2d2d3f);
+  color: var(--text-primary, #f1f5f9);
+}
+
+/* Mobile: full-width pinned to bottom */
+@media (max-width: 480px) {
+  .push-setup-banner {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+  }
+}

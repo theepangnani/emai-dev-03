@@ -1,5 +1,5 @@
 /**
- * LMS Connections API client — Multi-LMS Provider Framework (#22, #23).
+ * LMS Connections API client — Multi-LMS Provider Framework (#22, #23, #26).
  *
  * Covers all endpoints under /api/lms/*:
  *   GET  /api/lms/providers
@@ -10,6 +10,7 @@
  *   PATCH /api/lms/connections/{id}
  *   DELETE /api/lms/connections/{id}
  *   GET  /api/lms/connections/{id}/status
+ *   POST /api/lms/connections/{id}/sync
  */
 
 import { api } from './client';
@@ -135,4 +136,37 @@ export const lmsConnectionsApi = {
     const response = await api.get(`/api/lms/connections/${connectionId}/status`);
     return response.data as LMSConnectionStatus;
   },
+
+  /** Trigger an immediate sync for a connection (owner only). */
+  syncConnection: async (connectionId: number): Promise<LMSConnectionStatus> => {
+    const response = await api.post(`/api/lms/connections/${connectionId}/sync`);
+    return response.data as LMSConnectionStatus;
+  },
+
+  /**
+   * Client-side institution search — filters listInstitutions() by name.
+   * Used by the institution selector modal to let users find their school board.
+   */
+  searchInstitutions: async (q: string, provider?: string): Promise<LMSInstitution[]> => {
+    const params = provider ? { provider } : undefined;
+    const response = await api.get('/api/lms/institutions', { params });
+    const all = response.data as LMSInstitution[];
+    const lower = q.trim().toLowerCase();
+    if (!lower) return all;
+    return all.filter((i) => i.name.toLowerCase().includes(lower));
+  },
+
+  // ── OAuth redirect URLs ─────────────────────────────────────────────────
+
+  /**
+   * Build the URL that starts Brightspace OAuth for a given institution.
+   * Navigate the browser to this URL to begin the consent flow.
+   */
+  getBrightspaceConnectUrl: (institutionId: number): string =>
+    `/api/lms/brightspace/connect?institution_id=${institutionId}`,
+
+  /**
+   * URL that starts the existing Google Classroom OAuth flow (Phase 1).
+   */
+  getGoogleConnectUrl: (): string => '/api/google/connect',
 };

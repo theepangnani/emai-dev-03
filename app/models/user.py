@@ -94,6 +94,12 @@ class User(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    push_tokens = relationship(
+        "PushToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
 
     def has_google_scope(self, scope: str) -> bool:
         """Check if user has been granted a specific Google OAuth scope."""
