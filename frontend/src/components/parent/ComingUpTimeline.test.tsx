@@ -1,20 +1,34 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ComingUpTimeline } from './ComingUpTimeline'
 import type { CalendarAssignment } from '../calendar/types'
 
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 // Helper to wrap component with router context
-function renderTimeline(assignments: CalendarAssignment[], selectedChild: number | null = null) {
-  return render(
-    <MemoryRouter>
-      <ComingUpTimeline
-        calendarAssignments={assignments}
-        selectedChild={selectedChild}
-        onNavigateStudy={vi.fn()}
-      />
-    </MemoryRouter>,
-  )
+function renderTimeline(
+  assignments: CalendarAssignment[],
+  selectedChild: number | null = null,
+  onNavigateStudy = vi.fn(),
+) {
+  return {
+    onNavigateStudy,
+    ...render(
+      <MemoryRouter>
+        <ComingUpTimeline
+          calendarAssignments={assignments}
+          selectedChild={selectedChild}
+          onNavigateStudy={onNavigateStudy}
+        />
+      </MemoryRouter>,
+    ),
+  }
 }
 
 // Helper to create a date relative to today
@@ -26,6 +40,10 @@ function daysFromNow(days: number): Date {
 }
 
 describe('ComingUpTimeline', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear()
+  })
+
   it('shows empty state when no items', () => {
     renderTimeline([])
     expect(screen.getByText('No upcoming items')).toBeInTheDocument()
@@ -112,6 +130,53 @@ describe('ComingUpTimeline', () => {
     renderTimeline(items)
     expect(screen.getByText('No upcoming items')).toBeInTheDocument()
     expect(screen.queryByText('Done task')).not.toBeInTheDocument()
+  })
+
+  // Regression test for #1049: entire timeline row should be clickable
+  it('clicking a task row navigates to /tasks (regression #1049)', async () => {
+    const items: CalendarAssignment[] = [
+      {
+        id: 1_000_001,
+        taskId: 1,
+        title: 'Clickable task',
+        description: null,
+        courseId: 0,
+        courseName: '',
+        courseColor: '#ff9800',
+        dueDate: daysFromNow(0),
+        childName: 'Alice',
+        maxPoints: null,
+        itemType: 'task',
+        priority: 'medium',
+        isCompleted: false,
+      },
+    ]
+    renderTimeline(items)
+    const row = screen.getByText('Clickable task').closest('[role="listitem"]')!
+    await userEvent.click(row)
+    expect(mockNavigate).toHaveBeenCalledWith('/tasks')
+  })
+
+  it('clicking an assignment row calls onNavigateStudy (regression #1049)', async () => {
+    const onStudy = vi.fn()
+    const items: CalendarAssignment[] = [
+      {
+        id: 42,
+        title: 'Clickable assignment',
+        description: null,
+        courseId: 10,
+        courseName: 'Math',
+        courseColor: '#49b8c0',
+        dueDate: daysFromNow(1),
+        childName: 'Alice',
+        maxPoints: 100,
+        itemType: 'assignment',
+      },
+    ]
+    renderTimeline(items, null, onStudy)
+    const row = screen.getByText('Clickable assignment').closest('[role="listitem"]')!
+    await userEvent.click(row)
+    expect(onStudy).toHaveBeenCalledWith(expect.objectContaining({ id: 42, title: 'Clickable assignment' }))
   })
 
   it('shows overdue tasks (regression: overdue tasks were hidden)', () => {
