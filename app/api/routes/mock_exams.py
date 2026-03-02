@@ -23,7 +23,7 @@ from app.models.student import Student
 from app.models.course import Course, student_courses
 from app.models.notification import Notification, NotificationType
 from app.models.mock_exam import MockExam, MockExamAssignment
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.services.ai_service import generate_content
 from app.services.notification_service import send_multi_channel_notification
@@ -145,6 +145,7 @@ def _assignment_response(assignment: MockExamAssignment, include_answers: bool =
 async def generate_exam(
     request: Request,
     body: GenerateExamRequest,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
@@ -259,6 +260,7 @@ async def generate_exam(
 def save_exam(
     request: Request,
     body: SaveExamRequest,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
@@ -298,6 +300,7 @@ def assign_exam(
     request: Request,
     exam_id: int,
     body: AssignExamRequest,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
@@ -402,6 +405,7 @@ def assign_exam(
 def list_exams(
     request: Request,
     course_id: int | None = Query(None),
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -442,6 +446,7 @@ def list_exams(
 def get_exam(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -487,6 +492,7 @@ def get_exam(
 def get_assignment(
     request: Request,
     assignment_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -535,6 +541,7 @@ def submit_exam(
     request: Request,
     assignment_id: int,
     body: SubmitAnswersRequest,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
@@ -619,6 +626,7 @@ def submit_exam(
 def delete_exam(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
