@@ -22,6 +22,9 @@ from app.models.notification_preference import NotificationPreference
 from app.models.quiz_result import QuizResult
 from app.models.student_email import StudentEmail, EmailType
 from app.models.email_template import EmailTemplate
+from app.models.ontario_board import OntarioBoard
+from app.models.course_catalog import CourseCatalogItem
+from app.models.student_board import StudentBoard
 
 __all__ = [
     "User",
@@ -66,4 +69,7 @@ __all__ = [
     "StudentEmail",
     "EmailType",
     "EmailTemplate",
+    "OntarioBoard",
+    "CourseCatalogItem",
+    "StudentBoard",
 ]

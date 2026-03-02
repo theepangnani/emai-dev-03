@@ -80,6 +80,10 @@ const GradeEntryPage = lazyRetry(() => import('./pages/GradeEntryPage').then((m)
 const TeacherMaterialsPage = lazyRetry(() => import('./pages/TeacherMaterialsPage').then((m) => ({ default: m.TeacherMaterialsPage })));
 const ExamPage = lazyRetry(() => import('./pages/ExamPage').then((m) => ({ default: m.ExamPage })));
 const TeacherExamsPage = lazyRetry(() => import('./pages/TeacherExamsPage').then((m) => ({ default: m.TeacherExamsPage })));
+const AIRecommendationsPage = lazyRetry(() => import('./pages/AIRecommendationsPage').then((m) => ({ default: m.AIRecommendationsPage })));
+const SemesterPlannerPage = lazyRetry(() => import('./pages/SemesterPlannerPage').then((m) => ({ default: m.SemesterPlannerPage })));
+const CoursePlanningPage = lazyRetry(() => import('./pages/CoursePlanningPage').then((m) => ({ default: m.CoursePlanningPage })));
+const MultiYearPlannerPage = lazyRetry(() => import('./pages/MultiYearPlannerPage').then((m) => ({ default: m.MultiYearPlannerPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -377,6 +381,38 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['teacher', 'admin']}>
                     <TeacherExamsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/course-planning"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                    <CoursePlanningPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/planner"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent', 'admin']}>
+                    <SemesterPlannerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/planner/overview"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                    <MultiYearPlannerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/planner/ai"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <AIRecommendationsPage />
                   </ProtectedRoute>
                 }
               />

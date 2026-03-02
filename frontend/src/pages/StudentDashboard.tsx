@@ -137,6 +137,15 @@ export function StudentDashboard() {
   // Assigned mock exams (#667)
   const [assignedExams, setAssignedExams] = useState<MockExamAssignment[]>([]);
 
+  // Academic plan summary (#505/#507)
+  const [academicPlanSummary, setAcademicPlanSummary] = useState<{
+    id: number;
+    name: string;
+    total_credits: number;
+    completion_pct: number;
+    graduation_year: number;
+  } | null>(null);
+
   // Invite teacher state
   const [gradeSummary, setGradeSummary] = useState<ChildGradeSummary | null>(null);
   const [recentGrades, setRecentGrades] = useState<ClassroomGradeItem[]>([]);
@@ -315,6 +324,7 @@ export function StudentDashboard() {
       loadBackendStreak(),
       loadAssignedQuizzes(),
       loadAssignedExams(),
+      loadAcademicPlan(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
@@ -429,6 +439,35 @@ export function StudentDashboard() {
       setAssignedExams(data.filter(e => e.status !== 'completed'));
     } catch {
       // Not critical
+    }
+  };
+
+  // Load academic plan summary for dashboard widget (#505/#507)
+  const loadAcademicPlan = async () => {
+    try {
+      const res = await fetch('/api/academic-plans/', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+      });
+      if (!res.ok) return;
+      const data: Array<{
+        id: number;
+        name: string;
+        graduation_year?: number;
+        plan_courses?: Array<{ credits: number; status: string }>;
+      }> = await res.json();
+      if (data.length === 0) return;
+      const plan = data[0];
+      const counted = (plan.plan_courses ?? []).filter((c) => c.status !== 'dropped');
+      const total = counted.reduce((s, c) => s + c.credits, 0);
+      setAcademicPlanSummary({
+        id: plan.id,
+        name: plan.name,
+        total_credits: total,
+        completion_pct: Math.min(100, Math.round((total / 30) * 100)),
+        graduation_year: plan.graduation_year ?? 2027,
+      });
+    } catch {
+      // Plan not available yet — widget stays hidden
     }
   };
 
@@ -845,6 +884,56 @@ export function StudentDashboard() {
         ] satisfies QuickAction[]}
         maxVisible={4}
       />
+
+      {/* ── Academic Plan Widget (#505/#507) ─────────────── */}
+      {academicPlanSummary && (
+        <div className="sd-academic-plan-widget">
+          <div className="sd-apw-header">
+            <div className="sd-apw-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <h2 className="sd-apw-title">Your Academic Plan</h2>
+            <span className="sd-apw-grad">Grad {academicPlanSummary.graduation_year}</span>
+          </div>
+          <div className="sd-apw-body">
+            <div className="sd-apw-progress-wrap">
+              <div className="sd-apw-progress-bar">
+                <div
+                  className="sd-apw-progress-fill"
+                  style={{ width: `${academicPlanSummary.completion_pct}%` }}
+                  role="progressbar"
+                  aria-valuenow={academicPlanSummary.completion_pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+              <span className="sd-apw-progress-label">
+                {academicPlanSummary.total_credits}/30 credits &mdash; {academicPlanSummary.completion_pct}%
+              </span>
+            </div>
+            <div className="sd-apw-actions">
+              <button
+                className="sd-apw-btn-primary"
+                onClick={() => navigate('/planner')}
+                type="button"
+              >
+                Open Planner
+              </button>
+              <button
+                className="sd-apw-btn-secondary"
+                onClick={() => navigate('/planner/overview')}
+                type="button"
+              >
+                View Overview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Streak At Risk Banner (#834) ─────────────────── */}
       {streakAtRisk && (

@@ -213,7 +213,7 @@
 - [x] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007) (IMPLEMENTED)
 - [x] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573) (IMPLEMENTED)
 - [x] **AI Mock Exam Generator** — GPT-4o-mini generates N MCQ questions per topic/difficulty; teacher preview/edit, save, bulk-assign to students; countdown timer ExamPage with question navigator; score reveal + per-question explanation; student dashboard Assigned Exams section; `/teacher/exams` dedicated page; anti-cheat correct_index hiding (#667) (IMPLEMENTED)
-- [ ] **Student Progress & Report Card Analysis** — Test upload, mark tracking, AI recommendations, parent insights (#960 — consolidated from #575, #581, #663)
+- [x] **Student Progress & Report Card Analysis** — Report card upload + AI mark extraction (#663) implemented; grade entry (#665) implemented (#960 partially IMPLEMENTED — remaining: consolidated analytics dashboard) — consolidated from #575, #581, #663)
 - [x] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735) (IMPLEMENTED — verified done in Phase 1.5 and feature/phase-2)
 - [x] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479) (IMPLEMENTED)
 
@@ -264,7 +264,7 @@
 - [x] **Parent-assigned quizzes with complexity levels** — Easy/Medium/Hard difficulty, notification + tracking (#664) IMPLEMENTED
 - [x] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665) (IMPLEMENTED)
 - [x] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666) IMPLEMENTED
-- [ ] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667)
+- [x] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667) (IMPLEMENTED)
 
 #### UI/UX HCD Assessment — Phase 2 Improvements (#827)
 
@@ -385,15 +385,15 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 ### Phase 3 (Course Planning & Guidance)
 - [ ] **Ontario Curriculum Management** — Download, parse, and serve Ontario curriculum data; curriculum-aligned analytics and AI anchoring (#571)
 - [ ] **Exam Preparation Engine** — AI-powered personalized prep plans combining curriculum + quiz history + test records (#576)
-- [ ] **School Board Integration** — Board-specific course catalogs, student ↔ board linking, board selection in Edit Child modal; seed 5 Ontario boards (TDSB, PDSB, YRDSB, HDSB, OCDSB) (#511, depends on #113)
-- [ ] **Course Catalog Model** — Board-scoped high school course database with prerequisites, credits, grade levels, subject areas, streams, specialized programs (IB/AP/SHSM); seed per-board Ontario OSSD courses (#500)
-- [ ] **Academic Plan Model** — Multi-year course plan per student (Grade 9-12) with semester breakdown, planned/in-progress/completed statuses; parent + student CRUD with RBAC (#501)
-- [ ] **Prerequisite & Graduation Requirements Engine** — Validate plans against OSSD rules (30 credits, 18 compulsory), prerequisite chain checks, completion scoring, gap detection (#502)
-- [ ] **AI Course Recommendations** — Board-specific personalized guidance using student grades, goals, and analytics; on-demand generation (gpt-4o-mini); pathway analysis and risk alerts (#503)
-- [ ] **Semester Planner UI** — Course selection per semester with prerequisite indicators, credit counter, workload balance, real-time validation (#504)
-- [ ] **Multi-Year Planner UI** — Visual Grade 9-12 grid with course cards, prerequisite arrows, subject color coding, graduation progress dashboard, drag-and-drop (#505)
-- [ ] **University Pathway Alignment** — Map plans to post-secondary program admission requirements; gap analysis, multi-program comparison; seed top Ontario university programs (#506)
-- [ ] **Course Planning Navigation & Dashboard Integration** — Nav links, landing page, My Kids integration, Parent Dashboard quick actions (#507)
+- [x] **School Board Integration** — Board-specific course catalogs, student ↔ board linking, board selection in Edit Child modal; seed 5 Ontario boards (TDSB, PDSB, YRDSB, HDSB, OCDSB) (#511, depends on #113) — **IMPLEMENTED**
+- [x] **Course Catalog Model** — Board-scoped high school course database with prerequisites, credits, grade levels, subject areas, streams, specialized programs (IB/AP/SHSM); seed per-board Ontario OSSD courses (#500) — **IMPLEMENTED**
+- [x] **Academic Plan Model** — Multi-year course plan per student (Grade 9-12) with semester breakdown, planned/in-progress/completed statuses; parent + student CRUD with RBAC (#501) — **IMPLEMENTED**
+- [x] **Prerequisite & Graduation Requirements Engine** — Validate plans against OSSD rules (30 credits, 18 compulsory), prerequisite chain checks, completion scoring, gap detection (#502) — **IMPLEMENTED**
+- [x] **AI Course Recommendations** — Board-specific personalized guidance using student grades, goals, and analytics; on-demand generation (gpt-4o-mini); pathway analysis and risk alerts (#503) — **IMPLEMENTED**
+- [x] **Semester Planner UI** — Course selection per semester with prerequisite indicators, credit counter, workload balance, real-time validation (#504) — **IMPLEMENTED**
+- [x] **Multi-Year Planner UI** — Visual Grade 9-12 grid with course cards, prerequisite arrows, subject color coding, graduation progress dashboard, drag-and-drop (#505) — **IMPLEMENTED**
+- [x] **University Pathway Alignment** — Map plans to post-secondary program admission requirements; gap analysis, multi-program comparison; seed top Ontario university programs (#506) — **IMPLEMENTED**
+- [x] **Course Planning Navigation & Dashboard Integration** — Nav links, landing page, My Kids integration, Parent Dashboard quick actions (#507) — **IMPLEMENTED**
 - [ ] **Course Planning Tests** — 20+ backend route tests, 10+ frontend component tests (#508)
 - [ ] Multi-language support
 - [ ] Advanced AI personalization

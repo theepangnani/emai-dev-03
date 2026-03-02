@@ -1,0 +1,526 @@
+/* ============================================================
+   Course Planning Landing Page — #507
+   Hub for all planning features
+   ============================================================ */
+
+/* ── Loading ─────────────────────────────────────────────── */
+.cp-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.cp-skeleton-hero {
+  height: 140px;
+  border-radius: var(--radius-lg);
+}
+
+.cp-skeleton-card {
+  height: 180px;
+  border-radius: var(--radius-lg);
+}
+
+/* ── Hero ────────────────────────────────────────────────── */
+.cp-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 32px 36px;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-warm, #8b5cf6) 100%);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  overflow: hidden;
+  position: relative;
+}
+
+.cp-hero::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.cp-hero-text {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.cp-hero-title {
+  font-size: 26px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  color: #fff;
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
+}
+
+.cp-hero-subtitle {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+  max-width: 480px;
+}
+
+.cp-hero-icon {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Plan Card ───────────────────────────────────────────── */
+.cp-plan-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cp-plan-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-warm, #8b5cf6));
+}
+
+.cp-plan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cp-plan-card-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 4px;
+}
+
+.cp-plan-card-student {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.cp-plan-card-grad {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cp-plan-card-grad-label {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cp-plan-card-grad-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+.cp-plan-card-progress {
+  margin-bottom: 20px;
+}
+
+.cp-plan-card-progress-bar {
+  height: 8px;
+  background: var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.cp-plan-card-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-warm, #8b5cf6));
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.cp-plan-card-progress-label {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+}
+
+.cp-plan-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Start Planning Card ─────────────────────────────────── */
+.cp-start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 48px 32px;
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+}
+
+.cp-start-card-icon {
+  color: var(--color-accent);
+  opacity: 0.7;
+}
+
+.cp-start-card-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.cp-start-card-desc {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  max-width: 400px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.cp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+  white-space: nowrap;
+}
+
+.cp-btn-primary:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.cp-btn-primary:active {
+  transform: none;
+}
+
+.cp-btn-primary.cp-btn-lg {
+  padding: 12px 28px;
+  font-size: 15px;
+}
+
+.cp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: transparent;
+  color: var(--color-accent);
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+  white-space: nowrap;
+}
+
+.cp-btn-secondary:hover {
+  background: var(--color-accent-ghost, rgba(99, 102, 241, 0.07));
+  transform: translateY(-1px);
+}
+
+.cp-btn-link {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cp-btn-link:hover {
+  opacity: 0.75;
+}
+
+/* ── Section titles ──────────────────────────────────────── */
+.cp-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 16px;
+}
+
+.cp-subsection-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  margin: 20px 0 12px;
+}
+
+/* ── Quick Links ─────────────────────────────────────────── */
+.cp-quick-links {
+  margin-bottom: 24px;
+}
+
+.cp-quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.cp-quick-link-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
+  text-align: left;
+}
+
+.cp-quick-link-item:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  border-color: var(--color-accent);
+}
+
+.cp-quick-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--color-accent-ghost, rgba(99, 102, 241, 0.1));
+  border-radius: var(--radius-md);
+  color: var(--color-accent);
+}
+
+.cp-quick-link-icon-ai {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+.cp-quick-link-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cp-quick-link-desc {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ── Kids Plans ──────────────────────────────────────────── */
+.cp-kids-plans {
+  margin-bottom: 24px;
+}
+
+.cp-child-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.cp-child-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 24px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cp-child-tab:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.cp-child-tab-active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-ghost, rgba(99, 102, 241, 0.09));
+  color: var(--color-accent);
+}
+
+.cp-child-tab-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.cp-child-panel {
+  /* inherits plan card styles from children */
+}
+
+/* ── Mini Plans ──────────────────────────────────────────── */
+.cp-all-mini-plans {
+  margin-top: 4px;
+}
+
+.cp-mini-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.cp-mini-plan-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-mini-plan-child-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cp-mini-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-mini-progress-bar {
+  height: 5px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cp-mini-progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.cp-mini-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.cp-mini-credits {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.cp-mini-pct {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.cp-mini-grad {
+  margin-left: auto;
+}
+
+.cp-mini-view {
+  align-self: flex-start;
+  font-size: 12px;
+}
+
+.cp-mini-no-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ── No children ─────────────────────────────────────────── */
+.cp-no-children {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cp-quick-links-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-hero {
+    padding: 24px 20px;
+  }
+  .cp-hero-icon {
+    display: none;
+  }
+  .cp-hero-title {
+    font-size: 21px;
+  }
+  .cp-quick-links-grid {
+    grid-template-columns: 1fr;
+  }
+  .cp-plan-card-actions {
+    flex-direction: column;
+  }
+}
