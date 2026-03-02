@@ -14,7 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.grade_prediction import GradePredictionListResponse, GradePredictionResponse
@@ -38,6 +38,7 @@ _service = GradePredictionService()
     summary="Generate grade predictions for all enrolled courses",
 )
 async def generate_predictions(
+    _flag=Depends(require_feature("grade_tracking")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -57,6 +58,7 @@ async def generate_predictions(
 )
 async def generate_course_prediction(
     course_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -76,6 +78,7 @@ async def generate_course_prediction(
     summary="List latest grade predictions for the current student",
 )
 def list_predictions(
+    _flag=Depends(require_feature("grade_tracking")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):
@@ -90,6 +93,7 @@ def list_predictions(
 )
 def get_child_predictions(
     student_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     current_user: User = Depends(require_role(UserRole.PARENT)),
     db: Session = Depends(get_db),
 ):
@@ -110,6 +114,7 @@ def get_child_predictions(
 )
 def get_course_prediction(
     course_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
     db: Session = Depends(get_db),
 ):

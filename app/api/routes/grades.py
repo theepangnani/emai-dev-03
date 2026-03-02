@@ -19,7 +19,7 @@ from app.models.assignment import Assignment
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +128,7 @@ def _get_student_ids_for_user(db: Session, current_user: User) -> list[tuple[int
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_grade_summary(
     request: Request,
+    _flag=Depends(require_feature("grade_tracking")),
     student_id: int | None = Query(None, description="Filter by student ID (parents can specify a child)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -190,6 +191,7 @@ def get_grade_summary(
 def get_course_grades(
     request: Request,
     course_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     student_id: int | None = Query(None, description="Filter by student ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

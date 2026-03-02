@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_feature, require_role
 from app.core.rate_limit import get_user_id_or_ip, limiter
 from app.db.database import get_db
 from app.models.report_card import ReportCard
@@ -220,6 +220,7 @@ Instructions:
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def upload_report_card(
     request: Request,
+    _flag=Depends(require_feature("grade_tracking")),
     student_id: int = Form(...),
     term: str = Form(...),
     academic_year: Optional[str] = Form(None),
@@ -283,6 +284,7 @@ async def upload_report_card(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_report_cards(
     request: Request,
+    _flag=Depends(require_feature("grade_tracking")),
     student_id: Optional[int] = None,
     academic_year: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -357,6 +359,7 @@ def list_report_cards(
 def get_report_card(
     request: Request,
     report_card_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -372,6 +375,7 @@ def get_report_card(
 def delete_report_card(
     request: Request,
     report_card_id: int,
+    _flag=Depends(require_feature("grade_tracking")),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
