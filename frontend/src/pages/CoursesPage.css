@@ -514,6 +514,16 @@
   color: var(--color-ink);
 }
 
+.content-item-link {
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.content-item-link:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
 .content-item-desc {
   margin: 4px 0 0;
   color: var(--color-ink-muted);
