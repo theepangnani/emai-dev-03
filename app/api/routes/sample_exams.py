@@ -23,7 +23,7 @@ from app.models.sample_exam import SampleExam
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.core.config import settings
 from app.services.file_processor import process_file, FileProcessingError
@@ -248,6 +248,7 @@ async def upload_sample_exam(
     course_id: int = Form(None),
     exam_type: str = Form("sample"),
     assess_on_upload: bool = Form(True),
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -329,6 +330,7 @@ def list_sample_exams(
     is_public: bool = Query(None, description="Filter by is_public flag"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -364,6 +366,7 @@ def list_sample_exams(
 def get_sample_exam(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -386,6 +389,7 @@ def get_sample_exam(
 def delete_sample_exam(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -409,6 +413,7 @@ def delete_sample_exam(
 async def reassess_sample_exam(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -436,6 +441,7 @@ async def reassess_sample_exam(
 def get_practice_mode(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -493,6 +499,7 @@ def get_practice_mode(
 def toggle_publish(
     request: Request,
     exam_id: int,
+    _flag=Depends(require_feature("ai_mock_exams")),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
