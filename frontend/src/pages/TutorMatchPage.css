@@ -1,0 +1,656 @@
+/* ============================================================
+   TutorMatchPage — AI Tutor Matching
+   ============================================================ */
+
+.tutor-match-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+
+/* ------------------------------------
+   Page Header
+   ------------------------------------ */
+
+.match-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.match-page-title h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 0.25rem;
+}
+
+.match-page-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+.match-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ai-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ------------------------------------
+   Covered subjects summary
+   ------------------------------------ */
+
+.covered-summary {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* ------------------------------------
+   Match Card
+   ------------------------------------ */
+
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.match-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  position: relative;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.15s ease;
+}
+
+.match-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.match-card-rank {
+  position: absolute;
+  top: -10px;
+  left: 1.25rem;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.match-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.tutor-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.match-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.match-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.match-tutor-name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
+}
+
+.match-headline {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-rating {
+  font-size: 0.82rem;
+  color: #d97706;
+  font-weight: 600;
+}
+
+.match-rate {
+  font-size: 0.82rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* Score pill */
+.match-score-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f0fdf4;
+  border: 2px solid #86efac;
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  min-width: 58px;
+  flex-shrink: 0;
+}
+
+.score-number {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #16a34a;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.65rem;
+  color: #4ade80;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Progress bar */
+.match-progress-track {
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.match-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #0891b2);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* Subject chips */
+.match-subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.subject-chip {
+  display: inline-block;
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: none;
+  cursor: default;
+}
+
+.subject-chip--covered {
+  background: #dcfce7;
+  color: #15803d;
+  font-weight: 600;
+}
+
+/* Explanation */
+.match-explanation {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+/* Breakdown toggle */
+.breakdown-toggle {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0 0 0.5rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.breakdown-toggle:hover {
+  color: #4f46e5;
+}
+
+/* ------------------------------------
+   Match Breakdown (score bars)
+   ------------------------------------ */
+
+.match-breakdown {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.score-bar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 54px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-bar-label {
+  font-size: 0.8rem;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.score-bar-track {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.bar-blue    { background: #3b82f6; }
+.bar-green   { background: #10b981; }
+.bar-yellow  { background: #f59e0b; }
+.bar-purple  { background: #8b5cf6; }
+.bar-teal    { background: #06b6d4; }
+.bar-primary { background: #4f46e5; }
+
+.score-bar-value {
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------
+   Card Actions
+   ------------------------------------ */
+
+.match-card-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------
+   Buttons
+   ------------------------------------ */
+
+.btn-primary {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #4f46e5;
+  border: 1.5px solid #4f46e5;
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.btn-outline:hover {
+  background: #4f46e5;
+  color: #fff;
+}
+
+/* ------------------------------------
+   Loading / Error / Empty states
+   ------------------------------------ */
+
+.match-loading,
+.match-error,
+.match-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.match-empty h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+  color: #374151;
+}
+
+.match-empty svg {
+  color: #d1d5db;
+}
+
+/* ------------------------------------
+   Booking success banner
+   ------------------------------------ */
+
+.booking-success-banner {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #15803d;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.banner-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #16a34a;
+  line-height: 1;
+  padding: 0;
+}
+
+/* ------------------------------------
+   Modal
+   ------------------------------------ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
+.prefs-modal {
+  max-width: 440px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  padding: 0;
+}
+
+.modal-close:hover {
+  color: #374151;
+}
+
+/* Booking form */
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.booking-form label,
+.prefs-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.booking-form input,
+.booking-form textarea,
+.booking-form select,
+.prefs-form input[type="text"],
+.prefs-form input[type="number"] {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.booking-form input:focus,
+.booking-form textarea:focus,
+.prefs-form input[type="text"]:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* Preferences form */
+.prefs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.rate-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rate-input-row input[type="range"] {
+  flex: 1;
+}
+
+.rate-display {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4f46e5;
+  min-width: 72px;
+  text-align: right;
+}
+
+.prefs-form input[type="range"] {
+  width: 100%;
+  accent-color: #4f46e5;
+}
+
+.toggle-label {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  cursor: pointer;
+  font-weight: 500 !important;
+}
+
+/* ------------------------------------
+   Page footer
+   ------------------------------------ */
+
+.match-page-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+/* ------------------------------------
+   Responsive
+   ------------------------------------ */
+
+@media (max-width: 600px) {
+  .match-page-header {
+    flex-direction: column;
+  }
+
+  .match-page-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .score-bar-row {
+    grid-template-columns: 110px 1fr 44px;
+  }
+
+  .match-card-header {
+    flex-wrap: wrap;
+  }
+
+  .match-score-pill {
+    order: -1;
+  }
+}

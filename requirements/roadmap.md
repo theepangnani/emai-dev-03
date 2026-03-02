@@ -452,7 +452,7 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 
 ### Phase 4 (Tutor Marketplace)
 - [x] **Tutor Marketplace Foundation** — TutorProfile model (bio, subjects, rates, availability, verified status, ratings); TutorBooking model (request → accept/decline → review flow); search/filter API; TutorMarketplacePage with filter bar + booking modal; TutorProfilePage with reviews; Teacher TutorDashboardPage with request management (IMPLEMENTED)
-- [ ] AI tutor matching
+- [x] **AI tutor matching** — TutorMatchingEngine with weighted scoring (subject coverage 35%, grade match 20%, rating 20%, learning style 15%, price 10%); personalization integration (SubjectMastery weak areas + learning style); AI-generated match explanations; TutorMatchPage at /tutors/match with match score bars; TutorMatchPreference model; parent view of child matches (IMPLEMENTED)
 - [x] **Payment integration (Stripe)** — SubscriptionPlan + UserSubscription models; StripeService wrapper (customer, checkout session, billing portal, cancel, webhook); Stripe Checkout for monthly/yearly premium; Billing Portal for self-service management; webhook handler (checkout.completed, subscription.updated/deleted, invoice.failed); BillingPage at /settings/billing; AdminBillingPage at /admin/billing with MRR stats; 7-day free trial (IMPLEMENTED)
 
 ### Phase 5 (AI Email Agent)
