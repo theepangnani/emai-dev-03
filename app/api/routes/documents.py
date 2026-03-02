@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_feature
 from app.models.course import Course, student_courses
 from app.models.course_content import CourseContent
 from app.models.student import Student, parent_students
@@ -130,6 +130,7 @@ def _get_visible_course_ids(db: Session, user: User, child_id: Optional[int] = N
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_documents(
     request: Request,
+    _flag=Depends(require_feature("document_repository")),
     course_id: Optional[int] = Query(None, description="Filter by course ID"),
     type: Optional[str] = Query(None, description="Filter by type: document, study_guide, quiz, flashcards"),
     search: Optional[str] = Query(None, description="Search by title (case-insensitive)"),
