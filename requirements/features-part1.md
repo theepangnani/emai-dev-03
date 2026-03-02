@@ -3,6 +3,42 @@
 ### 6.1 Integrations
 - **Google Classroom** (Phase 1) - IMPLEMENTED
 - **TeachAssist** (Phase 2)
+- **D2L Brightspace** (Phase 2+) — OAuth2 integration with per-institution deployment support (#22-#29)
+- **Multi-LMS Provider Framework** (Phase 2+) — Generic LMSConnection model, provider registry, and unified sync enabling students to connect to multiple LMS providers simultaneously (#22)
+
+#### 6.1.1 Multi-LMS Provider Architecture (Phase 2+)
+
+ClassBridge supports connecting to multiple LMS providers per user. A student can simultaneously connect to their school's Google Classroom, their school board's Brightspace, a private tutor's Google Classroom, and any other supported provider.
+
+**Supported Providers:**
+| Provider | Status | Auth | Notes |
+|----------|--------|------|-------|
+| Google Classroom | IMPLEMENTED | OAuth 2.0 (centralized) | Single Google Cloud Console registration |
+| D2L Brightspace | Phase 2+ (#24, #25) | OAuth 2.0 (per-institution) | Each school board has its own deployment; requires per-board app registration |
+| Canvas (Instructure) | Future | OAuth 2.0 | Extensible via LMSProvider interface |
+| Schoology (PowerSchool) | Future | OAuth 2.0 | Extensible via LMSProvider interface |
+
+**Core Models:**
+- `LMSConnection` — Per-user, per-provider OAuth credential storage. Replaces storing tokens directly on User model. Supports multiple connections per provider (e.g., two Google Classroom accounts). (#22)
+- `LMSInstitution` — Per-institution configuration for providers with per-school-board deployments (Brightspace). Stores API base URL, OAuth client ID/secret, default scopes. (#22)
+- Generic `lms_provider` + `lms_external_id` columns on Course, Assignment, CourseContent — provider-agnostic references alongside existing `google_classroom_id` columns. (#22)
+
+**Existing Abstraction Layer:**
+- `LMSProvider` ABC ([app/services/lms/provider.py](app/services/lms/provider.py)) — 7 canonical models (Course, Assignment, Grade, Student, Teacher, Material) with abstract methods (#775, #776)
+- `GoogleClassroomAdapter` ([app/services/lms/google_classroom_adapter.py](app/services/lms/google_classroom_adapter.py)) — Translates Google API → canonical models
+- `LMSSyncService` ([app/services/lms/sync_service.py](app/services/lms/sync_service.py)) — Provider-agnostic sync orchestrator
+- `LMSProviderRegistry` — Factory pattern for instantiating adapters from connections (#22)
+
+**User Flow (Student):**
+1. Navigate to Settings → LMS Connections
+2. Click "+ Connect" → Select provider (Google Classroom or Brightspace)
+3. For Brightspace: select institution (school board) from searchable list
+4. Complete OAuth consent → connection created with label
+5. Click "Sync Now" → courses, assignments, materials pulled into ClassBridge
+6. All courses appear unified in dashboard with provider badge icons
+7. Repeat for additional providers/accounts
+
+**GitHub Issues:** #22 (framework), #23 (API), #24 (Brightspace service), #25 (Brightspace adapter), #26 (UI), #27 (sync), #28 (admin), #29 (feasibility study)
 
 ### 6.2 AI Study Assistant (Phase 1) - IMPLEMENTED
 - Generate study guides from assignment content

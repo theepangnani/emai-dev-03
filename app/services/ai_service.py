@@ -157,6 +157,8 @@ async def generate_study_guide(
     due_date: str | None = None,
     custom_prompt: str | None = None,
     focus_prompt: str | None = None,
+    curriculum_expectations: list[str] | None = None,
+    course_code: str | None = None,
 ) -> str:
     """
     Generate a study guide for an assignment.
@@ -166,6 +168,9 @@ async def generate_study_guide(
         assignment_description: Description/instructions
         course_name: Name of the course
         due_date: Optional due date string
+        curriculum_expectations: Optional list of Ontario curriculum expectation descriptions
+            to anchor the generated content (#571). If provided, prepended to the prompt.
+        course_code: Ontario course code (e.g. "MCR3U") used in the curriculum preamble
 
     Returns:
         Markdown-formatted study guide
@@ -173,7 +178,18 @@ async def generate_study_guide(
     logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
-    prompt = f"""Create a comprehensive study guide for the following assignment:
+    # Build optional curriculum preamble (#571)
+    curriculum_preamble = ""
+    if curriculum_expectations:
+        expectations_text = "\n".join(f"- {exp}" for exp in curriculum_expectations)
+        label = f" for {course_code}" if course_code else ""
+        curriculum_preamble = (
+            f"This study guide should address the following Ontario curriculum expectations{label}:\n"
+            f"{expectations_text}\n\n"
+            f"Generate content that explicitly covers these expectations.\n\n"
+        )
+
+    prompt = f"""{curriculum_preamble}Create a comprehensive study guide for the following assignment:
 
 **Assignment:** {assignment_title}
 **Course:** {course_name}{due_info}

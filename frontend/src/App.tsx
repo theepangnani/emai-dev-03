@@ -84,6 +84,11 @@ const AIRecommendationsPage = lazyRetry(() => import('./pages/AIRecommendationsP
 const SemesterPlannerPage = lazyRetry(() => import('./pages/SemesterPlannerPage').then((m) => ({ default: m.SemesterPlannerPage })));
 const CoursePlanningPage = lazyRetry(() => import('./pages/CoursePlanningPage').then((m) => ({ default: m.CoursePlanningPage })));
 const MultiYearPlannerPage = lazyRetry(() => import('./pages/MultiYearPlannerPage').then((m) => ({ default: m.MultiYearPlannerPage })));
+const StudentProgressPage = lazyRetry(() => import('./pages/StudentProgressPage').then((m) => ({ default: m.StudentProgressPage })));
+const ExamPrepPage = lazyRetry(() => import('./pages/ExamPrepPage').then((m) => ({ default: m.ExamPrepPage })));
+const NotesPage = lazyRetry(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })));
+const ProjectsPage = lazyRetry(() => import('./pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
+const CurriculumPage = lazyRetry(() => import('./pages/CurriculumPage').then((m) => ({ default: m.CurriculumPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -413,6 +418,46 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student', 'parent']}>
                     <AIRecommendationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/progress"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <StudentProgressPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/exam-prep"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent']}>
+                    <ExamPrepPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notes"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent', 'teacher']}>
+                    <NotesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent', 'teacher']}>
+                    <ProjectsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/curriculum"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <CurriculumPage />
                   </ProtectedRoute>
                 }
               />

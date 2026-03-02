@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { coursesApi, courseContentsApi, studyApi, assignmentsApi } from '../api/client';
 import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionListItem } from '../api/client';
+import { curriculumApi } from '../api/curriculum';
+import type { CurriculumCourseResponse } from '../api/curriculum';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -63,6 +65,13 @@ export function CourseDetailPage() {
   const [contents, setContents] = useState<CourseContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [contentsLoading, setContentsLoading] = useState(false);
+
+  // Ontario Curriculum panel (#571)
+  const [curriculumExpanded, setCurriculumExpanded] = useState(false);
+  const [curriculumData, setCurriculumData] = useState<CurriculumCourseResponse | null>(null);
+  const [curriculumLoading, setCurriculumLoading] = useState(false);
+  const [curriculumLoaded, setCurriculumLoaded] = useState(false);
+  const [expandedStrands, setExpandedStrands] = useState<Set<string>>(new Set());
 
   // Student roster
   const [students, setStudents] = useState<RosterStudent[]>([]);
@@ -936,6 +945,103 @@ export function CourseDetailPage() {
           )}
         </div>
       )}
+
+      {/* Ontario Curriculum Panel (#571) */}
+      {(() => {
+        // Derive candidate course code from course name / subject
+        const ONTARIO_CODE_RE = /\b([A-Z]{2,4}\d[A-Z0-9]\d?)\b/;
+        const searchText = `${course?.name ?? ''} ${course?.subject ?? ''}`;
+        const match = searchText.match(ONTARIO_CODE_RE);
+        const candidateCode = match ? match[1] : null;
+        if (!candidateCode) return null;
+
+        const handleToggleCurriculum = async () => {
+          const nextExpanded = !curriculumExpanded;
+          setCurriculumExpanded(nextExpanded);
+          if (nextExpanded && !curriculumLoaded && !curriculumLoading) {
+            setCurriculumLoading(true);
+            try {
+              const data = await curriculumApi.getCourse(candidateCode);
+              setCurriculumData(data);
+              setCurriculumLoaded(true);
+            } catch {
+              // Not available for this course — silently hide
+              setCurriculumData(null);
+              setCurriculumLoaded(true);
+            } finally {
+              setCurriculumLoading(false);
+            }
+          }
+        };
+
+        const toggleStrand = (strandName: string) => {
+          setExpandedStrands(prev => {
+            const next = new Set(prev);
+            if (next.has(strandName)) next.delete(strandName);
+            else next.add(strandName);
+            return next;
+          });
+        };
+
+        // After load: if no curriculum data found, don't render panel
+        if (curriculumLoaded && (!curriculumData || curriculumData.strands.length === 0)) return null;
+
+        return (
+          <div className="course-section-panel">
+            <div className="course-section-header">
+              <button className="collapse-toggle" onClick={handleToggleCurriculum} aria-expanded={curriculumExpanded}>
+                <span className={`section-chevron${curriculumExpanded ? ' expanded' : ''}`}>&#9654;</span>
+                <h3>Ontario Curriculum — {candidateCode}</h3>
+              </button>
+              {curriculumData && (
+                <span style={{ fontSize: '13px', color: 'var(--color-ink-muted)', marginLeft: '8px' }}>
+                  Grade {curriculumData.grade_level}
+                </span>
+              )}
+            </div>
+            {curriculumExpanded && (
+              <div style={{ marginTop: '8px' }}>
+                {curriculumLoading && (
+                  <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
+                    Loading curriculum expectations...
+                  </p>
+                )}
+                {!curriculumLoading && curriculumData && curriculumData.strands.map(strand => (
+                  <div key={strand.name} className="curriculum-strand-group" style={{ marginBottom: '8px' }}>
+                    <button
+                      className="collapse-toggle curriculum-strand-toggle"
+                      onClick={() => toggleStrand(strand.name)}
+                      aria-expanded={expandedStrands.has(strand.name)}
+                      style={{ width: '100%', textAlign: 'left', padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <span className={`section-chevron${expandedStrands.has(strand.name) ? ' expanded' : ''}`} style={{ fontSize: '11px' }}>&#9654;</span>
+                      <span style={{ fontWeight: 600, fontSize: '14px' }}>{strand.name}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginLeft: '4px' }}>
+                        ({strand.expectations.length} expectations)
+                      </span>
+                    </button>
+                    {expandedStrands.has(strand.name) && (
+                      <ul style={{ margin: '4px 0 4px 24px', padding: 0, listStyle: 'disc' }}>
+                        {strand.expectations.map(exp => (
+                          <li key={exp.code} style={{ fontSize: '13px', marginBottom: '6px', lineHeight: 1.5 }}>
+                            <strong style={{ color: 'var(--color-accent)', marginRight: '6px' }}>{exp.code}</strong>
+                            {exp.description}
+                            {exp.type === 'overall' && (
+                              <span style={{ marginLeft: '6px', fontSize: '11px', background: 'var(--color-accent)', color: 'white', borderRadius: '3px', padding: '1px 5px', verticalAlign: 'middle' }}>
+                                overall
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       </div>
 

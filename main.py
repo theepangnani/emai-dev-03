@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, google_calendar, study, logs, messages, notifications, notification_preferences, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, consent, mcp_config, documents, profile, quiz_assignments, grade_entries, report_cards, mock_exams, academic_plans, course_recommendations, ontario, curriculum, exam_prep, notes, projects
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -47,6 +47,10 @@ from app.models.course_recommendation import CourseRecommendation  # noqa: F401 
 from app.models.ontario_board import OntarioBoard  # noqa: F401 — ensure table is created (#500)
 from app.models.course_catalog import CourseCatalogItem  # noqa: F401 — ensure table is created (#500)
 from app.models.student_board import StudentBoard  # noqa: F401 — ensure table is created (#511)
+from app.models.curriculum import CurriculumExpectation  # noqa: F401 — ensure table is created (#571)
+from app.models.exam_prep_plan import ExamPrepPlan  # noqa: F401 — ensure table is created (#576)
+from app.models.note import Note  # noqa: F401 — ensure table is created
+from app.models.project import Project, ProjectMilestone  # noqa: F401 — ensure tables are created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -951,6 +955,14 @@ with SessionLocal() as _seed_db:
     except Exception as _e:
         logger.warning("Failed to seed Ontario course catalog at startup: %s", _e)
 
+# ── Seed Ontario curriculum expectations (#571) ───────────────────────────────
+with SessionLocal() as _seed_db:
+    try:
+        from app.data.curriculum_seed import seed_curriculum_data
+        seed_curriculum_data(_seed_db)
+    except Exception as _e:
+        logger.warning("Failed to seed Ontario curriculum expectations at startup: %s", _e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1087,6 +1099,10 @@ app.include_router(mock_exams.router, prefix="/api")
 app.include_router(academic_plans.router, prefix="/api")
 app.include_router(course_recommendations.router, prefix="/api")
 app.include_router(ontario.router, prefix="/api")
+app.include_router(curriculum.router, prefix="/api")
+app.include_router(exam_prep.router, prefix="/api")
+app.include_router(notes.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

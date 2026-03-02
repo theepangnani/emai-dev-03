@@ -7,6 +7,16 @@ export interface StudyActivityResponse {
   streak_updated: boolean;
 }
 
+export interface StudentProfile {
+  id: number;
+  user_id: number;
+  grade_level: number | null;
+  school_name: string | null;
+  study_streak_days: number;
+  last_study_date: string | null;
+  longest_streak: number;
+}
+
 export const studentApi = {
   /** Record study activity for today. Idempotent — safe to call multiple times per day. */
   recordStudyActivity: async (): Promise<StudyActivityResponse> => {
@@ -18,5 +28,11 @@ export const studentApi = {
   getStreak: async (): Promise<StudyActivityResponse> => {
     const response = await api.get('/api/students/streak');
     return response.data as StudyActivityResponse;
+  },
+
+  /** Get the logged-in student's own profile (includes numeric student id). */
+  getMyProfile: async (): Promise<StudentProfile> => {
+    const response = await api.get('/api/students/me');
+    return response.data as StudentProfile;
   },
 };

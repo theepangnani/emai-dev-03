@@ -859,6 +859,18 @@ export function StudentDashboard() {
             label: 'Study Guide',
             onClick: () => studyTools.setShowStudyModal(true),
           },
+          {
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+                <line x1="9" y1="12" x2="15" y2="12"/>
+                <line x1="9" y1="16" x2="12" y2="16"/>
+              </svg>
+            ),
+            label: 'Prepare for Exam',
+            onClick: () => navigate('/exam-prep'),
+          },
           googleConnected ? {
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -882,7 +894,7 @@ export function StudentDashboard() {
             disabled: isConnecting,
           },
         ] satisfies QuickAction[]}
-        maxVisible={4}
+        maxVisible={5}
       />
 
       {/* ── Academic Plan Widget (#505/#507) ─────────────── */}
