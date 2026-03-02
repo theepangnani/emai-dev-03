@@ -213,7 +213,7 @@
 - [x] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007) (IMPLEMENTED)
 - [x] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573) (IMPLEMENTED)
 - [x] **AI Mock Exam Generator** — GPT-4o-mini generates N MCQ questions per topic/difficulty; teacher preview/edit, save, bulk-assign to students; countdown timer ExamPage with question navigator; score reveal + per-question explanation; student dashboard Assigned Exams section; `/teacher/exams` dedicated page; anti-cheat correct_index hiding (#667) (IMPLEMENTED)
-- [ ] **Student Progress & Report Card Analysis** — Test upload, mark tracking, AI recommendations, parent insights (#960 — consolidated from #575, #581, #663)
+- [x] **Student Progress & Report Card Analysis** — Report card upload + AI mark extraction (#663) implemented; grade entry (#665) implemented (#960 partially IMPLEMENTED — remaining: consolidated analytics dashboard) — consolidated from #575, #581, #663)
 - [x] **UI Polish Bundle** — Sidebar labels, mobile quote, CourseMaterial redesign (#961 — consolidated from #669-#671, #734-#735) (IMPLEMENTED — verified done in Phase 1.5 and feature/phase-2)
 - [x] **Re-enable Analytics & FAQ nav links** (#962 — consolidated from #476, #479) (IMPLEMENTED)
 
@@ -264,7 +264,7 @@
 - [x] **Parent-assigned quizzes with complexity levels** — Easy/Medium/Hard difficulty, notification + tracking (#664) IMPLEMENTED
 - [x] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665) (IMPLEMENTED)
 - [x] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666) IMPLEMENTED
-- [ ] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667)
+- [x] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667) (IMPLEMENTED)
 
 #### UI/UX HCD Assessment — Phase 2 Improvements (#827)
 
