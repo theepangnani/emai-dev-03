@@ -108,6 +108,22 @@ def require_role(*roles: UserRole):
     return checker
 
 
+def require_feature(flag_key: str):
+    """Dependency factory — returns 404 if the feature flag is disabled."""
+    def checker(db: Session = Depends(get_db)):
+        from app.services.feature_flags import get_feature_flag_service
+        svc = get_feature_flag_service()
+        # For unauthenticated/simple gate checks we only need the DB-level flag.
+        # Grab the raw flag record; if missing or globally disabled → 404.
+        flag = svc.get_flag(flag_key, db)
+        if flag is None or not flag.is_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Feature not available",
+            )
+    return checker
+
+
 def can_access_course(db: Session, user: User, course_id: int) -> bool:
     """Check if a user has access to a specific course.
 
