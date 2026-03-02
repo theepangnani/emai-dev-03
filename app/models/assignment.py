@@ -17,6 +17,12 @@ class Assignment(Base):
     # Google Classroom integration
     google_classroom_id = Column(String(255), unique=True, nullable=True)
 
+    # Multi-LMS: generic provider tracking (#22)
+    # "google_classroom" | "brightspace" | "canvas" | None
+    lms_provider = Column(String(50), nullable=True)
+    # External ID in the source LMS
+    lms_external_id = Column(String(255), nullable=True)
+
     due_date = Column(DateTime(timezone=True), nullable=True)
     max_points = Column(Float, nullable=True)
 

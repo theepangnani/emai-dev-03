@@ -33,6 +33,12 @@ class CourseContent(Base):
     google_classroom_url = Column(String(1000), nullable=True)
     google_classroom_material_id = Column(String(255), nullable=True)
 
+    # Multi-LMS: generic provider tracking (#22)
+    # "google_classroom" | "brightspace" | "canvas" | None
+    lms_provider = Column(String(50), nullable=True)
+    # External ID in the source LMS
+    lms_external_id = Column(String(255), nullable=True)
+
     file_path = Column(String(500), nullable=True)
     original_filename = Column(String(500), nullable=True)
     file_size = Column(Integer, nullable=True)

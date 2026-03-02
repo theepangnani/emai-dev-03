@@ -34,6 +34,12 @@ class Course(Base):
     # Google Classroom integration
     google_classroom_id = Column(String(255), unique=True, nullable=True)
 
+    # Multi-LMS: generic provider tracking (#22)
+    # "google_classroom" | "brightspace" | "canvas" | None
+    lms_provider = Column(String(50), nullable=True)
+    # External ID in the source LMS (complements google_classroom_id for other providers)
+    lms_external_id = Column(String(255), nullable=True)
+
     classroom_type = Column(String(20), nullable=False, default="manual", server_default="manual")  # "school", "private", or "manual"
 
     teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)

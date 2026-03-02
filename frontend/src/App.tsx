@@ -89,6 +89,9 @@ const ExamPrepPage = lazyRetry(() => import('./pages/ExamPrepPage').then((m) => 
 const NotesPage = lazyRetry(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })));
 const ProjectsPage = lazyRetry(() => import('./pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
 const CurriculumPage = lazyRetry(() => import('./pages/CurriculumPage').then((m) => ({ default: m.CurriculumPage })));
+const AdminAnalyticsPage = lazyRetry(() => import('./pages/AdminAnalyticsPage').then(m => ({ default: m.AdminAnalyticsPage })));
+const SampleExamsPage = lazyRetry(() => import('./pages/SampleExamsPage').then((m) => ({ default: m.SampleExamsPage })));
+const LMSConnectionsPage = lazyRetry(() => import('./pages/LMSConnectionsPage').then((m) => ({ default: m.LMSConnectionsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -458,6 +461,30 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['teacher', 'admin']}>
                     <CurriculumPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminAnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/exams/samples"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <SampleExamsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/lms"
+                element={
+                  <ProtectedRoute allowedRoles={['student', 'parent', 'teacher', 'admin']}>
+                    <LMSConnectionsPage />
                   </ProtectedRoute>
                 }
               />

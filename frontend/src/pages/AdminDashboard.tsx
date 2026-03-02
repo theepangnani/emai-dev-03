@@ -272,6 +272,9 @@ export function AdminDashboard() {
 
       <div className="dashboard-sections">
         <section className="section" style={{ marginBottom: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+          <Link to="/admin/analytics" className="admin-audit-link">
+            Platform Analytics &rarr;
+          </Link>
           <Link to="/admin/audit-log" className="admin-audit-link">
             View Audit Log &rarr;
           </Link>
