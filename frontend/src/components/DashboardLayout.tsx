@@ -16,7 +16,51 @@ import type { FABAction } from './QuickActionFAB';
 import { CreateTaskModal } from './CreateTaskModal';
 import { OfflineIndicator } from './OfflineIndicator';
 import { getMyXP } from '../api/gamification';
+import { useFeatureFlags } from '../hooks/useFeatureFlag';
 import '../pages/Dashboard.css';
+
+// Map nav paths to feature flag keys. Items without a mapping are always shown.
+const PATH_FLAG_MAP: Record<string, string> = {
+  '/courses': 'google_classroom',
+  '/course-materials': 'google_classroom',
+  '/documents': 'document_repository',
+  '/report-cards': 'grade_tracking',
+  '/grades': 'grade_tracking',
+  '/grade-prediction': 'grade_tracking',
+  '/teacher/grades': 'grade_tracking',
+  '/messages': 'messaging',
+  '/teacher-communications': 'teacher_email_monitoring',
+  '/notifications': 'notification_system',
+  '/settings/reminders': 'notification_system',
+  '/settings/lms': 'multi_lms',
+  '/admin/lms': 'multi_lms',
+  '/notes': 'notes_projects',
+  '/projects': 'notes_projects',
+  '/faq': 'faq_knowledge_base',
+  '/tutors': 'tutor_marketplace',
+  '/tutor-match': 'tutor_marketplace',
+  '/tutors/dashboard': 'tutor_marketplace',
+  '/forum': 'parent_forum',
+  '/resources': 'teacher_resources',
+  '/email-agent': 'ai_email_agent',
+  '/settings/emails': 'ai_email_agent',
+  '/settings/billing': 'stripe_billing',
+  '/admin/billing': 'stripe_billing',
+  '/teacher/lesson-plans': 'lesson_planner',
+  '/personalization': 'ai_personalization',
+  '/course-planning': 'course_planning',
+  '/planner': 'course_planning',
+  '/curriculum': 'course_planning',
+  '/exam-prep': 'course_planning',
+  '/writing-assistant': 'ai_writing_assistant',
+  '/teacher/exams': 'ai_mock_exams',
+  '/teacher/exams/samples': 'ai_mock_exams',
+  '/study-timer': 'student_engagement',
+  '/achievements': 'student_engagement',
+  '/portfolio': 'student_engagement',
+  '/quiz-history': 'ai_study_tools',
+  '/progress': 'ai_study_tools',
+};
 
 interface SidebarAction {
   label: string;
@@ -484,6 +528,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [showFabTaskModal, setShowFabTaskModal] = useState(false);
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
+  const { flags } = useFeatureFlags();
 
   // XP level badge — only fetched for students and parents
   const { data: userXP } = useQuery({
@@ -528,7 +573,10 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Two-Factor Auth', path: '/settings/2fa' },
         { label: 'Reminder Settings', path: '/settings/reminders' },
         { label: 'Account', path: '/settings/account' },
-      ];
+      ].filter(item => {
+        const flagKey = PATH_FLAG_MAP[item.path];
+        return !flagKey || flags[flagKey] !== false;
+      });
     }
 
     const items: Array<{ label: string; path: string }> = [
@@ -617,8 +665,12 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     items.push({ label: 'Reminder Settings', path: '/settings/reminders' });
     items.push({ label: 'Account', path: '/settings/account' });
 
-    return items;
-  }, [user?.role]);
+    // Filter out nav items whose feature flag is disabled
+    return items.filter(item => {
+      const flagKey = PATH_FLAG_MAP[item.path];
+      return !flagKey || flags[flagKey] !== false;
+    });
+  }, [user?.role, flags]);
 
   useEffect(() => {
     const loadUnreadCount = async () => {
