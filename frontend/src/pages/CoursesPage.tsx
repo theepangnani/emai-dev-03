@@ -757,6 +757,12 @@ export function CoursesPage() {
               >
                 My Classes ({enrolledCourses.length})
               </button>
+              <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class" style={{ marginLeft: 'auto' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                </svg>
+              </button>
               <button
                 className={`courses-tab ${studentTab === 'browse' ? 'active' : ''}`}
                 onClick={() => { setStudentTab('browse'); searchParams.set('tab', 'browse'); setSearchParams(searchParams, { replace: true }); }}

@@ -587,6 +587,7 @@ export function StudyPage() {
               >
                 + New Course
               </button>
+              {user?.role !== 'student' && (
               <button
                 className="study-sidebar-btn"
                 onClick={handleSyncGoogle}
@@ -601,6 +602,7 @@ export function StudyPage() {
                   <>{'\u{1F4E1}'} Connect Google</>
                 )}
               </button>
+              )}
             </div>
 
             {/* My Progress */}
