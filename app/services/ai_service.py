@@ -270,7 +270,9 @@ Use "high" for exams/tests, "medium" for homework. If a date does not include a 
 understanding, not just memorization. Make wrong answers plausible but clearly incorrect.
 Always return valid JSON."""
 
-    return await generate_content(prompt, system_prompt, max_tokens=2000, temperature=0.5)
+    # ~200 tokens per question (question + 4 options + explanation), plus buffer for dates section
+    max_tokens = max(2000, num_questions * 200 + 500)
+    return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
 
 
 async def generate_flashcards(
@@ -328,4 +330,6 @@ Use "high" for exams/tests, "medium" for homework. If a date does not include a 
 Focus on key concepts and important details. Make cards concise but informative.
 Always return valid JSON."""
 
-    return await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.5)
+    # ~100 tokens per flashcard (front + back), plus buffer for dates section
+    max_tokens = max(1500, num_cards * 100 + 500)
+    return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
