@@ -301,7 +301,7 @@ describe('MessagesPage', () => {
       expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /\+ new message/i }))
+    await user.click(screen.getByLabelText('New Message'))
 
     // Modal header and searchable recipient input
     expect(screen.getByRole('heading', { name: /new message/i })).toBeInTheDocument()
@@ -324,7 +324,7 @@ describe('MessagesPage', () => {
       expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /\+ new message/i }))
+    await user.click(screen.getByLabelText('New Message'))
 
     // Focus the recipient search input to show dropdown suggestions
     const recipientInput = screen.getByPlaceholderText(/search for a user/i)
@@ -357,7 +357,7 @@ describe('MessagesPage', () => {
       expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /\+ new message/i }))
+    await user.click(screen.getByLabelText('New Message'))
 
     // Select recipient via searchable input dropdown
     const recipientInput = screen.getByPlaceholderText(/search for a user/i)
@@ -390,7 +390,7 @@ describe('MessagesPage', () => {
       expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /\+ new message/i }))
+    await user.click(screen.getByLabelText('New Message'))
 
     // Searchable input is always shown (users can search for any ClassBridge user)
     expect(screen.getByPlaceholderText(/search for a user/i)).toBeInTheDocument()
@@ -406,7 +406,7 @@ describe('MessagesPage', () => {
       expect(screen.getByText(/no messages yet/i)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /\+ new message/i }))
+    await user.click(screen.getByLabelText('New Message'))
     expect(screen.getByRole('heading', { name: /new message/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /cancel/i }))

@@ -11,6 +11,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
+import '../components/AddActionButton.css';
 import './MessagesPage.css';
 
 export function MessagesPage() {
@@ -480,8 +481,10 @@ export function MessagesPage() {
         <aside className="conversation-list">
           <div className="list-header">
             <h2>Conversations</h2>
-            <button className="new-message-btn" onClick={() => setShowNewModal(true)}>
-              + New Message
+            <button className="title-add-btn" onClick={() => setShowNewModal(true)} title="New Message" aria-label="New Message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
             </button>
           </div>
           <div className="search-bar">

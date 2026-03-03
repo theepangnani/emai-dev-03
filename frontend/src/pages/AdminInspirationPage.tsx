@@ -4,6 +4,7 @@ import type { InspirationMessageFull } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import { useConfirm } from '../components/ConfirmModal';
+import '../components/AddActionButton.css';
 import './AdminInspirationPage.css';
 
 const ROLES = ['parent', 'teacher', 'student'] as const;
@@ -113,8 +114,10 @@ export function AdminInspirationPage() {
             <option value="">All Roles</option>
             {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
           </select>
-          <button className="admin-insp-add-btn" onClick={() => { resetForm(); setShowAdd(true); }}>
-            + Add Message
+          <button className="title-add-btn" onClick={() => { resetForm(); setShowAdd(true); }} title="Add Message" aria-label="Add Message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26z" />
+            </svg>
           </button>
         </div>
       </div>
