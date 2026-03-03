@@ -1729,8 +1729,8 @@ button.retry-btn:disabled {
   }
 
   .header-logo {
-    height: 44px;
-    margin: -4px 0;
+    height: 64px;
+    margin: -12px 0;
   }
 
   .header-right {
