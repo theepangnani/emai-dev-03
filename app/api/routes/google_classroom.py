@@ -24,6 +24,18 @@ from app.services.audit_service import log_action
 from app.services.email_service import add_inspiration_to_email, send_email_sync, wrap_branded_email
 from app.core.config import settings
 from app.core.security import create_access_token
+
+
+def _require_google_classroom():
+    """Dependency that gates Google Classroom routes behind the toggle.
+
+    Returns 404 when GOOGLE_CLASSROOM_ENABLED is false so disabled
+    endpoints appear non-existent to clients.
+    """
+    if not settings.google_classroom_enabled:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 from app.services.google_classroom import (
     get_authorization_url,
     exchange_code_for_tokens,
@@ -101,7 +113,7 @@ def _store_granted_scopes(user: User, granted_scopes_str: str) -> None:
 
 @router.get("/auth")
 @limiter.limit("10/minute")
-def google_auth(request: Request, user_id: int | None = None):
+def google_auth(request: Request, user_id: int | None = None, _gc=Depends(_require_google_classroom)):
     """Get Google OAuth authorization URL.
 
     If user_id is provided, it will be included in the state to link
@@ -118,6 +130,7 @@ def google_connect(
     request: Request,
     current_user: User = Depends(get_current_user),
     add_account: bool = Query(False, description="If true, adds as additional teacher Google account"),
+    _gc=Depends(_require_google_classroom),
 ):
     """Get authorization URL for connecting Google to existing account."""
     purpose = "add_account" if add_account and current_user.has_role(UserRole.TEACHER) else "connect"
@@ -134,6 +147,7 @@ def google_callback(
     state: str | None = None,
     error: str | None = None,
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Handle Google OAuth callback."""
     # Handle OAuth errors
@@ -290,7 +304,7 @@ def google_callback(
 
 @router.get("/status")
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
-def google_status(request: Request, current_user: User = Depends(get_current_user)):
+def google_status(request: Request, current_user: User = Depends(get_current_user), _gc=Depends(_require_google_classroom)):
     """Check if user has connected Google Classroom."""
     return {
         "connected": bool(current_user.google_access_token),
@@ -305,6 +319,7 @@ def google_disconnect(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Disconnect Google Classroom from user account."""
     current_user.google_id = None
@@ -321,6 +336,7 @@ def get_google_courses(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """List all Google Classroom courses for the authenticated user."""
     if not current_user.google_access_token:
@@ -791,6 +807,7 @@ def sync_google_courses(
     ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Sync Google Classroom courses to local database.
 
@@ -834,6 +851,7 @@ def get_google_assignments(
     course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Get all assignments for a Google Classroom course."""
     if not current_user.google_access_token:
@@ -861,6 +879,7 @@ def sync_google_assignments(
     google_course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Sync assignments from a Google Classroom course to local database."""
     if not current_user.google_access_token:
@@ -937,6 +956,7 @@ def sync_google_materials(
     google_course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Sync courseWorkMaterials from a Google Classroom course to CourseContent."""
     if not current_user.google_access_token:
@@ -976,6 +996,7 @@ def list_teacher_google_accounts(
     request: Request,
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """List all Google accounts linked to the current teacher."""
     teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
@@ -1010,6 +1031,7 @@ def update_teacher_google_account(
     set_primary: bool = Query(False),
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Update label or primary status for a teacher Google account."""
     teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
@@ -1039,6 +1061,7 @@ def sync_grades_for_course(
     course_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Sync grades from Google Classroom for a specific course.
 
@@ -1095,6 +1118,7 @@ def remove_teacher_google_account(
     account_id: int,
     current_user: User = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
+    _gc=Depends(_require_google_classroom),
 ):
     """Remove a linked Google account from teacher."""
     teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()

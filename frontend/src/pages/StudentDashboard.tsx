@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { googleApi, coursesApi, assignmentsApi, studyApi } from '../api/client';
+import { useFeature } from '../hooks/useFeatureToggle';
 import { notificationsApi, type NotificationResponse } from '../api/notifications';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { invitesApi } from '../api/invites';
@@ -88,6 +89,7 @@ function getUrgencyTier(dueDate: string | null): UrgencyTier {
 export function StudentDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const gcEnabled = useFeature('google_classroom');
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [googleConnected, setGoogleConnected] = useState(false);
@@ -562,7 +564,7 @@ export function StudentDashboard() {
       )}
 
       {/* ── Google Classroom Banner ──────────────────────── */}
-      {!googleConnected && (
+      {gcEnabled && !googleConnected && (
         <div className={`sd-google-banner ${justRegistered ? 'welcome' : ''}`}>
           <div className="sd-google-icon">{'\u{1F517}'}</div>
           <div className="sd-google-text">
@@ -792,12 +794,12 @@ export function StudentDashboard() {
         ) : (
           <EmptyState
             title="No classes yet"
-            description="Create a class or connect Google Classroom to get started."
+            description={gcEnabled ? "Create a class or connect Google Classroom to get started." : "Create a class to get started."}
             variant="compact"
             className="sd-empty"
             actions={[
               { label: 'Create Class', onClick: () => setShowCreateCourseModal(true) },
-              ...(!googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
+              ...(gcEnabled && !googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
             ]}
           />
         )}

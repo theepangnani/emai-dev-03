@@ -100,4 +100,14 @@ export const adminApi = {
     const response = await api.post(`/api/admin/users/${userId}/message`, { subject, body });
     return response.data as { success: boolean; email_sent: boolean };
   },
+
+  getFeatureToggles: async () => {
+    const response = await api.get('/api/admin/features');
+    return response.data as Record<string, boolean>;
+  },
+
+  updateFeatureToggle: async (key: string, enabled: boolean) => {
+    const response = await api.patch(`/api/admin/features/${key}`, { enabled });
+    return response.data as { feature: string; enabled: boolean };
+  },
 };

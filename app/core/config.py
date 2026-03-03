@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     # Shadow teacher auto-invite (#946)
     auto_invite_shadow_teachers: bool = True
 
+    # Feature toggles (#1054)
+    google_classroom_enabled: bool = False
+
     # File storage
     upload_dir: str = "./uploads"
 

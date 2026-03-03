@@ -564,3 +564,55 @@ def send_admin_message(
             logger.warning("Failed to send admin message email to user %s", user.id)
 
     return AdminMessageResponse(success=True, email_sent=email_sent)
+
+
+# ── Feature Toggles ──────────────────────────────────────────────────
+
+class FeatureToggleUpdate(BaseModel):
+    enabled: bool
+
+
+@router.get("/features")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_feature_toggles(
+    request: Request,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Get current feature toggle states."""
+    return {
+        "google_classroom": settings.google_classroom_enabled,
+    }
+
+
+@router.patch("/features/{feature_key}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_feature_toggle(
+    request: Request,
+    feature_key: str,
+    body: FeatureToggleUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Toggle a feature on or off at runtime.
+
+    Changes take effect immediately but reset on server restart.
+    Set the corresponding env var for persistence across restarts.
+    """
+    valid_features = {"google_classroom": "google_classroom_enabled"}
+    if feature_key not in valid_features:
+        raise HTTPException(status_code=404, detail=f"Unknown feature: {feature_key}")
+
+    attr = valid_features[feature_key]
+    setattr(settings, attr, body.enabled)
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="update",
+        resource_type="feature_toggle",
+        details=f"{feature_key}={'enabled' if body.enabled else 'disabled'}",
+    )
+    db.commit()
+
+    logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
+    return {"feature": feature_key, "enabled": body.enabled}

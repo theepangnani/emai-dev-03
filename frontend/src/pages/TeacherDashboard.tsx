@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
+import { useFeature } from '../hooks/useFeatureToggle';
 import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
@@ -28,6 +29,7 @@ interface Course {
 export function TeacherDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const gcEnabled = useFeature('google_classroom');
   const [courses, setCourses] = useState<Course[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -401,7 +403,7 @@ export function TeacherDashboard() {
             label: 'Announcements',
             onClick: () => setShowAnnounceModal(true),
           },
-          {
+          ...(gcEnabled ? [{
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -411,7 +413,7 @@ export function TeacherDashboard() {
             label: googleConnected ? 'Sync Classes' : 'Google Classroom',
             onClick: googleConnected ? handleSyncCourses : handleConnectGoogle,
             disabled: syncing,
-          },
+          }] : []),
           {
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -513,7 +515,7 @@ export function TeacherDashboard() {
         {/* Course Management Section (#947) */}
         <TeacherCourseManagement
           key={courses.length}
-          googleConnected={googleConnected}
+          googleConnected={gcEnabled && googleConnected}
           onSync={handleSyncCourses}
           syncing={syncing}
           onCreateCourse={() => setShowCreateModal(true)}
@@ -584,7 +586,7 @@ export function TeacherDashboard() {
         )}
 
         {/* Google Accounts Section */}
-        {googleConnected && (
+        {gcEnabled && googleConnected && (
           <section className="section teacher-google-accounts-section">
             <div className="section-header">
               <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)}>

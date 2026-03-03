@@ -15,6 +15,7 @@ def test_db_url(tmp_path_factory):
 @pytest.fixture(scope="session")
 def app(test_db_url):
     os.environ["DATABASE_URL"] = test_db_url
+    os.environ.setdefault("GOOGLE_CLASSROOM_ENABLED", "true")
 
     import app.core.config as config
     importlib.reload(config)

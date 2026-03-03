@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { googleApi } from '../api/client';
+import { useFeature } from '../hooks/useFeatureToggle';
 import './GoogleClassroomPrompt.css';
 
 const DISMISS_KEY_PREFIX = 'gc-prompt-dismissed-';
@@ -32,6 +33,7 @@ export function GoogleClassroomPrompt({
   childStudentId,
   onAddManually,
 }: GoogleClassroomPromptProps) {
+  const gcEnabled = useFeature('google_classroom');
   const [dismissed, setDismissed] = useState(() => isDismissed(childStudentId));
   const [connecting, setConnecting] = useState(false);
 
@@ -55,7 +57,7 @@ export function GoogleClassroomPrompt({
     setDismissed(true);
   }, [childStudentId]);
 
-  if (dismissed) return null;
+  if (!gcEnabled || dismissed) return null;
 
   const firstName = childName.split(' ')[0];
 
