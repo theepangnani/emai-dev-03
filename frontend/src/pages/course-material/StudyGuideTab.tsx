@@ -78,7 +78,7 @@ export function StudyGuideTab({
         </div>
       </div>
       {studyGuide ? (
-        <div className="cm-tab-card">
+        <div className="cm-tab-card cm-tab-card--guide">
           <div className="cm-guide-actions">
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>

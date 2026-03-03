@@ -12,12 +12,14 @@ interface ParsedQuestion {
   explanation?: string;
 }
 
+type Difficulty = 'easy' | 'medium' | 'hard';
+
 interface QuizTabProps {
   quiz: StudyGuide | undefined;
   generating: string | null;
   focusPrompt: string;
   onFocusPromptChange: (value: string) => void;
-  onGenerate: () => void;
+  onGenerate: (difficulty?: string) => void;
   onDelete: (guide: StudyGuide) => void;
   hasSourceContent: boolean;
   isParent: boolean;
@@ -67,6 +69,7 @@ export function QuizTab({
   const [quizSaveError, setQuizSaveError] = useState<string | null>(null);
   const [quizSavedId, setQuizSavedId] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const printRef = useRef<HTMLDivElement>(null);
 
   const parsedQuiz: ParsedQuestion[] = quiz ? (() => {
@@ -162,6 +165,21 @@ export function QuizTab({
             disabled={generating !== null}
           />
         </div>
+        <div className="cm-difficulty-selector">
+          <span className="cm-difficulty-label">Difficulty:</span>
+          <div className="cm-difficulty-toggle">
+            {(['easy', 'medium', 'hard'] as const).map(level => (
+              <button
+                key={level}
+                className={`cm-difficulty-btn${difficulty === level ? ' active' : ''}`}
+                onClick={() => setDifficulty(level)}
+                disabled={generating !== null}
+              >
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       {quiz && parsedQuiz.length > 0 ? (
         <div className="cm-tab-card">
@@ -169,7 +187,7 @@ export function QuizTab({
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
             <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+            <button className="cm-action-btn" onClick={() => onGenerate(difficulty)} disabled={generating !== null}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
@@ -268,7 +286,7 @@ export function QuizTab({
           <p>Generate a practice quiz to test understanding of this material with multiple-choice questions.</p>
           <button
             className="cm-empty-generate-btn"
-            onClick={onGenerate}
+            onClick={() => onGenerate(difficulty)}
             disabled={generating !== null || !hasSourceContent}
           >
             {'\u2728'} Generate Quiz

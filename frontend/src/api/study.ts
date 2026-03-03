@@ -137,7 +137,7 @@ export const studyApi = {
     return response.data as StudyGuide;
   },
 
-  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
+  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string; difficulty?: string }) => {
     const response = await api.post('/api/study/quiz/generate', params);
     return response.data as Quiz;
   },
@@ -200,6 +200,7 @@ export const studyApi = {
     course_id?: number;
     course_content_id?: number;
     focus_prompt?: string;
+    difficulty?: string;
   }) => {
     const formData = new FormData();
     formData.append('file', params.file);
@@ -210,6 +211,7 @@ export const studyApi = {
     if (params.course_id) formData.append('course_id', params.course_id.toString());
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
     if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
+    if (params.difficulty) formData.append('difficulty', params.difficulty);
 
     const response = await api.post('/api/study/upload/generate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -227,6 +229,7 @@ export const studyApi = {
     course_id?: number;
     course_content_id?: number;
     focus_prompt?: string;
+    difficulty?: string;
   }) => {
     const formData = new FormData();
     formData.append('content', params.content);
@@ -237,6 +240,7 @@ export const studyApi = {
     if (params.course_id) formData.append('course_id', params.course_id.toString());
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
     if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
+    if (params.difficulty) formData.append('difficulty', params.difficulty);
     params.images.forEach(img => formData.append('images', img));
 
     const response = await api.post('/api/study/generate-with-images', formData, {

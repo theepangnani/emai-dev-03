@@ -68,6 +68,7 @@ export function useParentStudyTools({
     files?: File[];  // multi-file: text extraction happens inside the background task
     pastedImages?: File[];
     regenerateId?: number;
+    courseContentId?: number;
   }) => {
     const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
     setBackgroundGeneration({ status: 'generating', type: typeLabel });
@@ -89,6 +90,7 @@ export function useParentStudyTools({
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             focus_prompt: params.focusPrompt,
+            course_content_id: params.courseContentId,
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
           result = await studyApi.generateFromTextAndImages({
@@ -99,6 +101,7 @@ export function useParentStudyTools({
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             focus_prompt: params.focusPrompt,
+            course_content_id: params.courseContentId,
           });
         } else if (params.type === 'study_guide') {
           result = await studyApi.generateGuide({
@@ -106,6 +109,7 @@ export function useParentStudyTools({
             content: content || undefined,
             regenerate_from_id: params.regenerateId,
             focus_prompt: params.focusPrompt,
+            course_content_id: params.courseContentId,
           });
         } else if (params.type === 'quiz') {
           result = await studyApi.generateQuiz({
@@ -114,6 +118,7 @@ export function useParentStudyTools({
             num_questions: 10,
             regenerate_from_id: params.regenerateId,
             focus_prompt: params.focusPrompt,
+            course_content_id: params.courseContentId,
           });
         } else if (params.type === 'flashcards') {
           result = await studyApi.generateFlashcards({
@@ -122,6 +127,7 @@ export function useParentStudyTools({
             num_cards: 15,
             regenerate_from_id: params.regenerateId,
             focus_prompt: params.focusPrompt,
+            course_content_id: params.courseContentId,
           });
         }
 
@@ -187,17 +193,55 @@ export function useParentStudyTools({
       } catch { /* Continue */ }
     }
 
+    // When multiple AI tools are selected, pre-create a single CourseContent
+    // so all parallel generation calls share the same material (#1061)
+    let sharedCourseContentId: number | undefined;
+    if (modalParams.types.length > 1) {
+      try {
+        const defaultCourse = await coursesApi.getDefault();
+        if (isMultiFile) {
+          const combinedText = await extractCombinedText(files);
+          const cc = await courseContentsApi.create({
+            course_id: defaultCourse.id,
+            title: modalParams.title || files.map(f => f.name).join(', '),
+            text_content: combinedText,
+            content_type: 'notes',
+          });
+          sharedCourseContentId = cc.id;
+        } else if (modalParams.mode === 'file' && files.length === 1) {
+          const cc = await courseContentsApi.uploadFile(
+            files[0],
+            defaultCourse.id,
+            modalParams.title || undefined,
+            'notes',
+          );
+          sharedCourseContentId = cc.id;
+        } else {
+          const cc = await courseContentsApi.create({
+            course_id: defaultCourse.id,
+            title: modalParams.title || 'Uploaded material',
+            text_content: modalParams.content || undefined,
+            content_type: 'notes',
+          });
+          sharedCourseContentId = cc.id;
+        }
+      } catch {
+        // If pre-creation fails, fall through — each generation creates its own
+      }
+    }
+
     for (const type of modalParams.types) {
       runGenerationInBackground({
         title: modalParams.title,
         content: modalParams.content,
         type,
         focusPrompt: modalParams.focusPrompt,
-        mode: isMultiFile ? 'text' : modalParams.mode,
-        file: isMultiFile ? undefined : modalParams.file,
-        files: isMultiFile ? files : undefined,
-        pastedImages: modalParams.pastedImages,
+        mode: sharedCourseContentId ? 'text' : (isMultiFile ? 'text' : modalParams.mode),
+        file: sharedCourseContentId ? undefined : (isMultiFile ? undefined : modalParams.file),
+        files: sharedCourseContentId ? undefined : (isMultiFile ? files : undefined),
+        pastedImages: sharedCourseContentId ? undefined : modalParams.pastedImages,
         regenerateId: duplicateCheck?.existing_guide?.id,
+        courseContentId: sharedCourseContentId,
       });
     }
   };

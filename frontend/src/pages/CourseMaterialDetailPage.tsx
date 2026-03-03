@@ -113,7 +113,7 @@ export function CourseMaterialDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('document');
+  const [activeTab, setActiveTab] = useState<TabKey>('guide');
   const [generating, setGenerating] = useState<string | null>(null);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -201,7 +201,7 @@ export function CourseMaterialDetailPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
+  const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards', difficulty?: string) => {
     if (!content) return;
     const labels = { study_guide: 'Study Guide', quiz: 'Practice Quiz', flashcards: 'Flashcards' };
     const ok = await confirm({
@@ -232,6 +232,7 @@ export function CourseMaterialDetailPage() {
           content: content.text_content || content.description || '',
           num_questions: extractQuestionCount(fp),
           focus_prompt: fp,
+          difficulty,
         });
       } else {
         await studyApi.generateFlashcards({
@@ -341,10 +342,10 @@ export function CourseMaterialDetailPage() {
   );
 
   const tabs: { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode }[] = [
-    { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
     { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
+    { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
   return (
@@ -466,7 +467,7 @@ export function CourseMaterialDetailPage() {
               generating={generating}
               focusPrompt={quizFocusPrompt}
               onFocusPromptChange={setQuizFocusPrompt}
-              onGenerate={() => handleGenerate('quiz')}
+              onGenerate={(diff) => handleGenerate('quiz', diff)}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
               isParent={isParent}
