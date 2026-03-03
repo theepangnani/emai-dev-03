@@ -109,7 +109,7 @@ class FlashcardGenerateRequest(BaseModel):
     course_content_id: int | None = None
     topic: str | None = Field(default=None, max_length=200)
     content: str | None = Field(default=None, max_length=50000)
-    num_cards: int = Field(default=10, ge=1, le=100)
+    num_cards: int = Field(default=10, ge=1, le=50)
     regenerate_from_id: int | None = None
     focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
 
