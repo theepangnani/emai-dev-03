@@ -483,6 +483,12 @@ async def generate_study_guide_endpoint(
             detail=str(e),
             faq_code=AI_GENERATION_FAILED,
         )
+    except Exception as e:
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("Study guide generation failed: %s: %s", type(e).__name__, e)
+        detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+        raise HTTPException(status_code=500, detail=detail[:500])
 
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)
@@ -599,6 +605,12 @@ async def generate_quiz_endpoint(
         raise HTTPException(status_code=500, detail="Failed to parse quiz response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("Quiz generation failed: %s: %s", type(e).__name__, e)
+        detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+        raise HTTPException(status_code=500, detail=detail[:500])
 
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Quiz: {topic}", "quiz", body.assignment_id)
@@ -723,6 +735,12 @@ async def generate_flashcards_endpoint(
         raise HTTPException(status_code=500, detail="Failed to parse flashcards response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("Flashcard generation failed: %s: %s", type(e).__name__, e)
+        detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+        raise HTTPException(status_code=500, detail=detail[:500])
 
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Flashcards: {topic}", "flashcards", body.assignment_id)
