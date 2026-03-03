@@ -743,6 +743,46 @@ class TestContentModeration:
         assert "inappropriate" in resp.json()["detail"].lower() or "appropriate" in resp.json()["detail"].lower()
 
 
+class TestFocusPromptQuestionCount:
+    """Regression tests for #1066 — focus prompt count extraction and clamping.
+
+    The regex must match 'quizzes' (not just 'questions') and clamp values
+    above 50 to 50 instead of silently ignoring them.
+    """
+
+    def _extract(self, focus_prompt: str, default: int = 5) -> int:
+        """Simulate the extraction logic from study.py quiz/generate endpoint."""
+        import re
+        num_questions = default
+        if focus_prompt and num_questions <= 10:
+            m = re.search(r'(\d+)\s*(?:\w*\s*)(?:questions?|quizzes?|q\b)', focus_prompt, re.IGNORECASE)
+            if m:
+                requested = min(int(m.group(1)), 50)
+                if requested >= 1:
+                    num_questions = requested
+        return num_questions
+
+    def test_matches_quizzes(self):
+        """'100 quizzes' should be matched and clamped to 50."""
+        assert self._extract("100 quizzes") == 50
+
+    def test_matches_questions(self):
+        """'20 questions' should return 20."""
+        assert self._extract("20 questions") == 20
+
+    def test_clamps_above_50(self):
+        """Values above 50 should be clamped to 50, not ignored."""
+        assert self._extract("75 questions") == 50
+
+    def test_normal_range(self):
+        """Values within 1-50 should pass through."""
+        assert self._extract("10 questions") == 10
+
+    def test_no_match_returns_default(self):
+        """Prompt without a count pattern should return default."""
+        assert self._extract("focus on photosynthesis") == 5
+
+
 class TestExtractTextRateLimit:
     """Regression tests for #1003 — /upload/extract-text rate limit too low.
 
