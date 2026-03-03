@@ -949,6 +949,7 @@
   align-items: center;
   z-index: 1000;
   animation: overlayFadeIn 0.15s ease;
+  overscroll-behavior: contain;
 }
 
 @keyframes overlayFadeIn {
