@@ -123,6 +123,11 @@ vi.mock('../utils/logger', () => ({
   },
 }))
 
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeature: () => true,
+  useFeatureToggles: () => ({ google_classroom: true }),
+}))
+
 import { StudentDashboard } from './StudentDashboard'
 
 function setupDefaults() {

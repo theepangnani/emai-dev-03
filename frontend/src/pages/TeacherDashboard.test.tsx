@@ -87,6 +87,11 @@ vi.mock('../components/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
 }))
 
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeature: () => true,
+  useFeatureToggles: () => ({ google_classroom: true }),
+}))
+
 import { TeacherDashboard } from './TeacherDashboard'
 
 function setupDefaults() {

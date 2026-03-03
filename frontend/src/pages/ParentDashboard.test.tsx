@@ -144,6 +144,11 @@ vi.mock('./StudyGuidesPage', () => ({
   queueStudyGeneration: vi.fn(),
 }))
 
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeature: () => true,
+  useFeatureToggles: () => ({ google_classroom: true }),
+}))
+
 import { ParentDashboard } from './ParentDashboard'
 
 const child1 = createMockChild({
