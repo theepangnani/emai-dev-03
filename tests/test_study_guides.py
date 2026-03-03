@@ -899,3 +899,16 @@ class TestAIGenerationErrorHandling:
 
         assert resp.status_code == 500
         assert len(resp.json()["detail"]) <= 500
+
+
+# ------------------------------------------------------------------
+# Config: verify default Claude model is up-to-date
+# ------------------------------------------------------------------
+
+
+def test_default_claude_model_is_current():
+    """Ensure the default Claude model in settings is claude-sonnet-4-6."""
+    from app.core.config import Settings
+
+    defaults = Settings(secret_key="test-key-for-unit-test")
+    assert defaults.claude_model == "claude-sonnet-4-6"

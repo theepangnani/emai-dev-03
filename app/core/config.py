@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # Anthropic Claude
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-5-20250929"
+    claude_model: str = "claude-sonnet-4-6"
 
     # Study guide limits
     max_study_guides_per_student: int = 100

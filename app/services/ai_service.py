@@ -270,8 +270,8 @@ Use "high" for exams/tests, "medium" for homework. If a date does not include a 
 understanding, not just memorization. Make wrong answers plausible but clearly incorrect.
 Always return valid JSON."""
 
-    # ~200 tokens per question (question + 4 options + explanation), plus buffer for dates section
-    max_tokens = max(2000, num_questions * 200 + 500)
+    # ~250 tokens per question (question + 4 options + explanation), plus buffer for dates section
+    max_tokens = max(2000, num_questions * 250 + 500)
     return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
 
 
