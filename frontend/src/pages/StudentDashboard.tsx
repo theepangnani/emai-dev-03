@@ -93,7 +93,6 @@ export function StudentDashboard() {
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [googleConnected, setGoogleConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   // lastSynced state removed — no longer displayed in unified quick actions
@@ -129,7 +128,6 @@ export function StudentDashboard() {
   const inviteTeacherModalRef = useFocusTrap<HTMLDivElement>(showInviteTeacherModal, () => setShowInviteTeacherModal(false));
   const classroomTypeModalRef = useFocusTrap<HTMLDivElement>(showClassroomTypeModal, () => setShowClassroomTypeModal(false));
 
-  const justRegistered = searchParams.get('just_registered') === 'true';
 
   const { user } = useAuth();
   const [onboardingDismissed, setOnboardingDismissed] = useState(() =>
@@ -329,14 +327,12 @@ export function StudentDashboard() {
 
   // ── Google Actions ────────────────────────────────────────────
   const handleConnectGoogle = async () => {
-    setIsConnecting(true);
     try {
       const { authorization_url } = await googleApi.getConnectUrl();
       window.location.href = authorization_url;
     } catch (err) {
       setStatusMessage({ type: 'error', text: 'Failed to initiate Google connection' });
       setFaqCode(extractFaqCode(err));
-      setIsConnecting(false);
     }
   };
 
@@ -561,26 +557,6 @@ export function StudentDashboard() {
             ))}
           </div>
         </section>
-      )}
-
-      {/* ── Google Classroom Banner ──────────────────────── */}
-      {false && gcEnabled && !googleConnected && (
-        <div className={`sd-google-banner ${justRegistered ? 'welcome' : ''}`}>
-          <div className="sd-google-icon">{'\u{1F517}'}</div>
-          <div className="sd-google-text">
-            <strong>
-              {justRegistered ? 'Welcome! Connect your Google Classroom' : 'Connect Google Classroom'}
-            </strong>
-            <p>
-              {justRegistered
-                ? 'Your parent invited you to ClassBridge. Connect Google Classroom so they can see your classes and teachers.'
-                : 'Sync your classes and assignments automatically.'}
-            </p>
-          </div>
-          <button className="sd-google-btn" onClick={handleConnectGoogle} disabled={isConnecting}>
-            {isConnecting ? 'Connecting...' : 'Connect Now'}
-          </button>
-        </div>
       )}
 
       {/* ── Onboarding Tip ───────────────────────────────── */}

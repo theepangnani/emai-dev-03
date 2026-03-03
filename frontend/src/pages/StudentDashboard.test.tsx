@@ -184,25 +184,6 @@ describe('StudentDashboard', () => {
     })
   })
 
-  // ── Google Connect Banner ──────────────────────────────────────
-  it('shows connect banner when Google is not connected', async () => {
-    renderWithProviders(<StudentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Connect Google Classroom')).toBeInTheDocument()
-    })
-    expect(screen.getByRole('button', { name: 'Connect Now' })).toBeInTheDocument()
-  })
-
-  it('shows welcome banner for just-registered users', async () => {
-    mockSearchParams.set('just_registered', 'true')
-    renderWithProviders(<StudentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/welcome! connect your google classroom/i)).toBeInTheDocument()
-    })
-  })
-
   it('does not show connect banner when Google is connected', async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
     renderWithProviders(<StudentDashboard />)
@@ -243,31 +224,6 @@ describe('StudentDashboard', () => {
     })
   })
 
-  // ── Google Actions ─────────────────────────────────────────────
-  it('handles Connect Now click', async () => {
-    mockGetConnectUrl.mockResolvedValue({ authorization_url: 'https://accounts.google.com/auth' })
-    const user = userEvent.setup()
-
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      value: { ...originalLocation, href: '' },
-      writable: true,
-    })
-
-    renderWithProviders(<StudentDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Connect Now' })).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Connect Now' }))
-
-    await waitFor(() => {
-      expect(mockGetConnectUrl).toHaveBeenCalled()
-    })
-
-    Object.defineProperty(window, 'location', { value: originalLocation, writable: true })
-  })
 
   it('handles Sync Classes via google_connected callback', async () => {
     mockSearchParams.set('google_connected', 'true')
