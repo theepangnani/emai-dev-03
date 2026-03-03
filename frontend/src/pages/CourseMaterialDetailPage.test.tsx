@@ -82,11 +82,13 @@ vi.mock('../api/courses', () => ({
   },
 }))
 
-// Stub sub-components that aren't relevant to this test
+// Stub sub-components — EditMaterialModal renders with modal-overlay to test scroll lock
 vi.mock('../components/EditMaterialModal', () => ({
   EditMaterialModal: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="edit-material-modal">
-      <button onClick={onClose}>Close</button>
+    <div className="modal-overlay" data-testid="edit-material-modal-overlay">
+      <div className="modal edit-material-modal" data-testid="edit-material-modal">
+        <button onClick={onClose}>Close</button>
+      </div>
     </div>
   ),
 }))
@@ -139,5 +141,25 @@ describe('CourseMaterialDetailPage', () => {
     expect(screen.queryByTestId('edit-material-modal')).not.toBeInTheDocument()
     await user.click(editBtn)
     expect(screen.getByTestId('edit-material-modal')).toBeInTheDocument()
+  })
+
+  it('renders modal-overlay class when edit modal is open (enables body scroll lock)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CourseMaterialDetailPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('t.math.set2.8')).toBeInTheDocument()
+    })
+
+    // No overlay initially
+    expect(screen.queryByTestId('edit-material-modal-overlay')).not.toBeInTheDocument()
+
+    // Open modal
+    const editBtn = screen.getByLabelText('Edit material', { selector: '.cm-title-edit-btn' })
+    await user.click(editBtn)
+
+    // Overlay should have modal-overlay class (CSS rule body:has(.modal-overlay) locks scroll)
+    const overlay = screen.getByTestId('edit-material-modal-overlay')
+    expect(overlay).toHaveClass('modal-overlay')
   })
 })

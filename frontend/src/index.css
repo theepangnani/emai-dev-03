@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+/* Lock body scroll when any modal overlay is open */
+body:has(.modal-overlay) {
+  overflow: hidden;
+}
+
 :root, [data-theme="light"] {
   /* Responsive breakpoints (documentation — CSS can't use vars in media queries)
      Mobile:  480px   — small phone, single column
