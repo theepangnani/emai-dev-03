@@ -616,23 +616,59 @@ export function StudyGuidesPage() {
       } catch { /* continue */ }
     }
 
+    // When multiple AI tools are selected and no courseContentId yet,
+    // pre-create a single CourseContent so all generations share one material (#1061)
+    let sharedCourseContentId = modalParams.courseContentId;
+    if (!sharedCourseContentId && modalParams.types.length > 1) {
+      try {
+        const cId = modalParams.courseId || (await coursesApi.getDefault()).id;
+        if (isMultiFile) {
+          const combinedText = await extractCombinedText(files);
+          const cc = await courseContentsApi.create({
+            course_id: cId,
+            title: modalParams.title || files.map(f => f.name).join(', '),
+            text_content: combinedText,
+            content_type: 'notes',
+          });
+          sharedCourseContentId = cc.id;
+        } else if (modalParams.mode === 'file' && files.length === 1) {
+          const cc = await courseContentsApi.uploadFile(
+            files[0],
+            cId,
+            modalParams.title || undefined,
+            'notes',
+          );
+          sharedCourseContentId = cc.id;
+        } else {
+          const cc = await courseContentsApi.create({
+            course_id: cId,
+            title: modalParams.title || 'Uploaded material',
+            text_content: modalParams.content || undefined,
+            content_type: 'notes',
+          });
+          sharedCourseContentId = cc.id;
+        }
+      } catch {
+        // If pre-creation fails, fall through — each generation creates its own
+      }
+    }
+
     setIsGenerating(true);
     try {
       // Fan out: one startGeneration() per selected type (parallel)
-      // For multi-file, pass files so startGeneration can extract text in the background
       for (const type of modalParams.types) {
         startGeneration({
           title: modalParams.title,
           content: modalParams.content,
           type,
           focusPrompt: modalParams.focusPrompt,
-          mode: isMultiFile ? 'text' : modalParams.mode,
-          file: isMultiFile ? undefined : modalParams.file,
-          files: isMultiFile ? files : undefined,
-          pastedImages: modalParams.pastedImages,
+          mode: sharedCourseContentId ? 'text' : (isMultiFile ? 'text' : modalParams.mode),
+          file: sharedCourseContentId ? undefined : (isMultiFile ? undefined : modalParams.file),
+          files: sharedCourseContentId ? undefined : (isMultiFile ? files : undefined),
+          pastedImages: sharedCourseContentId ? undefined : modalParams.pastedImages,
           regenerateId: duplicateCheck?.existing_guide?.id,
           courseId: modalParams.courseId,
-          courseContentId: modalParams.courseContentId,
+          courseContentId: sharedCourseContentId,
         });
       }
     } finally {

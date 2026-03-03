@@ -61,11 +61,22 @@ class QuizGenerateRequest(BaseModel):
     num_questions: int = Field(default=5, ge=1, le=50)
     regenerate_from_id: int | None = None
     focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
+    difficulty: str | None = Field(default=None, max_length=10)  # easy, medium, hard
 
     @field_validator('topic', 'focus_prompt', mode='before')
     @classmethod
     def _strip_whitespace(cls, v: object) -> object:
         return strip_whitespace(v)
+
+    @field_validator('difficulty', mode='before')
+    @classmethod
+    def _validate_difficulty(cls, v: object) -> object:
+        if v is None:
+            return None
+        s = str(v).lower().strip()
+        if s not in ('easy', 'medium', 'hard'):
+            raise ValueError('difficulty must be easy, medium, or hard')
+        return s
 
 
 class QuizQuestion(BaseModel):

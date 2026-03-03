@@ -211,6 +211,7 @@ async def generate_quiz(
     content: str,
     num_questions: int = 5,
     focus_prompt: str | None = None,
+    difficulty: str | None = None,
 ) -> str:
     """
     Generate a practice quiz from content.
@@ -223,11 +224,30 @@ async def generate_quiz(
     Returns:
         JSON string with quiz questions
     """
-    logger.info(f"Generating quiz | topic={topic} | num_questions={num_questions}")
+    logger.info(f"Generating quiz | topic={topic} | num_questions={num_questions} | difficulty={difficulty}")
+
+    difficulty_instruction = ""
+    if difficulty == "easy":
+        difficulty_instruction = """
+**DIFFICULTY: EASY**
+- Focus on basic recall and recognition of facts, definitions, and simple concepts
+- Use straightforward, direct questions
+- Wrong answers should be clearly distinguishable from the correct answer
+- For math: simple one-step problems with whole numbers where possible
+"""
+    elif difficulty == "hard":
+        difficulty_instruction = """
+**DIFFICULTY: HARD**
+- Focus on analysis, critical thinking, and multi-step problem solving
+- Require students to synthesize information from multiple parts of the content
+- Use plausible distractors that test deeper understanding
+- For math: include multi-step problems, word problems requiring setup, and application of concepts
+"""
+
     prompt = f"""Create a {num_questions}-question multiple choice quiz about:
 
 **Topic:** {topic}
-
+{difficulty_instruction}
 **Content:**
 {content}
 
