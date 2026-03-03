@@ -94,6 +94,14 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <polyline points="22,6 12,13 2,6"/>
     </svg>
   ),
+  Analytics: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 20H3"/>
+      <path d="M18 20V10"/>
+      <path d="M12 20V4"/>
+      <path d="M6 20v-6"/>
+    </svg>
+  ),
   Help: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
@@ -144,6 +152,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'My Kids', path: '/my-kids' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
+        { label: 'Analytics', path: '/analytics' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -154,6 +163,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Study', path: '/study' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
+        { label: 'Analytics', path: '/analytics' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -171,6 +181,10 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'teacher') {
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
+    }
+
+    if (user?.role === 'admin') {
+      items.push({ label: 'Analytics', path: '/analytics' });
     }
 
     items.push({ label: 'Help', path: '/help' });
@@ -491,6 +505,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         <Link to="/privacy">Privacy Policy</Link>
         <span className="dashboard-footer-divider">|</span>
         <Link to="/terms">Terms of Service</Link>
+        <span className="dashboard-footer-divider">|</span>
+        <Link to="/faq">FAQ</Link>
         <span className="dashboard-footer-divider">|</span>
         <a href="mailto:support@classbridge.ca">Contact Us</a>
       </footer>
