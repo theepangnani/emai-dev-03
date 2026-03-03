@@ -661,7 +661,6 @@ export function MyKidsPage() {
           </div>
         ))}
         <AddActionButton actions={[
-          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/course-materials'), showPlus: true },
           { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
           { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
           { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },

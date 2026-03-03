@@ -9,7 +9,6 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
-import { AddActionButton } from '../components/AddActionButton';
 import { PageNav } from '../components/PageNav';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
@@ -871,9 +870,6 @@ export function StudyGuidesPage() {
                 {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
               </button>
             ))}
-            <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => setShowModal(true), showPlus: true },
-            ]} />
           </div>
         )}
 

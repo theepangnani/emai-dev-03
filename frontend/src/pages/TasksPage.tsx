@@ -480,7 +480,6 @@ export function TasksPage() {
               </button>
             ))}
             <AddActionButton actions={[
-              { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/course-materials'), showPlus: true },
               { icon: '\u2705', label: 'New Task', onClick: () => setShowCreate(true) },
             ]} />
           </div>
