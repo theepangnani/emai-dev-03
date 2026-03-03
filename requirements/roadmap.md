@@ -135,6 +135,19 @@
 - [x] **Coming Up timeline shows tasks** — Tasks now appear alongside assignments in Coming Up section, matching header overdue/due-today counts (#1047) (IMPLEMENTED, PR #1048)
 - [x] **Coming Up timeline clickable rows** — Entire timeline item row is clickable, not just the View/Study button (#1049) (IMPLEMENTED, PR #1050)
 - [x] **Coming Up task detail navigation** — Clicking a task navigates to `/tasks/:id` detail page (#1051) (IMPLEMENTED, PR #1052)
+- [x] **Google Classroom environment toggle** — `GOOGLE_CLASSROOM_ENABLED` env var to disable Google Classroom UI globally; `gcEnabled` feature toggle in frontend via `/api/feature-toggles` endpoint (#1054) (IMPLEMENTED, PR #1055)
+- [x] **AI quiz generation reliability fixes** — Handle unhandled AI API exceptions (#1059), scale max_tokens dynamically with question/card count (#1060), update Claude model to claude-sonnet-4-6 with diagnostic logging (#1061), extract question count from focus prompt instead of hardcoding 5 (#1063) (IMPLEMENTED, PRs #1059-#1063, fixes #1058 and #1062)
+- [x] **Quiz difficulty levels** — Easy/Medium/Hard segmented toggle on QuizTab; backend `difficulty` param on quiz generation; prompt engineering for difficulty-appropriate questions; difficulty passed through all generation paths including file upload and text+images (#1064) (IMPLEMENTED, PR #1064)
+- [x] **Multi-tool upload bug fix** — Selecting multiple AI tools (study guide + quiz + flashcards) during upload now creates 1 course material with all tabs, not 3 separate materials; pre-creates shared CourseContent before dispatching parallel generation calls (#1064) (IMPLEMENTED, PR #1064)
+- [x] **Course material tab reorder** — Default active tab changed from Document to Study Guide; tab order: Study Guide → Quiz → Flashcards → Document (#1064) (IMPLEMENTED, PR #1064)
+- [x] **Darker study guide container** — StudyGuideTab card has subtly darker background (`--color-surface-alt`) to visually distinguish from other tabs (#1064) (IMPLEMENTED, PR #1064)
+- [x] **Quiz/flashcard count cap at 50** — Focus prompt regex clamps requested count to `min(count, 50)` instead of ignoring values over limit; matches "quizzes" pattern in addition to "questions"; frontend `num_cards` max changed from 100 to 50 (#1066) (IMPLEMENTED, PR #1067)
+- [x] **Difficulty toggle CSS fix** — Removed `overflow: hidden` that clipped "Hard" button label; applied explicit `border-radius` to first/last buttons (#1066) (IMPLEMENTED, PR #1067)
+- [x] **Task datetime picker fix** — Split `datetime-local` input into separate `date` and `time` inputs for better UX; native date picker now applies date on click without needing an OK button (#1068) (IMPLEMENTED, PR #1069)
+- [x] **Standardized CTA icon+plus buttons** — New `.title-add-btn` CSS pattern (32px circle with "+" badge overlay) applied to page titles across Class Materials, Tasks, and Classes pages; replaces text-based "New" buttons with consistent icon-based CTAs (#1070, #1071) (IMPLEMENTED, PR #1072)
+- [x] **Study guide PDF download button** — Added PDF download button with `downloadAsPdf` to individual study guide page (`/study/guide/:id`); wrapped content in `ref` for html2pdf capture (#1073) (IMPLEMENTED, PR #1075)
+- [x] **Hide Connect Google for students** — Removed "Connect Google" button from StudyPage sidebar and Google Classroom banner from StudentDashboard for student role (#1074) (IMPLEMENTED, PR #1075)
+- [x] **Student classes page icon+plus CTA** — Added `title-add-btn` to student's "My Classes" tab area on CoursesPage (#1075) (IMPLEMENTED, PR #1075)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
@@ -252,7 +265,7 @@
 #### Phase 2 — New Feature Requirements (#668)
 
 - [ ] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663)
-- [ ] **Parent-assigned quizzes with complexity levels** — Easy/Medium/Hard difficulty, notification + tracking (#664)
+- [x] **Quiz difficulty levels (Easy/Medium/Hard)** — Difficulty selector on QuizTab with AI prompt engineering per level (#664, PR #1064) (IMPLEMENTED — generation side; parent-assigned quizzes with notification + tracking deferred)
 - [ ] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665)
 - [ ] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666)
 - [ ] **AI Mock Exam Generator** — Teacher generates + bulk-assigns AI-powered exams to students (#667)
