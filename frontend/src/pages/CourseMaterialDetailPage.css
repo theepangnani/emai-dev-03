@@ -375,7 +375,6 @@
   display: inline-flex;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .cm-difficulty-btn {
@@ -387,6 +386,14 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+}
+
+.cm-difficulty-btn:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.cm-difficulty-btn:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .cm-difficulty-btn:not(:last-child) {

@@ -593,10 +593,10 @@ async def generate_quiz_endpoint(
     # Extract question count from focus prompt if user specified one
     num_questions = body.num_questions
     if body.focus_prompt and num_questions <= 10:
-        m = re.search(r'(\d+)\s*\w*\s*questions?', body.focus_prompt, re.IGNORECASE)
+        m = re.search(r'(\d+)\s*(?:\w*\s*)(?:questions?|quizzes?|q\b)', body.focus_prompt, re.IGNORECASE)
         if m:
-            requested = int(m.group(1))
-            if 1 <= requested <= 50:
+            requested = min(int(m.group(1)), 50)  # clamp to 50 max
+            if requested >= 1:
                 num_questions = requested
 
     # Generate quiz using AI
