@@ -442,6 +442,12 @@ export function TasksPage() {
         {/* Header with title */}
         <div className="tasks-header">
           <h3>Tasks</h3>
+          <button className="title-add-btn" onClick={() => setShowCreate(true)} title="New Task" aria-label="New Task">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 11 12 14 22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+          </button>
         </div>
 
         {/* Child selector pills (parent only) + add action button */}
@@ -479,19 +485,7 @@ export function TasksPage() {
             ]} />
           </div>
         ) : (
-          <div className="tasks-child-selector">
-            <button
-              className="add-action-trigger has-label"
-              onClick={() => setShowCreate(true)}
-              aria-label="New Task"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="9 11 12 14 22 4" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-              </svg>
-              <span className="add-action-label">New Task</span>
-            </button>
-          </div>
+          <div className="tasks-child-selector" />
         )}
 
         {/* Collapsible Calendar Section */}
