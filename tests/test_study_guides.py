@@ -778,3 +778,124 @@ class TestExtractTextRateLimit:
             "This limit was raised from 5/minute to fix multi-file OCR failures (issue #1003). "
             f"Current source snippet: {[l.strip() for l in source.splitlines() if 'limit' in l.lower()]}"
         )
+
+
+# ── AI generation error handling (#1058) ──────────────────────
+
+class TestAIGenerationErrorHandling:
+    """Regression tests for #1058: unhandled AI API exceptions must return helpful 500s."""
+
+    def test_quiz_generation_api_error_returns_500(self, client, users):
+        """POST /api/study/quiz/generate returns 500 with detail when AI raises APIError."""
+        from unittest.mock import patch, AsyncMock
+        import anthropic
+
+        headers = _auth(client, users["parent"].email)
+
+        # Mock generate_quiz to raise an anthropic.APIError
+        mock_err = anthropic.APIConnectionError(request=None)
+        with patch(
+            "app.api.routes.study.generate_quiz",
+            new_callable=AsyncMock,
+            side_effect=mock_err,
+        ):
+            resp = client.post(
+                "/api/study/quiz/generate",
+                json={"content": "Photosynthesis converts sunlight to energy.", "topic": "Biology", "num_questions": 3},
+                headers=headers,
+            )
+
+        assert resp.status_code == 500
+        detail = resp.json()["detail"]
+        assert "AI generation failed" in detail
+        assert "APIConnectionError" in detail
+
+    def test_flashcard_generation_api_error_returns_500(self, client, users):
+        """POST /api/study/flashcards/generate returns 500 with detail when AI raises."""
+        from unittest.mock import patch, AsyncMock
+        import anthropic
+
+        headers = _auth(client, users["parent"].email)
+
+        mock_err = anthropic.APIConnectionError(request=None)
+        with patch(
+            "app.api.routes.study.generate_flashcards",
+            new_callable=AsyncMock,
+            side_effect=mock_err,
+        ):
+            resp = client.post(
+                "/api/study/flashcards/generate",
+                json={"content": "Photosynthesis converts sunlight to energy.", "topic": "Biology", "num_cards": 5},
+                headers=headers,
+            )
+
+        assert resp.status_code == 500
+        detail = resp.json()["detail"]
+        assert "AI generation failed" in detail
+        assert "APIConnectionError" in detail
+
+    def test_study_guide_generation_api_error_returns_500(self, client, users):
+        """POST /api/study/generate returns 500 with detail when AI raises unexpected error."""
+        from unittest.mock import patch, AsyncMock
+        import anthropic
+
+        headers = _auth(client, users["parent"].email)
+
+        mock_err = anthropic.APIConnectionError(request=None)
+        with patch(
+            "app.api.routes.study.generate_study_guide",
+            new_callable=AsyncMock,
+            side_effect=mock_err,
+        ):
+            resp = client.post(
+                "/api/study/generate",
+                json={"content": "Photosynthesis converts sunlight to energy.", "title": "Biology"},
+                headers=headers,
+            )
+
+        assert resp.status_code == 500
+        detail = resp.json()["detail"]
+        assert "AI generation failed" in detail
+        assert "APIConnectionError" in detail
+
+    def test_quiz_json_decode_error_still_caught(self, client, users):
+        """Ensure existing json.JSONDecodeError handling is not broken."""
+        from unittest.mock import patch, AsyncMock
+
+        headers = _auth(client, users["parent"].email)
+
+        with patch(
+            "app.api.routes.study.generate_quiz",
+            new_callable=AsyncMock,
+            return_value="not valid json at all",
+        ):
+            resp = client.post(
+                "/api/study/quiz/generate",
+                json={"content": "Test content for quiz.", "topic": "Test", "num_questions": 3},
+                headers=headers,
+            )
+
+        assert resp.status_code == 500
+        assert "Failed to parse quiz response" in resp.json()["detail"]
+
+    def test_error_detail_truncated_to_500_chars(self, client, users):
+        """Error detail message should be capped at 500 characters to avoid info leaks."""
+        from unittest.mock import patch, AsyncMock
+
+        headers = _auth(client, users["parent"].email)
+
+        long_msg = "x" * 1000
+        mock_err = RuntimeError(long_msg)
+        with patch(
+            "app.api.routes.study.generate_quiz",
+            new_callable=AsyncMock,
+            side_effect=mock_err,
+        ):
+            resp = client.post(
+                "/api/study/quiz/generate",
+                json={"content": "Test content.", "topic": "Test", "num_questions": 3},
+                headers=headers,
+            )
+
+        assert resp.status_code == 500
+        assert len(resp.json()["detail"]) <= 500

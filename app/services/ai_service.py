@@ -1,6 +1,7 @@
 """
 AI Service for generating educational content using Anthropic Claude.
 """
+import asyncio
 import time
 from datetime import datetime
 import anthropic
@@ -75,7 +76,8 @@ async def generate_content(
     try:
         client = get_anthropic_client()
 
-        message = client.messages.create(
+        message = await asyncio.to_thread(
+            client.messages.create,
             model=settings.claude_model,
             max_tokens=max_tokens,
             system=system_prompt,
