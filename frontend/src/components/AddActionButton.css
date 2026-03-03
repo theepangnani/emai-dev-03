@@ -182,3 +182,56 @@
 .add-action-item-label {
   white-space: nowrap;
 }
+
+/* ── Inline title CTA: icon with "+" overlay, sits next to page headings ── */
+.title-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-accent-subtle, rgba(45, 182, 185, 0.1));
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.title-add-btn:hover {
+  background: var(--color-accent-light, rgba(45, 182, 185, 0.2));
+  transform: scale(1.1);
+}
+
+.title-add-btn:active {
+  transform: scale(0.95);
+}
+
+.title-add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* "+" badge overlay on the icon */
+.title-add-btn::after {
+  content: '+';
+  position: absolute;
+  bottom: 0;
+  right: -2px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--color-accent);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--color-surface);
+  font-family: system-ui, sans-serif;
+}
