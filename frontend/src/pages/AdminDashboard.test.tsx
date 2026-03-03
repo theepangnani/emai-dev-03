@@ -35,6 +35,8 @@ vi.mock('../api/client', () => ({
     getBroadcasts: (...args: any[]) => mockGetBroadcasts(...args),
     sendMessage: (...args: any[]) => mockSendMessage(...args),
     getAuditLogs: vi.fn().mockResolvedValue({ items: [] }),
+    getFeatureToggles: vi.fn().mockResolvedValue({ google_classroom: false }),
+    updateFeatureToggle: vi.fn().mockResolvedValue({ feature: 'google_classroom', enabled: true }),
   },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
