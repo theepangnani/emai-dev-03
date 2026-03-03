@@ -27,6 +27,7 @@ export function TaskDetailPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
+  const [editDueTime, setEditDueTime] = useState('');
   const [editPriority, setEditPriority] = useState('medium');
   const [editAssignee, setEditAssignee] = useState<string>('');
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
@@ -86,13 +87,15 @@ export function TaskDetailPage() {
     if (!task) return;
     setEditTitle(task.title);
     setEditDescription(task.description || '');
-    // Format due_date for datetime-local input
+    // Format due_date for separate date + time inputs
     if (task.due_date) {
       const d = new Date(task.due_date);
       const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-      setEditDueDate(local.toISOString().slice(0, 16));
+      setEditDueDate(local.toISOString().slice(0, 10));
+      setEditDueTime(local.toISOString().slice(11, 16));
     } else {
       setEditDueDate('');
+      setEditDueTime('');
     }
     setEditPriority(task.priority || 'medium');
     setEditAssignee(task.assigned_to_user_id ? String(task.assigned_to_user_id) : '');
@@ -112,7 +115,7 @@ export function TaskDetailPage() {
       const updated = await tasksApi.update(task.id, {
         title: editTitle.trim(),
         description: editDescription.trim() || undefined,
-        due_date: editDueDate ? new Date(editDueDate).toISOString() : undefined,
+        due_date: editDueDate ? new Date(`${editDueDate}T${editDueTime || '00:00'}`).toISOString() : undefined,
         priority: editPriority,
         assigned_to_user_id: editAssignee ? Number(editAssignee) : 0,
       });
@@ -262,12 +265,20 @@ export function TaskDetailPage() {
               <div className="td-edit-row">
                 <div className="td-edit-group">
                   <label className="td-edit-label">Due Date</label>
-                  <input
-                    type="datetime-local"
-                    className="td-edit-input"
-                    value={editDueDate}
-                    onChange={e => setEditDueDate(e.target.value)}
-                  />
+                  <div className="td-edit-datetime-row">
+                    <input
+                      type="date"
+                      className="td-edit-input"
+                      value={editDueDate}
+                      onChange={e => setEditDueDate(e.target.value)}
+                    />
+                    <input
+                      type="time"
+                      className="td-edit-input td-edit-time"
+                      value={editDueTime}
+                      onChange={e => setEditDueTime(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="td-edit-group">
                   <label className="td-edit-label">Priority</label>

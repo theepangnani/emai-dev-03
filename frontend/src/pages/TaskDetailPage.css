@@ -237,6 +237,19 @@
   min-height: 60px;
 }
 
+.td-edit-datetime-row {
+  display: flex;
+  gap: 8px;
+}
+
+.td-edit-datetime-row .td-edit-input {
+  flex: 1;
+}
+
+.td-edit-datetime-row .td-edit-time {
+  flex: 0 0 120px;
+}
+
 .td-edit-row {
   display: flex;
   gap: 12px;
