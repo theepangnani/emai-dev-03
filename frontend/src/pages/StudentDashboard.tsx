@@ -564,7 +564,7 @@ export function StudentDashboard() {
       )}
 
       {/* ── Google Classroom Banner ──────────────────────── */}
-      {gcEnabled && !googleConnected && (
+      {false && gcEnabled && !googleConnected && (
         <div className={`sd-google-banner ${justRegistered ? 'welcome' : ''}`}>
           <div className="sd-google-icon">{'\u{1F517}'}</div>
           <div className="sd-google-text">

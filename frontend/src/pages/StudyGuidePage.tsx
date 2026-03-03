@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
@@ -8,6 +8,7 @@ import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
+import { downloadAsPdf } from '../utils/exportUtils';
 import { PageNav } from '../components/PageNav';
 import './StudyGuidePage.css';
 
@@ -27,6 +28,8 @@ export function StudyGuidePage() {
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showTaskPrompt, setShowTaskPrompt] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { confirm, confirmModal } = useConfirm();
 
   // Detect first-time guide view from navigation state
@@ -143,6 +146,7 @@ export function StudyGuidePage() {
             </button>
             <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
             <button className="sg-icon-btn" title="Print" aria-label="Print study guide" onClick={() => window.print()}>&#128424;</button>
+            <button className="sg-icon-btn" title="Download PDF" aria-label="Download PDF" disabled={exporting} onClick={async () => { if (!contentRef.current) return; setExporting(true); try { await downloadAsPdf(contentRef.current, guide.title || 'study-guide'); } finally { setExporting(false); } }}>{exporting ? '\u23F3' : '\u{1F4E5}'}</button>
             <button className="sg-icon-btn sg-icon-btn-danger" title="Delete" aria-label="Delete study guide" onClick={handleDelete}>&#128465;</button>
           </div>
         </div>
@@ -160,11 +164,13 @@ export function StudyGuidePage() {
         </div>
       )}
 
-      <ContentCard>
-        <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
-          <MarkdownBody content={guide.content} />
-        </Suspense>
-      </ContentCard>
+      <div ref={contentRef}>
+        <ContentCard>
+          <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
+            <MarkdownBody content={guide.content} />
+          </Suspense>
+        </ContentCard>
+      </div>
       <CreateTaskModal
         open={showTaskModal}
         onClose={() => setShowTaskModal(false)}
