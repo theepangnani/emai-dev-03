@@ -363,9 +363,14 @@ export function CourseMaterialDetailPage() {
             <div className="cm-header-info">
               <div className="cm-detail-title-row">
                 <h2>{content.title}</h2>
-                {content.course_name && (
-                  <span className="cm-course-badge">{content.course_name}</span>
-                )}
+                <button
+                  className="cm-title-edit-btn"
+                  title="Edit material"
+                  aria-label="Edit material"
+                  onClick={() => setShowEditModal(true)}
+                >
+                  <EditIcon />
+                </button>
               </div>
               <div className="cm-detail-meta">
                 {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}

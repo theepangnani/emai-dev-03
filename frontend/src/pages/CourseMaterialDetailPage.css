@@ -134,15 +134,24 @@
   color: var(--color-ink);
 }
 
-.cm-course-badge {
-  background: var(--color-purple-bg);
-  color: var(--color-purple-strong);
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
+.cm-title-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.cm-title-edit-btn:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-purple);
+  border-color: var(--color-border);
 }
 
 .cm-detail-meta {
