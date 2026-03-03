@@ -9,6 +9,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { DetailSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
+import { extractQuestionCount, extractCardCount } from '../utils/studyUtils';
 import { PageNav } from '../components/PageNav';
 import { DocumentTab } from './course-material/DocumentTab';
 import { StudyGuideTab } from './course-material/StudyGuideTab';
@@ -229,7 +230,7 @@ export function CourseMaterialDetailPage() {
           course_id: content.course_id,
           topic: content.title,
           content: content.text_content || content.description || '',
-          num_questions: 5,
+          num_questions: extractQuestionCount(fp),
           focus_prompt: fp,
         });
       } else {
@@ -238,7 +239,7 @@ export function CourseMaterialDetailPage() {
           course_id: content.course_id,
           topic: content.title,
           content: content.text_content || content.description || '',
-          num_cards: 10,
+          num_cards: extractCardCount(fp),
           focus_prompt: fp,
         });
       }

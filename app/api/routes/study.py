@@ -590,13 +590,22 @@ async def generate_quiz_endpoint(
             detail="Please provide assignment_id or content to generate a quiz",
         )
 
+    # Extract question count from focus prompt if user specified one
+    num_questions = body.num_questions
+    if body.focus_prompt and num_questions <= 10:
+        m = re.search(r'(\d+)\s*\w*\s*questions?', body.focus_prompt, re.IGNORECASE)
+        if m:
+            requested = int(m.group(1))
+            if 1 <= requested <= 50:
+                num_questions = requested
+
     # Generate quiz using AI
     critical_dates = []
     try:
         raw_quiz = await generate_quiz(
             topic=topic,
             content=content,
-            num_questions=body.num_questions,
+            num_questions=num_questions,
             focus_prompt=body.focus_prompt,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
