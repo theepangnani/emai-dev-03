@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from app.core.config import settings
+from app.core.logging_config import get_logger
 from app.core.utils import escape_like
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
@@ -47,6 +48,8 @@ from app.services.file_processor import (
     MAX_FILE_SIZE,
     _ocr_images_with_vision,
 )
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/study", tags=["Study Tools"])
 
@@ -602,12 +605,11 @@ async def generate_quiz_endpoint(
         questions_data = json.loads(quiz_json)
         questions = [QuizQuestion(**q) for q in questions_data]
     except json.JSONDecodeError:
+        logger.error("Failed to parse quiz JSON response (first 500 chars): %s", raw_quiz[:500])
         raise HTTPException(status_code=500, detail="Failed to parse quiz response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        from app.core.logging_config import get_logger
-        logger = get_logger(__name__)
         logger.error("Quiz generation failed: %s: %s", type(e).__name__, e)
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
@@ -732,12 +734,11 @@ async def generate_flashcards_endpoint(
         cards_data = json.loads(cards_json)
         cards = [Flashcard(**c) for c in cards_data]
     except json.JSONDecodeError:
+        logger.error("Failed to parse flashcards JSON response (first 500 chars): %s", raw_cards[:500])
         raise HTTPException(status_code=500, detail="Failed to parse flashcards response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        from app.core.logging_config import get_logger
-        logger = get_logger(__name__)
         logger.error("Flashcard generation failed: %s: %s", type(e).__name__, e)
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
@@ -1191,6 +1192,8 @@ async def generate_from_text_and_images(
             )
 
     except json.JSONDecodeError:
+        raw = locals().get("raw_quiz") or locals().get("raw_cards") or ""
+        logger.error("Failed to parse AI JSON response from paste (first 500 chars): %s", raw[:500])
         raise HTTPException(status_code=500, detail="Failed to parse AI response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1363,6 +1366,8 @@ async def generate_from_file_upload(
             )
 
     except json.JSONDecodeError:
+        raw = locals().get("raw_quiz") or locals().get("raw_cards") or ""
+        logger.error("Failed to parse AI JSON response from upload (first 500 chars): %s", raw[:500])
         raise HTTPException(status_code=500, detail="Failed to parse AI response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
