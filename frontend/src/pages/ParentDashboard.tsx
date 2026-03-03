@@ -13,6 +13,7 @@ import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
+import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
 import './ParentDashboard.css';
 
@@ -93,6 +94,7 @@ function loadViewMode(): 'simplified' | 'full' {
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
+  const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
@@ -239,7 +241,7 @@ export function ParentDashboard() {
               <span className="pd-onboard-card-step">Step 2</span>
               <span className="pd-onboard-card-icon" aria-hidden="true">🏫</span>
               <span className="pd-onboard-card-title">Connect School</span>
-              <span className="pd-onboard-card-desc">Import classes from Google Classroom automatically</span>
+              <span className="pd-onboard-card-desc">{gcEnabled ? 'Import classes from Google Classroom automatically' : 'Add classes and course materials'}</span>
             </div>
             <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '200ms' }}>
               <span className="pd-onboard-card-step">Step 3</span>
@@ -466,7 +468,7 @@ export function ParentDashboard() {
             <div className="link-tabs" role="tablist" aria-label="Add child method">
               <button role="tab" aria-selected={pd.linkTab === 'create'} className={`link-tab ${pd.linkTab === 'create' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('create'); pd.setLinkError(''); }}>Create New</button>
               <button role="tab" aria-selected={pd.linkTab === 'email'} className={`link-tab ${pd.linkTab === 'email' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('email'); pd.setLinkError(''); }}>Link by Email</button>
-              <button role="tab" aria-selected={pd.linkTab === 'google'} className={`link-tab ${pd.linkTab === 'google' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('google'); pd.setLinkError(''); }}>Google Classroom</button>
+              {gcEnabled && <button role="tab" aria-selected={pd.linkTab === 'google'} className={`link-tab ${pd.linkTab === 'google' ? 'active' : ''}`} onClick={() => { pd.setLinkTab('google'); pd.setLinkError(''); }}>Google Classroom</button>}
             </div>
 
             {pd.linkTab === 'create' && (

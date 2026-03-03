@@ -16,6 +16,12 @@ logger = logging.getLogger(__name__)
 
 async def sync_google_classrooms():
     """Sync Google Classroom data for all connected users."""
+    from app.core.config import settings
+
+    if not settings.google_classroom_enabled:
+        logger.info("Google Classroom sync skipped (GOOGLE_CLASSROOM_ENABLED=false)")
+        return
+
     from app.api.routes.google_classroom import _sync_courses_for_user
 
     logger.info("Starting background Google Classroom sync...")

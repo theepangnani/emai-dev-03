@@ -903,6 +903,14 @@ def health_check():
     }
 
 
+@app.get("/api/features")
+def get_feature_toggles():
+    """Public endpoint returning feature availability for the frontend."""
+    return {
+        "google_classroom": settings.google_classroom_enabled,
+    }
+
+
 @app.post("/api/errors/log")
 async def log_frontend_error(request: Request):
     """Receive frontend error reports so they appear in Cloud Run logs."""

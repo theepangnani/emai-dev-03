@@ -51,6 +51,10 @@ export function AdminDashboard() {
   const [showBroadcastHistory, setShowBroadcastHistory] = useState(false);
   const [usersExpanded, setUsersExpanded] = useState(true);
 
+  // Feature toggles state
+  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean>>({});
+  const [toggleLoading, setToggleLoading] = useState<Record<string, boolean>>({});
+
   // Individual message state
   const [messageUser, setMessageUser] = useState<AdminUserItem | null>(null);
   const [msgSubject, setMsgSubject] = useState('');
@@ -73,10 +77,11 @@ export function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const [statsData, allUsersData, auditData] = await Promise.allSettled([
+      const [statsData, allUsersData, auditData, featuresData] = await Promise.allSettled([
         adminApi.getStats(),
         adminApi.getUsers({ limit: 5000 }),
         adminApi.getAuditLogs({ limit: 5 }),
+        adminApi.getFeatureToggles(),
       ]);
 
       if (statsData.status === 'fulfilled') {
@@ -101,8 +106,25 @@ export function AdminDashboard() {
       if (auditData.status === 'fulfilled') {
         setRecentActivity(auditData.value.items);
       }
+
+      if (featuresData.status === 'fulfilled') {
+        setFeatureToggles(featuresData.value);
+      }
     } catch {
       // Failed to load stats
+    }
+  };
+
+  const handleToggleFeature = async (key: string) => {
+    const current = featureToggles[key] ?? false;
+    setToggleLoading(prev => ({ ...prev, [key]: true }));
+    try {
+      const result = await adminApi.updateFeatureToggle(key, !current);
+      setFeatureToggles(prev => ({ ...prev, [key]: result.enabled }));
+    } catch {
+      // Failed to toggle
+    } finally {
+      setToggleLoading(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -267,6 +289,31 @@ export function AdminDashboard() {
           >
             Send Broadcast &rarr;
           </button>
+        </section>
+
+        {/* Feature Toggles */}
+        <section className="section" style={{ marginBottom: '16px' }}>
+          <h3 style={{ margin: '0 0 12px' }}>Feature Toggles</h3>
+          <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-muted, #888)' }}>
+            Toggle features on/off at runtime. Changes take effect immediately but reset on server restart.
+            Set the corresponding env var (e.g. <code>GOOGLE_CLASSROOM_ENABLED=true</code>) for persistence.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {Object.entries(featureToggles).map(([key, enabled]) => (
+              <label key={key} className="admin-role-checkbox-row" style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-secondary, #f9f9f9)' }}>
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  disabled={toggleLoading[key]}
+                  onChange={() => handleToggleFeature(key)}
+                />
+                <span style={{ fontWeight: 500 }}>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                <span style={{ marginLeft: 'auto', fontSize: '12px', color: enabled ? 'var(--success, #22c55e)' : 'var(--text-muted, #888)' }}>
+                  {toggleLoading[key] ? 'Updating...' : enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </label>
+            ))}
+          </div>
         </section>
 
         {/* Recent Activity Feed */}
