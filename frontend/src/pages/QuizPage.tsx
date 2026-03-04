@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { MaterialContextMenu } from '../components/MaterialContextMenu';
+import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
 import { PageNav } from '../components/PageNav';
 import './QuizPage.css';
 
@@ -23,6 +24,7 @@ export function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const savedResultId = useRef<number | null>(null);
@@ -153,12 +155,10 @@ export function QuizPage() {
           {guide.title}
           {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>v{guide.version}</span>}
         </h1>
-        <CourseAssignSelect
-          guideId={guide.id}
-          currentCourseId={guide.course_id}
-          onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
-        />
-        <button className="submit-btn" onClick={() => setShowTaskModal(true)} title="Create task" style={{ padding: '6px 12px', fontSize: '13px' }}>&#128203; + Task</button>
+        <MaterialContextMenu items={[
+          { label: 'Create Task', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/><path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>, onClick: () => setShowTaskModal(true) },
+          { label: 'Edit Class Material', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M13.586 3.586a2 2 0 112.828 2.828l-9.5 9.5L3 17l1.086-3.914 9.5-9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>, onClick: () => setShowEditModal(true) },
+        ]} />
         {isParent && (
           <div className={`quiz-student-banner ${resolvedStudent ? 'resolved' : 'unresolved'}`}>
             {resolvedStudent
@@ -294,6 +294,13 @@ export function QuizPage() {
         courseId={guide.course_id ?? undefined}
         linkedEntityLabel={`Quiz: ${guide.title}`}
       />
+      {showEditModal && (
+        <EditStudyGuideModal
+          guide={guide}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updated) => { setGuide(updated); setShowEditModal(false); }}
+        />
+      )}
     </div>
   );
 }

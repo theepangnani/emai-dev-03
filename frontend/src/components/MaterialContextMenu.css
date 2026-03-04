@@ -1,0 +1,71 @@
+.material-ctx {
+  position: relative;
+  display: inline-flex;
+}
+
+/* ⊕ trigger button */
+.material-ctx-trigger {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-soft);
+}
+.material-ctx-trigger:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+.material-ctx-trigger.open {
+  background: var(--color-accent);
+  color: #fff;
+  transform: rotate(45deg);
+}
+
+/* Dropdown menu */
+.material-ctx-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  animation: ctxSlideIn 0.15s ease;
+  padding: 6px 0;
+}
+@keyframes ctxSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.material-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.material-ctx-item:hover {
+  background: var(--color-surface-alt, #f5f5f5);
+}
+.material-ctx-item svg {
+  flex-shrink: 0;
+}
