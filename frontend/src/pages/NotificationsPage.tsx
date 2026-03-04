@@ -5,6 +5,7 @@ import type { NotificationResponse } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { PageNav } from '../components/PageNav';
 import './NotificationsPage.css';
 
 type FilterTab = 'all' | 'unread' | 'read' | 'acked';
@@ -158,6 +159,10 @@ export function NotificationsPage() {
   return (
     <DashboardLayout welcomeSubtitle="Your notifications" showBackButton>
       <div className="notif-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Notifications' },
+        ]} />
         <div className="notif-page-header">
           <h3>Notifications</h3>
           {unreadCount > 0 && (

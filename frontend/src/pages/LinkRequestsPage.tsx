@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { linkRequestsApi, type LinkRequestItem } from '../api/linkRequests';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { PageNav } from '../components/PageNav';
 import './LinkRequestsPage.css';
 
 function StatusBadge({ status }: { status: string }) {
@@ -148,6 +149,10 @@ export function LinkRequestsPage() {
   return (
     <DashboardLayout>
       <div className="lr-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Link Requests' },
+        ]} />
         <div className="lr-page-header">
           <div>
             <h1 className="lr-title">Link Requests</h1>

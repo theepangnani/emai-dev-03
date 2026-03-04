@@ -7,6 +7,7 @@ import { NotificationBell } from '../components/NotificationBell';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { useDebounce } from '../utils/useDebounce';
+import { PageNav } from '../components/PageNav';
 import './TeacherCommsPage.css';
 
 export function TeacherCommsPage() {
@@ -151,11 +152,12 @@ export function TeacherCommsPage() {
 
   return (
     <div className="teacher-comms-page">
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'Teacher Communications' },
+      ]} />
       <header className="comms-header">
         <div className="header-left">
-          <button className="back-button" onClick={() => navigate('/dashboard')}>
-            &larr; Dashboard
-          </button>
           <h1 className="page-title">Teacher Communications</h1>
         </div>
         <div className="header-right">

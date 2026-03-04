@@ -5,6 +5,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { faqApi, type FAQQuestionItem } from '../api/client';
+import { PageNav } from '../components/PageNav';
 import './FAQPage.css';
 
 const CATEGORIES = [
@@ -72,6 +73,10 @@ export function FAQPage() {
   return (
     <DashboardLayout welcomeSubtitle="Find answers and ask questions" showBackButton>
       <div className="faq-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'FAQ' },
+        ]} />
         <div className="faq-header">
           <h1>FAQ / Knowledge Base</h1>
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>

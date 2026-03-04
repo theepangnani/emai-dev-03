@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary, CourseGradesResponse } from '../api/grades';
 import { useAuth } from '../context/AuthContext';
+import { PageNav } from '../components/PageNav';
 import './GradesPage.css';
 
 function letterColor(color: string): string {
@@ -133,6 +134,10 @@ export function GradesPage() {
   return (
     <DashboardLayout>
       <div className="gp-container">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Grades' },
+        ]} />
         <div className="gp-header">
           <div className="gp-header-left">
             <h1 className="gp-title">Grades</h1>

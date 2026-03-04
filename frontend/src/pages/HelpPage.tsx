@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { PageNav } from '../components/PageNav';
 import './HelpPage.css';
 
 interface FaqItem {
@@ -125,6 +126,10 @@ export function HelpPage() {
   return (
     <DashboardLayout welcomeSubtitle="Find answers to common questions" showBackButton>
       <div className="help-container">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Help' },
+        ]} />
         {FAQ_SECTIONS.map((section, sIdx) => (
           <div key={section.title} className="help-section">
             <h3 className="help-section-title">{section.title}</h3>

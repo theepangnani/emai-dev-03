@@ -8,6 +8,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { getCourseColor } from '../components/calendar/types';
+import { PageNav } from '../components/PageNav';
 import './StudyPage.css';
 
 // ── Local Types ─────────────────────────────────────────────────────────────
@@ -543,6 +544,10 @@ export function StudyPage() {
   return (
     <DashboardLayout>
       <div className="study-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Study' },
+        ]} />
 
         {/* ── Page Header ─────────────────────────────────── */}
         <div className="study-page-header">

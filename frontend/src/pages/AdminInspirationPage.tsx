@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import { useConfirm } from '../components/ConfirmModal';
 import '../components/AddActionButton.css';
+import { PageNav } from '../components/PageNav';
 import './AdminInspirationPage.css';
 
 const ROLES = ['parent', 'teacher', 'student'] as const;
@@ -107,6 +108,11 @@ export function AdminInspirationPage() {
 
   return (
     <DashboardLayout welcomeSubtitle="Manage inspirational messages">
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'Admin', to: '/dashboard' },
+        { label: 'Inspiration Messages' },
+      ]} />
       <div className="admin-insp-header">
         <h3>Inspirational Messages</h3>
         <div className="admin-insp-actions">
