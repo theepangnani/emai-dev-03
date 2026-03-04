@@ -141,9 +141,15 @@ class FlashcardSetResponse(BaseModel):
 
 
 class StudyGuideUpdate(BaseModel):
-    """Request to update a study guide (e.g. assign/categorize to a course)."""
+    """Request to update a study guide (e.g. assign/categorize to a course, rename)."""
+    title: str | None = Field(default=None, max_length=200)
     course_id: int | None = None
     course_content_id: int | None = None
+
+    @field_validator('title', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class DuplicateCheckRequest(BaseModel):

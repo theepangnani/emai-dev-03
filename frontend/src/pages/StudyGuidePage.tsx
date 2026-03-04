@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
-import { CourseAssignSelect } from '../components/CourseAssignSelect';
 import { CreateTaskModal } from '../components/CreateTaskModal';
+import { MaterialContextMenu } from '../components/MaterialContextMenu';
+import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
 import { ContentCard, MarkdownBody } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { FAQErrorHint } from '../components/FAQErrorHint';
@@ -27,6 +28,7 @@ export function StudyGuidePage() {
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showTaskPrompt, setShowTaskPrompt] = useState(false);
   const [exporting, setExporting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -125,25 +127,16 @@ export function StudyGuidePage() {
       <div className="sg-detail-header">
         <div className="sg-title-row">
           <h2>{guide.title}</h2>
-          <CourseAssignSelect
-            guideId={guide.id}
-            currentCourseId={guide.course_id}
-            onCourseChanged={(courseId) => setGuide({ ...guide, course_id: courseId })}
-          />
+          <MaterialContextMenu items={[
+            { label: 'Create Task', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/><path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>, onClick: () => setShowTaskModal(true) },
+            { label: 'Edit Class Material', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M13.586 3.586a2 2 0 112.828 2.828l-9.5 9.5L3 17l1.086-3.914 9.5-9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>, onClick: () => setShowEditModal(true) },
+          ]} />
         </div>
         <div className="sg-meta-row">
           <span className="sg-type-badge">{guideTypeLabel}</span>
           {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
           <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
           <div className="sg-icon-actions">
-            <button className="sg-icon-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
-                <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
-                <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            </button>
             <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
             <button className="sg-icon-btn" title="Print" aria-label="Print study guide" onClick={() => window.print()}>&#128424;</button>
             <button className="sg-icon-btn" title="Download PDF" aria-label="Download PDF" disabled={exporting} onClick={async () => { if (!contentRef.current) return; setExporting(true); try { await downloadAsPdf(contentRef.current, guide.title || 'study-guide'); } finally { setExporting(false); } }}>{exporting ? '\u23F3' : '\u{1F4E5}'}</button>
@@ -179,6 +172,13 @@ export function StudyGuidePage() {
         courseId={guide.course_id ?? undefined}
         linkedEntityLabel={`Study Guide: ${guide.title}`}
       />
+      {showEditModal && (
+        <EditStudyGuideModal
+          guide={guide}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updated) => { setGuide(updated); setShowEditModal(false); }}
+        />
+      )}
       {confirmModal}
     </div>
   );
