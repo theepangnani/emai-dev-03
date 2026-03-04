@@ -180,7 +180,7 @@ export const studyApi = {
     await api.delete(`/api/study/guides/${id}/permanent`);
   },
 
-  updateGuide: async (id: number, data: { course_id?: number | null; course_content_id?: number | null }) => {
+  updateGuide: async (id: number, data: { title?: string; course_id?: number | null; course_content_id?: number | null }) => {
     const response = await api.patch(`/api/study/guides/${id}`, data);
     return response.data as StudyGuide;
   },

@@ -1036,6 +1036,9 @@ def update_study_guide(
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
+    if update.title is not None:
+        guide.title = update.title
+
     if update.course_id is not None or update.course_content_id is not None:
         resolved_course_id, resolved_cc_id = ensure_course_and_content(
             db, current_user, guide.title, guide.content,
