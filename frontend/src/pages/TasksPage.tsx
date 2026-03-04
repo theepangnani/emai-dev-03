@@ -14,6 +14,7 @@ import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/typ
 import { ListSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import EmptyState from '../components/EmptyState';
+import { PageNav } from '../components/PageNav';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -439,6 +440,10 @@ export function TasksPage() {
   return (
     <DashboardLayout welcomeSubtitle="Manage your tasks" showBackButton>
       <div className="tasks-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Tasks' },
+        ]} />
         {/* Header with title */}
         <div className="tasks-header">
           <h3>Tasks</h3>

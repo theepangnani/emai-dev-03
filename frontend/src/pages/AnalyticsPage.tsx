@@ -9,6 +9,7 @@ import { analyticsApi } from '../api/analytics';
 import type { GradeSummary, TrendPoint, GradeItem, CourseAverage } from '../api/analytics';
 import { parentApi } from '../api/parent';
 import type { ChildSummary } from '../api/parent';
+import { PageNav } from '../components/PageNav';
 import './AnalyticsPage.css';
 
 const ReactMarkdown = lazy(() => import('react-markdown'));
@@ -188,6 +189,10 @@ export function AnalyticsPage() {
 
   return (
     <div className="analytics-page">
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'Analytics' },
+      ]} />
       <h1>Analytics</h1>
 
       {/* Child selector for parents */}

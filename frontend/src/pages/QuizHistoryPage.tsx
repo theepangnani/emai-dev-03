@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { studyApi, parentApi } from '../api/client';
 import type { QuizResultSummary, QuizHistoryStats, ChildSummary } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { PageNav } from '../components/PageNav';
 import './QuizHistoryPage.css';
 
 export function QuizHistoryPage() {
@@ -89,6 +90,10 @@ export function QuizHistoryPage() {
   return (
     <DashboardLayout showBackButton>
       <div className="quiz-history-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Quiz History' },
+        ]} />
         <div className="quiz-history-header">
           <h2>Quiz History</h2>
           {isParent && children.length > 0 && (

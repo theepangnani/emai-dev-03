@@ -10,6 +10,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { isValidEmail } from '../utils/validation';
+import { PageNav } from '../components/PageNav';
 import './MyKidsPage.css';
 
 const CHILD_COLORS = [
@@ -565,6 +566,10 @@ export function MyKidsPage() {
 
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'My Kids' },
+      ]} />
       {/* Child Tabs */}
       <div className="child-selector">
         {/* "All" button — shown when there are multiple children */}

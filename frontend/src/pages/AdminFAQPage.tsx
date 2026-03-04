@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import { faqApi, type FAQQuestionItem, type FAQAnswerItem } from '../api/client';
+import { PageNav } from '../components/PageNav';
 import './AdminFAQPage.css';
 
 const CATEGORIES = [
@@ -136,6 +137,11 @@ export function AdminFAQPage() {
   return (
     <DashboardLayout welcomeSubtitle="Manage FAQ & Knowledge Base">
       <div className="admin-faq-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Admin', to: '/dashboard' },
+          { label: 'FAQ Management' },
+        ]} />
         <div className="admin-faq-header">
           <h1>Manage FAQ</h1>
           <button className="btn btn-secondary" onClick={() => navigate('/faq')}>
