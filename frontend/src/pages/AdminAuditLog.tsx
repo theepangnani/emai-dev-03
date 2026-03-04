@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import { useDebounce } from '../utils/useDebounce';
+import { PageNav } from '../components/PageNav';
 import './AdminAuditLog.css';
 
 const PAGE_SIZE = 25;
@@ -83,8 +83,12 @@ export function AdminAuditLog() {
   return (
     <DashboardLayout welcomeSubtitle="Platform administration">
       <div className="audit-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Admin', to: '/dashboard' },
+          { label: 'Audit Log' },
+        ]} />
         <div className="audit-header">
-          <Link to="/dashboard" className="audit-back">&larr; Dashboard</Link>
           <h2>Audit Log</h2>
           <p className="audit-subtitle">{total} entries</p>
         </div>

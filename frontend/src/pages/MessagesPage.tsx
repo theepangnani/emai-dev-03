@@ -12,6 +12,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
 import '../components/AddActionButton.css';
+import { PageNav } from '../components/PageNav';
 import './MessagesPage.css';
 
 export function MessagesPage() {
@@ -469,6 +470,10 @@ export function MessagesPage() {
 
   return (
     <DashboardLayout welcomeSubtitle="Your conversations" showBackButton>
+      <PageNav items={[
+        { label: 'Home', to: '/dashboard' },
+        { label: 'Messages' },
+      ]} />
       {error && (
         <div className="error-banner">
           {error}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { studentEmailsApi, type StudentEmailItem, type EmailType } from '../api/studentEmails';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { PageNav } from '../components/PageNav';
 import './EmailSettingsPage.css';
 
 export function EmailSettingsPage() {
@@ -56,6 +57,11 @@ export function EmailSettingsPage() {
   return (
     <DashboardLayout>
       <div className="email-settings">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Settings', to: '/dashboard' },
+          { label: 'Email Configuration' },
+        ]} />
         <div className="email-settings-header">
           <div>
             <h1 className="email-settings-title">Email Addresses</h1>
