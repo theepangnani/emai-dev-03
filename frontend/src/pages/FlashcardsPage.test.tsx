@@ -296,14 +296,15 @@ describe('FlashcardsPage', () => {
     })
   })
 
-  it('opens task modal on "+ Task" button click', async () => {
+  it('opens task modal via context menu', async () => {
     const user = userEvent.setup()
     renderFlashcards()
     await waitFor(() => {
       expect(screen.getByText('What is React?')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByTitle('Create task'))
+    await user.click(screen.getByLabelText('Actions menu'))
+    await user.click(screen.getByText('Create Task'))
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 

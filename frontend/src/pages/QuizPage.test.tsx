@@ -326,14 +326,15 @@ describe('QuizPage', () => {
     })
   })
 
-  it('opens task modal on "+ Task" button click', async () => {
+  it('opens task modal via context menu', async () => {
     const user = userEvent.setup()
     renderQuiz()
     await waitFor(() => {
       expect(screen.getByText('What does HTML stand for?')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByTitle('Create task'))
+    await user.click(screen.getByLabelText('Actions menu'))
+    await user.click(screen.getByText('Create Task'))
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 })

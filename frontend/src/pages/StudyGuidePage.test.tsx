@@ -226,14 +226,15 @@ describe('StudyGuidePage', () => {
     })
   })
 
-  it('opens task modal on "+ Task" button click', async () => {
+  it('opens task modal via context menu', async () => {
     const user = userEvent.setup()
     renderStudyGuide()
     await waitFor(() => {
-      expect(screen.getByTitle('Create Task')).toBeInTheDocument()
+      expect(screen.getByText('Study Guide: Photosynthesis')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByTitle('Create Task'))
+    await user.click(screen.getByLabelText('Actions menu'))
+    await user.click(screen.getByText('Create Task'))
     expect(screen.getByTestId('create-task-modal')).toBeInTheDocument()
   })
 
