@@ -348,10 +348,135 @@ Grade tracking and analytics dashboard for parents and students. Provides perfor
 - Message history
 - Notification system with in-app bell, email reminders, and preferences
 
-### 6.7 Notes & Project Tracking (Phase 2)
-- Notes management (per-course note-taking, rich text editor)
-- Project tracking (group projects, milestones, task breakdown)
-- Study planner (weekly study schedules, goal setting)
+### 6.7 Contextual Notes System (Phase 2+)
+
+A contextual note-taking system that lets users take notes while studying course materials, study guides, quizzes, and flashcards. Notes are tied to the course material context, auto-save on every change, and are searchable from the global search engine.
+
+**GitHub Issues:** #1090 (epic), #1084 (data model + API), #1085 (side panel UI + WYSIWYG editor), #1086 (image support — clipboard, upload, camera), #1087 (task linking + reminders from notes), #1088 (global search integration), #1089 (parent read-only access to child notes)
+
+#### Design Principles
+- Notes are **contextual** — each note belongs to a specific course material (`course_content_id`)
+- Notes **auto-save** — changes are saved automatically (debounced 1s); no explicit save button needed
+- Notes **disappear on click-outside** — the side panel closes when the user clicks outside it (no data loss since auto-saved)
+- Notes are **per-user, per-material** — each user has their own notes on each course material
+- All roles can create notes (Student, Parent, Teacher, Admin)
+
+#### Trigger Points
+Users can open the notes panel from:
+1. **Course Material Detail Page** — "Take Notes" button on any tab (Study Guide, Quiz, Flashcards, Document)
+2. **Standalone Quiz Page** (`/study/quiz/:id`) — "Take Notes" floating button
+3. **Standalone Flashcards Page** (`/study/flashcards/:id`) — "Take Notes" floating button
+4. **Standalone Study Guide Page** (`/study/guide/:id`) — "Take Notes" floating button
+
+#### Note Side Panel UI
+- **Slides in from the right** (350px wide on desktop, full-width on mobile <768px)
+- **WYSIWYG rich text editor** with toolbar: bold, italic, underline, strikethrough, bullet list, numbered list, headings (H2, H3), code block, link
+- Content area supports:
+  - Typing and editing text
+  - Copy-pasting text (preserves basic formatting)
+  - Pasting screenshots from clipboard (Ctrl+V / Cmd+V)
+  - Uploading images via file picker or drag-and-drop
+  - Capturing photos via device camera (mobile)
+- **Auto-save indicator**: Small "Saved" / "Saving..." text in panel header
+- **Note count badge**: The "Take Notes" button shows a badge with note count if notes exist for this material
+- Clicking outside the panel or pressing Escape closes it
+- Panel remembers scroll position within a session
+
+#### Note Content Types
+1. **Text** — Rich text with formatting (stored as HTML)
+2. **Pasted text** — Clipboard text preserves basic formatting (bold, italic, lists)
+3. **Images** — Pasted screenshots, uploaded files, or camera captures; stored as base64 inline or uploaded to storage (Phase 2: local base64, future: GCS)
+4. **Note-to-Task** — Any note can spawn a linked task (see Task Linking below)
+
+#### Task Linking & Reminders
+Users can create a task directly from a note via a "Create Task" button in the note panel toolbar:
+- **Quick Task** — Creates a standalone task with the note text as description (trimmed to 500 chars)
+- **Linked Task** — Creates a task linked to the course material (`course_content_id`) AND includes the note text; Task Detail page shows the note context with a "View Note" link back to the material
+- Both options available via a dropdown on the "Create Task" button
+- Task creation opens a compact inline form: title (pre-filled from first line of note), due date, priority, reminder toggle
+- Reminder uses existing task reminder infrastructure (APScheduler, in-app + email notifications)
+
+#### Note Visibility & RBAC
+| Role | Can Create | Can View |
+|------|-----------|----------|
+| **Student** | Own notes on any accessible material | Own notes only |
+| **Parent** | Own notes on any accessible material | Own notes + linked children's notes (read-only) |
+| **Teacher** | Own notes on any accessible material | Own notes only |
+| **Admin** | Own notes on any accessible material | Own notes only |
+
+- Parents see a "Child's Notes" read-only section below their own notes in the side panel
+- Child notes are displayed with the child's name as a label
+- Parents cannot edit or delete child notes
+
+#### Global Search Integration
+- Notes are indexed in the global search (`GET /api/search?types=notes`)
+- Search matches note text content (HTML stripped for search matching)
+- Search results show: note snippet, linked material title, course name, created date
+- Clicking a search result navigates to the course material detail page and opens the notes panel
+
+#### Data Model
+
+**`notes` table:**
+- `id` (Integer, PK)
+- `user_id` (Integer, FK → users.id, NOT NULL) — note author
+- `course_content_id` (Integer, FK → course_contents.id, NOT NULL) — the material this note belongs to
+- `content` (Text, NOT NULL) — HTML content from WYSIWYG editor
+- `plain_text` (Text, NOT NULL) — stripped text for search indexing (auto-generated from content)
+- `has_images` (Boolean, default FALSE) — flag for notes containing embedded images
+- `created_at` (DateTime, NOT NULL)
+- `updated_at` (DateTime, NOT NULL)
+
+**Indexes:**
+- `(user_id, course_content_id)` — fast lookup for user's notes on a material
+- `(course_content_id)` — all notes on a material
+- `(user_id, updated_at)` — recent notes by user
+
+**Note:** One note record per user per course material (upsert pattern). If a user opens notes on a material where they already have a note, the existing note is loaded for editing.
+
+#### API Endpoints
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/notes?course_content_id=&user_id=` | List notes (filtered) | Authenticated |
+| `GET` | `/api/notes/{id}` | Get single note | Owner or parent of owner |
+| `PUT` | `/api/notes/` | Create or update note (upsert by user_id + course_content_id) | Authenticated |
+| `DELETE` | `/api/notes/{id}` | Delete note | Owner only |
+| `GET` | `/api/notes/children/{student_id}` | Parent: get child's notes | Parent (verified link) |
+| `POST` | `/api/notes/{id}/create-task` | Create task from note | Owner only |
+
+**Upsert behavior:** `PUT /api/notes/` accepts `{ course_content_id, content }`. If a note exists for this user + material, it updates; otherwise creates. Returns the note with `created_at` and `updated_at`.
+
+#### Frontend Components
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| `NotesPanel` | `components/NotesPanel.tsx` | Side panel with WYSIWYG editor, auto-save, task creation |
+| `NotesPanelToggle` | `components/NotesPanelToggle.tsx` | "Take Notes" button with badge count |
+| `RichTextEditor` | `components/RichTextEditor.tsx` | WYSIWYG editor (Tiptap or Quill) with image support |
+| `NoteTaskForm` | `components/NoteTaskForm.tsx` | Inline compact task creation form within notes panel |
+
+**Recommended WYSIWYG library:** [Tiptap](https://tiptap.dev/) (headless, React-native, lightweight, MIT license, supports image paste/upload out of box)
+
+#### Image Handling
+- **Clipboard paste**: Listen for `paste` event, detect image data, insert inline
+- **File upload**: File picker button in editor toolbar, accepts `image/*`
+- **Camera capture**: On mobile, file picker with `capture="environment"` attribute opens camera
+- **Storage (Phase 2+)**: Images stored as base64 data URIs inline in HTML content. Future: upload to GCS and replace with signed URLs (#572)
+- **Size limit**: Max 5 MB per image, max 10 images per note
+- **Accepted formats**: JPEG, PNG, GIF, WebP
+
+#### Auto-Save Behavior
+1. User types or pastes content
+2. After 1 second of inactivity (debounce), `PUT /api/notes/` is called
+3. Panel header shows "Saving..." during API call, then "Saved" on success
+4. On error, shows "Save failed — retrying..." and retries once after 3 seconds
+5. On panel close, a final save is triggered if there are unsaved changes
+6. Empty notes (no text, no images) are auto-deleted on panel close
+
+### 6.7.1 Project Tracking (Phase 3 — deferred)
+- Group project management with milestones and task breakdown
+- Study planner with weekly schedules and goal setting
+- Deferred from Phase 2 to Phase 3 to focus on core notes functionality
 
 ### 6.8 Central Document Repository (Phase 1)
 - Store course materials

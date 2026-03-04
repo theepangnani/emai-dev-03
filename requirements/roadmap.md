@@ -154,9 +154,9 @@
 - [x] **Student registration with username + parent email** — Username login, parent linking on register (#546) (IMPLEMENTED)
 - [x] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547) (IMPLEMENTED)
 - [x] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548) (IMPLEMENTED)
-- [ ] **Parent request assignment completion** — Parent requests student complete assignment (#549)
+- [x] **Parent request assignment completion** — Parent requests student complete assignment via multi-channel notification (#549) (IMPLEMENTED)
 - [x] **Google Classroom school vs private** — classroom_type, download restriction (#550) (IMPLEMENTED)
-- [ ] **Student/teacher invites + course enrollment** — Student invite teacher, teacher invite student/parent (#551)
+- [x] **Student/teacher invites + course enrollment** — Student invite teacher, teacher invite student/parent, course enrollment (#551) (IMPLEMENTED)
 - [x] **Upload with AI tool selection** — AI tool dropdown during upload, custom prompt (#552) (IMPLEMENTED)
 
 #### Architecture Foundation (Tier 0)
@@ -221,7 +221,7 @@
 - [ ] TeachAssist integration
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [ ] Advanced notifications
-- [ ] Notes & project tracking tools
+- [ ] **Contextual Notes System** — Side-panel note-taking on course materials with WYSIWYG editor, image support (paste/upload/camera), auto-save, task linking, parent read-only child access, global search integration (§6.7, #1084-#1090)
 - [ ] Data privacy & user rights (account deletion, data export, consent)
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
 - [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)

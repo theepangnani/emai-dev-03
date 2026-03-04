@@ -298,7 +298,8 @@ Current feature issues are tracked in GitHub:
 
 ### Phase 2
 - ~~Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)~~ ✅
-- Issue #27: Notes & Project Tracking Tools
+- ~~Issue #27: Notes & Project Tracking Tools~~ → Replaced by #1090 (Epic: Contextual Notes System)
+- Issue #1090: **Epic: Contextual Notes System** (#1084 data model, #1085 side panel UI, #1086 images, #1087 task linking, #1088 search, #1089 parent access)
 - Issue #29: TeachAssist Integration
 - Issue #50: Data privacy & user rights (FERPA/PIPEDA compliance)
 

@@ -570,3 +570,166 @@ class TestLinkTeacher:
         ).first()
         assert row is not None
         assert row.teacher_user_id == new_user.id
+
+
+# ── Request completion (#549) ────────────────────────────────
+
+class TestRequestCompletion:
+    """Tests for POST /api/parent/children/{student_id}/request-completion."""
+
+    @pytest.fixture()
+    def task_for_student(self, users, db_session):
+        """Create a pending task assigned to the linked student."""
+        from app.models.task import Task
+        task = Task(
+            title="Test Homework",
+            description="Complete the math worksheet",
+            created_by_user_id=users["parent"].id,
+            assigned_to_user_id=users["student"].id,
+            priority="medium",
+        )
+        db_session.add(task)
+        db_session.commit()
+        db_session.refresh(task)
+        return task
+
+    @pytest.fixture()
+    def completed_task(self, users, db_session):
+        """Create an already-completed task."""
+        from app.models.task import Task
+        from datetime import datetime, timezone
+        task = Task(
+            title="Already Done",
+            created_by_user_id=users["parent"].id,
+            assigned_to_user_id=users["student"].id,
+            is_completed=True,
+            completed_at=datetime.now(timezone.utc),
+        )
+        db_session.add(task)
+        db_session.commit()
+        db_session.refresh(task)
+        return task
+
+    def test_request_completion_success(self, client, users, task_for_student):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": task_for_student.id},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "message" in data
+        assert task_for_student.title in data["message"]
+
+    def test_request_completion_with_message(self, client, users, task_for_student):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": task_for_student.id, "message": "Please finish before dinner!"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert "message" in resp.json()
+
+    def test_request_completion_creates_notification(self, client, users, task_for_student, db_session):
+        from app.models.notification import Notification
+
+        # Count existing notifications before request
+        before_count = db_session.query(Notification).filter(
+            Notification.user_id == users["student"].id,
+            Notification.title == "Parent Completion Request",
+        ).count()
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": task_for_student.id, "message": "Please do this now"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+
+        db_session.expire_all()
+        notif = db_session.query(Notification).filter(
+            Notification.user_id == users["student"].id,
+            Notification.title == "Parent Completion Request",
+            Notification.content.contains("Please do this now"),
+        ).first()
+        assert notif is not None
+        assert task_for_student.title in notif.content
+
+        # Verify a new notification was actually created
+        after_count = db_session.query(Notification).filter(
+            Notification.user_id == users["student"].id,
+            Notification.title == "Parent Completion Request",
+        ).count()
+        assert after_count > before_count
+
+    def test_non_parent_rejected(self, client, users, task_for_student):
+        headers = _auth(client, users["student"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": task_for_student.id},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_unlinked_child_rejected(self, client, users, task_for_student):
+        headers = _auth(client, users["outsider"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": task_for_student.id},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+        assert "not linked" in resp.json()["detail"].lower()
+
+    def test_task_not_found(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": 999999},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+        assert "task" in resp.json()["detail"].lower()
+
+    def test_task_not_assigned_to_student(self, client, users, db_session):
+        """Task assigned to someone else should be rejected."""
+        from app.models.task import Task
+        task = Task(
+            title="Someone Else Task",
+            created_by_user_id=users["parent"].id,
+            assigned_to_user_id=users["parent"].id,
+        )
+        db_session.add(task)
+        db_session.commit()
+        db_session.refresh(task)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": task.id},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "not assigned" in resp.json()["detail"].lower()
+
+    def test_already_completed_task_rejected(self, client, users, completed_task):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/request-completion",
+            json={"task_id": completed_task.id},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "already completed" in resp.json()["detail"].lower()
+
+    def test_nonexistent_student_rejected(self, client, users, task_for_student):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            "/api/parent/children/999999/request-completion",
+            json={"task_id": task_for_student.id},
+            headers=headers,
+        )
+        assert resp.status_code == 404
