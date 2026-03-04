@@ -152,7 +152,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'My Kids', path: '/my-kids' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
-        { label: 'Analytics', path: '/analytics' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -163,7 +162,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Study', path: '/study' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
-        { label: 'Analytics', path: '/analytics' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -181,10 +179,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'teacher') {
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
-    }
-
-    if (user?.role === 'admin') {
-      items.push({ label: 'Analytics', path: '/analytics' });
     }
 
     items.push({ label: 'Help', path: '/help' });
