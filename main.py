@@ -16,7 +16,9 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -33,9 +35,11 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, AILimitRequest
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
+from app.models.waitlist import Waitlist  # noqa: F401 — ensure table is created (#1114)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -724,6 +728,23 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── users: AI usage limit columns (#1118) ──────────────────
+    if "ai_usage_limit" not in existing_cols:
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_limit INTEGER DEFAULT 10"))
+            logger.info("Added 'ai_usage_limit' column to users")
+        except Exception:
+            conn.rollback()
+    conn.commit()
+
+    if "ai_usage_count" not in existing_cols:
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_count INTEGER DEFAULT 0"))
+            logger.info("Added 'ai_usage_count' column to users")
+        except Exception:
+            conn.rollback()
+    conn.commit()
+
     # ── users: unique index on username (#546) ──────────────────
     try:
         if "sqlite" in settings.database_url:
@@ -763,6 +784,78 @@ with engine.connect() as conn:
         logger.info("Normalized user emails to lowercase and reset lockout state (#1045)")
     except Exception:
         conn.rollback()
+
+    # ── Create waitlist table (#1107) ──────────────────────────
+    try:
+        if "waitlist" not in inspector.get_table_names():
+            is_sqlite = "sqlite" in settings.database_url
+            datetime_type = "DATETIME" if is_sqlite else "TIMESTAMPTZ"
+            bool_default = "DEFAULT 0" if is_sqlite else "DEFAULT FALSE"
+            conn.execute(text(f"""
+                CREATE TABLE waitlist (
+                    id INTEGER PRIMARY KEY {'AUTOINCREMENT' if is_sqlite else 'GENERATED ALWAYS AS IDENTITY'},
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    roles JSON,
+                    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                    admin_notes TEXT,
+                    invite_token VARCHAR(255) UNIQUE,
+                    invite_token_expires_at {datetime_type},
+                    email_validated BOOLEAN {bool_default},
+                    approved_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    approved_at {datetime_type},
+                    registered_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    reminder_sent_at {datetime_type},
+                    created_at {datetime_type} DEFAULT CURRENT_TIMESTAMP,
+                    updated_at {datetime_type} DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX ix_waitlist_email ON waitlist (email)"))
+            conn.execute(text("CREATE INDEX ix_waitlist_invite_token ON waitlist (invite_token)"))
+            conn.execute(text("CREATE INDEX ix_waitlist_status ON waitlist (status)"))
+            logger.info("Created 'waitlist' table (#1107)")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
+    # ── users: AI usage limit columns (#1117) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "ai_usage_limit" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_limit INTEGER DEFAULT 10"))
+                logger.info("Added 'ai_usage_limit' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "ai_usage_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_count INTEGER DEFAULT 0"))
+                logger.info("Added 'ai_usage_count' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+
+    # ── users: AI usage limit columns (#1119) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "ai_usage_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_count INTEGER DEFAULT 0"))
+                logger.info("Added 'ai_usage_count' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "ai_usage_limit" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_limit INTEGER DEFAULT 10"))
+                logger.info("Added 'ai_usage_limit' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
 
 
 _is_prod = "sqlite" not in settings.database_url
@@ -876,6 +969,7 @@ app.include_router(notifications.router, prefix="/api")
 app.include_router(teacher_communications.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(admin_waitlist.router, prefix="/api")
 app.include_router(invites.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(course_contents.router, prefix="/api")
@@ -887,6 +981,9 @@ app.include_router(link_requests.router, prefix="/api")
 app.include_router(quiz_results.router, prefix="/api")
 app.include_router(onboarding.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
+app.include_router(waitlist.router, prefix="/api")
+app.include_router(ai_usage.router, prefix="/api")
+app.include_router(ai_usage.admin_router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -908,6 +1005,7 @@ def get_feature_toggles():
     """Public endpoint returning feature availability for the frontend."""
     return {
         "google_classroom": settings.google_classroom_enabled,
+        "waitlist_enabled": settings.waitlist_enabled,
     }
 
 

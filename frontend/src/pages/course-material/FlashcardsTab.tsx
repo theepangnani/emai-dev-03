@@ -19,6 +19,7 @@ interface FlashcardsTabProps {
   hasSourceContent: boolean;
   isActiveTab: boolean;
   linkedTasks?: TaskItem[];
+  atLimit?: boolean;
 }
 
 function FocusIcon() {
@@ -51,6 +52,7 @@ export function FlashcardsTab({
   hasSourceContent,
   isActiveTab,
   linkedTasks = [],
+  atLimit = false,
 }: FlashcardsTabProps) {
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -145,7 +147,10 @@ export function FlashcardsTab({
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
             <button className="cm-action-btn" onClick={handleReset}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={handleShuffle}>{'\u{1F500}'} Shuffle</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{generating === 'flashcards' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+            <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+              <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{generating === 'flashcards' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+              {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+            </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
@@ -216,13 +221,16 @@ export function FlashcardsTab({
           <div className="cm-empty-tab-icon"><EmptyFlashcardIcon /></div>
           <h3>No flashcards yet</h3>
           <p>Generate flashcards to review key concepts from this material with an interactive card deck.</p>
-          <button
-            className="cm-empty-generate-btn"
-            onClick={onGenerate}
-            disabled={generating !== null || !hasSourceContent}
-          >
-            {'\u2728'} Generate Flashcards
-          </button>
+          <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+            <button
+              className="cm-empty-generate-btn"
+              onClick={onGenerate}
+              disabled={generating !== null || !hasSourceContent || atLimit}
+            >
+              {'\u2728'} Generate Flashcards
+            </button>
+            {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+          </span>
           {!hasSourceContent && (
             <p className="cm-hint">Add content or upload a document first to generate flashcards.</p>
           )}

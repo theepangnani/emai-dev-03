@@ -70,6 +70,14 @@ class Settings(BaseSettings):
 
     # Feature toggles (#1054)
     google_classroom_enabled: bool = False
+    waitlist_enabled: bool = True  # Show "Join the Waitlist" instead of "Sign Up" on login (#1113)
+
+    # AI usage limits
+    ai_default_usage_limit: int = 10
+    ai_usage_warning_threshold: float = 0.8
+
+    # Waitlist (#1114) — when True, registration requires an invite token
+    waitlist_enabled: bool = False
 
     # File storage
     upload_dir: str = "./uploads"

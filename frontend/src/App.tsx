@@ -58,13 +58,15 @@ const ForgotPasswordPage = lazyRetry(() => import('./pages/ForgotPasswordPage').
 const ResetPasswordPage = lazyRetry(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
-const LandingPage = lazyRetry(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+const LaunchLandingPage = lazyRetry(() => import('./pages/LaunchLandingPage').then((m) => ({ default: m.LaunchLandingPage })));
 const OnboardingPage = lazyRetry(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const VerifyEmailPage = lazyRetry(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const HelpPage = lazyRetry(() => import('./pages/HelpPage').then((m) => ({ default: m.HelpPage })));
 const FAQPage = lazyRetry(() => import('./pages/FAQPage').then((m) => ({ default: m.FAQPage })));
 const FAQDetailPage = lazyRetry(() => import('./pages/FAQDetailPage').then((m) => ({ default: m.FAQDetailPage })));
 const AdminFAQPage = lazyRetry(() => import('./pages/AdminFAQPage').then((m) => ({ default: m.AdminFAQPage })));
+const AdminWaitlistPage = lazyRetry(() => import('./pages/AdminWaitlistPage').then((m) => ({ default: m.AdminWaitlistPage })));
+const AdminAIUsagePage = lazyRetry(() => import('./pages/AdminAIUsagePage').then((m) => ({ default: m.AdminAIUsagePage })));
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 const GradesPage = lazyRetry(() => import('./pages/GradesPage').then((m) => ({ default: m.GradesPage })));
 const NotificationsPage = lazyRetry(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
@@ -73,6 +75,7 @@ const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((
 const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').then((m) => ({ default: m.EmailSettingsPage })));
 // StudyPage will be created by another agent — lazy import registered here for the /study route
 const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ default: m.StudyPage })));
+const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => ({ default: m.WaitlistPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +106,7 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/waitlist" element={<WaitlistPage />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route
@@ -309,6 +313,22 @@ function App() {
                 }
               />
               <Route
+                path="/admin/waitlist"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminWaitlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/ai-usage"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminAIUsagePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/settings/emails"
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
@@ -342,7 +362,7 @@ function HomeRedirect() {
   if (isLoading) return <PageLoader />;
   if (user && (user.needs_onboarding || !user.onboarding_completed)) return <Navigate to="/onboarding" replace />;
   if (user) return <Navigate to="/dashboard" replace />;
-  return <LandingPage />;
+  return <LaunchLandingPage />;
 }
 
 export default App;

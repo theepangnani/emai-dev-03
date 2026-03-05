@@ -25,6 +25,7 @@ interface QuizTabProps {
   isParent: boolean;
   resolvedStudent: ResolvedStudent | null;
   linkedTasks?: TaskItem[];
+  atLimit?: boolean;
 }
 
 function FocusIcon() {
@@ -58,6 +59,7 @@ export function QuizTab({
   isParent,
   resolvedStudent,
   linkedTasks = [],
+  atLimit = false,
 }: QuizTabProps) {
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -187,7 +189,10 @@ export function QuizTab({
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
             <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
-            <button className="cm-action-btn" onClick={() => onGenerate(difficulty)} disabled={generating !== null}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+            <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+              <button className="cm-action-btn" onClick={() => onGenerate(difficulty)} disabled={generating !== null || atLimit}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+              {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+            </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
@@ -284,13 +289,16 @@ export function QuizTab({
           <div className="cm-empty-tab-icon"><EmptyQuizIcon /></div>
           <h3>No quiz yet</h3>
           <p>Generate a practice quiz to test understanding of this material with multiple-choice questions.</p>
-          <button
-            className="cm-empty-generate-btn"
-            onClick={() => onGenerate(difficulty)}
-            disabled={generating !== null || !hasSourceContent}
-          >
-            {'\u2728'} Generate Quiz
-          </button>
+          <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+            <button
+              className="cm-empty-generate-btn"
+              onClick={() => onGenerate(difficulty)}
+              disabled={generating !== null || !hasSourceContent || atLimit}
+            >
+              {'\u2728'} Generate Quiz
+            </button>
+            {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+          </span>
           {!hasSourceContent && (
             <p className="cm-hint">Add content or upload a document first to generate a quiz.</p>
           )}

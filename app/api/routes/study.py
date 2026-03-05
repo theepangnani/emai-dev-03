@@ -39,6 +39,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, check_content_safe
+from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
 from app.services.file_processor import (
@@ -469,6 +470,9 @@ async def generate_study_guide_endpoint(
             detail="Please provide assignment_id or content to generate a study guide",
         )
 
+    # Check AI usage limit before generation
+    check_ai_usage(current_user, db)
+
     # Generate study guide using AI
     try:
         raw_content = await generate_study_guide(
@@ -492,6 +496,9 @@ async def generate_study_guide_endpoint(
         logger.error("Study guide generation failed: %s: %s", type(e).__name__, e)
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
+
+    # Increment AI usage after successful generation
+    increment_ai_usage(current_user, db)
 
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)
@@ -599,6 +606,9 @@ async def generate_quiz_endpoint(
             if requested >= 1:
                 num_questions = requested
 
+    # Check AI usage limit before generation
+    check_ai_usage(current_user, db)
+
     # Generate quiz using AI
     critical_dates = []
     try:
@@ -623,6 +633,9 @@ async def generate_quiz_endpoint(
         logger.error("Quiz generation failed: %s: %s", type(e).__name__, e)
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
+
+    # Increment AI usage after successful generation
+    increment_ai_usage(current_user, db)
 
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Quiz: {topic}", "quiz", body.assignment_id)
@@ -729,6 +742,9 @@ async def generate_flashcards_endpoint(
             detail="Please provide assignment_id or content to generate flashcards",
         )
 
+    # Check AI usage limit before generation
+    check_ai_usage(current_user, db)
+
     # Generate flashcards using AI
     critical_dates = []
     try:
@@ -752,6 +768,9 @@ async def generate_flashcards_endpoint(
         logger.error("Flashcard generation failed: %s: %s", type(e).__name__, e)
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
+
+    # Increment AI usage after successful generation
+    increment_ai_usage(current_user, db)
 
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Flashcards: {topic}", "flashcards", body.assignment_id)
@@ -1142,6 +1161,9 @@ async def generate_from_text_and_images(
         first_line = content.strip().split('\n')[0][:60] if content.strip() else "Pasted Content"
         title = first_line if first_line else "Pasted Content"
 
+    # Check AI usage limit before generation
+    check_ai_usage(current_user, db)
+
     # Generate the appropriate study material (same pattern as /upload/generate)
     critical_dates = []
     try:
@@ -1212,6 +1234,9 @@ async def generate_from_text_and_images(
         raise HTTPException(status_code=500, detail="Failed to parse AI response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Increment AI usage after successful generation
+    increment_ai_usage(current_user, db)
 
     # Deduplicate: return existing if same hash was created recently
     if study_guide.content_hash:
@@ -1318,6 +1343,9 @@ async def generate_from_file_upload(
         base_name = file.filename.rsplit('.', 1)[0] if file.filename else "Uploaded File"
         title = base_name
 
+    # Check AI usage limit before generation
+    check_ai_usage(current_user, db)
+
     # Generate the appropriate study material
     critical_dates = []
     try:
@@ -1388,6 +1416,9 @@ async def generate_from_file_upload(
         raise HTTPException(status_code=500, detail="Failed to parse AI response")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Increment AI usage after successful generation
+    increment_ai_usage(current_user, db)
 
     # Deduplicate: return existing if same hash was created recently
     if study_guide.content_hash:
