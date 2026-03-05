@@ -473,6 +473,34 @@ Users can create a task directly from a note via a "Create Task" button in the n
 5. On panel close, a final save is triggered if there are unsaved changes
 6. Empty notes (no text, no images) are auto-deleted on panel close
 
+#### Keyboard Shortcuts
+
+**Panel shortcuts** (active on pages with notes support):
+
+| Shortcut | Action | Context |
+|----------|--------|---------|
+| `Ctrl+Shift+N` / `Cmd+Shift+N` | Toggle notes panel open/close | Any page with notes trigger |
+| `Escape` | Close notes panel | When panel is open |
+
+**Editor formatting shortcuts** (active when editor is focused):
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+B` / `Cmd+B` | Bold |
+| `Ctrl+I` / `Cmd+I` | Italic |
+| `Ctrl+U` / `Cmd+U` | Underline |
+| `Ctrl+Shift+S` / `Cmd+Shift+S` | Strikethrough |
+| `Ctrl+Shift+8` / `Cmd+Shift+8` | Bullet list |
+| `Ctrl+Shift+7` / `Cmd+Shift+7` | Numbered list |
+| `Ctrl+Alt+2` / `Cmd+Alt+2` | Heading 2 |
+| `Ctrl+Alt+3` / `Cmd+Alt+3` | Heading 3 |
+
+**Notes:**
+- Formatting shortcuts are provided by Tiptap's starter-kit (built-in, no custom implementation needed)
+- `Ctrl+Shift+N` must not conflict with existing app shortcuts — currently `Ctrl+K` is used for global search; no other global shortcuts exist
+- When the notes panel is open and editor is focused, `Escape` closes the panel (not just blurs the editor)
+- Shortcut hint shown as tooltip on the "Take Notes" trigger button: "Take Notes (Ctrl+Shift+N)"
+
 ### 6.7.1 Project Tracking (Phase 3 — deferred)
 - Group project management with milestones and task breakdown
 - Study planner with weekly schedules and goal setting

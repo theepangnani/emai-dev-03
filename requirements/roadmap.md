@@ -150,6 +150,23 @@
 - [x] **Student classes page icon+plus CTA** — Added `title-add-btn` to student's "My Classes" tab area on CoursesPage (#1075) (IMPLEMENTED, PR #1075)
 - [x] **Mobile responsive layout fixes** — Suppress welcome section on detail sub-pages (CourseMaterialDetailPage, TaskDetailPage, StudyPage); add 480px header breakpoint (compact logo, truncated username); mobile GlobalSearch sizing; MaterialContextMenu dropdown repositioning; toolbar horizontal scroll at 768px (#1098) (IMPLEMENTED, PR #1099)
 
+#### Waitlist System & AI Usage Limits (§6.53, §6.54) — Pre-Launch — #1106-#1124
+- [ ] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation
+- [ ] **Waitlist API endpoints** — Public join + token verify; Admin list/approve/decline/remind
+- [ ] **Launch Landing Page** — New `/` with "Join Waitlist" + "Login" CTAs, hero section, branding
+- [ ] **Waitlist Form Page** — `/waitlist` with name, email, role checkboxes, success confirmation
+- [ ] **Login page update** — Replace "Sign Up" with "Join Waitlist" CTA
+- [ ] **Token-gated registration** — `/register?token=` validates invite token, pre-fills user data
+- [ ] **Waitlist email templates** — Confirmation, admin notification, approval/invitation, decline, reminder
+- [ ] **Admin Waitlist Panel** — `/admin/waitlist` with stats, filterable table, approve/decline/remind actions
+- [ ] **AI usage limits data model** — `ai_usage_limit`/`ai_usage_count` on users, `ai_limit_requests` table
+- [ ] **AI usage enforcement** — Count AI generations, block at limit, show remaining credits in UI
+- [ ] **AI usage request flow** — User requests more credits, admin approves/declines
+- [ ] **Admin AI Usage Panel** — Usage stats, pending requests, manual limit adjustment
+- [ ] **`WAITLIST_ENABLED` feature flag** — Env var to toggle waitlist mode on/off (revert for Phase 2)
+- [ ] **Backend tests** — Waitlist + AI limits route tests
+- [ ] **Frontend tests** — Waitlist + AI limits component tests
+
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
 - [x] **Student registration with username + parent email** — Username login, parent linking on register (#546) (IMPLEMENTED)

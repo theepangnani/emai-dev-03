@@ -1106,3 +1106,256 @@ The Course Material Detail page is the most-used page for parents and students s
 - TypeScript compiles cleanly, all 333 frontend tests pass, no regressions
 
 ---
+
+### 6.53 Waitlist System — Pre-Launch Gated Access (Phase 1) — #1106-#1115, #1124
+
+ClassBridge launches with a waitlist-gated flow. The current open registration is replaced with a waitlist landing page. Admin manually approves users before they can register. This controls incoming traffic and enables gradual onboarding. Will be reverted to current open-registration flow on Phase 2 launch.
+
+#### Data Model
+
+**`waitlist` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Auto-increment |
+| name | VARCHAR(255) | Required |
+| email | VARCHAR(255) | Required, unique, case-insensitive |
+| roles | JSON | Array of selected roles (e.g., `["parent", "student"]`) |
+| status | VARCHAR(20) | `pending` / `approved` / `declined` / `registered` |
+| admin_notes | TEXT | Optional admin notes |
+| invite_token | VARCHAR(255) | Unique token for registration link (generated on approval) |
+| invite_token_expires_at | DATETIME | Token expiry (7 days from approval) |
+| email_validated | BOOLEAN | Set to TRUE when user clicks invite link |
+| approved_by_user_id | INTEGER FK | Admin who approved |
+| approved_at | DATETIME | Timestamp of approval |
+| registered_user_id | INTEGER FK | Links to `users.id` after registration completes |
+| reminder_sent_at | DATETIME | Last reminder email timestamp |
+| created_at | DATETIME | Join request timestamp |
+| updated_at | DATETIME | Last status change |
+
+#### User-Facing Flow
+
+1. **Landing Page** (`/`) — New launch landing page with two CTAs:
+   - "Join the Waitlist" — navigates to `/waitlist`
+   - "Login" — navigates to `/login`
+   - Hero section with ClassBridge branding, value proposition, feature highlights
+   - Clean, modern design matching ClassBridge design system
+
+2. **Waitlist Form** (`/waitlist`) — Simple form:
+   - Full Name (required)
+   - Email (required, validated format)
+   - Role checkboxes: Parent, Student, Teacher (at least one required)
+   - Submit button
+   - On success: confirmation screen ("Thank you for joining the waitlist!")
+
+3. **Login Page** (`/login`) — Updated login page:
+   - Existing email/password login form
+   - Replace "Sign Up" / "Create Account" CTA with "Join the Waitlist" link → `/waitlist`
+   - Remove any direct link to `/register`
+
+4. **Registration via Invite Link** (`/register?token=<invite_token>`) — When user clicks invite link from approval email:
+   - System validates token (exists, not expired, not already used)
+   - System marks `email_validated = TRUE` on the waitlist record
+   - Pre-populates name and email from waitlist record (email read-only)
+   - User completes the existing progressive registration form (password, role confirmation)
+   - On registration complete:
+     - Waitlist record status updated to `registered`
+     - `registered_user_id` set to new user ID
+     - Existing welcome email sent (BAU)
+
+#### Email Templates
+
+1. **Waitlist Confirmation Email** (`waitlist_confirmation.html`)
+   - Sent to: User, immediately after joining waitlist
+   - Subject: "Welcome to ClassBridge's Waitlist!"
+   - Content: Thank you message, what to expect next, ClassBridge branding
+   - Includes inspirational message (reuse existing pattern)
+
+2. **Admin Notification Email** (`waitlist_admin_notification.html`)
+   - Sent to: All admin users, immediately after new waitlist signup
+   - Subject: "New Waitlist Signup: {name}"
+   - Content: User name, email, selected roles, link to admin waitlist panel
+
+3. **Approval / Invitation Email** (`waitlist_approved.html`)
+   - Sent to: User, when admin approves
+   - Subject: "You're Invited to Join ClassBridge!"
+   - Content: Welcome message, registration link with invite token (`/register?token=<token>`), token valid for 7 days
+   - The link serves dual purpose: validates email + starts registration
+
+4. **Decline Email** (`waitlist_declined.html`)
+   - Sent to: User, when admin declines
+   - Subject: "ClassBridge Waitlist Update"
+   - Content: Polite message that we can't onboard at this time, will keep them informed
+
+5. **Registration Reminder Email** (`waitlist_reminder.html`)
+   - Sent to: User (approved but not yet registered), triggered manually by admin
+   - Subject: "Reminder: Complete Your ClassBridge Registration"
+   - Content: Reminder to register, registration link (refreshed token if expired)
+
+#### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/waitlist` | Public | Join waitlist (name, email, roles) |
+| GET | `/api/waitlist/verify/{token}` | Public | Validate invite token, return waitlist record |
+| GET | `/api/admin/waitlist` | Admin | List all waitlist entries with filters (status, date range, search) |
+| GET | `/api/admin/waitlist/stats` | Admin | Waitlist stats (count by status) |
+| PATCH | `/api/admin/waitlist/{id}/approve` | Admin | Approve user, generate invite token, send approval email |
+| PATCH | `/api/admin/waitlist/{id}/decline` | Admin | Decline user, send decline email |
+| POST | `/api/admin/waitlist/{id}/remind` | Admin | Resend registration reminder to approved user |
+| PATCH | `/api/admin/waitlist/{id}/notes` | Admin | Update admin notes |
+| DELETE | `/api/admin/waitlist/{id}` | Admin | Delete waitlist entry |
+
+#### Admin Panel
+
+**Waitlist Management Page** (`/admin/waitlist`):
+- Summary stats bar: Total | Pending | Approved | Registered | Declined
+- Filterable/searchable table with columns: Name, Email, Roles, Status, Date Joined, Date Approved, Actions
+- Status badge colors: Pending (yellow), Approved (blue), Registered (green), Declined (red)
+- Actions per row:
+  - Pending: Approve | Decline buttons
+  - Approved: Send Reminder | View buttons
+  - Registered: View user profile link
+  - Declined: Re-approve button
+- Bulk approve (select multiple pending → approve all)
+- Admin notes field (inline edit)
+
+#### Frontend Pages
+
+| Page | Route | Description |
+|------|-------|-------------|
+| LaunchLandingPage | `/` | Hero + "Join Waitlist" + "Login" CTAs |
+| WaitlistPage | `/waitlist` | Join form + success confirmation |
+| LoginPage | `/login` | Updated with "Join Waitlist" CTA |
+| RegisterPage | `/register?token=` | Token-gated registration |
+| AdminWaitlistPage | `/admin/waitlist` | Waitlist management table |
+
+#### Routing Changes
+- `/` → LaunchLandingPage (replaces current redirect-to-login)
+- `/register` → requires valid `?token=` param (no direct access without token)
+- `/login` → updated CTAs
+- Current open `/register` route disabled (returns redirect to `/waitlist`)
+
+#### Revert Plan (Phase 2 Launch)
+- Restore `/` → redirect to dashboard or current landing
+- Restore `/register` → open registration
+- Restore `/login` → "Sign Up" CTA
+- Keep waitlist data for historical records
+- Feature flag: `WAITLIST_ENABLED` env var (default: `true` for Phase 1 launch, `false` for Phase 2)
+
+---
+
+### 6.54 AI Usage Limits — Configurable Per-User AI Interaction Quota (Phase 1) — #1116-#1121, #1125
+
+Control AI API costs by limiting the number of AI interactions per user. Default quota is 10 AI generations. Users can request more; admin approves via admin panel.
+
+#### Data Model
+
+**New columns on `users` table:**
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| ai_usage_limit | INTEGER | 10 | Max AI generations allowed |
+| ai_usage_count | INTEGER | 0 | Current count of AI generations used |
+| ai_usage_reset_at | DATETIME | NULL | Optional: when to auto-reset count (future use) |
+
+**`ai_limit_requests` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Auto-increment |
+| user_id | INTEGER FK | Requesting user |
+| requested_amount | INTEGER | How many additional interactions requested |
+| reason | TEXT | User's justification |
+| status | VARCHAR(20) | `pending` / `approved` / `declined` |
+| approved_amount | INTEGER | Amount actually granted (may differ from requested) |
+| admin_user_id | INTEGER FK | Admin who handled request |
+| created_at | DATETIME | Request timestamp |
+| resolved_at | DATETIME | Approval/decline timestamp |
+
+**`ai_usage_history` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Auto-increment |
+| user_id | INTEGER FK | User who generated |
+| generation_type | VARCHAR(20) | `study_guide` / `quiz` / `flashcard` |
+| course_material_id | INTEGER FK | Related course material (nullable) |
+| credits_used | INTEGER | Always 1 for now (future: variable cost) |
+| created_at | DATETIME | Timestamp of generation |
+
+This table provides a complete audit trail of every AI credit consumed, enabling admin to view per-user generation history, filter by type, and see usage patterns over time.
+
+#### Counting Logic
+
+An "AI interaction" counts as one unit for each:
+- Study guide generation
+- Quiz generation
+- Flashcard generation
+- Any AI generation triggered via upload with AI tool selection
+
+Counting happens in the AI generation service layer (single point of enforcement). Each successful generation increments `ai_usage_count` by 1.
+
+#### User-Facing Behavior
+
+1. **Usage indicator** — Show remaining AI interactions in the UI:
+   - Dashboard: "AI Credits: 7/10 remaining" badge/counter
+   - Before any AI generation: show remaining count in confirmation dialog
+   - At 80% usage (2 remaining): warning banner "You have 2 AI credits remaining"
+
+2. **Limit reached** — When `ai_usage_count >= ai_usage_limit`:
+   - AI generation buttons show "Limit Reached" state (disabled)
+   - Modal explaining limit with "Request More" button
+   - Request form: desired amount + brief reason
+
+3. **Request more flow:**
+   - User fills request form → creates `ai_limit_requests` record (status: pending)
+   - Admin gets in-app notification
+   - Admin reviews in admin panel → approve (set amount) or decline
+   - User gets in-app notification of outcome
+   - On approval: `ai_usage_limit` increased by `approved_amount`
+
+#### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/ai-usage` | Authenticated | Get current usage (count, limit, remaining) |
+| GET | `/api/ai-usage/history` | Authenticated | Get own AI usage history (paginated) |
+| POST | `/api/ai-usage/request` | Authenticated | Request additional AI credits |
+| GET | `/api/admin/ai-usage` | Admin | List all users with usage stats |
+| GET | `/api/admin/ai-usage/history` | Admin | Full AI usage history across all users (filterable by user, type, date range) |
+| GET | `/api/admin/ai-usage/requests` | Admin | List all limit increase requests (filterable by status: pending/approved/declined/all) |
+| PATCH | `/api/admin/ai-usage/requests/{id}/approve` | Admin | Approve with amount |
+| PATCH | `/api/admin/ai-usage/requests/{id}/decline` | Admin | Decline request |
+| PATCH | `/api/admin/ai-usage/users/{id}/limit` | Admin | Manually set user's limit |
+| POST | `/api/admin/ai-usage/users/{id}/reset` | Admin | Reset user's usage count to 0 |
+
+#### Admin Panel
+
+**AI Usage Management** (dedicated `/admin/ai-usage` page with tabbed sections):
+
+**Tab 1: Overview**
+- Summary cards: Total AI calls today / this week / this month / all time
+- Top 10 users by usage (bar chart or ranked list)
+- User table: Name, Email, Role, Usage (count/limit as progress bar), Last Used, Actions
+- Actions per user: Adjust Limit | Reset Count | View History
+- Search/filter by name, email, role
+
+**Tab 2: Usage History**
+- Full audit log of every AI credit consumed across all users
+- Columns: User, Generation Type (study guide/quiz/flashcard), Course Material, Date/Time
+- Filters: User (search), Generation Type (dropdown), Date Range (from/to)
+- Export to CSV (future)
+- Click user name → filters to that user's history
+
+**Tab 3: Credit Requests**
+- All limit increase requests (not just pending — full history)
+- Columns: User, Requested Amount, Reason, Status (badge), Approved Amount, Admin, Date Requested, Date Resolved
+- Filter by status: All / Pending / Approved / Declined
+- Pending requests appear at top with Approve (amount input) / Decline action buttons
+- Resolved requests show outcome details (who approved, how much granted)
+
+#### Configuration
+
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `AI_DEFAULT_USAGE_LIMIT` | 10 | Default limit for new users |
+| `AI_USAGE_WARNING_THRESHOLD` | 0.8 | Show warning at this % of limit |
+
+---
