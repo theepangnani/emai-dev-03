@@ -11,6 +11,8 @@ import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { downloadAsPdf } from '../utils/exportUtils';
 import { PageNav } from '../components/PageNav';
+import { useAIUsage } from '../hooks/useAIUsage';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import './StudyGuidePage.css';
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
@@ -33,6 +35,8 @@ export function StudyGuidePage() {
   const [exporting, setExporting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const { confirm, confirmModal } = useConfirm();
+  const { atLimit, remaining, invalidate: refreshAIUsage } = useAIUsage();
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   // Detect first-time guide view from navigation state
   const isNewGuide = !!(location.state as any)?.newGuide;
@@ -76,12 +80,23 @@ export function StudyGuidePage() {
 
   const handleRegenerate = async () => {
     if (!guide) return;
+    if (atLimit) {
+      setShowLimitModal(true);
+      return;
+    }
+    const ok = await confirm({
+      title: 'Regenerate Study Guide',
+      message: `This will use 1 AI credit. You have ${remaining} remaining. Continue?`,
+      confirmLabel: 'Regenerate',
+    });
+    if (!ok) return;
     try {
       const result = await studyApi.generateGuide({
         title: guide.title.replace(/^Study Guide: /, ''),
         content: guide.content,
         regenerate_from_id: guide.id,
       });
+      refreshAIUsage();
       navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
     } catch (err) {
       setError('Failed to regenerate');
@@ -180,6 +195,7 @@ export function StudyGuidePage() {
         />
       )}
       {confirmModal}
+      <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
     </div>
   );
 }

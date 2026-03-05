@@ -1,0 +1,58 @@
+/* AI Limit Request Modal */
+.ai-limit-request-modal {
+  max-width: 440px;
+  text-align: center;
+}
+
+.ai-limit-request-modal h2 {
+  margin: 0 0 8px;
+}
+
+.ai-limit-request-desc {
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
+.ai-limit-request-success-icon {
+  margin-bottom: 12px;
+}
+
+.ai-limit-request-modal .modal-form {
+  text-align: left;
+}
+
+.ai-limit-request-modal .modal-form label {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.ai-limit-request-modal .modal-form input[type="number"],
+.ai-limit-request-modal .modal-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.ai-limit-request-modal .modal-form input[type="number"]:focus,
+.ai-limit-request-modal .modal-form textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.ai-limit-request-modal .modal-form textarea {
+  resize: vertical;
+  min-height: 72px;
+}

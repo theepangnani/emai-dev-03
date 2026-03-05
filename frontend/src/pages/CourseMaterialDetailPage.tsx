@@ -17,6 +17,9 @@ import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
+import { AIWarningBanner } from '../components/AICreditsDisplay';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
@@ -107,6 +110,8 @@ export function CourseMaterialDetailPage() {
   const { confirm, confirmModal } = useConfirm();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
+  const { remaining, atLimit, invalidate: refreshAIUsage } = useAIUsage();
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const [content, setContent] = useState<CourseContentItem | null>(null);
   const [guides, setGuides] = useState<StudyGuide[]>([]);
@@ -203,10 +208,14 @@ export function CourseMaterialDetailPage() {
 
   const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards', difficulty?: string) => {
     if (!content) return;
+    if (atLimit) {
+      setShowLimitModal(true);
+      return;
+    }
     const labels = { study_guide: 'Study Guide', quiz: 'Practice Quiz', flashcards: 'Flashcards' };
     const ok = await confirm({
       title: `Generate ${labels[type]}`,
-      message: `Generate a ${labels[type].toLowerCase()} from "${content.title}"? This will use AI credits.`,
+      message: `Generate a ${labels[type].toLowerCase()} from "${content.title}"? This will use 1 AI credit. You have ${remaining} remaining.`,
       confirmLabel: 'Generate',
     });
     if (!ok) return;
@@ -245,6 +254,7 @@ export function CourseMaterialDetailPage() {
         });
       }
       await loadData();
+      refreshAIUsage();
       setActiveTab(type === 'study_guide' ? 'guide' : type);
       // Show toast if tasks were auto-created
       const updatedGuides = await studyApi.listGuides({ course_content_id: contentId });
@@ -418,6 +428,8 @@ export function CourseMaterialDetailPage() {
           </div>
         )}
 
+        <AIWarningBanner />
+
         {/* ── Tab navigation ───────────────────────── */}
         <div className="cm-tabs" role="tablist">
           {tabs.map(tab => (
@@ -463,6 +475,7 @@ export function CourseMaterialDetailPage() {
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
               linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
+              atLimit={atLimit}
             />
           )}
 
@@ -478,6 +491,7 @@ export function CourseMaterialDetailPage() {
               isParent={isParent}
               resolvedStudent={resolvedStudent}
               linkedTasks={linkedTasks[quiz?.id ?? 0] ?? []}
+              atLimit={atLimit}
             />
           )}
 
@@ -492,6 +506,7 @@ export function CourseMaterialDetailPage() {
               hasSourceContent={hasSourceContent}
               isActiveTab={activeTab === 'flashcards'}
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
+              atLimit={atLimit}
             />
           )}
         </div>
@@ -513,6 +528,7 @@ export function CourseMaterialDetailPage() {
         />
       )}
       {confirmModal}
+      <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
       {toast && <div className="toast-notification">{toast}</div>}
       {uploadStatus === 'uploading' && (
         <div className="cm-upload-status">

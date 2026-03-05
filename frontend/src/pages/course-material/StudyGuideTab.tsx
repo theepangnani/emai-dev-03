@@ -14,6 +14,7 @@ interface StudyGuideTabProps {
   onDelete: (guide: StudyGuide) => void;
   hasSourceContent: boolean;
   linkedTasks?: TaskItem[];
+  atLimit?: boolean;
 }
 
 function FocusIcon() {
@@ -44,6 +45,7 @@ export function StudyGuideTab({
   onDelete,
   hasSourceContent,
   linkedTasks = [],
+  atLimit = false,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -82,7 +84,10 @@ export function StudyGuideTab({
           <div className="cm-guide-actions">
             <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
-            <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null}>{'\u2728'} Regenerate</button>
+            <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+              <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate</button>
+              {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+            </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
@@ -110,13 +115,16 @@ export function StudyGuideTab({
           <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
           <h3>No study guide yet</h3>
           <p>Generate an AI-powered study guide from this material to help with studying and review.</p>
-          <button
-            className="cm-empty-generate-btn"
-            onClick={onGenerate}
-            disabled={generating !== null || !hasSourceContent}
-          >
-            {'\u2728'} Generate Study Guide
-          </button>
+          <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+            <button
+              className="cm-empty-generate-btn"
+              onClick={onGenerate}
+              disabled={generating !== null || !hasSourceContent || atLimit}
+            >
+              {'\u2728'} Generate Study Guide
+            </button>
+            {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+          </span>
           {!hasSourceContent && (
             <p className="cm-hint">Add content or upload a document first to generate a study guide.</p>
           )}

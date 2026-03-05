@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
 import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
+import { AICreditsDisplay } from './AICreditsDisplay';
 import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
@@ -305,6 +306,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         </div>
         <GlobalSearch />
         <div className="header-right">
+          <AICreditsDisplay />
           <ThemeToggle />
           <NotificationBell />
           <div className="user-chip" ref={roleSwitcherRef}>
