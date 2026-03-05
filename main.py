@@ -764,6 +764,25 @@ with engine.connect() as conn:
     except Exception:
         conn.rollback()
 
+    # ── users: AI usage limit columns (#1117) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "ai_usage_limit" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_limit INTEGER DEFAULT 10"))
+                logger.info("Added 'ai_usage_limit' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "ai_usage_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_count INTEGER DEFAULT 0"))
+                logger.info("Added 'ai_usage_count' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 
 _is_prod = "sqlite" not in settings.database_url
 
