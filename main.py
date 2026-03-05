@@ -33,7 +33,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
@@ -761,6 +761,39 @@ with engine.connect() as conn:
         ))
         conn.commit()
         logger.info("Normalized user emails to lowercase and reset lockout state (#1045)")
+    except Exception:
+        conn.rollback()
+
+    # ── Create waitlist table (#1107) ──────────────────────────
+    try:
+        if "waitlist" not in inspector.get_table_names():
+            is_sqlite = "sqlite" in settings.database_url
+            datetime_type = "DATETIME" if is_sqlite else "TIMESTAMPTZ"
+            bool_default = "DEFAULT 0" if is_sqlite else "DEFAULT FALSE"
+            conn.execute(text(f"""
+                CREATE TABLE waitlist (
+                    id INTEGER PRIMARY KEY {'AUTOINCREMENT' if is_sqlite else 'GENERATED ALWAYS AS IDENTITY'},
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    roles JSON,
+                    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                    admin_notes TEXT,
+                    invite_token VARCHAR(255) UNIQUE,
+                    invite_token_expires_at {datetime_type},
+                    email_validated BOOLEAN {bool_default},
+                    approved_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    approved_at {datetime_type},
+                    registered_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    reminder_sent_at {datetime_type},
+                    created_at {datetime_type} DEFAULT CURRENT_TIMESTAMP,
+                    updated_at {datetime_type} DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX ix_waitlist_email ON waitlist (email)"))
+            conn.execute(text("CREATE INDEX ix_waitlist_invite_token ON waitlist (invite_token)"))
+            conn.execute(text("CREATE INDEX ix_waitlist_status ON waitlist (status)"))
+            logger.info("Created 'waitlist' table (#1107)")
+        conn.commit()
     except Exception:
         conn.rollback()
 
