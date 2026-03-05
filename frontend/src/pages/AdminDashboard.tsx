@@ -282,6 +282,9 @@ export function AdminDashboard() {
           <Link to="/admin/faq" className="admin-audit-link">
             Manage FAQ &rarr;
           </Link>
+          <Link to="/admin/waitlist" className="admin-audit-link">
+            Manage Waitlist &rarr;
+          </Link>
           <button
             className="admin-audit-link"
             onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}
