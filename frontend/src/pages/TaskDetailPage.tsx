@@ -215,9 +215,9 @@ export function TaskDetailPage() {
   const filteredContents = contents.filter(c => c.title.toLowerCase().includes(linkSearch.toLowerCase()));
   const filteredGuides = guides.filter(g => g.title.toLowerCase().includes(linkSearch.toLowerCase()));
 
-  if (loading) return <DashboardLayout><DetailSkeleton /></DashboardLayout>;
+  if (loading) return <DashboardLayout headerSlot={() => null}><DetailSkeleton /></DashboardLayout>;
   if (error || !task) return (
-    <DashboardLayout>
+    <DashboardLayout headerSlot={() => null}>
       <div className="td-error">
         <p>{error || 'Task not found'}</p>
         <Link to="/tasks" className="td-back-link">Back to Tasks</Link>
@@ -229,7 +229,7 @@ export function TaskDetailPage() {
   const hasLinkedResources = !!(task.study_guide_id || task.course_content_id || task.course_id);
 
   return (
-    <DashboardLayout>
+    <DashboardLayout headerSlot={() => null}>
       <div className="td-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },

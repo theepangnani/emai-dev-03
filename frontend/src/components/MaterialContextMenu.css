@@ -69,3 +69,17 @@
 .material-ctx-item svg {
   flex-shrink: 0;
 }
+
+@media (max-width: 480px) {
+  .material-ctx-trigger {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .material-ctx-menu {
+    right: auto;
+    left: 0;
+    min-width: 180px;
+  }
+}

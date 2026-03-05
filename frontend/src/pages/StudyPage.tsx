@@ -542,7 +542,7 @@ export function StudyPage() {
   // ── Main Render ───────────────────────────────────────────────────────────────
 
   return (
-    <DashboardLayout>
+    <DashboardLayout headerSlot={() => null}>
       <div className="study-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },

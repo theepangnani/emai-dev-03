@@ -330,9 +330,9 @@ export function CourseMaterialDetailPage() {
     await handleGenerate(type);
   };
 
-  if (loading) return <DashboardLayout showBackButton><DetailSkeleton /></DashboardLayout>;
+  if (loading) return <DashboardLayout showBackButton headerSlot={() => null}><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
-    <DashboardLayout showBackButton>
+    <DashboardLayout showBackButton headerSlot={() => null}>
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
@@ -349,7 +349,7 @@ export function CourseMaterialDetailPage() {
   ];
 
   return (
-    <DashboardLayout showBackButton>
+    <DashboardLayout showBackButton headerSlot={() => null}>
       <div className="cm-detail-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },

@@ -1753,6 +1753,41 @@ button.retry-btn:disabled {
   }
 }
 
+@media (max-width: 480px) {
+  .dashboard-header {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .header-logo {
+    height: 48px;
+    margin: -8px 0;
+  }
+
+  .header-right {
+    gap: 6px;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .user-name {
+    font-size: 12px;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout-button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .welcome-section h2 {
+    font-size: 22px;
+  }
+}
+
 /* Pending Invites (shared) */
 .pending-invites-section { margin-bottom: 16px; }
 .pending-invites-section h3 { font-size: 15px; margin-bottom: 8px; color: var(--color-muted); }
