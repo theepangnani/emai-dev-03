@@ -1,0 +1,457 @@
+.ai-usage-page {
+  max-width: 1100px;
+}
+
+.ai-usage-header {
+  margin-bottom: 20px;
+}
+
+.ai-usage-header h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin: 8px 0 4px 0;
+  color: var(--color-ink);
+}
+
+.ai-usage-subtitle {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+/* Summary cards */
+.ai-usage-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.ai-usage-summary-card {
+  flex: 1;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+}
+
+.ai-usage-summary-card h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-ink-muted);
+  margin: 0 0 8px 0;
+}
+
+.ai-usage-summary-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+}
+
+.ai-usage-top-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ai-usage-top-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.ai-usage-top-list li span:last-child {
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
+
+/* Tabs */
+.ai-usage-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
+.ai-usage-tab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-ink-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ai-usage-tab:hover {
+  color: var(--color-ink);
+}
+
+.ai-usage-tab.active {
+  color: var(--color-accent-strong);
+  border-bottom-color: var(--color-accent-strong);
+}
+
+/* Search */
+.ai-usage-search {
+  margin-bottom: 12px;
+}
+
+.ai-usage-search input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 100%;
+  max-width: 320px;
+}
+
+/* Table */
+.ai-usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ai-usage-table thead {
+  background: var(--color-surface-alt, #f8f8f8);
+}
+
+.ai-usage-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ai-usage-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-usage-table th.sortable:hover {
+  color: var(--color-ink);
+}
+
+.ai-usage-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.ai-usage-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ai-usage-table tbody tr:hover {
+  background: var(--color-surface-alt, #fafafa);
+}
+
+.ai-usage-empty {
+  text-align: center;
+  padding: 40px 12px !important;
+  color: var(--color-ink-muted);
+}
+
+/* Progress bar */
+.ai-usage-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-usage-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--color-surface-alt, #e8e8e8);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 80px;
+  max-width: 140px;
+}
+
+.ai-usage-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
+  background: var(--color-accent-strong);
+}
+
+.ai-usage-progress-fill.warning {
+  background: #e65100;
+}
+
+.ai-usage-progress-fill.danger {
+  background: #c62828;
+}
+
+.ai-usage-progress-label {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+/* Role badge */
+.ai-usage-role {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--color-surface-alt, #f0f0f0);
+  color: var(--color-ink-muted);
+}
+
+/* Action buttons */
+.ai-usage-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.ai-usage-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-ink);
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ai-usage-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.ai-usage-btn.approve {
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+
+.ai-usage-btn.approve:hover:not(:disabled) {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.ai-usage-btn.decline {
+  border-color: #c62828;
+  color: #c62828;
+}
+
+.ai-usage-btn.decline:hover:not(:disabled) {
+  background: #c62828;
+  color: #fff;
+}
+
+.ai-usage-btn.reset {
+  border-color: #e65100;
+  color: #e65100;
+}
+
+.ai-usage-btn.reset:hover:not(:disabled) {
+  background: #e65100;
+  color: #fff;
+}
+
+.ai-usage-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Pending request reason */
+.ai-usage-reason {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.ai-usage-date {
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+/* Modal overlay */
+.ai-usage-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.ai-usage-modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.ai-usage-modal h3 {
+  margin: 0 0 16px 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--color-ink);
+}
+
+.ai-usage-modal label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 6px;
+}
+
+.ai-usage-modal input[type="number"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  margin-bottom: 16px;
+}
+
+.ai-usage-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ai-usage-modal-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-ink);
+}
+
+.ai-usage-modal-btn.primary {
+  background: var(--color-accent-strong);
+  color: #fff;
+  border-color: var(--color-accent-strong);
+}
+
+.ai-usage-modal-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.ai-usage-modal-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Approve input inline */
+.ai-usage-approve-input {
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  text-align: center;
+}
+
+/* Pagination */
+.ai-usage-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.ai-usage-pagination-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-usage-pagination button {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-ink);
+}
+
+.ai-usage-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ai-usage-pagination button:not(:disabled):hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Confirm dialog inline */
+.ai-usage-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.ai-usage-confirm span {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .ai-usage-summary {
+    flex-direction: column;
+  }
+
+  .ai-usage-table {
+    font-size: 12px;
+  }
+
+  .ai-usage-reason,
+  .ai-usage-date {
+    display: none;
+  }
+
+  .ai-usage-progress-bar {
+    max-width: 80px;
+  }
+
+  .ai-usage-search input {
+    max-width: 100%;
+  }
+}

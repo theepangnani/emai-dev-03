@@ -103,6 +103,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M6 20v-6"/>
     </svg>
   ),
+  'AI Usage': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 6v6l4 2"/>
+    </svg>
+  ),
   Help: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
@@ -193,6 +199,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'admin') {
       items.push({ label: 'Waitlist', path: '/admin/waitlist' });
+      items.push({ label: 'AI Usage', path: '/admin/ai-usage' });
     }
 
     items.push({ label: 'Help', path: '/help' });

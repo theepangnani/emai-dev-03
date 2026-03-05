@@ -67,6 +67,7 @@ const FAQPage = lazyRetry(() => import('./pages/FAQPage').then((m) => ({ default
 const FAQDetailPage = lazyRetry(() => import('./pages/FAQDetailPage').then((m) => ({ default: m.FAQDetailPage })));
 const AdminFAQPage = lazyRetry(() => import('./pages/AdminFAQPage').then((m) => ({ default: m.AdminFAQPage })));
 const AdminWaitlistPage = lazyRetry(() => import('./pages/AdminWaitlistPage').then((m) => ({ default: m.AdminWaitlistPage })));
+const AdminAIUsagePage = lazyRetry(() => import('./pages/AdminAIUsagePage').then((m) => ({ default: m.AdminAIUsagePage })));
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 const GradesPage = lazyRetry(() => import('./pages/GradesPage').then((m) => ({ default: m.GradesPage })));
 const NotificationsPage = lazyRetry(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
@@ -317,6 +318,10 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminWaitlistPage />
+                path="/admin/ai-usage"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminAIUsagePage />
                   </ProtectedRoute>
                 }
               />
