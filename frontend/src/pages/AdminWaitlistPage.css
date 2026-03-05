@@ -1,0 +1,405 @@
+.admin-waitlist-page {
+  max-width: 1100px;
+}
+
+.admin-waitlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.admin-waitlist-header h1 {
+  font-size: 18px;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* Stats bar */
+.admin-waitlist-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-waitlist-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  text-align: center;
+}
+
+.admin-waitlist-stat-card h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-waitlist-stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+.admin-waitlist-stat-card.pending .stat-value {
+  color: var(--color-warning);
+}
+
+.admin-waitlist-stat-card.approved .stat-value {
+  color: var(--color-accent);
+}
+
+.admin-waitlist-stat-card.registered .stat-value {
+  color: var(--color-success);
+}
+
+.admin-waitlist-stat-card.declined .stat-value {
+  color: var(--color-danger);
+}
+
+/* Filters */
+.admin-waitlist-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-waitlist-filters select,
+.admin-waitlist-filters input {
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.admin-waitlist-filters select:focus,
+.admin-waitlist-filters input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.admin-waitlist-filters input {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Bulk actions */
+.admin-waitlist-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-accent-light);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.admin-waitlist-bulk-bar .btn {
+  margin-left: auto;
+}
+
+/* Table */
+.admin-waitlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.admin-waitlist-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-waitlist-table th.col-checkbox {
+  width: 40px;
+  text-align: center;
+}
+
+.admin-waitlist-table td {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.admin-waitlist-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-waitlist-table td.col-checkbox {
+  text-align: center;
+}
+
+.admin-waitlist-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* Role badges */
+.admin-waitlist-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.waitlist-role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+  text-transform: capitalize;
+}
+
+.waitlist-role-badge.parent {
+  background: #e8d5f5;
+  color: #7c3aed;
+}
+
+.waitlist-role-badge.student {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.waitlist-role-badge.teacher {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Status badges */
+.waitlist-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-transform: capitalize;
+}
+
+.waitlist-status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.waitlist-status-badge.approved {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.waitlist-status-badge.registered {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.waitlist-status-badge.declined {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Row actions */
+.admin-waitlist-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Notes inline edit */
+.admin-waitlist-notes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.admin-waitlist-notes-input {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 100%;
+  min-width: 100px;
+}
+
+.admin-waitlist-notes-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+.admin-waitlist-notes-text {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 4px 0;
+  min-height: 24px;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.admin-waitlist-notes-text:hover {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-accent);
+}
+
+/* Pagination */
+.admin-waitlist-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.admin-waitlist-pagination button {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.admin-waitlist-pagination button:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+  border-color: var(--color-accent);
+}
+
+.admin-waitlist-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Empty state */
+.admin-waitlist-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-ink-muted);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Dark theme overrides for hardcoded badge colors */
+[data-theme="dark"] .waitlist-role-badge.parent {
+  background: #4c1d95;
+  color: #ddd6fe;
+}
+
+[data-theme="dark"] .waitlist-role-badge.student {
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+[data-theme="dark"] .waitlist-role-badge.teacher {
+  background: #1e3a5f;
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .waitlist-status-badge.pending {
+  background: #78350f;
+  color: #fde68a;
+}
+
+[data-theme="dark"] .waitlist-status-badge.approved {
+  background: #1e3a5f;
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .waitlist-status-badge.registered {
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+[data-theme="dark"] .waitlist-status-badge.declined {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+@media (max-width: 768px) {
+  .admin-waitlist-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-waitlist-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-waitlist-filters {
+    flex-direction: column;
+  }
+
+  .admin-waitlist-filters input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-waitlist-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .admin-waitlist-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .admin-waitlist-stat-card {
+    padding: 10px 12px;
+  }
+
+  .admin-waitlist-stat-card .stat-value {
+    font-size: 22px;
+  }
+
+  .admin-waitlist-table th,
+  .admin-waitlist-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .admin-waitlist-pagination {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
