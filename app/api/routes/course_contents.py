@@ -16,6 +16,7 @@ from app.models.user import User, UserRole
 from app.api.deps import get_current_user, can_access_course
 from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
+from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
 from app.services.file_processor import process_file, FileProcessingError
 from app.core.config import settings
@@ -156,6 +157,8 @@ def create_course_content(
     # Trigger AI generation in background if requested (#552)
     source_text = data.text_content or data.description or ""
     if ai_tool != "none" and source_text:
+        # Check AI usage limit before dispatching background generation
+        check_ai_usage(current_user, db)
         background_tasks.add_task(
             _run_ai_generation_background,
             content_id=content.id,
@@ -192,7 +195,9 @@ def _run_ai_generation_background(
 
     async def _generate():
         from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+        from app.services.ai_usage import increment_ai_usage
         from app.models.study_guide import StudyGuide
+        from app.models.user import User
 
         db = SessionLocal()
         try:
@@ -249,6 +254,11 @@ def _run_ai_generation_background(
                     guide_type="flashcards",
                 )
                 db.add(guide)
+
+            # Increment AI usage after successful generation
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                increment_ai_usage(user, db)
 
             db.commit()
             logger.info(
@@ -354,6 +364,8 @@ async def upload_course_content_file(
 
     # Trigger AI generation in background if requested (#552)
     if ai_tool_normalized != "none" and extracted_text:
+        # Check AI usage limit before dispatching background generation
+        check_ai_usage(current_user, db)
         background_tasks.add_task(
             _run_ai_generation_background,
             content_id=content.id,

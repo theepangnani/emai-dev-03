@@ -42,6 +42,10 @@ class User(Base):
     # Onboarding setup checklist
     onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
 
+    # AI usage limits
+    ai_usage_limit = Column(Integer, default=10)
+    ai_usage_count = Column(Integer, default=0)
+
     # Account lockout (brute-force protection)
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
