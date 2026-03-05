@@ -377,7 +377,7 @@
 .cm-difficulty-label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--color-ink-muted, #5b6274);
 }
 
 .cm-difficulty-toggle {
@@ -392,7 +392,7 @@
   font-weight: 500;
   border: none;
   background: var(--color-surface);
-  color: var(--color-text-secondary);
+  color: var(--color-ink-muted, #5b6274);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
@@ -414,8 +414,9 @@
 }
 
 .cm-difficulty-btn.active {
-  background: var(--color-primary);
+  background: var(--color-accent-strong, #2d6eb5);
   color: #fff;
+  font-weight: 600;
 }
 
 .cm-difficulty-btn:disabled {
