@@ -113,7 +113,7 @@ def _store_granted_scopes(user: User, granted_scopes_str: str) -> None:
 
 @router.get("/auth")
 @limiter.limit("10/minute")
-def google_auth(request: Request, user_id: int | None = None, _gc=Depends(_require_google_classroom)):
+def google_auth(request: Request, user_id: int | None = None):
     """Get Google OAuth authorization URL.
 
     If user_id is provided, it will be included in the state to link
@@ -147,7 +147,6 @@ def google_callback(
     state: str | None = None,
     error: str | None = None,
     db: Session = Depends(get_db),
-    _gc=Depends(_require_google_classroom),
 ):
     """Handle Google OAuth callback."""
     # Handle OAuth errors

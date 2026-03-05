@@ -83,6 +83,42 @@ class TestGoogleAuth:
         assert "authorization_url" in data
         assert "state" in data
 
+    def test_auth_works_when_classroom_disabled(self, client):
+        """Regression: /auth must work even when GOOGLE_CLASSROOM_ENABLED=false (#1096)."""
+        from app.core.config import settings
+        original = settings.google_classroom_enabled
+        try:
+            settings.google_classroom_enabled = False
+            resp = client.get("/api/google/auth")
+            assert resp.status_code == 200
+            assert "authorization_url" in resp.json()
+        finally:
+            settings.google_classroom_enabled = original
+
+    def test_callback_reachable_when_classroom_disabled(self, client):
+        """Regression: /callback must not 404 when GOOGLE_CLASSROOM_ENABLED=false (#1096)."""
+        from app.core.config import settings
+        original = settings.google_classroom_enabled
+        try:
+            settings.google_classroom_enabled = False
+            # Missing 'code' param should give 422, not 404
+            resp = client.get("/api/google/callback")
+            assert resp.status_code != 404
+        finally:
+            settings.google_classroom_enabled = original
+
+    def test_classroom_routes_still_gated_when_disabled(self, client, gc_user):
+        """Classroom-specific routes should still return 404 when toggle is off."""
+        from app.core.config import settings
+        original = settings.google_classroom_enabled
+        headers = _auth(client, gc_user.email)
+        try:
+            settings.google_classroom_enabled = False
+            assert client.get("/api/google/status", headers=headers).status_code == 404
+            assert client.get("/api/google/courses", headers=headers).status_code == 404
+        finally:
+            settings.google_classroom_enabled = original
+
 
 # ── Sync response format (#433) ──────────────────────────────
 
