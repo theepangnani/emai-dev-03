@@ -166,6 +166,7 @@ export type { GradeItem, CourseAverage, GradeSummary, TrendPoint, TrendResponse,
 export { linkRequestsApi } from './linkRequests';
 export type { LinkRequestItem, LinkRequestUser } from './linkRequests';
 export { gradesApi } from './grades';
+export { waitlistApi } from './waitlist';
 export type {
   CourseGradeInfo,
   ChildGradeSummary,

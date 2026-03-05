@@ -1,0 +1,34 @@
+/* Waitlist-specific styles — reuses .auth-* from Auth.css */
+
+.waitlist-success {
+  text-align: center;
+}
+
+.waitlist-success-icon {
+  margin-bottom: 16px;
+  color: var(--color-success, #16a34a);
+}
+
+.waitlist-success-icon svg {
+  display: inline-block;
+}
+
+.waitlist-confirm-text {
+  color: var(--color-ink-muted);
+  margin: 8px 0;
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.waitlist-confirm-text strong {
+  color: var(--color-ink);
+}
+
+.waitlist-home-btn {
+  display: inline-block;
+  margin-top: 24px;
+  text-align: center;
+  text-decoration: none;
+  width: 100%;
+  box-sizing: border-box;
+}
