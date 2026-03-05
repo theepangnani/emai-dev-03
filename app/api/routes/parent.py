@@ -1189,14 +1189,44 @@ def assign_courses_to_child(
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
+    # Build set of course IDs this parent is allowed to assign:
+    # own courses, co-parent courses, child-created courses, and public courses
+    child_rows_all = db.query(parent_students.c.student_id).filter(
+        parent_students.c.parent_id == current_user.id
+    ).all()
+    child_sids = [r[0] for r in child_rows_all]
+
+    allowed_course_ids: set[int] = set()
+    # Own courses
+    own = db.query(Course.id).filter(Course.created_by_user_id == current_user.id).all()
+    allowed_course_ids.update(r[0] for r in own)
+    # Public courses
+    public = db.query(Course.id).filter(Course.is_private == False).all()  # noqa: E712
+    allowed_course_ids.update(r[0] for r in public)
+    if child_sids:
+        # Child-created courses
+        child_uids = [r[0] for r in db.query(Student.user_id).filter(Student.id.in_(child_sids)).all()]
+        if child_uids:
+            child_created = db.query(Course.id).filter(Course.created_by_user_id.in_(child_uids)).all()
+            allowed_course_ids.update(r[0] for r in child_created)
+        # Co-parent courses
+        co_parent_rows = db.query(parent_students.c.parent_id).filter(
+            parent_students.c.student_id.in_(child_sids),
+            parent_students.c.parent_id != current_user.id,
+        ).all()
+        co_parent_uids = [r[0] for r in co_parent_rows]
+        if co_parent_uids:
+            co_created = db.query(Course.id).filter(Course.created_by_user_id.in_(co_parent_uids)).all()
+            allowed_course_ids.update(r[0] for r in co_created)
+
     assigned = []
     for course_id in data.course_ids:
         course = db.query(Course).filter(Course.id == course_id).first()
         if not course:
             continue
 
-        # Parent can assign their own courses or public courses
-        if course.is_private and course.created_by_user_id != current_user.id:
+        # Parent can assign courses they can see (own, co-parent, child-created, or public)
+        if course.id not in allowed_course_ids:
             continue
 
         # Check if already enrolled

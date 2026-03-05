@@ -716,7 +716,11 @@ export function StudyGuidesPage() {
   // Quick assign a single material's course to a child (#623)
   const handleQuickAssign = async (contentItem: CourseContentItem, childStudentId: number) => {
     try {
-      await parentApi.assignCoursesToChild(childStudentId, [contentItem.course_id]);
+      const result = await parentApi.assignCoursesToChild(childStudentId, [contentItem.course_id]);
+      if (result.assigned.length === 0) {
+        showToast('Course could not be assigned — it may already be assigned or not available');
+        return;
+      }
       showToast(`Assigned "${contentItem.course_name || 'course'}" to child`);
       // Refresh linked data
       const linkedData = await courseContentsApi.getLinkedCourseIds();
@@ -741,10 +745,16 @@ export function StudyGuidesPage() {
           .map(c => c.course_id)
       )];
       // Assign to each selected child
+      let totalAssigned = 0;
       for (const childSid of assignTargetChildren) {
-        await parentApi.assignCoursesToChild(childSid, courseIdsToAssign);
+        const result = await parentApi.assignCoursesToChild(childSid, courseIdsToAssign);
+        totalAssigned += result.assigned.length;
       }
-      showToast(`Assigned ${courseIdsToAssign.length} course(s) to ${assignTargetChildren.size} child(ren)`);
+      if (totalAssigned === 0) {
+        showToast('No courses could be assigned — they may already be assigned or not available');
+      } else {
+        showToast(`Assigned ${totalAssigned} course(s) to ${assignTargetChildren.size} child(ren)`);
+      }
       // Refresh linked data
       const linkedData = await courseContentsApi.getLinkedCourseIds();
       setLinkedCourseIds(new Set(linkedData.linked_course_ids));
