@@ -47,6 +47,10 @@ class User(Base):
     locked_until = Column(DateTime(timezone=True), nullable=True)
     last_failed_login = Column(DateTime(timezone=True), nullable=True)
 
+    # AI usage limits
+    ai_usage_limit = Column(Integer, default=10)
+    ai_usage_count = Column(Integer, default=0)
+
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)

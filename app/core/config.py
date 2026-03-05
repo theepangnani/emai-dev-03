@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     # Feature toggles (#1054)
     google_classroom_enabled: bool = False
 
+    # AI usage limits
+    ai_default_usage_limit: int = 10
+    ai_usage_warning_threshold: float = 0.8
+
     # File storage
     upload_dir: str = "./uploads"
 

@@ -21,6 +21,7 @@ from app.models.notification_suppression import NotificationSuppression
 from app.models.quiz_result import QuizResult
 from app.models.student_email import StudentEmail, EmailType
 from app.models.waitlist import Waitlist
+from app.models.ai_limit_request import AILimitRequest
 
 __all__ = [
     "User",
@@ -62,4 +63,5 @@ __all__ = [
     "StudentEmail",
     "EmailType",
     "Waitlist",
+    "AILimitRequest",
 ]
