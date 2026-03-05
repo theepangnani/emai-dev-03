@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { isValidEmail } from '../utils/validation';
+import { useFeatureToggles } from '../hooks/useFeatureToggle';
 import './Auth.css';
 
 type RegisterMode = 'email' | 'username';
@@ -33,6 +34,40 @@ export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const usernameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const features = useFeatureToggles();
+
+  // Waitlist token state
+  const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
+  const [waitlistVerifying, setWaitlistVerifying] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState<string | null>(null);
+  const [waitlistError, setWaitlistError] = useState('');
+
+  // Handle waitlist token from URL
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      setWaitlistToken(token);
+      setWaitlistVerifying(true);
+      authApi.verifyWaitlistToken(token)
+        .then((data) => {
+          setFormData((prev) => ({
+            ...prev,
+            full_name: data.name || prev.full_name,
+            email: data.email,
+          }));
+          setWaitlistEmail(data.email);
+          setWaitlistVerifying(false);
+        })
+        .catch((err) => {
+          const detail = err?.response?.data?.detail || 'Invalid or expired invitation token.';
+          setWaitlistError(detail);
+          setWaitlistVerifying(false);
+        });
+    } else if (features.waitlist_enabled) {
+      // No token and waitlist is enabled -- redirect to waitlist page
+      navigate('/waitlist', { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle Google OAuth redirect with pre-fill data
   useEffect(() => {
@@ -54,6 +89,7 @@ export function Register() {
   }, []);
 
   const isGoogleSignup = googleData !== null;
+  const isWaitlistSignup = waitlistEmail !== null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -105,6 +141,7 @@ export function Register() {
 
   const handleModeSwitch = (newMode: RegisterMode) => {
     if (isGoogleSignup) return; // Google OAuth forces email mode
+    if (isWaitlistSignup) return; // Waitlist forces email mode
     setMode(newMode);
     setError('');
     setUsernameStatus({ checking: false, available: null, message: '' });
@@ -155,6 +192,7 @@ export function Register() {
           full_name: string;
           roles: string[];
           google_id?: string;
+          token?: string;
         } = {
           email: formData.email,
           password: formData.password,
@@ -163,6 +201,7 @@ export function Register() {
         };
 
         if (googleData) registrationData.google_id = googleData.google_id;
+        if (waitlistToken) registrationData.token = waitlistToken;
 
         await register(registrationData);
         navigate('/onboarding');
@@ -191,17 +230,53 @@ export function Register() {
     }
   };
 
+  // Show loading state while verifying waitlist token
+  if (waitlistVerifying) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
+          <h1 className="auth-title">Verifying Invitation</h1>
+          <p className="auth-subtitle">Please wait while we verify your invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if waitlist token is invalid
+  if (waitlistError) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
+          <h1 className="auth-title">Invalid Invitation</h1>
+          <div className="auth-error">{waitlistError}</div>
+          <p className="auth-subtitle" style={{ marginTop: '16px' }}>
+            Your invitation link is invalid or has expired.
+          </p>
+          <p className="auth-footer">
+            <Link to="/waitlist">Join the waitlist</Link> to request access.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-container">
       <div className="auth-card">
         <img src="/classbridge-logo.png" alt="ClassBridge" className="auth-logo" />
         <h1 className="auth-title">Join ClassBridge</h1>
         <p className="auth-subtitle">
-          {isGoogleSignup ? 'Complete your Google account setup' : 'Create your account to get started'}
+          {isGoogleSignup
+            ? 'Complete your Google account setup'
+            : isWaitlistSignup
+              ? 'Complete your invited account setup'
+              : 'Create your account to get started'}
         </p>
 
-        {/* Mode toggle (hidden during Google signup) */}
-        {!isGoogleSignup && (
+        {/* Mode toggle (hidden during Google or waitlist signup) */}
+        {!isGoogleSignup && !isWaitlistSignup && (
           <div className="auth-mode-toggle">
             <button
               type="button"
@@ -247,8 +322,11 @@ export function Register() {
                 onChange={handleChange}
                 placeholder="you@example.com"
                 required
-                disabled={isGoogleSignup}
+                disabled={isGoogleSignup || isWaitlistSignup}
               />
+              {isWaitlistSignup && (
+                <span className="form-hint">Email is set from your invitation and cannot be changed.</span>
+              )}
             </div>
           ) : (
             <>

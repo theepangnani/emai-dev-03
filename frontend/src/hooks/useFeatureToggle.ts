@@ -9,6 +9,7 @@ interface FeatureToggles {
 const DEFAULTS: FeatureToggles = {
   google_classroom: false,
   waitlist_enabled: true,
+  waitlist_enabled: false,
 };
 
 async function fetchFeatures(): Promise<FeatureToggles> {

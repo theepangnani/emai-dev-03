@@ -17,6 +17,7 @@ from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddlew
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -36,6 +37,7 @@ logger.info("Starting EMAI application...")
 from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
+from app.models.waitlist import Waitlist  # noqa: F401 — ensure table is created (#1114)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

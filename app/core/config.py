@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     ai_default_usage_limit: int = 10
     ai_usage_warning_threshold: float = 0.8
 
+    # Waitlist (#1114) — when True, registration requires an invite token
+    waitlist_enabled: bool = False
+
     # File storage
     upload_dir: str = "./uploads"
 

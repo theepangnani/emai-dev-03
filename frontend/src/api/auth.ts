@@ -13,9 +13,14 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string }) => {
+  register: async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string }) => {
     const response = await api.post('/api/auth/register', { roles: [], ...data });
     return response.data;
+  },
+
+  verifyWaitlistToken: async (token: string) => {
+    const response = await api.get(`/api/waitlist/verify/${encodeURIComponent(token)}`);
+    return response.data as { name: string; email: string; roles: string | null };
   },
 
   getMe: async () => {
