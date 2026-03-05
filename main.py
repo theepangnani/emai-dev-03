@@ -16,7 +16,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -33,7 +33,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, AILimitRequest
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 Base.metadata.create_all(bind=engine)
@@ -765,6 +765,26 @@ with engine.connect() as conn:
         conn.rollback()
 
 
+    # ── users: AI usage limit columns (#1119) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "ai_usage_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_count INTEGER DEFAULT 0"))
+                logger.info("Added 'ai_usage_count' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "ai_usage_limit" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN ai_usage_limit INTEGER DEFAULT 10"))
+                logger.info("Added 'ai_usage_limit' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 app = FastAPI(
@@ -887,6 +907,8 @@ app.include_router(link_requests.router, prefix="/api")
 app.include_router(quiz_results.router, prefix="/api")
 app.include_router(onboarding.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
+app.include_router(ai_usage.router, prefix="/api")
+app.include_router(ai_usage.admin_router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
