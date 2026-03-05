@@ -30,6 +30,14 @@ def join_waitlist(
     # Normalize email to lowercase
     email = data.email.lower()
 
+    # Check if email is already registered as a user
+    existing_user = db.query(User).filter(func.lower(User.email) == email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This email is already registered. Please log in instead.",
+        )
+
     # Check for existing waitlist entry (case-insensitive)
     existing = db.query(Waitlist).filter(func.lower(Waitlist.email) == email).first()
     if existing:
