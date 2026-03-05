@@ -70,6 +70,7 @@ class Settings(BaseSettings):
 
     # Feature toggles (#1054)
     google_classroom_enabled: bool = False
+    waitlist_enabled: bool = True  # Show "Join the Waitlist" instead of "Sign Up" on login (#1113)
 
     # File storage
     upload_dir: str = "./uploads"

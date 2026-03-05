@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { googleApi } from '../api/client';
+import { useFeature } from '../hooks/useFeatureToggle';
 import './Auth.css';
 
 export function Login() {
@@ -16,6 +17,7 @@ export function Login() {
   const { user, login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const waitlistEnabled = useFeature('waitlist_enabled');
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Redirect to dashboard once user is loaded (after OAuth or if already logged in)
@@ -238,7 +240,11 @@ export function Login() {
         </button>
 
         <p className="auth-footer">
-          Don't have an account? <Link to="/register">Sign up</Link>
+          {waitlistEnabled ? (
+            <>Interested? <Link to="/waitlist">Join the Waitlist</Link></>
+          ) : (
+            <>Don't have an account? <Link to="/register">Sign up</Link></>
+          )}
         </p>
         <p className="auth-footer" style={{ marginTop: '8px', fontSize: '13px' }}>
           <Link to="/privacy">Privacy Policy</Link>
