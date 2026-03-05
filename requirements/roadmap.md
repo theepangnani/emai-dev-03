@@ -148,6 +148,7 @@
 - [x] **Study guide PDF download button** — Added PDF download button with `downloadAsPdf` to individual study guide page (`/study/guide/:id`); wrapped content in `ref` for html2pdf capture (#1073) (IMPLEMENTED, PR #1075)
 - [x] **Hide Connect Google for students** — Removed "Connect Google" button from StudyPage sidebar and Google Classroom banner from StudentDashboard for student role (#1074) (IMPLEMENTED, PR #1075)
 - [x] **Student classes page icon+plus CTA** — Added `title-add-btn` to student's "My Classes" tab area on CoursesPage (#1075) (IMPLEMENTED, PR #1075)
+- [x] **Mobile responsive layout fixes** — Suppress welcome section on detail sub-pages (CourseMaterialDetailPage, TaskDetailPage, StudyPage); add 480px header breakpoint (compact logo, truncated username); mobile GlobalSearch sizing; MaterialContextMenu dropdown repositioning; toolbar horizontal scroll at 768px (#1098) (IMPLEMENTED, PR #1099)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
