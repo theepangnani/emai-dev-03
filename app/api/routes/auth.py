@@ -81,6 +81,47 @@ def _send_verification_ack_email(user: User, db: Session) -> None:
 @router.post("/register", response_model=UserResponse)
 @limiter.limit("3/minute")
 def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
+    # --- Waitlist token gate (#1114) ---
+    waitlist_record = None
+    if settings.waitlist_enabled:
+        if not user_data.token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Registration requires an invitation. Please join the waitlist.",
+            )
+        from app.models.waitlist import Waitlist
+        waitlist_record = db.query(Waitlist).filter(
+            Waitlist.invite_token == user_data.token
+        ).first()
+        if not waitlist_record:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid invitation token.",
+            )
+        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+        expires = waitlist_record.invite_token_expires_at
+        if expires is None or expires.replace(tzinfo=None) < now_naive:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This invitation token has expired.",
+            )
+        if waitlist_record.status != "approved":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This invitation is no longer valid.",
+            )
+        if waitlist_record.registered_user_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This invitation has already been used.",
+            )
+        # Pre-populate email from waitlist record (authoritative source)
+        user_data.email = waitlist_record.email.lower()
+        if not user_data.full_name or not user_data.full_name.strip():
+            user_data.full_name = waitlist_record.name
+        # Mark email as validated on waitlist record
+        waitlist_record.email_validated = True
+
     # Block admin self-registration (only when roles are provided)
     if user_data.role and user_data.role not in _ALLOWED_REGISTRATION_ROLES:
         raise HTTPException(
@@ -132,6 +173,9 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     # Google-authenticated users have verified email via Google
     is_google_signup = bool(user_data.google_id)
 
+    # Waitlist users have a pre-verified email
+    is_email_verified = is_google_signup or (waitlist_record is not None)
+
     # Create new user
     user = User(
         email=user_data.email,
@@ -142,8 +186,8 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         roles=",".join(r.value for r in user_data.roles) if has_roles else "",
         needs_onboarding=not has_roles,
         onboarding_completed=has_roles,  # Completed if roles were provided at registration
-        email_verified=is_google_signup,
-        email_verified_at=datetime.now(timezone.utc) if is_google_signup else None,
+        email_verified=is_email_verified,
+        email_verified_at=datetime.now(timezone.utc) if is_email_verified else None,
         google_id=user_data.google_id,
         google_access_token=google_access_token,
         google_refresh_token=google_refresh_token,
@@ -239,15 +283,22 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
                 except Exception as e:
                     _logger.warning("Failed to send parent invite email to %s: %s", user_data.parent_email, e)
 
+    # Update waitlist record after successful user creation (#1114)
+    if waitlist_record is not None:
+        waitlist_record.status = "registered"
+        waitlist_record.registered_user_id = user.id
+
     log_action(db, user_id=user.id, action="create", resource_type="user", resource_id=user.id,
-               details={"role": user_data.role, "email": user_data.email, "username": user_data.username, "needs_onboarding": not has_roles},
+               details={"role": user_data.role, "email": user_data.email, "username": user_data.username, "needs_onboarding": not has_roles, "via_waitlist": waitlist_record is not None},
                ip_address=request.client.host if request.client else None)
     db.commit()
     db.refresh(user)
 
     # Send verification + welcome emails for non-Google signups with email (best-effort)
+    # Waitlist users already have verified email — skip verification email
     if not is_google_signup and user.email:
-        _send_verification_email(user, db)
+        if waitlist_record is None:
+            _send_verification_email(user, db)
         _send_welcome_email(user, db)
 
     return UserResponse(

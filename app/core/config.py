@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     # Feature toggles (#1054)
     google_classroom_enabled: bool = False
 
+    # Waitlist (#1114) — when True, registration requires an invite token
+    waitlist_enabled: bool = False
+
     # File storage
     upload_dir: str = "./uploads"
 

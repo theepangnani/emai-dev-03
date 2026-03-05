@@ -25,6 +25,7 @@ class UserCreate(BaseModel):
     roles: list[UserRole] = []    # New multi-role field
     teacher_type: str | None = Field(default=None, max_length=50)
     google_id: str | None = Field(default=None, max_length=255)
+    token: str | None = Field(default=None, max_length=255)  # Waitlist invite token (#1114)
 
     @field_validator('full_name', 'teacher_type', mode='before')
     @classmethod
