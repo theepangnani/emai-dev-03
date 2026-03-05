@@ -3,10 +3,12 @@ import { api } from '../api/client';
 
 interface FeatureToggles {
   google_classroom: boolean;
+  waitlist_enabled: boolean;
 }
 
 const DEFAULTS: FeatureToggles = {
   google_classroom: false,
+  waitlist_enabled: true,
 };
 
 async function fetchFeatures(): Promise<FeatureToggles> {

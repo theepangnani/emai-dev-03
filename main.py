@@ -962,6 +962,7 @@ def get_feature_toggles():
     """Public endpoint returning feature availability for the frontend."""
     return {
         "google_classroom": settings.google_classroom_enabled,
+        "waitlist_enabled": settings.waitlist_enabled,
     }
 
 

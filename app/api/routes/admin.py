@@ -581,6 +581,7 @@ def get_feature_toggles(
     """Get current feature toggle states."""
     return {
         "google_classroom": settings.google_classroom_enabled,
+        "waitlist_enabled": settings.waitlist_enabled,
     }
 
 
@@ -598,7 +599,7 @@ def update_feature_toggle(
     Changes take effect immediately but reset on server restart.
     Set the corresponding env var for persistence across restarts.
     """
-    valid_features = {"google_classroom": "google_classroom_enabled"}
+    valid_features = {"google_classroom": "google_classroom_enabled", "waitlist_enabled": "waitlist_enabled"}
     if feature_key not in valid_features:
         raise HTTPException(status_code=404, detail=f"Unknown feature: {feature_key}")
 
