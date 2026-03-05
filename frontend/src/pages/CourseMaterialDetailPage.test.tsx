@@ -143,6 +143,18 @@ describe('CourseMaterialDetailPage', () => {
     expect(screen.getByTestId('edit-material-modal')).toBeInTheDocument()
   })
 
+  it('does NOT render welcome section on detail sub-page (#1098)', async () => {
+    renderWithProviders(<CourseMaterialDetailPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('t.math.set2.8')).toBeInTheDocument()
+    })
+
+    // Welcome section should be suppressed on detail pages — headerSlot={() => null}
+    expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument()
+    expect(screen.queryByText("Here's your overview")).not.toBeInTheDocument()
+  })
+
   it('renders modal-overlay class when edit modal is open (enables body scroll lock)', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CourseMaterialDetailPage />)

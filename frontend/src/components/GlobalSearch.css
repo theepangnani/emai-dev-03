@@ -180,3 +180,20 @@
     max-height: calc(100vh - 80px);
   }
 }
+
+@media (max-width: 480px) {
+  .global-search {
+    margin: 0 4px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .global-search-input {
+    padding: 6px 10px 6px 32px;
+    font-size: 13px;
+  }
+
+  .global-search-input::placeholder {
+    font-size: 11px;
+  }
+}

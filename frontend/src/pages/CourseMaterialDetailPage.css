@@ -1286,10 +1286,17 @@
   .cm-header-toolbar {
     padding: 10px 16px;
     gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .cm-header-toolbar::-webkit-scrollbar {
+    display: none;
   }
   .cm-toolbar-btn {
     padding: 6px 8px;
     font-size: 0.75rem;
+    flex-shrink: 0;
   }
   .cm-toolbar-btn-label {
     display: none;
