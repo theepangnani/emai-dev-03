@@ -166,6 +166,8 @@ export type { GradeItem, CourseAverage, GradeSummary, TrendPoint, TrendResponse,
 export { linkRequestsApi } from './linkRequests';
 export type { LinkRequestItem, LinkRequestUser } from './linkRequests';
 export { gradesApi } from './grades';
+export { adminAIUsageApi } from './adminAIUsage';
+export type { AIUsageUser, AIUsageUserList, AILimitRequest, AILimitRequestList, AIUsageSummary } from './adminAIUsage';
 export type {
   CourseGradeInfo,
   ChildGradeSummary,
