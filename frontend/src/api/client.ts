@@ -175,3 +175,5 @@ export type {
   CourseGradesResponse,
   GradeSyncResponse,
 } from './grades';
+export { aiUsageApi } from './aiUsage';
+export type { AIUsageResponse, AIUsageRequestData, AIUsageRequestResponse } from './aiUsage';

@@ -11,6 +11,8 @@ import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AssignmentSubmission } from '../components/AssignmentSubmission';
+import { useAIUsage } from '../hooks/useAIUsage';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import '../components/AssignmentSubmission.css';
 import './CourseDetailPage.css';
 
@@ -117,6 +119,10 @@ export function CourseDetailPage() {
   const [extractedText, setExtractedText] = useState('');
   const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // AI usage
+  const { remaining, atLimit, invalidate: refreshAIUsage } = useAIUsage();
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   // Generate study guide state
   const [generatingContentId, setGeneratingContentId] = useState<number | null>(null);
@@ -442,6 +448,10 @@ export function CourseDetailPage() {
       return;
     }
     if (generatingRef.current) return;
+    if (atLimit) {
+      setShowLimitModal(true);
+      return;
+    }
 
     // Check for existing study guide
     try {
@@ -461,7 +471,7 @@ export function CourseDetailPage() {
 
     const ok = await confirm({
       title: 'Generate Study Guide',
-      message: `Generate a study guide from "${item.title}"? This will use AI credits.`,
+      message: `Generate a study guide from "${item.title}"? This will use 1 AI credit. You have ${remaining} remaining.`,
       confirmLabel: 'Generate',
     });
     if (!ok) return;
@@ -474,6 +484,7 @@ export function CourseDetailPage() {
         title: item.title,
         course_id: courseId,
       });
+      refreshAIUsage();
       navigate(`/study/guide/${result.id}`);
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to generate study guide');
@@ -1183,6 +1194,7 @@ export function CourseDetailPage() {
         linkedEntityLabel={taskModalContext?.label}
       />
       {confirmModal}
+      <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
     </DashboardLayout>
   );
 }

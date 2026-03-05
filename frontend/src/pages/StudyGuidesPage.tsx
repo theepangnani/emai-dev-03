@@ -14,6 +14,9 @@ import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import EmptyState from '../components/EmptyState';
+import { AIWarningBanner } from '../components/AICreditsDisplay';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { useAIUsage } from '../hooks/useAIUsage';
 import '../components/AddActionButton.css';
 import './StudyGuidesPage.css';
 
@@ -60,6 +63,8 @@ export function StudyGuidesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isParent = user?.role === 'parent';
   const { confirm, confirmModal } = useConfirm();
+  const { remaining, atLimit, invalidate: refreshAIUsage } = useAIUsage();
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   // Course content items (primary list)
   const [contentItems, setContentItems] = useState<CourseContentItem[]>([]);
@@ -515,6 +520,7 @@ export function StudyGuidesPage() {
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
+        refreshAIUsage();
 
         // Show date prompt for auto-created tasks
         const tasks = result?.auto_created_tasks;
@@ -555,6 +561,12 @@ export function StudyGuidesPage() {
 
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     if (generatingRef.current) return;
+    // Block AI generation when at limit (upload-only mode is allowed)
+    if (atLimit && modalParams.types.length > 0) {
+      resetModal();
+      setShowLimitModal(true);
+      return;
+    }
     lastGenerateParamsRef.current = modalParams;
 
     const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
@@ -866,6 +878,7 @@ export function StudyGuidesPage() {
           { label: 'Home', to: '/dashboard' },
           { label: 'Class Materials' },
         ]} />
+        <AIWarningBanner />
 
         {/* Child selector pills (parent only) + add action button */}
         {isParent && children.length > 0 && (
@@ -1476,6 +1489,7 @@ export function StudyGuidesPage() {
         </div>
       )}
       {confirmModal}
+      <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
       {toast && <div className="toast-notification">{toast}</div>}
     </DashboardLayout>
   );
