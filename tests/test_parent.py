@@ -299,6 +299,62 @@ class TestAssignCourses:
         data = resp.json()
         assert any(a["course_id"] == course.id for a in data.get("assigned", []))
 
+    def test_assign_coparent_private_course(self, client, users, db_session):
+        """Regression: co-parent's private course should be assignable (#1101)."""
+        from sqlalchemy import insert
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.course import Course
+        from app.models.student import parent_students, RelationshipType
+
+        hashed = get_password_hash("Test1234!")
+        co_parent = User(email="par_coparent@test.com", full_name="Co Parent", role=UserRole.PARENT, hashed_password=hashed)
+        db_session.add(co_parent)
+        db_session.flush()
+
+        # Link co-parent to the same student
+        db_session.execute(insert(parent_students).values(
+            parent_id=co_parent.id, student_id=users["student_rec"].id,
+            relationship_type=RelationshipType.GUARDIAN,
+        ))
+
+        # Co-parent's private course (like their "Main Class")
+        co_course = Course(name="Co-Parent Main Class", created_by_user_id=co_parent.id, is_private=True)
+        db_session.add(co_course)
+        db_session.commit()
+        db_session.refresh(co_course)
+
+        # Original parent should be able to assign co-parent's private course
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/courses",
+            json={"course_ids": [co_course.id]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert any(a["course_id"] == co_course.id for a in data.get("assigned", []))
+
+    def test_assign_child_private_course(self, client, users, db_session):
+        """Regression: child's private course should be assignable (#1101)."""
+        from app.models.course import Course
+
+        # Child-created private course
+        child_course = Course(name="Child Main Class", created_by_user_id=users["student"].id, is_private=True)
+        db_session.add(child_course)
+        db_session.commit()
+        db_session.refresh(child_course)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/courses",
+            json={"course_ids": [child_course.id]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert any(a["course_id"] == child_course.id for a in data.get("assigned", []))
+
     def test_unassign_course(self, client, users, db_session):
         from app.models.course import Course, student_courses
         from sqlalchemy import insert
