@@ -10,7 +10,7 @@ interface LottieLoaderProps {
 
 // Brand colors in Lottie [R, G, B, A] format (0-1 range)
 const THEME_COLORS: Record<string, [number, number, number, number]> = {
-  light:  [0.286, 0.722, 0.753, 1], // #49b8c0 teal
+  light:  [0.290, 0.565, 0.851, 1], // #4a90d9 blue
   dark:   [0.655, 0.545, 0.980, 1], // #a78bfa purple (warm charcoal accent)
   focus:  [0.655, 0.545, 0.980, 1], // #a78bfa purple
 };

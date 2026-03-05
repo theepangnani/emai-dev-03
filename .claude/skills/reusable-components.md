@@ -110,7 +110,7 @@ Modal styles (`.modal-overlay`, `.modal`) are in `Dashboard.css`, which is share
 ## Design Tokens (CSS Variables)
 All components use CSS custom properties from the design system:
 ```css
---color-accent        /* Primary teal #49b8c0 */
+--color-accent        /* Primary blue #4a90d9 */
 --color-accent-warm   /* Warm accent for gradients */
 --color-accent-strong /* Darker accent for hover */
 --color-surface       /* Card/panel background */

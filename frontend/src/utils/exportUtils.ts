@@ -5,7 +5,7 @@
 const PRINT_STYLES = `
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; line-height: 1.6; padding: 24px; max-width: 800px; margin: 0 auto; }
   h1, h2, h3, h4 { margin-top: 1.2em; margin-bottom: 0.5em; }
-  h1 { font-size: 1.6rem; border-bottom: 2px solid #49b8c0; padding-bottom: 0.4rem; }
+  h1 { font-size: 1.6rem; border-bottom: 2px solid #4a90d9; padding-bottom: 0.4rem; }
   h2 { font-size: 1.3rem; color: #6c3eb8; }
   h3 { font-size: 1.1rem; }
   table { border-collapse: collapse; width: 100%; margin: 1em 0; }

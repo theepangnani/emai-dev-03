@@ -1,6 +1,6 @@
 export const colors = {
-  primary: '#49b8c0',
-  primaryDark: '#3a9aa1',
+  primary: '#4a90d9',
+  primaryDark: '#2d6eb5',
   accent: '#f4801f',
   secondary: '#34A853',
   warning: '#FBBC04',
@@ -13,7 +13,7 @@ export const colors = {
   textMuted: '#999999',
   border: '#e3e6ee',
   divider: '#EEEEEE',
-  unread: 'rgba(73, 184, 192, 0.12)',
+  unread: 'rgba(74, 144, 217, 0.12)',
 
   // Child color palette (matches web)
   childColors: [

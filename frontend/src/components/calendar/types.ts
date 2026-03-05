@@ -21,7 +21,7 @@ export const TASK_PRIORITY_COLORS: Record<string, string> = {
 };
 
 export const COURSE_COLORS = [
-  '#49b8c0', '#f4801f', '#7c5cbf', '#e05a9e', '#4caf50',
+  '#4a90d9', '#f4801f', '#7c5cbf', '#e05a9e', '#4caf50',
   '#ff7043', '#5c6bc0', '#26a69a', '#ef5350', '#42a5f5',
 ];
 

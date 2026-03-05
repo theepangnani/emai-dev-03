@@ -28,14 +28,14 @@ body:has(.modal-overlay) {
   --color-border: #e3e6ee;
 
   /* Accent — contrast ratios on white (#fff):
-     --color-accent:        #49b8c0 ~3.1:1  (AA-large only, NOT for small text)
-     --color-accent-strong: #3a9aa1 ~4.6:1  (AA for all text sizes) */
-  --color-accent: #49b8c0;
-  --color-accent-strong: #3a9aa1;
+     --color-accent:        #4a90d9 ~3.1:1  (AA-large only, NOT for small text)
+     --color-accent-strong: #2d6eb5 ~4.6:1  (AA for all text sizes) */
+  --color-accent: #4a90d9;
+  --color-accent-strong: #2d6eb5;
   --color-accent-warm: #f4801f;
-  --color-accent-light: rgba(73, 184, 192, 0.12);
-  --color-accent-subtle: rgba(73, 184, 192, 0.08);
-  --color-focus-ring: rgba(73, 184, 192, 0.12);
+  --color-accent-light: rgba(74, 144, 217, 0.12);
+  --color-accent-subtle: rgba(74, 144, 217, 0.08);
+  --color-focus-ring: rgba(74, 144, 217, 0.12);
 
   /* Purple accent (quiz/detail pages) */
   --color-purple: #7c3aed;
@@ -79,7 +79,7 @@ body:has(.modal-overlay) {
   --role-admin: #a85f13;
 
   /* Extra accent shades */
-  --color-accent-dark: #1f7a7a;
+  --color-accent-dark: #1c5a9c;
   --color-accent-warm-strong: #d97745;
   --color-success-dark: #246c2c;
   --color-inactive: #c1c6d1;
@@ -242,12 +242,12 @@ body:has(.modal-overlay) {
   --color-surface-header: rgba(250, 248, 245, 0.92);
   --color-border: #ddd6cc;
 
-  --color-accent: #5a9e8f;
-  --color-accent-strong: #4a8a7c;
+  --color-accent: #5a8fb5;
+  --color-accent-strong: #4a7fa5;
   --color-accent-warm: #c47f3b;
-  --color-accent-light: rgba(90, 158, 143, 0.12);
-  --color-accent-subtle: rgba(90, 158, 143, 0.08);
-  --color-focus-ring: rgba(90, 158, 143, 0.15);
+  --color-accent-light: rgba(90, 143, 181, 0.12);
+  --color-accent-subtle: rgba(90, 143, 181, 0.08);
+  --color-focus-ring: rgba(90, 143, 181, 0.15);
 
   --color-purple: #7b6b8a;
   --color-purple-strong: #6b5b7a;
@@ -284,7 +284,7 @@ body:has(.modal-overlay) {
   --role-teacher: #4a8a4a;
   --role-admin: #8a6a30;
 
-  --color-accent-dark: #4a8a7c;
+  --color-accent-dark: #3a6f95;
   --color-accent-warm-strong: #a86830;
   --color-success-dark: #3a7a3a;
   --color-inactive: #c5beb5;
