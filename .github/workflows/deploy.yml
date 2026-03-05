@@ -3,6 +3,7 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 env:
   PROJECT_ID: emai-dev-01
