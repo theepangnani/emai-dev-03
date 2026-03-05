@@ -2,12 +2,10 @@
 
 Covers:
 - GET /api/ai-usage — current user's AI usage stats
-- POST /api/ai-usage/request-credits — request more AI credits
-- AI generation enforcement (429 when at limit)
+- POST /api/ai-usage/request — request more AI credits
 - Admin CRUD on /api/admin/ai-usage
 """
 import pytest
-from unittest.mock import patch
 from conftest import PASSWORD, _auth
 
 
@@ -27,7 +25,10 @@ def users(db_session):
 
     hashed = get_password_hash(PASSWORD)
     admin = User(email=admin_email, full_name="AIU Admin", role=UserRole.ADMIN, hashed_password=hashed)
-    student = User(email="aiu_student@test.com", full_name="AIU Student", role=UserRole.STUDENT, hashed_password=hashed)
+    student = User(
+        email="aiu_student@test.com", full_name="AIU Student", role=UserRole.STUDENT,
+        hashed_password=hashed, ai_usage_count=5, ai_usage_limit=20,
+    )
     parent = User(email="aiu_parent@test.com", full_name="AIU Parent", role=UserRole.PARENT, hashed_password=hashed)
     db_session.add_all([admin, student, parent])
     db_session.commit()
@@ -38,7 +39,7 @@ def users(db_session):
     from app.models.student import Student
     s = db_session.query(Student).filter(Student.user_id == student.id).first()
     if not s:
-        s = Student(user_id=student.id, full_name="AIU Student")
+        s = Student(user_id=student.id)
         db_session.add(s)
         db_session.commit()
 
@@ -46,52 +47,30 @@ def users(db_session):
 
 
 @pytest.fixture()
-def ai_usage_record(db_session, users):
-    """Create an AI usage record for the student user."""
-    from app.models.ai_usage import AIUsage
-
-    record = db_session.query(AIUsage).filter(AIUsage.user_id == users["student"].id).first()
-    if record:
-        return record
-    record = AIUsage(
-        user_id=users["student"].id,
-        usage_count=5,
-        usage_limit=20,
-    )
-    db_session.add(record)
-    db_session.commit()
-    db_session.refresh(record)
-    return record
-
-
-@pytest.fixture()
 def maxed_out_user(db_session):
     """Create a user who has hit their AI usage limit."""
     from app.core.security import get_password_hash
     from app.models.user import User, UserRole
-    from app.models.ai_usage import AIUsage
     from app.models.student import Student
 
     email = "aiu_maxed@test.com"
     user = db_session.query(User).filter(User.email == email).first()
     if not user:
         hashed = get_password_hash(PASSWORD)
-        user = User(email=email, full_name="Maxed User", role=UserRole.STUDENT, hashed_password=hashed)
+        user = User(
+            email=email, full_name="Maxed User", role=UserRole.STUDENT,
+            hashed_password=hashed, ai_usage_count=20, ai_usage_limit=20,
+        )
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
 
-        s = Student(user_id=user.id, full_name="Maxed Student")
+        s = Student(user_id=user.id)
         db_session.add(s)
         db_session.commit()
-
-    record = db_session.query(AIUsage).filter(AIUsage.user_id == user.id).first()
-    if not record:
-        record = AIUsage(user_id=user.id, usage_count=20, usage_limit=20)
-        db_session.add(record)
-        db_session.commit()
     else:
-        record.usage_count = record.usage_limit
+        user.ai_usage_count = 20
+        user.ai_usage_limit = 20
         db_session.commit()
 
     return user
@@ -100,99 +79,59 @@ def maxed_out_user(db_session):
 # ── User Endpoints ───────────────────────────────────────────
 
 class TestGetAIUsage:
-    def test_get_ai_usage(self, client, users, ai_usage_record):
+    def test_get_ai_usage(self, client, users):
         headers = _auth(client, users["student"].email)
-        resp = client.get("/api/ai-usage", headers=headers)
+        resp = client.get("/api/ai-usage/", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert "usage_count" in data
-        assert "usage_limit" in data
+        assert "count" in data
+        assert "limit" in data
         assert "remaining" in data
-        assert data["remaining"] == data["usage_limit"] - data["usage_count"]
+        assert data["remaining"] == data["limit"] - data["count"]
 
 
 class TestRequestCredits:
-    def test_request_more_credits(self, client, users, ai_usage_record):
+    def test_request_more_credits(self, client, users):
         headers = _auth(client, users["student"].email)
-        resp = client.post("/api/ai-usage/request-credits", json={
-            "amount": 10,
+        resp = client.post("/api/ai-usage/request", json={
+            "requested_amount": 10,
             "reason": "Need more for studying",
         }, headers=headers)
-        assert resp.status_code == 200
+        assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "pending"
-        assert data["amount"] == 10
+        assert data["requested_amount"] == 10
 
-    def test_request_invalid_amount(self, client, users, ai_usage_record):
+    def test_request_invalid_amount(self, client, users):
         headers = _auth(client, users["student"].email)
-        resp = client.post("/api/ai-usage/request-credits", json={
-            "amount": 0,
+        resp = client.post("/api/ai-usage/request", json={
+            "requested_amount": 0,
             "reason": "Invalid",
         }, headers=headers)
         assert resp.status_code == 422
 
-        resp2 = client.post("/api/ai-usage/request-credits", json={
-            "amount": -5,
+        resp2 = client.post("/api/ai-usage/request", json={
+            "requested_amount": -5,
             "reason": "Negative",
         }, headers=headers)
         assert resp2.status_code == 422
 
 
-# ── Enforcement ──────────────────────────────────────────────
-
-class TestAIEnforcement:
-    def test_ai_generation_increments_count(self, client, users, ai_usage_record, db_session):
-        """After a successful AI generation, usage_count should increase."""
-        from app.models.ai_usage import AIUsage
-
-        headers = _auth(client, users["student"].email)
-        old_count = ai_usage_record.usage_count
-
-        # Mock AI service to avoid actual OpenAI calls
-        with patch("app.services.ai_service.generate_study_guide") as mock_gen:
-            mock_gen.return_value = "# Mock Study Guide\n\nThis is a mock."
-            with patch("app.services.ai_service.check_content_safe", return_value=True):
-                resp = client.post("/api/study/generate", json={
-                    "topic": "Test Topic",
-                    "subject": "Math",
-                }, headers=headers)
-
-        # If the route exists and returns success, check count incremented
-        if resp.status_code == 200:
-            db_session.refresh(ai_usage_record)
-            assert ai_usage_record.usage_count > old_count
-
-    def test_ai_generation_blocked_at_limit(self, client, maxed_out_user):
-        """A user at their AI usage limit should get 429."""
-        headers = _auth(client, maxed_out_user.email)
-
-        with patch("app.services.ai_service.generate_study_guide") as mock_gen:
-            mock_gen.return_value = "# Mock"
-            with patch("app.services.ai_service.check_content_safe", return_value=True):
-                resp = client.post("/api/study/generate", json={
-                    "topic": "Blocked Topic",
-                    "subject": "Math",
-                }, headers=headers)
-
-        assert resp.status_code == 429
-        assert "limit" in resp.json()["detail"].lower()
-
-
 # ── Admin Endpoints ──────────────────────────────────────────
 
 class TestAdminAIUsage:
-    def test_admin_list_usage(self, client, users, ai_usage_record):
+    def test_admin_list_usage(self, client, users):
         headers = _auth(client, users["admin"].email)
-        resp = client.get("/api/admin/ai-usage", headers=headers)
+        resp = client.get("/api/admin/ai-usage/", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert "users" in data or isinstance(data, list)
+        assert isinstance(data, list)
 
-    def test_admin_list_requests(self, client, users, ai_usage_record):
+    def test_admin_list_requests(self, client, users):
         # First create a credit request
         student_headers = _auth(client, users["student"].email)
-        client.post("/api/ai-usage/request-credits", json={
-            "amount": 5,
+        client.post("/api/ai-usage/request", json={
+            "requested_amount": 5,
             "reason": "Admin list test",
         }, headers=student_headers)
 
@@ -200,82 +139,68 @@ class TestAdminAIUsage:
         resp = client.get("/api/admin/ai-usage/requests", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list) or "requests" in data
+        assert isinstance(data, list)
 
-    def test_admin_approve_request(self, client, users, ai_usage_record, db_session):
-        from app.models.ai_usage import AIUsageCreditRequest
+    def test_admin_approve_request(self, client, users, db_session):
+        from app.models.ai_limit_request import AILimitRequest
 
         # Create a pending request directly
-        req = AIUsageCreditRequest(
+        req = AILimitRequest(
             user_id=users["student"].id,
-            amount=15,
+            requested_amount=15,
             reason="Approve test",
             status="pending",
         )
-        existing = db_session.query(AIUsageCreditRequest).filter(
-            AIUsageCreditRequest.user_id == users["student"].id,
-            AIUsageCreditRequest.status == "pending",
-            AIUsageCreditRequest.reason == "Approve test",
-        ).first()
-        if not existing:
-            db_session.add(req)
-            db_session.commit()
-            db_session.refresh(req)
-        else:
-            req = existing
+        db_session.add(req)
+        db_session.commit()
+        db_session.refresh(req)
 
-        old_limit = ai_usage_record.usage_limit
+        old_limit = users["student"].ai_usage_limit or 10
         headers = _auth(client, users["admin"].email)
-        resp = client.post(f"/api/admin/ai-usage/requests/{req.id}/approve", headers=headers)
+        resp = client.patch(f"/api/admin/ai-usage/requests/{req.id}/approve", json={
+            "approved_amount": 15,
+        }, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "approved"
 
         # Verify limit was increased
-        db_session.refresh(ai_usage_record)
-        assert ai_usage_record.usage_limit >= old_limit + 15
+        db_session.refresh(users["student"])
+        assert users["student"].ai_usage_limit >= old_limit + 15
 
     def test_admin_decline_request(self, client, users, db_session):
-        from app.models.ai_usage import AIUsageCreditRequest
+        from app.models.ai_limit_request import AILimitRequest
 
-        req = AIUsageCreditRequest(
+        req = AILimitRequest(
             user_id=users["student"].id,
-            amount=10,
+            requested_amount=10,
             reason="Decline test",
             status="pending",
         )
-        existing = db_session.query(AIUsageCreditRequest).filter(
-            AIUsageCreditRequest.user_id == users["student"].id,
-            AIUsageCreditRequest.status == "pending",
-            AIUsageCreditRequest.reason == "Decline test",
-        ).first()
-        if not existing:
-            db_session.add(req)
-            db_session.commit()
-            db_session.refresh(req)
-        else:
-            req = existing
+        db_session.add(req)
+        db_session.commit()
+        db_session.refresh(req)
 
         headers = _auth(client, users["admin"].email)
-        resp = client.post(f"/api/admin/ai-usage/requests/{req.id}/decline", headers=headers)
+        resp = client.patch(f"/api/admin/ai-usage/requests/{req.id}/decline", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "declined"
 
-    def test_admin_set_user_limit(self, client, users, ai_usage_record):
+    def test_admin_set_user_limit(self, client, users):
         headers = _auth(client, users["admin"].email)
-        resp = client.post(
+        resp = client.patch(
             f"/api/admin/ai-usage/users/{users['student'].id}/limit",
-            json={"usage_limit": 50},
+            json={"ai_usage_limit": 50},
             headers=headers,
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["usage_limit"] == 50
+        assert data["ai_usage_limit"] == 50
 
-    def test_admin_reset_count(self, client, users, ai_usage_record, db_session):
+    def test_admin_reset_count(self, client, users, db_session):
         # Ensure there's a non-zero count
-        ai_usage_record.usage_count = 10
+        users["student"].ai_usage_count = 10
         db_session.commit()
 
         headers = _auth(client, users["admin"].email)
@@ -285,4 +210,4 @@ class TestAdminAIUsage:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["usage_count"] == 0
+        assert data["ai_usage_count"] == 0

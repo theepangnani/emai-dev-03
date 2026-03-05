@@ -63,7 +63,7 @@ export function StudyGuidesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isParent = user?.role === 'parent';
   const { confirm, confirmModal } = useConfirm();
-  const { remaining, atLimit, invalidate: refreshAIUsage } = useAIUsage();
+  const { atLimit, invalidate: refreshAIUsage } = useAIUsage();
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   // Course content items (primary list)

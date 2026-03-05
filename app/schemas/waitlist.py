@@ -47,5 +47,10 @@ class WaitlistStats(BaseModel):
     declined: int
 
 
+class WaitlistListResponse(BaseModel):
+    items: list[WaitlistResponse]
+    total: int
+
+
 class WaitlistAdminUpdate(BaseModel):
     admin_notes: str | None = None

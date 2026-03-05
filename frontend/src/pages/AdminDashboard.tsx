@@ -284,6 +284,7 @@ export function AdminDashboard() {
           </Link>
           <Link to="/admin/waitlist" className="admin-audit-link">
             Manage Waitlist &rarr;
+          </Link>
           <Link to="/admin/ai-usage" className="admin-audit-link">
             AI Usage Management &rarr;
           </Link>

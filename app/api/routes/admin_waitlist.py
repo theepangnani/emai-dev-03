@@ -316,10 +316,13 @@ def send_waitlist_reminder(
     now = datetime.now(timezone.utc)
 
     # If token is expired, generate a new one
+    expires = entry.invite_token_expires_at
+    if expires and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
     if (
         not entry.invite_token
-        or not entry.invite_token_expires_at
-        or entry.invite_token_expires_at < now
+        or not expires
+        or expires < now
     ):
         entry.invite_token = secrets.token_urlsafe(32)
         entry.invite_token_expires_at = now + timedelta(days=INVITE_EXPIRY_DAYS)

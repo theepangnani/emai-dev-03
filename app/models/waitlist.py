@@ -1,7 +1,16 @@
+from enum import Enum
+
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 
 from app.db.database import Base
+
+
+class WaitlistStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    DECLINED = "declined"
+    REGISTERED = "registered"
 
 
 class Waitlist(Base):
@@ -22,3 +31,7 @@ class Waitlist(Base):
     reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# Alias used by admin_waitlist routes
+WaitlistEntry = Waitlist

@@ -58,7 +58,6 @@ const ForgotPasswordPage = lazyRetry(() => import('./pages/ForgotPasswordPage').
 const ResetPasswordPage = lazyRetry(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
-const LandingPage = lazyRetry(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const LaunchLandingPage = lazyRetry(() => import('./pages/LaunchLandingPage').then((m) => ({ default: m.LaunchLandingPage })));
 const OnboardingPage = lazyRetry(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const VerifyEmailPage = lazyRetry(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
@@ -318,6 +317,10 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminWaitlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/ai-usage"
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>

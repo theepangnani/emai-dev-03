@@ -26,9 +26,28 @@ class AILimitRequestResponse(BaseModel):
     admin_user_id: int | None
     created_at: datetime
     resolved_at: datetime | None
+    # Enrichment fields set by the route
+    user_name: str | None = None
+    user_email: str | None = None
+    user_role: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class AILimitAdminAction(BaseModel):
     approved_amount: int = Field(..., gt=0)
+
+
+class AILimitSetRequest(BaseModel):
+    ai_usage_limit: int = Field(..., ge=0)
+
+
+class AIUsageUserResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str | None = None
+    role: str
+    ai_usage_count: int
+    ai_usage_limit: int | None = None
+
+    model_config = ConfigDict(from_attributes=True)
