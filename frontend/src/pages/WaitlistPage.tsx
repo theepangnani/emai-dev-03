@@ -51,8 +51,9 @@ export function WaitlistPage() {
       setSubmitted(true);
     } catch (err: any) {
       const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
       if (status === 409) {
-        setError('This email is already on the waitlist.');
+        setError(detail || 'This email is already on the waitlist.');
       } else {
         toast('Something went wrong. Please try again later.', 'error');
       }
