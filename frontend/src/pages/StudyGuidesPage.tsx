@@ -14,6 +14,7 @@ import { CHILD_COLORS } from '../components/parent/useParentDashboard';
 import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import EmptyState from '../components/EmptyState';
+import '../components/AddActionButton.css';
 import './StudyGuidesPage.css';
 
 // Cross-page generation queue (ParentDashboard -> StudyGuidesPage)
