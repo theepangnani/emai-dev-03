@@ -237,6 +237,7 @@ export function MyKidsPage() {
     { label: '+ Course Material', icon: '\u{1F4C4}', onClick: () => navigate('/course-materials') },
     { label: '+ Task', icon: '\u2705', onClick: () => navigate('/tasks') },
     { label: '+ Add Child', icon: '\u{1F476}', onClick: () => setShowAddChildModal(true) },
+    { label: 'Export Data', icon: '\u{1F4E5}', onClick: () => navigate('/settings/data-export') },
   ];
 
   if (loading) {
@@ -670,6 +671,7 @@ export function MyKidsPage() {
           { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
           { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
           { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
+          { icon: '\u{1F4E5}', label: 'Export Data', onClick: () => navigate('/settings/data-export') },
           ...(selectedChild ? [{ icon: '\u{1F511}', label: 'Reset Password', onClick: () => {
             setShowResetPassword(true);
             const child = children.find(c => c.student_id === selectedChild);
