@@ -1,183 +1,189 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { notesApi } from '../api/notes';
-import type { NoteResponse } from '../api/notes';
-import { RichTextEditor } from './RichTextEditor';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { notesApi, type NoteItem, type ChildNoteItem } from '../api/notes';
+import { parentApi, type ChildSummary } from '../api/parent';
+import { useAuth } from '../context/AuthContext';
 import './NotesPanel.css';
 
 interface NotesPanelProps {
   courseContentId: number;
-  isOpen: boolean;
-  onClose: () => void;
+  /** Whether to show as a side panel (true) or inline (false). */
+  inline?: boolean;
 }
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
-export function NotesPanel({ courseContentId, isOpen, onClose }: NotesPanelProps) {
-  const [content, setContent] = useState('');
-  const [noteId, setNoteId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const panelRef = useRef<HTMLDivElement>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestContentRef = useRef({ content: '', plainText: '' });
-  const isOpenRef = useRef(isOpen);
-  isOpenRef.current = isOpen;
-
-  // Load existing note
+/** Debounce helper — returns the latest value after `delay` ms of inactivity. */
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    if (!isOpen) return;
-    let cancelled = false;
-    setLoading(true);
-    notesApi.list(courseContentId).then(async (summaries) => {
-      if (cancelled) return;
-      if (summaries.length > 0) {
-        const full = await notesApi.get(summaries[0].id);
-        if (cancelled) return;
-        setContent(full.content);
-        setNoteId(full.id);
-        latestContentRef.current = { content: full.content, plainText: full.plain_text };
-      } else {
-        setContent('');
-        setNoteId(null);
-        latestContentRef.current = { content: '', plainText: '' };
-      }
-      setLoading(false);
-    }).catch(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [isOpen, courseContentId]);
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
 
-  // Save function
-  const doSave = useCallback(async (html: string, text: string) => {
-    // Auto-delete empty notes
-    if (!text.trim() && noteId) {
+export function NotesPanel({ courseContentId, inline }: NotesPanelProps) {
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
+
+  // Own note state
+  const [note, setNote] = useState<NoteItem | null>(null);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
+  const initialLoadDone = useRef(false);
+
+  // Child notes state (parent only)
+  const [children, setChildren] = useState<ChildSummary[]>([]);
+  const [childNotes, setChildNotes] = useState<Record<number, ChildNoteItem[]>>({});
+  const [childNotesLoading, setChildNotesLoading] = useState(false);
+
+  const debouncedDraft = useDebounce(draft, 1000);
+
+  // Load own note
+  const loadNote = useCallback(async () => {
+    try {
+      const n = await notesApi.get(courseContentId);
+      setNote(n);
+      setDraft(n.content);
+    } catch {
+      // No note yet
+      setNote(null);
+      setDraft('');
+    } finally {
+      setLoading(false);
+      initialLoadDone.current = true;
+    }
+  }, [courseContentId]);
+
+  // Load children + their notes (parent only)
+  const loadChildNotes = useCallback(async () => {
+    if (!isParent) return;
+    setChildNotesLoading(true);
+    try {
+      const kids = await parentApi.getChildren();
+      setChildren(kids);
+      const notesMap: Record<number, ChildNoteItem[]> = {};
+      await Promise.all(
+        kids.map(async (child) => {
+          try {
+            const cn = await notesApi.getChildNotes(child.student_id, courseContentId);
+            if (cn.length > 0) {
+              notesMap[child.student_id] = cn;
+            }
+          } catch {
+            // Ignore — child may have no notes
+          }
+        })
+      );
+      setChildNotes(notesMap);
+    } catch {
+      // Ignore
+    } finally {
+      setChildNotesLoading(false);
+    }
+  }, [isParent, courseContentId]);
+
+  useEffect(() => {
+    loadNote();
+    loadChildNotes();
+  }, [loadNote, loadChildNotes]);
+
+  // Auto-save on debounced draft change
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    // Skip if draft hasn't changed from the loaded note
+    if (debouncedDraft === (note?.content ?? '')) return;
+    const save = async () => {
+      setSaving(true);
+      setSaveStatus('saving');
       try {
-        await notesApi.delete(noteId);
-        setNoteId(null);
-        setSaveStatus('saved');
+        if (!debouncedDraft.trim()) {
+          // Auto-delete empty notes
+          if (note) {
+            await notesApi.delete(courseContentId);
+            setNote(null);
+          }
+          setSaveStatus('saved');
+        } else {
+          const updated = await notesApi.upsert(courseContentId, debouncedDraft);
+          setNote(updated);
+          setSaveStatus('saved');
+        }
       } catch {
         setSaveStatus('error');
-      }
-      return;
-    }
-    // Don't save if empty and no existing note
-    if (!text.trim()) {
-      setSaveStatus('idle');
-      return;
-    }
-
-    setSaveStatus('saving');
-    try {
-      const result: NoteResponse = await notesApi.upsert({
-        course_content_id: courseContentId,
-        content: html,
-        plain_text: text,
-        has_images: false,
-      });
-      setNoteId(result.id);
-      setSaveStatus('saved');
-    } catch {
-      setSaveStatus('error');
-    }
-  }, [courseContentId, noteId]);
-
-  // Debounced auto-save on content change
-  const handleChange = useCallback((html: string, text: string) => {
-    setContent(html);
-    latestContentRef.current = { content: html, plainText: text };
-    setSaveStatus('idle');
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      doSave(html, text);
-    }, 1000);
-  }, [doSave]);
-
-  // Save on close
-  const handleClose = useCallback(() => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    const { content: c, plainText: pt } = latestContentRef.current;
-    doSave(c, pt);
-    onClose();
-  }, [onClose, doSave]);
-
-  // Click outside to close
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        handleClose();
+      } finally {
+        setSaving(false);
+        // Clear status after a delay
+        setTimeout(() => setSaveStatus(null), 2000);
       }
     };
-    // Delay to avoid immediate close from the toggle button click
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handler);
-    }, 100);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('mousedown', handler);
-    };
-  }, [isOpen, handleClose]);
+    save();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedDraft, courseContentId]);
 
-  // Escape key to close
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, handleClose]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, []);
-
-  if (!isOpen) return null;
+  const hasChildNotes = Object.keys(childNotes).length > 0;
 
   return (
-    <>
-      <div className="notes-panel-overlay" />
-      <div className="notes-panel" ref={panelRef} role="complementary" aria-label="Notes">
-        <div className="notes-panel-header">
-          <h3 className="notes-panel-title">Notes</h3>
-          <div className="notes-panel-header-right">
-            <span className={`notes-save-indicator notes-save-indicator--${saveStatus}`}>
+    <div className={`notes-panel${inline ? ' notes-panel--inline' : ''}`}>
+      {/* My Notes section */}
+      <div className="notes-section notes-section--own">
+        <div className="notes-section-header">
+          <h4 className="notes-section-title">My Notes</h4>
+          {saveStatus && (
+            <span className={`notes-save-status notes-save-status--${saveStatus}`}>
               {saveStatus === 'saving' && 'Saving...'}
               {saveStatus === 'saved' && 'Saved'}
-              {saveStatus === 'error' && 'Error saving'}
+              {saveStatus === 'error' && 'Save failed'}
             </span>
-            <button
-              className="notes-panel-close"
-              onClick={handleClose}
-              aria-label="Close notes"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M4 4l10 10M14 4L4 14" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div className="notes-panel-body">
-          {loading ? (
-            <div className="notes-panel-loading">Loading notes...</div>
-          ) : (
-            <RichTextEditor
-              content={content}
-              onChange={handleChange}
-              placeholder="Take notes on this material..."
-            />
           )}
         </div>
+        {loading ? (
+          <div className="notes-loading">Loading notes...</div>
+        ) : (
+          <textarea
+            className="notes-editor"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Add your notes here..."
+            disabled={saving}
+            rows={6}
+          />
+        )}
       </div>
-    </>
+
+      {/* Child's Notes section (parent only) */}
+      {isParent && (childNotesLoading || hasChildNotes) && (
+        <div className="notes-section notes-section--children">
+          <h4 className="notes-section-title notes-section-title--children">
+            {"Child's Notes"}
+          </h4>
+          {childNotesLoading ? (
+            <div className="notes-loading">Loading...</div>
+          ) : (
+            Object.entries(childNotes).map(([studentIdStr, notes]) => {
+              const studentId = parseInt(studentIdStr);
+              const child = children.find(c => c.student_id === studentId);
+              const childName = notes[0]?.student_name || child?.full_name || 'Child';
+              return (
+                <div key={studentId} className="notes-child-block">
+                  <div className="notes-child-label">{childName}</div>
+                  {notes.map((cn) => (
+                    <div key={cn.id} className="notes-child-content">
+                      <div className="notes-child-text">{cn.plain_text || cn.content}</div>
+                      <div className="notes-child-meta">
+                        {cn.updated_at
+                          ? new Date(cn.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                          : new Date(cn.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
   );
 }

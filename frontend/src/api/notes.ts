@@ -1,13 +1,6 @@
 import { api } from './client';
 
-export interface NoteUpsert {
-  course_content_id: number;
-  content: string;
-  plain_text: string;
-  has_images: boolean;
-}
-
-export interface NoteResponse {
+export interface NoteItem {
   id: number;
   user_id: number;
   course_content_id: number;
@@ -16,44 +9,42 @@ export interface NoteResponse {
   has_images: boolean;
   created_at: string;
   updated_at: string | null;
-  course_content_title: string | null;
 }
 
-export interface NoteSummary {
-  id: number;
-  course_content_id: number;
-  has_images: boolean;
-  plain_text_preview: string;
-  updated_at: string | null;
-  course_content_title: string | null;
+export interface ChildNoteItem extends NoteItem {
+  read_only: boolean;
+  student_name: string;
 }
 
 export const notesApi = {
-  list: async (courseContentId?: number): Promise<NoteSummary[]> => {
-    const params: Record<string, string> = {};
-    if (courseContentId !== undefined) params.course_content_id = String(courseContentId);
-    const { data } = await api.get('/api/notes/', { params });
-    return data;
+  /** List current user's notes, optionally filtered by course_content_id. */
+  list: async (params?: { course_content_id?: number }) => {
+    const response = await api.get('/api/notes/', { params });
+    return response.data as NoteItem[];
   },
 
-  get: async (noteId: number): Promise<NoteResponse> => {
-    const { data } = await api.get(`/api/notes/${noteId}`);
-    return data;
+  /** Get the current user's note for a specific course content item. */
+  get: async (courseContentId: number) => {
+    const response = await api.get(`/api/notes/${courseContentId}`);
+    return response.data as NoteItem;
   },
 
-  upsert: async (note: NoteUpsert): Promise<NoteResponse> => {
-    const { data } = await api.put('/api/notes/', note);
-    return data;
+  /** Create or update a note for a course content item. */
+  upsert: async (courseContentId: number, content: string) => {
+    const response = await api.put(`/api/notes/${courseContentId}`, { content });
+    return response.data as NoteItem;
   },
 
-  delete: async (noteId: number): Promise<void> => {
-    await api.delete(`/api/notes/${noteId}`);
+  /** Delete a note for a course content item. */
+  delete: async (courseContentId: number) => {
+    await api.delete(`/api/notes/${courseContentId}`);
   },
 
-  listChildren: async (studentId: number, courseContentId?: number): Promise<NoteSummary[]> => {
-    const params: Record<string, string> = {};
-    if (courseContentId !== undefined) params.course_content_id = String(courseContentId);
-    const { data } = await api.get(`/api/notes/children/${studentId}`, { params });
-    return data;
+  /** Get a child's notes (parent read-only). */
+  getChildNotes: async (studentId: number, courseContentId?: number) => {
+    const params: Record<string, number> = {};
+    if (courseContentId !== undefined) params.course_content_id = courseContentId;
+    const response = await api.get(`/api/notes/children/${studentId}`, { params });
+    return response.data as ChildNoteItem[];
   },
 };
