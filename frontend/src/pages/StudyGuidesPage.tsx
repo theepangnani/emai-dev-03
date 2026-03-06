@@ -47,7 +47,7 @@ interface GeneratingItem {
   tempId: string;
   title: string;
   guideType: string;
-  status: 'generating' | 'error';
+  status: 'uploading' | 'generating' | 'error';
   error?: string;
 }
 
@@ -465,7 +465,8 @@ export function StudyGuidesPage() {
   const startGeneration = (params: PendingGeneration) => {
     const tempId = `gen-${Date.now()}`;
     const displayTitle = params.title || `New ${params.type.replace('_', ' ')}`;
-    setGeneratingItems(prev => [...prev, { tempId, title: displayTitle, guideType: params.type, status: 'generating' }]);
+    const hasFiles = !!(params.file || (params.files && params.files.length > 0) || (params.pastedImages && params.pastedImages.length > 0));
+    setGeneratingItems(prev => [...prev, { tempId, title: displayTitle, guideType: params.type, status: hasFiles ? 'uploading' : 'generating' }]);
 
     (async () => {
       try {
@@ -488,6 +489,13 @@ export function StudyGuidesPage() {
           }
           content = parts.join('\n\n');
           mode = 'text';
+        }
+
+        // Transition from uploading → generating once files are processed
+        if (hasFiles) {
+          setGeneratingItems(prev => prev.map(g =>
+            g.tempId === tempId ? { ...g, status: 'generating' as const } : g
+          ));
         }
 
         let result: any;
@@ -579,6 +587,9 @@ export function StudyGuidesPage() {
     // Upload-only mode: run upload/extraction in background
     if (modalParams.types.length === 0) {
       const courseId = modalParams.courseId;
+      const uploadTempId = `upload-${Date.now()}`;
+      const uploadTitle = modalParams.title || (files.length > 0 ? files[0].name.replace(/\.[^/.]+$/, '') : 'Uploaded material');
+      setGeneratingItems(prev => [...prev, { tempId: uploadTempId, title: uploadTitle, guideType: 'upload', status: 'uploading' }]);
       (async () => {
         try {
           const resolvedCourseId = courseId ?? (await coursesApi.getDefault(filterChild || undefined)).id;
@@ -633,10 +644,15 @@ export function StudyGuidesPage() {
               content_type: 'notes',
             });
           }
+          setGeneratingItems(prev => prev.filter(g => g.tempId !== uploadTempId));
           await loadData();
           showToast('Upload complete');
         } catch {
-          showToast('Upload failed — please try again');
+          setGeneratingItems(prev => prev.map(g =>
+            g.tempId === uploadTempId
+              ? { ...g, status: 'error' as const, error: 'Upload failed — please try again' }
+              : g
+          ));
         }
       })();
       return;
@@ -657,7 +673,13 @@ export function StudyGuidesPage() {
     // When multiple AI tools are selected and no courseContentId yet,
     // pre-create a single CourseContent so all generations share one material (#1061)
     let sharedCourseContentId = modalParams.courseContentId;
-    if (!sharedCourseContentId && modalParams.types.length > 1) {
+    const needsUpload = !sharedCourseContentId && modalParams.types.length > 1;
+    const preTempId = needsUpload ? `pre-upload-${Date.now()}` : null;
+    if (preTempId) {
+      const preTitle = modalParams.title || (files.length > 0 ? files[0].name.replace(/\.[^/.]+$/, '') : 'Uploaded material');
+      setGeneratingItems(prev => [...prev, { tempId: preTempId, title: preTitle, guideType: 'upload', status: 'uploading' }]);
+    }
+    if (needsUpload) {
       try {
         const cId = modalParams.courseId || (await coursesApi.getDefault(filterChild || undefined)).id;
         if (isMultiFile) {
@@ -714,6 +736,9 @@ export function StudyGuidesPage() {
       } catch {
         // If pre-creation fails, fall through — each generation creates its own
       }
+    }
+    if (preTempId) {
+      setGeneratingItems(prev => prev.filter(g => g.tempId !== preTempId));
     }
 
     setIsGenerating(true);
@@ -1085,15 +1110,17 @@ export function StudyGuidesPage() {
             <div className="guides-list">
               {/* In-progress generation placeholders */}
               {generatingItems.map(item => (
-                <div key={item.tempId} className={`guide-row ${item.status === 'generating' ? 'guide-row-generating' : 'guide-row-error'}`}>
+                <div key={item.tempId} className={`guide-row ${item.status === 'error' ? 'guide-row-error' : 'guide-row-generating'}`}>
                   <div className="guide-row-main">
                     <span className="guide-row-icon">
-                      {item.status === 'generating' ? <LottieLoader size={28} /> : '\u26A0\uFE0F'}
+                      {item.status === 'error' ? '\u26A0\uFE0F' : <LottieLoader size={28} />}
                     </span>
                     <div className="guide-row-info">
                       <span className="guide-row-title">{item.title}</span>
                       <span className="guide-row-meta">
-                        {item.status === 'generating'
+                        {item.status === 'uploading'
+                          ? <span className="generating-text">Uploading...</span>
+                          : item.status === 'generating'
                           ? <span className="generating-text">Generating {guideTypeLabel(item.guideType)}...</span>
                           : <span className="error-text">{item.error}</span>
                         }
