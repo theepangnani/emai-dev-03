@@ -328,7 +328,7 @@ describe('ParentDashboard', () => {
 
     await waitFor(() => {
       // Study material modal should open
-      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
     })
   })
 
@@ -536,7 +536,7 @@ describe('ParentDashboard', () => {
     await user.click(screen.getByText('Class Material'))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
     })
   })
 
@@ -551,7 +551,7 @@ describe('ParentDashboard', () => {
     await user.click(screen.getByText('Class Material'))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
       // File drop zone and text area render together with the modal
       expect(screen.getByText(/Drag & drop files here/)).toBeInTheDocument()
       expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
@@ -571,7 +571,7 @@ describe('ParentDashboard', () => {
   })
 
   // ── Regression: modal closes immediately on submit (#1010) ───
-  it('closes Upload Documents modal immediately when Generate is clicked with a file (#1010)', async () => {
+  it('closes Upload Class Material modal immediately when Generate is clicked with a file (#1010)', async () => {
     // generateFromFile resolves slowly — modal must NOT wait for it
     mockGenerateFromFile.mockImplementation(
       () => new Promise(resolve => setTimeout(() => resolve({ id: 99, guide_type: 'study_guide' }), 500)),
@@ -584,7 +584,7 @@ describe('ParentDashboard', () => {
     await waitFor(() => expect(screen.getByText('Class Material')).toBeInTheDocument())
     await user.click(screen.getByText('Class Material'))
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument(),
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument(),
     )
 
     // Attach a file and select Study Guide
@@ -598,7 +598,7 @@ describe('ParentDashboard', () => {
 
     // Modal must close immediately — NOT stay open showing "Generating..."
     await waitFor(() =>
-      expect(screen.queryByRole('heading', { level: 2, name: 'Upload Documents' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('heading', { level: 2, name: 'Upload Class Material' })).not.toBeInTheDocument(),
     )
   })
 })
