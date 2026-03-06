@@ -501,6 +501,21 @@ Users can create a task directly from a note via a "Create Task" button in the n
 - When the notes panel is open and editor is focused, `Escape` closes the panel (not just blurs the editor)
 - Shortcut hint shown as tooltip on the "Take Notes" trigger button: "Take Notes (Ctrl+Shift+N)"
 
+#### 6.7.0 Contextual Text Selection to Notes - PARTIAL
+
+Users can highlight text within study content and add it directly to their notes as a blockquote.
+
+- [x] `useTextSelection` hook — detects highlighted text within content containers
+- [x] `SelectionTooltip` component — floating amber "Add to Notes" pill near selection
+- [x] Selected text inserted as `>` blockquote in notes panel with auto-save
+- [x] Floating NotesFAB — persistent bottom-right button to toggle Notes panel
+- [x] NotesFAB replaces inline NotesPanelToggle on StudyGuidePage, QuizPage, FlashcardsPage
+- [x] NotesFAB added to CourseMaterialDetailPage alongside existing panel
+- [x] `highlights_json` column added to notes model for future persistent highlight rendering
+- [ ] Persistent highlight rendering on study guides (yellow overlay on highlighted text)
+- [ ] Click highlight → scroll to related note entry
+- [ ] Parent read-only view of child's highlights/notes
+
 ### 6.7.1 Project Tracking (Phase 3 — deferred)
 - Group project management with milestones and task breakdown
 - Study planner with weekly schedules and goal setting

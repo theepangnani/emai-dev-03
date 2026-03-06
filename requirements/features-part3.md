@@ -1442,6 +1442,24 @@ Counting happens in the AI generation service layer (single point of enforcement
   - [x] Notes button in header toolbar
   - [x] URL param `?notes=open` auto-opens panel
 
+- **`NotesFAB`** — Floating action button (bottom-right) that replaces inline `NotesPanelToggle`:
+  - [x] Persistent bottom-right FAB to toggle Notes panel
+  - [x] Replaces inline `NotesPanelToggle` on StudyGuidePage, QuizPage, FlashcardsPage
+  - [x] Added to CourseMaterialDetailPage alongside existing panel
+
+#### 6.55.1 Contextual Text Selection to Notes
+
+- [x] `useTextSelection` hook — detects highlighted text within content containers
+- [x] `SelectionTooltip` component — floating amber "Add to Notes" pill near selection
+- [x] Selected text inserted as `>` blockquote in notes panel with auto-save
+- [x] Floating NotesFAB — persistent bottom-right button to toggle Notes panel
+- [x] NotesFAB replaces inline NotesPanelToggle on StudyGuidePage, QuizPage, FlashcardsPage
+- [x] NotesFAB added to CourseMaterialDetailPage alongside existing panel
+- [x] `highlights_json` column added to notes model for future persistent highlight rendering
+- [ ] Persistent highlight rendering on study guides (yellow overlay on highlighted text)
+- [ ] Click highlight → scroll to related note entry
+- [ ] Parent read-only view of child's highlights/notes
+
 #### Behavior
 
 - One note per user per course material (upsert semantics)
