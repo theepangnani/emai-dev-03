@@ -7,8 +7,15 @@ export interface NoteItem {
   content: string | null;
   plain_text: string | null;
   has_images: boolean;
+  highlights_json: string | null;
   created_at: string;
   updated_at: string | null;
+}
+
+export interface NoteHighlight {
+  text: string;
+  start: number;
+  end: number;
 }
 
 export interface NoteCreateTaskData {

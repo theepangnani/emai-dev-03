@@ -6,7 +6,8 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
 import { PageNav } from '../components/PageNav';
-import { NotesPanelToggle } from '../components/NotesPanelToggle';
+import { NotesFAB } from '../components/NotesFAB';
+import { NotesPanel } from '../components/NotesPanel';
 import './FlashcardsPage.css';
 
 type CardDifficulty = 'mastered' | 'learning';
@@ -22,6 +23,7 @@ export function FlashcardsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   // Mastery tracking: keyed by card front text (stable identifier)
   const [cardProgress, setCardProgress] = useState<Map<string, CardDifficulty>>(new Map());
@@ -294,7 +296,7 @@ export function FlashcardsPage() {
             { label: 'Create Task', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/><path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>, onClick: () => setShowTaskModal(true) },
             { label: 'Edit Class Material', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M13.586 3.586a2 2 0 112.828 2.828l-9.5 9.5L3 17l1.086-3.914 9.5-9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>, onClick: () => setShowEditModal(true) },
           ]} />
-          {guide.course_content_id && <NotesPanelToggle courseContentId={guide.course_content_id} />}
+          {/* Notes FAB at bottom-right */}
         </div>
         <div className="progress">
           Card {currentIndex + 1} of {cards.length}
@@ -384,6 +386,12 @@ export function FlashcardsPage() {
           onClose={() => setShowEditModal(false)}
           onSaved={(updated) => { setGuide(updated); setShowEditModal(false); }}
         />
+      )}
+      {guide.course_content_id && (
+        <>
+          <NotesFAB courseContentId={guide.course_content_id} isOpen={notesOpen} onToggle={() => setNotesOpen(!notesOpen)} />
+          <NotesPanel courseContentId={guide.course_content_id} isOpen={notesOpen} onClose={() => setNotesOpen(false)} />
+        </>
       )}
     </div>
   );

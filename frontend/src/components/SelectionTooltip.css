@@ -1,0 +1,56 @@
+.selection-tooltip {
+  position: absolute;
+  z-index: 950;
+  transform: translateX(-50%);
+  animation: sel-tooltip-in 0.15s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes sel-tooltip-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.selection-tooltip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.selection-tooltip-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 3px 12px rgba(217, 119, 6, 0.45);
+}
+
+.selection-tooltip-btn:active {
+  transform: scale(0.97);
+}
+
+/* Arrow pointing down */
+.selection-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #d97706;
+}
+
+/* Dark mode */
+[data-theme="dark"] .selection-tooltip-btn {
+  background: linear-gradient(135deg, #b45309, #92400e);
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.4);
+}
