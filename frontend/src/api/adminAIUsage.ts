@@ -22,7 +22,9 @@ export interface AILimitRequest {
   requested_amount: number;
   reason: string;
   status: 'pending' | 'approved' | 'declined';
+  approved_amount: number | null;
   created_at: string;
+  resolved_at: string | null;
 }
 
 export interface AILimitRequestList {
@@ -35,6 +37,23 @@ export interface AIUsageSummary {
   top_users: Array<{ id: number; full_name: string; ai_usage_count: number }>;
 }
 
+export interface AIUsageHistoryEntry {
+  id: number;
+  user_id: number;
+  generation_type: string;
+  course_material_id: number | null;
+  credits_used: number;
+  created_at: string;
+  user_name: string | null;
+  user_email: string | null;
+  course_material_title: string | null;
+}
+
+export interface AIUsageHistoryList {
+  items: AIUsageHistoryEntry[];
+  total: number;
+}
+
 export const adminAIUsageApi = {
   listUsers: (params?: { search?: string; sort_by?: string; sort_dir?: string; skip?: number; limit?: number }) =>
     api.get<AIUsageUserList>('/api/admin/ai-usage', { params }).then((r) => r.data),
@@ -44,6 +63,17 @@ export const adminAIUsageApi = {
 
   listRequests: (params?: { status?: string; skip?: number; limit?: number }) =>
     api.get<AILimitRequestList>('/api/admin/ai-usage/requests', { params }).then((r) => r.data),
+
+  listHistory: (params?: {
+    user_id?: number;
+    generation_type?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+    skip?: number;
+    limit?: number;
+  }) =>
+    api.get<AIUsageHistoryList>('/api/admin/ai-usage/history', { params }).then((r) => r.data),
 
   approveRequest: (id: number, amount: number) =>
     api.patch(`/api/admin/ai-usage/requests/${id}/approve`, { approved_amount: amount }).then((r) => r.data),
