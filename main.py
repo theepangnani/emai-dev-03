@@ -18,7 +18,7 @@ from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage, account_deletion
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -868,6 +868,34 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── users: account deletion columns (#964) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "deletion_requested_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_requested_at {col_type}"))
+                logger.info("Added 'deletion_requested_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "deletion_confirmed" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN deletion_confirmed BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'deletion_confirmed' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "is_deleted" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'is_deleted' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -995,6 +1023,8 @@ app.include_router(grades.router, prefix="/api")
 app.include_router(waitlist.router, prefix="/api")
 app.include_router(ai_usage.router, prefix="/api")
 app.include_router(ai_usage.admin_router, prefix="/api")
+app.include_router(account_deletion.router, prefix="/api")
+app.include_router(account_deletion.admin_router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1125,6 +1155,27 @@ async def startup_event():
         cleanup_token_blacklist,
         CronTrigger(hour=3, minute=0),
         id="token_blacklist_cleanup",
+        replace_existing=True,
+    )
+
+    # Process expired account deletions daily at 2 AM (#964)
+    def process_account_deletions():
+        from app.services.deletion_service import process_expired_deletions
+        _db = SessionLocal()
+        try:
+            count = process_expired_deletions(_db)
+            if count:
+                logger.info(f"Processed {count} expired account deletion(s)")
+        except Exception as e:
+            _db.rollback()
+            logger.warning(f"Account deletion processing failed: {e}")
+        finally:
+            _db.close()
+
+    scheduler.add_job(
+        process_account_deletions,
+        CronTrigger(hour=2, minute=0),
+        id="account_deletion_processing",
         replace_existing=True,
     )
 

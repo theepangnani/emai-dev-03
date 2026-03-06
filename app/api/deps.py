@@ -40,6 +40,10 @@ def get_current_user(
     if user is None:
         raise credentials_exception
 
+    # Block deleted/anonymized users (#964)
+    if getattr(user, "is_deleted", False):
+        raise credentials_exception
+
     # Make user ID available for rate limiter and request logging
     request.state.user_id = user.id
 

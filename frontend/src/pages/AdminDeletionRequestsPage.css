@@ -1,0 +1,176 @@
+.admin-deletion-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.admin-deletion-page h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.deletion-table-wrapper {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.deletion-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.deletion-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #6b7280);
+  background: var(--surface-alt, #f9fafb);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.deletion-table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border, #f3f4f6);
+  vertical-align: middle;
+}
+
+.deletion-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-name {
+  font-weight: 500;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.user-email {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.role-tag {
+  display: inline-block;
+  background: var(--primary-light, #eef2ff);
+  color: var(--primary, #4f46e5);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.expired {
+  color: #dc2626;
+}
+
+.expired-badge {
+  display: inline-block;
+  background: #fecaca;
+  color: #dc2626;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.confirm-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #dc2626;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger-outline:hover {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.table-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border, #e5e7eb);
+  background: var(--surface-alt, #f9fafb);
+}
+
+.total-count {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.loading-text {
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
+  text-align: center;
+  padding: 40px;
+}
+
+.error-text {
+  color: #dc2626;
+  text-align: center;
+  padding: 40px;
+}

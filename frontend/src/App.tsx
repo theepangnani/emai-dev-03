@@ -76,6 +76,8 @@ const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').th
 // StudyPage will be created by another agent — lazy import registered here for the /study route
 const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ default: m.StudyPage })));
 const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => ({ default: m.WaitlistPage })));
+const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
+const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -333,6 +335,22 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
                     <EmailSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/account"
+                element={
+                  <ProtectedRoute>
+                    <AccountSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/deletion-requests"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDeletionRequestsPage />
                   </ProtectedRoute>
                 }
               />

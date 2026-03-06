@@ -89,6 +89,7 @@ class UserResponse(BaseModel):
     needs_onboarding: bool = False
     onboarding_completed: bool = False
     email_verified: bool = False
+    deletion_requested_at: datetime | None = None
     created_at: datetime
 
     @field_validator("roles", mode="before")
