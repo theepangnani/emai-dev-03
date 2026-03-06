@@ -5,6 +5,7 @@ from datetime import datetime
 class NoteUpsert(BaseModel):
     course_content_id: int
     content: str  # HTML content
+    highlights_json: str | None = None
 
 
 class NoteResponse(BaseModel):
@@ -14,6 +15,7 @@ class NoteResponse(BaseModel):
     content: str
     plain_text: str | None
     has_images: bool
+    highlights_json: str | None = None
     created_at: datetime
     updated_at: datetime | None
 
@@ -27,6 +29,7 @@ class NoteListItem(BaseModel):
     course_content_id: int
     plain_text: str | None
     has_images: bool
+    highlights_json: str | None = None
     created_at: datetime
     updated_at: datetime | None
 

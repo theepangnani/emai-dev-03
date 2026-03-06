@@ -907,6 +907,13 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # --- Notes: highlights_json column (#1185) ---
+    try:
+        conn.execute(text("ALTER TABLE notes ADD COLUMN highlights_json TEXT"))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
 
 _is_prod = "sqlite" not in settings.database_url
 

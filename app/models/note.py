@@ -14,6 +14,7 @@ class Note(Base):
     content = Column(Text, nullable=False)  # HTML content
     plain_text = Column(Text, nullable=True)  # Stripped plain text for search
     has_images = Column(Boolean, nullable=False, default=False)
+    highlights_json = Column(Text, nullable=True)  # JSON array: [{"text": "...", "start": 0, "end": 10}]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

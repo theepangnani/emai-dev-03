@@ -154,6 +154,7 @@ def upsert_note(
         existing.content = data.content
         existing.plain_text = plain
         existing.has_images = _has_images(data.content)
+        existing.highlights_json = data.highlights_json
         db.commit()
         db.refresh(existing)
         return existing
@@ -164,6 +165,7 @@ def upsert_note(
         content=data.content,
         plain_text=plain,
         has_images=_has_images(data.content),
+        highlights_json=data.highlights_json,
     )
     db.add(note)
     db.commit()
