@@ -247,7 +247,7 @@ export default function CreateStudyMaterialModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-        <h2>Upload Documents</h2>
+        <h2>Upload Class Material</h2>
         <p className="modal-desc">Upload a document or photo, or paste text and images. Optionally generate AI study materials.</p>
         <div className="modal-form">
           <fieldset className="material-type-checkboxes" disabled={isGenerating}>

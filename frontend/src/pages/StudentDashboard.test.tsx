@@ -394,7 +394,7 @@ describe('StudentDashboard', () => {
     await user.click(materialCard)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2, name: 'Upload Documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
     })
     expect(screen.getByText(/drag & drop files here/i)).toBeInTheDocument()
   })

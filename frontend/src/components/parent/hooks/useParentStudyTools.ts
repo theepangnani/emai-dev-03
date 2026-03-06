@@ -168,6 +168,32 @@ export function useParentStudyTools({
               text_content: combinedText,
               content_type: 'notes',
             });
+          } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
+            // Pasted images: upload as files so backend can store and extract text
+            const imagesToUpload = modalParams.pastedImages;
+            if (imagesToUpload.length === 1 && !modalParams.content?.trim()) {
+              await courseContentsApi.uploadFile(
+                imagesToUpload[0],
+                defaultCourse.id,
+                modalParams.title || undefined,
+                'notes',
+              );
+            } else {
+              // Multiple images or images + text: upload all as multi-file
+              const allFiles = [...imagesToUpload];
+              // If there's text content, include it as a text file so it's preserved
+              if (modalParams.content?.trim()) {
+                const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
+                const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
+                allFiles.unshift(textFile);
+              }
+              await courseContentsApi.uploadMultiFiles(
+                allFiles,
+                defaultCourse.id,
+                modalParams.title || undefined,
+                'notes',
+              );
+            }
           } else {
             await courseContentsApi.create({
               course_id: defaultCourse.id,
@@ -216,6 +242,31 @@ export function useParentStudyTools({
             'notes',
           );
           sharedCourseContentId = cc.id;
+        } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
+          // Pasted images: upload as files for shared content
+          const allFiles = [...modalParams.pastedImages];
+          if (modalParams.content?.trim()) {
+            const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
+            const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
+            allFiles.unshift(textFile);
+          }
+          if (allFiles.length === 1) {
+            const cc = await courseContentsApi.uploadFile(
+              allFiles[0],
+              defaultCourse.id,
+              modalParams.title || undefined,
+              'notes',
+            );
+            sharedCourseContentId = cc.id;
+          } else {
+            const cc = await courseContentsApi.uploadMultiFiles(
+              allFiles,
+              defaultCourse.id,
+              modalParams.title || undefined,
+              'notes',
+            );
+            sharedCourseContentId = cc.id;
+          }
         } else {
           const cc = await courseContentsApi.create({
             course_id: defaultCourse.id,
