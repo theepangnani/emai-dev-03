@@ -30,6 +30,11 @@ vi.mock('../api/auth', () => ({
   },
 }))
 
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeatureToggles: () => ({ google_classroom: false, waitlist_enabled: false }),
+  useFeature: () => false,
+}))
+
 import { Register } from './Register'
 
 describe('Register', () => {
