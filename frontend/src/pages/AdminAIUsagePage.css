@@ -433,6 +433,105 @@
   white-space: nowrap;
 }
 
+/* Filter row */
+.ai-usage-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ai-usage-filter-input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  min-width: 200px;
+  max-width: 320px;
+  flex: 1;
+}
+
+.ai-usage-filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.ai-usage-filter-date {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+/* Type badge */
+.ai-usage-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--color-surface-alt, #f0f0f0);
+  color: var(--color-ink-muted);
+}
+
+.ai-usage-type-badge.study_guide {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.ai-usage-type-badge.quiz {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.ai-usage-type-badge.flashcards {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Status badges */
+.ai-usage-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.ai-usage-status-badge.pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.ai-usage-status-badge.approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.ai-usage-status-badge.declined {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Resolved info text */
+.ai-usage-resolved-info {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .ai-usage-summary {
     flex-direction: column;

@@ -51,3 +51,23 @@ class AIUsageUserResponse(BaseModel):
     ai_usage_limit: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AIUsageHistoryResponse(BaseModel):
+    id: int
+    user_id: int
+    generation_type: str
+    course_material_id: int | None = None
+    credits_used: int
+    created_at: datetime
+    # Enrichment fields set by the route
+    user_name: str | None = None
+    user_email: str | None = None
+    course_material_title: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AIUsageHistoryList(BaseModel):
+    items: list[AIUsageHistoryResponse]
+    total: int

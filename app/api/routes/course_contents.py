@@ -275,7 +275,7 @@ def _run_ai_generation_background(
             # Increment AI usage after successful generation
             user = db.query(User).filter(User.id == user_id).first()
             if user:
-                increment_ai_usage(user, db)
+                increment_ai_usage(user, db, generation_type=ai_tool, course_material_id=content_id)
 
             db.commit()
             logger.info(

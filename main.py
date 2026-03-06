@@ -40,6 +40,7 @@ from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, C
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.waitlist import Waitlist  # noqa: F401 — ensure table is created (#1114)
+from app.models.ai_usage_history import AIUsageHistory  # noqa: F401 — ensure table is created (#1125)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

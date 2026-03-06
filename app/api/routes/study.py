@@ -508,7 +508,7 @@ async def generate_study_guide_endpoint(
         raise HTTPException(status_code=500, detail=detail[:500])
 
     # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db)
+    increment_ai_usage(current_user, db, generation_type="study_guide", course_material_id=body.course_content_id)
 
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)
@@ -653,7 +653,7 @@ async def generate_quiz_endpoint(
         raise HTTPException(status_code=500, detail=detail[:500])
 
     # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db)
+    increment_ai_usage(current_user, db, generation_type="quiz", course_material_id=body.course_content_id)
 
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Quiz: {topic}", "quiz", body.assignment_id)
@@ -796,7 +796,7 @@ async def generate_flashcards_endpoint(
         raise HTTPException(status_code=500, detail=detail[:500])
 
     # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db)
+    increment_ai_usage(current_user, db, generation_type="flashcards", course_material_id=body.course_content_id)
 
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Flashcards: {topic}", "flashcards", body.assignment_id)
@@ -1262,7 +1262,7 @@ async def generate_from_text_and_images(
         raise HTTPException(status_code=500, detail=str(e))
 
     # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db)
+    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
 
     # Deduplicate: return existing if same hash was created recently
     if study_guide.content_hash:
@@ -1444,7 +1444,7 @@ async def generate_from_file_upload(
         raise HTTPException(status_code=500, detail=str(e))
 
     # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db)
+    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
 
     # Deduplicate: return existing if same hash was created recently
     if study_guide.content_hash:

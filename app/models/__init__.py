@@ -22,7 +22,11 @@ from app.models.quiz_result import QuizResult
 from app.models.student_email import StudentEmail, EmailType
 from app.models.waitlist import Waitlist
 from app.models.ai_limit_request import AILimitRequest
+
+from app.models.ai_usage_history import AIUsageHistory
+
 from app.models.source_file import SourceFile
+
 
 __all__ = [
     "User",
@@ -65,5 +69,9 @@ __all__ = [
     "EmailType",
     "Waitlist",
     "AILimitRequest",
+
+    "AIUsageHistory",
+
     "SourceFile",
+
 ]
