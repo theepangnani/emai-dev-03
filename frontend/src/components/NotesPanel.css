@@ -1,29 +1,47 @@
-/* NotesPanel — slide-in side panel for notes */
-.notes-panel {
+/* NotesPanel — floating draggable panel */
+.notes-panel-floating {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 360px;
+  max-height: 480px;
   display: flex;
   flex-direction: column;
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 900;
   overflow: hidden;
-  min-height: 200px;
-  max-height: 500px;
+  animation: notes-panel-in 0.2s ease-out;
+}
+
+@keyframes notes-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .notes-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface-alt, #f8fafc);
+  cursor: grab;
+  user-select: none;
+  border-radius: var(--radius-md, 12px) var(--radius-md, 12px) 0 0;
+}
+
+.notes-panel-header:active {
+  cursor: grabbing;
 }
 
 .notes-panel-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
+  color: var(--color-ink, #1e293b);
 }
 
 .notes-header-actions {
@@ -37,18 +55,21 @@
   border: none;
   font-size: 1.3rem;
   cursor: pointer;
-  color: var(--color-text-muted, #64748b);
+  color: var(--color-ink-muted, #64748b);
   padding: 0 4px;
   line-height: 1;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
 }
 
 .notes-close-btn:hover {
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink, #1e293b);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .notes-create-task-btn {
-  font-size: 0.8rem;
-  padding: 4px 10px;
+  font-size: 0.78rem;
+  padding: 3px 10px;
   border-radius: 6px;
   border: 1px solid var(--color-accent, #2a9fa8);
   background: var(--color-accent, #2a9fa8);
@@ -89,7 +110,7 @@
   background: none;
   font-size: 0.85rem;
   cursor: pointer;
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink, #1e293b);
 }
 
 .notes-task-dropdown-item:hover {
@@ -109,24 +130,24 @@
   width: 100%;
   min-height: 200px;
   border: none;
-  padding: 14px 16px;
-  font-size: 0.9rem;
+  padding: 12px 14px;
+  font-size: 0.88rem;
   line-height: 1.6;
   resize: none;
   font-family: inherit;
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink, #1e293b);
   background: transparent;
   outline: none;
 }
 
 .notes-textarea::placeholder {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-ink-muted, #94a3b8);
 }
 
 .notes-panel-footer {
-  padding: 6px 16px 10px;
+  padding: 6px 14px 8px;
   font-size: 0.75rem;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-ink-muted, #94a3b8);
 }
 
 .notes-saving {
@@ -138,9 +159,9 @@
 }
 
 .notes-loading {
-  padding: 20px 16px;
-  color: var(--color-text-muted, #94a3b8);
-  font-size: 0.9rem;
+  padding: 20px 14px;
+  color: var(--color-ink-muted, #94a3b8);
+  font-size: 0.88rem;
 }
 
 .notes-toast {
@@ -148,7 +169,7 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-text, #1e293b);
+  background: var(--color-ink, #1e293b);
   color: #fff;
   padding: 10px 20px;
   border-radius: 8px;
@@ -183,7 +204,7 @@
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
-  color: var(--color-text-muted, #64748b);
+  color: var(--color-ink-muted, #64748b);
   padding: 0;
 }
 
@@ -195,7 +216,7 @@
   display: block;
   font-size: 0.78rem;
   font-weight: 500;
-  color: var(--color-text-muted, #64748b);
+  color: var(--color-ink-muted, #64748b);
   margin-bottom: 4px;
 }
 
@@ -208,7 +229,7 @@
   border-radius: 6px;
   font-size: 0.85rem;
   background: var(--color-surface, #fff);
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink, #1e293b);
 }
 
 .note-task-row {
@@ -222,7 +243,7 @@
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink, #1e293b);
   cursor: pointer;
 }
 
@@ -254,7 +275,7 @@
 
 .note-task-cancel-btn {
   background: var(--color-surface-alt, #f1f5f9);
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink, #1e293b);
 }
 
 .note-task-submit-btn {
@@ -265,4 +286,14 @@
 .note-task-submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Mobile: full-width panel */
+@media (max-width: 480px) {
+  .notes-panel-floating {
+    left: 8px;
+    right: 8px;
+    bottom: 16px;
+    width: auto;
+  }
 }
