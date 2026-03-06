@@ -1456,9 +1456,11 @@ Counting happens in the AI generation service layer (single point of enforcement
 - [x] NotesFAB replaces inline NotesPanelToggle on StudyGuidePage, QuizPage, FlashcardsPage
 - [x] NotesFAB added to CourseMaterialDetailPage alongside existing panel
 - [x] `highlights_json` column added to notes model for future persistent highlight rendering
-- [ ] Persistent highlight rendering on study guides (yellow overlay on highlighted text)
+- [x] Persistent highlight rendering on study guides and course materials (yellow overlay on highlighted text)
+- [x] Click-to-remove highlight — clicking a highlighted mark removes it and auto-saves
+- [x] Parent read-only view of child's highlights/notes (with toggle to parent's own notes)
+- [x] Per-user highlight isolation — each user's highlights stored in their own Note record
 - [ ] Click highlight → scroll to related note entry
-- [ ] Parent read-only view of child's highlights/notes
 
 #### Behavior
 
