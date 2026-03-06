@@ -52,7 +52,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const loadNote = useCallback(async () => {
     try {
       let data: NoteItem | null;
-      if (readOnly && childStudentId && !parentEditing) {
+      const isChildView = !!(readOnly && childStudentId && !parentEditing);
+      if (isChildView) {
         data = await notesApi.getChildNotes(childStudentId, courseContentId);
       } else {
         data = await notesApi.getByContent(courseContentId);
@@ -60,20 +61,28 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       if (data) {
         setNote(data);
         setContent(data.content || '');
-        const loaded = parseHighlights(data.highlights_json);
-        setHighlights(loaded);
-        onHighlightsChange?.(loaded);
+        // Only sync highlights when loading own notes — child notes
+        // don't carry the parent's highlights and must not overwrite them
+        if (!isChildView) {
+          const loaded = parseHighlights(data.highlights_json);
+          setHighlights(loaded);
+          onHighlightsChange?.(loaded);
+        }
       } else {
         setNote(null);
         setContent('');
-        setHighlights([]);
-        onHighlightsChange?.([]);
+        if (!isChildView) {
+          setHighlights([]);
+          onHighlightsChange?.([]);
+        }
       }
     } catch {
       setNote(null);
       setContent('');
-      setHighlights([]);
-      onHighlightsChange?.([]);
+      if (!(readOnly && childStudentId && !parentEditing)) {
+        setHighlights([]);
+        onHighlightsChange?.([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -155,7 +164,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
         textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
       }
     }, 50);
-  }, [appendText]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [appendText, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle addHighlight prop — add highlight entry (deduped by text)
   useEffect(() => {
@@ -167,9 +176,12 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       if (prev.some(h => h.text === text)) return prev;
       const updated = [...prev, { text, start: 0, end: 0 }];
       onHighlightsChange?.(updated);
+      // Auto-save with updated highlights
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveNote(content, updated), 300);
       return updated;
     });
-  }, [addHighlight]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addHighlight, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle removeHighlightText prop — remove highlight entry by text
   useEffect(() => {
