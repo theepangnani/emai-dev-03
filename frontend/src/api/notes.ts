@@ -20,17 +20,24 @@ export interface NoteCreateTaskData {
 
 export const notesApi = {
   getByContent: async (courseContentId: number) => {
-    const response = await api.get(`/api/notes/by-content/${courseContentId}`);
-    return response.data as NoteItem;
+    // List to find the note, then fetch full content via single-note endpoint
+    const listResp = await api.get('/api/notes/', { params: { course_content_id: courseContentId } });
+    const notes = listResp.data as NoteItem[];
+    if (notes.length === 0) throw { response: { status: 404 } };
+    const fullResp = await api.get(`/api/notes/${notes[0].id}`);
+    return fullResp.data as NoteItem;
   },
 
   upsert: async (courseContentId: number, data: { content: string | null; has_images?: boolean }) => {
-    const response = await api.put(`/api/notes/by-content/${courseContentId}`, data);
+    const response = await api.put('/api/notes/', {
+      course_content_id: courseContentId,
+      content: data.content || '',
+    });
     return response.data as NoteItem;
   },
 
-  delete: async (courseContentId: number) => {
-    await api.delete(`/api/notes/by-content/${courseContentId}`);
+  delete: async (noteId: number) => {
+    await api.delete(`/api/notes/${noteId}`);
   },
 
   list: async (courseContentId?: number) => {
@@ -39,8 +46,14 @@ export const notesApi = {
     return response.data as NoteItem[];
   },
 
-  createTask: async (noteId: number, data: NoteCreateTaskData) => {
-    const response = await api.post(`/api/notes/${noteId}/create-task`, data);
+  createTask: async (noteId: number, courseContentId: number, data: NoteCreateTaskData) => {
+    const response = await api.post('/api/tasks/', {
+      title: data.title,
+      due_date: data.due_date,
+      priority: data.priority,
+      course_content_id: data.linked ? courseContentId : undefined,
+      note_id: data.linked ? noteId : undefined,
+    });
     return response.data;
   },
 };

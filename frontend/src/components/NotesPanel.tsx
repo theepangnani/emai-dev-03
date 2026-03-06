@@ -136,6 +136,7 @@ export function NotesPanel({ courseContentId, onClose }: NotesPanelProps) {
         <div className="notes-panel-body">
           <NoteTaskForm
             note={note}
+            courseContentId={courseContentId}
             onCreated={handleTaskCreated}
             onCancel={() => setShowTaskForm(false)}
           />
