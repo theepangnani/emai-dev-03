@@ -599,6 +599,31 @@ export function StudyGuidesPage() {
               text_content: combinedText,
               content_type: 'notes',
             });
+          } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
+            // Pasted images: upload as files so backend can store and extract text
+            const imagesToUpload = modalParams.pastedImages;
+            if (imagesToUpload.length === 1 && !modalParams.content?.trim()) {
+              await courseContentsApi.uploadFile(
+                imagesToUpload[0],
+                resolvedCourseId,
+                modalParams.title || undefined,
+                'notes',
+              );
+            } else {
+              // Multiple images or images + text: upload all as multi-file
+              const allFiles = [...imagesToUpload];
+              if (modalParams.content?.trim()) {
+                const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
+                const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
+                allFiles.unshift(textFile);
+              }
+              await courseContentsApi.uploadMultiFiles(
+                allFiles,
+                resolvedCourseId,
+                modalParams.title || undefined,
+                'notes',
+              );
+            }
           } else {
             // Text/paste mode: create content with text only
             await courseContentsApi.create({
@@ -652,6 +677,31 @@ export function StudyGuidesPage() {
             'notes',
           );
           sharedCourseContentId = cc.id;
+        } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
+          // Pasted images: upload as files for shared content
+          const allFiles = [...modalParams.pastedImages];
+          if (modalParams.content?.trim()) {
+            const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
+            const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
+            allFiles.unshift(textFile);
+          }
+          if (allFiles.length === 1) {
+            const cc = await courseContentsApi.uploadFile(
+              allFiles[0],
+              cId,
+              modalParams.title || undefined,
+              'notes',
+            );
+            sharedCourseContentId = cc.id;
+          } else {
+            const cc = await courseContentsApi.uploadMultiFiles(
+              allFiles,
+              cId,
+              modalParams.title || undefined,
+              'notes',
+            );
+            sharedCourseContentId = cc.id;
+          }
         } else {
           const cc = await courseContentsApi.create({
             course_id: cId,
