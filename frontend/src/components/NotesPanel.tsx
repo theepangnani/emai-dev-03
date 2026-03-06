@@ -7,9 +7,11 @@ interface NotesPanelProps {
   courseContentId: number;
   isOpen: boolean;
   onClose: () => void;
+  appendText?: string | null;
+  onAppendConsumed?: () => void;
 }
 
-export function NotesPanel({ courseContentId, isOpen, onClose }: NotesPanelProps) {
+export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed }: NotesPanelProps) {
   const [note, setNote] = useState<NoteItem | null>(null);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -17,8 +19,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose }: NotesPanelProps
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [justAppended, setJustAppended] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Drag state
   const panelRef = useRef<HTMLDivElement>(null);
@@ -84,6 +88,31 @@ export function NotesPanel({ courseContentId, isOpen, onClose }: NotesPanelProps
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
   }, []);
+
+  // Handle appended highlighted text
+  useEffect(() => {
+    if (!appendText || loading) return;
+    const quoted = appendText.split('\n').map(line => `> ${line}`).join('\n');
+    const separator = content.trim() ? '\n\n' : '';
+    const newContent = content + separator + quoted + '\n';
+    setContent(newContent);
+    onAppendConsumed?.();
+
+    // Auto-save immediately
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveNote(newContent), 300);
+
+    // Flash animation
+    setJustAppended(true);
+    setTimeout(() => setJustAppended(false), 800);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+      }
+    }, 50);
+  }, [appendText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveNote = useCallback(async (newContent: string) => {
     setSaving(true);
@@ -178,7 +207,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose }: NotesPanelProps
       ) : (
         <div className="notes-panel-body">
           <textarea
-            className="notes-textarea"
+            ref={textareaRef}
+            className={`notes-textarea${justAppended ? ' notes-textarea--appended' : ''}`}
             value={content}
             onChange={handleChange}
             placeholder="Type your notes here..."

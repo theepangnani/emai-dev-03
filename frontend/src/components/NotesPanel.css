@@ -140,6 +140,15 @@
   outline: none;
 }
 
+.notes-textarea--appended {
+  animation: notes-append-flash 0.8s ease-out;
+}
+
+@keyframes notes-append-flash {
+  0% { background-color: rgba(245, 158, 11, 0.15); }
+  100% { background-color: transparent; }
+}
+
 .notes-textarea::placeholder {
   color: var(--color-ink-muted, #94a3b8);
 }

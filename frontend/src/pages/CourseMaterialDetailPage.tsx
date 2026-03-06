@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
@@ -20,6 +20,9 @@ import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { NotesPanel } from '../components/NotesPanel';
+import { NotesFAB } from '../components/NotesFAB';
+import { SelectionTooltip } from '../components/SelectionTooltip';
+import { useTextSelection } from '../hooks/useTextSelection';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
@@ -137,6 +140,17 @@ export function CourseMaterialDetailPage() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [appendText, setAppendText] = useState<string | null>(null);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
+  const { selection, clearSelection } = useTextSelection(contentAreaRef);
+
+  const handleAddToNotes = useCallback(() => {
+    if (!selection) return;
+    setAppendText(selection.text);
+    setShowNotesPanel(true);
+    clearSelection();
+    window.getSelection()?.removeAllRanges();
+  }, [selection, clearSelection]);
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
@@ -474,7 +488,7 @@ export function CourseMaterialDetailPage() {
         </div>
 
         {/* ── Tab content ──────────────────────────── */}
-        <div className="cm-tab-content" role="tabpanel">
+        <div className="cm-tab-content" role="tabpanel" ref={contentAreaRef}>
           {activeTab === 'document' && (
             <DocumentTab
               content={content}
@@ -535,7 +549,7 @@ export function CourseMaterialDetailPage() {
 
         </div>
 
-        <NotesPanel courseContentId={contentId} isOpen={showNotesPanel} onClose={() => setShowNotesPanel(false)} />
+        <NotesPanel courseContentId={contentId} isOpen={showNotesPanel} onClose={() => setShowNotesPanel(false)} appendText={appendText} onAppendConsumed={() => setAppendText(null)} />
 
       </div>
       <CreateTaskModal
@@ -590,6 +604,12 @@ export function CourseMaterialDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Contextual notes: selection tooltip + FAB */}
+      {selection && !showNotesPanel && (
+        <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
+      )}
+      <NotesFAB courseContentId={contentId} isOpen={showNotesPanel} onToggle={() => setShowNotesPanel(v => !v)} />
     </DashboardLayout>
   );
 }
