@@ -1388,3 +1388,66 @@ Counting happens in the AI generation service layer (single point of enforcement
 | `AI_USAGE_WARNING_THRESHOLD` | 0.8 | Show warning at this % of limit |
 
 ---
+
+### 6.55 Contextual Notes System `IMPLEMENTED`
+
+**Purpose:** Allow students to take per-material notes directly within the app, with auto-save, task creation, and a floating draggable panel UX.
+
+**GitHub Issues:** #1084-#1090, #1179
+
+#### Data Model
+
+**`notes` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Auto-increment |
+| user_id | INTEGER FK | Note owner |
+| course_content_id | INTEGER FK | Linked material |
+| content | TEXT | HTML content |
+| plain_text | TEXT | Stripped plain text (for search/preview) |
+| has_images | BOOLEAN | Whether content contains images |
+| created_at | DATETIME | Auto-set |
+| updated_at | DATETIME | Auto-updated on save |
+
+**`tasks` table extension:**
+| Column | Type | Notes |
+|--------|------|-------|
+| note_id | INTEGER FK (nullable) | Links task to originating note |
+
+#### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/notes/` | Authenticated | List notes (optional `course_content_id` filter) |
+| GET | `/api/notes/{id}` | Authenticated | Get single note with full content |
+| PUT | `/api/notes/` | Authenticated | Upsert note (create or update by course_content_id) |
+| DELETE | `/api/notes/{id}` | Authenticated | Delete note (owner only) |
+| GET | `/api/notes/children/{student_id}` | Parent | List child's notes (read-only) |
+
+#### Frontend Components
+
+- **`NotesPanel`** — Floating, draggable, closable panel with:
+  - [x] Rich text area with auto-save (1s debounce)
+  - [x] Save status indicator (Saving.../Saved)
+  - [x] Task creation from notes (quick task or linked task)
+  - [x] Floating overlay positioning with drag-to-reposition
+  - [x] Close button (X) to dismiss panel
+  - [x] `isOpen`/`onClose` props for toggle control
+
+- **`NotesPanelToggle`** — Button that opens/closes the floating NotesPanel:
+  - [x] Used on FlashcardsPage, QuizPage, StudyGuidePage
+  - [x] Badge indicator when note exists for current material
+
+- **CourseMaterialDetailPage** — Notes toolbar button toggles the floating panel:
+  - [x] Notes button in header toolbar
+  - [x] URL param `?notes=open` auto-opens panel
+
+#### Behavior
+
+- One note per user per course material (upsert semantics)
+- Empty content auto-deletes the note
+- Parent can view child's notes (read-only) via `/children/{student_id}` endpoint
+- Admin can view any note
+- Panel remembers position during session (resets on page navigation)
+
+---
