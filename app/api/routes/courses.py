@@ -313,11 +313,21 @@ def list_my_enrolled_courses(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_default_course(
     request: Request,
+    student_user_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get or create the default 'My Materials' course for the current user."""
-    return get_or_create_default_course(db, current_user)
+    """Get or create the default 'My Materials' course for the current user.
+
+    Parents can pass ``student_user_id`` to get/create the default course
+    for a specific child instead of themselves.
+    """
+    target_user = current_user
+    if student_user_id and current_user.has_role(UserRole.PARENT):
+        child = db.query(User).filter(User.id == student_user_id).first()
+        if child:
+            target_user = child
+    return get_or_create_default_course(db, target_user)
 
 
 @router.get("/{course_id}", response_model=CourseResponse)
