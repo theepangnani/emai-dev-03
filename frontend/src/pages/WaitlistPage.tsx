@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { waitlistApi } from '../api/waitlist';
+import './Auth.css';
 import './WaitlistPage.css';
 
 const ROLE_OPTIONS = [

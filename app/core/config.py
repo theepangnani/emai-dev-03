@@ -70,14 +70,11 @@ class Settings(BaseSettings):
 
     # Feature toggles (#1054)
     google_classroom_enabled: bool = False
-    waitlist_enabled: bool = True  # Show "Join the Waitlist" instead of "Sign Up" on login (#1113)
+    waitlist_enabled: bool = True  # Waitlist gated flow: "Join Waitlist" on login, token-gated registration (#1113, #1114)
 
     # AI usage limits
     ai_default_usage_limit: int = 10
     ai_usage_warning_threshold: float = 0.8
-
-    # Waitlist (#1114) — when True, registration requires an invite token
-    waitlist_enabled: bool = False
 
     # File storage
     upload_dir: str = "./uploads"
