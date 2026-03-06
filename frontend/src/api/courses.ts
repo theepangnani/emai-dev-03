@@ -274,6 +274,14 @@ export const courseContentsApi = {
     URL.revokeObjectURL(url);
   },
 
+  /** Fetch a source file as a blob URL (authenticated). Used for inline image/PDF preview. */
+  getSourceFileBlobUrl: async (contentId: number, fileId: number): Promise<string> => {
+    const response = await api.get(`/api/course-contents/${contentId}/source-files/${fileId}/download`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
+  },
+
   uploadMultiFiles: async (files: File[], courseId: number, title?: string, contentType?: string, aiTool?: string, aiCustomPrompt?: string) => {
     const formData = new FormData();
     for (const file of files) {
