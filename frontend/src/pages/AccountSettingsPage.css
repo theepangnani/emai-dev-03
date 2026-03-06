@@ -1,28 +1,28 @@
 .account-settings {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 16px;
 }
 
 .account-settings-title {
-  font-size: 1.5rem;
+  font-size: 22px;
   font-weight: 700;
-  color: var(--text-primary, #1f2937);
+  color: var(--color-ink);
   margin: 0 0 24px 0;
 }
 
 .account-section {
-  background: var(--card-bg, #ffffff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 12px);
   padding: 24px;
   margin-bottom: 24px;
 }
 
 .account-section h2 {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #1f2937);
+  color: var(--color-ink);
   margin: 0 0 16px 0;
 }
 
@@ -38,25 +38,25 @@
 }
 
 .account-info-label {
-  font-size: 0.8rem;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-tertiary, #9ca3af);
+  color: var(--color-ink-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .account-info-value {
-  font-size: 0.95rem;
-  color: var(--text-primary, #1f2937);
+  font-size: 14px;
+  color: var(--color-ink);
 }
 
 /* Danger Zone */
 .account-danger-zone {
-  border-color: #fecaca;
+  border-color: var(--color-danger-light, #fecaca);
 }
 
 .account-danger-zone h2 {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .danger-zone-content {
@@ -66,15 +66,15 @@
 }
 
 .danger-zone-info h3 {
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary, #1f2937);
+  color: var(--color-ink);
   margin: 0 0 8px 0;
 }
 
 .danger-zone-info p {
-  font-size: 0.9rem;
-  color: var(--text-secondary, #6b7280);
+  font-size: 14px;
+  color: var(--color-ink-muted);
   margin: 0;
   line-height: 1.5;
 }
@@ -82,32 +82,32 @@
 /* Deletion status */
 .deletion-status {
   padding: 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
 }
 
 .deletion-status p {
-  font-size: 0.9rem;
+  font-size: 14px;
   margin: 0 0 12px 0;
   line-height: 1.5;
 }
 
 .deletion-status-pending {
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #b45309;
 }
 
 .deletion-status-confirmed {
-  background: #fee2e2;
-  border: 1px solid #f87171;
-  color: #991b1b;
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
 }
 
 /* Buttons */
 .account-btn {
   padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 14px;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -120,31 +120,31 @@
 }
 
 .account-btn-delete {
-  background: #dc2626;
+  background: var(--color-danger);
   color: white;
 }
 
 .account-btn-delete:hover:not(:disabled) {
-  background: #b91c1c;
+  opacity: 0.9;
 }
 
 .account-btn-cancel-deletion {
-  background: #4f46e5;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-surface);
 }
 
 .account-btn-cancel-deletion:hover:not(:disabled) {
-  background: #4338ca;
+  opacity: 0.9;
 }
 
 .account-btn-secondary {
-  background: var(--card-bg, #f3f4f6);
-  color: var(--text-primary, #374151);
-  border: 1px solid var(--border-color, #d1d5db);
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
 }
 
 .account-btn-secondary:hover:not(:disabled) {
-  background: var(--hover-bg, #e5e7eb);
+  background: var(--color-surface-bg);
 }
 
 /* Deletion confirm form */
@@ -153,36 +153,38 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm, 8px);
 }
 
 .deletion-confirm-warning {
-  font-size: 0.9rem;
-  color: #991b1b;
+  font-size: 14px;
+  color: var(--color-danger);
   margin: 0;
   line-height: 1.5;
 }
 
 .deletion-confirm-label {
-  font-size: 0.85rem;
+  font-size: 13px;
   font-weight: 500;
-  color: #991b1b;
+  color: var(--color-danger);
 }
 
 .deletion-confirm-input {
   padding: 8px 12px;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-xs, 6px);
+  font-size: 14px;
   max-width: 200px;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
 
 .deletion-confirm-input:focus {
   outline: none;
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 2px var(--color-danger-light);
 }
 
 .deletion-confirm-actions {
@@ -191,12 +193,12 @@
 }
 
 .account-error {
-  color: #dc2626;
-  font-size: 0.85rem;
+  color: var(--color-danger);
+  font-size: 13px;
   margin: 0;
 }
 
 .account-loading {
-  color: var(--text-secondary, #6b7280);
-  font-size: 0.9rem;
+  color: var(--color-ink-muted);
+  font-size: 14px;
 }
