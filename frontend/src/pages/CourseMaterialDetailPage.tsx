@@ -19,10 +19,11 @@ import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { NotesPanel } from '../components/NotesPanel';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'notes';
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -60,6 +61,16 @@ function FlashcardIcon() {
       <rect x="1.5" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
       <rect x="4.5" y="5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="var(--color-surface, #fff)"/>
       <path d="M7 8.5h5M7 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function NotesIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 2h7l3 3v8a2 2 0 01-2 2H5a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M5.5 7.5h5M5.5 10h3.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -356,6 +367,7 @@ export function CourseMaterialDetailPage() {
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
     { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
+    { key: 'notes', label: 'Notes', shortLabel: 'Notes', hasContent: true, icon: <NotesIcon /> },
   ];
 
   return (
@@ -508,6 +520,10 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
               atLimit={atLimit}
             />
+          )}
+
+          {activeTab === 'notes' && (
+            <NotesPanel courseContentId={contentId} />
           )}
         </div>
 

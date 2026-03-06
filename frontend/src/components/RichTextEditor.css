@@ -1,0 +1,162 @@
+/* ── Rich Text Editor ─────────────────────────── */
+
+.rte-container {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface, #fff);
+}
+
+/* Toolbar */
+.rte-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface-secondary, #f8fafc);
+  flex-wrap: wrap;
+}
+
+.rte-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rte-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border, #e2e8f0);
+  margin: 0 4px;
+}
+
+.rte-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary, #64748b);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.rte-btn:hover {
+  background: var(--color-hover, #e2e8f0);
+  color: var(--color-text, #1e293b);
+}
+
+.rte-btn--active {
+  background: var(--color-accent-bg, #e0f2fe);
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+/* Editor content area */
+.rte-content {
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.rte-content .tiptap {
+  padding: 12px 16px;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text, #1e293b);
+}
+
+.rte-content .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted, #94a3b8);
+  pointer-events: none;
+  height: 0;
+  float: left;
+}
+
+/* Headings */
+.rte-content .tiptap h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.8em 0 0.4em;
+}
+
+.rte-content .tiptap h2 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 0.7em 0 0.3em;
+}
+
+.rte-content .tiptap h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+}
+
+/* Lists */
+.rte-content .tiptap ul,
+.rte-content .tiptap ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.rte-content .tiptap li {
+  margin: 0.2em 0;
+}
+
+/* Blockquote */
+.rte-content .tiptap blockquote {
+  border-left: 3px solid var(--color-accent-strong, #2a9fa8);
+  padding-left: 12px;
+  margin: 0.8em 0;
+  color: var(--color-text-secondary, #64748b);
+  font-style: italic;
+}
+
+/* Code */
+.rte-content .tiptap code {
+  background: var(--color-surface-secondary, #f1f5f9);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.rte-content .tiptap pre {
+  background: var(--color-surface-secondary, #f1f5f9);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+/* Images */
+.rte-content .tiptap .note-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+  cursor: default;
+}
+
+.rte-content .tiptap .note-image.ProseMirror-selectednode {
+  outline: 2px solid var(--color-accent-strong, #2a9fa8);
+  outline-offset: 2px;
+}
+
+/* Links */
+.rte-content .tiptap a {
+  color: var(--color-accent-strong, #2a9fa8);
+  text-decoration: underline;
+}
+
+/* Horizontal rule */
+.rte-content .tiptap hr {
+  border: none;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  margin: 1em 0;
+}
