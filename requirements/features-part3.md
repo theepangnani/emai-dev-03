@@ -1107,7 +1107,24 @@ The Course Material Detail page is the most-used page for parents and students s
 
 ---
 
-### 6.53 Waitlist System — Pre-Launch Gated Access (Phase 1) — #1106-#1115, #1124
+### 6.53 Waitlist System — Pre-Launch Gated Access (Phase 1) — IMPLEMENTED
+
+**Issues:** #1106-#1115, #1124 (all closed)
+**PRs:** #1127 (main implementation), #1128, #1129, #1130 (test fixes)
+
+**Sub-tasks:**
+- [x] Data model + migrations (#1107)
+- [x] Public API endpoints — join waitlist + token verify (#1108)
+- [x] Admin API endpoints — list, approve, decline, remind, notes, delete (#1109)
+- [x] Email templates — confirmation, admin notify, approval, decline, reminder (#1110)
+- [x] Launch Landing Page — `/` route (#1111)
+- [x] Join Waitlist form page — `/waitlist` (#1112)
+- [x] Login page — replace "Sign Up" with "Join Waitlist" CTA (#1113)
+- [x] Token-gated registration — `/register?token=` (#1114)
+- [x] Admin Waitlist Management Panel — `/admin/waitlist` (#1115)
+- [x] Feature flag `WAITLIST_ENABLED` + routing changes (#1124)
+- [x] Duplicate email check on join (#1129)
+- [x] Frontend + backend tests (#1122, #1123, #1130)
 
 ClassBridge launches with a waitlist-gated flow. The current open registration is replaced with a waitlist landing page. Admin manually approves users before they can register. This controls incoming traffic and enables gradual onboarding. Will be reverted to current open-registration flow on Phase 2 launch.
 
@@ -1123,8 +1140,8 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 | status | VARCHAR(20) | `pending` / `approved` / `declined` / `registered` |
 | admin_notes | TEXT | Optional admin notes |
 | invite_token | VARCHAR(255) | Unique token for registration link (generated on approval) |
-| invite_token_expires_at | DATETIME | Token expiry (7 days from approval) |
-| email_validated | BOOLEAN | Set to TRUE when user clicks invite link |
+| invite_token_expires_at | DATETIME | Token expiry (14 days from approval) |
+| invite_link_clicked | BOOLEAN | Set to TRUE when user clicks invite link |
 | approved_by_user_id | INTEGER FK | Admin who approved |
 | approved_at | DATETIME | Timestamp of approval |
 | registered_user_id | INTEGER FK | Links to `users.id` after registration completes |
@@ -1154,7 +1171,7 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 
 4. **Registration via Invite Link** (`/register?token=<invite_token>`) — When user clicks invite link from approval email:
    - System validates token (exists, not expired, not already used)
-   - System marks `email_validated = TRUE` on the waitlist record
+   - System marks `invite_link_clicked = TRUE` on the waitlist record
    - Pre-populates name and email from waitlist record (email read-only)
    - User completes the existing progressive registration form (password, role confirmation)
    - On registration complete:
@@ -1178,7 +1195,7 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 3. **Approval / Invitation Email** (`waitlist_approved.html`)
    - Sent to: User, when admin approves
    - Subject: "You're Invited to Join ClassBridge!"
-   - Content: Welcome message, registration link with invite token (`/register?token=<token>`), token valid for 7 days
+   - Content: Welcome message, registration link with invite token (`/register?token=<token>`), token valid for 14 days
    - The link serves dual purpose: validates email + starts registration
 
 4. **Decline Email** (`waitlist_declined.html`)
@@ -1244,7 +1261,19 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 
 ---
 
-### 6.54 AI Usage Limits — Configurable Per-User AI Interaction Quota (Phase 1) — #1116-#1121, #1125
+### 6.54 AI Usage Limits — Configurable Per-User AI Interaction Quota (Phase 1) — IMPLEMENTED
+
+**Issues:** #1116-#1121 (closed), #1125 (audit log — open, future)
+**PRs:** #1127 (main implementation), #1130 (test fixes)
+
+**Sub-tasks:**
+- [x] Data model + migrations — `ai_usage_count`, `ai_usage_limit` on users, `ai_limit_requests` table (#1117)
+- [x] Enforce usage counting in AI generation service (#1118)
+- [x] API endpoints — user + admin (#1119)
+- [x] Frontend UI — credits display, limit modal, request form (#1120)
+- [x] Admin AI Usage Management Panel (#1121)
+- [x] Backend + frontend tests (#1122, #1123, #1130)
+- [ ] Usage history audit log — `ai_usage_history` table + admin views (#1125)
 
 Control AI API costs by limiting the number of AI interactions per user. Default quota is 10 AI generations. Users can request more; admin approves via admin panel.
 

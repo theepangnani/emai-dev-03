@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/waitlist", tags=["Admin Waitlist"])
 
-INVITE_EXPIRY_DAYS = 7
+INVITE_EXPIRY_DAYS = 14
 
 
 def _build_approval_email(name: str, invite_token: str) -> str:

@@ -23,6 +23,13 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+vi.mock('../api/auth', () => ({
+  authApi: {
+    verifyWaitlistToken: vi.fn().mockResolvedValue({ name: '', email: '' }),
+    checkUsername: vi.fn().mockResolvedValue({ available: true }),
+  },
+}))
+
 import { Register } from './Register'
 
 describe('Register', () => {

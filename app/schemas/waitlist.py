@@ -28,7 +28,7 @@ class WaitlistResponse(BaseModel):
     status: str
     admin_notes: str | None
     invite_token: str | None
-    email_validated: bool
+    invite_link_clicked: bool
     approved_by_user_id: int | None
     approved_at: datetime | None
     registered_user_id: int | None
