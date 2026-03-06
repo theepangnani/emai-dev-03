@@ -27,6 +27,7 @@ import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -120,7 +121,7 @@ function CalendarIcon() {
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { confirm, confirmModal } = useConfirm();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
@@ -132,7 +133,19 @@ export function CourseMaterialDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('guide');
+  const urlTab = searchParams.get('tab') as TabKey | null;
+  const [activeTab, setActiveTabState] = useState<TabKey>(
+    urlTab && VALID_TABS.includes(urlTab) ? urlTab : 'guide'
+  );
+
+  const setActiveTab = useCallback((tab: TabKey) => {
+    setActiveTabState(tab);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [generating, setGenerating] = useState<string | null>(null);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
