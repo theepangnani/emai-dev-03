@@ -190,6 +190,15 @@ export function useHighlightRenderer(
     onClickRef.current = onHighlightClick;
   });
 
+  const reconnectObserver = useCallback((container: HTMLElement) => {
+    if (!observerRef.current) return;
+    observerRef.current.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }, []);
+
   const applyAllHighlights = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -223,16 +232,7 @@ export function useHighlightRenderer(
     }
 
     reconnectObserver(container);
-  }, [containerRef]);
-
-  const reconnectObserver = useCallback((container: HTMLElement) => {
-    if (!observerRef.current) return;
-    observerRef.current.observe(container, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-  }, []);
+  }, [containerRef, reconnectObserver]);
 
   const refreshHighlights = useCallback(() => {
     requestAnimationFrame(() => {
