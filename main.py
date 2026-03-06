@@ -17,9 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage, account_deletion
 from app.api.routes import data_export
 
 # Initialize logging first (auto-determines level based on environment)
@@ -871,6 +869,36 @@ with engine.connect() as conn:
         conn.commit()
 
 
+    # ── users: account deletion columns (#964) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "deletion_requested_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_requested_at {col_type}"))
+                logger.info("Added 'deletion_requested_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "deletion_confirmed_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_confirmed_at {col_type}"))
+                logger.info("Added 'deletion_confirmed_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "is_deleted" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'is_deleted' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 app = FastAPI(
@@ -997,6 +1025,8 @@ app.include_router(grades.router, prefix="/api")
 app.include_router(waitlist.router, prefix="/api")
 app.include_router(ai_usage.router, prefix="/api")
 app.include_router(ai_usage.admin_router, prefix="/api")
+app.include_router(account_deletion.router, prefix="/api")
+app.include_router(account_deletion.admin_router, prefix="/api")
 app.include_router(data_export.router, prefix="/api")
 
 logger.info("API routes registered at /api")
@@ -1137,6 +1167,15 @@ async def startup_event():
         sync_google_classrooms,
         CronTrigger(hour=6, minute=0),
         id="google_classroom_sync",
+        replace_existing=True,
+    )
+
+    # Process expired account deletions daily at 4 AM (#964)
+    from app.jobs.account_deletion import process_expired_account_deletions
+    scheduler.add_job(
+        process_expired_account_deletions,
+        CronTrigger(hour=4, minute=0),
+        id="account_deletion_cleanup",
         replace_existing=True,
     )
 
