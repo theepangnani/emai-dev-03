@@ -8,12 +8,13 @@ import {
   type AIUsageUser,
   type AIUsageSummary,
   type AILimitRequest,
+  type AIUsageHistoryEntry,
 } from '../api/adminAIUsage';
 import './AdminAIUsagePage.css';
 
 const PAGE_SIZE = 25;
 
-type Tab = 'users' | 'requests';
+type Tab = 'users' | 'history' | 'requests';
 
 export function AdminAIUsagePage() {
   const [tab, setTab] = useState<Tab>('users');
@@ -30,10 +31,22 @@ export function AdminAIUsagePage() {
   const [usersLoading, setUsersLoading] = useState(true);
   const debouncedSearch = useDebounce(search, 400);
 
+  // Usage History
+  const [history, setHistory] = useState<AIUsageHistoryEntry[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyType, setHistoryType] = useState<string>('');
+  const [historyDateFrom, setHistoryDateFrom] = useState('');
+  const [historyDateTo, setHistoryDateTo] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const debouncedHistorySearch = useDebounce(historySearch, 400);
+
   // Requests
   const [requests, setRequests] = useState<AILimitRequest[]>([]);
   const [requestsTotal, setRequestsTotal] = useState(0);
   const [requestsPage, setRequestsPage] = useState(0);
+  const [requestsStatus, setRequestsStatus] = useState<string>('all');
   const [requestsLoading, setRequestsLoading] = useState(false);
 
   // Modals / inline state
@@ -75,12 +88,37 @@ export function AdminAIUsagePage() {
     if (tab === 'users') loadUsers();
   }, [tab, loadUsers]);
 
+  // Load history
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const data = await adminAIUsageApi.listHistory({
+        search: debouncedHistorySearch || undefined,
+        generation_type: historyType || undefined,
+        date_from: historyDateFrom || undefined,
+        date_to: historyDateTo || undefined,
+        skip: historyPage * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      });
+      setHistory(data.items);
+      setHistoryTotal(data.total);
+    } catch {
+      // Failed to load
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [debouncedHistorySearch, historyType, historyDateFrom, historyDateTo, historyPage]);
+
+  useEffect(() => {
+    if (tab === 'history') loadHistory();
+  }, [tab, loadHistory]);
+
   // Load requests
   const loadRequests = useCallback(async () => {
     setRequestsLoading(true);
     try {
       const data = await adminAIUsageApi.listRequests({
-        status: 'pending',
+        status: requestsStatus,
         skip: requestsPage * PAGE_SIZE,
         limit: PAGE_SIZE,
       });
@@ -91,7 +129,7 @@ export function AdminAIUsagePage() {
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestsPage]);
+  }, [requestsStatus, requestsPage]);
 
   useEffect(() => {
     if (tab === 'requests') loadRequests();
@@ -170,8 +208,27 @@ export function AdminAIUsagePage() {
     return '';
   };
 
+  const getStatusBadgeClass = (status: string) => {
+    if (status === 'approved') return 'ai-usage-status-badge approved';
+    if (status === 'declined') return 'ai-usage-status-badge declined';
+    return 'ai-usage-status-badge pending';
+  };
+
+  const formatGenerationType = (type: string) => {
+    const map: Record<string, string> = {
+      study_guide: 'Study Guide',
+      quiz: 'Quiz',
+      flashcards: 'Flashcards',
+    };
+    return map[type] || type;
+  };
+
   const usersTotalPages = Math.ceil(usersTotal / PAGE_SIZE);
+  const historyTotalPages = Math.ceil(historyTotal / PAGE_SIZE);
   const requestsTotalPages = Math.ceil(requestsTotal / PAGE_SIZE);
+
+  // Count pending requests for badge
+  const pendingCount = tab !== 'requests' ? requestsTotal : requests.filter((r) => r.status === 'pending').length;
 
   return (
     <DashboardLayout welcomeSubtitle="Platform administration">
@@ -223,20 +280,26 @@ export function AdminAIUsagePage() {
             className={`ai-usage-tab${tab === 'users' ? ' active' : ''}`}
             onClick={() => setTab('users')}
           >
-            Users
+            Overview
+          </button>
+          <button
+            className={`ai-usage-tab${tab === 'history' ? ' active' : ''}`}
+            onClick={() => setTab('history')}
+          >
+            Usage History
           </button>
           <button
             className={`ai-usage-tab${tab === 'requests' ? ' active' : ''}`}
             onClick={() => setTab('requests')}
           >
-            Pending Requests
-            {requestsTotal > 0 && tab !== 'requests' && (
-              <span style={{ marginLeft: 6, fontWeight: 700 }}>({requestsTotal})</span>
+            Credit Requests
+            {pendingCount > 0 && tab !== 'requests' && (
+              <span style={{ marginLeft: 6, fontWeight: 700 }}>({pendingCount})</span>
             )}
           </button>
         </div>
 
-        {/* Users Tab */}
+        {/* Users Tab (Overview) */}
         {tab === 'users' && (
           <>
             <div className="ai-usage-search">
@@ -373,9 +436,148 @@ export function AdminAIUsagePage() {
           </>
         )}
 
+        {/* Usage History Tab */}
+        {tab === 'history' && (
+          <>
+            <div className="ai-usage-filters">
+              <input
+                type="text"
+                placeholder="Search by user name or email..."
+                value={historySearch}
+                onChange={(e) => {
+                  setHistorySearch(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="ai-usage-filter-input"
+              />
+              <select
+                value={historyType}
+                onChange={(e) => {
+                  setHistoryType(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="ai-usage-filter-select"
+              >
+                <option value="">All Types</option>
+                <option value="study_guide">Study Guide</option>
+                <option value="quiz">Quiz</option>
+                <option value="flashcards">Flashcards</option>
+              </select>
+              <input
+                type="date"
+                value={historyDateFrom}
+                onChange={(e) => {
+                  setHistoryDateFrom(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="ai-usage-filter-date"
+                placeholder="From"
+                title="From date"
+              />
+              <input
+                type="date"
+                value={historyDateTo}
+                onChange={(e) => {
+                  setHistoryDateTo(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="ai-usage-filter-date"
+                placeholder="To"
+                title="To date"
+              />
+            </div>
+
+            {historyLoading ? (
+              <ListSkeleton rows={8} />
+            ) : (
+              <>
+                <table className="ai-usage-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Type</th>
+                      <th>Material</th>
+                      <th>Credits</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((entry) => (
+                      <tr key={entry.id}>
+                        <td>
+                          <div>{entry.user_name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>
+                            {entry.user_email}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`ai-usage-type-badge ${entry.generation_type}`}>
+                            {formatGenerationType(entry.generation_type)}
+                          </span>
+                        </td>
+                        <td className="ai-usage-reason" title={entry.course_material_title || ''}>
+                          {entry.course_material_title || '--'}
+                        </td>
+                        <td>{entry.credits_used}</td>
+                        <td className="ai-usage-date">{formatDate(entry.created_at)}</td>
+                      </tr>
+                    ))}
+                    {history.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="ai-usage-empty">
+                          No usage history found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {historyTotalPages > 1 && (
+                  <div className="ai-usage-pagination">
+                    <span>
+                      Showing {historyPage * PAGE_SIZE + 1}--
+                      {Math.min((historyPage + 1) * PAGE_SIZE, historyTotal)} of {historyTotal}
+                    </span>
+                    <div className="ai-usage-pagination-btns">
+                      <button
+                        disabled={historyPage === 0}
+                        onClick={() => setHistoryPage(historyPage - 1)}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        disabled={historyPage >= historyTotalPages - 1}
+                        onClick={() => setHistoryPage(historyPage + 1)}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
         {/* Requests Tab */}
         {tab === 'requests' && (
           <>
+            <div className="ai-usage-filters">
+              <select
+                value={requestsStatus}
+                onChange={(e) => {
+                  setRequestsStatus(e.target.value);
+                  setRequestsPage(0);
+                }}
+                className="ai-usage-filter-select"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="declined">Declined</option>
+              </select>
+            </div>
+
             {requestsLoading ? (
               <ListSkeleton rows={5} />
             ) : (
@@ -384,8 +586,9 @@ export function AdminAIUsagePage() {
                   <thead>
                     <tr>
                       <th>User</th>
-                      <th>Requested Amount</th>
+                      <th>Requested</th>
                       <th>Reason</th>
+                      <th>Status</th>
                       <th>Date</th>
                       <th>Actions</th>
                     </tr>
@@ -403,43 +606,56 @@ export function AdminAIUsagePage() {
                         <td className="ai-usage-reason" title={req.reason}>
                           {req.reason}
                         </td>
+                        <td>
+                          <span className={getStatusBadgeClass(req.status)}>
+                            {req.status}
+                          </span>
+                        </td>
                         <td className="ai-usage-date">{formatDate(req.created_at)}</td>
                         <td>
-                          <div className="ai-usage-actions">
-                            <input
-                              type="number"
-                              className="ai-usage-approve-input"
-                              value={approveAmounts[req.id] ?? req.requested_amount}
-                              min={1}
-                              onChange={(e) =>
-                                setApproveAmounts((prev) => ({
-                                  ...prev,
-                                  [req.id]: parseInt(e.target.value, 10) || 0,
-                                }))
-                              }
-                            />
-                            <button
-                              className="ai-usage-btn approve"
-                              disabled={!!actionLoading[`approve-${req.id}`]}
-                              onClick={() => handleApprove(req)}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              className="ai-usage-btn decline"
-                              disabled={!!actionLoading[`decline-${req.id}`]}
-                              onClick={() => handleDecline(req)}
-                            >
-                              Decline
-                            </button>
-                          </div>
+                          {req.status === 'pending' ? (
+                            <div className="ai-usage-actions">
+                              <input
+                                type="number"
+                                className="ai-usage-approve-input"
+                                value={approveAmounts[req.id] ?? req.requested_amount}
+                                min={1}
+                                onChange={(e) =>
+                                  setApproveAmounts((prev) => ({
+                                    ...prev,
+                                    [req.id]: parseInt(e.target.value, 10) || 0,
+                                  }))
+                                }
+                              />
+                              <button
+                                className="ai-usage-btn approve"
+                                disabled={!!actionLoading[`approve-${req.id}`]}
+                                onClick={() => handleApprove(req)}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="ai-usage-btn decline"
+                                disabled={!!actionLoading[`decline-${req.id}`]}
+                                onClick={() => handleDecline(req)}
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="ai-usage-resolved-info">
+                              {req.status === 'approved' && req.approved_amount != null
+                                ? `+${req.approved_amount} credits`
+                                : '--'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
                     {requests.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="ai-usage-empty">
-                          No pending requests
+                        <td colSpan={6} className="ai-usage-empty">
+                          No requests found
                         </td>
                       </tr>
                     )}

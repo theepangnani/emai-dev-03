@@ -2,13 +2,14 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db, SessionLocal
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.models.course_content import CourseContent
+from app.models.source_file import SourceFile
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
@@ -26,6 +27,7 @@ from app.schemas.course_content import (
     CourseContentResponse,
     CourseContentUpdateResponse,
 )
+from app.schemas.source_file import SourceFileResponse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -50,6 +52,21 @@ def _get_school_course_ids(db: Session, course_ids: list[int]) -> set[int]:
     return {r[0] for r in rows}
 
 
+def _populate_source_files_count(resp: CourseContentResponse, item) -> CourseContentResponse:
+    """Set source_files_count on a response from an ORM item's relationship."""
+    try:
+        resp.source_files_count = item.source_files.count()
+    except Exception:
+        resp.source_files_count = 0
+    return resp
+
+
+def _to_response(item, db: Session | None = None) -> CourseContentResponse:
+    """Convert an ORM CourseContent to a response with source_files_count."""
+    resp = CourseContentResponse.model_validate(item)
+    return _populate_source_files_count(resp, item)
+
+
 def _strip_urls_for_school(
     items: list, school_ids: set[int]
 ) -> list[CourseContentResponse]:
@@ -60,7 +77,7 @@ def _strip_urls_for_school(
     """
     results = []
     for item in items:
-        resp = CourseContentResponse.model_validate(item)
+        resp = _to_response(item)
         if item.course_id in school_ids:
             resp.reference_url = None
             resp.google_classroom_url = None
@@ -171,7 +188,7 @@ def create_course_content(
             course_name=course.name,
         )
 
-    return content
+    return _to_response(content)
 
 
 MAX_UPLOAD_SIZE = settings.max_upload_size_mb * 1024 * 1024
@@ -258,7 +275,7 @@ def _run_ai_generation_background(
             # Increment AI usage after successful generation
             user = db.query(User).filter(User.id == user_id).first()
             if user:
-                increment_ai_usage(user, db)
+                increment_ai_usage(user, db, generation_type=ai_tool, course_material_id=content_id)
 
             db.commit()
             logger.info(
@@ -378,7 +395,136 @@ async def upload_course_content_file(
             course_name=course.name,
         )
 
-    return content
+    return _to_response(content)
+
+
+@router.post("/upload-multi", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
+async def upload_multi_files(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+    course_id: int = Form(...),
+    title: str = Form(""),
+    content_type: str = Form("notes"),
+    ai_tool: str = Form("none"),
+    ai_custom_prompt: str = Form(""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload multiple files as a single course content item.
+
+    Each file is stored as a SourceFile for later view/download.
+    Text is extracted from all files and combined into the CourseContent.text_content.
+
+    Optionally triggers AI study material generation as a background task.
+    """
+    if not files:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
+
+    # Validate ai_tool
+    ai_tool_normalized = ai_tool.strip().lower()
+    if ai_tool_normalized not in VALID_AI_TOOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid ai_tool. Must be one of: {', '.join(sorted(VALID_AI_TOOLS))}",
+        )
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Read all files and validate sizes
+    file_entries: list[tuple[str, bytes, str | None]] = []
+    total_size = 0
+    for f in files:
+        file_bytes = await f.read()
+        total_size += len(file_bytes)
+        if total_size > MAX_UPLOAD_SIZE * 5:  # Allow 5x single file limit for multi-file
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Total upload size exceeds {(MAX_UPLOAD_SIZE * 5) // (1024*1024)} MB limit",
+            )
+        file_entries.append((f.filename or "unknown", file_bytes, f.content_type))
+
+    # Extract text from all files
+    text_parts: list[str] = []
+    for fname, fbytes, _ in file_entries:
+        try:
+            extracted = process_file(fbytes, fname)
+            if extracted.strip():
+                text_parts.append(f"--- [{fname}] ---\n{extracted}")
+        except FileProcessingError as e:
+            logger.warning("Text extraction failed for %s: %s", fname, e)
+            text_parts.append(f"--- [{fname}] ---\n(text extraction failed)")
+
+    combined_text = "\n\n".join(text_parts) if text_parts else None
+
+    # Create the CourseContent record
+    content_title = title or ", ".join(fname for fname, _, _ in file_entries)
+    content = CourseContent(
+        course_id=course_id,
+        title=content_title,
+        content_type=content_type,
+        text_content=combined_text,
+        original_filename=file_entries[0][0] if len(file_entries) == 1 else None,
+        file_size=total_size,
+        mime_type=file_entries[0][2] if len(file_entries) == 1 else "multipart/mixed",
+        created_by_user_id=current_user.id,
+    )
+    db.add(content)
+    db.flush()  # get content.id for FK
+
+    # Store each file as a SourceFile
+    for fname, fbytes, fmime in file_entries:
+        source = SourceFile(
+            course_content_id=content.id,
+            filename=fname,
+            file_type=fmime,
+            file_size=len(fbytes),
+            file_data=fbytes,
+        )
+        db.add(source)
+
+    db.commit()
+    db.refresh(content)
+
+    # Notify parents when a student uploads material
+    if current_user.role == UserRole.STUDENT:
+        try:
+            notify_parents_of_student(
+                db=db,
+                student_user=current_user,
+                title=f"{current_user.full_name} uploaded class material",
+                content=f'{current_user.full_name} uploaded "{content_title}" to {course.name}.',
+                notification_type=NotificationType.MATERIAL_UPLOADED,
+                link=f"/courses/{course_id}",
+                source_type="course_content",
+                source_id=content.id,
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to notify parents of student upload: %s", e)
+
+    # Trigger AI generation in background if requested
+    if ai_tool_normalized != "none" and combined_text:
+        check_ai_usage(current_user, db)
+        background_tasks.add_task(
+            _run_ai_generation_background,
+            content_id=content.id,
+            user_id=current_user.id,
+            course_id=course_id,
+            ai_tool=ai_tool_normalized,
+            ai_custom_prompt=ai_custom_prompt.strip() or None,
+            title=content_title,
+            text_content=combined_text,
+            course_name=course.name,
+        )
+
+    return _to_response(content)
 
 
 @router.get("/linked-course-ids")
@@ -472,7 +618,7 @@ def list_course_contents(
         if school_ids:
             return _strip_urls_for_school(items, school_ids)
 
-    return items
+    return [_to_response(item) for item in items]
 
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
@@ -600,13 +746,13 @@ def get_course_content(
     if current_user.role == UserRole.STUDENT:
         school_ids = _get_school_course_ids(db, [content.course_id])
         if content.course_id in school_ids:
-            resp = CourseContentResponse.model_validate(content)
+            resp = _to_response(content)
             resp.reference_url = None
             resp.google_classroom_url = None
             resp.download_restricted = True
             return resp
 
-    return content
+    return _to_response(content)
 
 
 @router.get("/{content_id}/download")
@@ -702,6 +848,7 @@ def update_course_content(
     db.refresh(content)
 
     resp = CourseContentUpdateResponse.model_validate(content)
+    _populate_source_files_count(resp, content)
     resp.archived_guides_count = archived_guides_count
     return resp
 
@@ -769,6 +916,7 @@ async def replace_course_content_file(
     db.refresh(content)
 
     resp = CourseContentUpdateResponse.model_validate(content)
+    _populate_source_files_count(resp, content)
     resp.archived_guides_count = archived_guides_count
     return resp
 
@@ -812,7 +960,7 @@ def restore_course_content(
     content.archived_at = None
     db.commit()
     db.refresh(content)
-    return content
+    return _to_response(content)
 
 
 @router.delete("/{content_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
@@ -838,8 +986,83 @@ def permanent_delete_course_content(
 
 
 def _permanent_delete_content(db: Session, content: CourseContent):
-    """Hard-delete a content item, its stored file, and all linked study guides."""
+    """Hard-delete a content item, its stored file, source files, and all linked study guides."""
     if content.file_path:
         delete_file(content.file_path)
+    db.query(SourceFile).filter(SourceFile.course_content_id == content.id).delete()
     db.query(StudyGuide).filter(StudyGuide.course_content_id == content.id).delete()
     db.delete(content)
+
+
+# ── Source Files endpoints (#1005) ────────────────────────────────
+
+@router.get("/{content_id}/source-files", response_model=list[SourceFileResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_source_files(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List source files for a course content item. Must have access to the course."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    files = (
+        db.query(SourceFile)
+        .filter(SourceFile.course_content_id == content_id)
+        .order_by(SourceFile.created_at)
+        .all()
+    )
+    return files
+
+
+@router.get("/{content_id}/source-files/{file_id}/download")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def download_source_file(
+    request: Request,
+    content_id: int,
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download/view an individual source file. Must have access to the course."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Restrict downloads for students on school courses (#550)
+    if current_user.role == UserRole.STUDENT:
+        school_ids = _get_school_course_ids(db, [content.course_id])
+        if content.course_id in school_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Downloads are restricted for school classroom content.",
+            )
+
+    source = (
+        db.query(SourceFile)
+        .filter(SourceFile.id == file_id, SourceFile.course_content_id == content_id)
+        .first()
+    )
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file not found")
+
+    media_type = source.file_type or "application/octet-stream"
+    filename = source.filename or f"file-{file_id}"
+
+    return Response(
+        content=source.file_data,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(source.file_data)),
+        },
+    )

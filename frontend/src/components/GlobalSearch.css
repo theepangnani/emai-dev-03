@@ -161,6 +161,14 @@
   text-overflow: ellipsis;
 }
 
+/* Search highlight */
+.global-search-highlight {
+  background: var(--color-accent-light, #fff3cd);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .global-search {

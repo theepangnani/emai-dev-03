@@ -1,140 +1,160 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notesApi } from '../api/notes';
-import { RichTextEditor } from './RichTextEditor';
-import type { ImageValidationError } from '../utils/imageValidation';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { notesApi, type NoteItem } from '../api/notes';
+import { NoteTaskForm } from './NoteTaskForm';
 import './NotesPanel.css';
 
 interface NotesPanelProps {
   courseContentId: number;
+  onClose: () => void;
 }
 
-export function NotesPanel({ courseContentId }: NotesPanelProps) {
-  const queryClient = useQueryClient();
-  const [, setEditorContent] = useState('');
-  const [, setPlainText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const contentRef = useRef({ html: '', text: '' });
+export function NotesPanel({ courseContentId, onClose }: NotesPanelProps) {
+  const [note, setNote] = useState<NoteItem | null>(null);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showTaskDropdown, setShowTaskDropdown] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch existing note
-  const { data: note, isLoading } = useQuery({
-    queryKey: ['note', courseContentId],
-    queryFn: () => notesApi.get(courseContentId),
-    retry: (failureCount, err: { response?: { status: number } }) => {
-      // Don't retry on 404 (no note yet)
-      if (err?.response?.status === 404) return false;
-      return failureCount < 2;
-    },
-  });
-
-  // Upsert mutation
-  const upsertMutation = useMutation({
-    mutationFn: (data: { content: string | null; plain_text: string | null }) =>
-      notesApi.upsert(courseContentId, data),
-    onSuccess: () => {
-      setSaveStatus('saved');
-      queryClient.invalidateQueries({ queryKey: ['note', courseContentId] });
-      // Reset status after 2 seconds
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    },
-    onError: () => {
-      setSaveStatus('error');
-      setError('Failed to save note. Please try again.');
-    },
-  });
-
-  // Auto-save with debounce
-  const scheduleSave = useCallback(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+  const loadNote = useCallback(async () => {
+    try {
+      const data = await notesApi.getByContent(courseContentId);
+      setNote(data);
+      setContent(data.content || '');
+    } catch {
+      // 404 = no note yet, that's ok
+      setNote(null);
+      setContent('');
+    } finally {
+      setLoading(false);
     }
-    setSaveStatus('saving');
-    saveTimeoutRef.current = setTimeout(() => {
-      const { html, text } = contentRef.current;
-      upsertMutation.mutate({
-        content: html || null,
-        plain_text: text || null,
-      });
-    }, 1500);
-  }, [upsertMutation]);
+  }, [courseContentId]);
 
-  // Cleanup timeout on unmount
+  useEffect(() => { loadNote(); }, [loadNote]);
+
+  // Close dropdown on outside click
   useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowTaskDropdown(false);
       }
     };
-  }, []);
+    if (showTaskDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showTaskDropdown]);
 
-  const handleUpdate = useCallback(
-    (html: string, text: string) => {
-      setEditorContent(html);
-      setPlainText(text);
-      contentRef.current = { html, text };
-      setError(null);
-      scheduleSave();
-    },
-    [scheduleSave],
-  );
+  const saveNote = useCallback(async (newContent: string) => {
+    setSaving(true);
+    try {
+      const data = await notesApi.upsert(courseContentId, { content: newContent });
+      setNote(data);
+    } catch (err: any) {
+      if (err.response?.status === 204) {
+        // Note was auto-deleted (empty)
+        setNote(null);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [courseContentId]);
 
-  const handleImageError = useCallback((err: ImageValidationError) => {
-    setError(err.message);
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => setError(null), 5000);
-  }, []);
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setContent(val);
+    // Debounce auto-save
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveNote(val), 1000);
+  };
 
-  const initialContent = note?.content || '';
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleTaskCreated = () => {
+    setShowTaskForm(false);
+    showToast('Task created from note');
+  };
+
+  const handleCreateQuickTask = () => {
+    setShowTaskDropdown(false);
+    setShowTaskForm(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="notes-panel">
+        <div className="notes-panel-header">
+          <h3>Notes</h3>
+          <button className="notes-close-btn" onClick={onClose} aria-label="Close notes">&times;</button>
+        </div>
+        <div className="notes-panel-body">
+          <p className="notes-loading">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="notes-panel">
-      <div className="notes-panel__header">
-        <h3 className="notes-panel__title">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="M3 2h7l3 3v8a2 2 0 01-2 2H5a2 2 0 01-2-2V4a2 2 0 012-2z"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-            <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            <path d="M5.5 7.5h5M5.5 10h3.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-          </svg>
-          My Notes
-        </h3>
-        <span className={`notes-panel__status notes-panel__status--${saveStatus}`}>
-          {saveStatus === 'saving' && 'Saving...'}
-          {saveStatus === 'saved' && 'Saved'}
-          {saveStatus === 'error' && 'Save failed'}
-        </span>
+      <div className="notes-panel-header">
+        <h3>Notes</h3>
+        <div className="notes-header-actions">
+          {note && (
+            <div className="notes-task-dropdown-wrapper" ref={dropdownRef}>
+              <button
+                className="notes-create-task-btn"
+                onClick={() => setShowTaskDropdown(!showTaskDropdown)}
+                title="Create task from note"
+              >
+                + Task
+              </button>
+              {showTaskDropdown && (
+                <div className="notes-task-dropdown">
+                  <button className="notes-task-dropdown-item" onClick={handleCreateQuickTask}>
+                    Quick Task (standalone)
+                  </button>
+                  <button className="notes-task-dropdown-item" onClick={() => {
+                    setShowTaskDropdown(false);
+                    setShowTaskForm(true);
+                  }}>
+                    Linked Task (with material)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          <button className="notes-close-btn" onClick={onClose} aria-label="Close notes">&times;</button>
+        </div>
       </div>
 
-      {error && (
-        <div className="notes-panel__error" role="alert">
-          {error}
-          <button className="notes-panel__error-dismiss" onClick={() => setError(null)}>
-            &times;
-          </button>
+      {showTaskForm && note ? (
+        <div className="notes-panel-body">
+          <NoteTaskForm
+            note={note}
+            onCreated={handleTaskCreated}
+            onCancel={() => setShowTaskForm(false)}
+          />
+        </div>
+      ) : (
+        <div className="notes-panel-body">
+          <textarea
+            className="notes-textarea"
+            value={content}
+            onChange={handleChange}
+            placeholder="Type your notes here..."
+          />
+          <div className="notes-panel-footer">
+            {saving && <span className="notes-saving">Saving...</span>}
+            {!saving && note && <span className="notes-saved">Saved</span>}
+          </div>
         </div>
       )}
 
-      {isLoading ? (
-        <div className="notes-panel__loading">Loading notes...</div>
-      ) : (
-        <RichTextEditor
-          content={initialContent}
-          onUpdate={handleUpdate}
-          onError={handleImageError}
-          placeholder="Add your notes here... Paste images from clipboard, drag & drop, or use the toolbar to upload."
-        />
-      )}
-
-      <div className="notes-panel__footer">
-        <span className="notes-panel__hint">
-          Paste images from clipboard, drag & drop files, or click the image button. Max 5 MB/image, 10 images/note.
-        </span>
-      </div>
+      {toast && <div className="notes-toast">{toast}</div>}
     </div>
   );
 }

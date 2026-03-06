@@ -57,6 +57,7 @@ class TaskResponse(BaseModel):
     course_id: Optional[int] = None
     course_content_id: Optional[int] = None
     study_guide_id: Optional[int] = None
+    note_id: Optional[int] = None
     course_name: Optional[str] = None
     course_content_title: Optional[str] = None
     study_guide_title: Optional[str] = None

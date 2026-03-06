@@ -13,6 +13,7 @@ import { downloadAsPdf } from '../utils/exportUtils';
 import { PageNav } from '../components/PageNav';
 import { useAIUsage } from '../hooks/useAIUsage';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { NotesPanelToggle } from '../components/NotesPanelToggle';
 import './StudyGuidePage.css';
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
@@ -152,6 +153,7 @@ export function StudyGuidePage() {
           {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
           <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
           <div className="sg-icon-actions">
+            {guide.course_content_id && <NotesPanelToggle courseContentId={guide.course_content_id} />}
             <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
             <button className="sg-icon-btn" title="Print" aria-label="Print study guide" onClick={() => window.print()}>&#128424;</button>
             <button className="sg-icon-btn" title="Download PDF" aria-label="Download PDF" disabled={exporting} onClick={async () => { if (!contentRef.current) return; setExporting(true); try { await downloadAsPdf(contentRef.current, guide.title || 'study-guide'); } finally { setExporting(false); } }}>{exporting ? '\u23F3' : '\u{1F4E5}'}</button>

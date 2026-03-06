@@ -1,9 +1,12 @@
-"""Tests for the AI Usage Limits feature (issue #1122).
+"""Tests for the AI Usage Limits feature (issue #1122) and audit log (#1125).
 
 Covers:
 - GET /api/ai-usage — current user's AI usage stats
 - POST /api/ai-usage/request — request more AI credits
+- GET /api/ai-usage/history — user's own usage history
 - Admin CRUD on /api/admin/ai-usage
+- GET /api/admin/ai-usage/history — admin usage audit log
+- GET /api/admin/ai-usage/requests — all requests (not just pending)
 """
 import pytest
 from conftest import PASSWORD, _auth
@@ -211,3 +214,165 @@ class TestAdminAIUsage:
         assert resp.status_code == 200
         data = resp.json()
         assert data["ai_usage_count"] == 0
+
+    def test_admin_list_requests_all_statuses(self, client, users, db_session):
+        """GET /api/admin/ai-usage/requests defaults to 'all' and returns all statuses."""
+        from app.models.ai_limit_request import AILimitRequest
+
+        # Create requests in different statuses
+        for status_val in ("pending", "approved", "declined"):
+            req = AILimitRequest(
+                user_id=users["student"].id,
+                requested_amount=5,
+                reason=f"Test {status_val}",
+                status=status_val,
+            )
+            db_session.add(req)
+        db_session.commit()
+
+        headers = _auth(client, users["admin"].email)
+        # No status filter — should return all
+        resp = client.get("/api/admin/ai-usage/requests", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        statuses = {r["status"] for r in data}
+        # Should include more than just pending
+        assert len(statuses) >= 2
+
+    def test_admin_list_requests_filter_pending(self, client, users, db_session):
+        """GET /api/admin/ai-usage/requests?status=pending returns only pending."""
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/requests?status=pending", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        for r in data:
+            assert r["status"] == "pending"
+
+
+# ── Usage History Endpoints ─────────────────────────────────
+
+class TestAIUsageHistory:
+    def _seed_history(self, db_session, user_id, count=3):
+        """Seed ai_usage_history rows for a user."""
+        from app.models.ai_usage_history import AIUsageHistory
+        for i, gen_type in enumerate(["study_guide", "quiz", "flashcards"]):
+            if i >= count:
+                break
+            entry = AIUsageHistory(
+                user_id=user_id,
+                generation_type=gen_type,
+                credits_used=1,
+            )
+            db_session.add(entry)
+        db_session.commit()
+
+    def test_user_history_empty(self, client, users):
+        """New users should get empty history."""
+        headers = _auth(client, users["parent"].email)
+        resp = client.get("/api/ai-usage/history", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 0
+        assert isinstance(data["items"], list)
+
+    def test_user_history_returns_own(self, client, users, db_session):
+        """User sees their own history entries."""
+        self._seed_history(db_session, users["student"].id)
+        headers = _auth(client, users["student"].email)
+        resp = client.get("/api/ai-usage/history", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 3
+        for item in data["items"]:
+            assert item["user_id"] == users["student"].id
+
+    def test_user_history_filter_type(self, client, users, db_session):
+        """User can filter history by generation type."""
+        self._seed_history(db_session, users["student"].id)
+        headers = _auth(client, users["student"].email)
+        resp = client.get("/api/ai-usage/history?generation_type=quiz", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        for item in data["items"]:
+            assert item["generation_type"] == "quiz"
+
+    def test_user_history_requires_auth(self, client):
+        """History endpoint requires authentication."""
+        resp = client.get("/api/ai-usage/history")
+        assert resp.status_code in (401, 403)
+
+    def test_admin_history(self, client, users, db_session):
+        """Admin can see all users' history."""
+        self._seed_history(db_session, users["student"].id)
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/history", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 3
+        assert isinstance(data["items"], list)
+        # Check enrichment fields
+        for item in data["items"]:
+            assert "user_name" in item
+            assert "user_email" in item
+            assert "generation_type" in item
+
+    def test_admin_history_filter_type(self, client, users, db_session):
+        """Admin can filter history by generation type."""
+        self._seed_history(db_session, users["student"].id)
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/history?generation_type=study_guide", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        for item in data["items"]:
+            assert item["generation_type"] == "study_guide"
+
+    def test_admin_history_filter_user(self, client, users, db_session):
+        """Admin can filter history by user_id."""
+        self._seed_history(db_session, users["student"].id)
+        headers = _auth(client, users["admin"].email)
+        resp = client.get(
+            f"/api/admin/ai-usage/history?user_id={users['student'].id}",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        for item in data["items"]:
+            assert item["user_id"] == users["student"].id
+
+    def test_admin_history_search(self, client, users, db_session):
+        """Admin can search history by user name."""
+        self._seed_history(db_session, users["student"].id)
+        headers = _auth(client, users["admin"].email)
+        resp = client.get(
+            "/api/admin/ai-usage/history?search=AIU Student",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+
+    def test_admin_history_requires_admin(self, client, users):
+        """Non-admin users cannot access admin history."""
+        headers = _auth(client, users["student"].email)
+        resp = client.get("/api/admin/ai-usage/history", headers=headers)
+        assert resp.status_code == 403
+
+    def test_log_ai_usage_creates_entry(self, db_session, users):
+        """log_ai_usage inserts a row into ai_usage_history."""
+        from app.services.ai_usage import log_ai_usage
+        from app.models.ai_usage_history import AIUsageHistory
+
+        before = db_session.query(AIUsageHistory).filter(
+            AIUsageHistory.user_id == users["student"].id
+        ).count()
+
+        log_ai_usage(users["student"], db_session, "quiz", course_material_id=None, credits_used=1)
+        db_session.commit()
+
+        after = db_session.query(AIUsageHistory).filter(
+            AIUsageHistory.user_id == users["student"].id
+        ).count()
+
+        assert after == before + 1
