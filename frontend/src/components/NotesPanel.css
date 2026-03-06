@@ -173,6 +173,23 @@
   font-size: 0.88rem;
 }
 
+.notes-readonly-content {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--color-ink, #1e293b);
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+
+.notes-empty {
+  padding: 20px 14px;
+  color: var(--color-ink-muted, #94a3b8);
+  font-size: 0.88rem;
+  font-style: italic;
+}
+
 .notes-toast {
   position: fixed;
   bottom: 24px;

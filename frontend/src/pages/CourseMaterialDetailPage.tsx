@@ -568,7 +568,19 @@ export function CourseMaterialDetailPage() {
 
         </div>
 
-        <NotesPanel courseContentId={contentId} isOpen={showNotesPanel} onClose={() => setShowNotesPanel(false)} appendText={appendText} onAppendConsumed={() => setAppendText(null)} addHighlight={addHighlight} onHighlightConsumed={() => setAddHighlight(null)} onHighlightsChange={setHighlights} />
+        <NotesPanel
+          courseContentId={contentId}
+          isOpen={showNotesPanel}
+          onClose={() => setShowNotesPanel(false)}
+          appendText={isParent ? undefined : appendText}
+          onAppendConsumed={isParent ? undefined : () => setAppendText(null)}
+          addHighlight={isParent ? undefined : addHighlight}
+          onHighlightConsumed={isParent ? undefined : () => setAddHighlight(null)}
+          onHighlightsChange={setHighlights}
+          readOnly={isParent && !!resolvedStudent}
+          childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
+          childName={isParent ? resolvedStudent?.student_name : undefined}
+        />
 
       </div>
       <CreateTaskModal
@@ -625,7 +637,7 @@ export function CourseMaterialDetailPage() {
       )}
 
       {/* Contextual notes: selection tooltip + FAB */}
-      {selection && (
+      {!isParent && selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
       <NotesFAB courseContentId={contentId} isOpen={showNotesPanel} onToggle={() => setShowNotesPanel(v => !v)} />

@@ -57,6 +57,16 @@ export const notesApi = {
     return response.data as NoteItem[];
   },
 
+  getChildNotes: async (studentUserId: number, courseContentId: number) => {
+    const response = await api.get(`/api/notes/children/${studentUserId}`, {
+      params: { course_content_id: courseContentId },
+    });
+    const notes = response.data as NoteItem[];
+    if (notes.length === 0) return null;
+    const fullResp = await api.get(`/api/notes/${notes[0].id}`);
+    return fullResp.data as NoteItem;
+  },
+
   createTask: async (noteId: number, courseContentId: number, data: NoteCreateTaskData) => {
     const response = await api.post('/api/tasks/', {
       title: data.title,

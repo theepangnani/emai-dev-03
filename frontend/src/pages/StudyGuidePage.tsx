@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
-import type { StudyGuide } from '../api/client';
+import type { StudyGuide, ResolvedStudent } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
@@ -41,6 +42,9 @@ export function StudyGuidePage() {
   const [exporting, setExporting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const { confirm, confirmModal } = useConfirm();
+  const { user } = useAuth();
+  const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
+  const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const { atLimit, remaining, invalidate: refreshAIUsage } = useAIUsage();
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -86,6 +90,17 @@ export function StudyGuidePage() {
     };
     fetchGuide();
   }, [id]);
+
+  // Resolve child student for parent role
+  useEffect(() => {
+    if (!isParent || !guide) return;
+    const params = guide.course_id
+      ? { course_id: guide.course_id }
+      : { study_guide_id: guide.id };
+    studyApi.resolveStudent(params)
+      .then(setResolvedStudent)
+      .catch(() => {});
+  }, [isParent, guide?.course_id, guide?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async () => {
     if (!guide) return;
@@ -220,7 +235,7 @@ export function StudyGuidePage() {
       <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
 
       {/* Contextual notes: selection tooltip + FAB + panel */}
-      {selection && (
+      {!isParent && selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
       {guide.course_content_id && (
@@ -230,11 +245,14 @@ export function StudyGuidePage() {
             courseContentId={guide.course_content_id}
             isOpen={notesOpen}
             onClose={() => setNotesOpen(false)}
-            appendText={appendText}
-            onAppendConsumed={() => setAppendText(null)}
-            addHighlight={addHighlight}
-            onHighlightConsumed={() => setAddHighlight(null)}
+            appendText={isParent ? undefined : appendText}
+            onAppendConsumed={isParent ? undefined : () => setAppendText(null)}
+            addHighlight={isParent ? undefined : addHighlight}
+            onHighlightConsumed={isParent ? undefined : () => setAddHighlight(null)}
             onHighlightsChange={setHighlights}
+            readOnly={isParent && !!resolvedStudent}
+            childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
+            childName={isParent ? resolvedStudent?.student_name : undefined}
           />
         </>
       )}
