@@ -21,9 +21,10 @@ import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { NotesPanel } from '../components/NotesPanel';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { NotesPanelToggle } from '../components/NotesPanelToggle';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'notes';
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -61,6 +62,15 @@ function FlashcardIcon() {
       <rect x="1.5" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
       <rect x="4.5" y="5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="var(--color-surface, #fff)"/>
       <path d="M7 8.5h5M7 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function NotesIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -375,6 +385,7 @@ export function CourseMaterialDetailPage() {
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
     { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
+    { key: 'notes', label: 'Notes', shortLabel: 'Notes', hasContent: true, icon: <NotesIcon /> },
   ];
 
   return (
@@ -424,6 +435,7 @@ export function CourseMaterialDetailPage() {
               <EditIcon />
               <span className="cm-toolbar-btn-label">Edit</span>
             </button>
+            <NotesPanelToggle courseContentId={contentId} />
             <span className="cm-toolbar-sep" />
             <button className="cm-toolbar-btn danger" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>
               <ArchiveIcon />
@@ -539,6 +551,12 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
               atLimit={atLimit}
             />
+          )}
+
+          {activeTab === 'notes' && (
+            <div className="cm-tab-card">
+              <NotesPanel courseContentId={contentId} inline />
+            </div>
           )}
         </div>
 

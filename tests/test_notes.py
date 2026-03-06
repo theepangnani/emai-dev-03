@@ -1,258 +1,238 @@
-"""Tests for Notes system — CRUD, task creation from notes (#1087)."""
-
 import pytest
-from conftest import PASSWORD, _login, _auth
+from conftest import PASSWORD, _auth
 
 
 @pytest.fixture()
-def users(db_session):
-    """Create test users: a parent and a course with content."""
+def setup(db_session):
     from app.core.security import get_password_hash
     from app.models.user import User, UserRole
+    from app.models.student import Student, parent_students
     from app.models.course import Course
     from app.models.course_content import CourseContent
 
-    parent = db_session.query(User).filter(User.email == "noteparent@test.com").first()
-    if parent:
-        course = db_session.query(Course).filter(Course.name == "Notes Test Course").first()
-        cc = db_session.query(CourseContent).filter(CourseContent.course_id == course.id).first()
-        other = db_session.query(User).filter(User.email == "noteother@test.com").first()
-        return {"parent": parent, "course": course, "cc": cc, "other": other}
+    owner = db_session.query(User).filter(User.email == "notes_owner@test.com").first()
+    if owner:
+        parent = db_session.query(User).filter(User.email == "notes_parent@test.com").first()
+        outsider = db_session.query(User).filter(User.email == "notes_outsider@test.com").first()
+        cc = db_session.query(CourseContent).join(Course).filter(Course.name == "Notes Test Course").first()
+        return {"owner": owner, "parent": parent, "outsider": outsider, "course_content": cc}
 
     hashed = get_password_hash(PASSWORD)
-    parent = User(email="noteparent@test.com", full_name="Note Parent", role=UserRole.PARENT, hashed_password=hashed)
-    other = User(email="noteother@test.com", full_name="Other User", role=UserRole.PARENT, hashed_password=hashed)
-    db_session.add_all([parent, other])
-    db_session.commit()
+    owner = User(email="notes_owner@test.com", full_name="Notes Owner", role=UserRole.STUDENT, hashed_password=hashed)
+    parent = User(email="notes_parent@test.com", full_name="Notes Parent", role=UserRole.PARENT, hashed_password=hashed)
+    outsider = User(email="notes_outsider@test.com", full_name="Notes Outsider", role=UserRole.STUDENT, hashed_password=hashed)
+    db_session.add_all([owner, parent, outsider])
+    db_session.flush()
 
-    course = Course(name="Notes Test Course", created_by_user_id=parent.id)
+    student_rec = Student(user_id=owner.id)
+    db_session.add(student_rec)
+    db_session.flush()
+
+    # Link parent to student
+    db_session.execute(parent_students.insert().values(
+        parent_id=parent.id, student_id=student_rec.id
+    ))
+
+    course = Course(name="Notes Test Course")
     db_session.add(course)
-    db_session.commit()
+    db_session.flush()
 
-    cc = CourseContent(
-        course_id=course.id,
-        title="Test Material",
-        description="Test description",
-        text_content="Some test content for notes",
-        content_type="notes",
-        created_by_user_id=parent.id,
-    )
+    cc = CourseContent(course_id=course.id, title="Lesson 1", content_type="notes")
     db_session.add(cc)
     db_session.commit()
 
-    return {"parent": parent, "course": course, "cc": cc, "other": other}
+    return {"owner": owner, "parent": parent, "outsider": outsider, "course_content": cc}
 
 
-class TestNotesUpsert:
-    """Test PUT /api/notes/by-content/{course_content_id}"""
+# ── Upsert Tests ─────────────────────────────────────────────────
 
-    def test_create_note(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>My study notes</p>", "has_images": False},
-            headers=h,
-        )
+
+class TestUpsertNote:
+    def test_create_note(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Hello <b>world</b></p>",
+        }, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert data["course_content_id"] == users["cc"].id
-        assert data["plain_text"] == "My study notes"
+        assert data["user_id"] == setup["owner"].id
+        assert data["course_content_id"] == setup["course_content"].id
+        assert data["content"] == "<p>Hello <b>world</b></p>"
+        assert data["plain_text"] == "Hello world"
         assert data["has_images"] is False
 
-    def test_update_note(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        # Create first
-        client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>First version</p>"},
-            headers=h,
-        )
+    def test_update_existing_note(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        # Create
+        client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>First version</p>",
+        }, headers=headers)
         # Update
-        resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Updated version</p>"},
-            headers=h,
-        )
+        resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Second version</p>",
+        }, headers=headers)
         assert resp.status_code == 200
-        assert resp.json()["plain_text"] == "Updated version"
+        assert resp.json()["plain_text"] == "Second version"
 
-    def test_auto_delete_empty_note(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        # Create note first
-        client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Something</p>"},
-            headers=h,
-        )
-        # Send empty content -> auto-delete
-        resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": ""},
-            headers=h,
-        )
+    def test_empty_content_deletes(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        # Create a note first
+        client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Will be deleted</p>",
+        }, headers=headers)
+        # Send empty content → auto-delete
+        resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>  </p>",
+        }, headers=headers)
         assert resp.status_code == 204
 
-    def test_create_note_nonexistent_content(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        resp = client.put(
-            "/api/notes/by-content/99999",
-            json={"content": "<p>Test</p>"},
-            headers=h,
-        )
-        assert resp.status_code == 404
-
-
-class TestNotesGet:
-    """Test GET /api/notes/by-content/{course_content_id}"""
-
-    def test_get_note(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        # Create first
-        client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<b>Bold notes</b>"},
-            headers=h,
-        )
-        resp = client.get(f"/api/notes/by-content/{users['cc'].id}", headers=h)
+    def test_has_images_detected(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": '<p>Look: <img src="data:image/png;base64,abc" /></p>',
+        }, headers=headers)
         assert resp.status_code == 200
-        assert resp.json()["plain_text"] == "Bold notes"
+        assert resp.json()["has_images"] is True
 
-    def test_get_note_not_found(self, client, users):
-        h = _auth(client, "noteother@test.com")
-        resp = client.get(f"/api/notes/by-content/{users['cc'].id}", headers=h)
+    def test_unauthenticated(self, client, setup):
+        resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Nope</p>",
+        })
+        assert resp.status_code == 401
+
+
+# ── List Tests ───────────────────────────────────────────────────
+
+
+class TestListNotes:
+    def test_list_own_notes(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        # Ensure a note exists
+        client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Listed note</p>",
+        }, headers=headers)
+        resp = client.get("/api/notes/", headers=headers)
+        assert resp.status_code == 200
+        notes = resp.json()
+        assert len(notes) >= 1
+        assert all(n["user_id"] == setup["owner"].id for n in notes)
+
+    def test_list_filtered_by_content(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Filtered note</p>",
+        }, headers=headers)
+        resp = client.get(
+            f"/api/notes/?course_content_id={setup['course_content'].id}",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        notes = resp.json()
+        assert all(n["course_content_id"] == setup["course_content"].id for n in notes)
+
+    def test_outsider_cannot_see_others_notes(self, client, setup):
+        headers = _auth(client, "notes_outsider@test.com")
+        resp = client.get("/api/notes/", headers=headers)
+        assert resp.status_code == 200
+        notes = resp.json()
+        # Outsider should not see owner's notes
+        assert all(n["user_id"] == setup["outsider"].id for n in notes)
+
+
+# ── Get Single Note ──────────────────────────────────────────────
+
+
+class TestGetNote:
+    def test_get_own_note(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        put_resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Get me</p>",
+        }, headers=headers)
+        note_id = put_resp.json()["id"]
+        resp = client.get(f"/api/notes/{note_id}", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "<p>Get me</p>"
+
+    def test_outsider_cannot_get(self, client, setup):
+        headers_owner = _auth(client, "notes_owner@test.com")
+        put_resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Secret</p>",
+        }, headers=headers_owner)
+        note_id = put_resp.json()["id"]
+        headers_outsider = _auth(client, "notes_outsider@test.com")
+        resp = client.get(f"/api/notes/{note_id}", headers=headers_outsider)
         assert resp.status_code == 404
 
 
-class TestNotesDelete:
-    """Test DELETE /api/notes/by-content/{course_content_id}"""
+# ── Delete Tests ─────────────────────────────────────────────────
 
-    def test_delete_note(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        # Create first
-        client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>To delete</p>"},
-            headers=h,
-        )
-        resp = client.delete(f"/api/notes/by-content/{users['cc'].id}", headers=h)
+
+class TestDeleteNote:
+    def test_delete_own_note(self, client, setup):
+        headers = _auth(client, "notes_owner@test.com")
+        put_resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Delete me</p>",
+        }, headers=headers)
+        note_id = put_resp.json()["id"]
+        resp = client.delete(f"/api/notes/{note_id}", headers=headers)
         assert resp.status_code == 204
 
-    def test_delete_note_not_found(self, client, users):
-        h = _auth(client, "noteother@test.com")
-        resp = client.delete(f"/api/notes/by-content/{users['cc'].id}", headers=h)
+    def test_cannot_delete_others_note(self, client, setup):
+        headers_owner = _auth(client, "notes_owner@test.com")
+        put_resp = client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Mine</p>",
+        }, headers=headers_owner)
+        note_id = put_resp.json()["id"]
+        headers_outsider = _auth(client, "notes_outsider@test.com")
+        resp = client.delete(f"/api/notes/{note_id}", headers=headers_outsider)
         assert resp.status_code == 404
 
 
-class TestNotesList:
-    """Test GET /api/notes/"""
+# ── Parent (children) Tests ──────────────────────────────────────
 
-    def test_list_notes(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        # Create a note first
-        client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Listed note</p>"},
-            headers=h,
+
+class TestParentChildNotes:
+    def test_parent_can_list_child_notes(self, client, setup):
+        # Owner creates a note
+        headers_owner = _auth(client, "notes_owner@test.com")
+        client.put("/api/notes/", json={
+            "course_content_id": setup["course_content"].id,
+            "content": "<p>Child note</p>",
+        }, headers=headers_owner)
+        # Parent reads child's notes
+        headers_parent = _auth(client, "notes_parent@test.com")
+        resp = client.get(
+            f"/api/notes/children/{setup['owner'].id}",
+            headers=headers_parent,
         )
-        resp = client.get("/api/notes/", headers=h)
         assert resp.status_code == 200
-        data = resp.json()
-        assert isinstance(data, list)
-        assert any(n["course_content_id"] == users["cc"].id for n in data)
+        assert len(resp.json()) >= 1
 
-
-class TestNoteCreateTask:
-    """Test POST /api/notes/{note_id}/create-task"""
-
-    def test_create_linked_task_from_note(self, client, users, db_session):
-        h = _auth(client, "noteparent@test.com")
-        # Create a note first
-        note_resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Task from this note</p>"},
-            headers=h,
+    def test_parent_cannot_access_unlinked_child(self, client, setup):
+        headers_parent = _auth(client, "notes_parent@test.com")
+        resp = client.get(
+            f"/api/notes/children/{setup['outsider'].id}",
+            headers=headers_parent,
         )
-        note_id = note_resp.json()["id"]
+        assert resp.status_code == 403
 
-        resp = client.post(
-            f"/api/notes/{note_id}/create-task",
-            json={
-                "title": "Review material",
-                "priority": "high",
-                "linked": True,
-            },
-            headers=h,
+    def test_non_parent_cannot_use_children_endpoint(self, client, setup):
+        headers_owner = _auth(client, "notes_owner@test.com")
+        resp = client.get(
+            f"/api/notes/children/{setup['outsider'].id}",
+            headers=headers_owner,
         )
-        assert resp.status_code == 201
-        data = resp.json()
-        assert data["title"] == "Review material"
-        assert data["priority"] == "high"
-        assert data["course_content_id"] == users["cc"].id
-        assert data["note_id"] == note_id
-        assert "Task from this note" in (data["description"] or "")
-
-    def test_create_unlinked_task_from_note(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        note_resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Standalone task note</p>"},
-            headers=h,
-        )
-        note_id = note_resp.json()["id"]
-
-        resp = client.post(
-            f"/api/notes/{note_id}/create-task",
-            json={
-                "title": "Quick standalone task",
-                "linked": False,
-            },
-            headers=h,
-        )
-        assert resp.status_code == 201
-        data = resp.json()
-        assert data["title"] == "Quick standalone task"
-        assert data["course_content_id"] is None
-        assert data["note_id"] == note_id
-
-    def test_create_task_note_not_found(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        resp = client.post(
-            "/api/notes/99999/create-task",
-            json={"title": "Test", "linked": True},
-            headers=h,
-        )
-        assert resp.status_code == 404
-
-    def test_create_task_invalid_priority(self, client, users):
-        h = _auth(client, "noteparent@test.com")
-        note_resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Note for priority test</p>"},
-            headers=h,
-        )
-        note_id = note_resp.json()["id"]
-
-        resp = client.post(
-            f"/api/notes/{note_id}/create-task",
-            json={"title": "Test", "priority": "urgent", "linked": True},
-            headers=h,
-        )
-        assert resp.status_code == 400
-
-    def test_other_user_cannot_create_task_from_note(self, client, users):
-        """Another user should not be able to create a task from someone else's note."""
-        h_parent = _auth(client, "noteparent@test.com")
-        note_resp = client.put(
-            f"/api/notes/by-content/{users['cc'].id}",
-            json={"content": "<p>Private note</p>"},
-            headers=h_parent,
-        )
-        note_id = note_resp.json()["id"]
-
-        h_other = _auth(client, "noteother@test.com")
-        resp = client.post(
-            f"/api/notes/{note_id}/create-task",
-            json={"title": "Hack", "linked": True},
-            headers=h_other,
-        )
-        assert resp.status_code == 404
+        assert resp.status_code == 403
