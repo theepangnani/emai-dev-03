@@ -872,11 +872,19 @@ with engine.connect() as conn:
         existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
         if "note_id" not in existing_cols:
             try:
-                conn.execute(text("ALTER TABLE tasks ADD COLUMN note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL"))
+                # Add column WITHOUT inline FK to avoid ACCESS EXCLUSIVE lock on notes table in PostgreSQL
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN note_id INTEGER"))
+                conn.commit()
                 logger.info("Added 'note_id' column to tasks (#1087)")
+                # Add FK constraint separately with a shorter lock window
+                try:
+                    conn.execute(text("ALTER TABLE tasks ADD CONSTRAINT fk_tasks_note_id FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL"))
+                    conn.commit()
+                    logger.info("Added FK constraint fk_tasks_note_id")
+                except Exception:
+                    conn.rollback()
             except Exception:
                 conn.rollback()
-        conn.commit()
 
     # ── users: account deletion columns (#964) ──────────────────
     if "users" in inspector.get_table_names():
