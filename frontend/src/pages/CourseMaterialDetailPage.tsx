@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { useAuth } from '../context/AuthContext';
@@ -19,10 +19,12 @@ import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { NotesPanel } from '../components/NotesPanel';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { NotesPanelToggle } from '../components/NotesPanelToggle';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'notes';
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -64,6 +66,15 @@ function FlashcardIcon() {
   );
 }
 
+function NotesIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 /* ── Header toolbar icons ─────────────────────── */
 function TaskIcon() {
   return (
@@ -72,6 +83,15 @@ function TaskIcon() {
       <path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
       <circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/>
       <path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function NoteIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 2h12a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M6 7h8M6 10h8M6 13h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -107,6 +127,7 @@ function CalendarIcon() {
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { confirm, confirmModal } = useConfirm();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
@@ -132,6 +153,7 @@ export function CourseMaterialDetailPage() {
 
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
@@ -169,6 +191,13 @@ export function CourseMaterialDetailPage() {
   }, [contentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-open notes panel if ?notes=open is in URL (#1087)
+  useEffect(() => {
+    if (searchParams.get('notes') === 'open') {
+      setShowNotesPanel(true);
+    }
+  }, [searchParams]);
 
   // Pre-populate focus prompts from saved history on first load
   useEffect(() => {
@@ -356,6 +385,7 @@ export function CourseMaterialDetailPage() {
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
     { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
+    { key: 'notes', label: 'Notes', shortLabel: 'Notes', hasContent: true, icon: <NotesIcon /> },
   ];
 
   return (
@@ -393,6 +423,10 @@ export function CourseMaterialDetailPage() {
           </div>
 
           <div className="cm-header-toolbar">
+            <button className={`cm-toolbar-btn${showNotesPanel ? ' active' : ''}`} title="Notes" aria-label="Toggle notes" onClick={() => setShowNotesPanel(!showNotesPanel)}>
+              <NoteIcon />
+              <span className="cm-toolbar-btn-label">Notes</span>
+            </button>
             <button className="cm-toolbar-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
               <TaskIcon />
               <span className="cm-toolbar-btn-label">Create Task</span>
@@ -401,6 +435,7 @@ export function CourseMaterialDetailPage() {
               <EditIcon />
               <span className="cm-toolbar-btn-label">Edit</span>
             </button>
+            <NotesPanelToggle courseContentId={contentId} />
             <span className="cm-toolbar-sep" />
             <button className="cm-toolbar-btn danger" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>
               <ArchiveIcon />
@@ -449,6 +484,14 @@ export function CourseMaterialDetailPage() {
             </button>
           ))}
         </div>
+
+        {/* ── Notes panel ─────────────────────────── */}
+        {showNotesPanel && (
+          <NotesPanel
+            courseContentId={contentId}
+            onClose={() => setShowNotesPanel(false)}
+          />
+        )}
 
         {/* ── Tab content ──────────────────────────── */}
         <div className="cm-tab-content" role="tabpanel">
@@ -508,6 +551,12 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
               atLimit={atLimit}
             />
+          )}
+
+          {activeTab === 'notes' && (
+            <div className="cm-tab-card">
+              <NotesPanel courseContentId={contentId} inline />
+            </div>
           )}
         </div>
 

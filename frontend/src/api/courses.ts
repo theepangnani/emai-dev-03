@@ -17,10 +17,20 @@ export interface CourseContentItem {
   original_filename: string | null;
   file_size: number | null;
   mime_type: string | null;
+  source_files_count: number;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
   last_viewed_at: string | null;
+}
+
+export interface SourceFileItem {
+  id: number;
+  course_content_id: number;
+  filename: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
 }
 
 export interface CourseContentUpdateResponse extends CourseContentItem {
@@ -115,8 +125,9 @@ export const coursesApi = {
     return response.data;
   },
 
-  getDefault: async () => {
-    const response = await api.get('/api/courses/default');
+  getDefault: async (studentUserId?: number) => {
+    const params = studentUserId ? { student_user_id: studentUserId } : {};
+    const response = await api.get('/api/courses/default', { params });
     return response.data;
   },
 
@@ -242,6 +253,41 @@ export const courseContentsApi = {
   getLinkedCourseIds: async () => {
     const response = await api.get('/api/course-contents/linked-course-ids');
     return response.data as LinkedCourseIdsResponse;
+  },
+
+  listSourceFiles: async (contentId: number): Promise<SourceFileItem[]> => {
+    const response = await api.get(`/api/course-contents/${contentId}/source-files`);
+    return response.data;
+  },
+
+  downloadSourceFile: async (contentId: number, fileId: number, filename?: string) => {
+    const response = await api.get(`/api/course-contents/${contentId}/source-files/${fileId}/download`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || `file-${fileId}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  uploadMultiFiles: async (files: File[], courseId: number, title?: string, contentType?: string, aiTool?: string, aiCustomPrompt?: string) => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    formData.append('course_id', String(courseId));
+    if (title) formData.append('title', title);
+    if (contentType) formData.append('content_type', contentType);
+    if (aiTool && aiTool !== 'none') formData.append('ai_tool', aiTool);
+    if (aiCustomPrompt) formData.append('ai_custom_prompt', aiCustomPrompt);
+    const response = await api.post('/api/course-contents/upload-multi', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as CourseContentItem;
   },
 
   download: async (id: number, originalFilename?: string) => {

@@ -1,12 +1,10 @@
-from datetime import datetime
-from typing import Optional
-
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class NoteUpsert(BaseModel):
-    content: str = ""
-    has_images: bool = False
+    course_content_id: int
+    content: str  # HTML content
 
 
 class NoteResponse(BaseModel):
@@ -14,11 +12,23 @@ class NoteResponse(BaseModel):
     user_id: int
     course_content_id: int
     content: str
-    plain_text: str
+    plain_text: str | None
     has_images: bool
     created_at: datetime
-    updated_at: datetime
-    material_title: Optional[str] = None
-    course_name: Optional[str] = None
+    updated_at: datetime | None
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
+
+
+class NoteListItem(BaseModel):
+    id: int
+    user_id: int
+    course_content_id: int
+    plain_text: str | None
+    has_images: bool
+    created_at: datetime
+    updated_at: datetime | None
+
+    class Config:
+        from_attributes = True

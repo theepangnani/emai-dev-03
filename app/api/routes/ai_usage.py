@@ -5,12 +5,13 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, func, or_
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.notification import Notification, NotificationType
 from app.models.ai_limit_request import AILimitRequest
+from app.models.ai_usage_history import AIUsageHistory
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.core.utils import escape_like
 from app.api.deps import get_current_user, require_role
@@ -21,6 +22,8 @@ from app.schemas.ai_usage import (
     AILimitAdminAction,
     AILimitSetRequest,
     AIUsageUserResponse,
+    AIUsageHistoryResponse,
+    AIUsageHistoryList,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,6 +90,37 @@ def request_more_credits(
     return ai_request
 
 
+@router.get("/history", response_model=AIUsageHistoryList)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_user_history(
+    request: Request,
+    generation_type: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's AI usage history (paginated)."""
+    query = db.query(AIUsageHistory).filter(AIUsageHistory.user_id == current_user.id)
+
+    if generation_type:
+        query = query.filter(AIUsageHistory.generation_type == generation_type)
+
+    total = query.count()
+    records = query.order_by(desc(AIUsageHistory.created_at)).offset(skip).limit(limit).all()
+
+    items = []
+    for rec in records:
+        resp = AIUsageHistoryResponse.model_validate(rec)
+        resp.user_name = current_user.full_name
+        resp.user_email = current_user.email
+        if rec.course_material:
+            resp.course_material_title = rec.course_material.title
+        items.append(resp)
+
+    return AIUsageHistoryList(items=items, total=total)
+
+
 # ── Admin endpoints ───────────────────────────────────────────────────
 
 admin_router = APIRouter(prefix="/admin/ai-usage", tags=["Admin AI Usage"])
@@ -130,7 +164,7 @@ def list_users_usage(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_limit_requests(
     request: Request,
-    request_status: str = Query("pending", alias="status"),
+    request_status: str = Query("all", alias="status"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -274,3 +308,60 @@ def reset_user_usage(
     db.refresh(target_user)
     logger.info("Admin %s reset AI usage count for user %s", current_user.id, user_id)
     return target_user
+
+
+@admin_router.get("/history", response_model=AIUsageHistoryList)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def admin_list_usage_history(
+    request: Request,
+    user_id: int | None = Query(None),
+    generation_type: str | None = Query(None),
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
+    search: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """List all users' AI usage history with filters. Admin only."""
+    query = db.query(AIUsageHistory)
+
+    if user_id is not None:
+        query = query.filter(AIUsageHistory.user_id == user_id)
+    if generation_type:
+        query = query.filter(AIUsageHistory.generation_type == generation_type)
+    if date_from:
+        query = query.filter(AIUsageHistory.created_at >= date_from)
+    if date_to:
+        query = query.filter(AIUsageHistory.created_at <= date_to)
+    if search:
+        search_term = f"%{escape_like(search)}%"
+        # Join to User table to search by name/email
+        query = query.join(User, AIUsageHistory.user_id == User.id).filter(
+            or_(
+                User.full_name.ilike(search_term),
+                User.email.ilike(search_term),
+            )
+        )
+
+    total = query.count()
+    records = query.order_by(desc(AIUsageHistory.created_at)).offset(skip).limit(limit).all()
+
+    # Resolve user names in bulk
+    user_ids = {rec.user_id for rec in records}
+    user_map = {}
+    if user_ids:
+        users = db.query(User.id, User.full_name, User.email).filter(User.id.in_(user_ids)).all()
+        user_map = {u.id: (u.full_name, u.email) for u in users}
+
+    items = []
+    for rec in records:
+        resp = AIUsageHistoryResponse.model_validate(rec)
+        if rec.user_id in user_map:
+            resp.user_name, resp.user_email = user_map[rec.user_id]
+        if rec.course_material:
+            resp.course_material_title = rec.course_material.title
+        items.append(resp)
+
+    return AIUsageHistoryList(items=items, total=total)

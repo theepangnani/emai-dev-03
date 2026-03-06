@@ -35,6 +35,7 @@ class Task(Base):
     course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
     course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
     study_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True)
+    note_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
     # Legacy columns kept for backwards compat (SQLite can't DROP COLUMN easily)
     parent_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -51,6 +52,7 @@ class Task(Base):
     course = relationship("Course", foreign_keys=[course_id])
     course_content = relationship("CourseContent", foreign_keys=[course_content_id])
     study_guide = relationship("StudyGuide", foreign_keys=[study_guide_id])
+    note = relationship("Note", foreign_keys=[note_id])
 
     __table_args__ = (
         Index("ix_tasks_creator_completed", "created_by_user_id", "is_completed"),

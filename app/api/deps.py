@@ -40,6 +40,13 @@ def get_current_user(
     if user is None:
         raise credentials_exception
 
+    # Block deleted/anonymized accounts
+    if user.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been deleted",
+        )
+
     # Make user ID available for rate limiter and request logging
     request.state.user_id = user.id
 

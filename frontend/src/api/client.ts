@@ -93,7 +93,7 @@ api.interceptors.response.use(
 // Re-export all API modules and types for backward compatibility
 export { authApi } from './auth';
 export { coursesApi, courseContentsApi, assignmentsApi } from './courses';
-export type { CourseContentItem, CourseContentUpdateResponse, LinkedCourseIdsResponse, LinkedCourseChild, AssignmentItem, SubmissionResponse, SubmissionListItem, TeacherCourseManagement } from './courses';
+export type { CourseContentItem, CourseContentUpdateResponse, LinkedCourseIdsResponse, LinkedCourseChild, AssignmentItem, SubmissionResponse, SubmissionListItem, TeacherCourseManagement, SourceFileItem } from './courses';
 export { googleApi } from './google';
 export type { GoogleAccount } from './google';
 export { studyApi } from './study';
@@ -179,3 +179,10 @@ export type {
 } from './grades';
 export { aiUsageApi } from './aiUsage';
 export type { AIUsageResponse, AIUsageRequestData, AIUsageRequestResponse } from './aiUsage';
+export { notesApi } from './notes';
+export type { NoteItem, ChildNoteItem } from './notes';
+export type { NoteResponse, NoteSummary, NoteUpsert } from './notes';
+export { accountDeletionApi } from './accountDeletion';
+export type { DeletionStatus, DeletionRequestItem, DeletionRequestList } from './accountDeletion';
+export { dataExportApi } from './dataExport';
+export type { DataExportRequest as DataExportRequestItem } from './dataExport';
