@@ -41,8 +41,8 @@ export function LaunchLandingPage() {
           </div>
           <div className="launch-feature">
             <div className="launch-feature-icon">&#127891;</div>
-            <h3>Google Classroom Integration</h3>
-            <p>Automatically sync courses, assignments, and grades from Google Classroom into one unified dashboard.</p>
+            <h3>LMS Integration</h3>
+            <p>Sync courses, assignments, and grades from third-party platforms like Google Classroom, Brightspace, and more into one unified dashboard.</p>
           </div>
           <div className="launch-feature">
             <div className="launch-feature-icon">&#128172;</div>
