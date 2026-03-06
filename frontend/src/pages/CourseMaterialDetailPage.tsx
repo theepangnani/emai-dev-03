@@ -69,14 +69,11 @@ function FlashcardIcon() {
 function NotesIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-<<<<<<< HEAD
       <path d="M3 2h7l3 3v8a2 2 0 01-2 2H5a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <path d="M5.5 7.5h5M5.5 10h3.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-=======
       <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4"/>
       <path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
->>>>>>> origin/master
     </svg>
   );
 }
@@ -560,13 +557,10 @@ export function CourseMaterialDetailPage() {
           )}
 
           {activeTab === 'notes' && (
-<<<<<<< HEAD
             <NotesPanel courseContentId={contentId} />
-=======
             <div className="cm-tab-card">
               <NotesPanel courseContentId={contentId} inline />
             </div>
->>>>>>> origin/master
           )}
         </div>
 
