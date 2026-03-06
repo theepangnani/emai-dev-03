@@ -12,9 +12,12 @@ interface NotesPanelProps {
   addHighlight?: { text: string } | null;
   onHighlightConsumed?: () => void;
   onHighlightsChange?: (highlights: NoteHighlight[]) => void;
+  readOnly?: boolean;
+  childStudentId?: number;
+  childName?: string;
 }
 
-export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange }: NotesPanelProps) {
+export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange, readOnly, childStudentId, childName }: NotesPanelProps) {
   const [note, setNote] = useState<NoteItem | null>(null);
   const [content, setContent] = useState('');
   const [highlights, setHighlights] = useState<NoteHighlight[]>([]);
@@ -45,12 +48,24 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
   const loadNote = useCallback(async () => {
     try {
-      const data = await notesApi.getByContent(courseContentId);
-      setNote(data);
-      setContent(data.content || '');
-      const loaded = parseHighlights(data.highlights_json);
-      setHighlights(loaded);
-      onHighlightsChange?.(loaded);
+      let data: NoteItem | null;
+      if (readOnly && childStudentId) {
+        data = await notesApi.getChildNotes(childStudentId, courseContentId);
+      } else {
+        data = await notesApi.getByContent(courseContentId);
+      }
+      if (data) {
+        setNote(data);
+        setContent(data.content || '');
+        const loaded = parseHighlights(data.highlights_json);
+        setHighlights(loaded);
+        onHighlightsChange?.(loaded);
+      } else {
+        setNote(null);
+        setContent('');
+        setHighlights([]);
+        onHighlightsChange?.([]);
+      }
     } catch {
       setNote(null);
       setContent('');
@@ -59,7 +74,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     } finally {
       setLoading(false);
     }
-  }, [courseContentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [courseContentId, readOnly, childStudentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadNote(); }, [loadNote]);
 
@@ -196,9 +211,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   return (
     <div className="notes-panel-floating" ref={panelRef} style={panelStyle}>
       <div className="notes-panel-header" onMouseDown={handleDragStart}>
-        <h3>Notes</h3>
+        <h3>{readOnly ? `${childName ? childName + "'s " : "Child's "}Notes` : 'Notes'}</h3>
         <div className="notes-header-actions">
-          {note && !loading && (
+          {!readOnly && note && !loading && (
             <div className="notes-task-dropdown-wrapper" ref={dropdownRef}>
               <button
                 className="notes-create-task-btn"
@@ -231,6 +246,14 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       {loading ? (
         <div className="notes-panel-body">
           <p className="notes-loading">Loading...</p>
+        </div>
+      ) : readOnly ? (
+        <div className="notes-panel-body">
+          {content ? (
+            <div className="notes-readonly-content">{content}</div>
+          ) : (
+            <p className="notes-empty">No notes yet.</p>
+          )}
         </div>
       ) : showTaskForm && note ? (
         <div className="notes-panel-body">
