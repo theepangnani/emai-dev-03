@@ -158,9 +158,13 @@ export function CourseMaterialDetailPage() {
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
+  const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(contentAreaRef);
-  useHighlightRenderer(contentAreaRef, highlights);
+  const handleHighlightClick = useCallback((text: string) => {
+    setRemoveHighlightText(text);
+  }, []);
+  useHighlightRenderer(contentAreaRef, highlights, handleHighlightClick);
 
   const handleAddToNotes = useCallback(() => {
     if (!selection) return;
@@ -577,6 +581,8 @@ export function CourseMaterialDetailPage() {
           addHighlight={addHighlight}
           onHighlightConsumed={() => setAddHighlight(null)}
           onHighlightsChange={setHighlights}
+          removeHighlightText={removeHighlightText}
+          onRemoveHighlightConsumed={() => setRemoveHighlightText(null)}
           readOnly={isParent && !!resolvedStudent}
           childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
           childName={isParent ? resolvedStudent?.student_name : undefined}
