@@ -941,6 +941,104 @@ class TestAIGenerationErrorHandling:
         assert len(resp.json()["detail"]) <= 500
 
 
+# ── CourseContent fallback for generation (#1132) ─────────────────
+
+class TestGenerateFromCourseContent:
+    """Regression tests for #1132: generation endpoints must fall back to
+    CourseContent.text_content when no explicit content is provided."""
+
+    @pytest.fixture()
+    def course_content(self, db_session, users):
+        from app.models.course_content import CourseContent
+        cc = db_session.query(CourseContent).filter(
+            CourseContent.title == "CC Fallback Material"
+        ).first()
+        if cc:
+            return cc
+        cc = CourseContent(
+            course_id=users["course"].id,
+            title="CC Fallback Material",
+            text_content="Photosynthesis is the process by which plants convert sunlight into energy.",
+            content_type="notes",
+            created_by_user_id=users["parent"].id,
+        )
+        db_session.add(cc)
+        db_session.commit()
+        db_session.refresh(cc)
+        return cc
+
+    def test_study_guide_generate_falls_back_to_course_content(self, client, users, course_content):
+        """POST /api/study/generate with course_content_id but no content should use CourseContent text."""
+        from unittest.mock import patch, AsyncMock
+
+        headers = _auth(client, users["parent"].email)
+
+        with patch(
+            "app.api.routes.study.generate_study_guide",
+            new_callable=AsyncMock,
+            return_value="# Study Guide\n\nPhotosynthesis overview.",
+        ):
+            resp = client.post(
+                "/api/study/generate",
+                json={"course_content_id": course_content.id, "title": "Test Guide"},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200, f"Expected 200 but got {resp.status_code}: {resp.json()}"
+        assert "Photosynthesis" in resp.json()["content"]
+
+    def test_quiz_generate_falls_back_to_course_content(self, client, users, course_content):
+        """POST /api/study/quiz/generate with course_content_id but no content should use CourseContent text."""
+        from unittest.mock import patch, AsyncMock
+
+        headers = _auth(client, users["parent"].email)
+
+        quiz_json = '[{"question": "What is photosynthesis?", "options": {"A": "Light absorption", "B": "Respiration", "C": "Digestion", "D": "Osmosis"}, "correct_answer": "A", "explanation": "Plants absorb light."}]'
+        with patch(
+            "app.api.routes.study.generate_quiz",
+            new_callable=AsyncMock,
+            return_value=quiz_json,
+        ):
+            resp = client.post(
+                "/api/study/quiz/generate",
+                json={"course_content_id": course_content.id, "topic": "Test Quiz", "num_questions": 1},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200, f"Expected 200 but got {resp.status_code}: {resp.json()}"
+
+    def test_flashcards_generate_falls_back_to_course_content(self, client, users, course_content):
+        """POST /api/study/flashcards/generate with course_content_id but no content should use CourseContent text."""
+        from unittest.mock import patch, AsyncMock
+
+        headers = _auth(client, users["parent"].email)
+
+        cards_json = '[{"front": "What is photosynthesis?", "back": "Process of converting sunlight to energy"}]'
+        with patch(
+            "app.api.routes.study.generate_flashcards",
+            new_callable=AsyncMock,
+            return_value=cards_json,
+        ):
+            resp = client.post(
+                "/api/study/flashcards/generate",
+                json={"course_content_id": course_content.id, "topic": "Test Cards", "num_cards": 1},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200, f"Expected 200 but got {resp.status_code}: {resp.json()}"
+
+    def test_study_guide_still_fails_with_no_content_and_no_course_content(self, client, users):
+        """POST /api/study/generate with neither content nor course_content_id still returns 400."""
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            "/api/study/generate",
+            json={"title": "Empty Guide"},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "Please provide" in resp.json()["detail"]
+
+
 # ------------------------------------------------------------------
 # Config: verify default Claude model is up-to-date
 # ------------------------------------------------------------------

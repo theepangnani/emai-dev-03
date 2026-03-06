@@ -173,7 +173,7 @@ export default function CreateStudyMaterialModal({
     // Determine mode: files take priority if any selected, else text/images
     const hasFiles = selectedFiles.length > 0;
     const effectiveMode: 'text' | 'file' = hasFiles ? 'file' : 'text';
-    if (effectiveMode === 'text' && !studyContent.trim() && pastedImages.length === 0) { setStudyError('Please upload a file, paste content, or paste images'); return; }
+    if (effectiveMode === 'text' && !studyContent.trim() && pastedImages.length === 0 && !selectedMaterialId) { setStudyError('Please upload a file, paste content, or paste images'); return; }
     if (selectedTypes.has('other') && !otherPrompt.trim()) { setStudyError('Please describe what you want to generate'); return; }
 
     // Map selectable types to actual StudyMaterialType values
