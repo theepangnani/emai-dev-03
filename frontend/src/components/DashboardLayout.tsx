@@ -109,6 +109,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M12 6v6l4 2"/>
     </svg>
   ),
+  Tutorial: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+      <path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/>
+    </svg>
+  ),
   Help: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
@@ -168,6 +174,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'My Kids', path: '/my-kids' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
+        { label: 'Tutorial', path: '/tutorial' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -178,6 +185,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Study', path: '/study' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
+        { label: 'Tutorial', path: '/tutorial' },
         { label: 'Help', path: '/help' },
       ];
     }
@@ -202,6 +210,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'AI Usage', path: '/admin/ai-usage' });
     }
 
+    items.push({ label: 'Tutorial', path: '/tutorial' });
     items.push({ label: 'Help', path: '/help' });
 
     return items;
