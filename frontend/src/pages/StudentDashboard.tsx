@@ -720,7 +720,7 @@ export function StudentDashboard() {
               icon={'\u{1F4DD}'}
               title="No study materials yet"
               description="Upload class materials or paste your notes to generate study guides."
-              action={{ label: 'Upload Document', onClick: () => studyTools.setShowStudyModal(true) }}
+              action={{ label: 'Upload Class Material', onClick: () => studyTools.setShowStudyModal(true) }}
               className="sd-empty"
             />
           )}

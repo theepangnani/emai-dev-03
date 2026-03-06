@@ -113,7 +113,7 @@ export function ReplaceDocumentModal({
   return (
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-        <h2>{isReplace ? 'Replace Document' : 'Upload Document'}</h2>
+        <h2>{isReplace ? 'Replace Document' : 'Upload Class Material'}</h2>
         <p className="cm-replace-warning">
           {isReplace
             ? 'Uploading a new file will replace the current document and re-extract text.'

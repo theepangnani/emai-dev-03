@@ -11,6 +11,18 @@ interface State {
   error: Error | null;
 }
 
+/** Detect chunk / dynamic-import load failures (stale hashes after deploy). */
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message || '';
+  return (
+    error.name === 'ChunkLoadError' ||
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Loading CSS chunk') ||
+    msg.includes('Importing a module script failed')
+  );
+}
+
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
 
@@ -20,6 +32,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info.componentStack);
+
+    // Auto-reload once for stale chunk errors (deploy cache bust)
+    if (isChunkLoadError(error)) {
+      const reloaded = sessionStorage.getItem('chunk_reload');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem('chunk_reload');
+    }
+
     // Report frontend errors to backend for production visibility
     try {
       fetch('/api/errors/log', {

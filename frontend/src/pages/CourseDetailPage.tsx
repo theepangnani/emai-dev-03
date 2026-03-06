@@ -627,7 +627,7 @@ export function CourseDetailPage() {
                 <span className="action-icon">&#128221;</span> Add Class Details
               </button>
               <button className="courses-btn secondary action-icon-btn" onClick={openUploadModal}>
-                <span className="action-icon">&#128228;</span> Upload Document
+                <span className="action-icon">&#128228;</span> Upload Class Material
               </button>
               <button className="courses-btn secondary action-icon-btn" onClick={() => setTaskModalContext({
                 courseId: courseId,
@@ -1046,11 +1046,11 @@ export function CourseDetailPage() {
         </div>
       )}
 
-      {/* Upload Document Modal */}
+      {/* Upload Class Material Modal */}
       {showUploadModal && (
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Document" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
-            <h2>Upload Document</h2>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Upload Class Material" ref={uploadModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Upload Class Material</h2>
             <p className="modal-desc">Upload a document to extract content. Supports PDF, DOCX, PPTX, TXT, and images.</p>
             <div className="modal-form">
               {!selectedFile ? (

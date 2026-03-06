@@ -12,7 +12,7 @@ function normalizeContent(content: string) {
     .trim();
 }
 
-export const MarkdownBody = lazy(() =>
+const loadMarkdown = () =>
   Promise.all([import('react-markdown'), import('remark-gfm')]).then(
     ([md, gfm]) => ({
       default: ({ content }: { content: string }) => {
@@ -22,7 +22,19 @@ export const MarkdownBody = lazy(() =>
         return <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalized}</ReactMarkdown>;
       },
     }),
-  ),
+  );
+
+export const MarkdownBody = lazy(() =>
+  loadMarkdown().catch(() => {
+    const reloaded = sessionStorage.getItem('chunk_reload');
+    if (!reloaded) {
+      sessionStorage.setItem('chunk_reload', '1');
+      window.location.reload();
+      return new Promise(() => {});
+    }
+    sessionStorage.removeItem('chunk_reload');
+    return loadMarkdown();
+  }),
 );
 
 /* ── ContentCard wrapper ───────────────────────────────────────── */

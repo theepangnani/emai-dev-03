@@ -102,6 +102,7 @@ export default function CreateStudyMaterialModal({
     setOtherPrompt('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFiles([]);
+    selectedFilesRef.current = [];
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyError('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -111,6 +112,7 @@ export default function CreateStudyMaterialModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [open, initialTitle, initialContent]);
 
+  const selectedFilesRef = useRef<File[]>([]);
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const toAdd = Array.from(incoming);
     const oversized = toAdd.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
@@ -119,16 +121,19 @@ export default function CreateStudyMaterialModal({
     }
     const valid = toAdd.filter(f => f.size <= MAX_FILE_SIZE_MB * 1024 * 1024);
     if (valid.length === 0) return;
-    setSelectedFiles(prev => {
-      const existingNames = new Set(prev.map(f => f.name));
-      const newUnique = valid.filter(f => !existingNames.has(f.name));
-      const merged = [...prev, ...newUnique];
-      if (merged.length > MAX_FILES_PER_SESSION) {
-        setStudyError(`Maximum ${MAX_FILES_PER_SESSION} files per upload. ${merged.length - MAX_FILES_PER_SESSION} file(s) were not added.`);
-        return merged.slice(0, MAX_FILES_PER_SESSION);
-      }
-      return merged;
-    });
+
+    // Merge synchronously using ref to avoid impure state updater (React 19 concurrent mode fix)
+    const prev = selectedFilesRef.current;
+    const existingNames = new Set(prev.map(f => f.name));
+    const newUnique = valid.filter(f => !existingNames.has(f.name));
+    const merged = [...prev, ...newUnique];
+    if (merged.length > MAX_FILES_PER_SESSION) {
+      setStudyError(`Maximum ${MAX_FILES_PER_SESSION} files per upload. ${merged.length - MAX_FILES_PER_SESSION} file(s) were not added.`);
+    }
+    const capped = merged.slice(0, MAX_FILES_PER_SESSION);
+    selectedFilesRef.current = capped;
+    setSelectedFiles(capped);
+
     // Auto-fill title only when adding the first file and title is empty
     setStudyTitle(prev => {
       if (!prev && valid.length > 0) return valid[0].name.replace(/\.[^/.]+$/, '');
@@ -185,7 +190,11 @@ export default function CreateStudyMaterialModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      selectedFilesRef.current = next;
+      return next;
+    });
   };
 
   // Clipboard paste handler — captures images from email paste
