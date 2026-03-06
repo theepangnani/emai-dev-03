@@ -936,6 +936,14 @@ export function StudyGuidesPage() {
         {/* Child selector pills (parent only) + add action button */}
         {isParent && children.length > 0 && (
           <div className="guides-child-selector">
+            {children.length > 1 && (
+              <button
+                className={`child-tab${filterChild === '' ? ' active' : ''}`}
+                onClick={() => { setFilterChild(''); sessionStorage.removeItem('selectedChildId'); }}
+              >
+                All
+              </button>
+            )}
             {children.map((child, index) => (
               <button
                 key={child.user_id}
