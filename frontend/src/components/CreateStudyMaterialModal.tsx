@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { studyApi } from '../api/study';
 import type { SupportedFormats, DuplicateCheckResponse } from '../api/study';
 
@@ -85,6 +85,46 @@ export default function CreateStudyMaterialModal({
       studyApi.getSupportedFormats().then(setSupportedFormats).catch(() => {});
     }
   }, [open, supportedFormats]);
+
+  // Global paste handler — captures pasted files (Ctrl+V from Explorer) anywhere in the modal
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      const images: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (!file) continue;
+          if (item.type.startsWith('image/')) {
+            images.push(file);
+          } else {
+            files.push(file);
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        addFiles(files);
+      } else if (images.length > 0) {
+        // Images pasted outside the textarea — add to pastedImages
+        // (textarea paste is handled separately by handlePaste)
+        const target = e.target as HTMLElement;
+        if (target?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          setPastedImages(prev => [...prev, ...images].slice(0, 10));
+        }
+      }
+    };
+
+    document.addEventListener('paste', handler);
+    return () => document.removeEventListener('paste', handler);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset state when modal opens/closes; apply initial values on open
   useEffect(() => {
@@ -354,20 +394,13 @@ export default function CreateStudyMaterialModal({
               </div>
               <div className="pasted-images-thumbnails">
                 {pastedImages.map((img, idx) => (
-                  <div key={idx} className="pasted-image-thumb">
-                    <img
-                      src={URL.createObjectURL(img)}
-                      alt={`Pasted ${idx + 1}`}
-                      onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-                    />
-                    <button
-                      className="remove-image-btn"
-                      onClick={() => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
-                      disabled={isGenerating}
-                    >
-                      &times;
-                    </button>
-                  </div>
+                  <PastedImageThumb
+                    key={idx}
+                    file={img}
+                    index={idx}
+                    onRemove={() => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
+                    disabled={isGenerating}
+                  />
                 ))}
               </div>
               {pastedImages.length >= 10 && <small className="images-limit-note">Maximum 10 images</small>}
@@ -412,6 +445,18 @@ export default function CreateStudyMaterialModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Stable blob URL thumbnail — avoids creating new URLs on every render */
+function PastedImageThumb({ file, index, onRemove, disabled }: { file: File; index: number; onRemove: () => void; disabled: boolean }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return (
+    <div className="pasted-image-thumb">
+      <img src={url} alt={`Pasted ${index + 1}`} />
+      <button className="remove-image-btn" onClick={onRemove} disabled={disabled}>&times;</button>
     </div>
   );
 }
