@@ -120,7 +120,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         if not user_data.full_name or not user_data.full_name.strip():
             user_data.full_name = waitlist_record.name
         # Mark email as validated on waitlist record
-        waitlist_record.email_validated = True
+        waitlist_record.invite_link_clicked = True
 
     # Block admin self-registration (only when roles are provided)
     if user_data.role and user_data.role not in _ALLOWED_REGISTRATION_ROLES:

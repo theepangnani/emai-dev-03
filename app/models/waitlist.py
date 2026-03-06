@@ -24,7 +24,7 @@ class Waitlist(Base):
     admin_notes = Column(String, nullable=True)  # TEXT
     invite_token = Column(String(255), nullable=True, unique=True, index=True)
     invite_token_expires_at = Column(DateTime(timezone=True), nullable=True)
-    email_validated = Column(Boolean, default=False)
+    invite_link_clicked = Column(Boolean, default=False)
     approved_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     registered_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

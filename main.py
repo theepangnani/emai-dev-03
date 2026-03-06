@@ -801,7 +801,7 @@ with engine.connect() as conn:
                     admin_notes TEXT,
                     invite_token VARCHAR(255) UNIQUE,
                     invite_token_expires_at {datetime_type},
-                    email_validated BOOLEAN {bool_default},
+                    invite_link_clicked BOOLEAN {bool_default},
                     approved_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                     approved_at {datetime_type},
                     registered_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -817,6 +817,17 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         conn.rollback()
+
+    # ── waitlist: rename email_validated → invite_link_clicked (#1126) ──
+    if "waitlist" in inspector.get_table_names():
+        waitlist_cols = {c["name"] for c in inspector.get_columns("waitlist")}
+        if "email_validated" in waitlist_cols and "invite_link_clicked" not in waitlist_cols:
+            try:
+                conn.execute(text("ALTER TABLE waitlist RENAME COLUMN email_validated TO invite_link_clicked"))
+                logger.info("Renamed 'email_validated' → 'invite_link_clicked' on waitlist (#1126)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
 
     # ── users: AI usage limit columns (#1117) ──────────────────
     if "users" in inspector.get_table_names():
