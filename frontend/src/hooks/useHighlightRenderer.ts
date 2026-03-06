@@ -183,6 +183,7 @@ export function useHighlightRenderer(
 ) {
   const highlightsRef = useRef(highlights);
   const onClickRef = useRef(onHighlightClick);
+  const applyingRef = useRef(false);
 
   useEffect(() => {
     highlightsRef.current = highlights;
@@ -192,26 +193,32 @@ export function useHighlightRenderer(
   const applyAllHighlights = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
+    if (applyingRef.current) return;
 
-    const currentHighlights = highlightsRef.current;
-    if (!currentHighlights || currentHighlights.length === 0) {
+    applyingRef.current = true;
+    try {
+      const currentHighlights = highlightsRef.current;
+      if (!currentHighlights || currentHighlights.length === 0) {
+        clearHighlights(container);
+        return;
+      }
+
       clearHighlights(container);
-      return;
-    }
 
-    clearHighlights(container);
+      const textContent = container.textContent || '';
+      if (textContent.trim().length === 0) return;
 
-    const textContent = container.textContent || '';
-    if (textContent.trim().length === 0) return;
+      for (let i = 0; i < currentHighlights.length; i++) {
+        const highlight = currentHighlights[i];
+        const highlightId = `hl-${i}`;
+        const clickHandler = onClickRef.current
+          ? (text: string) => onClickRef.current?.(text)
+          : undefined;
 
-    for (let i = 0; i < currentHighlights.length; i++) {
-      const highlight = currentHighlights[i];
-      const highlightId = `hl-${i}`;
-      const clickHandler = onClickRef.current
-        ? (text: string) => onClickRef.current?.(text)
-        : undefined;
-
-      applyHighlight(container, highlight, highlightId, clickHandler);
+        applyHighlight(container, highlight, highlightId, clickHandler);
+      }
+    } finally {
+      applyingRef.current = false;
     }
   }, [containerRef]);
 
