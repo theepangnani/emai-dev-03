@@ -12,6 +12,7 @@ from app.models.waitlist import Waitlist
 from app.models.user import User, UserRole
 from app.schemas.waitlist import WaitlistCreate, WaitlistResponse
 from app.services.email_service import send_email_sync, wrap_branded_email
+from app.core.config import settings
 from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ def _send_admin_notification(db: Session, entry: Waitlist) -> None:
             f'<p style="color:#333;line-height:1.6;margin:0 0 8px 0;"><strong>Email:</strong> {entry.email}</p>'
             f'<p style="color:#333;line-height:1.6;margin:0 0 8px 0;"><strong>Roles:</strong> {roles_display}</p>'
             f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;"><strong>Signed up:</strong> {entry.created_at}</p>'
-            f'<p style="color:#999;font-size:13px;">Review and approve in the admin dashboard.</p>'
+            f'<p style="font-size:13px;margin:16px 0 0 0;"><a href="{settings.frontend_url}/admin/waitlist" style="color:#4f46e5;text-decoration:underline;">Review and approve in the admin dashboard</a></p>'
         )
         html = wrap_branded_email(body)
 

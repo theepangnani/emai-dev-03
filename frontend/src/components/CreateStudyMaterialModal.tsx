@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { studyApi } from '../api/study';
 import type { SupportedFormats, DuplicateCheckResponse } from '../api/study';
 
@@ -111,7 +111,7 @@ export default function CreateStudyMaterialModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [open, initialTitle, initialContent]);
 
-  const addFiles = (incoming: FileList | File[]) => {
+  const addFiles = useCallback((incoming: FileList | File[]) => {
     const toAdd = Array.from(incoming);
     const oversized = toAdd.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
     if (oversized.length > 0) {
@@ -134,7 +134,45 @@ export default function CreateStudyMaterialModal({
       if (!prev && valid.length > 0) return valid[0].name.replace(/\.[^/.]+$/, '');
       return prev;
     });
-  };
+  }, []);
+
+  // Global paste handler — captures pasted files (Ctrl+V from Explorer) anywhere in the modal
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      const images: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (!file) continue;
+          if (item.type.startsWith('image/')) {
+            images.push(file);
+          } else {
+            files.push(file);
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        addFiles(files);
+      } else if (images.length > 0) {
+        const target = e.target as HTMLElement;
+        if (target?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          setPastedImages(prev => [...prev, ...images].slice(0, 10));
+        }
+      }
+    };
+
+    document.addEventListener('paste', handler);
+    return () => document.removeEventListener('paste', handler);
+  }, [open, addFiles]);
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
@@ -354,20 +392,13 @@ export default function CreateStudyMaterialModal({
               </div>
               <div className="pasted-images-thumbnails">
                 {pastedImages.map((img, idx) => (
-                  <div key={idx} className="pasted-image-thumb">
-                    <img
-                      src={URL.createObjectURL(img)}
-                      alt={`Pasted ${idx + 1}`}
-                      onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-                    />
-                    <button
-                      className="remove-image-btn"
-                      onClick={() => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
-                      disabled={isGenerating}
-                    >
-                      &times;
-                    </button>
-                  </div>
+                  <PastedImageThumb
+                    key={idx}
+                    file={img}
+                    index={idx}
+                    onRemove={() => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
+                    disabled={isGenerating}
+                  />
                 ))}
               </div>
               {pastedImages.length >= 10 && <small className="images-limit-note">Maximum 10 images</small>}
@@ -412,6 +443,18 @@ export default function CreateStudyMaterialModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Stable blob URL thumbnail — avoids creating new URLs on every render */
+function PastedImageThumb({ file, index, onRemove, disabled }: { file: File; index: number; onRemove: () => void; disabled: boolean }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return (
+    <div className="pasted-image-thumb">
+      <img src={url} alt={`Pasted ${index + 1}`} />
+      <button className="remove-image-btn" onClick={onRemove} disabled={disabled}>&times;</button>
     </div>
   );
 }
