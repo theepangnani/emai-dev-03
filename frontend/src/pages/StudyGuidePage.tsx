@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, ResolvedStudent } from '../api/client';
@@ -51,8 +51,12 @@ export function StudyGuidePage() {
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
+  const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
-  useHighlightRenderer(contentRef, highlights);
+  const handleHighlightClick = useCallback((text: string) => {
+    setRemoveHighlightText(text);
+  }, []);
+  useHighlightRenderer(contentRef, highlights, handleHighlightClick);
 
   const handleAddToNotes = () => {
     if (!selection) return;
@@ -253,6 +257,8 @@ export function StudyGuidePage() {
             readOnly={isParent && !!resolvedStudent}
             childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
             childName={isParent ? resolvedStudent?.student_name : undefined}
+            removeHighlightText={removeHighlightText}
+            onRemoveHighlightConsumed={() => setRemoveHighlightText(null)}
           />
         </>
       )}

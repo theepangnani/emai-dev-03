@@ -12,12 +12,14 @@ interface NotesPanelProps {
   addHighlight?: { text: string } | null;
   onHighlightConsumed?: () => void;
   onHighlightsChange?: (highlights: NoteHighlight[]) => void;
+  removeHighlightText?: string | null;
+  onRemoveHighlightConsumed?: () => void;
   readOnly?: boolean;
   childStudentId?: number;
   childName?: string;
 }
 
-export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange, readOnly, childStudentId, childName }: NotesPanelProps) {
+export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange, removeHighlightText, onRemoveHighlightConsumed, readOnly, childStudentId, childName }: NotesPanelProps) {
   const [note, setNote] = useState<NoteItem | null>(null);
   const [content, setContent] = useState('');
   const [highlights, setHighlights] = useState<NoteHighlight[]>([]);
@@ -168,6 +170,22 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       return updated;
     });
   }, [addHighlight]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle removeHighlightText prop — remove highlight entry by text
+  useEffect(() => {
+    if (!removeHighlightText || loading) return;
+    onRemoveHighlightConsumed?.();
+
+    setHighlights(prev => {
+      const updated = prev.filter(h => h.text !== removeHighlightText);
+      if (updated.length === prev.length) return prev;
+      onHighlightsChange?.(updated);
+      // Auto-save with updated highlights
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveNote(content, updated), 300);
+      return updated;
+    });
+  }, [removeHighlightText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveNote = useCallback(async (newContent: string, currentHighlights?: NoteHighlight[]) => {
     setSaving(true);
