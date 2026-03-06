@@ -73,6 +73,7 @@ const NotificationsPage = lazyRetry(() => import('./pages/NotificationsPage').th
 const LinkRequestsPage = lazyRetry(() => import('./pages/LinkRequestsPage').then((m) => ({ default: m.LinkRequestsPage })));
 const QuizHistoryPage = lazyRetry(() => import('./pages/QuizHistoryPage').then((m) => ({ default: m.QuizHistoryPage })));
 const EmailSettingsPage = lazyRetry(() => import('./pages/EmailSettingsPage').then((m) => ({ default: m.EmailSettingsPage })));
+const DataExportPage = lazyRetry(() => import('./pages/DataExportPage').then((m) => ({ default: m.DataExportPage })));
 // StudyPage will be created by another agent — lazy import registered here for the /study route
 const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ default: m.StudyPage })));
 const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => ({ default: m.WaitlistPage })));
@@ -333,6 +334,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
                     <EmailSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/data-export"
+                element={
+                  <ProtectedRoute>
+                    <DataExportPage />
                   </ProtectedRoute>
                 }
               />
