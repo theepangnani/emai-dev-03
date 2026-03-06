@@ -50,6 +50,29 @@ vi.mock('../components/ContentCard', () => ({
   MarkdownBody: ({ content }: { content: string }) => <div data-testid="markdown-content">{content}</div>,
 }))
 
+const mockConfirm = vi.fn()
+vi.mock('../components/ConfirmModal', () => ({
+  useConfirm: () => ({
+    confirm: mockConfirm,
+    confirmModal: null,
+  }),
+}))
+
+vi.mock('../hooks/useAIUsage', () => ({
+  useAIUsage: () => ({
+    count: 0,
+    limit: 10,
+    remaining: 10,
+    atLimit: false,
+    warningThreshold: 8,
+    period: 'daily',
+    resetDate: '',
+    isLoading: false,
+    error: null,
+    invalidate: vi.fn(),
+  }),
+}))
+
 // ── Helpers ────────────────────────────────────────────────────
 const MOCK_GUIDE = {
   id: 7,
@@ -78,6 +101,7 @@ import { StudyGuidePage } from './StudyGuidePage'
 describe('StudyGuidePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfirm.mockResolvedValue(true)
   })
 
   it('shows loading state initially', () => {
@@ -153,6 +177,7 @@ describe('StudyGuidePage', () => {
 
   it('deletes guide after confirmation', async () => {
     const user = userEvent.setup()
+    mockConfirm.mockResolvedValue(true)
     mockDeleteGuide.mockResolvedValue(undefined)
     renderStudyGuide()
     await waitFor(() => {
@@ -160,15 +185,6 @@ describe('StudyGuidePage', () => {
     })
 
     await user.click(screen.getByTitle('Delete'))
-
-    // Confirm modal should appear
-    await waitFor(() => {
-      expect(screen.getByText('Delete Study Guide')).toBeInTheDocument()
-    })
-
-    // Click the danger-styled Delete button inside the confirm modal
-    const confirmBtn = document.querySelector('.danger-btn') as HTMLButtonElement
-    await user.click(confirmBtn)
 
     await waitFor(() => {
       expect(mockDeleteGuide).toHaveBeenCalledWith(7)
@@ -178,6 +194,7 @@ describe('StudyGuidePage', () => {
 
   it('does not delete when cancelling confirmation', async () => {
     const user = userEvent.setup()
+    mockConfirm.mockResolvedValue(false)
     renderStudyGuide()
     await waitFor(() => {
       expect(screen.getByTitle('Delete')).toBeInTheDocument()
@@ -185,16 +202,12 @@ describe('StudyGuidePage', () => {
 
     await user.click(screen.getByTitle('Delete'))
 
-    await waitFor(() => {
-      expect(screen.getByText('Delete Study Guide')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Cancel'))
     expect(mockDeleteGuide).not.toHaveBeenCalled()
   })
 
   it('navigates to new guide on Regenerate', async () => {
     const user = userEvent.setup()
+    mockConfirm.mockResolvedValue(true)
     mockGenerateGuide.mockResolvedValue({ id: 99 })
     renderStudyGuide()
     await waitFor(() => {
@@ -213,6 +226,7 @@ describe('StudyGuidePage', () => {
 
   it('shows error when regenerate fails', async () => {
     const user = userEvent.setup()
+    mockConfirm.mockResolvedValue(true)
     mockGenerateGuide.mockRejectedValue(new Error('AI failed'))
     renderStudyGuide()
     await waitFor(() => {

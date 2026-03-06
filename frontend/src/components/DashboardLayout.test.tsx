@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { screen } from '@testing-library/react'
+import { renderWithProviders } from '../test/helpers'
 
 // Mutable mock state
 let mockUser: any = null
@@ -31,12 +31,10 @@ import { DashboardLayout } from './DashboardLayout'
 function renderLayout(role: string) {
   mockUser = { id: 1, full_name: 'Test User', role, roles: [role] }
 
-  return render(
-    <MemoryRouter>
-      <DashboardLayout welcomeSubtitle="Test subtitle">
-        <div data-testid="child-content">Content</div>
-      </DashboardLayout>
-    </MemoryRouter>,
+  return renderWithProviders(
+    <DashboardLayout welcomeSubtitle="Test subtitle">
+      <div data-testid="child-content">Content</div>
+    </DashboardLayout>,
   )
 }
 

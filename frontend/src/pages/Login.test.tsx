@@ -59,10 +59,11 @@ describe('Login', () => {
     expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument()
   })
 
-  it('renders links to register and forgot password', () => {
+  it('renders links to waitlist and forgot password', () => {
     renderWithProviders(<Login />)
 
-    expect(screen.getByRole('link', { name: /sign up/i })).toBeInTheDocument()
+    // waitlist_enabled defaults to true, so "Join the Waitlist" is shown instead of "Sign up"
+    expect(screen.getByRole('link', { name: /join the waitlist/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /forgot password/i })).toBeInTheDocument()
   })
 
