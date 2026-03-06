@@ -16,6 +16,7 @@ def test_db_url(tmp_path_factory):
 def app(test_db_url):
     os.environ["DATABASE_URL"] = test_db_url
     os.environ.setdefault("GOOGLE_CLASSROOM_ENABLED", "true")
+    os.environ.setdefault("WAITLIST_ENABLED", "false")
 
     import app.core.config as config
     importlib.reload(config)
