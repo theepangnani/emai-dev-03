@@ -515,7 +515,7 @@ export function StudyPage() {
               className="study-empty-cta"
               onClick={handleUploadForCourse}
             >
-              + Upload Document
+              + Upload Class Material
             </button>
           </div>
         ) : (

@@ -12,7 +12,18 @@ import type { ChildSummary } from '../api/parent';
 import { PageNav } from '../components/PageNav';
 import './AnalyticsPage.css';
 
-const ReactMarkdown = lazy(() => import('react-markdown'));
+const ReactMarkdown = lazy(() =>
+  import('react-markdown').catch(() => {
+    const reloaded = sessionStorage.getItem('chunk_reload');
+    if (!reloaded) {
+      sessionStorage.setItem('chunk_reload', '1');
+      window.location.reload();
+      return new Promise<never>(() => {});
+    }
+    sessionStorage.removeItem('chunk_reload');
+    return import('react-markdown');
+  }),
+);
 
 const COURSE_COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777'];
 
