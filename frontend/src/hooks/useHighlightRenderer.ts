@@ -183,7 +183,7 @@ export function useHighlightRenderer(
 ) {
   const highlightsRef = useRef(highlights);
   const onClickRef = useRef(onHighlightClick);
-  const applyingRef = useRef(false);
+  const observerRef = useRef<MutationObserver | null>(null);
 
   useEffect(() => {
     highlightsRef.current = highlights;
@@ -193,34 +193,46 @@ export function useHighlightRenderer(
   const applyAllHighlights = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
-    if (applyingRef.current) return;
 
-    applyingRef.current = true;
-    try {
-      const currentHighlights = highlightsRef.current;
-      if (!currentHighlights || currentHighlights.length === 0) {
-        clearHighlights(container);
-        return;
-      }
+    // Disconnect observer to prevent infinite loop: apply→mutate→observe→apply
+    observerRef.current?.disconnect();
 
+    const currentHighlights = highlightsRef.current;
+    if (!currentHighlights || currentHighlights.length === 0) {
       clearHighlights(container);
-
-      const textContent = container.textContent || '';
-      if (textContent.trim().length === 0) return;
-
-      for (let i = 0; i < currentHighlights.length; i++) {
-        const highlight = currentHighlights[i];
-        const highlightId = `hl-${i}`;
-        const clickHandler = onClickRef.current
-          ? (text: string) => onClickRef.current?.(text)
-          : undefined;
-
-        applyHighlight(container, highlight, highlightId, clickHandler);
-      }
-    } finally {
-      applyingRef.current = false;
+      reconnectObserver(container);
+      return;
     }
+
+    clearHighlights(container);
+
+    const textContent = container.textContent || '';
+    if (textContent.trim().length === 0) {
+      reconnectObserver(container);
+      return;
+    }
+
+    for (let i = 0; i < currentHighlights.length; i++) {
+      const highlight = currentHighlights[i];
+      const highlightId = `hl-${i}`;
+      const clickHandler = onClickRef.current
+        ? (text: string) => onClickRef.current?.(text)
+        : undefined;
+
+      applyHighlight(container, highlight, highlightId, clickHandler);
+    }
+
+    reconnectObserver(container);
   }, [containerRef]);
+
+  const reconnectObserver = useCallback((container: HTMLElement) => {
+    if (!observerRef.current) return;
+    observerRef.current.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }, []);
 
   const refreshHighlights = useCallback(() => {
     requestAnimationFrame(() => {
@@ -241,12 +253,13 @@ export function useHighlightRenderer(
 
     requestAnimationFrame(applyWhenReady);
 
-    // Use MutationObserver to detect when content appears (e.g., after Suspense resolves)
+    // MutationObserver detects when content appears (e.g., after Suspense resolves)
     const observer = new MutationObserver(() => {
       requestAnimationFrame(() => {
         applyAllHighlights();
       });
     });
+    observerRef.current = observer;
 
     observer.observe(container, {
       childList: true,
@@ -256,6 +269,7 @@ export function useHighlightRenderer(
 
     return () => {
       observer.disconnect();
+      observerRef.current = null;
       if (container) {
         clearHighlights(container);
       }
