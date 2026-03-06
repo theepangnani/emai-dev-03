@@ -125,8 +125,9 @@ export const coursesApi = {
     return response.data;
   },
 
-  getDefault: async () => {
-    const response = await api.get('/api/courses/default');
+  getDefault: async (studentUserId?: number) => {
+    const params = studentUserId ? { student_user_id: studentUserId } : {};
+    const response = await api.get('/api/courses/default', { params });
     return response.data;
   },
 
