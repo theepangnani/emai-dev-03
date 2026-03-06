@@ -179,3 +179,5 @@ export type {
 } from './grades';
 export { aiUsageApi } from './aiUsage';
 export type { AIUsageResponse, AIUsageRequestData, AIUsageRequestResponse } from './aiUsage';
+export { notesApi } from './notes';
+export type { NoteItem, ChildNoteItem } from './notes';
