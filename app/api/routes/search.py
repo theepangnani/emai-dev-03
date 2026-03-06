@@ -14,6 +14,7 @@ from app.models.course_content import CourseContent
 from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
 from app.models.faq import FAQQuestion
+from app.models.note import Note
 from app.api.deps import get_current_user
 from app.schemas.search import SearchResultItem, SearchResultGroup, SearchResponse
 
@@ -25,6 +26,7 @@ ENTITY_LABELS = {
     "task": "Tasks",
     "course_content": "Course Content",
     "faq": "FAQ",
+    "note": "Notes",
 }
 
 
@@ -212,6 +214,50 @@ def _search_faq(db: Session, term: str, limit: int) -> SearchResultGroup:
     return SearchResultGroup(entity_type="faq", label="FAQ", items=items, total=total)
 
 
+def _search_notes(db: Session, term: str, limit: int, user_ids: list[int]) -> SearchResultGroup:
+    """Search notes by plain_text content. Users see own notes; parents see children's."""
+    query = (
+        db.query(Note, CourseContent, Course)
+        .join(CourseContent, Note.course_content_id == CourseContent.id)
+        .join(Course, CourseContent.course_id == Course.id)
+        .filter(
+            Note.plain_text.ilike(f"%{escape_like(term)}%"),
+            Note.user_id.in_(user_ids),
+        )
+    )
+
+    total = query.count()
+    rows = query.order_by(Note.updated_at.desc()).limit(limit).all()
+
+    items = []
+    for note, cc, course in rows:
+        # Build snippet: 150 chars around the match
+        plain = note.plain_text or ""
+        lower_plain = plain.lower()
+        idx = lower_plain.find(term.lower())
+        if idx >= 0:
+            start = max(0, idx - 40)
+            snippet = plain[start:start + 150]
+            if start > 0:
+                snippet = "..." + snippet
+            if start + 150 < len(plain):
+                snippet = snippet + "..."
+        else:
+            snippet = plain[:150]
+            if len(plain) > 150:
+                snippet += "..."
+
+        items.append(SearchResultItem(
+            id=note.id,
+            title=f"Note on {cc.title}",
+            subtitle=f"{snippet} | {course.name}",
+            entity_type="note",
+            url=f"/course-materials/{cc.id}?notes=1",
+        ))
+
+    return SearchResultGroup(entity_type="note", label="Notes", items=items, total=total)
+
+
 @router.get("", response_model=SearchResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def global_search(
@@ -226,7 +272,7 @@ def global_search(
     term = q.strip()
 
     # Determine which types to search
-    all_types = {"course", "study_guide", "task", "course_content", "faq"}
+    all_types = {"course", "study_guide", "task", "course_content", "faq", "note"}
     if types:
         requested = {t.strip() for t in types.split(",")} & all_types
     else:
@@ -289,6 +335,14 @@ def global_search(
 
     if "faq" in requested:
         groups.append(_search_faq(db, term, limit))
+
+    if "note" in requested:
+        if admin_user_ids is None:
+            # Admin: search all notes
+            all_note_user_ids = [uid for (uid,) in db.query(Note.user_id).distinct().all()]
+            groups.append(_search_notes(db, term, limit, all_note_user_ids))
+        else:
+            groups.append(_search_notes(db, term, limit, user_ids))
 
     total = sum(g.total for g in groups)
 

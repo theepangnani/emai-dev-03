@@ -1,15 +1,29 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchApi, type SearchResponse, type SearchResultGroup } from '../api/client';
 import './GlobalSearch.css';
 
 const TYPE_ICONS: Record<string, string> = {
-  course: '\uD83C\uDF93',        // 🎓
-  study_guide: '\uD83D\uDCD6',   // 📖
-  task: '\uD83D\uDCCB',          // 📋
-  course_content: '\uD83D\uDCC4', // 📄
-  faq: '\u2753',                  // ❓
+  course: '\uD83C\uDF93',        // graduation cap
+  study_guide: '\uD83D\uDCD6',   // open book
+  task: '\uD83D\uDCCB',          // clipboard
+  course_content: '\uD83D\uDCC4', // page
+  faq: '\u2753',                  // question mark
+  note: '\uD83D\uDCDD',          // memo/note
 };
+
+function highlightMatch(text: string, term: string): ReactNode {
+  if (!term || term.length < 2) return text;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx < 0) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="global-search-highlight">{text.slice(idx, idx + term.length)}</mark>
+      {text.slice(idx + term.length)}
+    </>
+  );
+}
 
 export function GlobalSearch() {
   const navigate = useNavigate();
@@ -127,9 +141,9 @@ export function GlobalSearch() {
                   >
                     <span className="global-search-item-icon" aria-hidden="true">{TYPE_ICONS[item.entity_type] || ''}</span>
                     <div className="global-search-item-text">
-                      <span className="global-search-item-title">{item.title}</span>
+                      <span className="global-search-item-title">{highlightMatch(item.title, query)}</span>
                       {item.subtitle && (
-                        <span className="global-search-item-subtitle">{item.subtitle}</span>
+                        <span className="global-search-item-subtitle">{highlightMatch(item.subtitle, query)}</span>
                       )}
                     </div>
                   </button>
