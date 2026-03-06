@@ -46,6 +46,14 @@ describe('HelpPage', () => {
     return renderWithProviders(<HelpPage />, { initialEntries: ['/help'] })
   }
 
+  it('renders tutorial sections for parent role', () => {
+    renderHelp()
+    expect(screen.getByText('Welcome, Parent!')).toBeInTheDocument()
+    expect(screen.getByText('Getting Started as a Parent')).toBeInTheDocument()
+    expect(screen.getByText('Creating Study Materials')).toBeInTheDocument()
+    expect(screen.getByText('Communication & Tasks')).toBeInTheDocument()
+  })
+
   it('renders all FAQ section titles', () => {
     renderHelp()
     expect(screen.getByText('Getting Started')).toBeInTheDocument()
