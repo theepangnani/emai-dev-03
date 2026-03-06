@@ -454,6 +454,16 @@ async def generate_study_guide_endpoint(
         description = assignment.description or ""
         course = assignment.course
 
+    # Fallback: fetch text from CourseContent when no explicit content provided
+    if not description and body.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == body.course_content_id).first()
+        if cc:
+            description = cc.text_content or cc.description or ""
+            if not title or title == "Study Guide":
+                title = f"Study Guide: {cc.title}"
+            if not course and cc.course_id:
+                course = db.query(Course).filter(Course.id == cc.course_id).first()
+
     if body.course_id and not course:
         course = db.query(Course).filter(Course.id == body.course_id).first()
         if not course:
@@ -590,6 +600,14 @@ async def generate_quiz_endpoint(
             raise HTTPException(status_code=403, detail="No access to this assignment's course")
         topic = assignment.title
         content = assignment.description or ""
+
+    # Fallback: fetch text from CourseContent when no explicit content provided
+    if not content and body.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == body.course_content_id).first()
+        if cc:
+            content = cc.text_content or cc.description or ""
+            if not topic or topic == "Quiz":
+                topic = cc.title
 
     if not content:
         raise HTTPException(
@@ -735,6 +753,14 @@ async def generate_flashcards_endpoint(
             raise HTTPException(status_code=403, detail="No access to this assignment's course")
         topic = assignment.title
         content = assignment.description or ""
+
+    # Fallback: fetch text from CourseContent when no explicit content provided
+    if not content and body.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == body.course_content_id).first()
+        if cc:
+            content = cc.text_content or cc.description or ""
+            if not topic or topic == "Flashcards":
+                topic = cc.title
 
     if not content:
         raise HTTPException(
