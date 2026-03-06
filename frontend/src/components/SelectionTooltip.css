@@ -4,6 +4,9 @@
   transform: translateX(-50%);
   animation: sel-tooltip-in 0.15s ease-out;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 @keyframes sel-tooltip-in {
