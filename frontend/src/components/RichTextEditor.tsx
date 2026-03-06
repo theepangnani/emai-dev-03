@@ -92,10 +92,10 @@ export function RichTextEditor({
       onUpdate(html, text);
     },
     editorProps: {
-      handleDrop: (_view, event, _slice, moved) => {
+      handleDrop: (_view: unknown, event: DragEvent, _slice: unknown, moved: boolean) => {
         if (moved || !event.dataTransfer?.files?.length) return false;
 
-        const files = Array.from(event.dataTransfer.files).filter((f) =>
+        const files = Array.from(event.dataTransfer.files).filter((f: File) =>
           f.type.startsWith('image/'),
         );
         if (files.length === 0) return false;
@@ -104,14 +104,14 @@ export function RichTextEditor({
         handleImageInsert(files, editor);
         return true;
       },
-      handlePaste: (_view, event) => {
+      handlePaste: (_view: unknown, event: ClipboardEvent) => {
         const items = event.clipboardData?.items;
         if (!items) return false;
 
         const imageFiles: File[] = [];
         for (const item of Array.from(items)) {
           if (item.type.startsWith('image/')) {
-            const file = item.getAsFile();
+            const file = (item as DataTransferItem).getAsFile();
             if (file) imageFiles.push(file);
           }
         }

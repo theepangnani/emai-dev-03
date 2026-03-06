@@ -33,8 +33,9 @@ export const notesApi = {
     await api.delete(`/api/notes/by-content/${courseContentId}`);
   },
 
-  list: async () => {
-    const response = await api.get('/api/notes/');
+  list: async (courseContentId?: number) => {
+    const params = courseContentId ? { course_content_id: courseContentId } : {};
+    const response = await api.get('/api/notes/', { params });
     return response.data as NoteItem[];
   },
 

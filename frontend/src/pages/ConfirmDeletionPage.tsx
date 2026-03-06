@@ -7,14 +7,12 @@ import './Auth.css';
 export function ConfirmDeletionPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(() => token ? 'loading' : 'error');
   const [result, setResult] = useState<DeletionStatus | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState(() => token ? '' : 'Missing confirmation token. Please use the link from your email.');
 
   useEffect(() => {
     if (!token) {
-      setStatus('error');
-      setErrorMessage('Missing confirmation token. Please use the link from your email.');
       return;
     }
 

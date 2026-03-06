@@ -888,6 +888,10 @@ with engine.connect() as conn:
             try:
                 conn.execute(text("ALTER TABLE tasks ADD COLUMN note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL"))
                 logger.info("Added 'note_id' column to tasks (#1087)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # ── users: account deletion columns (#964) ──────────────────
     if "users" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("users")}

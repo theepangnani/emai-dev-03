@@ -180,9 +180,7 @@ export type {
 export { aiUsageApi } from './aiUsage';
 export type { AIUsageResponse, AIUsageRequestData, AIUsageRequestResponse } from './aiUsage';
 export { notesApi } from './notes';
-export type { NoteResponse, NoteListItem, NoteUpsert } from './notes';
-export type { NoteItem, ChildNoteItem } from './notes';
-export type { NoteResponse, NoteSummary, NoteUpsert } from './notes';
+export type { NoteItem, NoteCreateTaskData } from './notes';
 export { accountDeletionApi } from './accountDeletion';
 export type { DeletionStatus, DeletionRequestItem, DeletionRequestList } from './accountDeletion';
 export { dataExportApi } from './dataExport';

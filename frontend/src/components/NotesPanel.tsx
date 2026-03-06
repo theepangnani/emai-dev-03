@@ -5,7 +5,8 @@ import './NotesPanel.css';
 
 interface NotesPanelProps {
   courseContentId: number;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export function NotesPanel({ courseContentId, onClose }: NotesPanelProps) {

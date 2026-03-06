@@ -341,7 +341,7 @@ function App() {
                 }
               />
               <Route
-path="/settings/account"
+                path="/settings/account"
                 element={
                   <ProtectedRoute>
                     <AccountSettingsPage />
@@ -354,7 +354,11 @@ path="/settings/account"
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDeletionRequestsPage />
-path="/settings/data-export"
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/data-export"
                 element={
                   <ProtectedRoute>
                     <DataExportPage />

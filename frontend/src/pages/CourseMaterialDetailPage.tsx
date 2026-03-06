@@ -557,9 +557,8 @@ export function CourseMaterialDetailPage() {
           )}
 
           {activeTab === 'notes' && (
-            <NotesPanel courseContentId={contentId} />
             <div className="cm-tab-card">
-              <NotesPanel courseContentId={contentId} inline />
+              <NotesPanel courseContentId={contentId} />
             </div>
           )}
         </div>
