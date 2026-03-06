@@ -20,6 +20,7 @@ import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { NotesPanelToggle } from '../components/NotesPanelToggle';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
@@ -401,6 +402,7 @@ export function CourseMaterialDetailPage() {
               <EditIcon />
               <span className="cm-toolbar-btn-label">Edit</span>
             </button>
+            <NotesPanelToggle courseContentId={contentId} />
             <span className="cm-toolbar-sep" />
             <button className="cm-toolbar-btn danger" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>
               <ArchiveIcon />
