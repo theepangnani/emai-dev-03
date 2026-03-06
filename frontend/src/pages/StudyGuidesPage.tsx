@@ -608,9 +608,10 @@ export function StudyGuidesPage() {
               content_type: 'notes',
             });
           }
-          loadData();
+          await loadData();
+          showToast('Upload complete');
         } catch {
-          // Silently handle — user will see content list on next load
+          showToast('Upload failed — please try again');
         }
       })();
       return;
@@ -697,11 +698,13 @@ export function StudyGuidesPage() {
     }
     setDatePromptTasks([]);
     setDatePromptValues({});
+    loadData();
   };
 
   const handleDatePromptCancel = () => {
     setDatePromptTasks([]);
     setDatePromptValues({});
+    loadData();
   };
 
   // Toggle selection for batch assign (#623)
