@@ -37,6 +37,8 @@ export function SourceFilesSection({ contentId, sourceFilesCount }: SourceFilesS
   const [expanded, setExpanded] = useState(false);
   const [downloading, setDownloading] = useState<number | null>(null);
   const [viewingFile, setViewingFile] = useState<SourceFileItem | null>(null);
+  const [viewBlobUrl, setViewBlobUrl] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   useEffect(() => {
     if (expanded && files.length === 0) {
@@ -58,8 +60,24 @@ export function SourceFilesSection({ contentId, sourceFilesCount }: SourceFilesS
     finally { setDownloading(null); }
   };
 
-  const handleView = (file: SourceFileItem) => {
+  const handleView = async (file: SourceFileItem) => {
     setViewingFile(file);
+    setViewBlobUrl(null);
+    setViewLoading(true);
+    try {
+      const url = await courseContentsApi.getSourceFileBlobUrl(contentId, file.id);
+      setViewBlobUrl(url);
+    } catch {
+      /* fall through — shows loading state */
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const handleCloseViewer = () => {
+    if (viewBlobUrl) URL.revokeObjectURL(viewBlobUrl);
+    setViewingFile(null);
+    setViewBlobUrl(null);
   };
 
   return (
@@ -120,26 +138,32 @@ export function SourceFilesSection({ contentId, sourceFilesCount }: SourceFilesS
 
       {/* Inline viewer modal */}
       {viewingFile && (
-        <div className="cm-source-file-viewer-overlay" onClick={() => setViewingFile(null)}>
+        <div className="cm-source-file-viewer-overlay" onClick={handleCloseViewer}>
           <div className="cm-source-file-viewer" onClick={e => e.stopPropagation()}>
             <div className="cm-sfv-header">
               <h3>{viewingFile.filename}</h3>
-              <button className="cm-sfv-close" onClick={() => setViewingFile(null)} aria-label="Close">&times;</button>
+              <button className="cm-sfv-close" onClick={handleCloseViewer} aria-label="Close">&times;</button>
             </div>
             <div className="cm-sfv-body">
-              {viewingFile.file_type?.startsWith('image/') ? (
-                <img
-                  src={`/api/course-contents/${contentId}/source-files/${viewingFile.id}/download`}
-                  alt={viewingFile.filename}
-                  className="cm-sfv-image"
-                />
-              ) : viewingFile.file_type === 'application/pdf' ? (
-                <iframe
-                  src={`/api/course-contents/${contentId}/source-files/${viewingFile.id}/download`}
-                  title={viewingFile.filename}
-                  className="cm-sfv-pdf"
-                />
-              ) : null}
+              {viewLoading ? (
+                <p style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Loading...</p>
+              ) : viewBlobUrl ? (
+                viewingFile.file_type?.startsWith('image/') ? (
+                  <img
+                    src={viewBlobUrl}
+                    alt={viewingFile.filename}
+                    className="cm-sfv-image"
+                  />
+                ) : viewingFile.file_type === 'application/pdf' ? (
+                  <iframe
+                    src={viewBlobUrl}
+                    title={viewingFile.filename}
+                    className="cm-sfv-pdf"
+                  />
+                ) : null
+              ) : (
+                <p style={{ textAlign: 'center', padding: '2rem', color: '#c00' }}>Failed to load file.</p>
+              )}
             </div>
             <div className="cm-sfv-footer">
               <button className="cm-action-btn" onClick={() => handleDownload(viewingFile)}>
