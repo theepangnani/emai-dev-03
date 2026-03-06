@@ -88,6 +88,7 @@ class CourseContentResponse(BaseModel):
     mime_type: Optional[str] = None
     has_file: bool = False
     download_restricted: bool = False
+    source_files_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None

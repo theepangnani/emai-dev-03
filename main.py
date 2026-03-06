@@ -1,3 +1,4 @@
+# ClassBridge v1.0 - Phase 1 Launch
 import os
 import time
 import traceback
@@ -20,6 +21,8 @@ from app.api.routes import auth, users, students, courses, assignments, google_c
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage
 from app.api.routes import notes  # noqa: E402 — Notes system (#1084, #1089)
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage, account_deletion
+from app.api.routes import data_export
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -37,11 +40,13 @@ logger.info("Starting EMAI application...")
 
 # Create database tables
 from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, AILimitRequest
+from app.models.note import Note  # noqa: F401 — ensure table is created (#1085)
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, DataExportRequest, SourceFile
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.waitlist import Waitlist  # noqa: F401 — ensure table is created (#1114)
 from app.models.note import Note  # noqa: F401 — ensure notes table is created (#1084)
+from app.models.ai_usage_history import AIUsageHistory  # noqa: F401 — ensure table is created (#1125)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -871,6 +876,36 @@ with engine.connect() as conn:
         conn.commit()
 
 
+    # ── users: account deletion columns (#964) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "deletion_requested_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_requested_at {col_type}"))
+                logger.info("Added 'deletion_requested_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "deletion_confirmed_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN deletion_confirmed_at {col_type}"))
+                logger.info("Added 'deletion_confirmed_at' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "is_deleted" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'is_deleted' column to users")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 app = FastAPI(
@@ -998,6 +1033,9 @@ app.include_router(waitlist.router, prefix="/api")
 app.include_router(ai_usage.router, prefix="/api")
 app.include_router(ai_usage.admin_router, prefix="/api")
 app.include_router(notes.router, prefix="/api")
+app.include_router(account_deletion.router, prefix="/api")
+app.include_router(account_deletion.admin_router, prefix="/api")
+app.include_router(data_export.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1137,6 +1175,15 @@ async def startup_event():
         sync_google_classrooms,
         CronTrigger(hour=6, minute=0),
         id="google_classroom_sync",
+        replace_existing=True,
+    )
+
+    # Process expired account deletions daily at 4 AM (#964)
+    from app.jobs.account_deletion import process_expired_account_deletions
+    scheduler.add_job(
+        process_expired_account_deletions,
+        CronTrigger(hour=4, minute=0),
+        id="account_deletion_cleanup",
         replace_existing=True,
     )
 
