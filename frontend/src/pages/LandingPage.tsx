@@ -58,8 +58,8 @@ export function LandingPage() {
           </div>
           <div className="landing-feature">
             <div className="landing-feature-icon">&#127891;</div>
-            <h3>Google Classroom Sync</h3>
-            <p>Connect to Google Classroom and automatically sync courses, assignments, and grades.</p>
+            <h3>LMS Integration</h3>
+            <p>Sync courses, assignments, and grades from platforms like Google Classroom, Brightspace, and more.</p>
           </div>
           <div className="landing-feature">
             <div className="landing-feature-icon">&#128241;</div>
@@ -93,7 +93,7 @@ export function LandingPage() {
           <div className="landing-role">
             <h3>For Teachers</h3>
             <ul>
-              <li>Google Classroom integration</li>
+              <li>LMS integration (Google Classroom, Brightspace, etc.)</li>
               <li>Parent communication hub</li>
               <li>Class and assignment management</li>
               <li>Student progress visibility</li>
