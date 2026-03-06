@@ -4,9 +4,7 @@ from datetime import datetime
 
 class NoteUpsert(BaseModel):
     course_content_id: int
-    content: str = ""
-    plain_text: str = ""
-    has_images: bool = False
+    content: str  # HTML content
 
 
 class NoteResponse(BaseModel):
@@ -14,23 +12,23 @@ class NoteResponse(BaseModel):
     user_id: int
     course_content_id: int
     content: str
-    plain_text: str
+    plain_text: str | None
     has_images: bool
     created_at: datetime
-    updated_at: datetime | None = None
-    course_content_title: str | None = None
+    updated_at: datetime | None
 
     class Config:
         from_attributes = True
 
 
-class NoteSummary(BaseModel):
+class NoteListItem(BaseModel):
     id: int
+    user_id: int
     course_content_id: int
+    plain_text: str | None
     has_images: bool
-    plain_text_preview: str = ""
-    updated_at: datetime | None = None
-    course_content_title: str | None = None
+    created_at: datetime
+    updated_at: datetime | None
 
     class Config:
         from_attributes = True

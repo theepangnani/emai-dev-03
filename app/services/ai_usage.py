@@ -39,12 +39,47 @@ def check_ai_usage(user: User, db: Session) -> None:
         )
 
 
-def increment_ai_usage(user: User, db: Session) -> None:
-    """Increment user's AI usage count after successful generation."""
+def log_ai_usage(
+    user: User,
+    db: Session,
+    generation_type: str,
+    course_material_id: int | None = None,
+    credits_used: int = 1,
+) -> None:
+    """Insert a row into ai_usage_history for audit trail."""
+    from app.models.ai_usage_history import AIUsageHistory
+
+    entry = AIUsageHistory(
+        user_id=user.id,
+        generation_type=generation_type,
+        course_material_id=course_material_id,
+        credits_used=credits_used,
+    )
+    db.add(entry)
+    logger.debug(
+        "AI usage history logged | user_id=%s | type=%s | material=%s",
+        user.id, generation_type, course_material_id,
+    )
+
+
+def increment_ai_usage(
+    user: User,
+    db: Session,
+    generation_type: str = "unknown",
+    course_material_id: int | None = None,
+) -> None:
+    """Increment user's AI usage count after successful generation.
+
+    Also logs an entry to ai_usage_history for the audit trail.
+    """
+    # Always log to history, even if limits are not active
+    log_ai_usage(user, db, generation_type, course_material_id)
+
     limit = getattr(user, "ai_usage_limit", None)
 
-    # Only track if limits are active (non-zero, non-null)
+    # Only track count if limits are active (non-zero, non-null)
     if not limit:
+        db.commit()
         return
 
     current = getattr(user, "ai_usage_count", None) or 0

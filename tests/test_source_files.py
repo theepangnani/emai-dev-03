@@ -1,0 +1,297 @@
+"""Tests for source files feature (#1005).
+
+Covers: multi-file upload, source files listing, source file download,
+permanent delete cascade, and access control.
+"""
+import pytest
+from conftest import PASSWORD, _auth
+
+
+@pytest.fixture()
+def users(db_session):
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.teacher import Teacher
+    from app.models.course import Course
+
+    parent = db_session.query(User).filter(User.email == "sf_parent@test.com").first()
+    if parent:
+        teacher = db_session.query(User).filter(User.email == "sf_teacher@test.com").first()
+        other = db_session.query(User).filter(User.email == "sf_other@test.com").first()
+        course = db_session.query(Course).filter(Course.name == "SF Test Course").first()
+        return {"parent": parent, "teacher": teacher, "other": other, "course": course}
+
+    hashed = get_password_hash(PASSWORD)
+    parent = User(email="sf_parent@test.com", full_name="SF Parent", role=UserRole.PARENT, hashed_password=hashed)
+    teacher = User(email="sf_teacher@test.com", full_name="SF Teacher", role=UserRole.TEACHER, hashed_password=hashed)
+    other = User(email="sf_other@test.com", full_name="SF Other", role=UserRole.TEACHER, hashed_password=hashed)
+    db_session.add_all([parent, teacher, other])
+    db_session.flush()
+
+    teacher_rec = Teacher(user_id=teacher.id)
+    db_session.add(teacher_rec)
+    db_session.flush()
+
+    course = Course(name="SF Test Course", teacher_id=teacher_rec.id, created_by_user_id=teacher.id)
+    db_session.add(course)
+    db_session.commit()
+
+    for u in [parent, teacher, other]:
+        db_session.refresh(u)
+    db_session.refresh(course)
+    return {"parent": parent, "teacher": teacher, "other": other, "course": course}
+
+
+class TestMultiFileUpload:
+    """Tests for POST /api/course-contents/upload-multi."""
+
+    def test_upload_multi_files(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        files = [
+            ("files", ("file1.txt", b"Content of file 1", "text/plain")),
+            ("files", ("file2.txt", b"Content of file 2", "text/plain")),
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id), "title": "Multi-file upload"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["title"] == "Multi-file upload"
+        assert data["source_files_count"] == 2
+        assert "Content of file 1" in (data.get("text_content") or "")
+        assert "Content of file 2" in (data.get("text_content") or "")
+
+    def test_upload_multi_uses_filenames_as_default_title(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        files = [
+            ("files", ("notes.txt", b"Some notes", "text/plain")),
+            ("files", ("summary.txt", b"A summary", "text/plain")),
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id)},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert "notes.txt" in data["title"]
+        assert "summary.txt" in data["title"]
+
+    def test_upload_multi_no_files_rejected(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            data={"course_id": str(users["course"].id)},
+            headers=headers,
+        )
+        assert resp.status_code == 422  # FastAPI validation error for missing files
+
+    def test_upload_multi_bad_course_rejected(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        files = [("files", ("f.txt", b"data", "text/plain"))]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": "999999"},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+
+class TestSourceFilesListing:
+    """Tests for GET /api/course-contents/{id}/source-files."""
+
+    def _create_content_with_sources(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        files = [
+            ("files", ("doc1.txt", b"Hello world", "text/plain")),
+            ("files", ("doc2.txt", b"Goodbye world", "text/plain")),
+            ("files", ("image.txt", b"An image description", "text/plain")),
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id), "title": "With Sources"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        return resp.json()
+
+    def test_list_source_files(self, client, users):
+        content = self._create_content_with_sources(client, users)
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get(f"/api/course-contents/{content['id']}/source-files", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 3
+        filenames = [f["filename"] for f in data]
+        assert "doc1.txt" in filenames
+        assert "doc2.txt" in filenames
+        assert "image.txt" in filenames
+
+    def test_list_source_files_returns_metadata(self, client, users):
+        content = self._create_content_with_sources(client, users)
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get(f"/api/course-contents/{content['id']}/source-files", headers=headers)
+        data = resp.json()
+        for f in data:
+            assert "id" in f
+            assert "filename" in f
+            assert "file_type" in f
+            assert "file_size" in f
+            assert "created_at" in f
+            # Binary data should NOT be in the response
+            assert "file_data" not in f
+
+    def test_list_source_files_not_found(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get("/api/course-contents/999999/source-files", headers=headers)
+        assert resp.status_code == 404
+
+    def test_list_source_files_empty_for_single_upload(self, client, users):
+        """Content created via regular upload has no source files."""
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id,
+            "title": "No Sources",
+            "text_content": "Just text",
+        }, headers=headers)
+        assert resp.status_code == 201
+        content_id = resp.json()["id"]
+
+        resp = client.get(f"/api/course-contents/{content_id}/source-files", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
+class TestSourceFileDownload:
+    """Tests for GET /api/course-contents/{id}/source-files/{file_id}/download."""
+
+    def test_download_source_file(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        # Upload multi files
+        file_content = b"Test file content for download"
+        files = [("files", ("download_me.txt", file_content, "text/plain"))]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id), "title": "Download Test"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        content_id = resp.json()["id"]
+
+        # List source files
+        resp = client.get(f"/api/course-contents/{content_id}/source-files", headers=headers)
+        assert resp.status_code == 200
+        file_id = resp.json()[0]["id"]
+
+        # Download
+        resp = client.get(f"/api/course-contents/{content_id}/source-files/{file_id}/download", headers=headers)
+        assert resp.status_code == 200
+        assert resp.content == file_content
+        assert "download_me.txt" in resp.headers.get("content-disposition", "")
+
+    def test_download_nonexistent_file(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        # Create content first
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id,
+            "title": "No Files",
+        }, headers=headers)
+        content_id = resp.json()["id"]
+
+        resp = client.get(f"/api/course-contents/{content_id}/source-files/999999/download", headers=headers)
+        assert resp.status_code == 404
+
+
+class TestSourceFilesCount:
+    """Tests that source_files_count appears in CourseContent responses."""
+
+    def test_create_response_includes_count(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id,
+            "title": "Count Test",
+        }, headers=headers)
+        assert resp.status_code == 201
+        assert resp.json()["source_files_count"] == 0
+
+    def test_multi_upload_response_includes_count(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        files = [
+            ("files", ("a.txt", b"AAA", "text/plain")),
+            ("files", ("b.txt", b"BBB", "text/plain")),
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id), "title": "Multi Count"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["source_files_count"] == 2
+
+    def test_get_response_includes_count(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        files = [
+            ("files", ("x.txt", b"XXX", "text/plain")),
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id), "title": "Get Count"},
+            headers=headers,
+        )
+        content_id = resp.json()["id"]
+
+        resp = client.get(f"/api/course-contents/{content_id}", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["source_files_count"] == 1
+
+    def test_list_response_includes_count(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.get(f"/api/course-contents/?course_id={users['course'].id}", headers=headers)
+        assert resp.status_code == 200
+        for item in resp.json():
+            assert "source_files_count" in item
+
+
+class TestSourceFilesCascadeDelete:
+    """Tests that source files are cleaned up on permanent delete."""
+
+    def test_permanent_delete_removes_source_files(self, client, users, db_session):
+        from app.models.source_file import SourceFile
+
+        headers = _auth(client, users["teacher"].email)
+        files = [
+            ("files", ("del1.txt", b"Delete me 1", "text/plain")),
+            ("files", ("del2.txt", b"Delete me 2", "text/plain")),
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            files=files,
+            data={"course_id": str(users["course"].id), "title": "Delete Test"},
+            headers=headers,
+        )
+        content_id = resp.json()["id"]
+
+        # Verify source files exist
+        count = db_session.query(SourceFile).filter(SourceFile.course_content_id == content_id).count()
+        assert count == 2
+
+        # Archive first (required before permanent delete)
+        client.delete(f"/api/course-contents/{content_id}", headers=headers)
+
+        # Permanent delete
+        resp = client.delete(f"/api/course-contents/{content_id}/permanent", headers=headers)
+        assert resp.status_code == 204
+
+        # Source files should be gone
+        db_session.expire_all()
+        count = db_session.query(SourceFile).filter(SourceFile.course_content_id == content_id).count()
+        assert count == 0
