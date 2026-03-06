@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     # Feature toggles (#1054)
     google_classroom_enabled: bool = False
-    waitlist_enabled: bool = True  # Waitlist gated flow: "Join Waitlist" on login, token-gated registration (#1113, #1114)
+    waitlist_enabled: bool = False  # Waitlist gated flow: "Join Waitlist" on login, token-gated registration (#1113, #1114)
 
     # AI usage limits
     ai_default_usage_limit: int = 10

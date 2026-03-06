@@ -368,6 +368,21 @@ export function ParentDashboard() {
             return null;
           })()}
 
+          {/* Coming Up Timeline (#832 - collapsible, #1216 moved above CTAs) */}
+          <CollapsibleSection
+            title="Coming Up"
+            expanded={sectionStates.comingUp}
+            onToggle={() => updateSection('comingUp', !sectionStates.comingUp)}
+          >
+            <ComingUpTimeline
+              calendarAssignments={pd.calendarAssignments}
+              selectedChild={pd.selectedChild}
+              onNavigateStudy={pd.handleOneClickStudy}
+              onCreateTask={() => pd.setShowCreateTaskModal(true)}
+              onUploadMaterial={() => pd.setShowStudyModal(true)}
+            />
+          </CollapsibleSection>
+
           {/* Quick Action Bar (#837 unified) */}
           <RoleQuickActions
             actions={[
@@ -405,21 +420,6 @@ export function ParentDashboard() {
             ] satisfies QuickAction[]}
             maxVisible={3}
           />
-
-          {/* Coming Up Timeline (#832 - collapsible) */}
-          <CollapsibleSection
-            title="Coming Up"
-            expanded={sectionStates.comingUp}
-            onToggle={() => updateSection('comingUp', !sectionStates.comingUp)}
-          >
-            <ComingUpTimeline
-              calendarAssignments={pd.calendarAssignments}
-              selectedChild={pd.selectedChild}
-              onNavigateStudy={pd.handleOneClickStudy}
-              onCreateTask={() => pd.setShowCreateTaskModal(true)}
-              onUploadMaterial={() => pd.setShowStudyModal(true)}
-            />
-          </CollapsibleSection>
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
             <div className="pd-onboard-tip" role="status">
