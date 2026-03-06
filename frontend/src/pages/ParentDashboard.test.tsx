@@ -237,13 +237,12 @@ describe('ParentDashboard', () => {
   })
 
   // ── Dashboard with Children ──────────────────────────────────
-  it('renders student detail panel', async () => {
+  it('student detail panel moved to MyKids page', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // With 1 child, auto-selects Alex Smith → "Alex Smith's Details"
-      // Text appears in both CollapsibleSection title and StudentDetailPanel header
-      expect(screen.getAllByText(/Alex Smith's Details/).length).toBeGreaterThanOrEqual(1)
+      // Student details section should NOT appear on dashboard (moved to MyKids)
+      expect(screen.queryByText(/Alex Smith's Details/)).not.toBeInTheDocument()
     })
   })
 
@@ -273,7 +272,7 @@ describe('ParentDashboard', () => {
     expect(screen.getAllByText('Jamie Smith').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders student detail panel with tasks section', async () => {
+  it('does not render student detail panel on dashboard (moved to MyKids)', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({
         children: [child1, child2],
@@ -283,8 +282,8 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      // StudentDetailPanel shows Tasks section header
-      expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
+      // StudentDetailPanel moved to MyKids — no "Details" section on dashboard
+      expect(screen.queryByText(/Details$/)).not.toBeInTheDocument()
     })
   })
 
@@ -307,24 +306,24 @@ describe('ParentDashboard', () => {
   // ── Calendar moved to TasksPage ──────────────────────────────
 
   // ── Quick Action Cards ────────────────────────────────────
-  it('renders quick action cards for Class Material and Create Task', async () => {
+  it('renders quick action cards for Upload Class Material and Create Task', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Class Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Class Material')).toBeInTheDocument()
     })
     expect(screen.getAllByText('Create Task').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('opens study modal from Class Material action card', async () => {
+  it('opens study modal from Upload Class Material action card', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Class Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Class Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Class Material'))
+    await user.click(screen.getByText('Upload Class Material'))
 
     await waitFor(() => {
       // Study material modal should open
@@ -530,10 +529,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Class Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Class Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Class Material'))
+    await user.click(screen.getByText('Upload Class Material'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
@@ -545,10 +544,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('Class Material')).toBeInTheDocument()
+      expect(screen.getByText('Upload Class Material')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Class Material'))
+    await user.click(screen.getByText('Upload Class Material'))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
@@ -581,8 +580,8 @@ describe('ParentDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
 
-    await waitFor(() => expect(screen.getByText('Class Material')).toBeInTheDocument())
-    await user.click(screen.getByText('Class Material'))
+    await waitFor(() => expect(screen.getByText('Upload Class Material')).toBeInTheDocument())
+    await user.click(screen.getByText('Upload Class Material'))
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument(),
     )
