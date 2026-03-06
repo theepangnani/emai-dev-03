@@ -3,7 +3,6 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
-import { StudentDetailPanel } from '../components/parent/StudentDetailPanel';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
@@ -380,7 +379,7 @@ export function ParentDashboard() {
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                 ),
-                label: 'Class Material',
+                label: 'Upload Class Material',
                 onClick: () => pd.setShowStudyModal(true),
               },
               {
@@ -400,7 +399,7 @@ export function ParentDashboard() {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                   </svg>
                 ),
-                label: 'Study Guide',
+                label: 'Class Materials',
                 onClick: () => pd.navigate('/course-materials'),
               },
             ] satisfies QuickAction[]}
@@ -431,24 +430,7 @@ export function ParentDashboard() {
             </div>
           )}
 
-          {/* Student Detail (#832 - collapsible) */}
-          <CollapsibleSection
-            title={pd.selectedChild ? `${pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? ''}'s Details` : 'Student Detail'}
-            badge={pd.filteredTasks.filter(t => !t.archived_at).length}
-            expanded={sectionStates.studentDetail}
-            onToggle={() => updateSection('studentDetail', !sectionStates.studentDetail)}
-          >
-            <StudentDetailPanel
-              selectedChildName={pd.selectedChild ? (pd.children.find(c => c.student_id === pd.selectedChild)?.full_name ?? null) : null}
-              courseMaterials={pd.courseMaterials}
-              tasks={pd.filteredTasks}
-              onViewMaterial={(mat) => pd.navigate(`/course-materials/${mat.id}`)}
-              onToggleTask={pd.handleToggleTask}
-              onTaskClick={(task) => pd.setTaskDetailModal(task)}
-              onViewAllTasks={() => pd.navigate('/tasks', { state: { selectedChild: pd.selectedChildUserId } })}
-              onViewAllMaterials={() => pd.navigate('/course-materials', { state: { selectedChild: pd.selectedChildUserId } })}
-            />
-          </CollapsibleSection>
+          {/* Student Detail moved to MyKids page */}
 
 
           {/* Calendar moved to Tasks page */}
