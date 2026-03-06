@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { studyApi } from '../api/study';
 import type { SupportedFormats, DuplicateCheckResponse } from '../api/study';
 
@@ -86,6 +86,56 @@ export default function CreateStudyMaterialModal({
     }
   }, [open, supportedFormats]);
 
+  // Reset state when modal opens/closes; apply initial values on open
+  useEffect(() => {
+    if (!open) return;
+    // Intentional sync setState on open to reset form fields
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyTitle(initialTitle);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyContent(initialContent);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedTypes(new Set());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFocusPrompt('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOtherPrompt('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedFiles([]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyError('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDragging(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPastedImages([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [open, initialTitle, initialContent]);
+
+  const addFiles = useCallback((incoming: FileList | File[]) => {
+    const toAdd = Array.from(incoming);
+    const oversized = toAdd.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (oversized.length > 0) {
+      setStudyError(`${oversized.map(f => f.name).join(', ')} exceed${oversized.length === 1 ? 's' : ''} the ${MAX_FILE_SIZE_MB} MB limit`);
+    }
+    const valid = toAdd.filter(f => f.size <= MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (valid.length === 0) return;
+    setSelectedFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.name));
+      const newUnique = valid.filter(f => !existingNames.has(f.name));
+      const merged = [...prev, ...newUnique];
+      if (merged.length > MAX_FILES_PER_SESSION) {
+        setStudyError(`Maximum ${MAX_FILES_PER_SESSION} files per upload. ${merged.length - MAX_FILES_PER_SESSION} file(s) were not added.`);
+        return merged.slice(0, MAX_FILES_PER_SESSION);
+      }
+      return merged;
+    });
+    // Auto-fill title only when adding the first file and title is empty
+    setStudyTitle(prev => {
+      if (!prev && valid.length > 0) return valid[0].name.replace(/\.[^/.]+$/, '');
+      return prev;
+    });
+  }, []);
+
   // Global paste handler — captures pasted files (Ctrl+V from Explorer) anywhere in the modal
   useEffect(() => {
     if (!open) return;
@@ -112,8 +162,6 @@ export default function CreateStudyMaterialModal({
         e.preventDefault();
         addFiles(files);
       } else if (images.length > 0) {
-        // Images pasted outside the textarea — add to pastedImages
-        // (textarea paste is handled separately by handlePaste)
         const target = e.target as HTMLElement;
         if (target?.tagName !== 'TEXTAREA') {
           e.preventDefault();
@@ -124,57 +172,7 @@ export default function CreateStudyMaterialModal({
 
     document.addEventListener('paste', handler);
     return () => document.removeEventListener('paste', handler);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset state when modal opens/closes; apply initial values on open
-  useEffect(() => {
-    if (!open) return;
-    // Intentional sync setState on open to reset form fields
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyTitle(initialTitle);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyContent(initialContent);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedTypes(new Set());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFocusPrompt('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOtherPrompt('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedFiles([]);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyError('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsDragging(false);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPastedImages([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [open, initialTitle, initialContent]);
-
-  const addFiles = (incoming: FileList | File[]) => {
-    const toAdd = Array.from(incoming);
-    const oversized = toAdd.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
-    if (oversized.length > 0) {
-      setStudyError(`${oversized.map(f => f.name).join(', ')} exceed${oversized.length === 1 ? 's' : ''} the ${MAX_FILE_SIZE_MB} MB limit`);
-    }
-    const valid = toAdd.filter(f => f.size <= MAX_FILE_SIZE_MB * 1024 * 1024);
-    if (valid.length === 0) return;
-    setSelectedFiles(prev => {
-      const existingNames = new Set(prev.map(f => f.name));
-      const newUnique = valid.filter(f => !existingNames.has(f.name));
-      const merged = [...prev, ...newUnique];
-      if (merged.length > MAX_FILES_PER_SESSION) {
-        setStudyError(`Maximum ${MAX_FILES_PER_SESSION} files per upload. ${merged.length - MAX_FILES_PER_SESSION} file(s) were not added.`);
-        return merged.slice(0, MAX_FILES_PER_SESSION);
-      }
-      return merged;
-    });
-    // Auto-fill title only when adding the first file and title is empty
-    setStudyTitle(prev => {
-      if (!prev && valid.length > 0) return valid[0].name.replace(/\.[^/.]+$/, '');
-      return prev;
-    });
-  };
+  }, [open, addFiles]);
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
