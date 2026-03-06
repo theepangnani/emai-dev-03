@@ -3,11 +3,12 @@ import { notesApi, type NoteItem } from '../api/notes';
 
 interface NoteTaskFormProps {
   note: NoteItem;
+  courseContentId: number;
   onCreated?: () => void;
   onCancel: () => void;
 }
 
-export function NoteTaskForm({ note, onCreated, onCancel }: NoteTaskFormProps) {
+export function NoteTaskForm({ note, courseContentId, onCreated, onCancel }: NoteTaskFormProps) {
   // Pre-fill title from first line of plain text
   const firstLine = note.plain_text?.split('\n')[0]?.trim().slice(0, 200) || '';
   const [title, setTitle] = useState(firstLine || 'Task from note');
@@ -23,7 +24,7 @@ export function NoteTaskForm({ note, onCreated, onCancel }: NoteTaskFormProps) {
     setCreating(true);
     setError('');
     try {
-      await notesApi.createTask(note.id, {
+      await notesApi.createTask(note.id, courseContentId, {
         title: title.trim(),
         due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
         priority,
