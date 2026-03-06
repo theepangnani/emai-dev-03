@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { notesApi, type NoteItem } from '../api/notes';
+import { notesApi, type NoteItem, type NoteHighlight } from '../api/notes';
 import { NoteTaskForm } from './NoteTaskForm';
 import './NotesPanel.css';
 
@@ -9,11 +9,15 @@ interface NotesPanelProps {
   onClose: () => void;
   appendText?: string | null;
   onAppendConsumed?: () => void;
+  addHighlight?: { text: string } | null;
+  onHighlightConsumed?: () => void;
+  onHighlightsChange?: (highlights: NoteHighlight[]) => void;
 }
 
-export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed }: NotesPanelProps) {
+export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange }: NotesPanelProps) {
   const [note, setNote] = useState<NoteItem | null>(null);
   const [content, setContent] = useState('');
+  const [highlights, setHighlights] = useState<NoteHighlight[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -29,18 +33,33 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const dragState = useRef<{ startX: number; startY: number; panelX: number; panelY: number } | null>(null);
 
+  const parseHighlights = (json: string | null | undefined): NoteHighlight[] => {
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   const loadNote = useCallback(async () => {
     try {
       const data = await notesApi.getByContent(courseContentId);
       setNote(data);
       setContent(data.content || '');
+      const loaded = parseHighlights(data.highlights_json);
+      setHighlights(loaded);
+      onHighlightsChange?.(loaded);
     } catch {
       setNote(null);
       setContent('');
+      setHighlights([]);
+      onHighlightsChange?.([]);
     } finally {
       setLoading(false);
     }
-  }, [courseContentId]);
+  }, [courseContentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadNote(); }, [loadNote]);
 
@@ -114,10 +133,28 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     }, 50);
   }, [appendText]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveNote = useCallback(async (newContent: string) => {
+  // Handle addHighlight prop — add highlight entry (deduped by text)
+  useEffect(() => {
+    if (!addHighlight || loading) return;
+    const text = addHighlight.text;
+    onHighlightConsumed?.();
+
+    setHighlights(prev => {
+      if (prev.some(h => h.text === text)) return prev;
+      const updated = [...prev, { text, start: 0, end: 0 }];
+      onHighlightsChange?.(updated);
+      return updated;
+    });
+  }, [addHighlight]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveNote = useCallback(async (newContent: string, currentHighlights?: NoteHighlight[]) => {
     setSaving(true);
     try {
-      const data = await notesApi.upsert(courseContentId, { content: newContent });
+      const highlightsToSave = currentHighlights ?? highlights;
+      const data = await notesApi.upsert(courseContentId, {
+        content: newContent,
+        highlights_json: JSON.stringify(highlightsToSave),
+      });
       setNote(data);
     } catch (err: any) {
       if (err.response?.status === 204) {
@@ -126,7 +163,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     } finally {
       setSaving(false);
     }
-  }, [courseContentId]);
+  }, [courseContentId, highlights]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;

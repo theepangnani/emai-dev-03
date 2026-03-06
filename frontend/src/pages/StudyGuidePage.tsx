@@ -17,6 +17,8 @@ import { NotesFAB } from '../components/NotesFAB';
 import { NotesPanel } from '../components/NotesPanel';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { useTextSelection } from '../hooks/useTextSelection';
+import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
+import '../components/HighlightOverlay.css';
 import './StudyGuidePage.css';
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
@@ -43,11 +45,15 @@ export function StudyGuidePage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [appendText, setAppendText] = useState<string | null>(null);
+  const [highlights, setHighlights] = useState<{text: string}[]>([]);
+  const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
+  useHighlightRenderer(contentRef, highlights);
 
   const handleAddToNotes = () => {
     if (!selection) return;
     setAppendText(selection.text);
+    setAddHighlight({ text: selection.text });
     setNotesOpen(true);
     clearSelection();
     window.getSelection()?.removeAllRanges();
@@ -214,7 +220,7 @@ export function StudyGuidePage() {
       <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
 
       {/* Contextual notes: selection tooltip + FAB + panel */}
-      {selection && !notesOpen && (
+      {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
       {guide.course_content_id && (
@@ -226,6 +232,9 @@ export function StudyGuidePage() {
             onClose={() => setNotesOpen(false)}
             appendText={appendText}
             onAppendConsumed={() => setAppendText(null)}
+            addHighlight={addHighlight}
+            onHighlightConsumed={() => setAddHighlight(null)}
+            onHighlightsChange={setHighlights}
           />
         </>
       )}
