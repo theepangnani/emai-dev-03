@@ -80,7 +80,7 @@ function buildTextMap(textNodes: Text[]): {
  */
 function createMark(
   highlightId: string,
-  onClick?: (text: string, e: MouseEvent) => void,
+  onClick?: (text: string) => void,
   fullText?: string,
 ): HTMLElement {
   const mark = document.createElement('mark');
@@ -88,7 +88,7 @@ function createMark(
   mark.setAttribute(HIGHLIGHT_ID_ATTR, highlightId);
   mark.className = HIGHLIGHT_CLASS;
   if (onClick && fullText) {
-    mark.addEventListener('click', (e) => onClick(fullText, e));
+    mark.addEventListener('click', () => onClick(fullText));
   }
   return mark;
 }
@@ -101,7 +101,7 @@ function wrapRange(
   startInNode: number,
   endInNode: number,
   highlightId: string,
-  onClick?: (text: string, e: MouseEvent) => void,
+  onClick?: (text: string) => void,
   fullText?: string,
 ): void {
   const mark = createMark(highlightId, onClick, fullText);
@@ -130,7 +130,7 @@ function applyHighlight(
   container: HTMLElement,
   highlight: HighlightEntry,
   highlightId: string,
-  onClick?: (text: string, e: MouseEvent) => void,
+  onClick?: (text: string) => void,
 ): boolean {
   const textNodes = getTextNodes(container);
   if (textNodes.length === 0) return false;
@@ -182,10 +182,12 @@ export function useHighlightRenderer(
   onHighlightClick?: (text: string) => void,
 ) {
   const highlightsRef = useRef(highlights);
-  highlightsRef.current = highlights;
-
   const onClickRef = useRef(onHighlightClick);
-  onClickRef.current = onHighlightClick;
+
+  useEffect(() => {
+    highlightsRef.current = highlights;
+    onClickRef.current = onHighlightClick;
+  });
 
   const applyAllHighlights = useCallback(() => {
     const container = containerRef.current;
@@ -206,7 +208,7 @@ export function useHighlightRenderer(
       const highlight = currentHighlights[i];
       const highlightId = `hl-${i}`;
       const clickHandler = onClickRef.current
-        ? (text: string, _e: MouseEvent) => onClickRef.current?.(text)
+        ? (text: string) => onClickRef.current?.(text)
         : undefined;
 
       applyHighlight(container, highlight, highlightId, clickHandler);

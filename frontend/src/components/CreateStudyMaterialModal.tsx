@@ -131,6 +131,7 @@ export default function CreateStudyMaterialModal({
       setStudyError(`Maximum ${MAX_FILES_PER_SESSION} files per upload. ${merged.length - MAX_FILES_PER_SESSION} file(s) were not added.`);
     }
     const capped = merged.slice(0, MAX_FILES_PER_SESSION);
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- ref sync in callback, not render
     selectedFilesRef.current = capped;
     setSelectedFiles(capped);
 
