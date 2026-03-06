@@ -572,10 +572,10 @@ export function CourseMaterialDetailPage() {
           courseContentId={contentId}
           isOpen={showNotesPanel}
           onClose={() => setShowNotesPanel(false)}
-          appendText={isParent ? undefined : appendText}
-          onAppendConsumed={isParent ? undefined : () => setAppendText(null)}
-          addHighlight={isParent ? undefined : addHighlight}
-          onHighlightConsumed={isParent ? undefined : () => setAddHighlight(null)}
+          appendText={appendText}
+          onAppendConsumed={() => setAppendText(null)}
+          addHighlight={addHighlight}
+          onHighlightConsumed={() => setAddHighlight(null)}
           onHighlightsChange={setHighlights}
           readOnly={isParent && !!resolvedStudent}
           childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
@@ -637,7 +637,7 @@ export function CourseMaterialDetailPage() {
       )}
 
       {/* Contextual notes: selection tooltip + FAB */}
-      {!isParent && selection && (
+      {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
       <NotesFAB courseContentId={contentId} isOpen={showNotesPanel} onToggle={() => setShowNotesPanel(v => !v)} />
