@@ -36,6 +36,7 @@ const mockCourseContent = {
   content_type: 'notes',
   has_file: false,
   original_filename: null,
+  source_files_count: 0,
   created_at: '2026-03-01T00:00:00',
   updated_at: '2026-03-01T00:00:00',
 }
