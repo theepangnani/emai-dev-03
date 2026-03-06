@@ -581,7 +581,7 @@ export function StudyGuidesPage() {
       const courseId = modalParams.courseId;
       (async () => {
         try {
-          const resolvedCourseId = courseId ?? (await coursesApi.getDefault()).id;
+          const resolvedCourseId = courseId ?? (await coursesApi.getDefault(filterChild || undefined)).id;
           if (files.length === 1) {
             // Single file: upload directly (preserves file metadata on backend)
             await courseContentsApi.uploadFile(
@@ -634,7 +634,7 @@ export function StudyGuidesPage() {
     let sharedCourseContentId = modalParams.courseContentId;
     if (!sharedCourseContentId && modalParams.types.length > 1) {
       try {
-        const cId = modalParams.courseId || (await coursesApi.getDefault()).id;
+        const cId = modalParams.courseId || (await coursesApi.getDefault(filterChild || undefined)).id;
         if (isMultiFile) {
           const combinedText = await extractCombinedText(files);
           const cc = await courseContentsApi.create({
