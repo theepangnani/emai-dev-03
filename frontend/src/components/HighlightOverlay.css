@@ -1,0 +1,32 @@
+.persistent-highlight {
+  background: rgba(245, 158, 11, 0.25);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 0 1px;
+}
+
+.persistent-highlight:hover {
+  background: rgba(245, 158, 11, 0.45);
+}
+
+/* Clicked/active state */
+.persistent-highlight--active {
+  background: rgba(245, 158, 11, 0.5);
+  outline: 2px solid rgba(245, 158, 11, 0.6);
+  outline-offset: 1px;
+}
+
+/* Dark mode */
+[data-theme="dark"] .persistent-highlight {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="dark"] .persistent-highlight:hover {
+  background: rgba(245, 158, 11, 0.35);
+}
+
+[data-theme="dark"] .persistent-highlight--active {
+  background: rgba(245, 158, 11, 0.4);
+  outline-color: rgba(245, 158, 11, 0.5);
+}

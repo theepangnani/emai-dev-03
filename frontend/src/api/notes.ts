@@ -35,11 +35,15 @@ export const notesApi = {
     return fullResp.data as NoteItem;
   },
 
-  upsert: async (courseContentId: number, data: { content: string | null; has_images?: boolean }) => {
-    const response = await api.put('/api/notes/', {
+  upsert: async (courseContentId: number, data: { content: string | null; has_images?: boolean; highlights_json?: string }) => {
+    const payload: Record<string, unknown> = {
       course_content_id: courseContentId,
       content: data.content || '',
-    });
+    };
+    if (data.highlights_json !== undefined) {
+      payload.highlights_json = data.highlights_json;
+    }
+    const response = await api.put('/api/notes/', payload);
     return response.data as NoteItem;
   },
 

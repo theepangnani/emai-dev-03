@@ -23,6 +23,8 @@ import { NotesPanel } from '../components/NotesPanel';
 import { NotesFAB } from '../components/NotesFAB';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { useTextSelection } from '../hooks/useTextSelection';
+import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
+import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
@@ -154,12 +156,16 @@ export function CourseMaterialDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [appendText, setAppendText] = useState<string | null>(null);
+  const [highlights, setHighlights] = useState<{text: string}[]>([]);
+  const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(contentAreaRef);
+  useHighlightRenderer(contentAreaRef, highlights);
 
   const handleAddToNotes = useCallback(() => {
     if (!selection) return;
     setAppendText(selection.text);
+    setAddHighlight({ text: selection.text });
     setShowNotesPanel(true);
     clearSelection();
     window.getSelection()?.removeAllRanges();
@@ -562,7 +568,7 @@ export function CourseMaterialDetailPage() {
 
         </div>
 
-        <NotesPanel courseContentId={contentId} isOpen={showNotesPanel} onClose={() => setShowNotesPanel(false)} appendText={appendText} onAppendConsumed={() => setAppendText(null)} />
+        <NotesPanel courseContentId={contentId} isOpen={showNotesPanel} onClose={() => setShowNotesPanel(false)} appendText={appendText} onAppendConsumed={() => setAppendText(null)} addHighlight={addHighlight} onHighlightConsumed={() => setAddHighlight(null)} onHighlightsChange={setHighlights} />
 
       </div>
       <CreateTaskModal
@@ -619,7 +625,7 @@ export function CourseMaterialDetailPage() {
       )}
 
       {/* Contextual notes: selection tooltip + FAB */}
-      {selection && !showNotesPanel && (
+      {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
       <NotesFAB courseContentId={contentId} isOpen={showNotesPanel} onToggle={() => setShowNotesPanel(v => !v)} />
