@@ -20,6 +20,7 @@ from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage
+from app.api.routes import notes  # noqa: E402 — Notes system (#1087)
 from app.api.routes import notes  # noqa: E402 — Notes system (#1084, #1089)
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, ai_usage, account_deletion
 from app.api.routes import data_export
@@ -45,6 +46,7 @@ from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, C
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.waitlist import Waitlist  # noqa: F401 — ensure table is created (#1114)
+from app.models.note import Note  # noqa: F401 — ensure notes table is created (#1087)
 from app.models.note import Note  # noqa: F401 — ensure notes table is created (#1084)
 from app.models.ai_usage_history import AIUsageHistory  # noqa: F401 — ensure table is created (#1125)
 Base.metadata.create_all(bind=engine)
@@ -876,6 +878,13 @@ with engine.connect() as conn:
         conn.commit()
 
 
+    # ── tasks: note_id column (#1087) ──────────────────────────
+    if "tasks" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+        if "note_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE tasks ADD COLUMN note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL"))
+                logger.info("Added 'note_id' column to tasks (#1087)")
     # ── users: account deletion columns (#964) ──────────────────
     if "users" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("users")}

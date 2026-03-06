@@ -18,6 +18,7 @@ export interface TaskItem {
   course_id: number | null;
   course_content_id: number | null;
   study_guide_id: number | null;
+  note_id: number | null;
   course_name: string | null;
   course_content_title: string | null;
   study_guide_title: string | null;
