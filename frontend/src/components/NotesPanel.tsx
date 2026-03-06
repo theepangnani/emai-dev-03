@@ -27,6 +27,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [justAppended, setJustAppended] = useState(false);
+  const [parentEditing, setParentEditing] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,7 +50,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const loadNote = useCallback(async () => {
     try {
       let data: NoteItem | null;
-      if (readOnly && childStudentId) {
+      if (readOnly && childStudentId && !parentEditing) {
         data = await notesApi.getChildNotes(childStudentId, courseContentId);
       } else {
         data = await notesApi.getByContent(courseContentId);
@@ -74,7 +75,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     } finally {
       setLoading(false);
     }
-  }, [courseContentId, readOnly, childStudentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [courseContentId, readOnly, childStudentId, parentEditing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadNote(); }, [loadNote]);
 
@@ -126,6 +127,12 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   // Handle appended highlighted text
   useEffect(() => {
     if (!appendText || loading) return;
+    // When parent is in read-only mode, switch to own notes for editing
+    if (readOnly && !parentEditing) {
+      setParentEditing(true);
+      setLoading(true);
+      return; // loadNote will re-run due to parentEditing change, then append will fire again
+    }
     const quoted = appendText.split('\n').map(line => `> ${line}`).join('\n');
     const separator = content.trim() ? '\n\n' : '';
     const newContent = content + separator + quoted + '\n';
@@ -204,6 +211,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
   if (!isOpen) return null;
 
+  const isEffectivelyReadOnly = readOnly && !parentEditing;
+
   const panelStyle: React.CSSProperties = position
     ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
     : {};
@@ -211,9 +220,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   return (
     <div className="notes-panel-floating" ref={panelRef} style={panelStyle}>
       <div className="notes-panel-header" onMouseDown={handleDragStart}>
-        <h3>{readOnly ? `${childName ? childName + "'s " : "Child's "}Notes` : 'Notes'}</h3>
+        <h3>{isEffectivelyReadOnly ? `${childName ? childName + "'s " : "Child's "}Notes` : 'Notes'}</h3>
         <div className="notes-header-actions">
-          {!readOnly && note && !loading && (
+          {!isEffectivelyReadOnly && note && !loading && (
             <div className="notes-task-dropdown-wrapper" ref={dropdownRef}>
               <button
                 className="notes-create-task-btn"
@@ -247,13 +256,18 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
         <div className="notes-panel-body">
           <p className="notes-loading">Loading...</p>
         </div>
-      ) : readOnly ? (
+      ) : isEffectivelyReadOnly ? (
         <div className="notes-panel-body">
           {content ? (
             <div className="notes-readonly-content">{content}</div>
           ) : (
             <p className="notes-empty">No notes yet.</p>
           )}
+          <div className="notes-panel-footer">
+            <button className="notes-toggle-view-btn" onClick={() => { setParentEditing(true); setLoading(true); }}>
+              My Notes
+            </button>
+          </div>
         </div>
       ) : showTaskForm && note ? (
         <div className="notes-panel-body">
@@ -276,6 +290,11 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
           <div className="notes-panel-footer">
             {saving && <span className="notes-saving">Saving...</span>}
             {!saving && note && <span className="notes-saved">Saved</span>}
+            {parentEditing && readOnly && (
+              <button className="notes-toggle-view-btn" onClick={() => { setParentEditing(false); setLoading(true); }}>
+                View {childName ? childName + "'s" : "child's"} notes
+              </button>
+            )}
           </div>
         </div>
       )}

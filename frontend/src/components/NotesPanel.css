@@ -190,6 +190,21 @@
   font-style: italic;
 }
 
+.notes-toggle-view-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent, #2a9fa8);
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 2px 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.notes-toggle-view-btn:hover {
+  color: var(--color-accent-strong, #1e8a92);
+}
+
 .notes-toast {
   position: fixed;
   bottom: 24px;

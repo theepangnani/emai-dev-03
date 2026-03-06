@@ -235,7 +235,7 @@ export function StudyGuidePage() {
       <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
 
       {/* Contextual notes: selection tooltip + FAB + panel */}
-      {!isParent && selection && (
+      {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
       {guide.course_content_id && (
@@ -245,10 +245,10 @@ export function StudyGuidePage() {
             courseContentId={guide.course_content_id}
             isOpen={notesOpen}
             onClose={() => setNotesOpen(false)}
-            appendText={isParent ? undefined : appendText}
-            onAppendConsumed={isParent ? undefined : () => setAppendText(null)}
-            addHighlight={isParent ? undefined : addHighlight}
-            onHighlightConsumed={isParent ? undefined : () => setAddHighlight(null)}
+            appendText={appendText}
+            onAppendConsumed={() => setAppendText(null)}
+            addHighlight={addHighlight}
+            onHighlightConsumed={() => setAddHighlight(null)}
             onHighlightsChange={setHighlights}
             readOnly={isParent && !!resolvedStudent}
             childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
