@@ -364,9 +364,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               Email Settings
             </Link>
           )}
-          <Link to="/settings/data-export" className="email-settings-link">
-            Export My Data
-          </Link>
           <button onClick={logout} className="logout-button">
             Sign Out
           </button>
