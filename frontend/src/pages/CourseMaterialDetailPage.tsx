@@ -20,6 +20,7 @@ import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { NotesPanelToggle } from '../components/NotesPanelToggle';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
@@ -393,6 +394,7 @@ export function CourseMaterialDetailPage() {
           </div>
 
           <div className="cm-header-toolbar">
+            <NotesPanelToggle courseContentId={contentId} />
             <button className="cm-toolbar-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
               <TaskIcon />
               <span className="cm-toolbar-btn-label">Create Task</span>
