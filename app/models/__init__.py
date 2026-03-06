@@ -22,6 +22,7 @@ from app.models.quiz_result import QuizResult
 from app.models.student_email import StudentEmail, EmailType
 from app.models.waitlist import Waitlist
 from app.models.ai_limit_request import AILimitRequest
+from app.models.note import Note
 
 __all__ = [
     "User",
@@ -64,4 +65,5 @@ __all__ = [
     "EmailType",
     "Waitlist",
     "AILimitRequest",
+    "Note",
 ]
