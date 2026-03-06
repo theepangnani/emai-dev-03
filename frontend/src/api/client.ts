@@ -179,3 +179,5 @@ export type {
 } from './grades';
 export { aiUsageApi } from './aiUsage';
 export type { AIUsageResponse, AIUsageRequestData, AIUsageRequestResponse } from './aiUsage';
+export { dataExportApi } from './dataExport';
+export type { DataExportRequest as DataExportRequestItem } from './dataExport';
