@@ -21,7 +21,6 @@ import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { NotesPanel } from '../components/NotesPanel';
 import { useAIUsage } from '../hooks/useAIUsage';
-import { NotesPanelToggle } from '../components/NotesPanelToggle';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'notes';
@@ -156,7 +155,6 @@ export function CourseMaterialDetailPage() {
 
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
-  const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
@@ -195,10 +193,10 @@ export function CourseMaterialDetailPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Auto-open notes panel if ?notes=open is in URL (#1087)
+  // Auto-open notes tab if ?notes=open is in URL (#1087)
   useEffect(() => {
     if (searchParams.get('notes') === 'open') {
-      setShowNotesPanel(true);
+      setActiveTab('notes');
     }
   }, [searchParams]);
 
@@ -426,7 +424,7 @@ export function CourseMaterialDetailPage() {
           </div>
 
           <div className="cm-header-toolbar">
-            <button className={`cm-toolbar-btn${showNotesPanel ? ' active' : ''}`} title="Notes" aria-label="Toggle notes" onClick={() => setShowNotesPanel(!showNotesPanel)}>
+            <button className={`cm-toolbar-btn${activeTab === 'notes' ? ' active' : ''}`} title="Notes" aria-label="Toggle notes" onClick={() => setActiveTab('notes')}>
               <NoteIcon />
               <span className="cm-toolbar-btn-label">Notes</span>
             </button>
@@ -438,7 +436,6 @@ export function CourseMaterialDetailPage() {
               <EditIcon />
               <span className="cm-toolbar-btn-label">Edit</span>
             </button>
-            <NotesPanelToggle courseContentId={contentId} />
             <span className="cm-toolbar-sep" />
             <button className="cm-toolbar-btn danger" title="Archive" aria-label="Archive material" onClick={handleArchiveContent}>
               <ArchiveIcon />
@@ -487,14 +484,6 @@ export function CourseMaterialDetailPage() {
             </button>
           ))}
         </div>
-
-        {/* ── Notes panel ─────────────────────────── */}
-        {showNotesPanel && (
-          <NotesPanel
-            courseContentId={contentId}
-            onClose={() => setShowNotesPanel(false)}
-          />
-        )}
 
         {/* ── Tab content ──────────────────────────── */}
         <div className="cm-tab-content" role="tabpanel">

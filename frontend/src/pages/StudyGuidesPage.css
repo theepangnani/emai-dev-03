@@ -38,6 +38,18 @@
   box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
 }
 
+.guides-child-selector .child-tab-all {
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guides-child-selector .child-tab-all.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
 .guides-child-selector .child-tab.active .grade-badge {
   background: rgba(255, 255, 255, 0.2);
   color: white;
