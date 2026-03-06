@@ -179,3 +179,5 @@ export type {
 } from './grades';
 export { aiUsageApi } from './aiUsage';
 export type { AIUsageResponse, AIUsageRequestData, AIUsageRequestResponse } from './aiUsage';
+export { accountDeletionApi } from './accountDeletion';
+export type { DeletionStatus, DeletionRequestItem, DeletionRequestList } from './accountDeletion';

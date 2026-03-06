@@ -109,3 +109,22 @@ def decode_email_verification_token(token: str) -> str | None:
         return payload.get("sub")
     except Exception:
         return None
+
+
+def create_deletion_confirmation_token(user_id: int) -> str:
+    """Create a JWT for account deletion confirmation (24-hour expiry)."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    to_encode = {"sub": str(user_id), "exp": expire, "type": "account_deletion"}
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
+def decode_deletion_confirmation_token(token: str) -> int | None:
+    """Decode an account-deletion JWT. Returns the user_id (int) or None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") != "account_deletion":
+            return None
+        sub = payload.get("sub")
+        return int(sub) if sub is not None else None
+    except Exception:
+        return None
