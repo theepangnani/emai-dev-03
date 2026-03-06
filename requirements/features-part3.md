@@ -1471,3 +1471,50 @@ Counting happens in the AI generation service layer (single point of enforcement
 - Panel remembers position during session (resets on page navigation)
 
 ---
+
+### 6.56 Interactive Tutorial Pages (Phase 1) — IMPLEMENTED
+
+**GitHub Issues:** #1208 (main), #1209 (screenshots), #1210 (completion tracking)
+
+Role-based interactive tutorial pages that guide new users through ClassBridge features with step-by-step walkthroughs and images. Each role sees content tailored to their specific workflows.
+
+#### Design
+
+- **Route:** `/tutorial` — accessible to all authenticated roles
+- **Sidebar nav:** "Tutorial" link with graduation cap icon, placed before Help for all roles
+- **Layout:** Collapsible sections with step-by-step viewer, progress dots, prev/next navigation
+- **Images:** SVG placeholder illustrations per step (to be replaced with real screenshots — #1209)
+- **Responsive:** 2-column (image + text) on desktop, stacked on mobile (<768px)
+- **Theme-compatible:** Uses CSS variables, works across light/dark/focus
+
+#### Content by Role
+
+| Role | Sections | Steps | Topics |
+|------|----------|-------|--------|
+| **Parent** | 3 | 9 | Add child, Google connect, dashboard, upload, AI generation, review, messaging, teacher linking, tasks |
+| **Student** | 3 | 9 | Dashboard, courses, upload, study guides, quizzes, flashcards, tasks, notes, calendar |
+| **Teacher** | 2 | 6 | Create course, add students, assignments, upload materials, invite parents, messages |
+| **Admin** | 2 | 6 | User management, waitlist, AI usage, broadcast, inspiration messages, audit logs |
+
+#### Features
+
+- **Step viewer:** Image + description side-by-side with step counter and progress dots
+- **Tip boxes:** Contextual tips with info icon and warning-style styling
+- **Navigation:** Previous/Next buttons with disabled state at boundaries
+- **Progress dots:** Clickable, show checkmark for visited steps, highlight for active
+- **Image fallback:** If image fails to load, shows "Screenshot coming soon" placeholder
+- **Footer:** Links to Help Center and FAQ for additional support
+
+#### Future Enhancements
+- [ ] Replace SVG placeholders with real screenshots (#1209)
+- [ ] Track tutorial completion per user + auto-show for new users (#1210)
+- [ ] Video walkthrough embeds
+
+#### Key Files
+- `frontend/src/pages/TutorialPage.tsx` — Role-based tutorial component
+- `frontend/src/pages/TutorialPage.css` — Styling with responsive breakpoints
+- `frontend/public/tutorial/*.svg` — 30 placeholder illustrations
+- `frontend/src/App.tsx` — Route registration
+- `frontend/src/components/DashboardLayout.tsx` — Nav icon + nav item
+
+---
