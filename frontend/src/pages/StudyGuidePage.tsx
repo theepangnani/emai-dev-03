@@ -54,6 +54,9 @@ export function StudyGuidePage() {
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
+    // Immediately update visual highlights for instant feedback
+    setHighlights(prev => prev.filter(h => h.text !== text));
+    // Tell NotesPanel to persist the removal
     setRemoveHighlightText(text);
   }, []);
   useHighlightRenderer(contentRef, highlights, handleHighlightClick);

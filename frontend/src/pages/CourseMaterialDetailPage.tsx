@@ -162,6 +162,9 @@ export function CourseMaterialDetailPage() {
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(contentAreaRef);
   const handleHighlightClick = useCallback((text: string) => {
+    // Immediately update visual highlights for instant feedback
+    setHighlights(prev => prev.filter(h => h.text !== text));
+    // Tell NotesPanel to persist the removal
     setRemoveHighlightText(text);
   }, []);
   useHighlightRenderer(contentAreaRef, highlights, handleHighlightClick);
