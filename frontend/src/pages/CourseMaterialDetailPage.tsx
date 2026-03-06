@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,7 @@ import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { NotesPanel } from '../components/NotesPanel';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
@@ -76,6 +77,15 @@ function TaskIcon() {
   );
 }
 
+function NoteIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 2h12a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M6 7h8M6 10h8M6 13h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 function EditIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -107,6 +117,7 @@ function CalendarIcon() {
 export function CourseMaterialDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { confirm, confirmModal } = useConfirm();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
@@ -132,6 +143,7 @@ export function CourseMaterialDetailPage() {
 
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
@@ -169,6 +181,13 @@ export function CourseMaterialDetailPage() {
   }, [contentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-open notes panel if ?notes=open is in URL (#1087)
+  useEffect(() => {
+    if (searchParams.get('notes') === 'open') {
+      setShowNotesPanel(true);
+    }
+  }, [searchParams]);
 
   // Pre-populate focus prompts from saved history on first load
   useEffect(() => {
@@ -393,6 +412,10 @@ export function CourseMaterialDetailPage() {
           </div>
 
           <div className="cm-header-toolbar">
+            <button className={`cm-toolbar-btn${showNotesPanel ? ' active' : ''}`} title="Notes" aria-label="Toggle notes" onClick={() => setShowNotesPanel(!showNotesPanel)}>
+              <NoteIcon />
+              <span className="cm-toolbar-btn-label">Notes</span>
+            </button>
             <button className="cm-toolbar-btn" title="Create Task" aria-label="Create task" onClick={() => setShowTaskModal(true)}>
               <TaskIcon />
               <span className="cm-toolbar-btn-label">Create Task</span>
@@ -449,6 +472,14 @@ export function CourseMaterialDetailPage() {
             </button>
           ))}
         </div>
+
+        {/* ── Notes panel ─────────────────────────── */}
+        {showNotesPanel && (
+          <NotesPanel
+            courseContentId={contentId}
+            onClose={() => setShowNotesPanel(false)}
+          />
+        )}
 
         {/* ── Tab content ──────────────────────────── */}
         <div className="cm-tab-content" role="tabpanel">

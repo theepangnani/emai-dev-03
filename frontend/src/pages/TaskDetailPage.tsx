@@ -226,7 +226,7 @@ export function TaskDetailPage() {
   );
 
   const studyGuideRoute = getStudyGuideRoute(task);
-  const hasLinkedResources = !!(task.study_guide_id || task.course_content_id || task.course_id);
+  const hasLinkedResources = !!(task.study_guide_id || task.course_content_id || task.course_id || task.note_id);
 
   return (
     <DashboardLayout headerSlot={() => null}>
@@ -453,6 +453,18 @@ export function TaskDetailPage() {
                   <button className="td-unlink-btn" title="Unlink class material" onClick={() => handleUnlink('course_content')}>
                     &#10005;
                   </button>
+                </div>
+              )}
+              {task.note_id && task.course_content_id && (
+                <div className="td-resource-row">
+                  <Link to={`/course-materials/${task.course_content_id}?notes=open`} className="td-resource-card">
+                    <span className="td-resource-icon" aria-hidden="true">{'\uD83D\uDDD2'}</span>
+                    <div className="td-resource-info">
+                      <span className="td-resource-type">Note</span>
+                      <span className="td-resource-title">View Note</span>
+                    </div>
+                    <span className="td-resource-arrow">&rarr;</span>
+                  </Link>
                 </div>
               )}
               {task.course_id && (

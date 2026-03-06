@@ -45,6 +45,7 @@ def _task_eager_options():
         selectinload(Task.course),
         selectinload(Task.course_content),
         selectinload(Task.study_guide),
+        selectinload(Task.note),
     ]
 
 
@@ -77,6 +78,7 @@ def _task_to_response(task: Task) -> dict:
         "course_id": task.course_id,
         "course_content_id": task.course_content_id,
         "study_guide_id": task.study_guide_id,
+        "note_id": task.note_id,
         "course_name": task.course.name if task.course else None,
         "course_content_title": task.course_content.title if task.course_content else None,
         "study_guide_title": task.study_guide.title if task.study_guide else None,
