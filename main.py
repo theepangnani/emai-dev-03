@@ -40,6 +40,7 @@ from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, C
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.waitlist import Waitlist  # noqa: F401 — ensure table is created (#1114)
+from app.models.source_file import SourceFile  # noqa: F401 — ensure table is created (#1005)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -984,6 +985,7 @@ app.include_router(admin_waitlist.router, prefix="/api")
 app.include_router(invites.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(course_contents.router, prefix="/api")
+app.include_router(course_contents.source_files_router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(inspiration.router, prefix="/api")
 app.include_router(faq.router, prefix="/api")

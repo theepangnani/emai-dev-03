@@ -2,6 +2,7 @@ import { useState, useRef, Suspense } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse } from '../../api/client';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
+import { SourceFilesSection } from './SourceFilesSection';
 
 interface QuizItem {
   question: string;
@@ -200,6 +201,7 @@ export function DocumentTab({
           )}
         </div>
       </div>
+      <SourceFilesSection contentId={content.id} sourceFilesCount={content.source_files_count ?? 0} />
       {content.reference_url && (
         <a href={content.reference_url} target="_blank" rel="noreferrer" className="cm-ref-link">
           View Original Source

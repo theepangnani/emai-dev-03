@@ -17,10 +17,20 @@ export interface CourseContentItem {
   original_filename: string | null;
   file_size: number | null;
   mime_type: string | null;
+  source_files_count: number;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
   last_viewed_at: string | null;
+}
+
+export interface SourceFileItem {
+  id: number;
+  course_content_id: number;
+  filename: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
 }
 
 export interface CourseContentUpdateResponse extends CourseContentItem {
@@ -242,6 +252,42 @@ export const courseContentsApi = {
   getLinkedCourseIds: async () => {
     const response = await api.get('/api/course-contents/linked-course-ids');
     return response.data as LinkedCourseIdsResponse;
+  },
+
+  listSourceFiles: async (contentId: number): Promise<SourceFileItem[]> => {
+    const response = await api.get(`/api/course-contents/${contentId}/source-files`);
+    return response.data;
+  },
+
+  attachSourceFiles: async (contentId: number, files: File[]): Promise<SourceFileItem[]> => {
+    const formData = new FormData();
+    for (const f of files) {
+      formData.append('files', f);
+    }
+    const response = await api.post(`/api/course-contents/${contentId}/source-files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  downloadSourceFile: async (fileId: number, filename?: string) => {
+    const response = await api.get(`/api/source-files/${fileId}/download`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || `file-${fileId}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  viewSourceFile: (fileId: number): string => {
+    // Returns the URL for inline viewing (images/PDFs)
+    const baseUrl = api.defaults.baseURL || '';
+    return `${baseUrl}/api/source-files/${fileId}/download`;
   },
 
   download: async (id: number, originalFilename?: string) => {

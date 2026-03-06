@@ -88,6 +88,7 @@ class CourseContentResponse(BaseModel):
     mime_type: Optional[str] = None
     has_file: bool = False
     download_restricted: bool = False
+    source_files_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
@@ -96,6 +97,7 @@ class CourseContentResponse(BaseModel):
     @model_validator(mode="after")
     def compute_has_file(self):
         self.has_file = self.file_path is not None
+        # source_files_count is populated manually when needed; keep default 0
         return self
 
     class Config:

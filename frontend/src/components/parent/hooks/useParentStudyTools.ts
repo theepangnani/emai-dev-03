@@ -162,12 +162,14 @@ export function useParentStudyTools({
             );
           } else if (isMultiFile) {
             const combinedText = await extractCombinedText(files);
-            await courseContentsApi.create({
+            const cc = await courseContentsApi.create({
               course_id: defaultCourse.id,
               title: modalParams.title || files.map(f => f.name).join(', '),
               text_content: combinedText,
               content_type: 'notes',
             });
+            // Attach original source files for later viewing/download (#1005)
+            try { await courseContentsApi.attachSourceFiles(cc.id, files); } catch { /* best-effort */ }
           } else {
             await courseContentsApi.create({
               course_id: defaultCourse.id,
@@ -208,6 +210,8 @@ export function useParentStudyTools({
             content_type: 'notes',
           });
           sharedCourseContentId = cc.id;
+          // Attach original source files for later viewing/download (#1005)
+          try { await courseContentsApi.attachSourceFiles(cc.id, files); } catch { /* best-effort */ }
         } else if (modalParams.mode === 'file' && files.length === 1) {
           const cc = await courseContentsApi.uploadFile(
             files[0],

@@ -2,8 +2,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse
-from sqlalchemy import or_
+from fastapi.responses import FileResponse, Response
+from sqlalchemy import or_, func as sa_func
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db, SessionLocal
@@ -20,12 +20,14 @@ from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
 from app.services.file_processor import process_file, FileProcessingError
 from app.core.config import settings
+from app.models.source_file import SourceFile
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
     CourseContentResponse,
     CourseContentUpdateResponse,
 )
+from app.schemas.source_file import SourceFileResponse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -596,17 +598,23 @@ def get_course_content(
     db.commit()
     db.refresh(content)
 
+    # Count source files (#1005)
+    src_count = db.query(sa_func.count(SourceFile.id)).filter(
+        SourceFile.course_content_id == content_id
+    ).scalar() or 0
+
+    resp = CourseContentResponse.model_validate(content)
+    resp.source_files_count = src_count
+
     # Strip URLs for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
         school_ids = _get_school_course_ids(db, [content.course_id])
         if content.course_id in school_ids:
-            resp = CourseContentResponse.model_validate(content)
             resp.reference_url = None
             resp.google_classroom_url = None
             resp.download_restricted = True
-            return resp
 
-    return content
+    return resp
 
 
 @router.get("/{content_id}/download")
@@ -838,8 +846,118 @@ def permanent_delete_course_content(
 
 
 def _permanent_delete_content(db: Session, content: CourseContent):
-    """Hard-delete a content item, its stored file, and all linked study guides."""
+    """Hard-delete a content item, its stored file, source files, and all linked study guides."""
     if content.file_path:
         delete_file(content.file_path)
+    db.query(SourceFile).filter(SourceFile.course_content_id == content.id).delete()
     db.query(StudyGuide).filter(StudyGuide.course_content_id == content.id).delete()
     db.delete(content)
+
+
+# ── Source Files endpoints (#1005) ────────────────────────────────────
+
+@router.get("/{content_id}/source-files", response_model=list[SourceFileResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_source_files(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List source files attached to a course content item."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    files = (
+        db.query(SourceFile)
+        .filter(SourceFile.course_content_id == content_id)
+        .order_by(SourceFile.created_at.asc())
+        .all()
+    )
+    return files
+
+
+@router.post("/{content_id}/source-files", response_model=list[SourceFileResponse], status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def attach_source_files(
+    request: Request,
+    content_id: int,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Attach source files to an existing course content item.
+
+    Used after multi-file upload to preserve the original files
+    that were OCR'd/extracted and combined into one material.
+    """
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    created = []
+    for upload in files:
+        file_content = await upload.read()
+        if len(file_content) > MAX_UPLOAD_SIZE:
+            logger.warning("Source file %s exceeds size limit, skipping", upload.filename)
+            continue
+
+        sf = SourceFile(
+            course_content_id=content_id,
+            filename=upload.filename or "unknown",
+            file_type=upload.content_type,
+            file_size=len(file_content),
+            file_data=file_content,
+        )
+        db.add(sf)
+        created.append(sf)
+
+    if created:
+        db.commit()
+        for sf in created:
+            db.refresh(sf)
+
+    return created
+
+
+source_files_router = APIRouter(prefix="/source-files", tags=["Source Files"])
+
+
+@source_files_router.get("/{file_id}/download")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def download_source_file(
+    request: Request,
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download/view a source file. Returns the file with correct content-type for inline viewing."""
+    sf = db.query(SourceFile).filter(SourceFile.id == file_id).first()
+    if not sf:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file not found")
+
+    content = db.query(CourseContent).filter(CourseContent.id == sf.course_content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Determine content disposition: inline for viewable types, attachment otherwise
+    media_type = sf.file_type or "application/octet-stream"
+    viewable_types = {"image/", "application/pdf", "text/"}
+    is_viewable = any(media_type.startswith(t) for t in viewable_types)
+    disposition = "inline" if is_viewable else "attachment"
+
+    return Response(
+        content=sf.file_data,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{sf.filename}"',
+            "Content-Length": str(sf.file_size or len(sf.file_data)),
+        },
+    )
