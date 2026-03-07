@@ -297,7 +297,13 @@ def google_callback(
 
     except Exception as e:
         logger.error(f"Google OAuth callback error: {e}")
-        params = urlencode({"error": "Authentication failed. Please try again."})
+        # Surface a more specific message for common failures
+        err_str = str(e)
+        if "400" in err_str and "token" in err_str.lower():
+            msg = "Google authentication expired. Please try signing in again."
+        else:
+            msg = "Authentication failed. Please try again."
+        params = urlencode({"error": msg})
         return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
 
 

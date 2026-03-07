@@ -282,3 +282,42 @@ class TestBackgroundGoogleSync:
 
         # Should not raise — failed users are logged, not propagated
         asyncio.run(sync_google_classrooms())
+
+
+# ── Token exchange error logging (#1341) ─────────────────────
+
+class TestTokenExchangeErrorLogging:
+    """Regression: when Google token exchange returns 400, log the response body."""
+
+    def test_logs_google_error_on_400(self, caplog):
+        """exchange_code_for_tokens should log the Google error detail before raising."""
+        import logging
+        from requests.models import Response
+        from app.services.google_classroom import exchange_code_for_tokens
+
+        # Simulate a 400 response from Google
+        fake_resp = Response()
+        fake_resp.status_code = 400
+        fake_resp._content = b'{"error": "invalid_grant", "error_description": "Code was already redeemed."}'
+        fake_resp.headers["Content-Type"] = "application/json"
+
+        with patch("requests.post", return_value=fake_resp), \
+             caplog.at_level(logging.ERROR), pytest.raises(Exception):
+            exchange_code_for_tokens("expired-code")
+
+        # Verify the error detail was logged (not just a generic message)
+        assert any("invalid_grant" in record.message for record in caplog.records)
+
+    @patch("app.api.routes.google_classroom.exchange_code_for_tokens")
+    def test_callback_redirects_with_error_on_token_failure(self, mock_exchange, client):
+        """Callback should redirect to /login?error=... when token exchange fails."""
+        from app.api.routes.google_classroom import _create_oauth_state
+
+        mock_exchange.side_effect = Exception("400 Client Error: Bad Request for url: https://oauth2.googleapis.com/token")
+        state = _create_oauth_state(purpose="auth")
+
+        resp = client.get(f"/api/google/callback?code=bad-code&state={state}", follow_redirects=False)
+        assert resp.status_code in (302, 307)
+        location = resp.headers["location"]
+        assert "/login" in location
+        assert "error=" in location
