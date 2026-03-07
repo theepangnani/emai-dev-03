@@ -803,6 +803,8 @@ export function ParentDashboard() {
         isGenerating={pd.isGenerating}
         initialTitle={pd.studyModalInitialTitle}
         initialContent={pd.studyModalInitialContent}
+        courses={pd.childCoursesForWizard}
+        selectedCourseId={pd.childCoursesForWizard?.length === 1 ? pd.childCoursesForWizard[0].id : ''}
         duplicateCheck={pd.duplicateCheck}
         onViewExisting={() => {
           const guide = pd.duplicateCheck?.existing_guide;

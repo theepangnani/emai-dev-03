@@ -433,6 +433,46 @@
   box-shadow: 0 0 0 3px var(--color-focus-ring, rgba(74, 144, 217, 0.25));
 }
 
+.uw-create-course-inline {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.uw-create-course-inline input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #E2E8F0);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 14px;
+}
+
+.uw-create-course-inline input:focus {
+  outline: none;
+  border-color: var(--color-accent, #4A90D9);
+  box-shadow: 0 0 0 3px var(--color-focus-ring, rgba(74, 144, 217, 0.25));
+}
+
+.uw-create-course-inline .btn-primary {
+  padding: 8px 16px;
+  font-size: 13px;
+  background: var(--color-accent, #4A90D9);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+}
+
+.uw-create-course-inline .btn-secondary {
+  padding: 8px 12px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--color-border, #E2E8F0);
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+}
+
 .uw-error {
   display: flex;
   flex-direction: row;

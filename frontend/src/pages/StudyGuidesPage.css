@@ -270,15 +270,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 12px 16px;
+  margin-bottom: 4px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
 }
 
 .guide-row:hover {
   background: var(--color-surface-alt);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .guide-row-main {
@@ -398,24 +400,32 @@
 
 .guides-empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: 48px 24px;
   color: var(--color-ink-muted);
   background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .guides-empty p {
-  margin: 0;
+  font-size: 14px;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.guides-empty p:first-child {
+  font-size: 32px;
+  margin-bottom: 8px;
 }
 
 /* Course badge in row meta */
 .guide-course-badge {
   background: var(--color-purple-bg);
   color: var(--color-purple-strong);
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -535,7 +545,7 @@
 
 /* ── Unlinked material row styling (#623) ──── */
 .guide-row-unlinked {
-  border-left: 3px solid var(--color-warning-border);
+  border-left: 4px solid var(--color-warning-text);
 }
 
 .guide-row-checkbox {

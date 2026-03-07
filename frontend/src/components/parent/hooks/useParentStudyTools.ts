@@ -139,6 +139,12 @@ export function useParentStudyTools({
     })();
   };
 
+  const resolveTargetCourseId = async (overrideCourseId?: number): Promise<number> => {
+    if (overrideCourseId) return overrideCourseId;
+    const defaultCourse = await coursesApi.getDefault();
+    return defaultCourse.id;
+  };
+
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
     const isMultiFile = files.length > 1;
@@ -152,18 +158,18 @@ export function useParentStudyTools({
       navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
       (async () => {
         try {
-          const defaultCourse = await coursesApi.getDefault();
+          const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
           if (files.length === 1) {
             await courseContentsApi.uploadFile(
               files[0],
-              defaultCourse.id,
+              targetCourseId,
               modalParams.title || undefined,
               'notes',
             );
           } else if (isMultiFile) {
             const combinedText = await extractCombinedText(files);
             await courseContentsApi.create({
-              course_id: defaultCourse.id,
+              course_id: targetCourseId,
               title: modalParams.title || files.map(f => f.name).join(', '),
               text_content: combinedText,
               content_type: 'notes',
@@ -174,7 +180,7 @@ export function useParentStudyTools({
             if (imagesToUpload.length === 1 && !modalParams.content?.trim()) {
               await courseContentsApi.uploadFile(
                 imagesToUpload[0],
-                defaultCourse.id,
+                targetCourseId,
                 modalParams.title || undefined,
                 'notes',
               );
@@ -189,14 +195,14 @@ export function useParentStudyTools({
               }
               await courseContentsApi.uploadMultiFiles(
                 allFiles,
-                defaultCourse.id,
+                targetCourseId,
                 modalParams.title || undefined,
                 'notes',
               );
             }
           } else {
             await courseContentsApi.create({
-              course_id: defaultCourse.id,
+              course_id: targetCourseId,
               title: modalParams.title || 'Uploaded material',
               text_content: modalParams.content || undefined,
               content_type: 'notes',
@@ -224,11 +230,11 @@ export function useParentStudyTools({
     let sharedCourseContentId: number | undefined;
     if (modalParams.types.length > 1) {
       try {
-        const defaultCourse = await coursesApi.getDefault();
+        const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
         if (isMultiFile) {
           const combinedText = await extractCombinedText(files);
           const cc = await courseContentsApi.create({
-            course_id: defaultCourse.id,
+            course_id: targetCourseId,
             title: modalParams.title || files.map(f => f.name).join(', '),
             text_content: combinedText,
             content_type: 'notes',
@@ -237,7 +243,7 @@ export function useParentStudyTools({
         } else if (modalParams.mode === 'file' && files.length === 1) {
           const cc = await courseContentsApi.uploadFile(
             files[0],
-            defaultCourse.id,
+            targetCourseId,
             modalParams.title || undefined,
             'notes',
           );
@@ -253,7 +259,7 @@ export function useParentStudyTools({
           if (allFiles.length === 1) {
             const cc = await courseContentsApi.uploadFile(
               allFiles[0],
-              defaultCourse.id,
+              targetCourseId,
               modalParams.title || undefined,
               'notes',
             );
@@ -261,7 +267,7 @@ export function useParentStudyTools({
           } else {
             const cc = await courseContentsApi.uploadMultiFiles(
               allFiles,
-              defaultCourse.id,
+              targetCourseId,
               modalParams.title || undefined,
               'notes',
             );
@@ -269,7 +275,7 @@ export function useParentStudyTools({
           }
         } else {
           const cc = await courseContentsApi.create({
-            course_id: defaultCourse.id,
+            course_id: targetCourseId,
             title: modalParams.title || 'Uploaded material',
             text_content: modalParams.content || undefined,
             content_type: 'notes',

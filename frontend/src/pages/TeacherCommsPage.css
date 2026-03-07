@@ -319,6 +319,8 @@
   text-align: center;
   color: var(--color-ink-muted);
   border: none;
+  border-radius: 12px;
+  background: var(--color-surface);
 }
 
 .teacher-comms-page .empty-state .empty-state-icon {
@@ -328,13 +330,18 @@
 
 .teacher-comms-page .empty-state p {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .teacher-comms-page .empty-state small {
   display: block;
   margin-top: 8px;
-  font-size: 13px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .no-selection {

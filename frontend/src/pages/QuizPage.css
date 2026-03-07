@@ -93,9 +93,9 @@
 .option {
   display: flex;
   align-items: center;
-  padding: 1rem;
+  padding: 14px 18px;
   border: 2px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-surface);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -105,6 +105,7 @@
 .option:hover:not(:disabled) {
   border-color: var(--color-accent);
   background: var(--color-surface-alt);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
 }
 
 .option.selected {
@@ -242,20 +243,22 @@
 .results-card {
   background: var(--color-surface);
   padding: 3rem;
-  border-radius: 12px;
-  box-shadow: var(--shadow-soft);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   text-align: center;
 }
 
 .results-card h2 {
   color: var(--color-ink);
+  font-size: 1.75rem;
   margin-bottom: 1.5rem;
 }
 
 .score {
-  font-size: 3rem;
-  font-weight: bold;
+  font-size: 4rem;
+  font-weight: 800;
   color: var(--color-success);
+  letter-spacing: -1px;
 }
 
 .score-total {
@@ -263,14 +266,15 @@
 }
 
 .score-percent {
-  font-size: 1.25rem;
-  color: var(--color-ink-muted);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-accent-strong);
   margin-top: 0.5rem;
   margin-bottom: 0.75rem;
 }
 
 .quiz-encouragement {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: var(--color-accent-strong);
   font-weight: 500;
   margin-bottom: 2rem;
