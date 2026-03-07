@@ -8,6 +8,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { getCourseColor } from '../components/calendar/types';
+import { ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import './StudyPage.css';
 
@@ -290,13 +291,7 @@ export function StudyPage() {
 
   function renderCourseList() {
     if (coursesLoading) {
-      return (
-        <div className="study-course-skeleton">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="skeleton" style={{ height: 36, borderRadius: 8, marginBottom: 4 }} />
-          ))}
-        </div>
-      );
+      return <ListSkeleton rows={4} />;
     }
 
     return (
@@ -351,7 +346,7 @@ export function StudyPage() {
   }
 
   function renderProgressSection() {
-    if (statsLoading) return <div className="skeleton" style={{ height: 90, borderRadius: 12 }} />;
+    if (statsLoading) return <ListSkeleton rows={2} />;
     if (!quizStats || quizStats.total_attempts === 0) {
       return (
         <div className="study-progress-empty">
@@ -491,11 +486,7 @@ export function StudyPage() {
         {renderTypeFilters()}
 
         {materialsLoading ? (
-          <div className="study-materials-loading">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="skeleton" style={{ height: 76, borderRadius: 10, marginBottom: 8 }} />
-            ))}
-          </div>
+          <ListSkeleton rows={3} />
         ) : filteredMaterials.length === 0 ? (
           <div className="study-materials-empty">
             <span className="study-empty-icon">{'\u{1F4DA}'}</span>

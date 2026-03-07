@@ -97,23 +97,6 @@
 
 /* ── Loading / Error / Empty ──────────────── */
 
-.gp-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 24px 0;
-}
-
-.gp-skeleton-row {
-  height: 48px;
-  border-radius: var(--radius-sm);
-  width: 100%;
-}
-
-.gp-skeleton-row.short {
-  width: 60%;
-}
-
 .gp-error {
   text-align: center;
   padding: 40px 16px;
@@ -420,13 +403,6 @@
 
 .gp-assignments-detail {
   padding: 0 12px 12px;
-}
-
-.gp-assignments-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 0;
 }
 
 .gp-assignments-table {

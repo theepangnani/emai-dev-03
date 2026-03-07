@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary, CourseGradesResponse } from '../api/grades';
 import { useAuth } from '../context/AuthContext';
+import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import './GradesPage.css';
 
@@ -181,11 +182,7 @@ export function GradesPage() {
         )}
 
         {loading ? (
-          <div className="gp-loading" aria-busy="true">
-            <div className="skeleton gp-skeleton-row" />
-            <div className="skeleton gp-skeleton-row short" />
-            <div className="skeleton gp-skeleton-row" />
-          </div>
+          <PageSkeleton />
         ) : error ? (
           <div className="gp-error">
             <p>{error}</p>
@@ -275,10 +272,7 @@ export function GradesPage() {
                       {expandedCourse === course.course_id && (
                         <div className="gp-assignments-detail">
                           {courseLoading ? (
-                            <div className="gp-assignments-loading">
-                              <div className="skeleton gp-skeleton-row" />
-                              <div className="skeleton gp-skeleton-row short" />
-                            </div>
+                            <ListSkeleton rows={3} />
                           ) : courseGrades && courseGrades.assignments.length > 0 ? (
                             <div className="gp-assignments-table">
                               <div className="gp-asgn-header">
