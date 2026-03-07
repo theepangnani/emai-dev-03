@@ -59,9 +59,9 @@
 }
 
 .tcm-filter-pill.active {
-  background: var(--color-accent-light);
+  background: var(--color-accent);
   border-color: var(--color-accent);
-  color: var(--color-accent-strong);
+  color: white;
 }
 
 .tcm-filter-pill.source-google.active {
@@ -96,7 +96,8 @@
 }
 
 .tcm-filter-pill.active .tcm-filter-count {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
 }
 
 /* Controls: sort + search */

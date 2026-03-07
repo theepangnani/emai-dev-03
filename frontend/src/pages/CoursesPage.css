@@ -116,7 +116,7 @@
 .courses-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .course-list-item-wrapper {
@@ -132,12 +132,13 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   cursor: pointer;
   transition: box-shadow 0.15s;
 }
 
 .course-list-row:hover {
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.10);
 }
 
 .course-list-row.expanded {
@@ -146,7 +147,7 @@
 }
 
 .course-list-color {
-  width: 4px;
+  width: 5px;
   height: 36px;
   border-radius: 2px;
   flex-shrink: 0;
@@ -241,11 +242,12 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .course-card:hover {
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.10);
   border-color: var(--color-accent-light);
 }
 
@@ -340,7 +342,7 @@
 }
 
 .course-card-color {
-  width: 4px;
+  width: 5px;
   flex-shrink: 0;
 }
 
@@ -406,15 +408,23 @@
 
 .courses-empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: 48px 24px;
   color: var(--color-ink-muted);
   background: var(--color-surface);
-  border: 1px dashed var(--color-border);
+  border: 2px dashed var(--color-border);
   border-radius: var(--radius-md);
 }
 
 .courses-empty p {
   margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.courses-empty .courses-btn {
+  margin-top: 16px;
+  padding: 10px 24px;
+  font-size: 14px;
 }
 
 /* Course card wrapper for expand/collapse */
@@ -503,11 +513,11 @@
   text-transform: capitalize;
 }
 
-.content-type-badge.syllabus { background: rgba(156, 39, 176, 0.12); color: var(--badge-syllabus); }
-.content-type-badge.labs { background: rgba(255, 152, 0, 0.12); color: var(--badge-labs); }
-.content-type-badge.readings { background: rgba(33, 150, 243, 0.12); color: var(--badge-readings); }
-.content-type-badge.resources { background: rgba(76, 175, 80, 0.12); color: var(--badge-resources); }
-.content-type-badge.assignments { background: rgba(244, 67, 54, 0.12); color: var(--badge-assignments); }
+.content-type-badge.syllabus { background: var(--color-accent-light); color: var(--badge-syllabus); }
+.content-type-badge.labs { background: var(--color-warning-light); color: var(--badge-labs); }
+.content-type-badge.readings { background: var(--color-info-bg); color: var(--badge-readings); }
+.content-type-badge.resources { background: var(--color-success-light); color: var(--badge-resources); }
+.content-type-badge.assignments { background: var(--color-danger-light); color: var(--badge-assignments); }
 
 .content-item-title {
   font-weight: 600;
@@ -758,8 +768,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
+  font-size: 28px;
   border-radius: 50%;
   background: var(--color-surface-alt, #f5f5f5);
 }
@@ -769,7 +780,7 @@
 }
 
 .courses-empty-card-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   font-family: var(--font-display);
 }
