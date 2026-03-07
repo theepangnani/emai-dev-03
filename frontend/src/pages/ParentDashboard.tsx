@@ -13,6 +13,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
+import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -420,8 +421,14 @@ export function ParentDashboard() {
             </div>
           )}
 
+          {/* Recent Activity Feed (#1225/#1226) */}
+          <RecentActivityPanel
+            selectedChild={pd.selectedChild}
+            navigate={pd.navigate}
+          />
+
           {/* Student Detail moved to MyKids page */}
-
+
 
           {/* Calendar moved to Tasks page */}
         </>
