@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import UploadWizardStep1 from './UploadWizardStep1';
 import UploadWizardStep2 from './UploadWizardStep2';
+import { coursesApi } from '../api/courses';
 import './UploadMaterialWizard.css';
 
 const MAX_FILE_SIZE_MB = 20;
@@ -50,7 +51,6 @@ export default function UploadMaterialWizard({
   initialContent = '',
   courses,
   selectedCourseId,
-  onCourseChange,
   selectedMaterialId,
   duplicateCheck,
   onViewExisting,
@@ -67,6 +67,8 @@ export default function UploadMaterialWizard({
   const [pastedImages, setPastedImages] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
+  const [managedCourses, setManagedCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
+  const [internalCourseId, setInternalCourseId] = useState<number | ''>(selectedCourseId ?? '');
 
   const selectedFilesRef = useRef<File[]>([]);
 
@@ -92,7 +94,11 @@ export default function UploadMaterialWizard({
     setIsDragging(false);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setError('');
-  }, [open, initialTitle, initialContent]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setManagedCourses(courses);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInternalCourseId(courses?.length === 1 ? courses[0].id : (selectedCourseId ?? ''));
+  }, [open, initialTitle, initialContent, courses, selectedCourseId]);
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const toAdd = Array.from(incoming);
@@ -159,6 +165,12 @@ export default function UploadMaterialWizard({
     return () => document.removeEventListener('paste', handler);
   }, [open, addFiles]);
 
+  const handleCreateCourse = async (name: string) => {
+    const newCourse = await coursesApi.create({ name });
+    setManagedCourses(prev => [...(prev || []), { id: newCourse.id, name: newCourse.name }]);
+    setInternalCourseId(newCourse.id);
+  };
+
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
@@ -196,7 +208,7 @@ export default function UploadMaterialWizard({
       file: selectedFiles.length === 1 ? selectedFiles[0] : undefined,
       files: selectedFiles.length > 0 ? selectedFiles : undefined,
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
-      courseId: selectedCourseId ? (selectedCourseId as number) : undefined,
+      courseId: internalCourseId || undefined,
       courseContentId: selectedMaterialId ? (selectedMaterialId as number) : undefined,
     });
   };
@@ -226,9 +238,10 @@ export default function UploadMaterialWizard({
               onAddPastedImages={(imgs) => setPastedImages(prev => [...prev, ...imgs].slice(0, 10))}
               onRemovePastedImage={(idx) => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
               onClearPastedImages={() => setPastedImages([])}
-              courses={courses}
-              selectedCourseId={selectedCourseId}
-              onCourseChange={onCourseChange}
+              courses={managedCourses}
+              selectedCourseId={internalCourseId}
+              onCourseChange={setInternalCourseId}
+              onCreateCourse={handleCreateCourse}
               isGenerating={isGenerating}
               error={error}
               isDragging={isDragging}
