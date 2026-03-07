@@ -47,6 +47,7 @@ export interface ChildSummary {
   active_task_count: number;
   invite_status: 'active' | 'pending' | 'email_unverified' | null;
   invite_id: number | null;
+  link_request_pending?: boolean;
 }
 
 export interface ChildOverview {
