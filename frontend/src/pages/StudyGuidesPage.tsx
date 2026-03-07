@@ -152,10 +152,22 @@ export function StudyGuidesPage() {
   const [assigning, setAssigning] = useState(false);
   const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
 
+  // Create Course from child-selector "+" menu
+  const [showChildAddMenu, setShowChildAddMenu] = useState(false);
+  const [showCreateCourseModal, setShowCreateCourseModal] = useState(false);
+  const [newCourseName, setNewCourseName] = useState('');
+  const [newCourseSubject, setNewCourseSubject] = useState('');
+  const [newCourseDescription, setNewCourseDescription] = useState('');
+  const [newCourseTeacherEmail, setNewCourseTeacherEmail] = useState('');
+  const [createCourseLoading, setCreateCourseLoading] = useState(false);
+  const [createCourseError, setCreateCourseError] = useState('');
+  const childAddMenuRef = useRef<HTMLDivElement>(null);
+
   // Focus traps for modals
   const categorizeModalRef = useFocusTrap<HTMLDivElement>(!!categorizeGuide, () => setCategorizeGuide(null));
   const reassignModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
   const datePromptModalRef = useFocusTrap<HTMLDivElement>(datePromptTasks.length > 0);
+  const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateCourseModal, () => setShowCreateCourseModal(false));
 
   useEffect(() => {
     loadData();
@@ -207,6 +219,44 @@ export function StudyGuidesPage() {
     }
     setModalMaterialId('');
   }, [modalCourseId]);
+
+  // Close child-add menu on outside click
+  useEffect(() => {
+    if (!showChildAddMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (childAddMenuRef.current && !childAddMenuRef.current.contains(e.target as Node)) {
+        setShowChildAddMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showChildAddMenu]);
+
+  // Create course handler
+  const handleCreateCourse = async () => {
+    if (!newCourseName.trim()) return;
+    setCreateCourseError('');
+    setCreateCourseLoading(true);
+    try {
+      const newCourse = await coursesApi.create({
+        name: newCourseName.trim(),
+        subject: newCourseSubject.trim() || undefined,
+        description: newCourseDescription.trim() || undefined,
+        teacher_email: newCourseTeacherEmail.trim() || undefined,
+      });
+      setShowCreateCourseModal(false);
+      setNewCourseName('');
+      setNewCourseSubject('');
+      setNewCourseDescription('');
+      setNewCourseTeacherEmail('');
+      setCreateCourseError('');
+      navigate(`/courses/${newCourse.id}`);
+    } catch (err: any) {
+      setCreateCourseError(err.response?.data?.detail || 'Failed to create class');
+    } finally {
+      setCreateCourseLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoadError(false);
@@ -986,6 +1036,32 @@ export function StudyGuidesPage() {
                 {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
               </button>
             ))}
+
+            {/* "+" context menu */}
+            <div className="add-action-wrapper" ref={childAddMenuRef}>
+              <button
+                className={`add-action-trigger${showChildAddMenu ? ' active' : ''}`}
+                onClick={() => setShowChildAddMenu(v => !v)}
+                aria-label="Add new"
+              >
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+              {showChildAddMenu && (
+                <div className="add-action-popover">
+                  <button className="add-action-item" onClick={() => { setShowChildAddMenu(false); setShowCreateCourseModal(true); }}>
+                    <span className="add-action-item-icon icon-with-plus">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                      </svg>
+                    </span>
+                    <span className="add-action-item-label">Create Class</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1577,6 +1653,40 @@ export function StudyGuidesPage() {
                 onClick={handleBatchAssign}
               >
                 {assigning ? 'Assigning...' : `Assign to ${assignTargetChildren.size} Child${assignTargetChildren.size !== 1 ? 'ren' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Create Course Modal */}
+      {showCreateCourseModal && (
+        <div className="modal-overlay" onClick={() => { setShowCreateCourseModal(false); setCreateCourseError(''); }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create Class</h2>
+            <p className="modal-desc">Create a new class for your child.</p>
+            <div className="modal-form">
+              <label>
+                Class Name *
+                <input type="text" value={newCourseName} onChange={(e) => setNewCourseName(e.target.value)} placeholder="e.g. Math Grade 5" disabled={createCourseLoading} onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()} autoFocus />
+              </label>
+              <label>
+                Subject (optional)
+                <input type="text" value={newCourseSubject} onChange={(e) => setNewCourseSubject(e.target.value)} placeholder="e.g. Mathematics" disabled={createCourseLoading} />
+              </label>
+              <label>
+                Description (optional)
+                <textarea value={newCourseDescription} onChange={(e) => setNewCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={createCourseLoading} />
+              </label>
+              <label>
+                Teacher Email (optional)
+                <input type="email" value={newCourseTeacherEmail} onChange={(e) => setNewCourseTeacherEmail(e.target.value)} placeholder="teacher@example.com" disabled={createCourseLoading} />
+              </label>
+              {createCourseError && <p className="link-error">{createCourseError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => { setShowCreateCourseModal(false); setCreateCourseError(''); }} disabled={createCourseLoading}>Cancel</button>
+              <button className="generate-btn" onClick={handleCreateCourse} disabled={createCourseLoading || !newCourseName.trim()}>
+                {createCourseLoading ? 'Creating...' : 'Create Class'}
               </button>
             </div>
           </div>
