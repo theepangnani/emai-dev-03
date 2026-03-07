@@ -920,6 +920,12 @@ export function TasksPage() {
                   </>
                 )}
               </div>
+              <div className="modal-actions">
+                <button className="modal-cancel" onClick={() => setEditTask(null)}>Cancel</button>
+                <button className="generate-btn" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
               <div className="task-modal-danger-zone">
                 <button
                   className="task-modal-archive-btn"
@@ -934,12 +940,6 @@ export function TasksPage() {
                   title="Permanently delete this task"
                 >
                   Delete Forever
-                </button>
-              </div>
-              <div className="modal-actions">
-                <button className="modal-cancel" onClick={() => setEditTask(null)}>Cancel</button>
-                <button className="generate-btn" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
-                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>

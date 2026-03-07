@@ -236,6 +236,21 @@ describe('TasksPage', () => {
     expect(screen.getByDisplayValue('Review Chapter 5')).toBeInTheDocument()
   })
 
+  it('shows Save Changes button in edit modal (#1242)', async () => {
+    const user = userEvent.setup()
+    renderTasks()
+    await waitFor(() => {
+      expect(screen.getByText('Review Chapter 5')).toBeInTheDocument()
+    })
+
+    const editBtns = screen.getAllByTitle('Edit')
+    await user.click(editBtns[0])
+
+    const saveBtn = screen.getByRole('button', { name: /Save Changes/i })
+    expect(saveBtn).toBeInTheDocument()
+    expect(saveBtn).not.toBeDisabled()
+  })
+
   it('saves edited task', async () => {
     const user = userEvent.setup()
     mockUpdate.mockResolvedValue({})
