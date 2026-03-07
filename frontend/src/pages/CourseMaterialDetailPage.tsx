@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
+import { resourceLinksApi, type ResourceLinkGroup } from '../api/resourceLinks';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -15,6 +17,7 @@ import { DocumentTab } from './course-material/DocumentTab';
 import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
+import { VideosLinksTab } from './course-material/VideosLinksTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
@@ -28,8 +31,8 @@ import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards';
-const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards'];
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'videos';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'videos'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -67,6 +70,15 @@ function FlashcardIcon() {
       <rect x="1.5" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
       <rect x="4.5" y="5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="var(--color-surface, #fff)"/>
       <path d="M7 8.5h5M7 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function VideosIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="1.5" y="3" width="13" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M6.5 6v4l3.5-2-3.5-2z" fill="currentColor"/>
     </svg>
   );
 }
@@ -192,6 +204,14 @@ export function CourseMaterialDetailPage() {
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
 
   const contentId = parseInt(id || '0');
+
+  // Fetch resource links count for tab badge
+  const { data: resourceLinkGroups = [] } = useQuery<ResourceLinkGroup[]>({
+    queryKey: ['resource-links', contentId],
+    queryFn: () => resourceLinksApi.list(contentId),
+    enabled: contentId > 0,
+  });
+  const resourceLinkCount = resourceLinkGroups.reduce((sum, g) => sum + g.links.length, 0);
 
   const loadData = useCallback(async () => {
     if (!contentId) return;
@@ -410,10 +430,11 @@ export function CourseMaterialDetailPage() {
     </DashboardLayout>
   );
 
-  const tabs: { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode }[] = [
+  const tabs: { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode; badge?: number }[] = [
     { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
+    ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
@@ -572,6 +593,10 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
               atLimit={atLimit}
             />
+          )}
+
+          {activeTab === 'videos' && (
+            <VideosLinksTab courseContentId={contentId} />
           )}
 
         </div>

@@ -1,0 +1,337 @@
+/* ========================================
+   Videos & Links Tab
+   ======================================== */
+
+.vl-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Toolbar ─────────────────────────────────── */
+.vl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.vl-count {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+/* ── Topic groups ────────────────────────────── */
+.vl-topic-group {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.vl-topic-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.vl-topic-heading:hover {
+  background: var(--color-border);
+}
+
+.vl-topic-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  background: var(--color-surface);
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.vl-chevron {
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+
+.vl-chevron.open {
+  transform: rotate(90deg);
+}
+
+.vl-topic-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── YouTube grid ────────────────────────────── */
+.vl-youtube-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+
+.vl-youtube-item {
+  position: relative;
+}
+
+.vl-youtube-card {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.vl-youtube-wrapper {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.vl-youtube-info {
+  padding: 12px 14px;
+}
+
+.vl-youtube-title {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.vl-youtube-desc {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.vl-open-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.vl-open-external:hover {
+  color: var(--color-purple);
+  text-decoration: underline;
+}
+
+/* ── Link cards ──────────────────────────────── */
+.vl-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vl-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vl-link-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.vl-link-card:hover {
+  border-color: var(--color-accent-light);
+  background: var(--color-accent-subtle);
+  box-shadow: var(--shadow-xs);
+}
+
+.vl-link-card-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vl-link-icon {
+  display: inline-flex;
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+
+.vl-link-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vl-link-title {
+  font-size: 0.88rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vl-link-url {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Delete button ───────────────────────────── */
+.vl-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.vl-delete-btn:hover {
+  background: var(--color-danger-light);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.vl-youtube-item .vl-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.vl-youtube-item:hover .vl-delete-btn {
+  opacity: 1;
+}
+
+/* ── Add link form ───────────────────────────── */
+.vl-add-form {
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent-light);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vl-add-form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.vl-add-form-row--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.vl-add-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.vl-add-input:focus {
+  outline: none;
+  border-color: var(--color-purple);
+  box-shadow: 0 0 0 3px var(--color-purple-light);
+}
+
+.vl-add-input::placeholder {
+  color: var(--color-muted);
+}
+
+.vl-add-error {
+  color: var(--color-danger);
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.vl-add-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 768px) {
+  .vl-youtube-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vl-add-form-row--split {
+    grid-template-columns: 1fr;
+  }
+
+  .vl-topic-heading {
+    padding: 12px 14px;
+    font-size: 0.88rem;
+  }
+
+  .vl-topic-body {
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vl-toolbar {
+    padding: 10px 12px;
+  }
+
+  .vl-youtube-info {
+    padding: 10px 12px;
+  }
+}
