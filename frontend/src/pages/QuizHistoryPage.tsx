@@ -208,10 +208,10 @@ export function QuizHistoryPage() {
                         <span className="qh-score-pct">{r.percentage}%</span>
                       </div>
                       <div className="qh-attempt-actions">
-                        <Link to={`/study/quiz/${r.study_guide_id}`} className="qh-retry-btn">
+                        <Link to={`/study/quiz/${r.study_guide_id}`} className="qh-retry-btn btn-primary btn-sm">
                           Retry
                         </Link>
-                        <button className="qh-delete-btn" onClick={() => handleDelete(r.id)} title="Delete">
+                        <button className="qh-delete-btn btn-danger btn-sm" onClick={() => handleDelete(r.id)} title="Delete">
                           &times;
                         </button>
                       </div>

@@ -631,13 +631,13 @@ export function CoursesPage() {
                   </svg>
                 </button>
                 {myCourses.length > 0 && selectedChild && (
-                  <button className="courses-btn secondary" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
+                  <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
                     Assign Class
                   </button>
                 )}
                 {googleConnected && childOverview?.google_connected && (
                   <>
-                    <button className="courses-btn secondary" onClick={handleSyncCourses} disabled={syncState === 'syncing'}>
+                    <button className="courses-btn secondary btn-secondary btn-sm" onClick={handleSyncCourses} disabled={syncState === 'syncing'}>
                       {syncState === 'syncing' ? (<><span className="btn-spinner" /> Syncing...</>) : 'Sync Google'}
                     </button>
                     {lastSynced && syncState !== 'error' && (
@@ -695,7 +695,7 @@ export function CoursesPage() {
                       <div className="course-content-panel">
                         <div className="course-content-header">
                           <h5>Class Materials</h5>
-                          <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                          <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => navigate(`/courses/${course.id}`)}>
                             View Details &rarr;
                           </button>
                         </div>
@@ -809,7 +809,7 @@ export function CoursesPage() {
                           <div className="course-content-panel">
                             <div className="course-content-header">
                               <h5>Class Materials</h5>
-                              <button className="courses-btn secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                              <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => navigate(`/courses/${course.id}`)}>
                                 View Details &rarr;
                               </button>
                             </div>
@@ -886,7 +886,7 @@ export function CoursesPage() {
                           </div>
                         </div>
                         <button
-                          className="courses-btn primary"
+                          className="courses-btn primary btn-primary btn-sm"
                           onClick={() => handleEnroll(course.id)}
                           disabled={enrollingId === course.id}
                         >
