@@ -325,12 +325,12 @@ export function ParentDashboard() {
               {pd.backgroundGeneration.status === 'generating' && (
                 <>
                   <span className="pd-gen-spinner" />
-                  <span>Generating {pd.backgroundGeneration.type}...</span>
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Uploading material...' : `Generating ${pd.backgroundGeneration.type}...`}</span>
                 </>
               )}
               {pd.backgroundGeneration.status === 'success' && (
                 <>
-                  <span>{pd.backgroundGeneration.type} ready!</span>
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Material uploaded!' : `${pd.backgroundGeneration.type} ready!`}</span>
                   <button className="pd-gen-view-btn" onClick={() => { pd.navigate('/course-materials'); pd.dismissBackgroundGeneration(); }}>
                     View
                   </button>
@@ -339,7 +339,7 @@ export function ParentDashboard() {
               )}
               {pd.backgroundGeneration.status === 'error' && (
                 <>
-                  <span>Failed to generate {pd.backgroundGeneration.type}</span>
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Upload failed' : `Failed to generate ${pd.backgroundGeneration.type}`}</span>
                   <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
                 </>
               )}
