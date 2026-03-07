@@ -5,6 +5,7 @@ from app.schemas.assignment import AssignmentCreate, AssignmentResponse
 from app.schemas.waitlist import (
     WaitlistCreate, WaitlistResponse, WaitlistStats, WaitlistAdminUpdate,
 )
+from app.schemas.content_image import ContentImageResponse
 from app.schemas.faq import (
     FAQQuestionCreate, FAQQuestionUpdate, FAQQuestionResponse, FAQQuestionDetail,
     FAQQuestionPin, FAQAdminQuestionCreate,
@@ -20,4 +21,5 @@ __all__ = [
     "FAQQuestionPin", "FAQAdminQuestionCreate",
     "FAQAnswerCreate", "FAQAnswerUpdate", "FAQAnswerResponse",
     "WaitlistCreate", "WaitlistResponse", "WaitlistStats", "WaitlistAdminUpdate",
+    "ContentImageResponse",
 ]

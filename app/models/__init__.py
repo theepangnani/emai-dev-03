@@ -28,6 +28,7 @@ from app.models.data_export import DataExportRequest
 from app.models.ai_usage_history import AIUsageHistory
 
 from app.models.source_file import SourceFile
+from app.models.content_image import ContentImage
 
 __all__ = [
     "User",
@@ -74,4 +75,5 @@ __all__ = [
 "DataExportRequest",
     "AIUsageHistory",
     "SourceFile",
+    "ContentImage",
 ]
