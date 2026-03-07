@@ -9,6 +9,10 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
+import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
+import { CollapsibleSection } from '../components/parent/CollapsibleSection';
+import type { CalendarAssignment } from '../components/calendar/types';
+import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
 import './MyKidsPage.css';
@@ -45,6 +49,11 @@ export function MyKidsPage() {
   const [linkedTeachers, setLinkedTeachers] = useState<LinkedTeacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [sectionLoading, setSectionLoading] = useState(false);
+
+  // Coming Up data (all-children view)
+  const [allOverviews, setAllOverviews] = useState<ChildOverview[]>([]);
+  const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
+  const [showComingUp, setShowComingUp] = useState(true);
 
   // Collapsible sections
   const [showCourses, setShowCourses] = useState(true);
@@ -160,10 +169,14 @@ export function MyKidsPage() {
         Promise.all([
           coursesApi.list(),
           courseContentsApi.listAll(),
+          tasksApi.list(),
           ...children.map(c => parentApi.getChildOverview(c.student_id)),
-        ]).then(([courseList, mats, ...overviews]) => {
+        ]).then(([courseList, mats, allTaskList, ...overviews]) => {
+          const typedOverviews = overviews as ChildOverview[];
+          setAllOverviews(typedOverviews);
+          setAllTasks((allTaskList as TaskItem[]).filter(t => !t.archived_at));
           const enrolled = new Set<number>();
-          (overviews as ChildOverview[]).forEach(ov => {
+          typedOverviews.forEach(ov => {
             ov.courses.forEach(c => enrolled.add(c.id));
           });
           const unassigned = (courseList as Array<{ id: number; name: string }>).filter(c => !enrolled.has(c.id));
@@ -174,6 +187,8 @@ export function MyKidsPage() {
         }).catch(() => {
           setUnassignedCourses([]);
           setUnassignedMaterials([]);
+          setAllOverviews([]);
+          setAllTasks([]);
         }).finally(() => setSectionLoading(false));
       }
       return;
@@ -232,6 +247,58 @@ export function MyKidsPage() {
 
   const activeTasks = tasks.filter(t => !t.is_completed);
   const completedTasks = tasks.filter(t => t.is_completed);
+
+  // Build calendarAssignments for ComingUpTimeline
+  const calendarAssignments: CalendarAssignment[] = useMemo(() => {
+    const activeOverviews = selectedChild && overview ? [overview] : allOverviews;
+    const activeTks = selectedChild ? tasks : allTasks;
+    const courseIds = activeOverviews.flatMap(o => o.courses.map(c => c.id));
+
+    const assignments = activeOverviews.flatMap(ov =>
+      ov.assignments
+        .filter(a => a.due_date)
+        .map(a => ({
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          courseId: a.course_id,
+          courseName: ov.courses.find(c => c.id === a.course_id)?.name || 'Unknown',
+          courseColor: getCourseColor(a.course_id, courseIds),
+          dueDate: new Date(a.due_date!),
+          childName: children.length > 1 ? ov.full_name : '',
+          maxPoints: a.max_points,
+          itemType: 'assignment' as const,
+        }))
+    );
+
+    const taskItems: CalendarAssignment[] = activeTks
+      .filter(t => !t.archived_at && t.due_date)
+      .map(t => ({
+        id: t.id + 1_000_000,
+        taskId: t.id,
+        title: t.title,
+        description: t.description,
+        courseId: 0,
+        courseName: '',
+        courseColor: TASK_PRIORITY_COLORS[t.priority || 'medium'],
+        dueDate: new Date(t.due_date!),
+        childName: t.assignee_name || '',
+        maxPoints: null,
+        itemType: 'task' as const,
+        priority: (t.priority || 'medium') as 'low' | 'medium' | 'high',
+        isCompleted: t.is_completed,
+      }));
+
+    return [...assignments, ...taskItems];
+  }, [selectedChild, overview, allOverviews, tasks, allTasks, children.length]);
+
+  const handleNavigateStudy = (assignment: CalendarAssignment) => {
+    if (assignment.itemType === 'task') {
+      navigate(`/tasks/${assignment.taskId ?? assignment.id}`);
+    } else {
+      navigate(`/study-guides?assignment_id=${assignment.id}`);
+    }
+  };
 
   const sidebarActions = [
     { label: '+ Course Material', icon: '\u{1F4C4}', onClick: () => navigate('/course-materials') },
@@ -680,6 +747,21 @@ export function MyKidsPage() {
           }}] : []),
         ]} />
       </div>
+
+      {/* Coming Up Timeline (#1221 - moved from ParentDashboard) */}
+      {!sectionLoading && calendarAssignments.length > 0 && (
+        <CollapsibleSection
+          title="Coming Up"
+          expanded={showComingUp}
+          onToggle={() => setShowComingUp(p => !p)}
+        >
+          <ComingUpTimeline
+            calendarAssignments={calendarAssignments}
+            selectedChild={selectedChild}
+            onNavigateStudy={handleNavigateStudy}
+          />
+        </CollapsibleSection>
+      )}
 
       {!selectedChild ? (
         /* All-children overview — tabs are the single navigation; jump straight to actionable content */
