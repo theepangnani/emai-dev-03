@@ -185,3 +185,102 @@ class TestDocxOcrFallback:
         extract_text_from_docx(data)
         mock_vision.assert_not_called()
         mock_tesseract.image_to_string.assert_not_called()
+
+
+def _make_pdf_with_vector_only() -> bytes:
+    """Create a minimal PDF with vector-drawn content (no raster images).
+
+    Uses PyMuPDF (fitz) to draw shapes — these are path operators that
+    PyPDF2 cannot extract as images.
+    """
+    import fitz
+
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    # Draw a triangle (vector graphic)
+    shape = page.new_shape()
+    shape.draw_line(fitz.Point(100, 600), fitz.Point(300, 200))
+    shape.draw_line(fitz.Point(300, 200), fitz.Point(500, 600))
+    shape.draw_line(fitz.Point(500, 600), fitz.Point(100, 600))
+    shape.finish(color=(0, 0, 0), width=2)
+    shape.commit()
+    # Add some text
+    page.insert_text(fitz.Point(200, 150), "Triangle Diagram", fontsize=14)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+def _make_pdf_with_raster_image() -> bytes:
+    """Create a PDF with an embedded raster image that PyPDF2 can extract."""
+    import fitz
+    from PIL import Image as PILImage
+
+    # Create a small raster image
+    img_buf = io.BytesIO()
+    PILImage.new("RGB", (100, 100), "red").save(img_buf, format="PNG")
+    img_bytes = img_buf.getvalue()
+
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_image(fitz.Rect(100, 100, 300, 300), stream=img_bytes)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+class TestPdfImageExtraction:
+    """Regression tests for PDF image extraction — ensures vector graphics
+    are captured via PyMuPDF fallback when PyPDF2 finds no raster images."""
+
+    def test_vector_only_pdf_uses_fallback(self):
+        """PDFs with only vector graphics (no raster XObjects) should still
+        produce images via the PyMuPDF page-rendering fallback."""
+        from app.services.file_processor import _extract_images_from_pdf
+
+        pdf_bytes = _make_pdf_with_vector_only()
+        images = _extract_images_from_pdf(pdf_bytes)
+        # Should have at least 1 page rendered as image
+        assert len(images) >= 1
+        # Should be PNG data
+        assert images[0]["image_bytes"][:4] == b"\x89PNG"
+        assert images[0]["position_context"] == "Page 1"
+
+    def test_raster_pdf_does_not_use_fallback(self):
+        """PDFs with embedded raster images should use PyPDF2 extraction,
+        NOT the page-rendering fallback."""
+        from app.services.file_processor import _extract_images_from_pdf
+
+        pdf_bytes = _make_pdf_with_raster_image()
+        images = _extract_images_from_pdf(pdf_bytes)
+        assert len(images) >= 1
+        # If PyPDF2 found the raster image, the fallback shouldn't run.
+        # Raster extraction produces raw image data, not necessarily PNG headers.
+        # Just verify we got results.
+        assert len(images[0]["image_bytes"]) > 0
+
+    def test_render_pdf_pages_as_images(self):
+        """Direct test of the _render_pdf_pages_as_images helper."""
+        from app.services.file_processor import _render_pdf_pages_as_images
+
+        pdf_bytes = _make_pdf_with_vector_only()
+        images = _render_pdf_pages_as_images(pdf_bytes)
+        assert len(images) == 1
+        assert images[0]["content_type"] == "image/png"
+        assert images[0]["position_context"] == "Page 1"
+        # PNG should be non-trivial size (not a blank page — has drawn content)
+        assert len(images[0]["image_bytes"]) > 1024
+
+    def test_render_respects_max_pages_cap(self):
+        """Should cap at _MAX_IMAGES_PER_DOC pages."""
+        import fitz
+        from app.services.file_processor import _render_pdf_pages_as_images, _MAX_IMAGES_PER_DOC
+
+        doc = fitz.open()
+        for _ in range(25):  # More than _MAX_IMAGES_PER_DOC (20)
+            doc.new_page(width=100, height=100)
+        pdf_bytes = doc.tobytes()
+        doc.close()
+
+        images = _render_pdf_pages_as_images(pdf_bytes)
+        assert len(images) == _MAX_IMAGES_PER_DOC

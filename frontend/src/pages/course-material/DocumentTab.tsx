@@ -163,7 +163,7 @@ export function DocumentTab({
                   {downloading ? 'Downloading...' : '\u{1F4CB} Download Original'}
                 </button>
               )}
-              {!content.has_file && (
+              {!content.has_file && !(content.source_files_count && content.source_files_count > 0) && (
                 <button className="cm-action-btn" onClick={handleStartEdit}>{'\u270F\uFE0F'} Edit Content</button>
               )}
               <button className="cm-action-btn" onClick={onShowReplaceModal}>
@@ -204,6 +204,7 @@ export function DocumentTab({
       <SourceFilesSection
         contentId={content.id}
         sourceFilesCount={content.source_files_count ?? 0}
+        initialExpanded={!content.has_file && (content.source_files_count ?? 0) > 0}
       />
 
       {content.reference_url && (

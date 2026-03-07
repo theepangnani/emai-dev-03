@@ -1,9 +1,9 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 1, 2026):** 820 total issues — 656 closed (80%), 164 open (20%)
-- **Features built:** 237 enhancements closed
-- **Bugs fixed:** 165 bugs closed
-- **Other closed:** 254 (pilot prep, docs, testing, misc)
+**Summary (as of Mar 7, 2026):** 846 total issues — 682 closed (81%), 164 open (19%)
+- **Features built:** 250 enhancements closed
+- **Bugs fixed:** 173 bugs closed
+- **Other closed:** 259 (pilot prep, docs, testing, misc)
 
 Current feature issues are tracked in GitHub:
 
@@ -647,6 +647,30 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #689: fix: align Tasks filter panel rows vertically~~ ✅
 - ~~Issue #841: AI auto-task creation extracts historical dates from article content as due dates~~ ✅
 - ~~Issue #858: bug: Calendar default view should be 3-Day, not Week~~ ✅
+
+### Phase 1 - Features Built (Image Retention & Resource Links — Mar 7, 2026)
+- ~~Issue #1308: feat: ContentImage model and database migration for image retention~~ ✅
+- ~~Issue #1309: feat: extract and store images during document upload~~ ✅
+- ~~Issue #1310: feat: include image metadata in AI study guide prompt~~ ✅
+- ~~Issue #1311: feat: image serving endpoint for study guide images~~ ✅
+- ~~Issue #1312: feat: render images inline in study guide frontend~~ ✅
+- ~~Issue #1313: feat: fallback 'Additional Figures' section for unplaced images~~ ✅
+- ~~Issue #1319: feat: resource_links model + migration (§6.57)~~ ✅
+- ~~Issue #1320: feat: link_extraction_service — URL extraction + YouTube enrichment (§6.57)~~ ✅
+- ~~Issue #1321: feat: integrate link extraction into upload + teacher comm sync (§6.57)~~ ✅
+- ~~Issue #1322: feat: CRUD API endpoints for resource links (§6.57)~~ ✅
+- ~~Issue #1323: feat: Videos & Links tab on CourseMaterialDetailPage (§6.57)~~ ✅
+- ~~Issue #1325: feat: YouTube embed component + topic grouping UI (§6.57)~~ ✅
+- ~~Issue #1326: test: link extraction service + resource links API tests (§6.57)~~ ✅
+
+### Phase 1 - Bug Fixes (Mar 7, 2026)
+- ~~Issue #1295: My Kids page shows raw 'OverdueTask' enum value instead of formatted label~~ ✅
+- ~~Issue #1297: No background progress indicator for upload-only (image) uploads~~ ✅
+- ~~Issue #1299: Upload wizard lacks clear paste/screenshot guidance~~ ✅
+- ~~Issue #1301: bug: task urgency pills missing from Today's Focus header~~ ✅
+- ~~Issue #1304: Task urgency pills and hero text broken due to date parsing bug~~ ✅
+- ~~Issue #1306: fix: CoursesPage child selector missing All icon, color dots, and + context menu~~ ✅
+- ~~Issue #1314: fix: 'Failed to download document' on course-materials document tab~~ ✅
 
 ### Phase 1 - Features Built (UX & UI Polish)
 - ~~Issue #239: UX: Add confirmation dialogs to destructive actions missing them~~ ✅

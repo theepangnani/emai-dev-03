@@ -1518,3 +1518,217 @@ Role-based interactive tutorial pages that guide new users through ClassBridge f
 - `frontend/src/components/DashboardLayout.tsx` — Nav icon + nav item
 
 ---
+
+### 6.57 Teacher Resource Links — Video & URL Extraction from Course Materials (Phase 1)
+
+**Added:** 2026-03-07 | **Issues:** #1319-#1326
+
+Teachers frequently share YouTube videos and reference URLs in Google Classroom announcements, emails, and uploaded documents (e.g., topic-organized lists of instructional videos). ClassBridge should automatically extract these links during AI processing and present them as embedded, browsable resources within the existing Course Material detail page.
+
+#### Problem
+
+Teachers share curated video playlists and reference links as plain text in announcements or documents. Parents and students must manually copy-paste URLs into a browser. There is no organized, visual way to browse teacher-recommended videos within ClassBridge.
+
+#### Solution
+
+Treat link-rich teacher content as a **Course Material** (same as any uploaded document). During AI text processing, extract all URLs, classify them (YouTube, external link), and store structured metadata. Display extracted resources in a new **"Videos & Links"** tab on the Course Material Detail page, with embedded YouTube players grouped by topic.
+
+#### Data Model
+
+**`resource_links` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Auto-increment |
+| course_content_id | INTEGER FK | Parent course material |
+| url | VARCHAR(2048) | Full URL |
+| resource_type | VARCHAR(20) | `youtube` / `external_link` |
+| title | VARCHAR(500) | Extracted or AI-inferred title for the link |
+| topic_heading | VARCHAR(500) | Topic group heading (e.g., "Analytic Geometry", "Right Triangles") |
+| description | TEXT | Optional description or timestamp notes from source text |
+| thumbnail_url | VARCHAR(2048) | YouTube thumbnail URL (auto-populated) |
+| youtube_video_id | VARCHAR(20) | Extracted YouTube video ID (for embed) |
+| display_order | INTEGER | Ordering within topic group |
+| created_at | DATETIME | Auto-set |
+
+**Relationships:**
+- `CourseContent` has many `ResourceLink` (one-to-many via `course_content_id`)
+- No new tables for topics — `topic_heading` is a plain string; frontend groups by it
+
+#### URL Extraction Service
+
+**`app/services/link_extraction_service.py`:**
+
+1. **`extract_links(text: str) -> list[ResourceLinkData]`** — Core extraction function:
+   - Regex-based URL detection (http/https patterns)
+   - YouTube URL normalization: support `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/embed/` formats
+   - Extract `youtube_video_id` from URL
+   - Parse surrounding text for topic headings (lines ending with `:` before a group of URLs)
+   - Parse surrounding text for descriptions (e.g., timestamp notes like "0:00-3:50: Formulas")
+   - Return structured list of `ResourceLinkData` objects
+
+2. **`enrich_youtube_metadata(video_id: str) -> dict`** — Optional enrichment:
+   - Use YouTube oEmbed endpoint (`https://www.youtube.com/oembed?url=...&format=json`) to fetch video title and thumbnail
+   - No API key required for oEmbed
+   - Fail gracefully — if oEmbed fails, use URL as title and generate thumbnail from `https://img.youtube.com/vi/{video_id}/mqdefault.jpg`
+
+3. **Integration point:** Call `extract_links()` during:
+   - Document text extraction (after OCR / text paste in upload flow)
+   - Teacher communication sync (when processing announcement/email body text)
+   - If links are found, auto-create `ResourceLink` records on the `CourseContent`
+
+#### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/course-contents/{id}/links` | Authenticated | Get all resource links for a course material, grouped by topic |
+| POST | `/api/course-contents/{id}/links` | Authenticated | Manually add a resource link |
+| PATCH | `/api/resource-links/{id}` | Authenticated | Edit link title, topic, description |
+| DELETE | `/api/resource-links/{id}` | Authenticated | Delete a resource link |
+| POST | `/api/course-contents/{id}/extract-links` | Authenticated | Re-run link extraction on existing document text |
+
+#### Frontend — "Videos & Links" Tab
+
+**Location:** New tab on `CourseMaterialDetailPage`, added after Flashcards tab.
+
+**Tab order:** Study Guide | Quiz | Flashcards | **Videos & Links** | Document
+
+**Tab behavior:**
+- Only visible when the course material has 1+ extracted resource links
+- Badge count shows number of links (e.g., "Videos & Links (8)")
+
+**Layout:**
+- Links grouped by `topic_heading` with collapsible section headers
+- **YouTube links:** Rendered as embedded `<iframe>` video players (16:9 aspect ratio, responsive)
+  - Show video title below player
+  - Show description/timestamp notes if available
+  - "Open in YouTube" external link icon
+- **Non-YouTube links:** Rendered as link cards with title, URL preview, and external link icon
+- **No topic heading:** Links without a topic appear under "Other Resources" at the bottom
+
+**Empty state:** "No videos or links found in this material."
+
+**Manual add:** "+ Add Link" button opens a simple form (URL, title, topic) for manually adding resources
+
+#### Extraction Heuristics
+
+The extraction service should handle common teacher formatting patterns:
+
+```
+Topic Heading:
+Link title: https://youtube.com/watch?v=ABC123
+Another link: https://youtube.com/watch?v=DEF456
+
+Another Topic:
+Link: https://youtube.com/watch?v=GHI789
+```
+
+**Rules:**
+1. A line ending with `:` that contains no URL is treated as a **topic heading**
+2. URLs on the same line as text inherit that text as their **title** (text before the URL)
+3. Lines between a URL and the next URL/heading that contain no URL are treated as **description** (e.g., timestamp notes)
+4. YouTube URLs are detected by domain pattern matching (`youtube.com`, `youtu.be`)
+5. All other `http://` / `https://` URLs are classified as `external_link`
+
+#### Sub-tasks
+
+- [x] Backend: `resource_links` model + migration (#1319, PR #1327)
+- [x] Backend: `link_extraction_service.py` — URL extraction + YouTube enrichment (#1320, PR #1329)
+- [x] Backend: Integrate extraction into document upload + teacher comm sync (#1321, PR #1334)
+- [x] Backend: CRUD API endpoints for resource links (#1322, PR #1333)
+- [x] Frontend: "Videos & Links" tab on CourseMaterialDetailPage (#1323, PR #1335)
+- [x] Frontend: YouTube embed component + topic grouping (#1325, PR #1335)
+- [x] Tests: Link extraction service + API route tests (#1326, PR #1336)
+
+---
+
+### 6.58 Image Retention in Study Guides (Phase 1) - IMPLEMENTED
+
+**Added:** 2026-03-07 | **Issues:** #1308-#1313 | **Plan:** [docs/image-retention-plan.md](../docs/image-retention-plan.md)
+
+When users upload documents (PDF, DOCX, PPTX) containing images — diagrams, charts, formulas, screenshots — the study guide generation pipeline previously extracted text via OCR but discarded the original image binaries. Study guides were text-only, losing valuable visual context critical for learning.
+
+#### Solution: Image Extraction + Reference Embedding
+
+A three-layer approach that extracts, stores, and re-embeds images at minimal additional cost:
+
+1. **Extract & Store** — During document upload, extract embedded images from PDF/DOCX/PPTX, capture surrounding text context, compress to max 800px width, and store as `ContentImage` records. Reuse existing Vision OCR descriptions (no new AI cost).
+2. **AI-Aware Placement** — Include image metadata in AI prompts (e.g., `[IMG-1] "Photosynthesis diagram" (near: "Light reactions...")`). AI returns markdown with `![description]({{IMG-N}})` markers at appropriate locations.
+3. **Frontend Rendering** — `AuthImage` component fetches images via authenticated Axios requests, creates blob URLs for display. Unplaced images appear in a fallback "Additional Figures" section.
+
+#### Data Model
+
+**`content_images` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Auto-increment |
+| course_content_id | INTEGER FK | Parent course material (CASCADE delete) |
+| image_data | BLOB | Compressed image binary |
+| media_type | VARCHAR(50) | MIME type (image/jpeg, image/png) |
+| description | TEXT | Vision OCR description (reused, no extra cost) |
+| position_context | TEXT | Surrounding text from source document |
+| position_index | INTEGER | Order within document (0-based) |
+| file_size | INTEGER | Compressed size in bytes |
+| created_at | DATETIME | Auto-set |
+
+#### Image Extraction Pipeline
+
+**`app/services/file_processor.py` additions:**
+
+- `_compress_image()` — Resizes to max 800px width; JPEG for photos, PNG for transparency
+- `_extract_images_from_pdf()` — Uses `page.images` or XObject fallback with page context
+- `_extract_images_from_pptx()` — Extracts via `shape.image.blob` with slide context
+- `_extract_docx_images_with_context()` — Walks document XML relationships to pair images with surrounding paragraph text
+- `extract_images_from_file()` — Orchestrator: dispatches by file type, filters <1KB images, caps at 20 per document, compresses, runs Vision OCR
+- `_ocr_images_with_vision()` — Modified to return per-image descriptions (was batch-concatenated)
+
+#### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/course-contents/{id}/images` | Authenticated | List image metadata (id, description, position) |
+| GET | `/api/course-contents/{id}/images/{image_id}` | Authenticated | Serve image binary with Cache-Control headers |
+
+#### AI Prompt Integration
+
+**`app/services/ai_service.py` modifications:**
+
+- `_build_image_list()` helper formats image metadata into prompt text
+- `images` parameter added to `generate_study_guide()`, `generate_quiz()`, `generate_flashcards()`
+- Study guide gets detailed SOURCE IMAGES/FIGURES block; quiz/flashcards get simpler SOURCE IMAGES block
+- AI places `![description]({{IMG-N}})` markers at contextually appropriate locations
+
+#### Frontend Rendering
+
+**`frontend/src/components/ContentCard.tsx` modifications:**
+
+- `AuthImage` component — Fetches images via Axios with Bearer token, creates blob URLs
+- `resolveImageMarkers()` — Regex replaces `{{IMG-N}}` patterns with authenticated image URLs
+- `MarkdownBody` accepts `courseContentId` prop to resolve image markers
+
+#### Fallback "Additional Figures"
+
+**`app/api/routes/study.py` additions:**
+
+- `_get_images_metadata()` — Queries up to 20 ContentImage records for a course material
+- `_append_unplaced_images()` — Post-processes AI output; any `{{IMG-N}}` markers not placed by the AI are appended as an "Additional Figures" section at the end
+
+#### Cost Analysis
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Per generation | $0.03-0.05 | $0.035-0.055 | +5-10% |
+| Monthly (500 gens) | $15-25 | $17.50-27.50 | +$2.50 |
+| Storage (100 docs/mo) | — | 50-300MB | ~$0.05-0.09/mo |
+
+No new AI API calls — reuses existing Vision OCR output that was previously discarded.
+
+#### Sub-tasks
+
+- [x] Backend: ContentImage model + migration (#1308, PR #1315)
+- [x] Backend: Image extraction from PDF/DOCX/PPTX during upload (#1309, PR #1324)
+- [x] Backend: AI prompt integration with image metadata (#1310, PR #1318)
+- [x] Backend: Image serving endpoint (#1311, PR #1317)
+- [x] Frontend: Render images inline in study guides (#1312, PR #1328)
+- [x] Backend: Fallback "Additional Figures" for unplaced images (#1313, PR #1331)
+
+---
