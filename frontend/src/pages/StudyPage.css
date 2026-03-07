@@ -247,12 +247,6 @@
   text-align: center;
 }
 
-.study-course-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 /* ── Sidebar Action Buttons ──────────────────────────────── */
 .study-panel-actions {
   padding: 12px 16px;
@@ -696,26 +690,6 @@
   border-color: var(--color-accent);
 }
 
-/* ── Loading skeletons ───────────────────────────────────── */
-.study-materials-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Skeleton utility class (re-use the global one if available) */
-.skeleton {
-  background: linear-gradient(90deg, var(--color-surface-alt) 25%, var(--color-border) 50%, var(--color-surface-alt) 75%);
-  background-size: 400% 100%;
-  animation: skeleton-shimmer 1.4s ease infinite;
-  border-radius: var(--radius-sm);
-}
-
-@keyframes skeleton-shimmer {
-  0%   { background-position: 100% 50%; }
-  100% { background-position: 0%   50%; }
-}
-
 /* ── Empty State ─────────────────────────────────────────── */
 .study-materials-empty {
   display: flex;
@@ -989,10 +963,6 @@
   }
 
   .study-spin {
-    animation: none;
-  }
-
-  .skeleton {
     animation: none;
   }
 }

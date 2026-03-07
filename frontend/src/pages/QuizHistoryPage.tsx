@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { studyApi, parentApi } from '../api/client';
 import type { QuizResultSummary, QuizHistoryStats, ChildSummary } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { PageSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import './QuizHistoryPage.css';
 
@@ -116,12 +117,7 @@ export function QuizHistoryPage() {
           )}
         </div>
 
-        {loading && (
-          <div className="quiz-history-loading">
-            <div className="skeleton" style={{ width: '100%', height: 120 }} />
-            <div className="skeleton" style={{ width: '100%', height: 200, marginTop: 16 }} />
-          </div>
-        )}
+        {loading && <PageSkeleton />}
 
         {error && <div className="quiz-history-error">{error}</div>}
 

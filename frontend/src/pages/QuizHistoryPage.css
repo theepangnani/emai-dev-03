@@ -35,12 +35,6 @@
   text-decoration: underline;
 }
 
-.quiz-history-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .quiz-history-error {
   color: var(--color-danger);
   padding: 16px;
