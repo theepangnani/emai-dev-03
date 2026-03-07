@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
@@ -190,48 +191,56 @@ export function FlashcardsPage() {
 
   if (loading) {
     return (
-      <div className="flashcards-page">
-        <div className="flashcards-header">
-          <div className="skeleton" style={{ width: 120, height: 16 }} />
-          <div className="skeleton" style={{ width: '50%', height: 28, marginTop: 8 }} />
-          <div className="skeleton" style={{ width: 140, height: 14, marginTop: 8 }} />
+      <DashboardLayout headerSlot={() => null}>
+        <div className="flashcards-page">
+          <div className="flashcards-header">
+            <div className="skeleton" style={{ width: 120, height: 16 }} />
+            <div className="skeleton" style={{ width: '50%', height: 28, marginTop: 8 }} />
+            <div className="skeleton" style={{ width: 140, height: 14, marginTop: 8 }} />
+          </div>
+          <div className="flashcard-container">
+            <div className="skeleton" style={{ width: '100%', maxWidth: 500, height: 300, borderRadius: 16, margin: '0 auto' }} />
+          </div>
+          <div className="flashcard-controls" style={{ justifyContent: 'center' }}>
+            <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 8 }} />
+            <div className="skeleton" style={{ width: 80, height: 36, borderRadius: 8 }} />
+            <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 8 }} />
+          </div>
         </div>
-        <div className="flashcard-container">
-          <div className="skeleton" style={{ width: '100%', maxWidth: 500, height: 300, borderRadius: 16, margin: '0 auto' }} />
-        </div>
-        <div className="flashcard-controls" style={{ justifyContent: 'center' }}>
-          <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 8 }} />
-          <div className="skeleton" style={{ width: 80, height: 36, borderRadius: 8 }} />
-          <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 8 }} />
-        </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error || !guide || cards.length === 0) {
     return (
-      <div className="flashcards-page">
-        <div className="error">{error || 'Flashcards not found'}</div>
-        <PageNav items={[
-          { label: 'Home', to: '/dashboard' },
-          { label: 'Class Materials', to: '/course-materials' },
-          ...(guide?.course_content_id
-            ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
-            : []),
-          { label: 'Flashcards' },
-        ]} />
-      </div>
+      <DashboardLayout headerSlot={() => null}>
+        <div className="flashcards-page">
+          <PageNav items={[
+            { label: 'Home', to: '/dashboard' },
+            { label: 'Class Materials', to: '/course-materials' },
+            ...(guide?.course_content_id
+              ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+              : []),
+            { label: 'Flashcards' },
+          ]} />
+          <div className="error">{error || 'Flashcards not found'}</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (showSummary) {
     const pct = summary.total > 0 ? Math.round((summary.mastered / summary.total) * 100) : 0;
     return (
+      <DashboardLayout headerSlot={() => null}>
       <div className="flashcards-page">
         <div className="flashcards-header">
           <PageNav items={[
             { label: 'Home', to: '/dashboard' },
-            { label: 'Materials', to: '/course-materials' },
+            { label: 'Class Materials', to: '/course-materials' },
+            ...(guide?.course_content_id
+              ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+              : []),
             { label: 'Flashcards' },
           ]} />
           <h1>{guide.title}</h1>
@@ -269,6 +278,7 @@ export function FlashcardsPage() {
           </div>
         </div>
       </div>
+      </DashboardLayout>
     );
   }
 
@@ -276,6 +286,7 @@ export function FlashcardsPage() {
   const currentDifficulty = cardProgress.get(card.front);
 
   return (
+    <DashboardLayout headerSlot={() => null}>
     <div className="flashcards-page">
       <div className="flashcards-header">
         <PageNav items={[
@@ -394,5 +405,6 @@ export function FlashcardsPage() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }
