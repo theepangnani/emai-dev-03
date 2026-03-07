@@ -19,7 +19,7 @@ import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
 type FilterPriority = 'all' | 'low' | 'medium' | 'high';
-type FilterDue = 'all' | 'overdue' | 'today' | 'week';
+type FilterDue = 'all' | 'overdue' | 'today' | 'week' | 'upcoming';
 
 export function TasksPage() {
   const { user } = useAuth();
@@ -42,7 +42,7 @@ export function TasksPage() {
   });
   const [filterDue, setFilterDue] = useState<FilterDue>(() => {
     const due = searchParams.get('due');
-    return (due === 'overdue' || due === 'today' || due === 'week') ? due : 'all';
+    return (due === 'overdue' || due === 'today' || due === 'week' || due === 'upcoming') ? due as FilterDue : 'all';
   });
   const [filterAssignee, setFilterAssignee] = useState<number | 'all'>(() => {
     const navState = location.state as { selectedChild?: number | null } | null;
@@ -395,20 +395,22 @@ export function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(t => {
-    if (filterStatus === 'archived') return !!t.archived_at;
-    if (filterStatus === 'pending') return !t.is_completed && !t.archived_at;
-    if (filterStatus === 'completed') return t.is_completed;
+    // Status filter
+    if (filterStatus === 'archived' && !t.archived_at) return false;
+    if (filterStatus === 'pending' && (t.is_completed || t.archived_at)) return false;
+    if (filterStatus === 'completed' && !t.is_completed) return false;
+    // Assignee, priority, and due filters apply across all status tabs
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
     if (filterAssignee !== 'all' && t.assigned_to_user_id !== filterAssignee) return false;
     if (filterDue !== 'all' && t.due_date) {
-      const due = new Date(t.due_date);
+      const due = t.due_date.includes('T') ? new Date(t.due_date) : new Date(t.due_date + 'T00:00:00');
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const todayEnd = new Date(todayStart);
       todayEnd.setDate(todayEnd.getDate() + 1);
       if (filterDue === 'overdue') return due < todayStart && !t.is_completed;
       if (filterDue === 'today') return due >= todayStart && due < todayEnd;
-      if (filterDue === 'week') {
+      if (filterDue === 'week' || filterDue === 'upcoming') {
         const weekEnd = new Date(todayStart);
         weekEnd.setDate(weekEnd.getDate() + 7);
         return due >= todayStart && due < weekEnd;

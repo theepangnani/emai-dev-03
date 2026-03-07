@@ -662,14 +662,15 @@ describe('ParentDashboard', () => {
 
   // ── Task Status Pills (#1227) ─────────────────────────────
   it('shows task status pills when child is selected', async () => {
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    const today = new Date()
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // Use local-date strings to avoid UTC/local timezone ambiguity
+    const now = new Date()
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
 
     const makeTask = (id: number, title: string, dueDate: Date) => ({
-      id, title, due_date: dueDate.toISOString().split('T')[0], is_completed: false, archived_at: null,
+      id, title, due_date: fmt(dueDate), is_completed: false, archived_at: null,
       created_by_user_id: 1, assigned_to_user_id: 1100, assignee_name: 'Alex Smith', creator_name: 'Parent',
       description: null, priority: null, category: null, completed_at: null, course_id: null,
       course_content_id: null, study_guide_id: null, course_name: null, course_content_title: null,
