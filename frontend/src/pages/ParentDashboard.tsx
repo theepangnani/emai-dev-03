@@ -8,6 +8,7 @@ import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
+import { AddActionButton } from '../components/AddActionButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { useFeature } from '../hooks/useFeatureToggle';
@@ -306,6 +307,9 @@ export function ParentDashboard() {
                   </button>
                 );
               })}
+              <AddActionButton actions={[
+                { icon: '\u2705', label: 'New Task', onClick: () => pd.setShowCreateTaskModal(true) },
+              ]} />
             </div>
           </div>
 
@@ -382,19 +386,30 @@ export function ParentDashboard() {
                 label: 'Upload Class Material',
                 onClick: () => pd.setShowStudyModal(true),
               },
-              {
-                icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 11 12 14 22 4" />
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                  </svg>
-                ),
-                label: 'Create Task',
-                onClick: () => pd.setShowCreateTaskModal(true),
-              },
             ] satisfies QuickAction[]}
-            maxVisible={3}
+            maxVisible={2}
           />
+
+          {/* Task status pills — visible when a specific child is selected */}
+          {pd.selectedChild && (
+            <div className="pd-task-status-pills">
+              {pd.taskCounts.overdue > 0 && (
+                <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
+                  {pd.taskCounts.overdue} overdue
+                </button>
+              )}
+              {pd.taskCounts.dueToday > 0 && (
+                <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>
+                  {pd.taskCounts.dueToday} due today
+                </button>
+              )}
+              {pd.taskCounts.upcoming > 0 && (
+                <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>
+                  {pd.taskCounts.upcoming} next 3 days
+                </button>
+              )}
+            </div>
+          )}
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
             <div className="pd-onboard-tip" role="status">
