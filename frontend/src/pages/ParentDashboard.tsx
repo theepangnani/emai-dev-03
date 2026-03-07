@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
-import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
+import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
@@ -796,7 +796,7 @@ export function ParentDashboard() {
       )}
 
       {/* Study Tools Modal */}
-      <CreateStudyMaterialModal
+      <UploadMaterialWizard
         open={pd.showStudyModal}
         onClose={pd.resetStudyModal}
         onGenerate={pd.handleGenerateFromModal}

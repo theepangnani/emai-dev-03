@@ -5,7 +5,7 @@ import type { CourseContentItem } from '../api/client';
 import type { QuizHistoryStats } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
-import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
+import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { getCourseColor } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
@@ -632,7 +632,7 @@ export function StudyPage() {
       </div>
 
       {/* ── Upload Modal ──────────────────────────────────────────── */}
-      <CreateStudyMaterialModal
+      <UploadMaterialWizard
         open={studyTools.showStudyModal}
         onClose={handleModalClose}
         onGenerate={studyTools.handleGenerateFromModal}

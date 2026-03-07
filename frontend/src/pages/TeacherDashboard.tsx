@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
 import { useFeature } from '../hooks/useFeatureToggle';
 import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
-import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
+import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -857,7 +857,7 @@ export function TeacherDashboard() {
         </div>
       )}
       {/* Upload / Study Material Modal — same experience as Parent */}
-      <CreateStudyMaterialModal
+      <UploadMaterialWizard
         open={studyTools.showStudyModal}
         onClose={studyTools.resetStudyModal}
         onGenerate={studyTools.handleGenerateFromModal}

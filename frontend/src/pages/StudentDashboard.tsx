@@ -11,7 +11,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { FAQErrorHint } from '../components/FAQErrorHint';
 import { extractFaqCode } from '../utils/faqUtils';
 import { useFocusTrap } from '../hooks/useFocusTrap';
-import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
+import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
@@ -782,7 +782,7 @@ export function StudentDashboard() {
       </section>
 
       {/* ── Upload / Study Material Modal — same experience as Parent ── */}
-      <CreateStudyMaterialModal
+      <UploadMaterialWizard
         open={studyTools.showStudyModal}
         onClose={studyTools.resetStudyModal}
         onGenerate={studyTools.handleGenerateFromModal}

@@ -11,7 +11,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { LottieLoader } from '../components/LottieLoader';
 import { PageNav } from '../components/PageNav';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
-import CreateStudyMaterialModal, { type StudyMaterialGenerateParams } from '../components/CreateStudyMaterialModal';
+import UploadMaterialWizard, { type StudyMaterialGenerateParams } from '../components/UploadMaterialWizard';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import EmptyState from '../components/EmptyState';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
@@ -1423,7 +1423,7 @@ export function StudyGuidesPage() {
       </div>
 
       {/* Study Tools Modal */}
-      <CreateStudyMaterialModal
+      <UploadMaterialWizard
         open={showModal}
         onClose={resetModal}
         onGenerate={handleGenerateFromModal}
