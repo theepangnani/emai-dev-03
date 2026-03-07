@@ -156,6 +156,7 @@ export function useParentStudyTools({
     if (modalParams.types.length === 0) {
       // Upload-only: navigate then run upload/extraction in background
       navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+      setBackgroundGeneration({ status: 'generating', type: 'Material' });
       (async () => {
         try {
           const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
@@ -208,7 +209,10 @@ export function useParentStudyTools({
               content_type: 'notes',
             });
           }
-        } catch { /* silently ignore */ }
+          setBackgroundGeneration({ status: 'success', type: 'Material' });
+        } catch {
+          setBackgroundGeneration({ status: 'error', type: 'Material', error: 'Upload failed' });
+        }
       })();
       return;
     }
