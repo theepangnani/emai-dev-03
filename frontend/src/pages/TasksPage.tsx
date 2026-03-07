@@ -181,7 +181,10 @@ export function TasksPage() {
   const courseIds = useMemo(() => overviews.flatMap(o => o.courses.map(c => c.id)), [overviews]);
 
   const calendarAssignments: CalendarAssignment[] = useMemo(() => {
-    const assignments = overviews.flatMap(overview =>
+    const filteredOverviews = filterAssignee === 'all'
+      ? overviews
+      : overviews.filter(o => o.user_id === filterAssignee);
+    const assignments = filteredOverviews.flatMap(overview =>
       overview.assignments
         .filter(a => a.due_date)
         .map(a => ({
@@ -197,7 +200,10 @@ export function TasksPage() {
           itemType: 'assignment' as const,
         }))
     );
-    const taskItems: CalendarAssignment[] = tasks
+    const filteredCalendarTasks = filterAssignee === 'all'
+      ? tasks
+      : tasks.filter(t => t.assigned_to_user_id === filterAssignee);
+    const taskItems: CalendarAssignment[] = filteredCalendarTasks
       .filter(t => t.due_date)
       .map(t => ({
         id: t.id + 1_000_000,
@@ -215,7 +221,7 @@ export function TasksPage() {
         isCompleted: t.is_completed,
       }));
     return [...assignments, ...taskItems];
-  }, [overviews, courseIds, children.length, tasks]);
+  }, [overviews, courseIds, children.length, tasks, filterAssignee]);
 
   const handleTaskDrop = async (calendarId: number, newDate: Date) => {
     const taskId = calendarId - 1_000_000;
