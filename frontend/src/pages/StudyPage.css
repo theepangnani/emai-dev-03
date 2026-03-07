@@ -305,40 +305,6 @@
   padding: 14px 16px 16px;
 }
 
-/* Legacy stat grid (kept for compat — replaced by ring layout) */
-.study-progress-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.study-progress-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: var(--color-surface-alt);
-  border-radius: var(--radius-sm);
-}
-
-.study-progress-value {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--color-ink);
-  font-family: var(--font-display);
-  line-height: 1.1;
-}
-
-.study-progress-label {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-ink-muted);
-}
-
 /* ── Progress Ring Layout ────────────────────────────────── */
 .study-progress-ring-layout {
   display: flex;
