@@ -282,7 +282,8 @@ export function useParentDashboard() {
 
     for (const t of filteredTasks) {
       if (t.is_completed || t.archived_at || !t.due_date) continue;
-      const due = new Date(t.due_date);
+      // Parse date-only strings as local time (not UTC) to avoid timezone day-shift
+      const due = t.due_date.includes('T') ? new Date(t.due_date) : new Date(t.due_date + 'T00:00:00');
       if (due < todayStart) overdue++;
       else if (due >= todayStart && due < todayEnd) dueToday++;
       else if (due >= todayEnd && due < threeDaysEnd) upcoming++;
