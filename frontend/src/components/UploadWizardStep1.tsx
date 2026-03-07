@@ -149,25 +149,29 @@ function UploadWizardStep1({
             <span className="upload-icon">&#128193;</span>
             <p>Drag &amp; drop files here, or click to browse</p>
             <small>
-              Supports: PDF, Word, Excel, PowerPoint, Images, Text, ZIP &bull; Up to {MAX_FILES_PER_SESSION} files, {MAX_FILE_SIZE_MB} MB each
+              PDF, Word, Excel, PowerPoint, Images, Text, ZIP &bull; Up to {MAX_FILES_PER_SESSION} files, {MAX_FILE_SIZE_MB} MB each
             </small>
           </div>
         )}
       </div>
 
       {/* Divider */}
-      <div className="uw-divider"><span>or paste text below</span></div>
+      <div className="uw-divider"><span>or paste content below</span></div>
 
-      {/* Text area */}
+      {/* Text + image paste area */}
       <textarea
         className="uw-textarea"
         value={studyContent}
         onChange={(e) => onStudyContentChange(e.target.value)}
         onPaste={handlePaste}
-        placeholder="Paste notes, email content, or screenshots..."
+        placeholder="Paste text, notes, or use Ctrl+V to paste screenshots..."
         rows={4}
         disabled={isGenerating}
       />
+      <div className="uw-paste-hint">
+        <span className="uw-paste-hint-icon">&#128247;</span>
+        <span>Tip: Copy a screenshot and press <kbd>Ctrl+V</kbd> (or <kbd>&#8984;V</kbd>) in the box above to add images</span>
+      </div>
 
       {/* Pasted image thumbnails */}
       {pastedImages.length > 0 && (
