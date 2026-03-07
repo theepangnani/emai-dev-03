@@ -207,18 +207,18 @@ export function NotificationsPage() {
                   {group.items.map(n => (
                     <div
                       key={n.id}
-                      className={`notif-card${!n.read ? ' unread' : ''}${n.acked_at ? ' acknowledged' : ''}${n.link ? ' clickable' : ''}`}
+                      className={`notif-card list-row${!n.read ? ' unread' : ''}${n.acked_at ? ' acknowledged' : ''}${n.link ? ' clickable' : ''}`}
                       onClick={() => handleClick(n)}
                     >
-                      <span className="notif-card-icon">{getTypeIcon(n.type)}</span>
-                      <div className="notif-card-body">
-                        <p className="notif-card-title">{n.title}</p>
-                        {n.content && <p className="notif-card-text">{n.content}</p>}
+                      <span className="notif-card-icon list-row-icon">{getTypeIcon(n.type)}</span>
+                      <div className="notif-card-body list-row-body">
+                        <p className="notif-card-title list-row-title">{n.title}</p>
+                        {n.content && <p className="notif-card-text list-row-meta">{n.content}</p>}
                         {n.acked_at && (
                           <span className="notif-acked-badge">Acknowledged</span>
                         )}
                       </div>
-                      <div className="notif-card-actions">
+                      <div className="notif-card-actions list-row-action">
                         <span className="notif-card-time">{formatTime(n.created_at)}</span>
                         <div className="notif-action-btns">
                           {n.requires_ack && !n.acked_at && (

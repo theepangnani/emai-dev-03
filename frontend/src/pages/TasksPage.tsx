@@ -654,7 +654,7 @@ export function TasksPage() {
         {loading ? (
           <ListSkeleton rows={5} />
         ) : error ? (
-          <div className="tasks-empty">
+          <div className="tasks-empty empty-state">
             <p>Error loading tasks: {error}</p>
             <button className="generate-btn btn-primary" onClick={loadTasks}>Retry</button>
           </div>

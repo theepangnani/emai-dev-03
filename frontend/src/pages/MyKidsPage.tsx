@@ -758,25 +758,25 @@ export function MyKidsPage() {
             <div className="mykids-sections">
               {/* Unassigned Courses */}
               {unassignedCourses.length > 0 && (
-                <div className="mykids-section">
-                  <button className="mykids-section-header" onClick={() => setShowUnassignedCourses(p => !p)}>
+                <div className="mykids-section section-card">
+                  <button className="mykids-section-header section-card-header" onClick={() => setShowUnassignedCourses(p => !p)}>
                     <span className={`section-chevron${showUnassignedCourses ? ' expanded' : ''}`}>&#9654;</span>
                     <span className="section-icon" aria-hidden="true">&#128218;</span> Unassigned Classes ({unassignedCourses.length})
                   </button>
                   {showUnassignedCourses && (
-                    <div className="mykids-list">
+                    <div className="mykids-list section-card-body">
                       {unassignedCourses.map(c => (
-                        <div key={c.id} className="mykids-list-row">
-                          <div className="mykids-list-body">
-                            <span className="mykids-list-title">{c.name}</span>
-                            <span className="mykids-list-meta">
+                        <div key={c.id} className="mykids-list-row list-row">
+                          <div className="mykids-list-body list-row-body">
+                            <span className="mykids-list-title list-row-title">{c.name}</span>
+                            <span className="mykids-list-meta list-row-meta">
                               {c.subject && <span>{c.subject}</span>}
                               {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
                               {!c.subject && !c.teacher_name && <span>No child assigned</span>}
                             </span>
                           </div>
                           <button
-                            className="mykids-list-action-btn btn-icon"
+                            className="mykids-list-action-btn btn-icon list-row-action"
                             title="Assign to child"
                             onClick={() => setAssignCourseModal(c)}
                           >&#43;</button>
@@ -789,24 +789,24 @@ export function MyKidsPage() {
 
               {/* Unassigned Materials */}
               {unassignedMaterials.length > 0 && (
-                <div className="mykids-section">
-                  <button className="mykids-section-header" onClick={() => setShowUnassignedMaterials(p => !p)}>
+                <div className="mykids-section section-card">
+                  <button className="mykids-section-header section-card-header" onClick={() => setShowUnassignedMaterials(p => !p)}>
                     <span className={`section-chevron${showUnassignedMaterials ? ' expanded' : ''}`}>&#9654;</span>
                     <span className="section-icon" aria-hidden="true">&#128196;</span> Unassigned Materials ({unassignedMaterials.length})
                   </button>
                   {showUnassignedMaterials && (
-                    <div className="mykids-list">
+                    <div className="mykids-list section-card-body">
                       {unassignedMaterials.map(m => (
-                        <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                          <div className="mykids-list-body">
-                            <span className="mykids-list-title">{m.title}</span>
-                            <span className="mykids-list-meta">
+                        <div key={m.id} className="mykids-list-row list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                          <div className="mykids-list-body list-row-body">
+                            <span className="mykids-list-title list-row-title">{m.title}</span>
+                            <span className="mykids-list-meta list-row-meta">
                               <span className="mykids-badge">{m.content_type}</span>
                               {m.course_name && <span> &middot; {m.course_name}</span>}
                             </span>
                           </div>
                           <button
-                            className="mykids-list-action-btn btn-icon"
+                            className="mykids-list-action-btn btn-icon list-row-action"
                             title="Move to class"
                             onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                           >&#128194;</button>
@@ -850,26 +850,26 @@ export function MyKidsPage() {
           })()}
 
           {/* ── Class Materials ───────────────────── */}
-          <div className="mykids-section">
-            <button className="mykids-section-header" onClick={() => setShowMaterials(p => !p)}>
+          <div className="mykids-section section-card">
+            <button className="mykids-section-header section-card-header" onClick={() => setShowMaterials(p => !p)}>
               <span className={`section-chevron${showMaterials ? ' expanded' : ''}`}>&#9654;</span>
               <span className="section-icon" aria-hidden="true">&#128196;</span> Class Materials ({materials.length})
             </button>
             {showMaterials && (
-              <div className="mykids-list">
+              <div className="mykids-list section-card-body">
                 {materials.length === 0 ? (
                   <p className="mykids-empty-hint">No class materials yet.</p>
                 ) : materials.map(m => (
-                  <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{m.title}</span>
-                      <span className="mykids-list-meta">
+                  <div key={m.id} className="mykids-list-row list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                    <div className="mykids-list-body list-row-body">
+                      <span className="mykids-list-title list-row-title">{m.title}</span>
+                      <span className="mykids-list-meta list-row-meta">
                         <span className="mykids-badge">{m.content_type}</span>
                         {m.course_name && <span> &middot; {m.course_name}</span>}
                       </span>
                     </div>
                     <button
-                      className="mykids-list-action-btn btn-icon"
+                            className="mykids-list-action-btn btn-icon list-row-action"
                       title="Move to class"
                       onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                     >&#128194;</button>
@@ -880,13 +880,13 @@ export function MyKidsPage() {
           </div>
 
           {/* ── Courses ───────────────────────────── */}
-          <div className="mykids-section">
-            <button className="mykids-section-header" onClick={() => setShowCourses(p => !p)}>
+          <div className="mykids-section section-card">
+            <button className="mykids-section-header section-card-header" onClick={() => setShowCourses(p => !p)}>
               <span className={`section-chevron${showCourses ? ' expanded' : ''}`}>&#9654;</span>
               <span className="section-icon" aria-hidden="true">&#128218;</span> Classes ({overview?.courses.length ?? 0})
             </button>
             {showCourses && overview && (
-              <div className="mykids-list">
+              <div className="mykids-list section-card-body">
                 {overview.courses.length === 0 ? (
                   <GoogleClassroomPrompt
                     childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
@@ -894,15 +894,15 @@ export function MyKidsPage() {
                     onAddManually={() => setShowAddCourseModal(true)}
                   />
                 ) : overview.courses.map(c => (
-                  <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{c.name}</span>
-                      <span className="mykids-list-meta">
+                  <div key={c.id} className="mykids-list-row list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
+                    <div className="mykids-list-body list-row-body">
+                      <span className="mykids-list-title list-row-title">{c.name}</span>
+                      <span className="mykids-list-meta list-row-meta">
                         {c.subject && <span>{c.subject}</span>}
                         {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
                       </span>
                     </div>
-                    <span className="mykids-list-chevron">&#8250;</span>
+                    <span className="mykids-list-chevron list-row-action">&#8250;</span>
                   </div>
                 ))}
               </div>
@@ -925,8 +925,8 @@ export function MyKidsPage() {
           )}
 
           {/* ── Tasks ─────────────────────────────── */}
-          <div className="mykids-section">
-            <button className="mykids-section-header" onClick={() => setShowTasks(p => !p)}>
+          <div className="mykids-section section-card">
+            <button className="mykids-section-header section-card-header" onClick={() => setShowTasks(p => !p)}>
               <span className={`section-chevron${showTasks ? ' expanded' : ''}`}>&#9654;</span>
               <span className="section-icon" aria-hidden="true">&#9989;</span> Tasks ({activeTasks.length} active{completedTasks.length > 0 ? `, ${completedTasks.length} done` : ''})
             </button>
@@ -959,8 +959,8 @@ export function MyKidsPage() {
           </div>
 
           {/* ── Grades ────────────────────────────── */}
-          <div className="mykids-section">
-            <button className="mykids-section-header" onClick={() => setShowGrades(p => !p)}>
+          <div className="mykids-section section-card">
+            <button className="mykids-section-header section-card-header" onClick={() => setShowGrades(p => !p)}>
               <span className={`section-chevron${showGrades ? ' expanded' : ''}`}>&#9654;</span>
               <span className="section-icon" aria-hidden="true">&#128202;</span> Grades
             </button>
@@ -973,7 +973,7 @@ export function MyKidsPage() {
           </div>
 
           {/* ── Linked Teachers ────────────────────── */}
-          <div className="mykids-section">
+          <div className="mykids-section section-card">
             <div className="mykids-section-header-row">
               <button className="mykids-section-toggle" onClick={() => setShowTeachers(p => !p)}>
                 <span className={`section-chevron${showTeachers ? ' expanded' : ''}`}>&#9654;</span>
