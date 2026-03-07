@@ -568,7 +568,7 @@ export function CourseDetailPage() {
       <DashboardLayout welcomeSubtitle="Class not found">
         <div className="course-detail-empty">
           <p>Class not found or you don't have access.</p>
-          <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Classes</button>
+          <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => navigate('/courses')}>Back to Classes</button>
         </div>
       </DashboardLayout>
     );
@@ -610,7 +610,7 @@ export function CourseDetailPage() {
             )}
           </div>
           {canEdit && (
-            <button className="courses-btn secondary" onClick={openEditModal}>&#9998; Edit</button>
+            <button className="courses-btn secondary btn-secondary btn-sm" onClick={openEditModal}>&#9998; Edit</button>
           )}
         </div>
 
@@ -623,13 +623,13 @@ export function CourseDetailPage() {
           </button>
           {canEdit && (
             <div className="course-detail-action-btns">
-              <button className="courses-btn secondary action-icon-btn" onClick={openAddContentModal}>
+              <button className="courses-btn secondary btn-secondary btn-sm action-icon-btn" onClick={openAddContentModal}>
                 <span className="action-icon">&#128221;</span> Add Class Details
               </button>
-              <button className="courses-btn secondary action-icon-btn" onClick={openUploadModal}>
+              <button className="courses-btn secondary btn-secondary btn-sm action-icon-btn" onClick={openUploadModal}>
                 <span className="action-icon">&#128228;</span> Upload Class Material
               </button>
-              <button className="courses-btn secondary action-icon-btn" onClick={() => setTaskModalContext({
+              <button className="courses-btn secondary btn-secondary btn-sm action-icon-btn" onClick={() => setTaskModalContext({
                 courseId: courseId,
                 title: `Task for ${course.name}`,
                 label: `Class: ${course.name}`,
@@ -726,7 +726,7 @@ export function CourseDetailPage() {
             <h3>Assignments ({assignments.length})</h3>
           </button>
           {canManageRoster && (
-            <button className="courses-btn secondary action-icon-btn" onClick={openAddAssignment}>
+            <button className="courses-btn secondary btn-secondary btn-sm action-icon-btn" onClick={openAddAssignment}>
               <span className="action-icon">+</span> Add Assignment
             </button>
           )}
@@ -772,7 +772,7 @@ export function CourseDetailPage() {
                         {isStudent && (
                           <div className="course-assignment-actions">
                             <button
-                              className="courses-btn secondary"
+                              className="courses-btn secondary btn-secondary btn-sm"
                               style={{ fontSize: '12px', padding: '4px 10px' }}
                               onClick={() => setSubmittingAssignmentId(submittingAssignmentId === a.id ? null : a.id)}
                             >
@@ -784,7 +784,7 @@ export function CourseDetailPage() {
                         {canManageRoster && !isStudent && (
                           <div className="course-assignment-actions">
                             <button
-                              className="courses-btn secondary"
+                              className="courses-btn secondary btn-secondary btn-sm"
                               style={{ fontSize: '12px', padding: '4px 10px' }}
                               onClick={() => {
                                 if (expandedSubmissionsId === a.id) {
@@ -887,7 +887,7 @@ export function CourseDetailPage() {
               <span className={`section-chevron${rosterExpanded ? ' expanded' : ''}`}>&#9654;</span>
               <h3>Enrolled Students ({students.length})</h3>
             </button>
-            <button className="courses-btn secondary action-icon-btn" onClick={() => { setAddStudentEmail(''); setAddStudentMessage(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
+            <button className="courses-btn secondary btn-secondary btn-sm action-icon-btn" onClick={() => { setAddStudentEmail(''); setAddStudentMessage(''); setAddStudentError(''); setAddStudentSuccess(''); setShowAddStudentModal(true); }}>
               <span className="action-icon">+</span> Invite Student
             </button>
           </div>

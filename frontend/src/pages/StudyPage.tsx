@@ -433,7 +433,7 @@ export function StudyPage() {
         <span className="study-material-date">{formatDate(item.created_at)}</span>
         <div className="study-material-actions" onClick={e => e.stopPropagation()}>
           <button
-            className="study-action-btn primary"
+            className="study-action-btn primary btn-primary btn-sm"
             onClick={(e) => handleStudy(item, e)}
             title="Open material"
           >
@@ -441,7 +441,7 @@ export function StudyPage() {
           </button>
           {raw && (
             <button
-              className="study-action-btn secondary"
+              className="study-action-btn secondary btn-secondary btn-sm"
               onClick={(e) => handleGenerate(item, e)}
               title="Generate AI study tools from this document"
             >
@@ -503,7 +503,7 @@ export function StudyPage() {
                 : 'Try a different filter or upload a new document.'}
             </p>
             <button
-              className="study-empty-cta"
+              className="study-empty-cta btn-primary"
               onClick={handleUploadForCourse}
             >
               + Upload Class Material
@@ -549,7 +549,7 @@ export function StudyPage() {
             </p>
           </div>
           <button
-            className="study-upload-btn"
+            className="study-upload-btn btn-primary"
             onClick={handleUploadForCourse}
           >
             <span aria-hidden="true">+</span> Upload Material

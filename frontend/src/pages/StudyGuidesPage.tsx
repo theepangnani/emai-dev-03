@@ -981,7 +981,7 @@ export function StudyGuidesPage() {
               <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
                 Retry
               </button>
-              <button className="cancel-btn" onClick={() => window.location.reload()}>
+              <button className="cancel-btn btn-secondary" onClick={() => window.location.reload()}>
                 Refresh Page
               </button>
             </div>
@@ -1513,13 +1513,13 @@ export function StudyGuidesPage() {
               </div>
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => setCategorizeGuide(null)}>Cancel</button>
+              <button className="cancel-btn btn-secondary" onClick={() => setCategorizeGuide(null)}>Cancel</button>
               {categorizeNewName ? (
-                <button className="generate-btn" disabled={categorizeCreating} onClick={handleCreateAndCategorize}>
+                <button className="generate-btn btn-primary" disabled={categorizeCreating} onClick={handleCreateAndCategorize}>
                   {categorizeCreating ? 'Creating...' : 'Create & Move'}
                 </button>
               ) : (
-                <button className="generate-btn" disabled={!categorizeCourseId} onClick={() => handleCategorize()}>Move</button>
+                <button className="generate-btn btn-primary" disabled={!categorizeCourseId} onClick={() => handleCategorize()}>Move</button>
               )}
             </div>
           </div>
@@ -1572,13 +1572,13 @@ export function StudyGuidesPage() {
               </div>
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => setReassignContent(null)}>Cancel</button>
+              <button className="cancel-btn btn-secondary" onClick={() => setReassignContent(null)}>Cancel</button>
               {categorizeNewName ? (
-                <button className="generate-btn" disabled={categorizeCreating} onClick={handleCreateAndReassign}>
+                <button className="generate-btn btn-primary" disabled={categorizeCreating} onClick={handleCreateAndReassign}>
                   {categorizeCreating ? 'Creating...' : 'Create & Move'}
                 </button>
               ) : (
-                <button className="generate-btn" disabled={!categorizeCourseId || categorizeCourseId === reassignContent.course_id} onClick={() => handleReassignContent()}>Move</button>
+                <button className="generate-btn btn-primary" disabled={!categorizeCourseId || categorizeCourseId === reassignContent.course_id} onClick={() => handleReassignContent()}>Move</button>
               )}
             </div>
           </div>
@@ -1607,8 +1607,8 @@ export function StudyGuidesPage() {
               ))}
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={handleDatePromptCancel}>Skip</button>
-              <button className="generate-btn" onClick={handleDatePromptSave}>Save Dates</button>
+              <button className="cancel-btn btn-secondary" onClick={handleDatePromptCancel}>Skip</button>
+              <button className="generate-btn btn-primary" onClick={handleDatePromptSave}>Save Dates</button>
             </div>
           </div>
         </div>
@@ -1655,9 +1655,9 @@ export function StudyGuidesPage() {
               </div>
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => setShowAssignModal(false)}>Cancel</button>
+              <button className="cancel-btn btn-secondary" onClick={() => setShowAssignModal(false)}>Cancel</button>
               <button
-                className="generate-btn"
+                className="generate-btn btn-primary"
                 disabled={assignTargetChildren.size === 0 || assigning}
                 onClick={handleBatchAssign}
               >
@@ -1693,8 +1693,8 @@ export function StudyGuidesPage() {
               {createCourseError && <p className="link-error">{createCourseError}</p>}
             </div>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => { setShowCreateCourseModal(false); setCreateCourseError(''); }} disabled={createCourseLoading}>Cancel</button>
-              <button className="generate-btn" onClick={handleCreateCourse} disabled={createCourseLoading || !newCourseName.trim()}>
+              <button className="cancel-btn btn-secondary" onClick={() => { setShowCreateCourseModal(false); setCreateCourseError(''); }} disabled={createCourseLoading}>Cancel</button>
+              <button className="generate-btn btn-primary" onClick={handleCreateCourse} disabled={createCourseLoading || !newCourseName.trim()}>
                 {createCourseLoading ? 'Creating...' : 'Create Class'}
               </button>
             </div>
