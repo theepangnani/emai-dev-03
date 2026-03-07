@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse, type StudyGuide } from '../../api/client';
+import '../../components/UploadMaterialWizard.css';
 
 interface ReplaceDocumentModalProps {
   content: CourseContentItem;
@@ -111,9 +112,12 @@ export function ReplaceDocumentModal({
   const isReplace = content.has_file;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
-        <h2>{isReplace ? 'Replace Document' : 'Upload Class Material'}</h2>
+    <div className="upload-wizard-overlay" onClick={handleClose}>
+      <div className="upload-wizard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="uw-header">
+          <h2 style={{ flex: 1 }}>{isReplace ? 'Replace Document' : 'Upload Class Material'}</h2>
+        </div>
+        <div className="uw-body">
         <p className="cm-replace-warning">
           {isReplace
             ? 'Uploading a new file will replace the current document and re-extract text.'
@@ -121,7 +125,7 @@ export function ReplaceDocumentModal({
           {isReplace && guides.length > 0 && ' Linked study materials will be archived and can be regenerated.'}
         </p>
         <div
-          className={`cm-replace-drop-zone${isDragging ? ' dragging' : ''}${files.length > 0 ? ' has-file' : ''}`}
+          className={`uw-drop-zone${isDragging ? ' dragging' : ''}${files.length > 0 ? ' has-files' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
           onDrop={(e) => {
@@ -143,23 +147,23 @@ export function ReplaceDocumentModal({
             }}
           />
           {files.length > 0 ? (
-            <div className="cm-replace-file-list" onClick={(e) => e.stopPropagation()}>
+            <div className="uw-file-list" onClick={(e) => e.stopPropagation()}>
               {files.map((f, i) => (
-                <div key={i} className="cm-replace-file-info">
-                  <span className="cm-replace-file-icon">&#128196;</span>
-                  <div className="cm-replace-file-details">
-                    <span className="cm-replace-file-name">{f.name}</span>
-                    <span className="cm-replace-file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                <div key={i} className="uw-file-item">
+                  <span className="uw-file-icon">&#128196;</span>
+                  <div className="uw-file-info">
+                    <span className="uw-file-name">{f.name}</span>
+                    <span className="uw-file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
                   </div>
                   <button
-                    className="cm-replace-clear-btn"
+                    className="uw-file-remove"
                     onClick={() => removeFile(i)}
                   >&times;</button>
                 </div>
               ))}
               {files.length < MAX_FILES && (
                 <button
-                  className="cm-replace-add-more"
+                  className="uw-add-more-btn"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   + Add more files ({MAX_FILES - files.length} remaining)
@@ -167,8 +171,8 @@ export function ReplaceDocumentModal({
               )}
             </div>
           ) : (
-            <div className="cm-replace-drop-content">
-              <span className="cm-replace-upload-icon">&#128193;</span>
+            <div className="uw-drop-content">
+              <span className="uw-upload-icon">&#128193;</span>
               <p>Drag & drop files here, or click to browse</p>
               <small>PDF, Word, Excel, PowerPoint, Images, Text, ZIP &middot; up to {MAX_FILES} files &middot; {MAX_FILE_SIZE_MB} MB each</small>
             </div>
@@ -180,14 +184,15 @@ export function ReplaceDocumentModal({
           </div>
         )}
         {fileError && (
-          <div className="modal-error">
-            <span className="error-icon">!</span>
-            <span className="error-message">{fileError}</span>
+          <div className="uw-error">
+            <span className="uw-error-icon">!</span>
+            <span className="uw-error-message">{fileError}</span>
           </div>
         )}
-        <div className="cm-replace-actions">
-          <button className="cm-action-btn" onClick={handleClose}>Cancel</button>
-          <button className="generate-btn" onClick={handleUpload} disabled={files.length === 0}>
+        </div>
+        <div className="uw-footer">
+          <button className="btn-secondary" onClick={handleClose}>Cancel</button>
+          <button className="btn-primary" onClick={handleUpload} disabled={files.length === 0}>
             {isReplace ? 'Replace Document' : `Upload ${files.length > 1 ? `${files.length} Documents` : 'Document'}`}
           </button>
         </div>
