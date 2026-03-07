@@ -95,6 +95,7 @@ vi.mock('../api/client', () => ({
     update: (...args: any[]) => mockTasksUpdate(...args),
     delete: (...args: any[]) => mockTasksDelete(...args),
     remind: vi.fn().mockResolvedValue({ success: true, reminded_at: new Date().toISOString() }),
+    getAssignableUsers: vi.fn().mockResolvedValue([]),
   },
   messagesApi: {
     getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
@@ -136,6 +137,19 @@ vi.mock('../components/RoleQuickActions', () => ({
       {actions.map((a: any) => (
         <button key={a.label} onClick={a.onClick}>{a.label}</button>
       ))}
+    </div>
+  ),
+}))
+
+vi.mock('../components/AddActionButton', () => ({
+  AddActionButton: ({ actions }: { actions: Array<{ label: string; onClick: () => void }> }) => (
+    <div data-testid="fab-button">
+      <button aria-label="Add new">+</button>
+      <div data-testid="fab-popover">
+        {actions.map((a: any) => (
+          <button key={a.label} onClick={a.onClick}>{a.label}</button>
+        ))}
+      </div>
     </div>
   ),
 }))
@@ -306,16 +320,16 @@ describe('ParentDashboard', () => {
   // ── Calendar moved to TasksPage ──────────────────────────────
 
   // ── Quick Action Cards ────────────────────────────────────
-  it('renders quick action cards for Upload Class Material and Create Task', async () => {
+  it('renders quick action cards for View Class Materials and Upload Class Material', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
       expect(screen.getByText('Upload Class Material')).toBeInTheDocument()
     })
-    expect(screen.getAllByText('Create Task').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('View Class Materials')).toBeInTheDocument()
   })
 
-  it('renders CTA buttons in correct order: View Class Materials, Upload, Create Task (#1223)', async () => {
+  it('renders CTA buttons in correct order: View Class Materials, Upload (#1227)', async () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
@@ -323,11 +337,8 @@ describe('ParentDashboard', () => {
     })
     const viewBtn = screen.getByText('View Class Materials')
     const uploadBtn = screen.getByText('Upload Class Material')
-    const createBtns = screen.getAllByText('Create Task')
     // View Class Materials should appear before Upload Class Material in DOM order
     expect(viewBtn.compareDocumentPosition(uploadBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    // Upload Class Material should appear before Create Task in DOM order
-    expect(uploadBtn.compareDocumentPosition(createBtns[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('opens study modal from Upload Class Material action card', async () => {
@@ -614,6 +625,136 @@ describe('ParentDashboard', () => {
     await waitFor(() =>
       expect(screen.queryByRole('heading', { level: 2, name: 'Upload Class Material' })).not.toBeInTheDocument(),
     )
+  })
+
+  // ── FAB Button (#1227) ──────────────────────────────────────
+  it('renders FAB (+) button in child selector row', async () => {
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fab-button')).toBeInTheDocument()
+    })
+  })
+
+  it('FAB popover shows New Task option', async () => {
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fab-popover')).toBeInTheDocument()
+    })
+    expect(screen.getByText('New Task')).toBeInTheDocument()
+  })
+
+  it('clicking New Task in FAB opens create task modal', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText('New Task')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('New Task'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: 'Create Task' })).toBeInTheDocument()
+    })
+  })
+
+  // ── Task Status Pills (#1227) ─────────────────────────────
+  it('shows task status pills when child is selected', async () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const today = new Date()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const makeTask = (id: number, title: string, dueDate: Date) => ({
+      id, title, due_date: dueDate.toISOString().split('T')[0], is_completed: false, archived_at: null,
+      created_by_user_id: 1, assigned_to_user_id: 1100, assignee_name: 'Alex Smith', creator_name: 'Parent',
+      description: null, priority: null, category: null, completed_at: null, course_id: null,
+      course_content_id: null, study_guide_id: null, course_name: null, course_content_title: null,
+      study_guide_title: null, study_guide_type: null, created_at: '2025-01-01', updated_at: null,
+    })
+
+    mockGetDashboard.mockResolvedValue(
+      createMockParentDashboard({
+        children: [child1],
+        child_highlights: [highlight1],
+        all_tasks: [
+          makeTask(1, 'Overdue HW', yesterday),
+          makeTask(2, 'Today HW', today),
+          makeTask(3, 'Tomorrow HW', tomorrow),
+        ],
+      }),
+    )
+
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Alex Smith')).toBeInTheDocument()
+    })
+
+    // Task status pills appear (also in TodaysFocusHeader, so use getAllByText)
+    await waitFor(() => {
+      const overdueEls = screen.getAllByText('1 overdue')
+      // At least one should be a pd-status-pill
+      expect(overdueEls.some(el => el.classList.contains('pd-status-pill-overdue'))).toBe(true)
+    })
+    const todayEls = screen.getAllByText('1 due today')
+    expect(todayEls.some(el => el.classList.contains('pd-status-pill-today'))).toBe(true)
+    const upcomingEls = screen.getAllByText('1 next 3 days')
+    expect(upcomingEls.some(el => el.classList.contains('pd-status-pill-upcoming'))).toBe(true)
+  })
+
+  it('hides task status pills when no child is selected (All mode)', async () => {
+    mockGetDashboard.mockResolvedValue(
+      createMockParentDashboard({
+        children: [child1, child2],
+        child_highlights: [highlight1, highlight2],
+      }),
+    )
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
+    })
+
+    // In "All" mode (no specific child selected), pills should not render
+    expect(screen.queryByText(/\d+ overdue/)).not.toBeInTheDocument()
+  })
+
+  it('task status pill navigates to filtered tasks page', async () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    mockGetDashboard.mockResolvedValue(
+      createMockParentDashboard({
+        children: [child1],
+        child_highlights: [highlight1],
+        all_tasks: [{
+          id: 1, title: 'Late HW', due_date: yesterday.toISOString().split('T')[0], is_completed: false, archived_at: null,
+          created_by_user_id: 1, assigned_to_user_id: 1100, assignee_name: 'Alex Smith', creator_name: 'Parent',
+          description: null, priority: null, category: null, completed_at: null, course_id: null,
+          course_content_id: null, study_guide_id: null, course_name: null, course_content_title: null,
+          study_guide_title: null, study_guide_type: null, created_at: '2025-01-01', updated_at: null,
+        }],
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      const overdueEls = screen.getAllByText('1 overdue')
+      expect(overdueEls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Click the status pill (not the focus tag)
+    const overdueEls = screen.getAllByText('1 overdue')
+    const pill = overdueEls.find(el => el.classList.contains('pd-status-pill-overdue'))!
+    await user.click(pill)
+
+    expect(mockNavigate).toHaveBeenCalledWith('/tasks?due=overdue')
   })
 
   it('does not render Coming Up section (moved to My Kids page #1221)', async () => {
