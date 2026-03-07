@@ -3,10 +3,8 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import CreateStudyMaterialModal from '../components/CreateStudyMaterialModal';
 import { AlertBanner } from '../components/parent/AlertBanner';
-import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
-import { CollapsibleSection } from '../components/parent/CollapsibleSection';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
@@ -98,8 +96,8 @@ export function ParentDashboard() {
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
 
-  // Collapsible section states (#832)
-  const [sectionStates, setSectionStates] = useState<SectionStates>(loadSectionStates);
+  // Collapsible section states (#832) — sectionStates retained for simplified/full toggle
+  const [, setSectionStates] = useState<SectionStates>(loadSectionStates);
   const [viewMode, setViewMode] = useState<'simplified' | 'full'>(loadViewMode);
 
   // Scroll indicator state for child selector (#830)
@@ -125,14 +123,6 @@ export function ParentDashboard() {
       ro.disconnect();
     };
   }, [updateScrollIndicators, pd.children.length]);
-
-  const updateSection = useCallback((key: keyof SectionStates, value: boolean) => {
-    setSectionStates(prev => {
-      const next = { ...prev, [key]: value };
-      saveSectionStates(next);
-      return next;
-    });
-  }, []);
 
   const handleToggleViewMode = useCallback(() => {
     setViewMode(prev => {
@@ -367,21 +357,6 @@ export function ParentDashboard() {
             }
             return null;
           })()}
-
-          {/* Coming Up Timeline (#832 - collapsible, #1216 moved above CTAs) */}
-          <CollapsibleSection
-            title="Coming Up"
-            expanded={sectionStates.comingUp}
-            onToggle={() => updateSection('comingUp', !sectionStates.comingUp)}
-          >
-            <ComingUpTimeline
-              calendarAssignments={pd.calendarAssignments}
-              selectedChild={pd.selectedChild}
-              onNavigateStudy={pd.handleOneClickStudy}
-              onCreateTask={() => pd.setShowCreateTaskModal(true)}
-              onUploadMaterial={() => pd.setShowStudyModal(true)}
-            />
-          </CollapsibleSection>
 
           {/* Quick Action Bar (#837 unified) */}
           <RoleQuickActions

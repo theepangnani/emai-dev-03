@@ -600,4 +600,22 @@ describe('ParentDashboard', () => {
       expect(screen.queryByRole('heading', { level: 2, name: 'Upload Class Material' })).not.toBeInTheDocument(),
     )
   })
+
+  it('does not render Coming Up section (moved to My Kids page #1221)', async () => {
+    mockGetDashboard.mockResolvedValue(
+      createMockParentDashboard({ children: [child1] }),
+    )
+    mockGetChildOverview.mockResolvedValue(createMockChildOverview({ student_id: 100 }))
+    mockListSent.mockResolvedValue([])
+    mockGetSupportedFormats.mockResolvedValue({ formats: [] })
+    mockListGuides.mockResolvedValue([])
+
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Alex Smith')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Coming Up')).not.toBeInTheDocument()
+  })
 })
