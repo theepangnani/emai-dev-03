@@ -315,6 +315,21 @@ describe('ParentDashboard', () => {
     expect(screen.getAllByText('Create Task').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('renders CTA buttons in correct order: View Class Materials, Upload, Create Task (#1223)', async () => {
+    renderWithProviders(<ParentDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText('View Class Materials')).toBeInTheDocument()
+    })
+    const viewBtn = screen.getByText('View Class Materials')
+    const uploadBtn = screen.getByText('Upload Class Material')
+    const createBtns = screen.getAllByText('Create Task')
+    // View Class Materials should appear before Upload Class Material in DOM order
+    expect(viewBtn.compareDocumentPosition(uploadBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Upload Class Material should appear before Create Task in DOM order
+    expect(uploadBtn.compareDocumentPosition(createBtns[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('opens study modal from Upload Class Material action card', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ParentDashboard />)
