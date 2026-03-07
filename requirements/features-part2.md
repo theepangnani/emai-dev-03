@@ -498,3 +498,67 @@ Cross-page UI consistency pass ensuring all 24 pages follow identical layout, co
 - [ ] Orphaned per-page CSS removed after migration
 - [ ] Total CSS line reduction documented
 
+### 6.28 Upload Modal Redesign: Two-Step Wizard
+
+Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a single dense form into a progressive two-step wizard. The current modal overwhelms novice users by presenting file upload, text paste, AI tool checkboxes, title, course selector, material selector, focus prompts, and duplicate warnings all at once. The redesign prioritizes simplicity and usability across all roles (Parent, Student, Teacher, Admin).
+
+**GitHub Issues:** (see Epic issue)
+
+**Problem Statement:**
+- Current modal has 8+ form fields visible simultaneously
+- AI tool options appear above file upload (backwards flow — need content before generating)
+- "Other" checkbox is ambiguous; button label morphs into 3+ variants
+- Novice users don't know where to start
+
+**Design: Two-Step Progressive Wizard**
+
+#### 6.28.1 Step 1 — Add Your Material
+- [ ] File drop zone as hero element (large, prominent, first thing visible)
+- [ ] Drag-and-drop + click-to-browse (same file types: PDF, Word, Excel, PPT, Images, Text, ZIP)
+- [ ] Multi-file support (up to 10 files, 20 MB each) — same limits as current
+- [ ] "or paste text below" divider with textarea
+- [ ] Clipboard paste support (files + images) — same as current
+- [ ] Class selector dropdown (only if `courses` prop provided)
+- [ ] "Next" button advances to Step 2; "Just Upload" link skips AI tools entirely
+- [ ] Pasted image thumbnails with remove buttons
+
+#### 6.28.2 Step 2 — Generate Study Tools (Optional)
+- [ ] Summary of uploaded content (filename + checkmark) for context
+- [ ] Visual card-based tool selection (3 cards: Study Guide, Practice Quiz, Flashcards)
+- [ ] Cards use icons + labels, tap to toggle, accent border + fill when selected
+- [ ] Title field (auto-filled from filename, editable)
+- [ ] "Focus on..." optional prompt field (replaces both focusPrompt and otherPrompt)
+- [ ] "Skip" button = upload without AI generation
+- [ ] "Upload & Create" button = upload + generate selected tools
+- [ ] Remove "Other" checkbox — focus prompt field handles custom requests naturally
+
+#### 6.28.3 Wizard Shell & UX
+- [ ] Smooth slide animation between steps (left/right)
+- [ ] Step indicator (1 of 2 / 2 of 2) — subtle, not a heavy stepper
+- [ ] Back arrow on Step 2 returns to Step 1 with state preserved
+- [ ] Same component used for all roles (Parent, Student, Teacher, Admin)
+- [ ] Parent notification note shown inline when `showParentNote` is true
+- [ ] Duplicate check warning shown as alert after upload attempt (not inline in form)
+- [ ] Existing material selector moved out of modal (handled via material detail page)
+
+#### 6.28.4 CSS & Responsive
+- [ ] New wizard modal CSS using existing design system variables
+- [ ] Card-based tool selector styles (hover, selected, disabled states)
+- [ ] Step transition animations (CSS or minimal JS)
+- [ ] Mobile-responsive: cards stack vertically on small screens
+- [ ] Consistent with 6.27 Design Consistency Initiative patterns
+
+#### 6.28.5 Integration & Cleanup
+- [ ] Update ParentDashboard to use new wizard modal
+- [ ] Update StudentDashboard to use new wizard modal
+- [ ] Update TeacherDashboard to use new wizard modal
+- [ ] Update StudyGuidesPage to use new wizard modal
+- [ ] Update StudyPage to use new wizard modal
+- [ ] Update ReplaceDocumentModal for visual consistency
+- [ ] Remove old CreateStudyMaterialModal.tsx after migration
+- [ ] Remove orphaned CSS for old modal
+
+#### 6.28.6 Backend
+- No backend changes required — same `/api/course-contents/upload` and `/api/course-contents/upload-multi` endpoints
+- Same `StudyMaterialGenerateParams` interface; wizard maps to identical payload
+
