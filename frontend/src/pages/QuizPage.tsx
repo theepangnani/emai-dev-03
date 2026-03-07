@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
@@ -106,44 +107,49 @@ export function QuizPage() {
 
   if (loading) {
     return (
-      <div className="quiz-page">
-        <div className="quiz-header">
-          <div className="skeleton" style={{ width: 120, height: 16 }} />
-          <div className="skeleton" style={{ width: '50%', height: 28, marginTop: 8 }} />
-          <div className="skeleton" style={{ width: 140, height: 14, marginTop: 8 }} />
-        </div>
-        <div className="quiz-content">
-          <div className="question-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="skeleton" style={{ width: '80%', height: 22 }} />
-            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
-            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
-            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
-            <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+      <DashboardLayout showBackButton headerSlot={() => null}>
+        <div className="quiz-page">
+          <div className="quiz-header">
+            <div className="skeleton" style={{ width: 120, height: 16 }} />
+            <div className="skeleton" style={{ width: '50%', height: 28, marginTop: 8 }} />
+            <div className="skeleton" style={{ width: 140, height: 14, marginTop: 8 }} />
+          </div>
+          <div className="quiz-content">
+            <div className="question-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="skeleton" style={{ width: '80%', height: 22 }} />
+              <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+              <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+              <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+              <div className="skeleton" style={{ width: '100%', height: 48, borderRadius: 8 }} />
+            </div>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error || !guide || questions.length === 0) {
     return (
-      <div className="quiz-page">
-        <div className="error">{error || 'Quiz not found'}</div>
-        <PageNav items={[
-          { label: 'Home', to: '/dashboard' },
-          { label: 'Class Materials', to: '/course-materials' },
-          ...(guide?.course_content_id
-            ? [{ label: guide.title.replace(/^Quiz:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
-            : []),
-          { label: 'Quiz' },
-        ]} />
-      </div>
+      <DashboardLayout showBackButton headerSlot={() => null}>
+        <div className="quiz-page">
+          <PageNav items={[
+            { label: 'Home', to: '/dashboard' },
+            { label: 'Class Materials', to: '/course-materials' },
+            ...(guide?.course_content_id
+              ? [{ label: guide.title.replace(/^Quiz:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+              : []),
+            { label: 'Quiz' },
+          ]} />
+          <div className="error">{error || 'Quiz not found'}</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   const question = questions[currentQuestion];
 
   return (
+    <DashboardLayout showBackButton headerSlot={() => null}>
     <div className="quiz-page">
       <div className="quiz-header">
         <PageNav items={[
@@ -314,5 +320,6 @@ export function QuizPage() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }
