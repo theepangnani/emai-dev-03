@@ -557,7 +557,7 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout welcomeSubtitle="Class details" showBackButton>
+      <DashboardLayout welcomeSubtitle="Class details">
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -565,7 +565,7 @@ export function CourseDetailPage() {
 
   if (!course) {
     return (
-      <DashboardLayout welcomeSubtitle="Class not found" showBackButton>
+      <DashboardLayout welcomeSubtitle="Class not found">
         <div className="course-detail-empty">
           <p>Class not found or you don't have access.</p>
           <button className="courses-btn secondary" onClick={() => navigate('/courses')}>Back to Classes</button>
@@ -575,7 +575,7 @@ export function CourseDetailPage() {
   }
 
   return (
-    <DashboardLayout welcomeSubtitle={course.name} showBackButton>
+    <DashboardLayout welcomeSubtitle={course.name}>
       <div className="course-detail-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
