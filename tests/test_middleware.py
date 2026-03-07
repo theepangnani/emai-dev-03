@@ -73,6 +73,14 @@ def test_security_headers_present(client):
     assert "camera=()" in resp.headers.get("Permissions-Policy", "")
 
 
+def test_csp_allows_youtube_embeds(client):
+    """CSP frame-src must allow YouTube embeds for Videos & Links tab (#1337)."""
+    resp = client.get("/health")
+    csp = resp.headers.get("Content-Security-Policy", "")
+    assert "frame-src" in csp, "CSP missing frame-src directive"
+    assert "https://www.youtube.com" in csp, "CSP frame-src must allow https://www.youtube.com"
+
+
 # --- #515: Swagger docs disabled in prod ---
 
 def test_docs_available_in_dev(client):
