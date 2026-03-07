@@ -36,6 +36,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "img-src 'self' data: https:; "
                 "font-src 'self' data: https://fonts.gstatic.com; "
                 "connect-src 'self'; "
+                "frame-src 'self' https://www.youtube.com; "
                 "frame-ancestors 'none'"
             )
         else:
@@ -46,6 +47,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "img-src 'self' data: https: http://localhost:*; "
                 "font-src 'self' data: https://fonts.gstatic.com; "
                 "connect-src 'self' http://localhost:* ws://localhost:*; "
+                "frame-src 'self' https://www.youtube.com; "
                 "frame-ancestors 'none'"
             )
 
