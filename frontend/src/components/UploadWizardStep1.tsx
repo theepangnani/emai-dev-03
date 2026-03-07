@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 
 const MAX_FILE_SIZE_MB = 20;
 const MAX_FILES_PER_SESSION = 10;
@@ -21,6 +21,7 @@ interface UploadWizardStep1Props {
   courses?: { id: number; name: string }[];
   selectedCourseId?: number | '';
   onCourseChange?: (id: number | '') => void;
+  onCreateCourse?: (name: string) => Promise<void>;
   // State
   isGenerating: boolean;
   error: string;
@@ -55,6 +56,7 @@ function UploadWizardStep1({
   courses,
   selectedCourseId,
   onCourseChange,
+  onCreateCourse,
   isGenerating,
   error,
   isDragging,
@@ -63,6 +65,9 @@ function UploadWizardStep1({
   onDrop,
 }: UploadWizardStep1Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showCreateCourse, setShowCreateCourse] = useState(false);
+  const [newCourseName, setNewCourseName] = useState('');
+  const [creatingCourse, setCreatingCourse] = useState(false);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) onAddFiles(e.target.files);
@@ -194,16 +199,54 @@ function UploadWizardStep1({
           <label>
             Class
             <select
-              value={selectedCourseId ?? ''}
-              onChange={(e) => onCourseChange(e.target.value ? Number(e.target.value) : '')}
+              value={showCreateCourse ? '__create__' : (selectedCourseId ?? '')}
+              onChange={(e) => {
+                if (e.target.value === '__create__') {
+                  setShowCreateCourse(true);
+                } else {
+                  setShowCreateCourse(false);
+                  onCourseChange(e.target.value ? Number(e.target.value) : '');
+                }
+              }}
               disabled={isGenerating}
             >
               <option value="">Select a class (optional)</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
+              <option value="__create__">+ Create new class...</option>
             </select>
           </label>
+          {showCreateCourse && onCreateCourse && (
+            <div className="uw-create-course-inline">
+              <input
+                type="text"
+                value={newCourseName}
+                onChange={(e) => setNewCourseName(e.target.value)}
+                placeholder="Enter class name"
+                disabled={creatingCourse}
+                autoFocus
+              />
+              <button
+                className="btn-primary"
+                disabled={!newCourseName.trim() || creatingCourse}
+                onClick={async () => {
+                  setCreatingCourse(true);
+                  try {
+                    await onCreateCourse(newCourseName.trim());
+                    setNewCourseName('');
+                    setShowCreateCourse(false);
+                  } catch { /* ignore */ }
+                  setCreatingCourse(false);
+                }}
+              >
+                {creatingCourse ? 'Creating...' : 'Create'}
+              </button>
+              <button className="btn-secondary" onClick={() => { setShowCreateCourse(false); setNewCourseName(''); }}>
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -358,6 +358,14 @@ export function useParentDashboard() {
     );
   }, [activeOverviews, courseIds, children.length]);
 
+  // Compute child courses for the upload wizard
+  const childCoursesForWizard = useMemo(() => {
+    if (!selectedChild) return undefined;
+    const overview = childOverview;
+    if (!overview) return undefined;
+    return overview.courses.map(c => ({ id: c.id, name: c.name }));
+  }, [selectedChild, childOverview]);
+
   const handleGoToCourse = (courseId: number) => {
     navigate(`/courses?highlight=${courseId}`);
   };
@@ -423,7 +431,7 @@ export function useParentDashboard() {
     overviewLoading,
 
     // Dashboard data
-    filteredTasks, taskCounts, courseMaterials, pendingInvites: invites.pendingInvites, resendingId: invites.resendingId, handleResendInvite: invites.handleResendInvite,
+    childCoursesForWizard, filteredTasks, taskCounts, courseMaterials, pendingInvites: invites.pendingInvites, resendingId: invites.resendingId, handleResendInvite: invites.handleResendInvite,
 
     // Calendar
     calendarCollapsed, toggleCalendar, showCalendarTooltip, dismissCalendarTooltip,
