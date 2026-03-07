@@ -58,7 +58,10 @@ def get_authorization_url(state: str | None = None) -> tuple[str, str]:
 
 def exchange_code_for_tokens(code: str) -> dict:
     """Exchange authorization code for access and refresh tokens."""
+    import logging
     import requests
+
+    logger = logging.getLogger(__name__)
 
     # Exchange code for tokens directly to avoid scope validation issues
     token_url = "https://oauth2.googleapis.com/token"
@@ -71,7 +74,17 @@ def exchange_code_for_tokens(code: str) -> dict:
     }
 
     response = requests.post(token_url, data=data)
-    response.raise_for_status()
+    if not response.ok:
+        # Log the actual Google error so we can diagnose token exchange failures
+        try:
+            error_detail = response.json()
+        except Exception:
+            error_detail = response.text[:500]
+        logger.error(
+            f"Google token exchange failed: {response.status_code} - {error_detail} "
+            f"(redirect_uri={settings.google_redirect_uri})"
+        )
+        response.raise_for_status()
     tokens = response.json()
 
     return {
