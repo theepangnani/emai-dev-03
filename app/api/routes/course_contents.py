@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db, SessionLocal
 from app.core.rate_limit import limiter, get_user_id_or_ip
+from app.models.content_image import ContentImage
 from app.models.course_content import CourseContent
 from app.models.source_file import SourceFile
 from app.models.course import Course, student_courses
@@ -27,6 +28,7 @@ from app.schemas.course_content import (
     CourseContentResponse,
     CourseContentUpdateResponse,
 )
+from app.schemas.content_image import ContentImageResponse
 from app.schemas.source_file import SourceFileResponse
 
 import logging
@@ -1065,4 +1067,66 @@ def download_source_file(
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Content-Length": str(len(source.file_data)),
         },
+    )
+
+
+# ── Content Images endpoints (#1311) ──────────────────────────────
+
+@router.get("/{content_id}/images", response_model=list[ContentImageResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_content_images(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List images extracted from a course content item, ordered by position."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    images = (
+        db.query(ContentImage)
+        .filter(ContentImage.course_content_id == content_id)
+        .order_by(ContentImage.position_index)
+        .all()
+    )
+    return images
+
+
+@router.get("/{content_id}/images/{image_id}")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_content_image(
+    request: Request,
+    content_id: int,
+    image_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Serve the raw binary of a single content image with correct Content-Type."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    image = (
+        db.query(ContentImage)
+        .filter(
+            ContentImage.id == image_id,
+            ContentImage.course_content_id == content_id,
+        )
+        .first()
+    )
+    if not image:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    return Response(
+        content=image.image_data,
+        media_type=image.media_type,
+        headers={"Cache-Control": "public, max-age=86400"},
     )
