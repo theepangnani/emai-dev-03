@@ -2206,6 +2206,155 @@ button.retry-btn:disabled {
   color: var(--color-ink-muted);
 }
 
+/* ── Shared: Section Card ─────────────────────────────────────────── */
+/* Reusable card wrapper for collapsible sections (e.g. My Kids, Tasks) */
+.section-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.section-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.section-card-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.section-card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0 18px 8px;
+}
+
+/* ── Shared: List Row ─────────────────────────────────────────────── */
+/* Reusable row for list items inside cards (courses, materials, etc.) */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.list-row:last-child {
+  border-bottom: none;
+}
+
+.list-row:hover {
+  background: var(--color-surface-alt);
+  border-radius: 6px;
+}
+
+.list-row-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list-row-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-row-meta {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.list-row-action {
+  flex-shrink: 0;
+}
+
+/* ── Shared: Empty State ──────────────────────────────────────────── */
+/* Reusable empty / placeholder state for sections with no data */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+.empty-state-icon {
+  font-size: 32px;
+  color: var(--color-ink-muted);
+  margin-bottom: 8px;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 4px;
+}
+
+.empty-state-desc {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin: 4px 0 12px;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+.empty-state-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.empty-state-action:hover {
+  background: var(--color-accent-strong);
+  transform: translateY(-1px);
+}
+
+.empty-state-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Dashboard footer — legal links */
 .dashboard-footer {
   text-align: center;
