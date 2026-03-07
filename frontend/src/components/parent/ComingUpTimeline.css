@@ -1,0 +1,436 @@
+/* ============================================
+   Coming Up Timeline (#712)
+   ============================================ */
+
+.pd-timeline-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.pd-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.pd-timeline-heading {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.pd-timeline-view-all {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.pd-timeline-view-all:hover {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+.pd-timeline-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--color-muted);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.pd-timeline-dismiss:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
+}
+
+/* Timeline vertical line */
+.pd-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  padding-left: 22px;
+}
+
+.pd-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--color-border);
+  border-radius: 1px;
+}
+
+/* Timeline item */
+.pd-timeline-item {
+  position: relative;
+  padding: 10px 12px 10px 0;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.pd-timeline-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.pd-timeline-item.completed {
+  opacity: 0.55;
+}
+
+/* Urgency dots */
+.pd-timeline-dot {
+  position: absolute;
+  left: -18px;
+  top: 16px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-border);
+  border: 2px solid var(--color-surface);
+  z-index: 1;
+}
+
+.pd-timeline-item.overdue .pd-timeline-dot {
+  background: var(--priority-high);
+  box-shadow: 0 0 0 3px var(--priority-high-light);
+}
+
+.pd-timeline-item.today .pd-timeline-dot {
+  background: var(--priority-medium);
+  box-shadow: 0 0 0 3px var(--priority-medium-light);
+}
+
+.pd-timeline-item.upcoming .pd-timeline-dot {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.pd-timeline-item.later .pd-timeline-dot {
+  background: var(--color-ink-muted);
+}
+
+/* Content row */
+.pd-timeline-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-timeline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pd-timeline-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-muted-border, #c5c5c5);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pd-timeline-checkbox:checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.pd-timeline-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pd-timeline-checkbox:hover {
+  border-color: var(--color-accent);
+}
+
+.pd-timeline-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-timeline-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-timeline-title.completed {
+  text-decoration: line-through;
+  color: var(--color-ink-muted);
+}
+
+.pd-timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pd-timeline-date {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pd-timeline-date.overdue {
+  color: var(--priority-high);
+}
+
+.pd-timeline-date.today {
+  color: var(--priority-medium);
+}
+
+.pd-timeline-date.upcoming {
+  color: var(--color-accent-strong);
+}
+
+.pd-timeline-date.later {
+  color: var(--color-ink-muted);
+}
+
+.pd-timeline-course {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
+  padding: 1px 8px;
+  border-radius: 8px;
+  border-left: 2px solid var(--color-border);
+}
+
+.pd-timeline-type {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+
+.pd-timeline-type.assignment {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+}
+
+.pd-timeline-type.task {
+  background: var(--color-purple-light, rgba(124, 58, 237, 0.08));
+  color: var(--color-purple, #7c3aed);
+}
+
+.pd-timeline-child {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* Actions */
+.pd-timeline-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.pd-timeline-study-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent-strong);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.pd-timeline-study-btn:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* Remind button on timeline */
+.pd-timeline-remind-btn {
+  padding: 4px 10px;
+  border: 1px solid #f59e0b;
+  background: transparent;
+  color: #d97706;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 32px;
+}
+
+.pd-timeline-remind-btn:hover:not(:disabled) {
+  background: #fffbeb;
+  border-color: #d97706;
+}
+
+.pd-timeline-remind-btn.reminded {
+  border-color: var(--color-border);
+  color: var(--color-ink-muted);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.pd-timeline-remind-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* More link */
+.pd-timeline-more {
+  display: block;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  padding: 8px;
+  margin-top: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.pd-timeline-more:hover {
+  background: var(--color-accent-subtle);
+}
+
+/* Empty state */
+.pd-timeline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--color-ink-muted);
+}
+
+.pd-timeline-empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.pd-timeline-empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ============================================
+   Responsive: Timeline
+   ============================================ */
+
+@media (max-width: 768px) {
+  .pd-timeline-section {
+    padding: 16px;
+  }
+
+  .pd-timeline-row {
+    flex-wrap: wrap;
+  }
+
+  .pd-timeline-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pd-timeline {
+    padding-left: 18px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pd-timeline-item,
+  .pd-timeline-study-btn {
+    transition: none !important;
+  }
+}
+
+/* -- Mobile touch targets -- */
+@media (max-width: 768px) {
+  .pd-timeline-checkbox {
+    width: 18px;
+    height: 18px;
+  }
+
+  .pd-timeline-checkbox::before {
+    content: '';
+    position: absolute;
+    top: -13px;
+    left: -13px;
+    right: -13px;
+    bottom: -13px;
+  }
+}
+
+/* -- Mobile layout -- */
+@media (max-width: 768px) {
+  .pd-timeline-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .pd-timeline-row {
+    flex-wrap: wrap;
+  }
+
+  .pd-timeline-actions {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .pd-timeline-study-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
