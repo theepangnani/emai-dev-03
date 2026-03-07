@@ -372,7 +372,7 @@ export function CourseMaterialDetailPage() {
     try {
       await courseContentsApi.download(content.id, content.original_filename || undefined);
     } catch {
-      setError('Failed to download document');
+      showToast('Failed to download document');
     } finally {
       setDownloading(false);
     }
