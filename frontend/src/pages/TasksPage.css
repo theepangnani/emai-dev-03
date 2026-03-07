@@ -57,8 +57,8 @@
 
 .tasks-child-selector .child-color-dot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -334,6 +334,7 @@
 .tasks-chip.active {
   background: var(--color-accent);
   color: white;
+  border-color: var(--color-accent);
 }
 
 /* Action icon button (shared with CourseDetailPage) */
@@ -352,7 +353,7 @@
 .tasks-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .task-row {
@@ -368,6 +369,19 @@
 
 .task-row:hover {
   box-shadow: var(--shadow-soft);
+}
+
+/* Priority left border (via :has selector on inner badge) */
+.task-row:has(.task-priority-badge.high) {
+  border-left: 3px solid var(--color-danger);
+}
+
+.task-row:has(.task-priority-badge.medium) {
+  border-left: 3px solid var(--color-warning, #f59e0b);
+}
+
+.task-row:has(.task-priority-badge.low) {
+  border-left: 3px solid var(--color-success, #22c55e);
 }
 
 .task-row.completed {
