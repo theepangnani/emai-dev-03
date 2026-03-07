@@ -417,6 +417,12 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer:
           "Yes. ClassBridge maintains a persistent student profile with grade tracking, analytics, and AI insights over time. ChatGPT starts fresh every conversation — it doesn't track your child's academic trajectory.",
       },
+      {
+        question:
+          'Will ClassBridge integrate directly with school boards and teachers?',
+        answer:
+          "Currently, ClassBridge integrates with Google Classroom through the parent or student's own Google account. Direct integration with school boards and teacher-managed systems requires institutional permissions that are not yet in place. We are actively working on partnerships and approval processes to enable school-level and board-level integration in future phases. Stay tuned — this is a top priority on our roadmap.",
+      },
     ],
   },
 ];
