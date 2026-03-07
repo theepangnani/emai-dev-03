@@ -49,11 +49,9 @@ export default function UploadMaterialWizard({
   initialTitle = '',
   initialContent = '',
   courses,
-  materials: _materials,
   selectedCourseId,
   onCourseChange,
   selectedMaterialId,
-  onMaterialChange: _onMaterialChange,
   duplicateCheck,
   onViewExisting,
   onRegenerate,
@@ -72,18 +70,27 @@ export default function UploadMaterialWizard({
 
   const selectedFilesRef = useRef<File[]>([]);
 
-  // Reset state when modal opens
+  // Reset state when modal opens — intentional sync setState on open to reset form fields
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyTitle(initialTitle);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyContent(initialContent);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedTypes(new Set());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFocusPrompt('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFiles([]);
     selectedFilesRef.current = [];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPastedImages([]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDragging(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError('');
   }, [open, initialTitle, initialContent]);
 

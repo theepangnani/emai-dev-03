@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UploadMaterialWizard from '../components/UploadMaterialWizard'
 import UploadWizardStep2 from '../components/UploadWizardStep2'
