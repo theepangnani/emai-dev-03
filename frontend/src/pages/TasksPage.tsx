@@ -656,7 +656,7 @@ export function TasksPage() {
         ) : error ? (
           <div className="tasks-empty">
             <p>Error loading tasks: {error}</p>
-            <button className="generate-btn" onClick={loadTasks}>Retry</button>
+            <button className="generate-btn btn-primary" onClick={loadTasks}>Retry</button>
           </div>
         ) : filteredTasks.length === 0 ? (
           <EmptyState
@@ -863,8 +863,8 @@ export function TasksPage() {
                 )}
               </div>
               <div className="modal-actions">
-                <button className="modal-cancel" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</button>
-                <button className="generate-btn" onClick={handleCreate} disabled={creating || !newTitle.trim()}>
+                <button className="modal-cancel btn-secondary" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</button>
+                <button className="generate-btn btn-primary" onClick={handleCreate} disabled={creating || !newTitle.trim()}>
                   {creating ? 'Creating...' : 'Create Task'}
                 </button>
               </div>
@@ -921,8 +921,8 @@ export function TasksPage() {
                 )}
               </div>
               <div className="modal-actions">
-                <button className="modal-cancel" onClick={() => setEditTask(null)}>Cancel</button>
-                <button className="generate-btn" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
+                <button className="modal-cancel btn-secondary" onClick={() => setEditTask(null)}>Cancel</button>
+                <button className="generate-btn btn-primary" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
@@ -970,8 +970,8 @@ export function TasksPage() {
               />
             </div>
             <div className="modal-actions">
-              <button className="modal-cancel" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }} disabled={requestingCompletion}>Cancel</button>
-              <button className="generate-btn" onClick={handleRequestCompletion} disabled={requestingCompletion}>
+              <button className="modal-cancel btn-secondary" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }} disabled={requestingCompletion}>Cancel</button>
+              <button className="generate-btn btn-primary" onClick={handleRequestCompletion} disabled={requestingCompletion}>
                 {requestingCompletion ? 'Sending...' : 'Send Request'}
               </button>
             </div>

@@ -166,7 +166,7 @@ export function NotificationsPage() {
         <div className="notif-page-header">
           <h3>Notifications</h3>
           {unreadCount > 0 && (
-            <button className="notif-mark-all" onClick={handleMarkAllRead}>
+            <button className="notif-mark-all btn-secondary btn-sm" onClick={handleMarkAllRead}>
               Mark all as read
             </button>
           )}
@@ -223,7 +223,7 @@ export function NotificationsPage() {
                         <div className="notif-action-btns">
                           {n.requires_ack && !n.acked_at && (
                             <button
-                              className="notif-action-btn ack"
+                              className="notif-action-btn ack btn-icon btn-sm"
                               title="Acknowledge"
                               onClick={(e) => handleAck(e, n)}
                             >
@@ -232,7 +232,7 @@ export function NotificationsPage() {
                           )}
                           {n.source_type && !n.acked_at && (
                             <button
-                              className="notif-action-btn suppress"
+                              className="notif-action-btn suppress btn-icon btn-sm"
                               title="Silence future notifications from this source"
                               onClick={(e) => handleSuppress(e, n)}
                             >
@@ -240,7 +240,7 @@ export function NotificationsPage() {
                             </button>
                           )}
                           <button
-                            className="notif-action-btn delete"
+                            className="notif-action-btn delete btn-icon btn-sm"
                             title="Delete"
                             onClick={(e) => handleDelete(e, n)}
                           >
