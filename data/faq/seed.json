@@ -94,5 +94,12 @@
     "description": "I found a problem or have a suggestion for ClassBridge.",
     "category": "other",
     "answer": "We appreciate your feedback! You can:\n1. Use the Help page to find answers to common questions\n2. Send a message to the admin through the Messages page\n3. Contact support at support@classbridge.ca\n\nPlease include as much detail as possible about the issue, including what you were doing when it occurred and any error messages you saw."
+  },
+  {
+    "title": "What does ClassBridge do that ChatGPT or Claude can't?",
+    "description": "Understanding what makes ClassBridge different from general AI tools.",
+    "category": "getting-started",
+    "is_pinned": true,
+    "answer": "ClassBridge is fundamentally different from general AI tools in six key ways:\n\n1. Google Classroom Integration — Auto-syncs courses, assignments, and grades directly from Google Classroom. Parents see their child's actual schoolwork without asking the kid or logging into their account. General AI tools have zero access to a student's real classroom data.\n\n2. Role-Based Family/School Ecosystem — Parents, students, teachers, and admins each get a tailored experience. Parents can monitor multiple children, see their grades, and get AI-generated insights on actual performance. Teachers get communication tools and announcement monitoring.\n\n3. Context-Aware Study Tools — Study guides, quizzes, and flashcards are generated from real assignments and course materials, not generic prompts. No need to copy-paste assignment details into a chatbot and craft the right prompt.\n\n4. Parent-Teacher Messaging — Built-in communication channel between parents and teachers, integrated with the same platform where grades and assignments live. Includes Gmail/announcement monitoring for teacher communications.\n\n5. Automated Notifications & Reminders — Assignment reminders at 8am, teacher communication sync every 15 minutes. Proactive alerts so no one has to remember to check.\n\n6. Persistent Student Profile — Grade tracking, analytics, and AI insights over time. ChatGPT starts fresh every conversation and doesn't track your child's academic trajectory.\n\nThe value isn't the AI itself — it's the data integration + workflow automation + multi-stakeholder coordination that makes the AI actually useful in a school context without any effort from the user."
   }
 ]
