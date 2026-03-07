@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useFeature } from '../hooks/useFeatureToggle';
 import './LaunchLandingPage.css';
 
 export function LaunchLandingPage() {
   const { user } = useAuth();
+  const waitlistEnabled = useFeature('waitlist_enabled');
 
   if (user) {
     return null; // App.tsx handles redirect for authenticated users
@@ -26,7 +28,11 @@ export function LaunchLandingPage() {
           Stay on top of assignments, communicate with teachers, and unlock AI-powered study tools.
         </p>
         <div className="launch-hero-actions">
-          <Link to="/waitlist" className="launch-btn-primary launch-btn-lg">Join the Waitlist</Link>
+          {waitlistEnabled ? (
+            <Link to="/waitlist" className="launch-btn-primary launch-btn-lg">Join the Waitlist</Link>
+          ) : (
+            <Link to="/register" className="launch-btn-primary launch-btn-lg">Get Started</Link>
+          )}
           <Link to="/login" className="launch-btn-secondary launch-btn-lg">Login</Link>
         </div>
       </section>
