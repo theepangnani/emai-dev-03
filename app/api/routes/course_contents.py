@@ -22,7 +22,9 @@ from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
 from app.services.file_processor import process_file, extract_images_from_file, FileProcessingError
 from app.models.content_image import ContentImage
+from app.models.resource_link import ResourceLink
 from app.core.config import settings
+from app.services.link_extraction_service import extract_and_enrich_links
 from app.schemas.course_content import (
     CourseContentCreate,
     CourseContentUpdate,
@@ -113,6 +115,48 @@ def _can_modify_content(db: Session, user: User, content: CourseContent) -> bool
     return False
 
 
+def _extract_and_store_links(db: Session, course_content_id: int, text: str) -> None:
+    """Extract URLs from text and create ResourceLink records.
+
+    Skips extraction if links already exist for this course_content_id (dedup).
+    Failures are logged but never propagate — upload must not be blocked.
+    """
+    if not text:
+        return
+    try:
+        # Deduplication: skip if links already exist for this content
+        existing = (
+            db.query(ResourceLink.id)
+            .filter(ResourceLink.course_content_id == course_content_id)
+            .first()
+        )
+        if existing:
+            return
+
+        extracted = extract_and_enrich_links(text)
+        if not extracted:
+            return
+
+        for link_data in extracted:
+            resource_link = ResourceLink(
+                course_content_id=course_content_id,
+                url=link_data.url,
+                resource_type=link_data.resource_type,
+                title=link_data.title,
+                topic_heading=link_data.topic_heading,
+                description=link_data.description,
+                thumbnail_url=link_data.thumbnail_url,
+                youtube_video_id=link_data.youtube_video_id,
+                display_order=link_data.display_order,
+            )
+            db.add(resource_link)
+        db.commit()
+        logger.info("Extracted %d resource links for content %d", len(extracted), course_content_id)
+    except Exception as e:
+        db.rollback()
+        logger.warning("Link extraction failed for content %d: %s", course_content_id, e)
+
+
 @router.post("/", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_course_content(
@@ -173,6 +217,9 @@ def create_course_content(
             db.commit()
         except Exception as e:
             logger.warning(f"Failed to notify parents of student upload: {e}")
+
+    # Extract and store resource links from text content (#1321)
+    _extract_and_store_links(db, content.id, data.text_content)
 
     # Trigger AI generation in background if requested (#552)
     source_text = data.text_content or data.description or ""
@@ -386,6 +433,9 @@ async def upload_course_content_file(
         db.rollback()
         logger.warning("Image extraction failed for %s: %s", filename, e)
 
+    # Extract and store resource links from text content (#1321)
+    _extract_and_store_links(db, content.id, extracted_text)
+
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
         try:
@@ -541,6 +591,9 @@ async def upload_multi_files(
     except Exception as e:
         db.rollback()
         logger.warning("Image extraction failed for multi-upload: %s", e)
+
+    # Extract and store resource links from text content (#1321)
+    _extract_and_store_links(db, content.id, combined_text)
 
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
@@ -965,6 +1018,9 @@ async def replace_course_content_file(
     # Delete old images and extract new ones (#1309)
     db.query(ContentImage).filter(ContentImage.course_content_id == content_id).delete()
 
+    # Delete old resource links so re-extraction starts fresh (#1321)
+    db.query(ResourceLink).filter(ResourceLink.course_content_id == content_id).delete()
+
     db.commit()
     db.refresh(content)
 
@@ -988,6 +1044,9 @@ async def replace_course_content_file(
     except Exception as e:
         db.rollback()
         logger.warning("Image extraction failed for replaced file %s: %s", filename, e)
+
+    # Extract and store resource links from replacement text (#1321)
+    _extract_and_store_links(db, content.id, extracted_text)
 
     resp = CourseContentUpdateResponse.model_validate(content)
     _populate_source_files_count(resp, content)
