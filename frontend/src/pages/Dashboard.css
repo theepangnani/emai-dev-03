@@ -975,11 +975,13 @@
 }
 
 .modal h2 {
-  margin: 0 0 4px 0;
+  margin: 0;
   font-size: 20px;
+  font-weight: 600;
   font-family: var(--font-display);
   color: var(--color-ink);
-  padding: 24px 24px 0;
+  padding: 28px 24px 16px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal.modal-lg {
@@ -2330,6 +2332,12 @@ button.retry-btn:disabled {
   border: 1px solid var(--color-border);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow-sm);
 }
 
 .section-card-header {
