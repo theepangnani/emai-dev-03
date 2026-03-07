@@ -53,14 +53,14 @@ export function MyKidsPage() {
   // Coming Up data (all-children view)
   const [allOverviews, setAllOverviews] = useState<ChildOverview[]>([]);
   const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
-  const [showComingUp, setShowComingUp] = useState(true);
+  const [showComingUp, setShowComingUp] = useState(false);
 
   // Collapsible sections
-  const [showCourses, setShowCourses] = useState(true);
-  const [showGrades, setShowGrades] = useState(true);
-  const [showMaterials, setShowMaterials] = useState(true);
-  const [showTasks, setShowTasks] = useState(true);
-  const [showTeachers, setShowTeachers] = useState(true);
+  const [showCourses, setShowCourses] = useState(false);
+  const [showGrades, setShowGrades] = useState(false);
+  const [showMaterials, setShowMaterials] = useState(false);
+  const [showTasks, setShowTasks] = useState(false);
+  const [showTeachers, setShowTeachers] = useState(false);
 
   // Reassign class material to course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
@@ -748,21 +748,6 @@ export function MyKidsPage() {
         ]} />
       </div>
 
-      {/* Coming Up Timeline (#1221 - moved from ParentDashboard) */}
-      {!sectionLoading && calendarAssignments.length > 0 && (
-        <CollapsibleSection
-          title="Coming Up"
-          expanded={showComingUp}
-          onToggle={() => setShowComingUp(p => !p)}
-        >
-          <ComingUpTimeline
-            calendarAssignments={calendarAssignments}
-            selectedChild={selectedChild}
-            onNavigateStudy={handleNavigateStudy}
-          />
-        </CollapsibleSection>
-      )}
-
       {!selectedChild ? (
         /* All-children overview — tabs are the single navigation; jump straight to actionable content */
         <>
@@ -923,6 +908,21 @@ export function MyKidsPage() {
               </div>
             )}
           </div>
+
+          {/* ── Coming Up Timeline (#1221) ─────────── */}
+          {calendarAssignments.length > 0 && (
+            <CollapsibleSection
+              title="Coming Up"
+              expanded={showComingUp}
+              onToggle={() => setShowComingUp(p => !p)}
+            >
+              <ComingUpTimeline
+                calendarAssignments={calendarAssignments}
+                selectedChild={selectedChild}
+                onNavigateStudy={handleNavigateStudy}
+              />
+            </CollapsibleSection>
+          )}
 
           {/* ── Tasks ─────────────────────────────── */}
           <div className="mykids-section">
