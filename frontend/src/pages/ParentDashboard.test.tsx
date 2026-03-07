@@ -579,7 +579,7 @@ describe('ParentDashboard', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument()
       // File drop zone and text area render together with the modal
       expect(screen.getByText(/Drag & drop files here/)).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/Paste notes/)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/Paste text/i)).toBeInTheDocument()
     })
     // Mode toggle buttons should NOT exist
     expect(screen.queryByText('Paste Text')).not.toBeInTheDocument()
@@ -699,23 +699,20 @@ describe('ParentDashboard', () => {
       expect(screen.getByText('Alex Smith')).toBeInTheDocument()
     })
 
-    // Task status pills appear (also in TodaysFocusHeader, so use getAllByText)
+    // Task urgency pills appear in Today's Focus header
     await waitFor(() => {
-      const overdueEls = screen.getAllByText('1 overdue')
-      // At least one should be a pd-status-pill
-      expect(overdueEls.some(el => el.classList.contains('pd-status-pill-overdue'))).toBe(true)
+      expect(screen.getByText('1 overdue')).toBeInTheDocument()
     })
-    const todayEls = screen.getAllByText('1 due today')
-    expect(todayEls.some(el => el.classList.contains('pd-status-pill-today'))).toBe(true)
-    const upcomingEls = screen.getAllByText('1 next 3 days')
-    expect(upcomingEls.some(el => el.classList.contains('pd-status-pill-upcoming'))).toBe(true)
+    expect(screen.getByText('1 due today')).toBeInTheDocument()
+    expect(screen.getByText('1 next 3 days')).toBeInTheDocument()
   })
 
-  it('hides task status pills when no child is selected (All mode)', async () => {
+  it('hides task urgency pills when there are no tasks', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({
         children: [child1, child2],
         child_highlights: [highlight1, highlight2],
+        all_tasks: [],
       }),
     )
     renderWithProviders(<ParentDashboard />)
@@ -724,11 +721,11 @@ describe('ParentDashboard', () => {
       expect(screen.getAllByText('Alex Smith').length).toBeGreaterThanOrEqual(1)
     })
 
-    // In "All" mode (no specific child selected), pills should not render
+    // No tasks means no urgency pills
     expect(screen.queryByText(/\d+ overdue/)).not.toBeInTheDocument()
   })
 
-  it('task status pill navigates to filtered tasks page', async () => {
+  it('task urgency pill in focus header navigates to filtered tasks page', async () => {
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
 
@@ -750,14 +747,10 @@ describe('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      const overdueEls = screen.getAllByText('1 overdue')
-      expect(overdueEls.length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText('1 overdue')).toBeInTheDocument()
     })
 
-    // Click the status pill (not the focus tag)
-    const overdueEls = screen.getAllByText('1 overdue')
-    const pill = overdueEls.find(el => el.classList.contains('pd-status-pill-overdue'))!
-    await user.click(pill)
+    await user.click(screen.getByText('1 overdue'))
 
     expect(mockNavigate).toHaveBeenCalledWith('/tasks?due=overdue')
   })

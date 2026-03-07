@@ -32,8 +32,11 @@ export function TodaysFocusHeader({
     // Collapsed state: thin summary bar
     if (collapsed) {
       const counts: React.ReactNode[] = [];
+      if (overdue > 0) counts.push(<span key="o" className="pd-focus-count-item overdue">{overdue} overdue</span>);
+      if (dueToday > 0) counts.push(<span key="t" className="pd-focus-count-item today">{dueToday} due today</span>);
+      if (upcoming > 0) counts.push(<span key="u" className="pd-focus-count-item upcoming">{upcoming} upcoming</span>);
       if (inviteCount > 0) counts.push(<span key="i" className="pd-focus-count-item">{inviteCount} invite{inviteCount !== 1 ? 's' : ''}</span>);
-      if (allClear && inviteCount === 0) counts.push(<span key="c" className="pd-focus-count-item">All clear</span>);
+      if (allClear) counts.push(<span key="c" className="pd-focus-count-item">All clear</span>);
 
       return (
         <div className="pd-today-focus-header pd-focus-collapsed" onClick={onToggleCollapse} role="button" tabIndex={0} aria-expanded={false} aria-label="Today's Focus (collapsed)" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleCollapse(); } }}>
@@ -98,6 +101,15 @@ export function TodaysFocusHeader({
                 </div>
               )}
               <div className="pd-today-focus-items">
+                {overdue > 0 && (
+                  <button type="button" className="pd-focus-tag overdue" onClick={() => onNavigate('/tasks?due=overdue')}>{overdue} overdue</button>
+                )}
+                {dueToday > 0 && (
+                  <button type="button" className="pd-focus-tag today" onClick={() => onNavigate('/tasks?due=today')}>{dueToday} due today</button>
+                )}
+                {upcoming > 0 && (
+                  <button type="button" className="pd-focus-tag upcoming" onClick={() => onNavigate('/tasks?due=week')}>{upcoming} next 3 days</button>
+                )}
                 {inviteCount > 0 && (
                   <button type="button" className="pd-focus-tag invites" onClick={() => onNavigate('/my-kids')}>{inviteCount} pending invite{inviteCount !== 1 ? 's' : ''}</button>
                 )}
