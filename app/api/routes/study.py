@@ -83,6 +83,41 @@ def _get_images_metadata(db: Session, course_content_id: int | None) -> list[dic
     ]
 
 
+def _append_unplaced_images(content: str, images_metadata: list[dict]) -> str:
+    """Append any images not referenced by the AI to an 'Additional Figures' section."""
+    if not images_metadata:
+        return content
+
+    # Find all {{IMG-N}} markers in the generated content
+    placed = set()
+    for match in re.finditer(r'\{\{IMG-(\d+)\}\}', content):
+        placed.add(int(match.group(1)))
+
+    # Find unplaced images
+    unplaced = []
+    for img in images_metadata:
+        img_num = img['position_index'] + 1  # IMG-N is 1-indexed
+        if img_num not in placed:
+            unplaced.append(img)
+
+    if not unplaced:
+        return content
+
+    # Append Additional Figures section
+    section = "\n\n---\n\n## Additional Figures from Source Material\n\n"
+    for img in unplaced:
+        img_num = img['position_index'] + 1
+        desc = img.get('description') or f"Image {img_num}"
+        section += f"![{desc}]({{{{IMG-{img_num}}}}})\n"
+        if img.get('position_context'):
+            ctx = img['position_context'][:150]
+            section += f"*Found near: \"{ctx}\"*\n\n"
+        else:
+            section += "\n"
+
+    return content + section
+
+
 def enforce_study_guide_limit(db: Session, user: User) -> None:
     """Enforce role-based study guide limit. Archives oldest active guides when limit reached."""
     limit = (
@@ -540,6 +575,10 @@ async def generate_study_guide_endpoint(
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)
 
+    # Post-process to add unplaced images
+    if images_metadata:
+        content = _append_unplaced_images(content, images_metadata)
+
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(title, "study_guide", body.assignment_id)
     existing = study_service.find_recent_duplicate(current_user.id, content_hash)
@@ -668,6 +707,9 @@ async def generate_quiz_endpoint(
             difficulty=body.difficulty,
             images=images_metadata,
         )
+        # Post-process to add unplaced images (before critical dates extraction)
+        if images_metadata:
+            raw_quiz = _append_unplaced_images(raw_quiz, images_metadata)
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
         quiz_json = strip_json_fences(raw_quiz)
@@ -815,6 +857,9 @@ async def generate_flashcards_endpoint(
             focus_prompt=body.focus_prompt,
             images=images_metadata,
         )
+        # Post-process to add unplaced images (before critical dates extraction)
+        if images_metadata:
+            raw_cards = _append_unplaced_images(raw_cards, images_metadata)
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_cards, critical_dates = parse_critical_dates(raw_cards)
         cards_json = strip_json_fences(raw_cards)
@@ -1240,6 +1285,9 @@ async def generate_from_text_and_images(
                 difficulty=difficulty,
                 images=images_metadata,
             )
+            # Post-process to add unplaced images (before critical dates extraction)
+            if images_metadata:
+                raw_quiz = _append_unplaced_images(raw_quiz, images_metadata)
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
             questions_data = json.loads(quiz_json)
@@ -1262,6 +1310,9 @@ async def generate_from_text_and_images(
                 focus_prompt=focus_prompt,
                 images=images_metadata,
             )
+            # Post-process to add unplaced images (before critical dates extraction)
+            if images_metadata:
+                raw_cards = _append_unplaced_images(raw_cards, images_metadata)
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
             cards_data = json.loads(cards_json)
@@ -1285,6 +1336,9 @@ async def generate_from_text_and_images(
                 images=images_metadata,
             )
             content_result, critical_dates = parse_critical_dates(raw_content)
+            # Post-process to add unplaced images
+            if images_metadata:
+                content_result = _append_unplaced_images(content_result, images_metadata)
 
             study_guide = StudyGuide(
                 user_id=current_user.id,
@@ -1428,6 +1482,9 @@ async def generate_from_file_upload(
                 difficulty=difficulty,
                 images=images_metadata,
             )
+            # Post-process to add unplaced images (before critical dates extraction)
+            if images_metadata:
+                raw_quiz = _append_unplaced_images(raw_quiz, images_metadata)
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
             questions_data = json.loads(quiz_json)
@@ -1450,6 +1507,9 @@ async def generate_from_file_upload(
                 focus_prompt=focus_prompt,
                 images=images_metadata,
             )
+            # Post-process to add unplaced images (before critical dates extraction)
+            if images_metadata:
+                raw_cards = _append_unplaced_images(raw_cards, images_metadata)
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
             cards_data = json.loads(cards_json)
@@ -1473,6 +1533,9 @@ async def generate_from_file_upload(
                 images=images_metadata,
             )
             content, critical_dates = parse_critical_dates(raw_content)
+            # Post-process to add unplaced images
+            if images_metadata:
+                content = _append_unplaced_images(content, images_metadata)
 
             study_guide = StudyGuide(
                 user_id=current_user.id,
