@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ClassBridge Test Accounts</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1a1a2e; padding: 32px; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: #666; margin-bottom: 32px; font-size: 15px; }
+    .password-banner { background: #4f46e5; color: white; padding: 16px 24px; border-radius: 12px; margin-bottom: 32px; display: flex; align-items: center; gap: 16px; }
+    .password-banner .label { font-size: 14px; opacity: 0.9; }
+    .password-banner .value { font-size: 24px; font-weight: 700; letter-spacing: 1px; font-family: 'Courier New', monospace; }
+    .section { margin-bottom: 32px; }
+    .section h2 { font-size: 18px; color: #4f46e5; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    th { background: #f8f9fb; text-align: left; padding: 12px 16px; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 12px 16px; border-top: 1px solid #f0f0f0; font-size: 14px; }
+    tr:hover td { background: #f8f9ff; }
+    .role-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .role-admin { background: #fee2e2; color: #dc2626; }
+    .role-teacher { background: #dbeafe; color: #2563eb; }
+    .role-parent { background: #d1fae5; color: #059669; }
+    .role-student { background: #fef3c7; color: #d97706; }
+    .email { font-family: 'Courier New', monospace; font-size: 13px; color: #4f46e5; }
+    .note { background: #fffbeb; border: 1px solid #fbbf24; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #92400e; margin-top: 16px; }
+    .relationships { font-size: 13px; color: #666; }
+    .copy-btn { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; color: #666; }
+    .copy-btn:hover { background: #f0f0f0; }
+    .test-scenarios { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .test-scenarios h3 { color: #1a1a2e; margin-bottom: 12px; }
+    .test-scenarios ol { padding-left: 20px; }
+    .test-scenarios li { margin-bottom: 8px; font-size: 14px; line-height: 1.6; color: #333; }
+    .test-scenarios li strong { color: #4f46e5; }
+    .email-section { margin-top: 32px; }
+    .template-list { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .template-list table { box-shadow: none; }
+    .trigger { font-size: 13px; color: #555; }
+    @media print {
+      body { background: white; padding: 16px; }
+      .copy-btn { display: none; }
+      table { box-shadow: none; border: 1px solid #ddd; }
+      .password-banner { background: #333; }
+    }
+  </style>
+  <script>
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      });
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>ClassBridge Test Accounts</h1>
+    <p class="subtitle">Seed data created by <code>python -m scripts.seed_demo_data</code> | Updated: March 2026</p>
+
+    <div class="password-banner">
+      <div>
+        <div class="label">Password for ALL test accounts:</div>
+        <div class="value">Pilot2026!</div>
+      </div>
+      <button class="copy-btn" onclick="copyText('Pilot2026!')" style="color:white;border-color:rgba(255,255,255,0.4);">Copy</button>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="section">
+      <h2>Admin</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Alex Rivera</td>
+            <td><span class="email">admin@classbridge.local</span> <button class="copy-btn" onclick="copyText('admin@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-admin">Admin</span></td>
+            <td>Full admin access. Manage users, waitlist, broadcasts.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TEACHERS -->
+    <div class="section">
+      <h2>Teachers</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department / Courses</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Sarah Chen</td>
+            <td><span class="email">sarah.chen@classbridge.local</span> <button class="copy-btn" onclick="copyText('sarah.chen@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-teacher">Teacher</span></td>
+            <td>Science & Math — Science 8, Mathematics 8</td>
+          </tr>
+          <tr>
+            <td>James Wilson</td>
+            <td><span class="email">james.wilson@classbridge.local</span> <button class="copy-btn" onclick="copyText('james.wilson@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-teacher">Teacher</span></td>
+            <td>Humanities — English Language Arts 8, Social Studies 8</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PARENTS -->
+    <div class="section">
+      <h2>Parents</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Child (Relationship)</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Priya Sharma</td>
+            <td><span class="email">priya.sharma@classbridge.local</span> <button class="copy-btn" onclick="copyText('priya.sharma@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-parent">Parent</span></td>
+            <td class="relationships">Aiden Sharma (Mother)</td>
+          </tr>
+          <tr>
+            <td>Michael Torres</td>
+            <td><span class="email">michael.torres@classbridge.local</span> <button class="copy-btn" onclick="copyText('michael.torres@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-parent">Parent</span></td>
+            <td class="relationships">Sofia Torres (Father)</td>
+          </tr>
+          <tr>
+            <td>Jennifer Kim</td>
+            <td><span class="email">jennifer.kim@classbridge.local</span> <button class="copy-btn" onclick="copyText('jennifer.kim@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-parent">Parent</span></td>
+            <td class="relationships">Ethan Kim (Mother)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- STUDENTS -->
+    <div class="section">
+      <h2>Students</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Grade / Courses</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Aiden Sharma</td>
+            <td><span class="email">aiden.sharma@classbridge.local</span> <button class="copy-btn" onclick="copyText('aiden.sharma@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-student">Student</span></td>
+            <td>Grade 8 — Science 8, Math 8, ELA 8, Social Studies 8</td>
+          </tr>
+          <tr>
+            <td>Sofia Torres</td>
+            <td><span class="email">sofia.torres@classbridge.local</span> <button class="copy-btn" onclick="copyText('sofia.torres@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-student">Student</span></td>
+            <td>Grade 8 — Science 8, Math 8, ELA 8, Social Studies 8</td>
+          </tr>
+          <tr>
+            <td>Ethan Kim</td>
+            <td><span class="email">ethan.kim@classbridge.local</span> <button class="copy-btn" onclick="copyText('ethan.kim@classbridge.local')">Copy</button></td>
+            <td><span class="role-badge role-student">Student</span></td>
+            <td>Grade 7 — Science 8, Math 8, ELA 8</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SEEDED DATA SUMMARY -->
+    <div class="section">
+      <h2>Seeded Data Summary</h2>
+      <table>
+        <thead><tr><th>Data Type</th><th>Count</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Users</td><td>9</td><td>1 admin, 2 teachers, 3 parents, 3 students</td></tr>
+          <tr><td>Courses</td><td>4</td><td>Science 8, Math 8, ELA 8, Social Studies 8</td></tr>
+          <tr><td>Assignments</td><td>13</td><td>Mix of past-due, upcoming, and future</td></tr>
+          <tr><td>Grades</td><td>11</td><td>Includes graded, submitted, and pending</td></tr>
+          <tr><td>Conversations</td><td>3</td><td>Parent-teacher threads with context</td></tr>
+          <tr><td>Messages</td><td>10</td><td>Realistic multi-turn conversations</td></tr>
+          <tr><td>Notifications</td><td>9</td><td>Assignment due, grade posted, system</td></tr>
+          <tr><td>Tasks</td><td>5</td><td>Parent action items (schoolwork, shopping, communication)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TEST SCENARIOS -->
+    <div class="section">
+      <h2>Recommended Test Scenarios</h2>
+      <div class="test-scenarios">
+        <h3>By Role</h3>
+        <ol>
+          <li><strong>Parent (Priya Sharma):</strong> View dashboard with Aiden's assignments, check grades, read/send messages to Sarah Chen, manage tasks, generate AI study guide</li>
+          <li><strong>Teacher (Sarah Chen):</strong> View Science 8 & Math 8 courses, see enrolled students, grade assignments, reply to parent messages</li>
+          <li><strong>Student (Aiden Sharma):</strong> View assignments across 4 courses, check grades, use AI study tools (flashcards, quizzes)</li>
+          <li><strong>Admin (Alex Rivera):</strong> View all users, manage waitlist, send broadcast, view audit logs</li>
+        </ol>
+        <h3 style="margin-top: 20px;">Cross-Role Flows</h3>
+        <ol>
+          <li><strong>Parent invites teacher:</strong> Log in as Priya &rarr; add a new teacher for Aiden &rarr; check invite email</li>
+          <li><strong>Parent-teacher messaging:</strong> Priya sends message &rarr; Sarah sees notification &rarr; Sarah replies</li>
+          <li><strong>Assignment lifecycle:</strong> Sarah creates assignment &rarr; Aiden sees it &rarr; Sarah grades it &rarr; Priya gets notification</li>
+          <li><strong>Password reset:</strong> Click "Forgot Password" &rarr; check email template &rarr; reset &rarr; log in</li>
+          <li><strong>Waitlist flow:</strong> Sign up for waitlist &rarr; Admin approves &rarr; User registers with token</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- EMAIL TEMPLATES -->
+    <div class="section email-section">
+      <h2>Email Templates (18 total)</h2>
+      <div class="template-list">
+        <p style="margin-bottom: 16px; font-size: 14px; color: #555;">
+          Preview all templates by running: <code>python -m scripts.preview_email_templates</code>
+        </p>
+        <table>
+          <thead><tr><th>Template</th><th>Triggered By</th></tr></thead>
+          <tbody>
+            <tr><td>Welcome</td><td class="trigger">User registration (non-Google)</td></tr>
+            <tr><td>Email Verification</td><td class="trigger">User registration (non-waitlist, non-Google)</td></tr>
+            <tr><td>Email Verified Welcome</td><td class="trigger">After email verification link clicked</td></tr>
+            <tr><td>Password Reset</td><td class="trigger">POST /api/auth/forgot-password</td></tr>
+            <tr><td>Assignment Reminder</td><td class="trigger">APScheduler job (8am daily)</td></tr>
+            <tr><td>Task Reminder</td><td class="trigger">APScheduler notification reminder job</td></tr>
+            <tr><td>Message Notification</td><td class="trigger">New message in parent-teacher conversation</td></tr>
+            <tr><td>Parent Invite</td><td class="trigger">Student registers with parent_email (parent not in system)</td></tr>
+            <tr><td>Teacher Invite</td><td class="trigger">Parent adds teacher for a student</td></tr>
+            <tr><td>Teacher Invite (Shadow)</td><td class="trigger">Parent adds teacher who has shadow record</td></tr>
+            <tr><td>Teacher Linked Notification</td><td class="trigger">Teacher linked to student by parent</td></tr>
+            <tr><td>Teacher Course Invite</td><td class="trigger">Admin/teacher invites teacher to a course</td></tr>
+            <tr><td>Student Course Invite</td><td class="trigger">Teacher invites student to a course</td></tr>
+            <tr><td>Admin Broadcast</td><td class="trigger">Admin sends broadcast message</td></tr>
+            <tr><td>Waitlist Confirmation</td><td class="trigger">User joins waitlist</td></tr>
+            <tr><td>Waitlist Approved</td><td class="trigger">Admin approves waitlist entry</td></tr>
+            <tr><td>Waitlist Declined</td><td class="trigger">Admin declines waitlist entry</td></tr>
+            <tr><td>Waitlist Reminder</td><td class="trigger">Reminder for approved but unregistered waitlist users</td></tr>
+            <tr><td>Waitlist Admin Notification</td><td class="trigger">New waitlist signup notification to admins</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 24px;">
+      <strong>Seeding instructions:</strong> Run <code>python -m scripts.seed_demo_data</code> from the project root to populate the database.
+      Use <code>--force</code> to wipe and re-seed. Use <code>--database-url</code> to target production.
+      <br><br>
+      <strong>Note:</strong> Test accounts use <code>@classbridge.local</code> emails which won't receive real emails.
+      To test actual email delivery, register with a real email address or use the email template preview script.
+    </div>
+  </div>
+</body>
+</html>
