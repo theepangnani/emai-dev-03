@@ -197,7 +197,7 @@ export function GradesPage() {
         ) : (
           <div className="gp-children-list">
             {filteredChildren.map(child => (
-              <div key={child.student_id} className="gp-child-section">
+              <div key={child.student_id} className="gp-child-section section-card">
                 {/* Show child header only for parents with multiple children */}
                 {isParent && children.length > 1 && (
                   <div className="gp-child-header">

@@ -238,7 +238,7 @@ export function TaskDetailPage() {
         ]} />
 
         {/* Task Info Card */}
-        <div className="td-card">
+        <div className="td-card section-card">
           {editing ? (
             /* ---- Edit Mode ---- */
             <div className="td-edit-form">
@@ -484,7 +484,7 @@ export function TaskDetailPage() {
               )}
             </div>
           ) : (
-            <div className="td-empty-resources">
+            <div className="td-empty-resources empty-state">
               <p>No class materials linked to this task.</p>
               <div className="td-empty-link-actions">
                 <button className="td-empty-link-btn" onClick={() => openLinkModal('course')} title="Link Class">
