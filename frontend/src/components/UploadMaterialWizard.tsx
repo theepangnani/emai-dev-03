@@ -34,7 +34,7 @@ interface UploadMaterialWizardProps {
   onCourseChange?: (id: number | '') => void;
   selectedMaterialId?: number | '';
   onMaterialChange?: (id: number | '') => void;
-  duplicateCheck?: { exists: boolean; message: string } | null;
+  duplicateCheck?: { exists: boolean; message: string | null } | null;
   onViewExisting?: () => void;
   onRegenerate?: () => void;
   onDismissDuplicate?: () => void;
@@ -49,11 +49,11 @@ export default function UploadMaterialWizard({
   initialTitle = '',
   initialContent = '',
   courses,
-  materials,
+  materials: _materials,
   selectedCourseId,
   onCourseChange,
   selectedMaterialId,
-  onMaterialChange,
+  onMaterialChange: _onMaterialChange,
   duplicateCheck,
   onViewExisting,
   onRegenerate,
