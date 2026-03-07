@@ -38,6 +38,7 @@ from app.schemas.study import (
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
+from app.models.content_image import ContentImage
 from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, check_content_safe
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
@@ -58,6 +59,28 @@ router = APIRouter(prefix="/study", tags=["Study Tools"])
 # ============================================
 # Helper Functions
 # ============================================
+
+
+def _get_images_metadata(db: Session, course_content_id: int | None) -> list[dict]:
+    """Query ContentImage records for a course content and return metadata dicts."""
+    if not course_content_id:
+        return []
+    content_images = (
+        db.query(ContentImage)
+        .filter(ContentImage.course_content_id == course_content_id)
+        .order_by(ContentImage.position_index)
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "id": img.id,
+            "position_index": img.position_index,
+            "description": img.description,
+            "position_context": img.position_context,
+        }
+        for img in content_images
+    ]
 
 
 def enforce_study_guide_limit(db: Session, user: User) -> None:
@@ -483,6 +506,9 @@ async def generate_study_guide_endpoint(
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
 
+    # Fetch image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, body.course_content_id)
+
     # Generate study guide using AI
     try:
         raw_content = await generate_study_guide(
@@ -492,6 +518,7 @@ async def generate_study_guide_endpoint(
             due_date=due_date,
             custom_prompt=body.custom_prompt,
             focus_prompt=body.focus_prompt,
+            images=images_metadata,
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
@@ -627,6 +654,9 @@ async def generate_quiz_endpoint(
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
 
+    # Fetch image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, body.course_content_id)
+
     # Generate quiz using AI
     critical_dates = []
     try:
@@ -636,6 +666,7 @@ async def generate_quiz_endpoint(
             num_questions=num_questions,
             focus_prompt=body.focus_prompt,
             difficulty=body.difficulty,
+            images=images_metadata,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
@@ -771,6 +802,9 @@ async def generate_flashcards_endpoint(
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
 
+    # Fetch image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, body.course_content_id)
+
     # Generate flashcards using AI
     critical_dates = []
     try:
@@ -779,6 +813,7 @@ async def generate_flashcards_endpoint(
             content=content,
             num_cards=body.num_cards,
             focus_prompt=body.focus_prompt,
+            images=images_metadata,
         )
         # Parse critical dates before JSON parsing (dates come after JSON)
         raw_cards, critical_dates = parse_critical_dates(raw_cards)
@@ -1190,6 +1225,9 @@ async def generate_from_text_and_images(
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
 
+    # Fetch image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, course_content_id)
+
     # Generate the appropriate study material (same pattern as /upload/generate)
     critical_dates = []
     try:
@@ -1200,6 +1238,7 @@ async def generate_from_text_and_images(
                 num_questions=num_questions,
                 focus_prompt=focus_prompt,
                 difficulty=difficulty,
+                images=images_metadata,
             )
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
@@ -1221,6 +1260,7 @@ async def generate_from_text_and_images(
                 content=extracted_text,
                 num_cards=num_cards,
                 focus_prompt=focus_prompt,
+                images=images_metadata,
             )
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
@@ -1242,6 +1282,7 @@ async def generate_from_text_and_images(
                 assignment_description=extracted_text,
                 course_name="Pasted Content",
                 focus_prompt=focus_prompt,
+                images=images_metadata,
             )
             content_result, critical_dates = parse_critical_dates(raw_content)
 
@@ -1372,6 +1413,9 @@ async def generate_from_file_upload(
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
 
+    # Fetch image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, course_content_id)
+
     # Generate the appropriate study material
     critical_dates = []
     try:
@@ -1382,6 +1426,7 @@ async def generate_from_file_upload(
                 num_questions=num_questions,
                 focus_prompt=focus_prompt,
                 difficulty=difficulty,
+                images=images_metadata,
             )
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             quiz_json = strip_json_fences(raw_quiz)
@@ -1403,6 +1448,7 @@ async def generate_from_file_upload(
                 content=extracted_text,
                 num_cards=num_cards,
                 focus_prompt=focus_prompt,
+                images=images_metadata,
             )
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             cards_json = strip_json_fences(raw_cards)
@@ -1424,6 +1470,7 @@ async def generate_from_file_upload(
                 assignment_description=extracted_text,
                 course_name="Uploaded Content",
                 focus_prompt=focus_prompt,
+                images=images_metadata,
             )
             content, critical_dates = parse_critical_dates(raw_content)
 
