@@ -539,6 +539,7 @@ export function CourseMaterialDetailPage() {
               hasSourceContent={hasSourceContent}
               linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
               atLimit={atLimit}
+              courseContentId={contentId}
             />
           )}
 

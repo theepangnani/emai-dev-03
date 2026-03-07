@@ -49,7 +49,7 @@ vi.mock('../components/CreateTaskModal', () => ({
 
 vi.mock('../components/ContentCard', () => ({
   ContentCard: ({ children }: { children: React.ReactNode }) => <div data-testid="content-card">{children}</div>,
-  MarkdownBody: ({ content }: { content: string }) => <div data-testid="markdown-content">{content}</div>,
+  MarkdownBody: ({ content }: { content: string; courseContentId?: number }) => <div data-testid="markdown-content">{content}</div>,
 }))
 
 const mockConfirm = vi.fn()

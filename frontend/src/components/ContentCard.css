@@ -128,6 +128,35 @@
   margin: 1.1rem 0;
 }
 
+/* ── Inline images ─────────────────────────────────────────── */
+.study-guide-image-figure {
+  margin: 16px 0;
+}
+
+.study-guide-image {
+  max-width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+.study-guide-image-caption {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-ink-muted, #6b7280);
+  margin-top: 4px;
+}
+
+.image-placeholder {
+  display: block;
+  padding: 20px;
+  background: var(--color-surface-alt, #f3f4f6);
+  border: 1px dashed var(--color-border, #d1d5db);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--color-ink-muted, #6b7280);
+  margin: 16px 0;
+}
+
 /* ── Print ─────────────────────────────────────────────────── */
 @media print {
   .content-card {

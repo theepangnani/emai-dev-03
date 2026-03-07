@@ -15,6 +15,7 @@ interface StudyGuideTabProps {
   hasSourceContent: boolean;
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
+  courseContentId?: number;
 }
 
 function FocusIcon() {
@@ -46,6 +47,7 @@ export function StudyGuideTab({
   hasSourceContent,
   linkedTasks = [],
   atLimit = false,
+  courseContentId,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -100,7 +102,7 @@ export function StudyGuideTab({
           <div className="cm-tab-card-body" ref={printRef}>
             <ContentCard>
               <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                <MarkdownBody content={studyGuide.content} />
+                <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
               </Suspense>
             </ContentCard>
           </div>

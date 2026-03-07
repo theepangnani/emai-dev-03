@@ -225,7 +225,7 @@ export function StudyGuidePage() {
       <div ref={contentRef}>
         <ContentCard>
           <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
-            <MarkdownBody content={guide.content} />
+            <MarkdownBody content={guide.content} courseContentId={guide.course_content_id ?? undefined} />
           </Suspense>
         </ContentCard>
       </div>

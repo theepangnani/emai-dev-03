@@ -39,7 +39,7 @@ function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] }
   return null;
 }
 
-function FormattedContent({ textContent }: { textContent: string }) {
+function FormattedContent({ textContent, courseContentId }: { textContent: string; courseContentId?: number }) {
   const formatted = parseFormattedContent(textContent);
   if (formatted?.type === 'quiz') {
     return (
@@ -74,7 +74,7 @@ function FormattedContent({ textContent }: { textContent: string }) {
   }
   return (
     <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-      <MarkdownBody content={textContent} />
+      <MarkdownBody content={textContent} courseContentId={courseContentId} />
     </Suspense>
   );
 }
@@ -185,7 +185,7 @@ export function DocumentTab({
             <div ref={printRef}>
               {content.text_content ? (
                 <ContentCard ocrCheckText={content.text_content}>
-                  <FormattedContent textContent={content.text_content} />
+                  <FormattedContent textContent={content.text_content} courseContentId={content.id} />
                 </ContentCard>
               ) : content.has_file ? (
                 <div className="cm-file-info-card">
