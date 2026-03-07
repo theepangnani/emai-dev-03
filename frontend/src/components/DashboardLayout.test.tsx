@@ -15,6 +15,7 @@ vi.mock('../context/AuthContext', () => ({
 
 vi.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', setTheme: vi.fn(), cycleTheme: vi.fn() }),
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 vi.mock('../api/client', () => ({
