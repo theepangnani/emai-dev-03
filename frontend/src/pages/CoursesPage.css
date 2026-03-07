@@ -21,6 +21,30 @@
   gap: 8px;
 }
 
+.child-tab-all {
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.child-tab-all.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+}
+
+.child-color-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.child-tab.active .child-color-dot {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
 .child-tab:hover {
   border-color: var(--color-accent);
   background: var(--color-surface-alt);
