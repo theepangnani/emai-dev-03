@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
@@ -149,28 +150,33 @@ export function StudyGuidePage() {
 
   if (loading) {
     return (
-      <div className="study-guide-page">
-        <div className="loading">Loading study guide...</div>
-      </div>
+      <DashboardLayout showBackButton headerSlot={() => null}>
+        <div className="study-guide-page">
+          <div className="loading">Loading study guide...</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (error || !guide) {
     return (
-      <div className="study-guide-page">
-        <div className="error">{error || 'Study guide not found'}</div>
-        <FAQErrorHint faqCode={faqCode} />
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
-          <Link to="/course-materials" className="back-link">View All Study Materials</Link>
-          <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
+      <DashboardLayout showBackButton headerSlot={() => null}>
+        <div className="study-guide-page">
+          <div className="error">{error || 'Study guide not found'}</div>
+          <FAQErrorHint faqCode={faqCode} />
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+            <Link to="/course-materials" className="back-link">View All Study Materials</Link>
+            <Link to="/dashboard" className="back-link">Back to Dashboard</Link>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   const guideTypeLabel = GUIDE_TYPE_LABELS[guide.guide_type] || guide.guide_type;
 
   return (
+    <DashboardLayout showBackButton headerSlot={() => null}>
     <div className="study-guide-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
@@ -266,5 +272,6 @@ export function StudyGuidePage() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }
