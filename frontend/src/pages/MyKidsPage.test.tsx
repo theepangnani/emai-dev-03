@@ -31,6 +31,7 @@ vi.mock('../api/client', () => ({
     createChild: (...args: any[]) => mockCreateChild(...args),
     linkChild: (...args: any[]) => mockLinkChild(...args),
     getChildOverview: vi.fn().mockResolvedValue({ full_name: '', courses: [], assignments: [], grades: [] }),
+    getLinkedTeachers: vi.fn().mockResolvedValue([]),
     assignCoursesToChild: vi.fn().mockResolvedValue({}),
   },
   courseContentsApi: {
