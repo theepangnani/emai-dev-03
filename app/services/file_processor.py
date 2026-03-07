@@ -205,6 +205,7 @@ def _ocr_images_with_vision(images: list[bytes], batch_size: int = 10) -> list[s
     """
     Use Claude Vision API to extract text from images (much better for math/formulas).
 
+    Returns one description string per input image (empty string for skipped/tiny images).
     Batches images into groups to minimize API calls while staying within limits.
     Falls back gracefully if the API is unavailable or fails.
     """
@@ -212,12 +213,15 @@ def _ocr_images_with_vision(images: list[bytes], batch_size: int = 10) -> list[s
 
     if not VISION_OCR_AVAILABLE or not settings.anthropic_api_key:
         logger.debug("Vision OCR not available (no API key or anthropic not installed)")
-        return []
+        return [""] * len(images)
+
+    # Build per-image results, default to empty string
+    results: list[str] = [""] * len(images)
 
     # Filter out very small images (likely icons/decorators, < 1KB)
     meaningful_images = [(i, img) for i, img in enumerate(images) if len(img) > 1024]
     if not meaningful_images:
-        return []
+        return results
 
     logger.info(
         f"Vision OCR: processing {len(meaningful_images)}/{len(images)} images "
@@ -227,28 +231,46 @@ def _ocr_images_with_vision(images: list[bytes], batch_size: int = 10) -> list[s
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     # Use Haiku for OCR — fast, cheap, and accurate enough for text extraction
     ocr_model = "claude-haiku-4-5-20251001"
-    all_ocr_parts = []
 
     # Process in batches
     for batch_start in range(0, len(meaningful_images), batch_size):
         batch = meaningful_images[batch_start:batch_start + batch_size]
         content_blocks = []
 
-        content_blocks.append({
-            "type": "text",
-            "text": (
-                "Extract ALL text from the following image(s). These are from an educational document "
-                "and may contain math formulas, equations, graphs, diagrams with labels, or handwritten notes.\n\n"
-                "IMPORTANT instructions:\n"
-                "- For math formulas, use clear notation: √ for square roots, ² for squared, "
-                "x₁ for subscripts, fractions as (a/b), etc.\n"
-                "- Preserve the structure and order of the content\n"
-                "- If an image is a graph or diagram, describe what it shows and include any visible labels/values\n"
-                "- If an image contains no meaningful text (e.g., a decorative element or icon), respond with [no text]\n"
-                "- Separate content from different images with a blank line\n"
-                "- Output ONLY the extracted text, no commentary"
-            ),
-        })
+        if len(batch) == 1:
+            # Single image — simpler prompt, no separator needed
+            content_blocks.append({
+                "type": "text",
+                "text": (
+                    "Extract ALL text from the following image. It is from an educational document "
+                    "and may contain math formulas, equations, graphs, diagrams with labels, or handwritten notes.\n\n"
+                    "IMPORTANT instructions:\n"
+                    "- For math formulas, use clear notation: √ for square roots, ² for squared, "
+                    "x₁ for subscripts, fractions as (a/b), etc.\n"
+                    "- Preserve the structure and order of the content\n"
+                    "- If the image is a graph or diagram, describe what it shows and include any visible labels/values\n"
+                    "- If the image contains no meaningful text (e.g., a decorative element or icon), respond with [no text]\n"
+                    "- Output ONLY the extracted text, no commentary"
+                ),
+            })
+        else:
+            # Multiple images — request separator between each
+            content_blocks.append({
+                "type": "text",
+                "text": (
+                    f"Extract ALL text from each of the following {len(batch)} images. They are from an educational document "
+                    "and may contain math formulas, equations, graphs, diagrams with labels, or handwritten notes.\n\n"
+                    "IMPORTANT instructions:\n"
+                    "- For math formulas, use clear notation: √ for square roots, ² for squared, "
+                    "x₁ for subscripts, fractions as (a/b), etc.\n"
+                    "- Preserve the structure and order of the content\n"
+                    "- If an image is a graph or diagram, describe what it shows and include any visible labels/values\n"
+                    "- If an image contains no meaningful text (e.g., a decorative element or icon), respond with [no text]\n"
+                    "- IMPORTANT: Separate the output for each image with the exact line: ---IMAGE_SEP---\n"
+                    f"- You MUST output exactly {len(batch) - 1} separator lines (one between each image's text)\n"
+                    "- Output ONLY the extracted text with separators, no commentary"
+                ),
+            })
 
         for idx, img_bytes in batch:
             media_type = _get_image_media_type(img_bytes)
@@ -270,17 +292,29 @@ def _ocr_images_with_vision(images: list[bytes], batch_size: int = 10) -> list[s
                 temperature=0.0,
             )
             result_text = response.content[0].text.strip()
-            if result_text and result_text != "[no text]":
-                all_ocr_parts.append(result_text)
             logger.debug(
                 f"Vision OCR batch {batch_start // batch_size + 1}: "
                 f"extracted {len(result_text)} chars from {len(batch)} images"
             )
+
+            if len(batch) == 1:
+                # Single image result
+                orig_idx = batch[0][0]
+                if result_text and result_text != "[no text]":
+                    results[orig_idx] = result_text
+            else:
+                # Split by separator for multi-image batches
+                parts = result_text.split("---IMAGE_SEP---")
+                for j, (orig_idx, _) in enumerate(batch):
+                    if j < len(parts):
+                        part = parts[j].strip()
+                        if part and part != "[no text]":
+                            results[orig_idx] = part
         except Exception as e:
             logger.warning(f"Vision OCR batch failed: {e}")
             # Don't abort — continue with remaining batches
 
-    return all_ocr_parts
+    return results
 
 
 def extract_text_from_docx(file_content: bytes) -> str:
@@ -339,9 +373,10 @@ def extract_text_from_docx(file_content: bytes) -> str:
 
             # Prefer Vision OCR (Claude) — much better at math, formulas, diagrams
             vision_parts = _ocr_images_with_vision(images)
-            if vision_parts:
-                logger.info(f"Vision OCR extracted {len(vision_parts)} text segments from images")
-                text_parts.extend(vision_parts)
+            non_empty_parts = [p for p in vision_parts if p]
+            if non_empty_parts:
+                logger.info(f"Vision OCR extracted {len(non_empty_parts)} text segments from images")
+                text_parts.extend(non_empty_parts)
             elif OCR_AVAILABLE:
                 # Fallback to Tesseract if Vision OCR unavailable/failed
                 logger.info("Falling back to Tesseract OCR for embedded images")
@@ -407,8 +442,9 @@ def extract_text_from_image(file_content: bytes, filename: str) -> str:
     """Extract text from image using Vision OCR (preferred) or Tesseract fallback."""
     # Try Vision OCR first (much better for math/formulas/diagrams)
     vision_parts = _ocr_images_with_vision([file_content])
-    if vision_parts:
-        return "\n\n".join(vision_parts)
+    non_empty = [p for p in vision_parts if p]
+    if non_empty:
+        return "\n\n".join(non_empty)
 
     # Fallback to Tesseract
     if not OCR_AVAILABLE:
@@ -504,6 +540,256 @@ def extract_text_from_zip(file_content: bytes, filename: str) -> str:
             raise
         logger.error(f"ZIP processing failed: {str(e)}")
         raise FileProcessingError(f"Failed to process ZIP archive: {str(e)}")
+
+
+def _compress_image(image_bytes: bytes, max_width: int = 800) -> tuple[bytes, str]:
+    """Resize image to max_width and compress. Returns (compressed_bytes, media_type)."""
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.width > max_width:
+        ratio = max_width / img.width
+        img = img.resize((max_width, int(img.height * ratio)), Image.LANCZOS)
+    # Keep PNG for images with transparency
+    if img.mode in ('RGBA', 'LA', 'P'):
+        buf = io.BytesIO()
+        img.save(buf, format='PNG', optimize=True)
+        return buf.getvalue(), 'image/png'
+    else:
+        # Convert to RGB for JPEG
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=85)
+        return buf.getvalue(), 'image/jpeg'
+
+
+def _extract_images_from_pptx(file_content: bytes) -> list[dict]:
+    """Extract images from a PowerPoint file with slide context."""
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    images: list[dict] = []
+    try:
+        prs = Presentation(io.BytesIO(file_content))
+        for slide_num, slide in enumerate(prs.slides, 1):
+            slide_title = ""
+            if slide.shapes.title:
+                slide_title = slide.shapes.title.text or ""
+            for shape in slide.shapes:
+                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                    try:
+                        img_blob = shape.image.blob
+                        img_content_type = shape.image.content_type
+                        context = f"Slide {slide_num}"
+                        if slide_title:
+                            context += f": {slide_title}"
+                        images.append({
+                            "image_bytes": img_blob,
+                            "content_type": img_content_type,
+                            "position_context": context,
+                        })
+                    except Exception as e:
+                        logger.debug(f"Failed to extract image from slide {slide_num}: {e}")
+    except Exception as e:
+        logger.debug(f"Failed to extract images from pptx: {e}")
+    return images
+
+
+def _extract_images_from_pdf(file_content: bytes) -> list[dict]:
+    """Extract images from a PDF file with page context."""
+    images: list[dict] = []
+    try:
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+        for page_num, page in enumerate(pdf_reader.pages, 1):
+            try:
+                if hasattr(page, 'images') and page.images:
+                    for img in page.images:
+                        images.append({
+                            "image_bytes": img.data,
+                            "content_type": None,  # Will be detected later
+                            "position_context": f"Page {page_num}",
+                        })
+                elif '/Resources' in page and '/XObject' in page['/Resources']:
+                    x_objects = page['/Resources']['/XObject'].get_object()
+                    for obj_name in x_objects:
+                        obj = x_objects[obj_name].get_object()
+                        if obj.get('/Subtype') == '/Image':
+                            try:
+                                data = obj.get_data()
+                                images.append({
+                                    "image_bytes": data,
+                                    "content_type": None,
+                                    "position_context": f"Page {page_num}",
+                                })
+                            except Exception as e:
+                                logger.debug(f"Failed to extract image {obj_name} from page {page_num}: {e}")
+            except Exception as e:
+                logger.debug(f"Failed to extract images from PDF page {page_num}: {e}")
+    except Exception as e:
+        logger.debug(f"Failed to extract images from PDF: {e}")
+    return images
+
+
+def _extract_docx_images_with_context(file_content: bytes) -> list[dict]:
+    """Extract images from a DOCX with surrounding paragraph context.
+
+    Walks the document XML to find inline/anchor images and associates them
+    with the paragraphs before and after each image.
+    """
+    images: list[dict] = []
+    try:
+        doc = WordDocument(io.BytesIO(file_content))
+        # Build a map of relationship IDs to image names for the main document part
+        rels = doc.part.rels
+        rid_to_image: dict[str, str] = {}
+        for rel_id, rel in rels.items():
+            if "image" in (rel.reltype or ""):
+                rid_to_image[rel_id] = rel.target_ref
+
+        # Extract image blobs from the ZIP
+        image_blobs: dict[str, bytes] = {}
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as zf:
+            for name in zf.namelist():
+                if name.startswith("word/media/") and Path(name).suffix.lower() in IMAGE_EXTENSIONS:
+                    image_blobs[name] = zf.read(name)
+
+        # Walk paragraphs to find images and capture surrounding text
+        paragraphs = doc.paragraphs
+        para_texts = [p.text.strip() for p in paragraphs]
+
+        # Namespace for finding image references
+        ns_drawing = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        ns_blip = "http://schemas.openxmlformats.org/drawingml/2006/main"
+        ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+        for para_idx, para in enumerate(paragraphs):
+            # Find all blip elements (inline and anchor images) in this paragraph's XML
+            blips = para._element.findall(f".//{{{ns_blip}}}blip")
+            for blip in blips:
+                embed_rid = blip.get(f"{{{ns_r}}}embed")
+                if not embed_rid or embed_rid not in rid_to_image:
+                    continue
+                target = rid_to_image[embed_rid]
+                # Target may be relative like "media/image1.png" — normalize
+                if not target.startswith("word/"):
+                    target = "word/" + target
+                if target not in image_blobs:
+                    continue
+
+                # Build context from surrounding paragraphs
+                context_parts = []
+                if para_idx > 0 and para_texts[para_idx - 1]:
+                    context_parts.append(para_texts[para_idx - 1])
+                if para_texts[para_idx]:
+                    context_parts.append(para_texts[para_idx])
+                if para_idx + 1 < len(para_texts) and para_texts[para_idx + 1]:
+                    context_parts.append(para_texts[para_idx + 1])
+                context = " | ".join(context_parts) if context_parts else None
+
+                images.append({
+                    "image_bytes": image_blobs[target],
+                    "content_type": None,
+                    "position_context": context,
+                })
+
+        # If XML walking found nothing, fall back to extracting all images
+        if not images:
+            raw_images = _extract_images_from_docx(file_content)
+            for img_bytes in raw_images:
+                images.append({
+                    "image_bytes": img_bytes,
+                    "content_type": None,
+                    "position_context": None,
+                })
+
+    except Exception as e:
+        logger.debug(f"DOCX image extraction with context failed, falling back: {e}")
+        # Fallback: use the simple extraction
+        raw_images = _extract_images_from_docx(file_content)
+        for img_bytes in raw_images:
+            images.append({
+                "image_bytes": img_bytes,
+                "content_type": None,
+                "position_context": None,
+            })
+    return images
+
+
+# Maximum number of images to extract per document
+_MAX_IMAGES_PER_DOC = 20
+
+
+def extract_images_from_file(file_content: bytes, filename: str) -> list[dict]:
+    """Extract images from a document file.
+
+    Returns list of dicts with keys:
+        image_data: bytes (compressed, max 800px width)
+        media_type: str
+        description: str | None (from Vision OCR)
+        position_context: str | None (nearby text)
+        position_index: int
+        file_size: int
+    """
+    ext = Path(filename).suffix.lower()
+    raw_images: list[dict] = []
+
+    if ext in ('.docx',):
+        raw_images = _extract_docx_images_with_context(file_content)
+    elif ext == '.pdf':
+        raw_images = _extract_images_from_pdf(file_content)
+    elif ext == '.pptx':
+        raw_images = _extract_images_from_pptx(file_content)
+    elif ext in IMAGE_EXTENSIONS:
+        # Single image file — the file itself is the image
+        raw_images = [{
+            "image_bytes": file_content,
+            "content_type": None,
+            "position_context": None,
+        }]
+    else:
+        # Unsupported format for image extraction
+        return []
+
+    if not raw_images:
+        return []
+
+    # Filter out tiny images (< 1KB)
+    raw_images = [img for img in raw_images if len(img["image_bytes"]) > 1024]
+    if not raw_images:
+        return []
+
+    # Cap at _MAX_IMAGES_PER_DOC — keep the largest if over limit
+    if len(raw_images) > _MAX_IMAGES_PER_DOC:
+        raw_images.sort(key=lambda x: len(x["image_bytes"]), reverse=True)
+        raw_images = raw_images[:_MAX_IMAGES_PER_DOC]
+
+    # Compress images and collect bytes for OCR
+    compressed: list[tuple[bytes, str]] = []
+    for img_info in raw_images:
+        try:
+            comp_bytes, comp_media = _compress_image(img_info["image_bytes"])
+            compressed.append((comp_bytes, comp_media))
+        except Exception as e:
+            logger.debug(f"Image compression failed, using original: {e}")
+            media = img_info.get("content_type") or _get_image_media_type(img_info["image_bytes"])
+            compressed.append((img_info["image_bytes"], media))
+
+    # Run Vision OCR for descriptions (use compressed images)
+    ocr_images = [comp[0] for comp in compressed]
+    descriptions = _ocr_images_with_vision(ocr_images)
+
+    # Build result dicts
+    results: list[dict] = []
+    for idx, (img_info, (comp_bytes, comp_media)) in enumerate(zip(raw_images, compressed)):
+        desc = descriptions[idx] if idx < len(descriptions) else ""
+        results.append({
+            "image_data": comp_bytes,
+            "media_type": comp_media,
+            "description": desc if desc else None,
+            "position_context": img_info.get("position_context"),
+            "position_index": idx,
+            "file_size": len(comp_bytes),
+        })
+
+    return results
 
 
 def process_file(file_content: bytes, filename: str) -> str:

@@ -94,7 +94,8 @@ class TestVisionOcr:
         # Create a tiny image (< 1KB)
         tiny_img = b"\x89PNG" + b"\x00" * 500  # ~504 bytes
         result = _ocr_images_with_vision([tiny_img])
-        assert result == []
+        # Returns one empty string per input image (tiny images get empty description)
+        assert result == [""]
         # API should not have been called
         mock_anthropic.Anthropic.return_value.messages.create.assert_not_called()
 
@@ -104,7 +105,8 @@ class TestVisionOcr:
         from app.services.file_processor import _ocr_images_with_vision
 
         result = _ocr_images_with_vision([b"\x89PNG" + b"\x00" * 2000])
-        assert result == []
+        # Returns one empty string per input image when Vision OCR is unavailable
+        assert result == [""]
 
     def test_image_media_type_detection(self):
         """Test _get_image_media_type detects common formats."""
