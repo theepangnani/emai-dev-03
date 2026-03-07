@@ -1,7 +1,52 @@
-import { lazy, useMemo } from 'react';
+import { lazy, useMemo, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { looksLikeOCR } from '../utils/ocrDetect';
+import { api } from '../api/client';
 import './ContentCard.css';
+
+/* ── Image metadata returned by the backend ────────────────────── */
+
+interface ContentImage {
+  id: number;
+  position_index: number;
+}
+
+/* ── AuthImage: fetches image via Axios (with Bearer token) ───── */
+
+function AuthImage({ src, alt }: { src: string; alt?: string }) {
+  const [objectUrl, setObjectUrl] = useState<string>('');
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let revoke = '';
+    let cancelled = false;
+    api
+      .get(src, { responseType: 'blob' })
+      .then((res) => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(res.data);
+        revoke = url;
+        setObjectUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [src]);
+
+  if (error) return null;
+  if (!objectUrl)
+    return <span className="image-placeholder">{alt || 'Loading image\u2026'}</span>;
+  return (
+    <figure className="study-guide-image-figure">
+      <img src={objectUrl} alt={alt || ''} className="study-guide-image" />
+      {alt && <figcaption className="study-guide-image-caption">{alt}</figcaption>}
+    </figure>
+  );
+}
 
 /* ── Lazy-loaded Markdown renderer ─────────────────────────────── */
 
@@ -12,16 +57,83 @@ function normalizeContent(content: string) {
     .trim();
 }
 
+/** Replace {{IMG-N}} markers with real API image URLs. */
+function resolveImageMarkers(
+  content: string,
+  courseContentId: number,
+  images: ContentImage[],
+): string {
+  const sorted = [...images].sort((a, b) => a.position_index - b.position_index);
+  return content.replace(/\{\{IMG-(\d+)\}\}/g, (_match, n) => {
+    const idx = parseInt(n, 10) - 1; // IMG-1 → index 0
+    const img = sorted[idx];
+    if (!img) return _match; // leave unresolved marker as-is
+    return `/api/course-contents/${courseContentId}/images/${img.id}`;
+  });
+}
+
 const loadMarkdown = () =>
   Promise.all([import('react-markdown'), import('remark-gfm')]).then(
-    ([md, gfm]) => ({
-      default: ({ content }: { content: string }) => {
-        const ReactMarkdown = md.default;
-        const remarkGfm = gfm.default;
-        const normalized = normalizeContent(content);
-        return <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalized}</ReactMarkdown>;
-      },
-    }),
+    ([md, gfm]) => {
+      const ReactMarkdown = md.default;
+      const remarkGfm = gfm.default;
+
+      function MarkdownRenderer({
+        content,
+        courseContentId,
+      }: {
+        content: string;
+        courseContentId?: number;
+      }) {
+        const [images, setImages] = useState<ContentImage[]>([]);
+
+        useEffect(() => {
+          if (!courseContentId) return;
+          let cancelled = false;
+          api
+            .get<ContentImage[]>(`/api/course-contents/${courseContentId}/images`)
+            .then((res) => {
+              if (!cancelled) setImages(res.data);
+            })
+            .catch(() => {});
+          return () => {
+            cancelled = true;
+          };
+        }, [courseContentId]);
+
+        const resolved = useMemo(() => {
+          let text = normalizeContent(content);
+          if (courseContentId && images.length > 0) {
+            text = resolveImageMarkers(text, courseContentId, images);
+          }
+          return text;
+        }, [content, courseContentId, images]);
+
+        /* Custom img renderer: use AuthImage for API-served images */
+        const imgComponent = useCallback(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (props: any) => {
+            const { src, alt } = props;
+            if (src && src.startsWith('/api/')) {
+              return <AuthImage src={src} alt={alt} />;
+            }
+            return <img src={src} alt={alt} style={{ maxWidth: '100%' }} />;
+          },
+          [],
+        );
+
+        return (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{ img: imgComponent }}
+          >
+            {resolved}
+          </ReactMarkdown>
+        );
+      }
+
+      return { default: MarkdownRenderer };
+    },
   );
 
 export const MarkdownBody = lazy(() =>
