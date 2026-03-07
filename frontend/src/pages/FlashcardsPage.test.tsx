@@ -20,6 +20,8 @@ vi.mock('../api/client', () => ({
   },
   coursesApi: { list: vi.fn().mockResolvedValue([]) },
   tasksApi: { create: vi.fn() },
+  messagesApi: { getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }) },
+  inspirationApi: { getRandom: vi.fn().mockRejectedValue(new Error('none')) },
 }))
 
 vi.mock('../context/AuthContext', () => ({
