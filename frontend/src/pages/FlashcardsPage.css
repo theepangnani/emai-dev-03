@@ -35,13 +35,15 @@
   height: 300px;
   cursor: pointer;
   position: relative;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .flashcard-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.6s;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
 }
 
@@ -166,37 +168,37 @@
 }
 
 .mastery-btn {
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
+  padding: 0.85rem 2.25rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  border: 2px solid;
+  border: none;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .mastery-btn.got-it {
-  border-color: var(--color-success, #16a34a);
-  background: transparent;
-  color: var(--color-success, #16a34a);
-}
-
-.mastery-btn.got-it:hover,
-.mastery-btn.got-it.active {
   background: var(--color-success, #16a34a);
   color: white;
 }
 
+.mastery-btn.got-it:hover,
+.mastery-btn.got-it.active {
+  background: var(--color-success-dark, #15803d);
+  color: white;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
 .mastery-btn.still-learning {
-  border-color: var(--color-accent-warm, #e85d04);
-  background: transparent;
-  color: var(--color-accent-warm, #e85d04);
+  background: var(--color-accent-warm, #e85d04);
+  color: white;
 }
 
 .mastery-btn.still-learning:hover,
 .mastery-btn.still-learning.active {
-  background: var(--color-accent-warm, #e85d04);
+  background: var(--color-accent-warm-strong, #c64e03);
   color: white;
+  box-shadow: 0 2px 8px rgba(232, 93, 4, 0.3);
 }
 
 /* Review Mode Badge */

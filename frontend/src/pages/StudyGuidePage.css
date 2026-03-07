@@ -63,10 +63,11 @@
 }
 
 .sg-version-badge {
-  background: #e3f2fd;
-  color: #1565c0;
-  padding: 1px 6px;
-  border-radius: 8px;
+  display: inline-block;
+  background: var(--color-surface-alt, #e3f2fd);
+  color: var(--color-ink-muted, #1565c0);
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
   font-size: 0.75rem;
   font-weight: 600;
 }

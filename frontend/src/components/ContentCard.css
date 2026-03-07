@@ -28,8 +28,9 @@
 
 /* ── Typography ────────────────────────────────────────────── */
 .content-card-body {
-  line-height: 1.8;
+  line-height: 1.7;
   color: var(--color-ink);
+  max-width: 720px;
 }
 
 .content-card-body > :first-child {
@@ -58,7 +59,7 @@
 }
 
 .content-card-body p {
-  margin: 0 0 0.85rem;
+  margin: 0 0 1rem;
 }
 
 .content-card-body ul,
