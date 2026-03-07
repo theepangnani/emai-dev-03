@@ -699,7 +699,7 @@ describe('ParentDashboard', () => {
       expect(screen.getByText('Alex Smith')).toBeInTheDocument()
     })
 
-    // Task urgency pills appear in Today's Focus header
+    // Task urgency pills appear below CTAs
     await waitFor(() => {
       expect(screen.getByText('1 overdue')).toBeInTheDocument()
     })
@@ -725,7 +725,7 @@ describe('ParentDashboard', () => {
     expect(screen.queryByText(/\d+ overdue/)).not.toBeInTheDocument()
   })
 
-  it('task urgency pill in focus header navigates to filtered tasks page', async () => {
+  it('task urgency pill navigates to filtered tasks page', async () => {
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
 

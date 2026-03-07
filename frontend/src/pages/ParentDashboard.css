@@ -417,6 +417,48 @@
   flex-shrink: 0;
 }
 
+/* ============================================
+   Task Status Pills
+   ============================================ */
+
+.pd-task-status-pills {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0 12px;
+  flex-wrap: wrap;
+}
+
+.pd-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.pd-status-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pd-status-pill-overdue {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.pd-status-pill-today {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.pd-status-pill-upcoming {
+  background: #DBEAFE;
+  color: #2563EB;
+}
 
 /* ============================================
    View Mode Toggle (#832)
