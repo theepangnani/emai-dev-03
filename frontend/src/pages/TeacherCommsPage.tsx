@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { teacherCommsApi } from '../api/client';
 import type { TeacherCommunication, EmailMonitoringStatus } from '../api/client';
-import { NotificationBell } from '../components/NotificationBell';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { useDebounce } from '../utils/useDebounce';
@@ -12,7 +11,6 @@ import './TeacherCommsPage.css';
 
 export function TeacherCommsPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
   const [communications, setCommunications] = useState<TeacherCommunication[]>([]);
   const [selected, setSelected] = useState<TeacherCommunication | null>(null);
   const [status, setStatus] = useState<EmailMonitoringStatus | null>(null);
@@ -151,25 +149,14 @@ export function TeacherCommsPage() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="teacher-comms-page">
-      <PageNav items={[
-        { label: 'Home', to: '/dashboard' },
-        { label: 'Teacher Communications' },
-      ]} />
-      <header className="comms-header">
-        <div className="header-left">
-          <h1 className="page-title">Teacher Communications</h1>
-        </div>
-        <div className="header-right">
-          <span className="user-name">{user?.full_name}</span>
-          <NotificationBell />
-          <button className="logout-button" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </header>
+    <DashboardLayout welcomeSubtitle="Teacher communications" showBackButton>
+      <div className="teacher-comms-page">
+        <PageNav items={[
+          { label: 'Home', to: '/dashboard' },
+          { label: 'Teacher Communications' },
+        ]} />
 
-      <div className="comms-toolbar">
+        <div className="comms-toolbar">
         <div className="search-bar">
           <input
             type="text"
@@ -348,6 +335,7 @@ export function TeacherCommsPage() {
           )}
         </main>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

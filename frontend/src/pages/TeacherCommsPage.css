@@ -1,60 +1,7 @@
 .teacher-comms-page {
-  min-height: 100vh;
-  background: transparent;
   display: flex;
   flex-direction: column;
-}
-
-.comms-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  background: var(--color-surface-header);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.comms-header .header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.comms-header .header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.comms-header .back-button {
-  background: none;
-  border: none;
-  color: var(--color-accent-strong);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 4px 8px;
-}
-
-.comms-header .page-title {
-  font-size: 20px;
-  color: var(--color-ink);
-  margin: 0;
-  font-family: var(--font-display);
-}
-
-.comms-header .user-name {
-  color: var(--color-ink-muted);
-  font-size: 14px;
-}
-
-.comms-header .logout-button {
-  background: none;
-  border: 1px solid var(--color-border);
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--color-ink-muted);
-  font-size: 13px;
+  flex: 1;
 }
 
 .comms-toolbar {
@@ -532,14 +479,6 @@
   .comms-toolbar {
     flex-wrap: wrap;
     padding: 12px 16px;
-  }
-
-  .comms-header {
-    padding: 12px 16px;
-  }
-
-  .comms-header .page-title {
-    font-size: 17px;
   }
 
   .mobile-back-btn {
