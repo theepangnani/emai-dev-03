@@ -54,6 +54,13 @@
   background: var(--gradient-accent-hover);
 }
 
+[data-style="gradient"] .btn-primary {
+  background: var(--gradient-accent);
+}
+[data-style="gradient"] .btn-primary:hover:not(:disabled) {
+  background: var(--gradient-accent-hover);
+}
+
 [data-style="gradient"] .create-custom-btn {
   background: var(--gradient-accent);
 }
