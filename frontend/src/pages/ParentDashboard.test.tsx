@@ -612,14 +612,18 @@ describe('ParentDashboard', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'Upload Class Material' })).toBeInTheDocument(),
     )
 
-    // Attach a file and select Study Guide
+    // Attach a file, advance to Step 2, select Study Guide, then submit
     const file = new File(['content'], 'notes.pdf', { type: 'application/pdf' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     await userEvent.upload(input, file)
 
-    await user.click(screen.getByLabelText('Study Guide'))
+    // Step 1 → Step 2
+    await user.click(screen.getByRole('button', { name: /Next/i }))
+    await waitFor(() => expect(screen.getByText('Study Guide')).toBeInTheDocument())
 
-    await user.click(screen.getByRole('button', { name: /Upload & Generate/i }))
+    await user.click(screen.getByText('Study Guide'))
+
+    await user.click(screen.getByRole('button', { name: /Upload & Create/i }))
 
     // Modal must close immediately — NOT stay open showing "Generating..."
     await waitFor(() =>
