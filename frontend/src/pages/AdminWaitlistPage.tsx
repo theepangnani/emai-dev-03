@@ -6,12 +6,14 @@ import { ListSkeleton } from '../components/Skeleton';
 import { adminWaitlistApi } from '../api/adminWaitlist';
 import type { WaitlistEntry, WaitlistStats } from '../api/adminWaitlist';
 import { useDebounce } from '../utils/useDebounce';
+import { useToast } from '../components/Toast';
 import './AdminWaitlistPage.css';
 
 const PAGE_SIZE = 20;
 
 export function AdminWaitlistPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Stats
   const [stats, setStats] = useState<WaitlistStats | null>(null);
@@ -111,9 +113,13 @@ export function AdminWaitlistPage() {
   };
 
   const handleRemind = async (id: number) => {
+    const entry = entries.find(e => e.id === id);
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
       await adminWaitlistApi.remind(id);
+      toast(`Reminder sent to ${entry?.email ?? 'user'}`, 'success');
+    } catch {
+      toast('Failed to send reminder', 'error');
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
