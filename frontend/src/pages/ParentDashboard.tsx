@@ -391,8 +391,8 @@ export function ParentDashboard() {
             maxVisible={2}
           />
 
-          {/* Task status pills — visible when a specific child is selected */}
-          {pd.selectedChild && (
+          {/* Task status pills — visible when a specific child is selected (Full mode only) */}
+          {viewMode === 'full' && pd.selectedChild && (
             <div className="pd-task-status-pills">
               {pd.taskCounts.overdue > 0 && (
                 <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
@@ -421,11 +421,13 @@ export function ParentDashboard() {
             </div>
           )}
 
-          {/* Recent Activity Feed (#1225/#1226) */}
-          <RecentActivityPanel
-            selectedChild={pd.selectedChild}
-            navigate={pd.navigate}
-          />
+          {/* Recent Activity Feed (#1225/#1226) — Full mode only */}
+          {viewMode === 'full' && (
+            <RecentActivityPanel
+              selectedChild={pd.selectedChild}
+              navigate={pd.navigate}
+            />
+          )}
 
           {/* Student Detail moved to MyKids page */}
 
