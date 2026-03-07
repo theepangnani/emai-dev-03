@@ -57,7 +57,7 @@ describe('UploadMaterialWizard', () => {
     render(<UploadMaterialWizard {...defaultProps} />)
 
     // Type text into the textarea to provide content
-    const textarea = screen.getByPlaceholderText(/paste notes/i)
+    const textarea = screen.getByPlaceholderText(/paste text/i)
     await userEvent.type(textarea, 'Some study content')
 
     const nextBtn = screen.getByText(/Next/i)
@@ -71,7 +71,7 @@ describe('UploadMaterialWizard', () => {
     render(<UploadMaterialWizard {...defaultProps} />)
 
     // Go to step 2
-    const textarea = screen.getByPlaceholderText(/paste notes/i)
+    const textarea = screen.getByPlaceholderText(/paste text/i)
     await userEvent.type(textarea, 'content')
     await userEvent.click(screen.getByText(/Next/i))
     expect(screen.getByText('Step 2 of 2')).toBeInTheDocument()
@@ -87,7 +87,7 @@ describe('UploadMaterialWizard', () => {
     const onGenerate = vi.fn()
     render(<UploadMaterialWizard {...defaultProps} onGenerate={onGenerate} />)
 
-    const textarea = screen.getByPlaceholderText(/paste notes/i)
+    const textarea = screen.getByPlaceholderText(/paste text/i)
     await userEvent.type(textarea, 'some content')
 
     await userEvent.click(screen.getByText('Just Upload'))
@@ -100,7 +100,7 @@ describe('UploadMaterialWizard', () => {
     render(<UploadMaterialWizard {...defaultProps} onGenerate={onGenerate} />)
 
     // Go to step 2
-    const textarea = screen.getByPlaceholderText(/paste notes/i)
+    const textarea = screen.getByPlaceholderText(/paste text/i)
     await userEvent.type(textarea, 'content')
     await userEvent.click(screen.getByText(/Next/i))
 

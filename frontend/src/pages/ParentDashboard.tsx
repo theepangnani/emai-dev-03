@@ -391,27 +391,6 @@ export function ParentDashboard() {
             maxVisible={2}
           />
 
-          {/* Task status pills — visible when a specific child is selected (Full mode only) */}
-          {viewMode === 'full' && pd.selectedChild && (
-            <div className="pd-task-status-pills">
-              {pd.taskCounts.overdue > 0 && (
-                <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
-                  {pd.taskCounts.overdue} overdue
-                </button>
-              )}
-              {pd.taskCounts.dueToday > 0 && (
-                <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>
-                  {pd.taskCounts.dueToday} due today
-                </button>
-              )}
-              {pd.taskCounts.upcoming > 0 && (
-                <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>
-                  {pd.taskCounts.upcoming} next 3 days
-                </button>
-              )}
-            </div>
-          )}
-
           {!tipDismissed && pd.courseMaterials.length === 0 && (
             <div className="pd-onboard-tip" role="status">
               <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
