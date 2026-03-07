@@ -29,7 +29,7 @@ ALL_SCOPES = BASE_SCOPES + GMAIL_SCOPES
 GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 
-def get_google_auth_flow(scopes: list[str] | None = None) -> Flow:
+def get_google_auth_flow(scopes: list[str] | None = None, code_verifier: str | None = None) -> Flow:
     """Create OAuth flow for Google Classroom."""
     client_config = {
         "web": {
@@ -40,30 +40,42 @@ def get_google_auth_flow(scopes: list[str] | None = None) -> Flow:
             "redirect_uris": [settings.google_redirect_uri],
         }
     }
-    flow = Flow.from_client_config(client_config, scopes=scopes or BASE_SCOPES)
+    kwargs = {"scopes": scopes or BASE_SCOPES}
+    if code_verifier:
+        kwargs["code_verifier"] = code_verifier
+    flow = Flow.from_client_config(client_config, **kwargs)
     flow.redirect_uri = settings.google_redirect_uri
     return flow
 
 
-def get_authorization_url(state: str | None = None) -> tuple[str, str]:
-    """Get the Google OAuth authorization URL."""
-    flow = get_google_auth_flow()
+def get_authorization_url(state: str | None = None) -> tuple[str, str, str | None]:
+    """Get the Google OAuth authorization URL.
+
+    Returns (authorization_url, state, code_verifier).
+    The code_verifier must be stored and passed to exchange_code_for_tokens
+    for PKCE compliance.
+    """
+    import secrets as _secrets
+
+    # Generate PKCE code_verifier
+    code_verifier = _secrets.token_urlsafe(96)
+    flow = get_google_auth_flow(code_verifier=code_verifier)
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
         state=state,
     )
-    return authorization_url, returned_state
+    return authorization_url, returned_state, code_verifier
 
 
-def exchange_code_for_tokens(code: str) -> dict:
+def exchange_code_for_tokens(code: str, code_verifier: str | None = None) -> dict:
     """Exchange authorization code for access and refresh tokens."""
     import logging
     import requests
 
     logger = logging.getLogger(__name__)
 
-    # Exchange code for tokens directly to avoid scope validation issues
+    # Exchange code for tokens — include code_verifier for PKCE compliance
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
@@ -72,6 +84,8 @@ def exchange_code_for_tokens(code: str) -> dict:
         "redirect_uri": settings.google_redirect_uri,
         "grant_type": "authorization_code",
     }
+    if code_verifier:
+        data["code_verifier"] = code_verifier
 
     response = requests.post(token_url, data=data)
     if not response.ok:
@@ -151,20 +165,25 @@ def get_gmail_service(access_token: str, refresh_token: str | None = None):
     return build("gmail", "v1", credentials=credentials), credentials
 
 
-def get_email_monitoring_auth_url(state: str | None = None) -> tuple[str, str]:
+def get_email_monitoring_auth_url(state: str | None = None) -> tuple[str, str, str | None]:
     """Get OAuth URL for granting email monitoring permissions (re-consent).
 
     Requests ALL_SCOPES (base + gmail.readonly) with include_granted_scopes
     so existing Classroom scopes are preserved while adding Gmail access.
+
+    Returns (authorization_url, state, code_verifier).
     """
-    flow = get_google_auth_flow(scopes=ALL_SCOPES)
+    import secrets as _secrets
+
+    code_verifier = _secrets.token_urlsafe(96)
+    flow = get_google_auth_flow(scopes=ALL_SCOPES, code_verifier=code_verifier)
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
         state=state,
         include_granted_scopes="true",
     )
-    return authorization_url, returned_state
+    return authorization_url, returned_state, code_verifier
 
 
 def get_user_info(access_token: str) -> dict:

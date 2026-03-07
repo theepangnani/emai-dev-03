@@ -107,8 +107,10 @@ def get_email_monitoring_auth(
     current_user: User = Depends(get_current_user),
 ):
     """Get OAuth URL for granting email monitoring permissions."""
-    state = f"email_monitor:{current_user.id}"
-    auth_url, _ = get_email_monitoring_auth_url(state)
+    from app.api.routes.google_classroom import _oauth_states, _create_oauth_state
+    state = _create_oauth_state(purpose="email_monitor", user_id=current_user.id)
+    auth_url, _, code_verifier = get_email_monitoring_auth_url(state)
+    _oauth_states[state]["code_verifier"] = code_verifier
     return {"authorization_url": auth_url}
 
 

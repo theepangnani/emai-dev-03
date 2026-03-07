@@ -63,7 +63,7 @@ _pending_google_tokens: dict[str, dict] = {}
 _PENDING_TTL = 600  # seconds
 
 
-def _create_oauth_state(purpose: str, user_id: int | None = None) -> str:
+def _create_oauth_state(purpose: str, user_id: int | None = None, code_verifier: str | None = None) -> str:
     """Generate a cryptographic state token and store its context."""
     # Clean expired entries
     now = time.time()
@@ -72,7 +72,7 @@ def _create_oauth_state(purpose: str, user_id: int | None = None) -> str:
         _oauth_states.pop(k, None)
 
     nonce = secrets.token_urlsafe(32)
-    _oauth_states[nonce] = {"purpose": purpose, "user_id": user_id, "created_at": now}
+    _oauth_states[nonce] = {"purpose": purpose, "user_id": user_id, "created_at": now, "code_verifier": code_verifier}
     return nonce
 
 
@@ -120,7 +120,9 @@ def google_auth(request: Request, user_id: int | None = None):
     the Google account to an existing user after callback.
     """
     state = _create_oauth_state(purpose="auth", user_id=user_id)
-    authorization_url, _ = get_authorization_url(state)
+    authorization_url, _, code_verifier = get_authorization_url(state)
+    # Store the PKCE code_verifier so the callback can use it
+    _oauth_states[state]["code_verifier"] = code_verifier
     return {"authorization_url": authorization_url, "state": state}
 
 
@@ -135,7 +137,8 @@ def google_connect(
     """Get authorization URL for connecting Google to existing account."""
     purpose = "add_account" if add_account and current_user.has_role(UserRole.TEACHER) else "connect"
     state = _create_oauth_state(purpose=purpose, user_id=current_user.id)
-    authorization_url, _ = get_authorization_url(state)
+    authorization_url, _, code_verifier = get_authorization_url(state)
+    _oauth_states[state]["code_verifier"] = code_verifier
     return {"authorization_url": authorization_url}
 
 
@@ -165,7 +168,7 @@ def google_callback(
         return RedirectResponse(url=f"{settings.frontend_url}/login?{params}")
 
     try:
-        tokens = exchange_code_for_tokens(code)
+        tokens = exchange_code_for_tokens(code, code_verifier=state_data.get("code_verifier"))
         user_info = get_user_info(tokens["access_token"])
 
         # Check if this is an add-account request for a teacher
