@@ -11,8 +11,14 @@ import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
 import EmptyState from '../components/EmptyState';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
+import { AddActionButton } from '../components/AddActionButton';
 import '../components/AddActionButton.css';
 import './CoursesPage.css';
+
+const CHILD_COLORS = [
+  '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b',
+  '#3b82f6', '#ef4444', '#10b981', '#6366f1',
+];
 
 interface CourseItem {
   id: number;
@@ -601,17 +607,36 @@ export function CoursesPage() {
         </div>
 
         {/* Parent: Child selector */}
-        {isParent && children.length > 1 && (
+        {isParent && children.length > 0 && (
           <div className="child-selector" style={{ marginBottom: 20 }}>
-            {children.map((child) => (
+            {children.length > 1 && (
+              <button
+                className={`child-tab child-tab-all ${selectedChild === null ? 'active' : ''}`}
+                onClick={() => setSelectedChild(null)}
+                title="All children"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </button>
+            )}
+            {children.map((child, index) => (
               <button
                 key={child.student_id}
                 className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
                 onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
               >
+                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}
               </button>
             ))}
+            <AddActionButton actions={[
+              { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowCreateModal(true), showPlus: true },
+              { icon: '\u{1F4C4}', label: 'Assign Class', onClick: () => setShowAssignModal(true), showPlus: true },
+            ]} />
           </div>
         )}
 
