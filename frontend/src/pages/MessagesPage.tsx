@@ -740,7 +740,7 @@ export function MessagesPage() {
                 <button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sending}
-                  className="send-button"
+                  className="send-button btn-primary"
                 >
                   {sending ? 'Sending...' : 'Send'}
                 </button>
@@ -838,11 +838,11 @@ export function MessagesPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="cancel-button" onClick={() => setShowNewModal(false)}>
+              <button className="cancel-button btn-secondary" onClick={() => setShowNewModal(false)}>
                 Cancel
               </button>
               <button
-                className="send-button"
+                className="send-button btn-primary"
                 onClick={handleCreateConversation}
                 disabled={!selectedRecipient || !initialMessage.trim() || creatingConversation}
               >

@@ -307,10 +307,10 @@ export function TaskDetailPage() {
                 </div>
               </div>
               <div className="td-actions">
-                <button className="td-action-btn primary" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
+                <button className="td-action-btn primary btn-primary" onClick={handleSaveEdit} disabled={saving || !editTitle.trim()}>
                   {saving ? 'Saving...' : 'Save'}
                 </button>
-                <button className="td-action-btn" onClick={cancelEditing} disabled={saving}>
+                <button className="td-action-btn btn-secondary" onClick={cancelEditing} disabled={saving}>
                   Cancel
                 </button>
               </div>
@@ -384,13 +384,13 @@ export function TaskDetailPage() {
               </div>
 
               <div className="td-actions">
-                <button className="td-action-btn primary" onClick={startEditing}>
+                <button className="td-action-btn primary btn-primary" onClick={startEditing}>
                   Edit
                 </button>
-                <button className="td-action-btn" onClick={handleToggleComplete}>
+                <button className="td-action-btn btn-secondary" onClick={handleToggleComplete}>
                   {task.is_completed ? 'Mark Incomplete' : 'Mark Complete'}
                 </button>
-                <button className="td-action-btn danger" onClick={handleDelete}>
+                <button className="td-action-btn danger btn-danger" onClick={handleDelete}>
                   Delete
                 </button>
               </div>
@@ -404,17 +404,17 @@ export function TaskDetailPage() {
             <h3>Linked Resources</h3>
             <div className="td-link-buttons">
               {!task.course_id && (
-                <button className="td-link-icon-btn" title="Link Class" onClick={() => openLinkModal('course')}>
+                <button className="td-link-icon-btn btn-icon btn-sm" title="Link Class" onClick={() => openLinkModal('course')}>
                   &#127891;
                 </button>
               )}
               {!task.course_content_id && (
-                <button className="td-link-icon-btn" title="Link Class Material" onClick={() => openLinkModal('course_content')}>
+                <button className="td-link-icon-btn btn-icon btn-sm" title="Link Class Material" onClick={() => openLinkModal('course_content')}>
                   &#128196;
                 </button>
               )}
               {!task.study_guide_id && (
-                <button className="td-link-icon-btn" title="Link Study Guide" onClick={() => openLinkModal('study_guide')}>
+                <button className="td-link-icon-btn btn-icon btn-sm" title="Link Study Guide" onClick={() => openLinkModal('study_guide')}>
                   &#128214;
                 </button>
               )}

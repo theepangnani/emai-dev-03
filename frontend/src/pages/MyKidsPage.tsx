@@ -776,7 +776,7 @@ export function MyKidsPage() {
                             </span>
                           </div>
                           <button
-                            className="mykids-list-action-btn"
+                            className="mykids-list-action-btn btn-icon"
                             title="Assign to child"
                             onClick={() => setAssignCourseModal(c)}
                           >&#43;</button>
@@ -806,7 +806,7 @@ export function MyKidsPage() {
                             </span>
                           </div>
                           <button
-                            className="mykids-list-action-btn"
+                            className="mykids-list-action-btn btn-icon"
                             title="Move to class"
                             onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                           >&#128194;</button>
@@ -869,7 +869,7 @@ export function MyKidsPage() {
                       </span>
                     </div>
                     <button
-                      className="mykids-list-action-btn"
+                      className="mykids-list-action-btn btn-icon"
                       title="Move to class"
                       onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
                     >&#128194;</button>
@@ -980,7 +980,7 @@ export function MyKidsPage() {
                 <span className="section-icon" aria-hidden="true">&#128105;&#8205;&#127979;</span> Teachers ({(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length})
               </button>
               <button
-                className="mykids-add-teacher-btn"
+                className="mykids-add-teacher-btn btn-primary btn-sm"
                 onClick={() => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
               >
                 + Add Teacher
@@ -997,7 +997,7 @@ export function MyKidsPage() {
                     </div>
                     {c.teacher_id && (
                       <button
-                        className="mykids-message-btn"
+                        className="mykids-message-btn btn-secondary btn-sm"
                         onClick={() => navigate(`/messages?recipient_id=${c.teacher_id}`)}
                       >
                         Message
@@ -1014,14 +1014,14 @@ export function MyKidsPage() {
                     </div>
                     {t.teacher_user_id && (
                       <button
-                        className="mykids-message-btn"
+                        className="mykids-message-btn btn-secondary btn-sm"
                         onClick={() => navigate(`/messages?recipient_id=${t.teacher_user_id}`)}
                       >
                         Message
                       </button>
                     )}
                     <button
-                      className="mykids-remove-btn"
+                      className="mykids-remove-btn btn-danger btn-sm"
                       onClick={async () => {
                         if (!selectedChild) return;
                         const ok = await confirm({ title: 'Remove Teacher', message: `Remove ${t.teacher_name || t.teacher_email} as a linked teacher?`, confirmLabel: 'Remove', variant: 'danger' });
