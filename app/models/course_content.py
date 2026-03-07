@@ -47,6 +47,7 @@ class CourseContent(Base):
 
     course = relationship("Course", backref=backref("contents", passive_deletes=True))
     created_by = relationship("User", foreign_keys=[created_by_user_id])
+    resource_links = relationship("ResourceLink", back_populates="course_content", cascade="all, delete-orphan")
 
     @property
     def course_name(self) -> str | None:
