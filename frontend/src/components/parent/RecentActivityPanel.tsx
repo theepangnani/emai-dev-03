@@ -98,9 +98,9 @@ const ICON_CONFIG: Record<ActivityItem['activity_type'], { bg: string; icon: Rea
 function getNavigationPath(item: ActivityItem): string | null {
   switch (item.activity_type) {
     case 'course_created': return '/courses';
-    case 'task_created': return '/tasks';
+    case 'task_created': return `/tasks/${item.resource_id}`;
     case 'material_uploaded': return `/course-materials/${item.resource_id}`;
-    case 'task_completed': return '/tasks';
+    case 'task_completed': return `/tasks/${item.resource_id}`;
     case 'message_received': return '/messages';
     case 'notification_received': return null;
     default: return null;

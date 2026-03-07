@@ -101,16 +101,16 @@ describe('RecentActivityPanel', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/courses');
   });
 
-  it('clicking a task_created row navigates to /tasks', async () => {
+  it('clicking a task_created row navigates to /tasks/:id (#1236)', async () => {
     mockGetRecent.mockResolvedValue([
-      createActivity({ activity_type: 'task_created', title: 'Do homework' }),
+      createActivity({ activity_type: 'task_created', title: 'Do homework', resource_id: 77 }),
     ]);
     renderWithProviders(
       <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
     );
     await waitFor(() => screen.getByText('Do homework'));
     fireEvent.click(screen.getByTestId('activity-row'));
-    expect(mockNavigate).toHaveBeenCalledWith('/tasks');
+    expect(mockNavigate).toHaveBeenCalledWith('/tasks/77');
   });
 
   it('clicking a material_uploaded row navigates to /course-materials/:id', async () => {
