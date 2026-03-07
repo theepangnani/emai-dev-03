@@ -594,7 +594,12 @@ def _extract_images_from_pptx(file_content: bytes) -> list[dict]:
 
 
 def _extract_images_from_pdf(file_content: bytes) -> list[dict]:
-    """Extract images from a PDF file with page context."""
+    """Extract images from a PDF file with page context.
+
+    First tries PyPDF2 to extract embedded raster images. If none found,
+    falls back to PyMuPDF (fitz) to render each page as a PNG, capturing
+    vector graphics (diagrams, charts, math figures) that PyPDF2 cannot extract.
+    """
     images: list[dict] = []
     try:
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
@@ -625,6 +630,52 @@ def _extract_images_from_pdf(file_content: bytes) -> list[dict]:
                 logger.debug(f"Failed to extract images from PDF page {page_num}: {e}")
     except Exception as e:
         logger.debug(f"Failed to extract images from PDF: {e}")
+
+    # Fallback: if PyPDF2 found no raster images, render pages as images
+    # using PyMuPDF to capture vector graphics (diagrams, math figures, etc.)
+    if not images:
+        images = _render_pdf_pages_as_images(file_content)
+
+    return images
+
+
+def _render_pdf_pages_as_images(file_content: bytes) -> list[dict]:
+    """Render PDF pages as PNG images using PyMuPDF (fitz).
+
+    This captures vector graphics (drawn shapes, diagrams, math figures)
+    that cannot be extracted as embedded raster images by PyPDF2.
+    Renders at 150 DPI for a good balance of quality vs file size.
+    """
+    images: list[dict] = []
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        logger.warning("PyMuPDF (fitz) not installed — cannot render PDF pages as images")
+        return images
+
+    try:
+        doc = fitz.open(stream=file_content, filetype="pdf")
+        # Cap at 20 pages to avoid excessive processing
+        max_pages = min(len(doc), _MAX_IMAGES_PER_DOC)
+        for page_num in range(max_pages):
+            try:
+                page = doc[page_num]
+                # Render at 150 DPI (default is 72 DPI, so zoom = 150/72 ≈ 2.08)
+                zoom = 150 / 72
+                mat = fitz.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat)
+                png_bytes = pix.tobytes("png")
+                images.append({
+                    "image_bytes": png_bytes,
+                    "content_type": "image/png",
+                    "position_context": f"Page {page_num + 1}",
+                })
+            except Exception as e:
+                logger.debug(f"Failed to render PDF page {page_num + 1} as image: {e}")
+        doc.close()
+        logger.info(f"Rendered {len(images)} PDF pages as images via PyMuPDF fallback")
+    except Exception as e:
+        logger.debug(f"PyMuPDF PDF rendering failed: {e}")
     return images
 
 

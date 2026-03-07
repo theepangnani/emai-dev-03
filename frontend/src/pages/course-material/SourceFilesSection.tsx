@@ -4,6 +4,7 @@ import { courseContentsApi, type SourceFileItem } from '../../api/client';
 interface SourceFilesSectionProps {
   contentId: number;
   sourceFilesCount: number;
+  initialExpanded?: boolean;
 }
 
 function formatFileSize(bytes: number | null): string {
@@ -31,10 +32,10 @@ function canViewInline(fileType: string | null): boolean {
   return fileType.startsWith('image/') || fileType === 'application/pdf';
 }
 
-export function SourceFilesSection({ contentId, sourceFilesCount }: SourceFilesSectionProps) {
+export function SourceFilesSection({ contentId, sourceFilesCount, initialExpanded = false }: SourceFilesSectionProps) {
   const [files, setFiles] = useState<SourceFileItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initialExpanded);
   const [downloading, setDownloading] = useState<number | null>(null);
   const [viewingFile, setViewingFile] = useState<SourceFileItem | null>(null);
   const [viewBlobUrl, setViewBlobUrl] = useState<string | null>(null);

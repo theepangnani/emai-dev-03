@@ -149,6 +149,8 @@
 - [x] **Hide Connect Google for students** — Removed "Connect Google" button from StudyPage sidebar and Google Classroom banner from StudentDashboard for student role (#1074) (IMPLEMENTED, PR #1075)
 - [x] **Student classes page icon+plus CTA** — Added `title-add-btn` to student's "My Classes" tab area on CoursesPage (#1075) (IMPLEMENTED, PR #1075)
 - [x] **Mobile responsive layout fixes** — Suppress welcome section on detail sub-pages (CourseMaterialDetailPage, TaskDetailPage, StudyPage); add 480px header breakpoint (compact logo, truncated username); mobile GlobalSearch sizing; MaterialContextMenu dropdown repositioning; toolbar horizontal scroll at 768px (#1098) (IMPLEMENTED, PR #1099)
+- [x] **Teacher Resource Links** — Auto-extract YouTube videos and URLs from uploaded documents and teacher communications; Videos & Links tab on Course Material Detail; YouTube embed player with topic grouping; CRUD API; link extraction service (§6.57, #1319-#1326) (IMPLEMENTED)
+- [x] **Image Retention in Study Guides** — Extract, store, and re-embed images from uploaded PDF/DOCX/PPTX into AI-generated study guides; ContentImage model; image serving endpoint; AI prompt integration with `{{IMG-N}}` markers; authenticated frontend rendering; fallback "Additional Figures" section; +5-10% cost per generation (§6.58, #1308-#1313) (IMPLEMENTED)
 
 #### Waitlist System & AI Usage Limits (§6.53, §6.54) — Pre-Launch — #1106-#1124
 - [ ] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation
