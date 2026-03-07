@@ -372,16 +372,23 @@
 }
 
 /* Priority left border (via :has selector on inner badge) */
+/* Note: border shorthand with var() crashes jsdom/cssstyle — use longhand */
 .task-row:has(.task-priority-badge.high) {
-  border-left: 3px solid var(--color-danger);
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--color-danger);
 }
 
 .task-row:has(.task-priority-badge.medium) {
-  border-left: 3px solid var(--color-warning, #f59e0b);
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--color-warning);
 }
 
 .task-row:has(.task-priority-badge.low) {
-  border-left: 3px solid var(--color-success, #22c55e);
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--color-success);
 }
 
 .task-row.completed {
@@ -521,7 +528,9 @@
   border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--color-ink-muted);
-  border-left: 3px solid var(--color-accent);
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--color-accent);
   flex-shrink: 0;
 }
 
