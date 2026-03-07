@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CalendarAssignment } from '../calendar/types';
 import EmptyState from '../EmptyState';
+import './ComingUpTimeline.css';
 
 /* ── Interfaces ──────────────────────────────────────────── */
 

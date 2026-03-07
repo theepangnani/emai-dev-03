@@ -179,6 +179,40 @@ describe('ComingUpTimeline', () => {
     expect(onStudy).toHaveBeenCalledWith(expect.objectContaining({ id: 42, title: 'Clickable assignment' }))
   })
 
+  // Regression test for #1295: "Overdue" and "Task" must be separate, distinguishable elements
+  // (they were visually concatenated as "OverdueTask" on /my-kids due to missing CSS)
+  it('renders overdue date and type as separate elements (regression #1295)', () => {
+    const items: CalendarAssignment[] = [
+      {
+        id: 1_000_003,
+        taskId: 3,
+        title: 'Review: math.set3.5',
+        description: null,
+        courseId: 0,
+        courseName: '',
+        courseColor: '#ef5350',
+        dueDate: daysFromNow(-2),
+        childName: 'Alice',
+        maxPoints: null,
+        itemType: 'task',
+        priority: 'high',
+        isCompleted: false,
+      },
+    ]
+    renderTimeline(items)
+    // "Overdue" and "Task" must be distinct elements, not concatenated
+    const overdue = screen.getByText('Overdue')
+    const task = screen.getByText('Task')
+    expect(overdue).toBeInTheDocument()
+    expect(task).toBeInTheDocument()
+    // They must be sibling spans inside pd-timeline-meta
+    const meta = overdue.closest('.pd-timeline-meta')
+    expect(meta).not.toBeNull()
+    expect(meta).toContainElement(task)
+    // Verify they are separate DOM nodes
+    expect(overdue).not.toBe(task)
+  })
+
   it('shows overdue tasks (regression: overdue tasks were hidden)', () => {
     const items: CalendarAssignment[] = [
       {
