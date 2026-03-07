@@ -467,3 +467,34 @@ Extended password reset capabilities for all user types and parent-managed child
 - `frontend/src/pages/MyKidsPage.tsx` — Reset Password modal
 - `frontend/src/api/parent.ts` — `resetChildPassword` API method
 
+### 6.27 Design Consistency Initiative
+
+Cross-page UI consistency pass ensuring all 24 pages follow identical layout, component, and styling patterns.
+
+**GitHub Issues:** #1246, #1247, #1248, #1249, #1250, #1251, #1252, #1253, #1254
+
+#### 6.27.1 Universal Page Shell
+- [ ] Every page wrapped in `<DashboardLayout>` with `<PageNav>` breadcrumbs
+- [ ] StudyGuidePage: add DashboardLayout + PageNav (#1246)
+- [ ] QuizPage: add DashboardLayout + PageNav (#1247)
+- [ ] FlashcardsPage: add DashboardLayout + PageNav (#1248)
+- [ ] TeacherCommsPage: replace custom header with DashboardLayout (#1249)
+- [ ] CoursesPage + CourseDetailPage: add PageNav breadcrumbs (#1250)
+
+#### 6.27.2 Shared CSS Patterns (#1251, #1252)
+- [ ] `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-icon` in Dashboard.css
+- [ ] `.section-card`, `.section-card-header`, `.section-card-body` in Dashboard.css
+- [ ] `.list-row`, `.list-row-icon`, `.list-row-body`, `.list-row-action` in Dashboard.css
+- [ ] Standardized `.empty-state` pattern (icon + title + description + CTA)
+
+#### 6.27.3 Page Migration (#1251, #1252, #1253)
+- [ ] All pages migrated to shared button classes
+- [ ] All pages migrated to shared section-card pattern
+- [ ] All pages migrated to shared list-row pattern
+- [ ] All pages use standard empty-state pattern
+- [ ] All pages use PageSkeleton/ListSkeleton for loading states
+
+#### 6.27.4 CSS Cleanup (#1254)
+- [ ] Orphaned per-page CSS removed after migration
+- [ ] Total CSS line reduction documented
+
