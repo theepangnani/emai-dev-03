@@ -538,7 +538,7 @@ export function CoursesPage() {
 
   if (loading || loadError) {
     return (
-      <DashboardLayout welcomeSubtitle="Manage classes" showBackButton>
+      <DashboardLayout welcomeSubtitle="Manage classes">
         {loadError ? (
           <div className="no-children-state">
             <h3>Unable to Load Classes</h3>
@@ -562,7 +562,6 @@ export function CoursesPage() {
   return (
     <DashboardLayout
       welcomeSubtitle="Manage classes"
-      showBackButton
       sidebarActions={[
         { label: '+ Add Class', onClick: () => setShowCreateModal(true) },
       ]}
