@@ -20,7 +20,8 @@ from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
-from app.services.file_processor import process_file, FileProcessingError
+from app.services.file_processor import process_file, extract_images_from_file, FileProcessingError
+from app.models.content_image import ContentImage
 from app.core.config import settings
 from app.schemas.course_content import (
     CourseContentCreate,
@@ -364,6 +365,27 @@ async def upload_course_content_file(
     db.commit()
     db.refresh(content)
 
+    # Extract and store images from the uploaded file (#1309)
+    try:
+        images = extract_images_from_file(file_content, filename)
+        for img_data in images:
+            content_image = ContentImage(
+                course_content_id=content.id,
+                image_data=img_data['image_data'],
+                media_type=img_data['media_type'],
+                description=img_data['description'],
+                position_context=img_data['position_context'],
+                position_index=img_data['position_index'],
+                file_size=img_data['file_size'],
+            )
+            db.add(content_image)
+        if images:
+            db.commit()
+            logger.info("Stored %d images for content %d", len(images), content.id)
+    except Exception as e:
+        db.rollback()
+        logger.warning("Image extraction failed for %s: %s", filename, e)
+
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
         try:
@@ -493,6 +515,32 @@ async def upload_multi_files(
 
     db.commit()
     db.refresh(content)
+
+    # Extract and store images from all uploaded files (#1309)
+    try:
+        all_images: list[dict] = []
+        for fname, fbytes, _ in file_entries:
+            file_images = extract_images_from_file(fbytes, fname)
+            all_images.extend(file_images)
+        # Re-index after merging images from multiple files
+        for idx, img_data in enumerate(all_images):
+            img_data['position_index'] = idx
+            content_image = ContentImage(
+                course_content_id=content.id,
+                image_data=img_data['image_data'],
+                media_type=img_data['media_type'],
+                description=img_data['description'],
+                position_context=img_data['position_context'],
+                position_index=img_data['position_index'],
+                file_size=img_data['file_size'],
+            )
+            db.add(content_image)
+        if all_images:
+            db.commit()
+            logger.info("Stored %d images for content %d (multi-upload)", len(all_images), content.id)
+    except Exception as e:
+        db.rollback()
+        logger.warning("Image extraction failed for multi-upload: %s", e)
 
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
@@ -914,8 +962,32 @@ async def replace_course_content_file(
         guide.archived_at = now
         archived_guides_count += 1
 
+    # Delete old images and extract new ones (#1309)
+    db.query(ContentImage).filter(ContentImage.course_content_id == content_id).delete()
+
     db.commit()
     db.refresh(content)
+
+    # Extract and store images from the replacement file (#1309)
+    try:
+        images = extract_images_from_file(file_content, filename)
+        for img_data in images:
+            content_image = ContentImage(
+                course_content_id=content.id,
+                image_data=img_data['image_data'],
+                media_type=img_data['media_type'],
+                description=img_data['description'],
+                position_context=img_data['position_context'],
+                position_index=img_data['position_index'],
+                file_size=img_data['file_size'],
+            )
+            db.add(content_image)
+        if images:
+            db.commit()
+            logger.info("Stored %d images for replaced content %d", len(images), content.id)
+    except Exception as e:
+        db.rollback()
+        logger.warning("Image extraction failed for replaced file %s: %s", filename, e)
 
     resp = CourseContentUpdateResponse.model_validate(content)
     _populate_source_files_count(resp, content)
@@ -988,10 +1060,11 @@ def permanent_delete_course_content(
 
 
 def _permanent_delete_content(db: Session, content: CourseContent):
-    """Hard-delete a content item, its stored file, source files, and all linked study guides."""
+    """Hard-delete a content item, its stored file, source files, images, and all linked study guides."""
     if content.file_path:
         delete_file(content.file_path)
     db.query(SourceFile).filter(SourceFile.course_content_id == content.id).delete()
+    db.query(ContentImage).filter(ContentImage.course_content_id == content.id).delete()
     db.query(StudyGuide).filter(StudyGuide.course_content_id == content.id).delete()
     db.delete(content)
 
