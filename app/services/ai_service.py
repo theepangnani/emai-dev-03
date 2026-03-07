@@ -136,6 +136,21 @@ Keep the summary to 1-3 sentences.
     return await generate_content(prompt, system_prompt, max_tokens=200, temperature=0.3)
 
 
+def _build_image_list(images: list[dict]) -> str:
+    """Build a formatted image list string from image metadata dicts."""
+    lines = []
+    for img in images:
+        idx = img.get("position_index", 0) + 1
+        desc = img.get("description") or f"Image {idx}"
+        ctx = img.get("position_context") or ""
+        if ctx:
+            ctx_snippet = ctx[:100].rstrip()
+            lines.append(f'[IMG-{idx}] "{desc}" (found near: "{ctx_snippet}...")')
+        else:
+            lines.append(f'[IMG-{idx}] "{desc}"')
+    return "\n".join(lines)
+
+
 async def generate_study_guide(
     assignment_title: str,
     assignment_description: str,
@@ -143,6 +158,7 @@ async def generate_study_guide(
     due_date: str | None = None,
     custom_prompt: str | None = None,
     focus_prompt: str | None = None,
+    images: list[dict] | None = None,
 ) -> str:
     """
     Generate a study guide for an assignment.
@@ -193,6 +209,17 @@ If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the near
 ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
 Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all."""
 
+    if images:
+        image_list = _build_image_list(images)
+        prompt += f"""
+
+**SOURCE IMAGES/FIGURES:**
+The source material contains the following images and figures. When a topic you're covering relates to one of these images, include it in your response using the markdown format ![description]({{{{IMG-N}}}}).
+
+{image_list}
+
+Place each image near the relevant content in your study guide. Do not force images where they don't fit — only include them where they add value to the explanation."""
+
     if focus_prompt:
         prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Prioritize these topics in your response while still covering other key material briefly."
 
@@ -212,6 +239,7 @@ async def generate_quiz(
     num_questions: int = 5,
     focus_prompt: str | None = None,
     difficulty: str | None = None,
+    images: list[dict] | None = None,
 ) -> str:
     """
     Generate a practice quiz from content.
@@ -283,6 +311,15 @@ IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source 
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
 Use "high" for exams/tests, "medium" for homework. If a date does not include a year, assume the nearest future occurrence from today's date and output the full YYYY-MM-DD. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
 
+    if images:
+        image_list = _build_image_list(images)
+        prompt += f"""
+
+**SOURCE IMAGES:**
+The source material contains these images. If a quiz question or flashcard relates to an image, reference it using ![description]({{{{IMG-N}}}}).
+
+{image_list}"""
+
     if focus_prompt:
         prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure quiz questions heavily cover these topics."
 
@@ -300,6 +337,7 @@ async def generate_flashcards(
     content: str,
     num_cards: int = 10,
     focus_prompt: str | None = None,
+    images: list[dict] | None = None,
 ) -> str:
     """
     Generate flashcards from content.
@@ -342,6 +380,15 @@ IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source 
 --- CRITICAL_DATES ---
 [{{"date": "YYYY-MM-DD", "title": "Short description", "priority": "high"}}]
 Use "high" for exams/tests, "medium" for homework. If a date does not include a year, assume the nearest future occurrence from today's date and output the full YYYY-MM-DD. ONLY extract actual student deadlines — do NOT extract historical or reference dates from the article/lesson content itself. Only include if actual student deadlines are found."""
+
+    if images:
+        image_list = _build_image_list(images)
+        prompt += f"""
+
+**SOURCE IMAGES:**
+The source material contains these images. If a quiz question or flashcard relates to an image, reference it using ![description]({{{{IMG-N}}}}).
+
+{image_list}"""
 
     if focus_prompt:
         prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Ensure flashcards heavily cover these topics."
