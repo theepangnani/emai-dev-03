@@ -315,21 +315,8 @@ export function MyKidsPage() {
     );
   }
 
-  if (children.length === 0) {
-    return (
-      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
-        <div className="mykids-empty">
-          <h3>No children linked yet</h3>
-          <p>Add your child to start managing their education.</p>
-          <button className="mykids-btn" onClick={() => setShowAddChildModal(true)}>
-            + Add Child
-          </button>
-        </div>
-        {/* Add Child Modal (accessible from empty state) */}
-        {showAddChildModal && renderAddChildModal()}
-      </DashboardLayout>
-    );
-  }
+  // Empty state check moved after all const/function declarations to avoid
+  // TDZ errors in minified builds (const handlers must be initialized first)
 
   const openReassignModal = (m: CourseContentItem) => {
     setReassignContent(m);
@@ -639,6 +626,22 @@ export function MyKidsPage() {
       </div>
     </div>
   ); }
+
+  // Empty state: no children linked yet (placed after all declarations to avoid TDZ)
+  if (children.length === 0) {
+    return (
+      <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
+        <div className="mykids-empty">
+          <h3>No children linked yet</h3>
+          <p>Add your child to start managing their education.</p>
+          <button className="mykids-btn" onClick={() => setShowAddChildModal(true)}>
+            + Add Child
+          </button>
+        </div>
+        {showAddChildModal && renderAddChildModal()}
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
