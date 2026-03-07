@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '../context/ThemeContext'
 import { ToastProvider } from '../components/Toast'
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 // ── Mocks ──────────────────────────────────────────────────────
 const mockGetChildren = vi.fn()
