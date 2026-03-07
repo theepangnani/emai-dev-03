@@ -521,8 +521,13 @@ export function MyKidsPage() {
               <div className="modal-form">
                 <div className="invite-success-box">
                   <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child added successfully!</p>
-                  <p style={{ margin: '0 0 8px', fontSize: 14 }}>
-                    Share this link with your child so they can set their password and log in:
+                  {addChildEmail.trim() && (
+                    <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                      An invitation email has been sent to <strong>{addChildEmail.trim()}</strong>. Your child needs to check their email and click the link to set up their account.
+                    </p>
+                  )}
+                  <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                    You can also share this link directly:
                   </p>
                   <div className="invite-link-container">
                     <span className="invite-link">{addChildInviteLink}</span>
@@ -579,7 +584,10 @@ export function MyKidsPage() {
                 <div className="invite-success-box">
                   <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child linked successfully!</p>
                   <p style={{ margin: '0 0 8px', fontSize: 14 }}>
-                    Share this link with your child so they can set their password and log in:
+                    An invitation email has been sent to <strong>{addChildEmail.trim()}</strong>. Your child needs to check their email and click the link to set up their account.
+                  </p>
+                  <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                    You can also share this link directly:
                   </p>
                   <div className="invite-link-container">
                     <span className="invite-link">{addChildInviteLink}</span>
