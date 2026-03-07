@@ -375,6 +375,50 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
     ],
   },
+  {
+    title: 'Why ClassBridge? (vs ChatGPT / Claude)',
+    items: [
+      {
+        question:
+          'How is ClassBridge different from using ChatGPT or Claude?',
+        answer:
+          "General AI tools are generic, stateless, and prompt-driven. ClassBridge is an integrated platform that connects real school data with AI capabilities, wrapped in role-appropriate views for each stakeholder. The parent doesn't need to be an AI prompt engineer — they open the app and see their child's assignments, grades, and AI-generated study materials automatically. The value isn't the AI itself — it's the data integration, workflow automation, and multi-stakeholder coordination that makes the AI actually useful in a school context without any effort from the user.",
+      },
+      {
+        question:
+          "What does Google Classroom integration give me that ChatGPT can't?",
+        answer:
+          "ClassBridge auto-syncs courses, assignments, and grades directly from Google Classroom. Parents see their child's actual schoolwork without asking the kid or logging into their account. General AI tools have zero access to a student's real classroom data.",
+      },
+      {
+        question: 'How does the role-based family/school ecosystem work?',
+        answer:
+          "Parents, students, teachers, and admins each get a tailored experience. Parents can monitor multiple children, see their grades, and get AI-generated insights on actual performance. Teachers get communication tools and announcement monitoring. ChatGPT doesn't know who your kid is or what class they're in.",
+      },
+      {
+        question: 'What makes ClassBridge study tools context-aware?',
+        answer:
+          "Study guides, quizzes, and flashcards are generated from real assignments and course materials — not generic prompts. A parent or student doesn't need to copy-paste assignment details into a chatbot and craft the right prompt.",
+      },
+      {
+        question:
+          'How does ClassBridge handle parent-teacher communication?',
+        answer:
+          'ClassBridge has a built-in communication channel between parents and teachers, integrated with the same platform where grades and assignments live. It also includes Gmail/announcement monitoring for teacher communications.',
+      },
+      {
+        question:
+          'What automated notifications and reminders does ClassBridge provide?',
+        answer:
+          "ClassBridge sends assignment reminders at 8am and syncs teacher communications every 15 minutes. These are proactive alerts — no one has to remember to check. General AI tools don't track your schedule or send reminders.",
+      },
+      {
+        question: "Does ClassBridge track my child's progress over time?",
+        answer:
+          "Yes. ClassBridge maintains a persistent student profile with grade tracking, analytics, and AI insights over time. ChatGPT starts fresh every conversation — it doesn't track your child's academic trajectory.",
+      },
+    ],
+  },
 ];
 
 /* ──────────────── Component ──────────────── */
