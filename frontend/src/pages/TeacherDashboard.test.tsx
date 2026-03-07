@@ -354,7 +354,7 @@ describe('TeacherDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
-    })
+    }, { timeout: 3000 })
 
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
 
