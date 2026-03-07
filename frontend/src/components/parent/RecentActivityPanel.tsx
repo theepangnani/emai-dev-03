@@ -112,10 +112,10 @@ function getNavigationPath(item: ActivityItem): string | null {
 export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityPanelProps) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('pd-activity-collapsed') === '1';
-    } catch {
-      return false;
-    }
+      const saved = localStorage.getItem('pd-activity-collapsed');
+      if (saved !== null) return saved === '1';
+    } catch { /* ignore */ }
+    return true; // collapsed by default
   });
 
   const toggleCollapsed = useCallback(() => {

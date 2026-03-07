@@ -624,6 +624,60 @@ export function StudentDashboard() {
       {/* ── Continue Studying ─────────────────────────────── */}
       <ContinueStudying studyGuides={studyGuides} courses={courses} />
 
+      {/* ── Courses Section ──────────────────────────────── */}
+      <section className="sd-panel sd-courses">
+        <div className="sd-panel-header">
+          <h2>Your Courses</h2>
+          <div className="sd-courses-actions">
+            {googleConnected && (
+              <button className="sd-text-btn" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>
+                {isSyncing ? 'Syncing...' : 'Sync'}
+              </button>
+            )}
+            {googleConnected && (
+              <button className="sd-text-btn danger" onClick={handleDisconnectGoogle} disabled={disconnecting}>
+                {disconnecting ? '...' : 'Disconnect'}
+              </button>
+            )}
+            <button className="sd-text-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
+              Invite Teacher
+            </button>
+          </div>
+        </div>
+        {courses.length > 0 ? (
+          <div className="sd-course-chips">
+            {courses.map(course => {
+              const courseGrade = gradeSummary?.courses.find(c => c.course_id === course.id);
+              return (
+                <Link key={course.id} to={`/courses`} className="sd-course-chip">
+                  <span className="sd-course-name">{course.name}</span>
+                  {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
+                  {courseGrade && (
+                    <span className={`sd-grade-tag sd-grade-${courseGrade.color}`}>
+                      {courseGrade.letter_grade}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+            <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
+              + Add Class
+            </button>
+          </div>
+        ) : (
+          <EmptyState
+            title="No classes yet"
+            description={gcEnabled ? "Create a class or connect Google Classroom to get started." : "Create a class to get started."}
+            variant="compact"
+            className="sd-empty"
+            actions={[
+              { label: 'Create Class', onClick: () => setShowCreateCourseModal(true) },
+              ...(gcEnabled && !googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
+            ]}
+          />
+        )}
+      </section>
+
       {/* ── Main Content Grid ────────────────────────────── */}
       <div className="sd-main-grid">
         {/* Coming Up */}
@@ -726,60 +780,6 @@ export function StudentDashboard() {
           )}
         </section>
       </div>
-
-      {/* ── Courses Section ──────────────────────────────── */}
-      <section className="sd-panel sd-courses">
-        <div className="sd-panel-header">
-          <h2>Your Courses</h2>
-          <div className="sd-courses-actions">
-            {googleConnected && (
-              <button className="sd-text-btn" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>
-                {isSyncing ? 'Syncing...' : 'Sync'}
-              </button>
-            )}
-            {googleConnected && (
-              <button className="sd-text-btn danger" onClick={handleDisconnectGoogle} disabled={disconnecting}>
-                {disconnecting ? '...' : 'Disconnect'}
-              </button>
-            )}
-            <button className="sd-text-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
-              Invite Teacher
-            </button>
-          </div>
-        </div>
-        {courses.length > 0 ? (
-          <div className="sd-course-chips">
-            {courses.map(course => {
-              const courseGrade = gradeSummary?.courses.find(c => c.course_id === course.id);
-              return (
-                <Link key={course.id} to={`/courses`} className="sd-course-chip">
-                  <span className="sd-course-name">{course.name}</span>
-                  {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
-                  {courseGrade && (
-                    <span className={`sd-grade-tag sd-grade-${courseGrade.color}`}>
-                      {courseGrade.letter_grade}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-            <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
-              + Add Class
-            </button>
-          </div>
-        ) : (
-          <EmptyState
-            title="No classes yet"
-            description={gcEnabled ? "Create a class or connect Google Classroom to get started." : "Create a class to get started."}
-            variant="compact"
-            className="sd-empty"
-            actions={[
-              { label: 'Create Class', onClick: () => setShowCreateCourseModal(true) },
-              ...(gcEnabled && !googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
-            ]}
-          />
-        )}
-      </section>
 
       {/* ── Upload / Study Material Modal — same experience as Parent ── */}
       <UploadMaterialWizard

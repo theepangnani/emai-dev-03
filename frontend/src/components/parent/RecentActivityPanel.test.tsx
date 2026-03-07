@@ -157,15 +157,16 @@ describe('RecentActivityPanel', () => {
     await waitFor(() => screen.getByText('Item 1'));
 
     const body = screen.getByTestId('activity-body');
-    expect(body).not.toHaveClass('pd-activity-body-collapsed');
-
-    // Click header to collapse
-    fireEvent.click(screen.getByText('Recent Activity'));
+    // Default is collapsed
     expect(body).toHaveClass('pd-activity-body-collapsed');
 
-    // Click again to expand
+    // Click header to expand
     fireEvent.click(screen.getByText('Recent Activity'));
     expect(body).not.toHaveClass('pd-activity-body-collapsed');
+
+    // Click again to collapse
+    fireEvent.click(screen.getByText('Recent Activity'));
+    expect(body).toHaveClass('pd-activity-body-collapsed');
   });
 
   it('empty state shown when no activities', async () => {
@@ -226,11 +227,13 @@ describe('RecentActivityPanel', () => {
     );
     await waitFor(() => screen.getByText('Test Activity'));
 
-    fireEvent.click(screen.getByText('Recent Activity'));
-    expect(localStorage.getItem('pd-activity-collapsed')).toBe('1');
-
+    // First click expands (collapsed -> expanded = '0')
     fireEvent.click(screen.getByText('Recent Activity'));
     expect(localStorage.getItem('pd-activity-collapsed')).toBe('0');
+
+    // Second click collapses (expanded -> collapsed = '1')
+    fireEvent.click(screen.getByText('Recent Activity'));
+    expect(localStorage.getItem('pd-activity-collapsed')).toBe('1');
   });
 });
 

@@ -75,8 +75,8 @@ function loadSectionStates(): SectionStates {
     const saved = localStorage.getItem(SECTION_STATES_KEY);
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
-  // First-time defaults: Coming Up expanded, others collapsed
-  return { comingUp: true, studentDetail: false, activityFeed: false };
+  // First-time defaults: all panels collapsed
+  return { comingUp: false, studentDetail: false, activityFeed: false };
 }
 
 function saveSectionStates(states: SectionStates) {
