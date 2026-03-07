@@ -268,15 +268,20 @@
   padding: 40px 24px;
   text-align: center;
   color: var(--color-ink-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
 }
 
 .empty-state p {
   margin: 0 0 8px 0;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .empty-state small {
   color: var(--color-ink-muted);
+  font-size: 14px;
 }
 
 /* Message Thread */

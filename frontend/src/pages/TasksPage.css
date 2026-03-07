@@ -610,12 +610,14 @@
   padding: 40px 20px;
   color: var(--color-ink-muted);
   background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
 .tasks-empty p {
-  margin: 4px 0;
+  font-size: 14px;
+  max-width: 360px;
+  margin: 4px auto;
 }
 
 /* Edit modal */
