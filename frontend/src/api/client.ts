@@ -191,3 +191,5 @@ export { briefingApi } from './briefing';
 export type { DailyBriefingResponse, BriefingChildSection } from './briefing';
 export { parentAIApi } from './parentAI';
 export type { WeakSpot, WeakSpotsResponse, ReadinessItem, ReadinessCheckResponse, PracticeProblem, PracticeProblemsResponse } from './parentAI';
+export { weeklyDigestApi } from './weeklyDigest';
+export type { WeeklyDigestResponse, ChildDigest, WeeklyDigestSendResponse } from './weeklyDigest';
