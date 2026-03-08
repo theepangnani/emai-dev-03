@@ -37,7 +37,7 @@ logger.info("Starting EMAI application...")
 from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, DataExportRequest, SourceFile
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
-from app.models.ai_usage_history import AIUsageHistory  # noqa: F401 — ensure table is created (#1125)
+from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

@@ -14,7 +14,7 @@ import './AdminAIUsagePage.css';
 
 const PAGE_SIZE = 25;
 
-type Tab = 'users' | 'history' | 'requests';
+type Tab = 'users' | 'history' | 'requests' | 'audit';
 
 export function AdminAIUsagePage() {
   const [tab, setTab] = useState<Tab>('users');
@@ -48,6 +48,19 @@ export function AdminAIUsagePage() {
   const [requestsPage, setRequestsPage] = useState(0);
   const [requestsStatus, setRequestsStatus] = useState<string>('all');
   const [requestsLoading, setRequestsLoading] = useState(false);
+
+  // Audit Log
+  const [auditItems, setAuditItems] = useState<Array<{
+    id: number;
+    admin_name: string;
+    action_type: string;
+    target_user_name: string | null;
+    details: string | null;
+    created_at: string | null;
+  }>>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(0);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   // Modals / inline state
   const [limitModal, setLimitModal] = useState<{ user: AIUsageUser; value: number } | null>(null);
@@ -135,6 +148,27 @@ export function AdminAIUsagePage() {
   useEffect(() => {
     if (tab === 'requests') loadRequests();
   }, [tab, loadRequests]);
+
+  // Load audit log
+  const loadAuditLog = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const data = await adminAIUsageApi.listAuditLog({
+        skip: auditPage * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      });
+      setAuditItems(data.items);
+      setAuditTotal(data.total);
+    } catch {
+      // Failed to load
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [auditPage]);
+
+  useEffect(() => {
+    if (tab === 'audit') loadAuditLog();
+  }, [tab, loadAuditLog]);
 
   // Actions
   const setActionBusy = (key: string, busy: boolean) => {
@@ -241,6 +275,7 @@ export function AdminAIUsagePage() {
   const usersTotalPages = Math.ceil(usersTotal / PAGE_SIZE);
   const historyTotalPages = Math.ceil(historyTotal / PAGE_SIZE);
   const requestsTotalPages = Math.ceil(requestsTotal / PAGE_SIZE);
+  const auditTotalPages = Math.ceil(auditTotal / PAGE_SIZE);
 
   // Count pending requests for badge
   const pendingCount = tab !== 'requests' ? requestsTotal : requests.filter((r) => r.status === 'pending').length;
@@ -311,6 +346,12 @@ export function AdminAIUsagePage() {
             {pendingCount > 0 && tab !== 'requests' && (
               <span style={{ marginLeft: 6, fontWeight: 700 }}>({pendingCount})</span>
             )}
+          </button>
+          <button
+            className={`ai-usage-tab${tab === 'audit' ? ' active' : ''}`}
+            onClick={() => setTab('audit')}
+          >
+            Activity Log
           </button>
         </div>
 
@@ -700,6 +741,78 @@ export function AdminAIUsagePage() {
                       <button
                         disabled={requestsPage >= requestsTotalPages - 1}
                         onClick={() => setRequestsPage(requestsPage + 1)}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Activity Log Tab */}
+        {tab === 'audit' && (
+          <>
+            {auditLoading ? (
+              <ListSkeleton rows={8} />
+            ) : (
+              <>
+                <table className="ai-usage-table">
+                  <thead>
+                    <tr>
+                      <th>Admin</th>
+                      <th>Action</th>
+                      <th>Target User</th>
+                      <th>Details</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditItems.map((entry) => (
+                      <tr key={entry.id}>
+                        <td>{entry.admin_name}</td>
+                        <td>
+                          <span className={`ai-usage-type-badge ${entry.action_type}`}>
+                            {entry.action_type.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td>{entry.target_user_name || '--'}</td>
+                        <td className="ai-usage-reason" title={entry.details || ''}>
+                          {entry.details || '--'}
+                        </td>
+                        <td className="ai-usage-date">
+                          {entry.created_at ? formatDate(entry.created_at) : '--'}
+                        </td>
+                      </tr>
+                    ))}
+                    {auditItems.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="ai-usage-empty">
+                          No activity log entries found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {auditTotalPages > 1 && (
+                  <div className="ai-usage-pagination">
+                    <span>
+                      Showing {auditPage * PAGE_SIZE + 1}--
+                      {Math.min((auditPage + 1) * PAGE_SIZE, auditTotal)} of {auditTotal}
+                    </span>
+                    <div className="ai-usage-pagination-btns">
+                      <button
+                        disabled={auditPage === 0}
+                        onClick={() => setAuditPage(auditPage - 1)}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        disabled={auditPage >= auditTotalPages - 1}
+                        onClick={() => setAuditPage(auditPage + 1)}
                       >
                         Next
                       </button>
