@@ -405,7 +405,11 @@
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  max-height: 18px;
   flex-shrink: 0;
+  align-self: center;
   cursor: pointer;
   border: 2px solid var(--color-muted-border, #c5c5c5);
   border-radius: 4px;
