@@ -1,0 +1,162 @@
+.calendar-import {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.calendar-import-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.calendar-import-subtitle {
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 1.5rem;
+}
+
+.calendar-import-form {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.calendar-import-input {
+  flex: 1;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.calendar-import-input:focus {
+  outline: none;
+  border-color: var(--primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.calendar-import-btn {
+  padding: 0.625rem 1.25rem;
+  background: var(--primary, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.calendar-import-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.calendar-import-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calendar-import-error {
+  color: var(--danger, #ef4444);
+  background: #fef2f2;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.calendar-feeds-section {
+  margin-top: 2rem;
+}
+
+.calendar-feeds-section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.calendar-feeds-empty {
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
+}
+
+.calendar-feed-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--surface, #fff);
+}
+
+.calendar-feed-name {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.calendar-feed-url {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  word-break: break-all;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-feed-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.calendar-feed-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.calendar-feed-sync-btn {
+  padding: 0.375rem 0.75rem;
+  background: var(--primary, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.calendar-feed-sync-btn:disabled {
+  opacity: 0.5;
+}
+
+.calendar-feed-delete-btn {
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  color: var(--danger, #ef4444);
+  border: 1px solid var(--danger, #ef4444);
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.calendar-feed-delete-btn:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+@media (max-width: 640px) {
+  .calendar-import-form {
+    flex-direction: column;
+  }
+
+  .calendar-feed-card {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .calendar-feed-actions {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+}

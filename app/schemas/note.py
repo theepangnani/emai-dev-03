@@ -35,3 +35,27 @@ class NoteListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class NoteVersionResponse(BaseModel):
+    id: int
+    note_id: int
+    content: str
+    version_number: int
+    created_at: datetime
+    created_by_user_id: int | None
+
+    class Config:
+        from_attributes = True
+
+
+class NoteVersionListItem(BaseModel):
+    id: int
+    note_id: int
+    version_number: int
+    created_at: datetime
+    created_by_user_id: int | None
+    preview: str  # First ~100 chars of plain text
+
+    class Config:
+        from_attributes = True

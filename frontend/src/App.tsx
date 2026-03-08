@@ -79,8 +79,11 @@ const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ def
 const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => ({ default: m.WaitlistPage })));
 const ParentBriefingNotesPage = lazyRetry(() => import('./pages/ParentBriefingNotesPage').then((m) => ({ default: m.ParentBriefingNotesPage })));
 const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
+const CalendarImportPage = lazyRetry(() => import('./pages/CalendarImportPage').then((m) => ({ default: m.CalendarImportPage })));
 const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage').then((m) => ({ default: m.ConfirmDeletionPage })));
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
+const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
+const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,10 +142,26 @@ function App() {
                 }
               />
               <Route
+                path="/readiness-check"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                    <ReadinessCheckPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/link-requests"
                 element={
                   <ProtectedRoute>
                     <LinkRequestsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai-tools"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentAITools />
                   </ProtectedRoute>
                 }
               />
@@ -368,6 +387,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDeletionRequestsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/calendar-import"
+                element={
+                  <ProtectedRoute>
+                    <CalendarImportPage />
                   </ProtectedRoute>
                 }
               />

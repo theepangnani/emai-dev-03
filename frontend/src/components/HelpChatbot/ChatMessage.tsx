@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { VideoInfo } from './useHelpChat';
 
@@ -40,6 +41,29 @@ function VideoEmbed({ video }: { video: VideoInfo }) {
   );
 }
 
+
+function FeedbackButtons() {
+  const [feedback, setFeedback] = useState<'yes' | 'no' | null>(null);
+  if (feedback) {
+    return (
+      <div className="help-chatbot-feedback-thanks">
+        {feedback === 'yes' ? 'Glad it helped!' : 'Sorry about that. Try rephrasing your question.'}
+      </div>
+    );
+  }
+  return (
+    <div className="help-chatbot-feedback">
+      <span className="help-chatbot-feedback-label">Was this helpful?</span>
+      <button className="help-chatbot-feedback-btn" onClick={() => setFeedback('yes')} aria-label="Yes, helpful">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      </button>
+      <button className="help-chatbot-feedback-btn" onClick={() => setFeedback('no')} aria-label="No, not helpful">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+      </button>
+    </div>
+  );
+}
+
 export function ChatMessage({ role, content, videos, sources }: ChatMessageProps) {
   return (
     <div className={`help-chatbot-message help-chatbot-message--${role}`}>
@@ -65,6 +89,7 @@ export function ChatMessage({ role, content, videos, sources }: ChatMessageProps
             ))}
           </div>
         )}
+        {role === 'assistant' && <FeedbackButtons />}
       </div>
     </div>
   );

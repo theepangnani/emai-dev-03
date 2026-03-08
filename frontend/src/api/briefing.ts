@@ -40,9 +40,24 @@ export interface DailyBriefingResponse {
   attention_needed: boolean;
 }
 
+export interface HelpMyKidRequest {
+  student_id: number;
+  item_type: 'task' | 'assignment';
+  item_id: number;
+}
+
+export interface HelpMyKidResponse {
+  study_guide_id: number;
+  title: string;
+}
+
 export const briefingApi = {
   getDaily: async () => {
     const response = await api.get('/api/briefing/daily');
     return response.data as DailyBriefingResponse;
+  },
+  helpMyKid: async (data: HelpMyKidRequest) => {
+    const response = await api.post('/api/briefing/help-my-kid', data);
+    return response.data as HelpMyKidResponse;
   },
 };

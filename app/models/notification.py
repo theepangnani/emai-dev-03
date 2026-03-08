@@ -19,6 +19,7 @@ class NotificationType(str, enum.Enum):
     PARENT_REQUEST = "parent_request"
     ASSESSMENT_UPCOMING = "assessment_upcoming"
     PROJECT_DUE = "project_due"
+    STUDY_GUIDE_SHARED = "study_guide_shared"
 
 
 class Notification(Base):

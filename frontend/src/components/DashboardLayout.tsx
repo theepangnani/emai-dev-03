@@ -9,6 +9,8 @@ import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
+import { TutorialOverlay, triggerTutorial } from './tutorial/TutorialOverlay';
+import { TUTORIAL_KEYS, PARENT_TUTORIAL_STEPS, STUDENT_TUTORIAL_STEPS, TEACHER_TUTORIAL_STEPS } from './tutorial/tutorialSteps';
 import { SpeedDialFAB } from './SpeedDialFAB';
 import { FABProvider } from '../context/FABContext';
 import '../pages/Dashboard.css';
@@ -51,6 +53,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
       <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Readiness: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
     </svg>
   ),
   Classes: (
@@ -161,6 +169,35 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
+  // Sidebar collapsed/expanded state persisted in localStorage
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar_expanded') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarExpanded(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sidebar_expanded', String(next)); } catch { /* */ }
+      return next;
+    });
+  }, []);
+
+  const handleSidebarMouseEnter = useCallback(() => {
+    if (sidebarExpanded) return;
+    hoverTimerRef.current = setTimeout(() => setSidebarHovered(true), 200);
+  }, [sidebarExpanded]);
+
+  const handleSidebarMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setSidebarHovered(false);
+  }, []);
+
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
   const navItems = useMemo(() => {
@@ -169,6 +206,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
         { label: 'Briefings', path: '/parent-briefing-notes' },
+        { label: 'AI Tools', path: '/ai-tools' },
+        { label: 'Readiness', path: '/readiness-check' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -409,6 +448,25 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               )}
             </button>
           ))}
+          <button
+            className="sidebar-link"
+            onClick={() => {
+              setMenuOpen(false);
+              const key = user?.role === 'student' ? TUTORIAL_KEYS.STUDENT_DASHBOARD
+                : user?.role === 'teacher' ? TUTORIAL_KEYS.TEACHER_DASHBOARD
+                : TUTORIAL_KEYS.PARENT_DASHBOARD;
+              triggerTutorial(key);
+            }}
+          >
+            <span className="sidebar-link-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </span>
+            <span className="sidebar-link-label">Show Tutorial</span>
+          </button>
         </nav>
         {sidebarActions && sidebarActions.length > 0 && (
           <>
@@ -432,12 +490,27 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
       <div className="dashboard-body">
         {/* Persistent sidebar (>=768px) */}
-        <aside className="persistent-sidebar" aria-label="Main navigation">
+        <aside
+          className={`persistent-sidebar${sidebarExpanded || sidebarHovered ? ' expanded' : ''}`}
+          aria-label="Main navigation"
+          onMouseEnter={handleSidebarMouseEnter}
+          onMouseLeave={handleSidebarMouseLeave}
+        >
+          <button
+            className="ps-collapse-toggle"
+            onClick={toggleSidebar}
+            title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <nav className="persistent-sidebar-nav">
             {navItems.map((item) => (
               <button
                 key={item.path}
-                className={`ps-nav-item${location.pathname === item.path ? ' active' : ''}`}
+                className={`ps-nav-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
                 onClick={() => navigate(item.path)}
                 title={item.label}
                 aria-label={item.label}
@@ -531,6 +604,26 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         <a href="mailto:support@classbridge.ca">Contact Us</a>
       </footer>
 
+      {/* Mobile bottom tab bar (<768px) */}
+      <nav className="mobile-tab-bar" aria-label="Mobile navigation">
+        {navItems.slice(0, 5).map((item) => (
+          <button
+            key={item.path}
+            className={`mobile-tab-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
+            onClick={() => navigate(item.path)}
+            aria-label={item.label}
+          >
+            <span className="mobile-tab-icon">
+              <NavIcon name={item.label} />
+              {item.path === '/messages' && unreadCount > 0 && (
+                <span className="mobile-tab-badge">{unreadCount}</span>
+              )}
+            </span>
+            <span className="mobile-tab-label">{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
       <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {user?.role === 'parent' && (
@@ -541,6 +634,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       )}
       {user?.role === 'teacher' && (
         <OnboardingTour steps={TEACHER_TOUR_STEPS} storageKey="tour_completed_teacher" />
+      )}
+
+      {/* Backend-persisted tutorial overlay (#1210) */}
+      {user?.role === 'parent' && (
+        <TutorialOverlay tutorialKey={TUTORIAL_KEYS.PARENT_DASHBOARD} steps={PARENT_TUTORIAL_STEPS} />
+      )}
+      {user?.role === 'student' && (
+        <TutorialOverlay tutorialKey={TUTORIAL_KEYS.STUDENT_DASHBOARD} steps={STUDENT_TUTORIAL_STEPS} />
+      )}
+      {user?.role === 'teacher' && (
+        <TutorialOverlay tutorialKey={TUTORIAL_KEYS.TEACHER_DASHBOARD} steps={TEACHER_TUTORIAL_STEPS} />
       )}
 
       <SpeedDialFAB />

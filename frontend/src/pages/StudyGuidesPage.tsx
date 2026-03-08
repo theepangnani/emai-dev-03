@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
-import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild } from '../api/client';
+import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild, SharedWithMeGuide, SharedGuideStatus } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -103,6 +103,12 @@ export function StudyGuidesPage() {
   // In-progress generation placeholders
   const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
 
+  // Parent-Child Study Link (#1414)
+  const isStudent = user?.role === 'student';
+  const [sharedWithMe, setSharedWithMe] = useState<SharedWithMeGuide[]>([]);
+  const [sharedStatus, setSharedStatus] = useState<Map<number, SharedGuideStatus>>(new Map());
+  const [sharingGuideId, setSharingGuideId] = useState<number | null>(null);
+
   // Create task from guide
   const [taskModalGuide, setTaskModalGuide] = useState<StudyGuide | null>(null);
 
@@ -151,6 +157,14 @@ export function StudyGuidesPage() {
   const [assignTargetChildren, setAssignTargetChildren] = useState<Set<number>>(new Set());
   const [assigning, setAssigning] = useState(false);
   const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
+
+  // Category grouping (#992)
+  const [categories, setCategories] = useState<string[]>([]);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [moveToCategoryContentId, setMoveToCategoryContentId] = useState<number | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [moveCategoryTarget, setMoveCategoryTarget] = useState('');
+  const [bulkCategorizing, setBulkCategorizing] = useState(false);
 
   // Create Course from child-selector "+" menu
   const [showChildAddMenu, setShowChildAddMenu] = useState(false);
@@ -263,12 +277,14 @@ export function StudyGuidesPage() {
     try {
       const contentParams: Record<string, any> = {};
       if (filterChild) contentParams.student_user_id = filterChild;
-      const [contents, allGuides, courseList] = await Promise.all([
+      const [contents, allGuides, courseList, cats] = await Promise.all([
         courseContentsApi.listAll(contentParams),
         studyApi.listGuides(),
         coursesApi.list(),
+        courseContentsApi.listCategories().catch(() => [] as string[]),
       ]);
       setContentItems(contents);
+      setCategories(cats);
       setCourses(courseList.map((c: any) => ({ id: c.id, name: c.name })));
 
       // Legacy guides: those without course_content_id
@@ -287,14 +303,22 @@ export function StudyGuidesPage() {
       setContentGuideMap(guideMap);
 
       if (isParent) {
-        const [childrenData, linkedData] = await Promise.all([
+        const [childrenData, linkedData, statusData] = await Promise.all([
           parentApi.getChildren(),
           courseContentsApi.getLinkedCourseIds(),
+          studyApi.getSharedStatus(),
         ]);
         setChildren(childrenData);
         setLinkedCourseIds(new Set(linkedData.linked_course_ids));
         setCourseStudentMap(linkedData.course_student_map);
         setLinkedChildren(linkedData.children);
+        setSharedStatus(new Map(statusData.map(s => [s.id, s])));
+      }
+
+      // Student: load guides shared by parent (#1414)
+      if (isStudent) {
+        const shared = await studyApi.getSharedWithMe();
+        setSharedWithMe(shared);
       }
     } catch {
       setLoadError(true);
@@ -329,6 +353,20 @@ export function StudyGuidesPage() {
     loadArchived();
   }, [filterChild]);
 
+  // Share a study guide with a child (#1414)
+  const handleShareGuide = async (guideId: number, studentId: number) => {
+    try {
+      setSharingGuideId(guideId);
+      await studyApi.shareGuide(guideId, studentId);
+      const statusData = await studyApi.getSharedStatus();
+      setSharedStatus(new Map(statusData.map(s => [s.id, s])));
+    } catch (err: any) {
+      console.error('Failed to share guide', err);
+    } finally {
+      setSharingGuideId(null);
+    }
+  };
+
   // Close course search dropdown on outside click
   useEffect(() => {
     if (!courseSearchOpen) return;
@@ -344,6 +382,47 @@ export function StudyGuidesPage() {
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
+  };
+
+  // Category operations (#992)
+  const handleMoveToCategory = async (contentId: number, category: string) => {
+    try {
+      await courseContentsApi.update(contentId, { category: category || undefined });
+      setContentItems(prev => prev.map(c => c.id === contentId ? { ...c, category: category || null } : c));
+      if (category && !categories.includes(category)) {
+        setCategories(prev => [...prev, category].sort());
+      }
+      setMoveToCategoryContentId(null);
+      setNewCategoryName('');
+      setMoveCategoryTarget('');
+      showToast(category ? `Moved to "${category}"` : 'Moved to Uncategorized');
+    } catch { showToast('Failed to update category'); }
+  };
+
+  const handleBulkCategorize = async (category: string) => {
+    if (selectedContentIds.size === 0) return;
+    setBulkCategorizing(true);
+    try {
+      await courseContentsApi.bulkCategorize([...selectedContentIds], category);
+      setContentItems(prev => prev.map(c =>
+        selectedContentIds.has(c.id) ? { ...c, category } : c
+      ));
+      if (!categories.includes(category)) {
+        setCategories(prev => [...prev, category].sort());
+      }
+      setSelectedContentIds(new Set());
+      showToast(`Moved ${selectedContentIds.size} items to "${category}"`);
+    } catch { showToast('Failed to categorize'); }
+    setBulkCategorizing(false);
+  };
+
+  const toggleCategoryCollapse = (cat: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
   };
 
   const handleArchiveContent = async (id: number) => {
@@ -943,6 +1022,30 @@ export function StudyGuidesPage() {
     return true;
   });
 
+  // Group filtered content by category (#992)
+  const groupedByCategory = useMemo(() => {
+    const groups: Record<string, CourseContentItem[]> = {};
+    const uncategorized: CourseContentItem[] = [];
+    for (const item of filteredContent) {
+      const cat = item.category || '';
+      if (!cat) {
+        uncategorized.push(item);
+      } else {
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(item);
+      }
+    }
+    // Sort within each group by display_order
+    for (const key of Object.keys(groups)) {
+      groups[key].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    }
+    uncategorized.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    const categoryKeys = Object.keys(groups).sort();
+    return { categoryKeys, groups, uncategorized };
+  }, [filteredContent]);
+
+  const hasAnyCategories = groupedByCategory.categoryKeys.length > 0;
+
   // Count unlinked materials for badge display (#623)
   const unlinkedCount = isParent
     ? contentItems.filter(c => !linkedCourseIds.has(c.course_id)).length
@@ -992,6 +1095,109 @@ export function StudyGuidesPage() {
       </DashboardLayout>
     );
   }
+
+  // Render a single content row (extracted for category grouping #992)
+  const renderContentRow = (item: CourseContentItem) => {
+    const isUnlinked = isParent && linkedChildren.length > 0 && !linkedCourseIds.has(item.course_id);
+    return (
+      <div key={item.id} className={`guide-row${isUnlinked ? ' guide-row-unlinked' : ''}`}>
+        {/* Selection checkbox */}
+        <label className="guide-row-checkbox" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selectedContentIds.has(item.id)}
+            onChange={() => toggleContentSelection(item.id)}
+          />
+        </label>
+        <div className="guide-row-main" onClick={() => navigateToContent(item)}>
+          <span className="guide-row-icon">{contentTypeIcon(item.content_type, item.id)}</span>
+          <div className="guide-row-info">
+            <span className="guide-row-title">
+              {item.title}
+              {isUnlinked && (
+                <span className="guide-unlinked-badge">Not assigned</span>
+              )}
+            </span>
+            <span className="guide-row-meta">
+              {item.course_name && (
+                <span className="guide-course-badge">{item.course_name}</span>
+              )}
+              {item.category && (
+                <span className="guide-category-badge">{item.category}</span>
+              )}
+              {contentGuideMap[item.id] && (
+                <span className="guide-type-label">
+                  {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
+                </span>
+              )}
+              <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
+            </span>
+          </div>
+        </div>
+        <div className="guide-row-actions">
+          {isUnlinked && linkedChildren.length === 1 && (
+            <button
+              className="guide-assign-btn"
+              title={`Assign to ${linkedChildren[0].full_name}`}
+              onClick={() => handleQuickAssign(item, linkedChildren[0].student_id)}
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Assign
+            </button>
+          )}
+          {isUnlinked && linkedChildren.length > 1 && (
+            <div className="guide-assign-dropdown">
+              <button className="guide-assign-btn" title="Assign to child">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Assign
+              </button>
+              <div className="guide-assign-dropdown-content">
+                {linkedChildren.map(child => (
+                  <button
+                    key={child.student_id}
+                    className="guide-assign-dropdown-item"
+                    onClick={() => handleQuickAssign(item, child.student_id)}
+                  >
+                    {child.full_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Move to category dropdown (#992) */}
+          <div className="guide-assign-dropdown">
+            <button className="guide-convert-btn" title="Move to category">&#128193;</button>
+            <div className="guide-assign-dropdown-content">
+              {item.category && (
+                <button className="guide-assign-dropdown-item" onClick={() => handleMoveToCategory(item.id, '')}>
+                  Remove from category
+                </button>
+              )}
+              {categories.filter(c => c !== item.category).map(cat => (
+                <button key={cat} className="guide-assign-dropdown-item" onClick={() => handleMoveToCategory(item.id, cat)}>
+                  {cat}
+                </button>
+              ))}
+              <button
+                className="guide-assign-dropdown-item"
+                style={{ borderTop: '1px solid var(--color-border)', fontStyle: 'italic' }}
+                onClick={() => { setMoveToCategoryContentId(item.id); setNewCategoryName(''); }}
+              >
+                + New Category
+              </button>
+            </div>
+          </div>
+          <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
+          <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
+          <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <DashboardLayout
@@ -1192,115 +1398,106 @@ export function StudyGuidesPage() {
             )}
           </div>
           {materialsExpanded && (filteredContent.length > 0 || generatingItems.length > 0) ? (
-            <div className="guides-list">
+            <>
               {/* In-progress generation placeholders */}
-              {generatingItems.map(item => (
-                <div key={item.tempId} className={`guide-row ${item.status === 'error' ? 'guide-row-error' : 'guide-row-generating'}`}>
-                  <div className="guide-row-main">
-                    <span className="guide-row-icon">
-                      {item.status === 'error' ? '\u26A0\uFE0F' : <LottieLoader size={28} />}
-                    </span>
-                    <div className="guide-row-info">
-                      <span className="guide-row-title">{item.title}</span>
-                      <span className="guide-row-meta">
-                        {item.status === 'uploading'
-                          ? <span className="generating-text">Uploading...</span>
-                          : item.status === 'generating'
-                          ? <span className="generating-text">Generating {guideTypeLabel(item.guideType)}...</span>
-                          : <span className="error-text">{item.error}</span>
-                        }
-                      </span>
+              {generatingItems.length > 0 && (
+                <div className="guides-list">
+                  {generatingItems.map(item => (
+                    <div key={item.tempId} className={`guide-row ${item.status === 'error' ? 'guide-row-error' : 'guide-row-generating'}`}>
+                      <div className="guide-row-main">
+                        <span className="guide-row-icon">
+                          {item.status === 'error' ? '\u26A0\uFE0F' : <LottieLoader size={28} />}
+                        </span>
+                        <div className="guide-row-info">
+                          <span className="guide-row-title">{item.title}</span>
+                          <span className="guide-row-meta">
+                            {item.status === 'uploading'
+                              ? <span className="generating-text">Uploading...</span>
+                              : item.status === 'generating'
+                              ? <span className="generating-text">Generating {guideTypeLabel(item.guideType)}...</span>
+                              : <span className="error-text">{item.error}</span>
+                            }
+                          </span>
+                        </div>
+                      </div>
+                      {item.status === 'error' && (
+                        <div className="guide-row-actions">
+                          <button className="guide-delete-btn" onClick={() => setGeneratingItems(prev => prev.filter(g => g.tempId !== item.tempId))}>
+                            &times;
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  {item.status === 'error' && (
-                    <div className="guide-row-actions">
-                      <button className="guide-delete-btn" onClick={() => setGeneratingItems(prev => prev.filter(g => g.tempId !== item.tempId))}>
-                        &times;
-                      </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Category groups (#992) */}
+              {groupedByCategory.categoryKeys.map(cat => (
+                <div key={cat} className="guides-category-group">
+                  <button className="collapse-toggle category-toggle" onClick={() => toggleCategoryCollapse(cat)}>
+                    <span className={`section-chevron${!collapsedCategories.has(cat) ? ' expanded' : ''}`}>&#9654;</span>
+                    <span className="category-name">{cat}</span>
+                    <span className="category-count">({groupedByCategory.groups[cat].length})</span>
+                  </button>
+                  {!collapsedCategories.has(cat) && (
+                    <div className="guides-list">
+                      {groupedByCategory.groups[cat].map(item => renderContentRow(item))}
                     </div>
                   )}
                 </div>
               ))}
-              {filteredContent.map(item => {
-                const isUnlinked = isParent && linkedChildren.length > 0 && !linkedCourseIds.has(item.course_id);
-                return (
-                <div key={item.id} className={`guide-row${isUnlinked ? ' guide-row-unlinked' : ''}`}>
-                  {/* Batch selection checkbox for unlinked items (#623) */}
-                  {isParent && isUnlinked && (
-                    <label className="guide-row-checkbox" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedContentIds.has(item.id)}
-                        onChange={() => toggleContentSelection(item.id)}
-                      />
-                    </label>
+
+              {/* Uncategorized items */}
+              {groupedByCategory.uncategorized.length > 0 && (
+                <div className="guides-category-group">
+                  {hasAnyCategories && (
+                    <button className="collapse-toggle category-toggle" onClick={() => toggleCategoryCollapse('__uncategorized__')}>
+                      <span className={`section-chevron${!collapsedCategories.has('__uncategorized__') ? ' expanded' : ''}`}>&#9654;</span>
+                      <span className="category-name">Uncategorized</span>
+                      <span className="category-count">({groupedByCategory.uncategorized.length})</span>
+                    </button>
                   )}
-                  <div className="guide-row-main" onClick={() => navigateToContent(item)}>
-                    <span className="guide-row-icon">{contentTypeIcon(item.content_type, item.id)}</span>
-                    <div className="guide-row-info">
-                      <span className="guide-row-title">
-                        {item.title}
-                        {/* Unlinked badge (#623) */}
-                        {isUnlinked && (
-                          <span className="guide-unlinked-badge">Not assigned</span>
-                        )}
-                      </span>
-                      <span className="guide-row-meta">
-                        {item.course_name && (
-                          <span className="guide-course-badge">{item.course_name}</span>
-                        )}
-                        {contentGuideMap[item.id] && (
-                          <span className="guide-type-label">
-                            {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
-                          </span>
-                        )}
-                        <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
-                      </span>
+                  {!collapsedCategories.has('__uncategorized__') && (
+                    <div className="guides-list">
+                      {groupedByCategory.uncategorized.map(item => renderContentRow(item))}
                     </div>
-                  </div>
-                  <div className="guide-row-actions">
-                    {/* Quick assign dropdown for unlinked items (#623) */}
-                    {isUnlinked && linkedChildren.length === 1 && (
-                      <button
-                        className="guide-assign-btn"
-                        title={`Assign to ${linkedChildren[0].full_name}`}
-                        onClick={() => handleQuickAssign(item, linkedChildren[0].student_id)}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                          <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                        Assign
-                      </button>
-                    )}
-                    {isUnlinked && linkedChildren.length > 1 && (
-                      <div className="guide-assign-dropdown">
-                        <button className="guide-assign-btn" title="Assign to child">
-                          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                            <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                          </svg>
-                          Assign
-                        </button>
-                        <div className="guide-assign-dropdown-content">
-                          {linkedChildren.map(child => (
-                            <button
-                              key={child.student_id}
-                              className="guide-assign-dropdown-item"
-                              onClick={() => handleQuickAssign(item, child.student_id)}
-                            >
-                              {child.full_name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
-                    <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
-                    <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
-                  </div>
+                  )}
                 </div>
-                );
-              })}
-            </div>
+              )}
+
+              {/* Bulk categorize action (#992) */}
+              {selectedContentIds.size > 0 && (
+                <div className="bulk-category-bar">
+                  <span>{selectedContentIds.size} selected</span>
+                  <select
+                    value={moveCategoryTarget}
+                    onChange={e => setMoveCategoryTarget(e.target.value)}
+                    className="bulk-category-select"
+                  >
+                    <option value="">Move to category...</option>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="__new__">+ New Category</option>
+                  </select>
+                  {moveCategoryTarget === '__new__' && (
+                    <input
+                      className="bulk-category-input"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      placeholder="Category name"
+                      maxLength={100}
+                    />
+                  )}
+                  <button
+                    className="guides-batch-assign-btn"
+                    disabled={bulkCategorizing || (!moveCategoryTarget || (moveCategoryTarget === '__new__' && !newCategoryName.trim()))}
+                    onClick={() => handleBulkCategorize(moveCategoryTarget === '__new__' ? newCategoryName.trim() : moveCategoryTarget)}
+                  >
+                    {bulkCategorizing ? 'Moving...' : 'Move'}
+                  </button>
+                </div>
+              )}
+            </>
           ) : materialsExpanded ? (
             <EmptyState
               icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>}
@@ -1378,10 +1575,45 @@ export function StudyGuidesPage() {
                         {guideTypeLabel(guide.guide_type)}
                         {guide.version > 1 && <span className="version-badge">v{guide.version}</span>}
                         <span className="guide-row-date">{new Date(guide.created_at).toLocaleDateString()}</span>
+                        {isParent && sharedStatus.get(guide.id)?.status === 'viewed' && (
+                          <span className="guide-share-badge guide-share-viewed">Viewed</span>
+                        )}
+                        {isParent && sharedStatus.get(guide.id)?.status === 'shared' && (
+                          <span className="guide-share-badge guide-share-sent">Shared</span>
+                        )}
                       </span>
                     </div>
                   </div>
                   <div className="guide-row-actions">
+                    {/* Share with child (#1414) */}
+                    {isParent && children.length === 1 && !sharedStatus.get(guide.id)?.shared_with_user_id && (
+                      <button
+                        className="guide-convert-btn guide-share-btn"
+                        title={`Share with ${children[0].full_name}`}
+                        disabled={sharingGuideId === guide.id}
+                        onClick={() => handleShareGuide(guide.id, children[0].student_id)}
+                      >
+                        {sharingGuideId === guide.id ? '...' : 'Share'}
+                      </button>
+                    )}
+                    {isParent && children.length > 1 && !sharedStatus.get(guide.id)?.shared_with_user_id && (
+                      <div className="guide-assign-dropdown">
+                        <button className="guide-convert-btn guide-share-btn" title="Share with child" disabled={sharingGuideId === guide.id}>
+                          {sharingGuideId === guide.id ? '...' : 'Share'}
+                        </button>
+                        <div className="guide-assign-dropdown-content">
+                          {children.map(child => (
+                            <button
+                              key={child.student_id}
+                              className="guide-assign-dropdown-item"
+                              onClick={() => handleShareGuide(guide.id, child.student_id)}
+                            >
+                              {child.full_name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {guide.guide_type !== 'quiz' && (
                       <button className="guide-convert-btn" title="Generate quiz" onClick={() => handleConvertGuide(guide, 'quiz')}>
                         &#10067;
@@ -1414,6 +1646,35 @@ export function StudyGuidesPage() {
                     <button className="guide-delete-btn" title="Delete" onClick={() => handleDeleteLegacyGuide(guide.id)}>
                       &#128465;
                     </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Shared by Parent section for students (#1414) */}
+        {isStudent && sharedWithMe.length > 0 && (
+          <div className="guides-section">
+            <h3>Shared by Parent ({sharedWithMe.length})</h3>
+            <div className="guides-list">
+              {sharedWithMe.map(guide => (
+                <div key={`shared-${guide.id}`} className="guide-row">
+                  <div className="guide-row-main" onClick={() => navigate(`/study/guide/${guide.id}`)}>
+                    <span className="guide-row-icon">
+                      {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '\uD83C\uDCCF' : '\uD83D\uDCD6'}
+                    </span>
+                    <div className="guide-row-info">
+                      <span className="guide-row-title">
+                        {guide.title}
+                        <span className="guide-share-badge guide-share-from-parent">From {guide.shared_by_name}</span>
+                      </span>
+                      <span className="guide-row-meta">
+                        {guideTypeLabel(guide.guide_type)}
+                        <span className="guide-row-date">Shared {new Date(guide.shared_at).toLocaleDateString()}</span>
+                        {guide.viewed_at && <span className="guide-share-badge guide-share-viewed">Viewed</span>}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1703,6 +1964,37 @@ export function StudyGuidesPage() {
       )}
       {confirmModal}
       <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
+      {/* New Category modal (#992) */}
+      {moveToCategoryContentId !== null && (
+        <div className="modal-overlay" onClick={() => setMoveToCategoryContentId(null)}>
+          <div className="modal-content modal-sm" onClick={e => e.stopPropagation()}>
+            <h3>New Category</h3>
+            <input
+              className="modal-input"
+              value={newCategoryName}
+              onChange={e => setNewCategoryName(e.target.value)}
+              placeholder="Category name"
+              maxLength={100}
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newCategoryName.trim()) {
+                  handleMoveToCategory(moveToCategoryContentId, newCategoryName.trim());
+                }
+              }}
+            />
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setMoveToCategoryContentId(null)}>Cancel</button>
+              <button
+                className="btn-primary"
+                disabled={!newCategoryName.trim()}
+                onClick={() => handleMoveToCategory(moveToCategoryContentId, newCategoryName.trim())}
+              >
+                Create & Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && <div className="toast-notification">{toast}</div>}
     </DashboardLayout>
   );

@@ -18,6 +18,8 @@ export interface CourseContentItem {
   file_size: number | null;
   mime_type: string | null;
   source_files_count: number;
+  category: string | null;
+  display_order: number;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -223,6 +225,8 @@ export const courseContentsApi = {
     reference_url?: string;
     google_classroom_url?: string;
     course_id?: number;
+    category?: string | null;
+    display_order?: number;
   }) => {
     const response = await api.patch(`/api/course-contents/${id}`, data);
     return response.data as CourseContentUpdateResponse;
@@ -296,6 +300,19 @@ export const courseContentsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data as CourseContentItem;
+  },
+
+  bulkCategorize: async (contentIds: number[], category: string) => {
+    const response = await api.post('/api/course-contents/bulk-categorize', {
+      content_ids: contentIds,
+      category,
+    });
+    return response.data as { updated: number; category: string };
+  },
+
+  listCategories: async () => {
+    const response = await api.get('/api/course-contents/categories');
+    return response.data as string[];
   },
 
   download: async (id: number, originalFilename?: string) => {

@@ -13,10 +13,9 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
-import { RoleQuickActions } from '../components/RoleQuickActions';
-import type { QuickAction } from '../components/RoleQuickActions';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
 import './TeacherDashboard.css';
+import './DashboardGrid.css';
 
 interface Course {
   id: number;
@@ -65,7 +64,7 @@ export function TeacherDashboard() {
   // Sent invites state
   const [sentInvites, setSentInvites] = useState<InviteResponse[]>([]);
   const [resendingId, setResendingId] = useState<number | null>(null);
-  const [resentToastId, setResentToastId] = useState<number | null>(null);
+  const [, setResentToastId] = useState<number | null>(null);
   const [invitesExpanded, setInvitesExpanded] = useState(true);
   const [googleAccountsExpanded, setGoogleAccountsExpanded] = useState(true);
   const [resendError, setResendError] = useState<string | null>(null);
@@ -134,14 +133,7 @@ export function TeacherDashboard() {
     }
   };
 
-  const handleConnectGoogle = async () => {
-    try {
-      const { authorization_url } = await googleApi.getConnectUrl();
-      window.location.href = authorization_url;
-    } catch {
-      // Failed to connect
-    }
-  };
+  // handleConnectGoogle removed — unused after dashboard redesign
 
   const handleSyncCourses = async () => {
     setSyncing(true);
@@ -189,14 +181,7 @@ export function TeacherDashboard() {
     }
   };
 
-  const handleAddGoogleAccount = async () => {
-    try {
-      const { authorization_url } = await googleApi.getConnectUrl(true);
-      window.location.href = authorization_url;
-    } catch {
-      // Failed to start add-account flow
-    }
-  };
+  // handleAddGoogleAccount removed — unused after dashboard redesign
 
   const handleRemoveAccount = async (accountId: number) => {
     setRemovingAccountId(accountId);
@@ -371,285 +356,130 @@ export function TeacherDashboard() {
 
   return (
     <DashboardLayout welcomeSubtitle="Your classroom overview" headerSlot={renderHeaderSlot}>
-      {/* Quick Actions (#837 unified) */}
-      <RoleQuickActions
-        actions={[
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              </svg>
-            ),
-            label: 'My Classes',
-            onClick: () => navigate('/courses'),
-          },
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-            ),
-            label: 'Messages',
-            onClick: () => navigate('/messages'),
-            badge: unreadCount > 0 ? unreadCount : undefined,
-          },
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            ),
-            label: 'Announcements',
-            onClick: () => setShowAnnounceModal(true),
-          },
-          ...(gcEnabled ? [{
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            ),
-            label: googleConnected ? 'Sync Classes' : 'Google Classroom',
-            onClick: googleConnected ? handleSyncCourses : handleConnectGoogle,
-            disabled: syncing,
-          }] : []),
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="8.5" cy="7" r="4" />
-                <line x1="20" y1="8" x2="20" y2="14" />
-                <line x1="23" y1="11" x2="17" y2="11" />
-              </svg>
-            ),
-            label: 'Invite Parents',
-            onClick: () => setShowInviteParentModal(true),
-          },
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            ),
-            label: 'Class Material',
-            onClick: () => studyTools.setShowStudyModal(true),
-          },
-        ] satisfies QuickAction[]}
-        maxVisible={4}
-      />
+      {syncMessage && (
+        <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`}>{syncMessage}</div>
+      )}
 
-      {/* Activity Summary */}
-      <div className="teacher-activity-summary">
-        <div className="teacher-activity-card">
-          <div className="teacher-activity-card-header">
-            <h4>Recent Messages</h4>
-            {recentConversations.length > 0 && (
-              <button className="teacher-activity-view-all" onClick={() => navigate('/messages')}>View All</button>
-            )}
+      {/* ── 3-Section Dashboard Grid (#1417) ────────────── */}
+      <div className="dashboard-redesign">
+        {/* Section 1: Class Overview */}
+        <section className="dash-section dash-section--primary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128218;</span> Class Overview</h3>
           </div>
-          {recentConversations.length > 0 ? (
-            <div className="teacher-activity-list">
-              {recentConversations.map((conv) => (
-                <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
-                  <div className="teacher-activity-item-info">
-                    <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
-                    <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
-                  </div>
-                  <div className="teacher-activity-item-meta">
-                    {conv.unread_count > 0 && (
-                      <span className="teacher-activity-unread-badge">{conv.unread_count}</span>
-                    )}
-                    {conv.last_message_at && (
-                      <span className="teacher-activity-item-time">
-                        {new Date(conv.last_message_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></svg>}
-              title="No recent activity"
-              description="Activity will appear here as students interact with your classes."
-            />
-          )}
-        </div>
-
-        <div className="teacher-activity-card">
-          <div className="teacher-activity-card-header">
-            <h4>Upcoming Deadlines</h4>
-            {upcomingAssignments.length > 0 && (
-              <span className="teacher-activity-subtitle">Next 7 days</span>
-            )}
-          </div>
-          {upcomingAssignments.length > 0 ? (
-            <div className="teacher-activity-list">
-              {upcomingAssignments.slice(0, 5).map((assignment) => (
-                <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate(`/courses`)}>
-                  <div className="teacher-activity-item-info">
-                    <span className="teacher-activity-item-name">{assignment.title}</span>
-                    <span className="teacher-activity-item-preview">{assignment.course_name}</span>
-                  </div>
-                  <span className="teacher-activity-item-time">
-                    {new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
-              title="No upcoming deadlines"
-              description="All caught up!"
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="dashboard-sections">
-        {/* Course Management Section (#947) */}
-        <TeacherCourseManagement
-          key={courses.length}
-          googleConnected={gcEnabled && googleConnected}
-          onSync={handleSyncCourses}
-          syncing={syncing}
-          onCreateCourse={() => setShowCreateModal(true)}
-        />
-
-        {syncMessage && (
-          <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`} style={{ gridColumn: '1 / -1' }}>
-            {syncMessage}
-          </div>
-        )}
-
-        {/* Sent Invites Section */}
-        {sentInvites.length > 0 && (
-          <section className="section sent-invites-section">
-            <div className="section-header">
-              <button className="collapse-toggle" onClick={() => setInvitesExpanded(!invitesExpanded)}>
-                <span className={`section-chevron${invitesExpanded ? ' expanded' : ''}`}>&#9654;</span>
-                <h3>Sent Invites ({sentInvites.length})</h3>
-              </button>
-            </div>
-            {resendError && (
-              <div className="resend-error-toast">{resendError}</div>
-            )}
-            {invitesExpanded && (
-              <div className="sent-invites-list">
-                {sentInvites.map(inv => {
-                  const cooling = isResendCoolingDown(inv);
-                  const cooldownMins = cooling ? getResendCooldownMinutes(inv) : 0;
-                  const canResend = inv.status === 'pending' && !cooling;
-                  return (
-                    <div key={inv.id} className="sent-invite-row">
-                      <div className="sent-invite-info">
-                        <span className="sent-invite-email">{inv.email}</span>
-                        <span className={`sent-invite-type-badge badge-${inv.invite_type}`}>{inv.invite_type}</span>
-                        <span className={`sent-invite-status-badge status-${inv.status}`}>{inv.status}</span>
+          <div className="dash-section-body">
+            <TeacherCourseManagement key={courses.length} googleConnected={gcEnabled && googleConnected} onSync={handleSyncCourses} syncing={syncing} onCreateCourse={() => setShowCreateModal(true)} />
+            {gcEnabled && googleConnected && (
+              <div style={{ marginTop: 16 }}>
+                <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)} style={{ fontSize: 13 }}>
+                  <span className={`section-chevron${googleAccountsExpanded ? ' expanded' : ''}`}>&#9654;</span> Google Accounts ({googleAccounts.length})
+                </button>
+                {googleAccountsExpanded && googleAccounts.length > 0 && (
+                  <div className="google-accounts-list" style={{ marginTop: 8 }}>
+                    {googleAccounts.map((account) => (
+                      <div key={account.id} className="google-account-row">
+                        <div className="google-account-info">
+                          <span className="google-account-email">{account.google_email}</span>
+                          {account.is_primary && <span className="google-account-primary-badge">Primary</span>}
+                        </div>
+                        <div className="google-account-actions">
+                          {!account.is_primary && <button className="text-btn" onClick={() => handleSetPrimary(account.id)}>Set Primary</button>}
+                          <button className="text-btn danger" onClick={() => handleRemoveAccount(account.id)} disabled={removingAccountId === account.id}>{removingAccountId === account.id ? '...' : 'Remove'}</button>
+                        </div>
                       </div>
-                      <div className="sent-invite-meta">
-                        <span className="sent-invite-date">
-                          Sent {new Date(inv.created_at).toLocaleDateString()}
-                        </span>
-                        {inv.status === 'pending' && (
-                          <div className="sent-invite-actions">
-                            {resentToastId === inv.id ? (
-                              <span className="resent-toast">Resent!</span>
-                            ) : (
-                              <button
-                                className="text-btn"
-                                disabled={resendingId === inv.id || !canResend}
-                                onClick={() => handleResendInvite(inv.id)}
-                                title={cooling ? `Wait ${cooldownMins} min before resending` : 'Resend invite'}
-                              >
-                                {resendingId === inv.id
-                                  ? 'Sending...'
-                                  : cooling
-                                    ? `Wait ${cooldownMins}m`
-                                    : 'Resend'}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </section>
-        )}
+          </div>
+        </section>
 
-        {/* Google Accounts Section */}
-        {gcEnabled && googleConnected && (
-          <section className="section teacher-google-accounts-section">
-            <div className="section-header">
-              <button className="collapse-toggle" onClick={() => setGoogleAccountsExpanded(v => !v)}>
-                <span className={`section-chevron${googleAccountsExpanded ? ' expanded' : ''}`}>&#9654;</span>
-                <h3>Google Accounts ({googleAccounts.length})</h3>
-              </button>
-              <button className="create-custom-btn" onClick={handleAddGoogleAccount}>
-                + Add Account
-              </button>
-            </div>
-            {googleAccountsExpanded && googleAccounts.length > 0 ? (
-              <div className="google-accounts-list">
-                {googleAccounts.map((account) => (
-                  <div key={account.id} className="google-account-row">
-                    <div className="google-account-info">
-                      <span className="google-account-email">{account.google_email}</span>
-                      {account.display_name && (
-                        <span className="google-account-name">{account.display_name}</span>
-                      )}
-                      {account.account_label && (
-                        <span className="google-account-label">{account.account_label}</span>
-                      )}
-                      {account.is_primary && (
-                        <span className="google-account-primary-badge">Primary</span>
-                      )}
-                      {account.last_sync_at && (
-                        <span className="google-account-sync">
-                          Last synced: {new Date(account.last_sync_at).toLocaleDateString()}
-                        </span>
-                      )}
+        {/* Section 2: Pending Items */}
+        <section className="dash-section dash-section--secondary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128172;</span> Pending Items</h3>
+            {unreadCount > 0 && <button className="dash-section-link" onClick={() => navigate('/messages')} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>{unreadCount} unread</button>}
+          </div>
+          <div className="dash-section-body">
+            {recentConversations.length > 0 ? (
+              <div className="teacher-activity-list">
+                {recentConversations.map((conv) => (
+                  <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
+                      <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
                     </div>
-                    <div className="google-account-actions">
-                      {!account.is_primary && (
-                        <button
-                          className="text-btn"
-                          onClick={() => handleSetPrimary(account.id)}
-                          title="Set as primary"
-                        >
-                          Set Primary
-                        </button>
-                      )}
-                      <button
-                        className="text-btn danger"
-                        onClick={() => handleRemoveAccount(account.id)}
-                        disabled={removingAccountId === account.id}
-                        title="Remove account"
-                      >
-                        {removingAccountId === account.id ? 'Removing...' : 'Remove'}
-                      </button>
-                    </div>
+                    {conv.unread_count > 0 && <span className="teacher-activity-unread-badge">{conv.unread_count}</span>}
                   </div>
                 ))}
               </div>
-            ) : googleAccountsExpanded ? (
-              <EmptyState
-                icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>}
-                title="No Google accounts linked yet"
-                description="Connect your Google account to sync classes from Google Classroom."
-              />
-            ) : null}
-          </section>
-        )}
+            ) : (
+              <EmptyState icon="&#128172;" title="No recent messages" description="Messages from parents will appear here." />
+            )}
+            {upcomingAssignments.length > 0 && (
+              <>
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
+                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Upcoming Deadlines</h4>
+                <div className="teacher-activity-list">
+                  {upcomingAssignments.slice(0, 5).map((assignment) => (
+                    <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate('/courses')}>
+                      <div className="teacher-activity-item-info">
+                        <span className="teacher-activity-item-name">{assignment.title}</span>
+                        <span className="teacher-activity-item-preview">{assignment.course_name}</span>
+                      </div>
+                      <span className="teacher-activity-item-time">{new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {sentInvites.length > 0 && (
+              <>
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
+                <button className="collapse-toggle" onClick={() => setInvitesExpanded(!invitesExpanded)} style={{ fontSize: 13 }}>
+                  <span className={`section-chevron${invitesExpanded ? ' expanded' : ''}`}>&#9654;</span> Sent Invites ({sentInvites.length})
+                </button>
+                {resendError && <div className="resend-error-toast">{resendError}</div>}
+                {invitesExpanded && (
+                  <div className="sent-invites-list" style={{ marginTop: 8 }}>
+                    {sentInvites.map(inv => {
+                      const cooling = isResendCoolingDown(inv);
+                      const cooldownMins = cooling ? getResendCooldownMinutes(inv) : 0;
+                      return (
+                        <div key={inv.id} className="sent-invite-row">
+                          <div className="sent-invite-info">
+                            <span className="sent-invite-email">{inv.email}</span>
+                            <span className={`sent-invite-status-badge status-${inv.status}`}>{inv.status}</span>
+                          </div>
+                          {inv.status === 'pending' && (
+                            <button className="text-btn" disabled={resendingId === inv.id || !(!cooling)} onClick={() => handleResendInvite(inv.id)}>
+                              {resendingId === inv.id ? '...' : cooling ? `${cooldownMins}m` : 'Resend'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* Section 3: Quick Actions */}
+        <section className="dash-section dash-section--actions">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title">Quick Actions</h3>
+          </div>
+          <div className="dash-quick-actions">
+            <button className="dash-quick-action" onClick={() => setShowCreateModal(true)}><span className="dash-quick-action-icon">&#10133;</span> Create Class</button>
+            <button className="dash-quick-action" onClick={() => navigate('/messages')}><span className="dash-quick-action-icon">&#128172;</span> Message Parents</button>
+            <button className="dash-quick-action" onClick={() => setShowAnnounceModal(true)}><span className="dash-quick-action-icon">&#128227;</span> Announcements</button>
+            <button className="dash-quick-action" onClick={() => setShowInviteParentModal(true)}><span className="dash-quick-action-icon">&#128101;</span> Invite Parents</button>
+            <button className="dash-quick-action" onClick={() => studyTools.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
+          </div>
+        </section>
       </div>
 
       {/* Create Course Modal */}
