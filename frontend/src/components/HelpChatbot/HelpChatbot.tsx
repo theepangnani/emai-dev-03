@@ -73,9 +73,6 @@ export function HelpChatbot() {
           aria-label="Open help chat"
         >
           <img src="/logo-icon.png" alt="" className="help-chatbot-fab-logo" />
-          <svg className="help-chatbot-fab-badge" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
         </button>
       )}
 
