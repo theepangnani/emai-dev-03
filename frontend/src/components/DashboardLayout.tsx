@@ -9,6 +9,8 @@ import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
+import { TutorialOverlay, triggerTutorial } from './tutorial/TutorialOverlay';
+import { TUTORIAL_KEYS, PARENT_TUTORIAL_STEPS, STUDENT_TUTORIAL_STEPS, TEACHER_TUTORIAL_STEPS } from './tutorial/tutorialSteps';
 import { SpeedDialFAB } from './SpeedDialFAB';
 import { FABProvider } from '../context/FABContext';
 import '../pages/Dashboard.css';
@@ -51,6 +53,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
       <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Readiness: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
     </svg>
   ),
   Classes: (
@@ -168,6 +176,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
+        { label: 'Readiness', path: '/readiness-check' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -408,6 +417,25 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               )}
             </button>
           ))}
+          <button
+            className="sidebar-link"
+            onClick={() => {
+              setMenuOpen(false);
+              const key = user?.role === 'student' ? TUTORIAL_KEYS.STUDENT_DASHBOARD
+                : user?.role === 'teacher' ? TUTORIAL_KEYS.TEACHER_DASHBOARD
+                : TUTORIAL_KEYS.PARENT_DASHBOARD;
+              triggerTutorial(key);
+            }}
+          >
+            <span className="sidebar-link-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </span>
+            <span className="sidebar-link-label">Show Tutorial</span>
+          </button>
         </nav>
         {sidebarActions && sidebarActions.length > 0 && (
           <>
@@ -540,6 +568,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       )}
       {user?.role === 'teacher' && (
         <OnboardingTour steps={TEACHER_TOUR_STEPS} storageKey="tour_completed_teacher" />
+      )}
+
+      {/* Backend-persisted tutorial overlay (#1210) */}
+      {user?.role === 'parent' && (
+        <TutorialOverlay tutorialKey={TUTORIAL_KEYS.PARENT_DASHBOARD} steps={PARENT_TUTORIAL_STEPS} />
+      )}
+      {user?.role === 'student' && (
+        <TutorialOverlay tutorialKey={TUTORIAL_KEYS.STUDENT_DASHBOARD} steps={STUDENT_TUTORIAL_STEPS} />
+      )}
+      {user?.role === 'teacher' && (
+        <TutorialOverlay tutorialKey={TUTORIAL_KEYS.TEACHER_DASHBOARD} steps={TEACHER_TUTORIAL_STEPS} />
       )}
 
       <SpeedDialFAB />
