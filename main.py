@@ -867,6 +867,14 @@ with engine.connect() as conn:
         conn.commit()
 
 
+    # ── Backfill NULL ai_usage columns (#1400) ─────────────────
+    try:
+        conn.execute(text("UPDATE users SET ai_usage_count = 0 WHERE ai_usage_count IS NULL"))
+        conn.execute(text("UPDATE users SET ai_usage_limit = 10 WHERE ai_usage_limit IS NULL"))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
     # ── tasks: note_id column (#1087) ──────────────────────────
     if "tasks" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
