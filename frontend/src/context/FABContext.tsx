@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
 export interface NotesFABConfig {
   courseContentId: number;
@@ -45,13 +45,10 @@ export function useFABContext() {
  */
 export function useRegisterNotesFAB(config: NotesFABConfig | null) {
   const { registerNotesFAB, unregisterNotesFAB } = useFABContext();
-  const configRef = useRef(config);
-  configRef.current = config;
-
   // Register/update whenever key props change
   useEffect(() => {
-    if (configRef.current) {
-      registerNotesFAB(configRef.current);
+    if (config) {
+      registerNotesFAB(config);
     } else {
       unregisterNotesFAB();
     }
