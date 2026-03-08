@@ -18,6 +18,7 @@ import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
 import { WeeklyDigestCard } from '../components/briefing/WeeklyDigestCard';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import './ParentDashboard.css';
+import './DashboardGrid.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
 function DashboardSkeleton() {
@@ -254,10 +255,9 @@ export function ParentDashboard() {
           {/* Onboarding Setup Checklist (#869) */}
           <SetupChecklist />
 
-          {/* Daily Briefing Card */}
-          <DailyBriefingCard />
-
-          {/* View Mode Toggle (#832) */}
+          {/* Above-grid elements */}
+          <div className="dash-above-grid">
+            {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
               className="pd-view-toggle"
@@ -369,79 +369,56 @@ export function ParentDashboard() {
             return null;
           })()}
 
-          {/* Quick Action Bar (#837 unified) */}
-          <RoleQuickActions
-            actions={[
-              {
-                icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  </svg>
-                ),
-                label: 'View Class Materials',
-                onClick: () => pd.navigate('/course-materials'),
-              },
-              {
-                icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                ),
-                label: 'Upload Class Material',
-                onClick: () => pd.setShowStudyModal(true),
-              },
-            ] satisfies QuickAction[]}
-            maxVisible={2}
-          />
-
-          {/* Task urgency pills below CTAs */}
-          {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
-            <div className="pd-task-status-pills">
-              {pd.taskCounts.overdue > 0 && (
-                <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
-                  {pd.taskCounts.overdue} overdue
-                </button>
-              )}
-              {pd.taskCounts.dueToday > 0 && (
-                <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>
-                  {pd.taskCounts.dueToday} due today
-                </button>
-              )}
-              {pd.taskCounts.upcoming > 0 && (
-                <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>
-                  {pd.taskCounts.upcoming} next 3 days
-                </button>
-              )}
-            </div>
-          )}
-
           {!tipDismissed && pd.courseMaterials.length === 0 && (
-            <div className="pd-onboard-tip" role="status">
-              <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
-              <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
-              <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
-              <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)} aria-label="Dismiss tip">&times;</button>
-            </div>
-          )}
+              <div className="pd-onboard-tip" role="status">
+                <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
+                <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
+                <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
+                <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)} aria-label="Dismiss tip">&times;</button>
+              </div>
+            )}
+          </div>
 
-          {/* Recent Activity Feed (#1225/#1226) — Full mode only */}
-          {viewMode === 'full' && (
-            <RecentActivityPanel
-              selectedChild={pd.selectedChild}
-              navigate={pd.navigate}
-            />
-          )}
+          {/* 3-Section Dashboard Grid (#1415) */}
+          <div className="dashboard-redesign">
+            <section className="dash-section dash-section--primary">
+              <div className="dash-section-header">
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Daily Briefing</h3>
+              </div>
+              <div className="dash-section-body">
+                <DailyBriefingCard />
+                {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
+                  <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
+                    {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
+                    {pd.taskCounts.dueToday > 0 && <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>{pd.taskCounts.dueToday} due today</button>}
+                    {pd.taskCounts.upcoming > 0 && <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>{pd.taskCounts.upcoming} next 3 days</button>}
+                  </div>
+                )}
+              </div>
+            </section>
 
-          {/* Weekly Progress Pulse (#1413) */}
-          {viewMode === 'full' && <WeeklyDigestCard />}
+            <section className="dash-section dash-section--secondary">
+              <div className="dash-section-header">
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128197;</span> Coming Up</h3>
+                <a href="/tasks" className="dash-section-link">All tasks</a>
+              </div>
+              <div className="dash-section-body">
+                {viewMode === 'full' && <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />}
+              </div>
+            </section>
 
-          {/* Student Detail moved to MyKids page */}
-
-
-          {/* Calendar moved to Tasks page */}
+            <section className="dash-section dash-section--actions">
+              <div className="dash-section-header">
+                <h3 className="dash-section-title">Quick Actions</h3>
+              </div>
+              <div className="dash-quick-actions">
+                <button className="dash-quick-action" onClick={() => pd.navigate('/help-my-kid')}><span className="dash-quick-action-icon">&#128161;</span> Help My Kid</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}><span className="dash-quick-action-icon">&#9989;</span> Create Task</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">&#128218;</span> View Courses</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
+              </div>
+            </section>
+          </div>
         </>
       )}
 
