@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { notesApi, type NoteItem, type NoteHighlight } from '../api/notes';
+import { notesApi, type NoteItem, type NoteHighlight, type NoteVersionItem, type NoteVersionFull } from '../api/notes';
 import { NoteTaskForm } from './NoteTaskForm';
 import './NotesPanel.css';
 
@@ -33,6 +33,14 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // History state
+  const [showHistory, setShowHistory] = useState(false);
+  const [versions, setVersions] = useState<NoteVersionItem[]>([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [previewVersion, setPreviewVersion] = useState<NoteVersionFull | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [restoringVersion, setRestoringVersion] = useState(false);
 
   // Drag state
   const panelRef = useRef<HTMLDivElement>(null);
@@ -239,6 +247,73 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     setShowTaskForm(true);
   };
 
+  // History handlers
+  const handleOpenHistory = async () => {
+    if (!note) return;
+    setShowHistory(true);
+    setLoadingVersions(true);
+    setPreviewVersion(null);
+    try {
+      const v = await notesApi.listVersions(note.id);
+      setVersions(v);
+    } catch {
+      setVersions([]);
+      showToast('Failed to load version history');
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const handlePreviewVersion = async (versionId: number) => {
+    if (!note) return;
+    setLoadingPreview(true);
+    try {
+      const v = await notesApi.getVersion(note.id, versionId);
+      setPreviewVersion(v);
+    } catch {
+      showToast('Failed to load version');
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleRestoreVersion = async (versionId: number) => {
+    if (!note) return;
+    setRestoringVersion(true);
+    try {
+      const restored = await notesApi.restoreVersion(note.id, versionId);
+      setNote(restored);
+      setContent(restored.content || '');
+      setPreviewVersion(null);
+      setShowHistory(false);
+      showToast('Version restored');
+    } catch {
+      showToast('Failed to restore version');
+    } finally {
+      setRestoringVersion(false);
+    }
+  };
+
+  const handleCloseHistory = () => {
+    setShowHistory(false);
+    setPreviewVersion(null);
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+  };
+
   if (!isOpen) return null;
 
   const isEffectivelyReadOnly = readOnly && !parentEditing;
@@ -247,34 +322,114 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
     : {};
 
+  // History view
+  if (showHistory) {
+    return (
+      <div className="notes-panel-floating" ref={panelRef} style={panelStyle}>
+        <div className="notes-panel-header" onMouseDown={handleDragStart}>
+          <h3>
+            <button className="notes-back-btn" onClick={handleCloseHistory} title="Back to notes" aria-label="Back to notes">
+              &#8592;
+            </button>
+            {previewVersion ? `Version ${previewVersion.version_number}` : 'Version History'}
+          </h3>
+          <div className="notes-header-actions">
+            <button className="notes-close-btn" onClick={onClose} title="Close notes" aria-label="Close notes">
+              &times;
+            </button>
+          </div>
+        </div>
+
+        <div className="notes-panel-body">
+          {previewVersion ? (
+            <div className="notes-version-preview">
+              <div className="notes-version-preview-meta">
+                {formatDate(previewVersion.created_at)}
+              </div>
+              <div className="notes-version-preview-content">{previewVersion.content}</div>
+              <div className="notes-version-preview-actions">
+                <button
+                  className="notes-version-back-btn"
+                  onClick={() => setPreviewVersion(null)}
+                >
+                  Back to list
+                </button>
+                {!isEffectivelyReadOnly && (
+                  <button
+                    className="notes-version-restore-btn"
+                    onClick={() => handleRestoreVersion(previewVersion.id)}
+                    disabled={restoringVersion}
+                  >
+                    {restoringVersion ? 'Restoring...' : 'Restore this version'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : loadingVersions ? (
+            <p className="notes-loading">Loading versions...</p>
+          ) : versions.length === 0 ? (
+            <p className="notes-empty">No previous versions yet. Versions are saved automatically when you edit.</p>
+          ) : (
+            <div className="notes-version-list">
+              {versions.map(v => (
+                <button
+                  key={v.id}
+                  className="notes-version-item"
+                  onClick={() => handlePreviewVersion(v.id)}
+                  disabled={loadingPreview}
+                >
+                  <div className="notes-version-item-header">
+                    <span className="notes-version-number">v{v.version_number}</span>
+                    <span className="notes-version-date">{formatDate(v.created_at)}</span>
+                  </div>
+                  <div className="notes-version-item-preview">{v.preview || '(empty)'}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="notes-panel-floating" ref={panelRef} style={panelStyle}>
       <div className="notes-panel-header" onMouseDown={handleDragStart}>
         <h3>{isEffectivelyReadOnly ? `${childName ? childName + "'s " : "Child's "}Notes` : 'Notes'}</h3>
         <div className="notes-header-actions">
           {!isEffectivelyReadOnly && note && !loading && (
-            <div className="notes-task-dropdown-wrapper" ref={dropdownRef}>
+            <>
               <button
-                className="notes-create-task-btn"
-                onClick={() => setShowTaskDropdown(!showTaskDropdown)}
-                title="Create task from note"
+                className="notes-history-btn"
+                onClick={handleOpenHistory}
+                title="Version history"
+                aria-label="Version history"
               >
-                + Task
+                &#x1f553;
               </button>
-              {showTaskDropdown && (
-                <div className="notes-task-dropdown">
-                  <button className="notes-task-dropdown-item" onClick={handleCreateQuickTask}>
-                    Quick Task (standalone)
-                  </button>
-                  <button className="notes-task-dropdown-item" onClick={() => {
-                    setShowTaskDropdown(false);
-                    setShowTaskForm(true);
-                  }}>
-                    Linked Task (with material)
-                  </button>
-                </div>
-              )}
-            </div>
+              <div className="notes-task-dropdown-wrapper" ref={dropdownRef}>
+                <button
+                  className="notes-create-task-btn"
+                  onClick={() => setShowTaskDropdown(!showTaskDropdown)}
+                  title="Create task from note"
+                >
+                  + Task
+                </button>
+                {showTaskDropdown && (
+                  <div className="notes-task-dropdown">
+                    <button className="notes-task-dropdown-item" onClick={handleCreateQuickTask}>
+                      Quick Task (standalone)
+                    </button>
+                    <button className="notes-task-dropdown-item" onClick={() => {
+                      setShowTaskDropdown(false);
+                      setShowTaskForm(true);
+                    }}>
+                      Linked Task (with material)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
           <button className="notes-close-btn" onClick={onClose} title="Close notes" aria-label="Close notes">
             &times;

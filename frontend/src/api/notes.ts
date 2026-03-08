@@ -18,6 +18,24 @@ export interface NoteHighlight {
   end: number;
 }
 
+export interface NoteVersionItem {
+  id: number;
+  note_id: number;
+  version_number: number;
+  created_at: string;
+  created_by_user_id: number | null;
+  preview: string;
+}
+
+export interface NoteVersionFull {
+  id: number;
+  note_id: number;
+  content: string;
+  version_number: number;
+  created_at: string;
+  created_by_user_id: number | null;
+}
+
 export interface NoteCreateTaskData {
   title: string;
   due_date?: string;
@@ -65,6 +83,21 @@ export const notesApi = {
     if (notes.length === 0) return null;
     const fullResp = await api.get(`/api/notes/${notes[0].id}`);
     return fullResp.data as NoteItem;
+  },
+
+  listVersions: async (noteId: number) => {
+    const response = await api.get(`/api/notes/${noteId}/versions`);
+    return response.data as NoteVersionItem[];
+  },
+
+  getVersion: async (noteId: number, versionId: number) => {
+    const response = await api.get(`/api/notes/${noteId}/versions/${versionId}`);
+    return response.data as NoteVersionFull;
+  },
+
+  restoreVersion: async (noteId: number, versionId: number) => {
+    const response = await api.post(`/api/notes/${noteId}/restore/${versionId}`);
+    return response.data as NoteItem;
   },
 
   createTask: async (noteId: number, courseContentId: number, data: NoteCreateTaskData) => {

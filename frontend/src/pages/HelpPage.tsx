@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
+import { api } from '../api/client';
+import ReactMarkdown from 'react-markdown';
 import './HelpPage.css';
 
 /* ──────────────── Tutorial types & data ──────────────── */
@@ -427,6 +429,18 @@ const FAQ_SECTIONS: FaqSection[] = [
   },
 ];
 
+/* ──────────────── Article types ──────────────── */
+
+interface HelpArticle {
+  id: number;
+  slug: string;
+  title: string;
+  content: string;
+  category: string;
+  role: string | null;
+  display_order: number;
+}
+
 /* ──────────────── Component ──────────────── */
 
 export function HelpPage() {
@@ -434,6 +448,10 @@ export function HelpPage() {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<HelpArticle[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
 
   const tutorials = useMemo(() => {
     switch (user?.role) {
@@ -473,6 +491,23 @@ export function HelpPage() {
     }
   };
 
+  const handleSearch = useCallback(async (q: string) => {
+    setSearchQuery(q);
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const { data } = await api.get<HelpArticle[]>('/api/help/search', { params: { q: q.trim() } });
+      setSearchResults(data);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
   const toggleFaq = (key: string) => {
     setExpandedFaq(prev => (prev === key ? null : key));
   };
@@ -486,6 +521,45 @@ export function HelpPage() {
         ]} />
 
         {/* ── Tutorial Section ── */}
+        {/* Search Bar */}
+        <div className="help-search-wrap">
+          <input
+            type="text"
+            className="help-search-input"
+            placeholder="Search help articles..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+          {isSearching && <span className="help-search-spinner" />}
+        </div>
+
+        {searchQuery.trim() && (
+          <div className="help-search-results">
+            {searchResults.length === 0 && !isSearching && (
+              <p className="help-search-empty">No articles found for &ldquo;{searchQuery}&rdquo;</p>
+            )}
+            {searchResults.map((article) => (
+              <div key={article.slug} className={`help-article-card${expandedArticle === article.slug ? ' expanded' : ''}`}>
+                <button
+                  className="help-article-header"
+                  onClick={() => setExpandedArticle(prev => prev === article.slug ? null : article.slug)}
+                >
+                  <div className="help-article-info">
+                    <h3 className="help-article-title">{article.title}</h3>
+                    <span className="help-article-category">{article.category}</span>
+                  </div>
+                  <span className={`help-chevron${expandedArticle === article.slug ? ' expanded' : ''}`}>&#9654;</span>
+                </button>
+                {expandedArticle === article.slug && (
+                  <div className="help-article-content">
+                    <ReactMarkdown>{article.content}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="tut-header">
           <h2 className="tut-title">Welcome, {roleName}!</h2>
           <p className="tut-subtitle">

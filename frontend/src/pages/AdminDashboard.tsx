@@ -8,6 +8,7 @@ import { useDebounce } from '../utils/useDebounce';
 import { ListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import './AdminDashboard.css';
+import './DashboardGrid.css';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES = ['parent', 'student', 'teacher', 'admin'] as const;
@@ -232,103 +233,62 @@ export function AdminDashboard() {
 
   return (
     <DashboardLayout welcomeSubtitle="Platform administration">
-      <div className="dashboard-grid">
-        <div className="dashboard-card">
-          <div className="card-icon" aria-hidden="true">&#128101;</div>
-          <h3>Total Users</h3>
-          <p className="card-value">{stats?.total_users ?? '—'}</p>
-          <p className="card-label">Registered users</p>
-          {trends.total > 0 && (
-            <span className="admin-trend-badge">+{trends.total} this week</span>
-          )}
-        </div>
+      {/* ── 3-Section Dashboard Grid ── */}
+      <div className="dashboard-redesign">
+        {/* Section 1: Platform Health */}
+        <section className="dash-section dash-section--primary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128200;</span> Platform Health</h3>
+          </div>
+          <div className="dash-section-body">
+            <div className="dash-metric-cards">
+              <div className="dash-metric-card">
+                <span className="dash-metric-value">{stats?.total_users ?? '—'}</span>
+                <span className="dash-metric-label">Users</span>
+                {trends.total > 0 && <span className="dash-metric-trend">+{trends.total} this week</span>}
+              </div>
+              <div className="dash-metric-card">
+                <span className="dash-metric-value">{stats?.users_by_role?.student ?? 0}</span>
+                <span className="dash-metric-label">Students</span>
+                {trends.student > 0 && <span className="dash-metric-trend">+{trends.student}</span>}
+              </div>
+              <div className="dash-metric-card">
+                <span className="dash-metric-value">{stats?.users_by_role?.teacher ?? 0}</span>
+                <span className="dash-metric-label">Teachers</span>
+                {trends.teacher > 0 && <span className="dash-metric-trend">+{trends.teacher}</span>}
+              </div>
+              <div className="dash-metric-card">
+                <span className="dash-metric-value">{stats?.total_courses ?? 0}</span>
+                <span className="dash-metric-label">Classes</span>
+              </div>
+            </div>
 
-        <div className="dashboard-card">
-          <div className="card-icon" aria-hidden="true">&#127891;</div>
-          <h3>Students</h3>
-          <p className="card-value">{stats?.users_by_role?.student ?? 0}</p>
-          <p className="card-label">Active students</p>
-          {trends.student > 0 && (
-            <span className="admin-trend-badge">+{trends.student} this week</span>
-          )}
-        </div>
-
-        <div className="dashboard-card">
-          <div className="card-icon" aria-hidden="true">&#128104;&#8205;&#127979;</div>
-          <h3>Teachers</h3>
-          <p className="card-value">{stats?.users_by_role?.teacher ?? 0}</p>
-          <p className="card-label">Active teachers</p>
-          {trends.teacher > 0 && (
-            <span className="admin-trend-badge">+{trends.teacher} this week</span>
-          )}
-        </div>
-
-        <div className="dashboard-card">
-          <div className="card-icon" aria-hidden="true">&#128218;</div>
-          <h3>Classes</h3>
-          <p className="card-value">{stats?.total_courses ?? 0}</p>
-          <p className="card-label">Total classes</p>
-        </div>
-      </div>
-
-      <div className="dashboard-sections">
-        <section className="section" style={{ marginBottom: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          <Link to="/admin/audit-log" className="admin-audit-link">
-            View Audit Log &rarr;
-          </Link>
-          <Link to="/admin/inspiration" className="admin-audit-link">
-            Manage Inspirational Messages &rarr;
-          </Link>
-          <Link to="/admin/faq" className="admin-audit-link">
-            Manage FAQ &rarr;
-          </Link>
-          <Link to="/admin/waitlist" className="admin-audit-link">
-            Manage Waitlist &rarr;
-          </Link>
-          <Link to="/admin/ai-usage" className="admin-audit-link">
-            AI Usage Management &rarr;
-          </Link>
-          <button
-            className="admin-audit-link"
-            onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}
-            style={{ cursor: 'pointer', background: 'none' }}
-          >
-            Send Broadcast &rarr;
-          </button>
-        </section>
-
-        {/* Feature Toggles */}
-        <section className="section" style={{ marginBottom: '16px' }}>
-          <h3 style={{ margin: '0 0 12px' }}>Feature Toggles</h3>
-          <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-muted, #888)' }}>
-            Toggle features on/off at runtime. Changes take effect immediately but reset on server restart.
-            Set the corresponding env var (e.g. <code>GOOGLE_CLASSROOM_ENABLED=true</code>) for persistence.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {Object.entries(featureToggles).map(([key, enabled]) => (
-              <label key={key} className="admin-role-checkbox-row" style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-secondary, #f9f9f9)' }}>
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  disabled={toggleLoading[key]}
-                  onChange={() => handleToggleFeature(key)}
-                />
-                <span style={{ fontWeight: 500 }}>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                <span style={{ marginLeft: 'auto', fontSize: '12px', color: enabled ? 'var(--success, #22c55e)' : 'var(--text-muted, #888)' }}>
-                  {toggleLoading[key] ? 'Updating...' : enabled ? 'Enabled' : 'Disabled'}
-                </span>
-              </label>
-            ))}
+            {/* Feature Toggles */}
+            <div style={{ marginTop: 16 }}>
+              <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Feature Toggles</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {Object.entries(featureToggles).map(([key, enabled]) => (
+                  <label key={key} className="admin-role-checkbox-row" style={{ padding: '6px 10px', borderRadius: '8px', background: 'var(--bg-secondary, #f9f9f9)', fontSize: 13 }}>
+                    <input type="checkbox" checked={enabled} disabled={toggleLoading[key]} onChange={() => handleToggleFeature(key)} />
+                    <span style={{ fontWeight: 500 }}>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '11px', color: enabled ? 'var(--success, #22c55e)' : 'var(--text-muted, #888)' }}>
+                      {toggleLoading[key] ? '...' : enabled ? 'On' : 'Off'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Recent Activity Feed */}
-        <section className="section admin-recent-activity-section">
-          <div className="admin-recent-activity-header">
-            <h3>Recent Activity</h3>
+        {/* Section 2: Recent Activity */}
+        <section className="dash-section dash-section--secondary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128196;</span> Recent Activity</h3>
+            <Link to="/admin/audit-log" className="dash-section-link">Full log</Link>
           </div>
-          {recentActivity.length > 0 ? (
-            <>
+          <div className="dash-section-body">
+            {recentActivity.length > 0 ? (
               <div className="admin-recent-activity-list">
                 {recentActivity.map((entry) => (
                   <div key={entry.id} className="admin-activity-item">
@@ -339,182 +299,105 @@ export function AdminDashboard() {
                         {' '}<span className="admin-activity-verb">{entry.action}</span>
                         {entry.resource_type && <span className="admin-activity-target"> {entry.resource_type}{entry.resource_id ? ` #${entry.resource_id}` : ''}</span>}
                       </div>
-                      {entry.details && <div className="admin-activity-details">{entry.details}</div>}
-                      <div className="admin-activity-time">
-                        {new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                      </div>
+                      <div className="admin-activity-time">{new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
                     </div>
                   </div>
                 ))}
               </div>
-              <button className="admin-activity-view-all" onClick={() => navigate('/admin/audit-log')}>
-                View Full Audit Log &rarr;
-              </button>
-            </>
-          ) : (
-            <EmptyState
-              icon="📊"
-              title="No recent activity"
-              description="System activity will appear here."
-            />
-          )}
-        </section>
+            ) : (
+              <EmptyState icon="&#128202;" title="No recent activity" description="System activity will appear here." />
+            )}
 
-        {/* Broadcast History */}
-        <section className="section" style={{ marginBottom: '16px' }}>
-          <button className="collapse-toggle" onClick={handleToggleBroadcastHistory}>
-            <span className={`section-chevron${showBroadcastHistory ? ' expanded' : ''}`}>&#9654;</span>
-            <h3 style={{ margin: 0, fontSize: '14px' }}>Broadcast History ({broadcasts.length})</h3>
-          </button>
-          {showBroadcastHistory && (
-            <div className="admin-broadcast-history">
-              {broadcasts.length === 0 ? (
-                <EmptyState
-                  icon="📢"
-                  title="No broadcasts sent yet"
-                  description="Send a broadcast to reach all users at once."
-                  action={{ label: 'Send Broadcast', onClick: () => { setShowBroadcastModal(true); setBroadcastResult(''); } }}
-                />
-              ) : (
-                <table className="admin-users-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Subject</th>
-                      <th>Recipients</th>
-                      <th>Emails Sent</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {broadcasts.map(b => (
-                      <tr key={b.id}>
-                        <td>{new Date(b.created_at).toLocaleString()}</td>
-                        <td>{b.subject}</td>
-                        <td>{b.recipient_count}</td>
-                        <td>{b.email_count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="section admin-users-section">
-          <button className="collapse-toggle" onClick={() => setUsersExpanded(v => !v)}>
-            <span className={`section-chevron${usersExpanded ? ' expanded' : ''}`}>&#9654;</span>
-            <h3>User Management ({totalUsers})</h3>
-          </button>
-
-          {usersExpanded && (
-          <>
-          <div className="admin-filters">
-            <label htmlFor="admin-role-filter" className="sr-only">Filter by role</label>
-            <select
-              id="admin-role-filter"
-              value={roleFilter}
-              onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}
-            >
-              <option value="">All Roles</option>
-              <option value="student">Student</option>
-              <option value="parent">Parent</option>
-              <option value="teacher">Teacher</option>
-              <option value="admin">Admin</option>
-            </select>
-            <label htmlFor="admin-user-search" className="sr-only">Search users by name or email</label>
-            <input
-              id="admin-user-search"
-              type="text"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            />
-          </div>
-
-          {loading ? (
-            <ListSkeleton rows={5} />
-          ) : (
-            <>
-              <table className="admin-users-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Roles</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+            {/* Broadcast History (collapsible) */}
+            <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
+            <button className="collapse-toggle" onClick={handleToggleBroadcastHistory} style={{ fontSize: 13 }}>
+              <span className={`section-chevron${showBroadcastHistory ? ' expanded' : ''}`}>&#9654;</span> Broadcast History ({broadcasts.length})
+            </button>
+            {showBroadcastHistory && broadcasts.length > 0 && (
+              <table className="admin-users-table" style={{ marginTop: 8 }}>
+                <thead><tr><th>Date</th><th>Subject</th><th>Sent</th></tr></thead>
                 <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td>{user.full_name}</td>
-                      <td>{user.email ?? '—'}</td>
-                      <td>
-                        <div className="admin-roles-cell">
-                          {(user.roles?.length ? user.roles : [user.role]).map(r => (
-                            <span key={r} className={`role-badge-small ${r}`}>{r}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-dot ${user.is_active ? 'active' : 'inactive'}`} />
-                        {user.is_active ? 'Active' : 'Inactive'}
-                      </td>
-                      <td>{new Date(user.created_at).toLocaleDateString()}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            className="admin-manage-btn"
-                            onClick={() => { setSelectedUser(user); setRoleError(''); }}
-                          >
-                            Roles
-                          </button>
-                          <button
-                            className="admin-manage-btn admin-msg-btn"
-                            onClick={() => { setMessageUser(user); setMsgResult(''); setMsgSubject(''); setMsgBody(''); }}
-                          >
-                            Message
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                  {broadcasts.map(b => (
+                    <tr key={b.id}><td>{new Date(b.created_at).toLocaleDateString()}</td><td>{b.subject}</td><td>{b.email_count}</td></tr>
                   ))}
-                  {users.length === 0 && (
-                    <tr>
-                      <td colSpan={6}>
-                        <EmptyState
-                          icon="👤"
-                          title="No users match your search"
-                          description="Try adjusting your filters or search terms."
-                          action={{ label: 'Clear Filters', onClick: () => { setSearch(''); setRoleFilter(''); setPage(0); } }}
-                        />
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
+            )}
+          </div>
+        </section>
 
-              {totalPages > 1 && (
-                <div className="admin-pagination">
-                  <span>
-                    Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalUsers)} of {totalUsers}
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button disabled={page === 0} onClick={() => setPage(page - 1)}>
-                      Previous
-                    </button>
-                    <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-                      Next
-                    </button>
-                  </div>
-                </div>
+        {/* Section 3: Quick Actions */}
+        <section className="dash-section dash-section--actions">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title">Quick Actions</h3>
+          </div>
+          <div className="dash-quick-actions">
+            <Link to="/admin/audit-log" className="dash-quick-action"><span className="dash-quick-action-icon">&#128203;</span> View Logs</Link>
+            <Link to="/admin/ai-usage" className="dash-quick-action"><span className="dash-quick-action-icon">&#129302;</span> AI Settings</Link>
+            <Link to="/admin/faq" className="dash-quick-action"><span className="dash-quick-action-icon">&#10067;</span> Manage FAQ</Link>
+            <button className="dash-quick-action" onClick={() => { setShowBroadcastModal(true); setBroadcastResult(''); }}><span className="dash-quick-action-icon">&#128227;</span> Send Broadcast</button>
+          </div>
+        </section>
+
+        {/* Section 4: User Management (full-width) */}
+        <section className="dash-section dash-section--full">
+          <div className="dash-section-header">
+            <button className="collapse-toggle" onClick={() => setUsersExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span className={`section-chevron${usersExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3 className="dash-section-title">User Management ({totalUsers})</h3>
+            </button>
+          </div>
+          {usersExpanded && (
+            <div className="dash-section-body">
+              <div className="admin-filters">
+                <label htmlFor="admin-role-filter" className="sr-only">Filter by role</label>
+                <select id="admin-role-filter" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}>
+                  <option value="">All Roles</option>
+                  <option value="student">Student</option>
+                  <option value="parent">Parent</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <label htmlFor="admin-user-search" className="sr-only">Search users</label>
+                <input id="admin-user-search" type="text" placeholder="Search by name or email..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
+              </div>
+              {loading ? <ListSkeleton rows={5} /> : (
+                <>
+                  <table className="admin-users-table">
+                    <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td>{user.full_name}</td>
+                          <td>{user.email ?? '—'}</td>
+                          <td><div className="admin-roles-cell">{(user.roles?.length ? user.roles : [user.role]).map(r => <span key={r} className={`role-badge-small ${r}`}>{r}</span>)}</div></td>
+                          <td><span className={`status-dot ${user.is_active ? 'active' : 'inactive'}`} />{user.is_active ? 'Active' : 'Inactive'}</td>
+                          <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button className="admin-manage-btn" onClick={() => { setSelectedUser(user); setRoleError(''); }}>Roles</button>
+                              <button className="admin-manage-btn admin-msg-btn" onClick={() => { setMessageUser(user); setMsgResult(''); setMsgSubject(''); setMsgBody(''); }}>Message</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {users.length === 0 && (
+                        <tr><td colSpan={6}><EmptyState icon="&#128100;" title="No users match" description="Try adjusting filters." action={{ label: 'Clear', onClick: () => { setSearch(''); setRoleFilter(''); setPage(0); } }} /></td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                  {totalPages > 1 && (
+                    <div className="admin-pagination">
+                      <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalUsers)} of {totalUsers}</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+                        <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Next</button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
-          </>
+            </div>
           )}
         </section>
       </div>

@@ -2,6 +2,7 @@ import { Suspense, useRef, useState } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
+import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 
@@ -16,6 +17,7 @@ interface StudyGuideTabProps {
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
   courseContentId?: number;
+  onFormatSelect?: (format: StudyFormat) => void;
 }
 
 function FocusIcon() {
@@ -48,6 +50,7 @@ export function StudyGuideTab({
   linkedTasks = [],
   atLimit = false,
   courseContentId,
+  onFormatSelect,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -114,6 +117,12 @@ export function StudyGuideTab({
         </div>
       ) : (
         <div className="cm-empty-tab">
+          {onFormatSelect && (
+            <FormatSelector
+              selected="study_guide"
+              onSelect={onFormatSelect}
+            />
+          )}
           <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
           <h3>No study guide yet</h3>
           <p>Generate an AI-powered study guide from this material to help with studying and review.</p>

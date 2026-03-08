@@ -1,0 +1,373 @@
+.pai-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.pai-header {
+  margin-bottom: 1.5rem;
+}
+
+.pai-header h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.pai-subtitle {
+  color: var(--text-secondary, #666);
+  margin: 0;
+}
+
+.pai-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary, #666);
+}
+
+/* Cards */
+.pai-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pai-card {
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card-bg, #fff);
+  transition: box-shadow 0.2s;
+}
+
+.pai-card-open {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.pai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.pai-card-header:hover {
+  background: var(--hover-bg, #f8f8f8);
+}
+
+.pai-card-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.pai-card-info {
+  flex: 1;
+}
+
+.pai-card-info h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.pai-card-info p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #666);
+}
+
+.pai-card-toggle {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #999);
+}
+
+.pai-card-body {
+  padding: 0 1.25rem 1.25rem;
+  border-top: 1px solid var(--border-color, #eee);
+}
+
+/* Form */
+.pai-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+.pai-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #555);
+}
+
+.pai-form select,
+.pai-form input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #333);
+}
+
+.pai-btn {
+  align-self: flex-start;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary-color, #4a7dff);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.pai-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Results */
+.pai-results {
+  margin-top: 1rem;
+}
+
+.pai-error {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.pai-summary {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+}
+
+.pai-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #888);
+}
+
+.pai-success {
+  padding: 1rem;
+  background: #f0fdf4;
+  color: #166534;
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* Weak Spots */
+.pai-ws-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pai-ws-item {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.pai-ws-item.pai-severity-high {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.pai-ws-item.pai-severity-medium {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.pai-ws-item.pai-severity-low {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.pai-ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.pai-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  color: #fff;
+}
+
+.pai-badge.pai-severity-high { background: #ef4444; }
+.pai-badge.pai-severity-medium { background: #f59e0b; }
+.pai-badge.pai-severity-low { background: #3b82f6; }
+
+.pai-ws-item p {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+}
+
+.pai-ws-score {
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+.pai-ws-action {
+  color: var(--text-primary, #333);
+}
+
+/* Readiness */
+.pai-readiness-meter {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.pai-readiness-label strong {
+  font-size: 1.05rem;
+}
+
+.pai-readiness-bar {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 0.75rem 0;
+}
+
+.pai-readiness-dot {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--border-color, #e0e0e0);
+  transition: background 0.3s;
+}
+
+.pai-readiness-filled {
+  background: #22c55e;
+}
+
+.pai-readiness-score {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.pai-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.pai-check-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.5rem 0;
+}
+
+.pai-check-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.pai-check-item strong {
+  font-size: 0.9rem;
+}
+
+.pai-check-detail {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+  margin: 0.15rem 0 0;
+}
+
+/* Practice Problems */
+.pai-instructions {
+  font-style: italic;
+  color: var(--text-secondary, #666);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.pai-problems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pai-problem {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--hover-bg, #f9fafb);
+  border-radius: 8px;
+}
+
+.pai-problem-num {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--primary-color, #4a7dff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.pai-problem-body p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pai-hint {
+  margin-top: 0.25rem !important;
+  font-size: 0.8rem !important;
+  color: var(--text-secondary, #666);
+}
+
+/* Dark mode */
+[data-theme="dark"] .pai-ws-item.pai-severity-high {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+[data-theme="dark"] .pai-ws-item.pai-severity-medium {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+[data-theme="dark"] .pai-ws-item.pai-severity-low {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme="dark"] .pai-error {
+  background: rgba(185, 28, 28, 0.15);
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .pai-success {
+  background: rgba(22, 101, 52, 0.15);
+  color: #86efac;
+}
