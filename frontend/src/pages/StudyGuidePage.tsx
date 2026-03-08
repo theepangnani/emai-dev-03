@@ -201,6 +201,7 @@ export function StudyGuidePage() {
       {/* Header card */}
       <div className="sg-detail-header">
         <div className="sg-title-row">
+          <span className="sg-title-icon" aria-hidden="true">&#128214;</span>
           <h2>{guide.title}</h2>
           <MaterialContextMenu items={[
             { label: 'Create Task', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/><path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>, onClick: () => setShowTaskModal(true) },

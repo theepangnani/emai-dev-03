@@ -1,5 +1,5 @@
 .study-guide-page {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -30,6 +30,10 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+.sg-title-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
 }
 .sg-title-row h2 {
   margin: 0;

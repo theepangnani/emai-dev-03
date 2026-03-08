@@ -113,21 +113,11 @@
   position: relative;
 }
 
-.speed-dial-action-logo {
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 50%;
-  background: var(--color-accent);
-  object-fit: contain;
-  filter: brightness(0) invert(1);
-  padding: 6px;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.speed-dial-action--chat:hover .speed-dial-action-logo {
-  transform: scale(1.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+.speed-dial-action--chat > svg {
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  padding: 13px;
+  box-sizing: content-box;
 }
 
 /* Notes sub-action */
