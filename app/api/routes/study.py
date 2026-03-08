@@ -59,6 +59,17 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/study", tags=["Study Tools"])
 
 
+def _get_user_interests(user: User) -> list[str] | None:
+    """Parse interests JSON string from user record."""
+    if not user.interests:
+        return None
+    try:
+        parsed = json.loads(user.interests)
+        return parsed if isinstance(parsed, list) and parsed else None
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
 # ============================================
 # Helper Functions
 # ============================================
@@ -557,6 +568,7 @@ async def generate_study_guide_endpoint(
             custom_prompt=body.custom_prompt,
             focus_prompt=body.focus_prompt,
             images=images_metadata,
+            interests=_get_user_interests(current_user),
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
@@ -709,6 +721,7 @@ async def generate_quiz_endpoint(
             focus_prompt=body.focus_prompt,
             difficulty=body.difficulty,
             images=images_metadata,
+            interests=_get_user_interests(current_user),
         )
         # Post-process to add unplaced images (before critical dates extraction)
         if images_metadata:
@@ -859,6 +872,7 @@ async def generate_flashcards_endpoint(
             num_cards=body.num_cards,
             focus_prompt=body.focus_prompt,
             images=images_metadata,
+            interests=_get_user_interests(current_user),
         )
         # Post-process to add unplaced images (before critical dates extraction)
         if images_metadata:
@@ -1427,6 +1441,7 @@ async def generate_from_text_and_images(
                 focus_prompt=focus_prompt,
                 difficulty=difficulty,
                 images=images_metadata,
+                interests=_get_user_interests(current_user),
             )
             # Post-process to add unplaced images (before critical dates extraction)
             if images_metadata:
@@ -1452,6 +1467,7 @@ async def generate_from_text_and_images(
                 num_cards=num_cards,
                 focus_prompt=focus_prompt,
                 images=images_metadata,
+                interests=_get_user_interests(current_user),
             )
             # Post-process to add unplaced images (before critical dates extraction)
             if images_metadata:
@@ -1477,6 +1493,7 @@ async def generate_from_text_and_images(
                 course_name="Pasted Content",
                 focus_prompt=focus_prompt,
                 images=images_metadata,
+                interests=_get_user_interests(current_user),
             )
             content_result, critical_dates = parse_critical_dates(raw_content)
             # Post-process to add unplaced images
@@ -1624,6 +1641,7 @@ async def generate_from_file_upload(
                 focus_prompt=focus_prompt,
                 difficulty=difficulty,
                 images=images_metadata,
+                interests=_get_user_interests(current_user),
             )
             # Post-process to add unplaced images (before critical dates extraction)
             if images_metadata:
@@ -1649,6 +1667,7 @@ async def generate_from_file_upload(
                 num_cards=num_cards,
                 focus_prompt=focus_prompt,
                 images=images_metadata,
+                interests=_get_user_interests(current_user),
             )
             # Post-process to add unplaced images (before critical dates extraction)
             if images_metadata:
@@ -1674,6 +1693,7 @@ async def generate_from_file_upload(
                 course_name="Uploaded Content",
                 focus_prompt=focus_prompt,
                 images=images_metadata,
+                interests=_get_user_interests(current_user),
             )
             content, critical_dates = parse_critical_dates(raw_content)
             # Post-process to add unplaced images

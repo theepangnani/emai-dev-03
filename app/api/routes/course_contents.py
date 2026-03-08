@@ -275,12 +275,24 @@ def _run_ai_generation_background(
                 content_id, ai_tool, user_id,
             )
 
+            # Look up user interests for AI personalization
+            _user = db.query(User).filter(User.id == user_id).first()
+            _interests = None
+            if _user and _user.interests:
+                import json as _json
+                try:
+                    _parsed = _json.loads(_user.interests)
+                    _interests = _parsed if isinstance(_parsed, list) and _parsed else None
+                except Exception:
+                    pass
+
             if ai_tool == "study_guide":
                 raw_content = await generate_study_guide(
                     assignment_title=title,
                     assignment_description=text_content,
                     course_name=course_name,
                     custom_prompt=ai_custom_prompt or None,
+                    interests=_interests,
                 )
                 guide = StudyGuide(
                     user_id=user_id,
@@ -297,6 +309,7 @@ def _run_ai_generation_background(
                     topic=title,
                     content=text_content,
                     num_questions=5,
+                    interests=_interests,
                 )
                 guide = StudyGuide(
                     user_id=user_id,
@@ -313,6 +326,7 @@ def _run_ai_generation_background(
                     topic=title,
                     content=text_content,
                     num_cards=10,
+                    interests=_interests,
                 )
                 guide = StudyGuide(
                     user_id=user_id,

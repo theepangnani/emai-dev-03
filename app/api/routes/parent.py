@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 from datetime import datetime, timedelta, date, timezone
@@ -36,6 +37,17 @@ from app.api.routes.google_classroom import _sync_courses_for_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/parent", tags=["Parent"])
+
+
+def _parse_user_interests(user: User | None) -> list[str]:
+    """Parse interests JSON string from a user record."""
+    if not user or not user.interests:
+        return []
+    try:
+        parsed = json.loads(user.interests)
+        return parsed if isinstance(parsed, list) else []
+    except (json.JSONDecodeError, TypeError):
+        return []
 
 
 @router.get("/children", response_model=list[ChildSummary])
@@ -134,6 +146,7 @@ def list_children(
             province=student.province,
             postal_code=student.postal_code,
             notes=student.notes,
+            interests=_parse_user_interests(user),
             relationship_type=rel_type.value if rel_type else None,
             course_count=course_counts.get(student.id, 0),
             active_task_count=task_counts.get(student.user_id, 0),
@@ -285,6 +298,7 @@ def get_parent_dashboard(
             province=student.province,
             postal_code=student.postal_code,
             notes=student.notes,
+            interests=_parse_user_interests(user),
             relationship_type=rel_type.value if rel_type else None,
             course_count=len(courses),
             active_task_count=_task_count_map.get(student.user_id, 0),
@@ -532,6 +546,7 @@ def create_child(
         email=student_user.email,
         grade_level=student.grade_level,
         school_name=student.school_name,
+        interests=_parse_user_interests(student_user),
         relationship_type=rel_type.value,
         invite_link=invite_link,
     )
@@ -611,6 +626,7 @@ def link_child(
             email=existing_user.email,
             grade_level=student.grade_level,
             school_name=student.school_name,
+            interests=_parse_user_interests(existing_user),
             relationship_type=data.relationship_type,
             invite_link=None,
             link_request_pending=True,
@@ -702,6 +718,7 @@ def link_child(
         email=student_user.email,
         grade_level=student.grade_level,
         school_name=student.school_name,
+        interests=_parse_user_interests(student_user),
         relationship_type=rel_type.value,
         invite_link=invite_link,
     )
@@ -918,6 +935,7 @@ def link_children_bulk(
             email=student_user.email,
             grade_level=student.grade_level,
             school_name=student.school_name,
+            interests=_parse_user_interests(student_user),
             relationship_type=rel_type.value,
         ))
 
@@ -1079,6 +1097,8 @@ def update_child(
         student.postal_code = data.postal_code
     if data.notes is not None:
         student.notes = data.notes
+    if data.interests is not None and user:
+        user.interests = json.dumps(data.interests)
 
     db.commit()
     db.refresh(student)
@@ -1097,6 +1117,7 @@ def update_child(
         province=student.province,
         postal_code=student.postal_code,
         notes=student.notes,
+        interests=_parse_user_interests(user),
         relationship_type=link.relationship_type.value if link.relationship_type else None,
     )
 

@@ -10,7 +10,9 @@ from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
 from app.models.student_email import StudentEmail, EmailType
-from app.schemas.user import UserResponse, SwitchRoleRequest
+import json
+
+from app.schemas.user import UserResponse, SwitchRoleRequest, UpdateInterestsRequest
 from app.schemas.student_email import StudentEmailCreate, StudentEmailResponse, SetPrimaryRequest
 from app.api.deps import get_current_user, require_role
 
@@ -34,6 +36,7 @@ def _user_response(user: User) -> UserResponse:
         needs_onboarding=user.needs_onboarding or False,
         onboarding_completed=user.onboarding_completed or False,
         email_verified=user.email_verified or False,
+        interests=user.interests,
         storage_used_bytes=used,
         storage_limit_bytes=limit,
         upload_limit_bytes=user.upload_limit_bytes or 10485760,
@@ -77,6 +80,21 @@ def switch_role(
     ensure_profile_records(db, current_user)
 
     current_user.role = target_role
+    db.commit()
+    db.refresh(current_user)
+    return _user_response(current_user)
+
+
+@router.patch("/me/interests", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_interests(
+    request: Request,
+    body: UpdateInterestsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the current user's interests/hobbies for AI personalization."""
+    current_user.interests = json.dumps(body.interests)
     db.commit()
     db.refresh(current_user)
     return _user_response(current_user)

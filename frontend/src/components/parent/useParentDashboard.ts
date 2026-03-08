@@ -472,7 +472,10 @@ export function useParentDashboard() {
     editChildDob: childEditor.editChildDob, setEditChildDob: childEditor.setEditChildDob, editChildPhone: childEditor.editChildPhone, setEditChildPhone: childEditor.setEditChildPhone,
     editChildAddress: childEditor.editChildAddress, setEditChildAddress: childEditor.setEditChildAddress, editChildCity: childEditor.editChildCity, setEditChildCity: childEditor.setEditChildCity,
     editChildProvince: childEditor.editChildProvince, setEditChildProvince: childEditor.setEditChildProvince, editChildPostal: childEditor.editChildPostal, setEditChildPostal: childEditor.setEditChildPostal,
-    editChildNotes: childEditor.editChildNotes, setEditChildNotes: childEditor.setEditChildNotes, editChildLoading: childEditor.editChildLoading, editChildError: childEditor.editChildError,
+    editChildNotes: childEditor.editChildNotes, setEditChildNotes: childEditor.setEditChildNotes,
+    editChildInterests: childEditor.editChildInterests, setEditChildInterests: childEditor.setEditChildInterests,
+    editChildInterestInput: childEditor.editChildInterestInput, setEditChildInterestInput: childEditor.setEditChildInterestInput,
+    editChildLoading: childEditor.editChildLoading, editChildError: childEditor.editChildError,
     editChildOptionalOpen: childEditor.editChildOptionalOpen, setEditChildOptionalOpen: childEditor.setEditChildOptionalOpen,
     handleEditChild: childEditor.handleEditChild, closeEditChildModal: childEditor.closeEditChildModal,
 

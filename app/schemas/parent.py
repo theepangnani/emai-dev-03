@@ -43,6 +43,7 @@ class ChildSummary(BaseModel):
     province: Optional[str] = None
     postal_code: Optional[str] = None
     notes: Optional[str] = None
+    interests: list[str] = []
     relationship_type: str | None = None
     invite_link: str | None = None
     link_request_pending: bool = False
@@ -91,6 +92,26 @@ class ChildUpdateRequest(BaseModel):
     province: Optional[str] = Field(default=None, max_length=100)
     postal_code: Optional[str] = Field(default=None, max_length=20)
     notes: Optional[str] = Field(default=None, max_length=2000)
+    interests: Optional[list[str]] = None
+
+    @field_validator('interests', mode='before')
+    @classmethod
+    def validate_interests(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        if len(v) > 10:
+            raise ValueError("Maximum 10 interests allowed")
+        cleaned = []
+        for item in v:
+            if not isinstance(item, str):
+                raise ValueError("Each interest must be a string")
+            stripped = item.strip().lower()
+            if not stripped:
+                continue
+            if len(stripped) > 50:
+                raise ValueError("Each interest must be 50 characters or less")
+            cleaned.append(stripped)
+        return cleaned
 
     @field_validator('full_name', 'school_name', 'address', 'city', 'province', 'notes', mode='before')
     @classmethod

@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     # File storage
     upload_dir: str = "./uploads"
 
-    # Storage limits (#1007)
+    # Storage limits per tier (#1007)
     free_storage_limit_bytes: int = 104857600
     free_upload_limit_bytes: int = 10485760
     premium_storage_limit_bytes: int = 1073741824

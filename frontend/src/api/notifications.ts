@@ -36,6 +36,19 @@ export interface NotificationPreferences {
   task_reminder_days: string;
 }
 
+export interface ChannelPreference {
+  in_app: boolean;
+  email: boolean;
+}
+
+export interface AdvancedNotificationPreferences {
+  assignments: ChannelPreference;
+  messages: ChannelPreference;
+  study_guides: ChannelPreference;
+  tasks: ChannelPreference;
+  system: ChannelPreference;
+}
+
 export interface NotificationSuppressionResponse {
   id: number;
   user_id: number;
@@ -96,5 +109,15 @@ export const notificationsApi = {
 
   deleteSuppression: async (suppressionId: number) => {
     await api.delete(`/api/notifications/suppressions/${suppressionId}`);
+  },
+
+  getAdvancedPreferences: async () => {
+    const response = await api.get('/api/notifications/preferences');
+    return response.data as AdvancedNotificationPreferences;
+  },
+
+  updateAdvancedPreferences: async (update: Partial<AdvancedNotificationPreferences>) => {
+    const response = await api.patch('/api/notifications/preferences', update);
+    return response.data as AdvancedNotificationPreferences;
   },
 };

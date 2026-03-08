@@ -76,6 +76,11 @@ export const authApi = {
     return response.data as { message: string };
   },
 
+  updateInterests: async (interests: string[]) => {
+    const response = await api.patch('/api/users/me/interests', { interests });
+    return response.data;
+  },
+
   checkUsername: async (username: string) => {
     const response = await api.get(`/api/auth/check-username/${encodeURIComponent(username)}`);
     return response.data as { available: boolean; valid: boolean; message: string };
