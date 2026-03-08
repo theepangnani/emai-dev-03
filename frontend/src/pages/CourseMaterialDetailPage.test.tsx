@@ -107,6 +107,80 @@ vi.mock('../components/PageNav', () => ({
   PageNav: () => null,
 }))
 
+vi.mock('../components/DashboardLayout', () => ({
+  DashboardLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="dashboard-layout">{children}</div>,
+}))
+
+vi.mock('../context/FABContext', () => ({
+  useRegisterNotesFAB: () => {},
+  useFABContext: () => ({ notesFAB: null, registerNotesFAB: () => {}, unregisterNotesFAB: () => {} }),
+  FABProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
+vi.mock('../api/resourceLinks', () => ({
+  resourceLinksApi: {
+    list: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+}))
+
+vi.mock('../components/NotesPanel', () => ({
+  NotesPanel: () => null,
+}))
+
+vi.mock('../components/SelectionTooltip', () => ({
+  SelectionTooltip: () => null,
+}))
+
+vi.mock('../hooks/useTextSelection', () => ({
+  useTextSelection: () => ({ selectedText: '', position: null, clearSelection: vi.fn() }),
+}))
+
+vi.mock('../components/AICreditsDisplay', () => ({
+  AIWarningBanner: () => null,
+}))
+
+vi.mock('../components/AILimitRequestModal', () => ({
+  AILimitRequestModal: () => null,
+}))
+
+vi.mock('../components/Skeleton', () => ({
+  DetailSkeleton: () => <div data-testid="skeleton">Loading...</div>,
+}))
+
+vi.mock('../components/FAQErrorHint', () => ({
+  FAQErrorHint: () => null,
+}))
+
+vi.mock('./course-material/DocumentTab', () => ({
+  DocumentTab: () => <div>Document Tab</div>,
+}))
+
+vi.mock('./course-material/StudyGuideTab', () => ({
+  StudyGuideTab: () => <div>Study Guide Tab</div>,
+}))
+
+vi.mock('./course-material/QuizTab', () => ({
+  QuizTab: () => <div>Quiz Tab</div>,
+}))
+
+vi.mock('./course-material/FlashcardsTab', () => ({
+  FlashcardsTab: () => <div>Flashcards Tab</div>,
+}))
+
+vi.mock('./course-material/MindMapTab', () => ({
+  MindMapTab: () => <div>Mind Map Tab</div>,
+}))
+
+vi.mock('./course-material/VideosLinksTab', () => ({
+  VideosLinksTab: () => <div>Videos Tab</div>,
+}))
+
+vi.mock('./course-material/ReplaceDocumentModal', () => ({
+  ReplaceDocumentModal: () => null,
+}))
+
 import { CourseMaterialDetailPage } from './CourseMaterialDetailPage'
 
 describe('CourseMaterialDetailPage', () => {

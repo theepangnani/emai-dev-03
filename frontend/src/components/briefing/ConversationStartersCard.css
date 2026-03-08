@@ -1,0 +1,169 @@
+/* ConversationStartersCard */
+.conv-starters-card {
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-top: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border, #e5e7eb);
+}
+
+.conv-starters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.conv-starters-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conv-starters-title-icon {
+  font-size: 1.15rem;
+}
+
+.conv-starters-refresh {
+  background: none;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.conv-starters-refresh:hover {
+  background: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #1f2937);
+}
+
+.conv-starters-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.conv-starters-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 16px;
+}
+
+.conv-starters-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conv-starter-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.conv-starter-item:hover {
+  border-color: var(--border, #e5e7eb);
+}
+
+.conv-starter-quote {
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--primary, #6366f1);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.conv-starter-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-starter-prompt {
+  font-size: 0.92rem;
+  color: var(--text-primary, #1f2937);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.conv-starter-context {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+.conv-starter-copy {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.conv-starter-copy:hover {
+  background: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #1f2937);
+}
+
+.conv-starter-copy--copied {
+  color: #16a34a;
+}
+
+.conv-starters-empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.conv-starters-error {
+  text-align: center;
+  padding: 16px;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
+.conv-starters-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.conv-starters-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border, #e5e7eb);
+  border-top-color: var(--primary, #6366f1);
+  border-radius: 50%;
+  animation: conv-spin 0.6s linear infinite;
+}
+
+@keyframes conv-spin {
+  to { transform: rotate(360deg); }
+}
