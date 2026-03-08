@@ -132,6 +132,11 @@ export function StudyGuidePage() {
       title: 'Regenerate Study Guide',
       message: `This will use 1 AI credit. You have ${remaining} remaining. Continue?`,
       confirmLabel: 'Regenerate',
+      ...(remaining <= 0 ? {
+        disableConfirm: true,
+        extraActionLabel: 'Request More Credits',
+        onExtraAction: () => setShowLimitModal(true),
+      } : {}),
     });
     if (!ok) return;
     try {
