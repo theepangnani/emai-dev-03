@@ -81,7 +81,10 @@ const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage'
 const CalendarImportPage = lazyRetry(() => import('./pages/CalendarImportPage').then((m) => ({ default: m.CalendarImportPage })));
 const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage').then((m) => ({ default: m.ConfirmDeletionPage })));
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
+<<<<<<< HEAD
 const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
+=======
+>>>>>>> origin/feat/readiness-assessment
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 
 const queryClient = new QueryClient({
