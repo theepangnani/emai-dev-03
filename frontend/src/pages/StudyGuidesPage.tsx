@@ -1282,7 +1282,16 @@ export function StudyGuidesPage() {
                             {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
                           </span>
                         )}
-                        <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
+                        <span className="guide-row-date">
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+                            <circle cx="8" cy="8" r="6.5"/>
+                            <path d="M8 4.5v4l2.5 1.5" strokeLinecap="round"/>
+                          </svg>
+                          {item.updated_at
+                            ? `Updated ${new Date(item.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                            : new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                          }
+                        </span>
                       </span>
                     </div>
                   </div>
@@ -1321,6 +1330,12 @@ export function StudyGuidesPage() {
                         </div>
                       </div>
                     )}
+                    <button className="guide-convert-btn" title="View" onClick={() => navigateToContent(item)}>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+                        <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
+                        <circle cx="8" cy="8" r="2.5"/>
+                      </svg>
+                    </button>
                     <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
                     <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
                     <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>

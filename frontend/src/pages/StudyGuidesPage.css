@@ -259,53 +259,63 @@
   margin: 0;
 }
 
-/* ── Content list ───────────────────────────── */
+/* ── Content list — card-based layout ───────── */
 .guides-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .guide-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  margin-bottom: 4px;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  transition: background 0.15s, box-shadow 0.15s;
+  border-radius: var(--radius-lg);
+  transition: background 0.15s, box-shadow 0.2s, transform 0.15s;
+  overflow: hidden;
 }
 
 .guide-row:hover {
-  background: var(--color-surface-alt);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .guide-row-main {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
   flex: 1;
   min-width: 0;
   cursor: pointer;
+  padding: 16px 16px 12px;
 }
 
 .guide-row-icon {
-  font-size: 18px;
+  font-size: 28px;
   flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-subtle);
+  border-radius: var(--radius-md);
 }
 
 .guide-row-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+  flex: 1;
 }
 
 .guide-row-title {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
   color: var(--color-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -318,10 +328,14 @@
   gap: 8px;
   font-size: 12px;
   color: var(--color-ink-muted);
+  flex-wrap: wrap;
 }
 
 .guide-row-date {
   color: var(--color-ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .guide-row-actions {
@@ -329,6 +343,9 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  padding: 8px 16px 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
 }
 
 .guide-delete-btn {
@@ -708,6 +725,12 @@
 }
 
 /* ── Responsive ─────────────────────────────── */
+@media (max-width: 767px) {
+  .guides-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 480px) {
   .guides-child-selector {
     gap: 6px;
@@ -731,14 +754,8 @@
     text-align: center;
   }
 
-  .guide-row {
-    flex-wrap: wrap;
-  }
-
   .guide-row-actions {
-    width: 100%;
     justify-content: flex-end;
-    margin-top: 4px;
   }
 
   .guides-assign-filter {
