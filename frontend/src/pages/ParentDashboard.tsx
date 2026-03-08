@@ -339,7 +339,7 @@ export function ParentDashboard() {
               )}
               {pd.backgroundGeneration.status === 'error' && (
                 <>
-                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Upload failed' : `Failed to generate ${pd.backgroundGeneration.type}`}</span>
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Upload failed' : `Failed to generate ${pd.backgroundGeneration.type}`}{pd.backgroundGeneration.error ? `: ${pd.backgroundGeneration.error}` : ''}</span>
                   <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
                 </>
               )}

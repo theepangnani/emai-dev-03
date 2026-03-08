@@ -23,7 +23,7 @@ vi.mock('../../../api/client', () => ({
   studyApi: {
     extractTextFromFile: vi.fn(),
     checkDuplicate: vi.fn().mockResolvedValue({ exists: false }),
-    generateGuide: vi.fn().mockResolvedValue({ id: 1 }),
+    generateGuide: (...args: unknown[]) => mockGenerateGuide(...args),
     generateQuiz: vi.fn().mockResolvedValue({ id: 2 }),
     generateFlashcards: vi.fn().mockResolvedValue({ id: 3 }),
     generateFromFile: vi.fn().mockResolvedValue({ id: 4 }),
@@ -31,16 +31,104 @@ vi.mock('../../../api/client', () => ({
   },
 }))
 
+const mockGenerateGuide = vi.fn().mockResolvedValue({ id: 1 })
+
 const mockNavigate = vi.fn()
 
 function createImageFile(name = 'image.png'): File {
   return new File(['fake-image-data'], name, { type: 'image/png' })
 }
 
+describe('useParentStudyTools – error detail surfacing (#1393)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetDefault.mockResolvedValue({ id: 100 })
+    mockGenerateGuide.mockResolvedValue({ id: 1 })
+  })
+
+  it('surfaces API error detail (e.g. AI usage limit) in backgroundGeneration.error', async () => {
+    // Simulate a 429 response with detail from the backend
+    mockGenerateGuide.mockRejectedValueOnce({
+      response: { status: 429, data: { detail: 'AI usage limit reached. You have used all 10 of your credits.' } },
+      message: 'Request failed with status code 429',
+    })
+
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: 'Test Guide',
+        content: 'Some content',
+        types: ['study_guide'],
+        mode: 'text',
+      })
+    })
+
+    await vi.waitFor(() => {
+      expect(result.current.backgroundGeneration).not.toBeNull()
+      expect(result.current.backgroundGeneration!.status).toBe('error')
+      // Must show the actual API detail, not the generic Axios message
+      expect(result.current.backgroundGeneration!.error).toContain('AI usage limit reached')
+    })
+  })
+
+  it('truncates very long error messages to 150 characters', async () => {
+    const longDetail = 'A'.repeat(200)
+    mockGenerateGuide.mockRejectedValueOnce({
+      response: { status: 500, data: { detail: longDetail } },
+      message: 'Request failed with status code 500',
+    })
+
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: 'Test',
+        content: 'Content',
+        types: ['study_guide'],
+        mode: 'text',
+      })
+    })
+
+    await vi.waitFor(() => {
+      expect(result.current.backgroundGeneration).not.toBeNull()
+      expect(result.current.backgroundGeneration!.error!.length).toBeLessThanOrEqual(150)
+      expect(result.current.backgroundGeneration!.error).toContain('...')
+    })
+  })
+
+  it('falls back to err.message when no response.data.detail', async () => {
+    mockGenerateGuide.mockRejectedValueOnce(new Error('Network Error'))
+
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: 'Test',
+        content: 'Content',
+        types: ['study_guide'],
+        mode: 'text',
+      })
+    })
+
+    await vi.waitFor(() => {
+      expect(result.current.backgroundGeneration).not.toBeNull()
+      expect(result.current.backgroundGeneration!.error).toBe('Network Error')
+    })
+  })
+})
+
 describe('useParentStudyTools – pasted images upload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetDefault.mockResolvedValue({ id: 100 })
+    mockGenerateGuide.mockResolvedValue({ id: 1 })
     mockCreate.mockResolvedValue({ id: 1 })
     mockUploadFile.mockResolvedValue({ id: 2 })
     mockUploadMultiFiles.mockResolvedValue({ id: 3 })
