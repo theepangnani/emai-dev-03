@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     # File storage
     upload_dir: str = "./uploads"
 
+    # Storage limits per tier (#1007)
+    free_storage_limit_bytes: int = 104857600
+    free_upload_limit_bytes: int = 10485760
+    premium_storage_limit_bytes: int = 1073741824
+    premium_upload_limit_bytes: int = 52428800
+    storage_warning_threshold: float = 0.8
+
     class Config:
         env_file = ".env"
         extra = "ignore"

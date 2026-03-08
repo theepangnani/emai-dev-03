@@ -1,0 +1,11 @@
+.storage-usage-bar { margin: 1rem 0; }
+.storage-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.875rem; }
+.storage-label { font-weight: 600; }
+.storage-text { color: var(--text-secondary, #6b7280); }
+.storage-bar-track { height: 8px; background: var(--bg-secondary, #e5e7eb); border-radius: 4px; overflow: hidden; }
+.storage-bar-fill { height: 100%; background: var(--primary, #6366f1); border-radius: 4px; transition: width 0.3s ease; }
+.storage-bar-fill.warning { background: #f59e0b; }
+.storage-bar-fill.critical { background: #ef4444; }
+.storage-warning-text { font-size: 0.8rem; color: #f59e0b; margin-top: 0.4rem; }
+.storage-warning-text.critical { color: #ef4444; }
+.storage-detail-text { font-size: 0.8rem; color: var(--text-secondary, #6b7280); margin-top: 0.25rem; }

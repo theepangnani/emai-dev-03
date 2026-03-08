@@ -20,6 +20,7 @@ from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
+from app.services.storage_limits import check_upload_allowed, record_upload, record_deletion
 from app.services.file_processor import process_file, extract_images_from_file, FileProcessingError
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
@@ -387,6 +388,7 @@ async def upload_course_content_file(
             detail=f"File size exceeds {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
         )
 
+    check_upload_allowed(current_user, len(file_content))
     filename = file.filename or "unknown"
     stored_path = save_file(file_content, filename)
 
@@ -409,6 +411,7 @@ async def upload_course_content_file(
         created_by_user_id=current_user.id,
     )
     db.add(content)
+    record_upload(db, current_user, len(file_content))
     db.commit()
     db.refresh(content)
 
@@ -524,6 +527,7 @@ async def upload_multi_files(
             )
         file_entries.append((f.filename or "unknown", file_bytes, f.content_type))
 
+    check_upload_allowed(current_user, total_size)
     # Extract text from all files
     text_parts: list[str] = []
     for fname, fbytes, _ in file_entries:
@@ -563,6 +567,7 @@ async def upload_multi_files(
         )
         db.add(source)
 
+    record_upload(db, current_user, total_size)
     db.commit()
     db.refresh(content)
 
@@ -1114,6 +1119,10 @@ def permanent_delete_course_content(
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
 
+    if content.file_size and content.created_by_user_id:
+        creator = db.query(User).filter(User.id == content.created_by_user_id).first()
+        if creator:
+            record_deletion(db, creator, content.file_size)
     _permanent_delete_content(db, content)
     db.commit()
 
