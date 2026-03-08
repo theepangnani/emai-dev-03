@@ -1242,16 +1242,39 @@
 @media (max-width: 768px) {
   /* Child selector: ensure wrapping with smaller buttons */
   .pd-child-selector-wrapper {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .pd-child-selector {
-    gap: 6px;
+    gap: 8px;
   }
 
   .pd-child-tab {
-    padding: 8px 14px;
+    padding: 10px 16px;
     font-size: 13px;
+  }
+
+  /* Task status pills: card-style grouping on mobile */
+  .pd-task-status-pills {
+    gap: 8px;
+    padding: 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin: 12px 0 16px;
+  }
+
+  .pd-status-pill {
+    padding: 10px 16px;
+    font-size: 13px;
+    flex: 1 1 0;
+    justify-content: center;
+    text-align: center;
+    min-width: 0;
   }
 
   /* Modal: near full-width on mobile */
@@ -1296,13 +1319,25 @@
   /* Child tabs: full width stacking */
   .pd-child-selector {
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
   }
 
   .pd-child-tab {
     width: 100%;
     justify-content: center;
-    padding: 10px 14px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  /* Status pills: stack vertically on small phones */
+  .pd-task-status-pills {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pd-status-pill {
+    width: 100%;
+    flex: none;
   }
 
   /* Modal: full-width with minimal margin */
