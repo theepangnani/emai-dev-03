@@ -12,6 +12,7 @@ from app.models.study_guide import StudyGuide
 from app.models.task import Task
 from app.models.course_content import CourseContent
 from app.models.student import Student, parent_students
+from app.models.assignment import Assignment
 from app.models.teacher import Teacher
 from app.models.faq import FAQQuestion
 from app.models.note import Note
@@ -21,7 +22,9 @@ from app.schemas.search import SearchResultItem, SearchResultGroup, SearchRespon
 router = APIRouter(prefix="/search", tags=["search"])
 
 ENTITY_LABELS = {
+    "child": "Children",
     "course": "Courses",
+    "assignment": "Assignments",
     "study_guide": "Class Materials",
     "task": "Tasks",
     "course_content": "Course Content",
@@ -74,6 +77,58 @@ def _get_accessible_course_ids(db: Session, user: User, user_ids: list[int]) -> 
             course_ids.update(cid for (cid,) in taught)
 
     return list(course_ids)
+
+
+def _search_children(db: Session, term: str, limit: int, parent_id: int) -> SearchResultGroup:
+    """Search parent's linked children by name."""
+    query = (
+        db.query(Student, User)
+        .join(parent_students, parent_students.c.student_id == Student.id)
+        .join(User, Student.user_id == User.id)
+        .filter(
+            parent_students.c.parent_id == parent_id,
+            User.full_name.ilike(f"%{escape_like(term)}%"),
+        )
+    )
+
+    total = query.count()
+    rows = query.limit(limit).all()
+
+    items = [
+        SearchResultItem(
+            id=student.id,
+            title=user.full_name,
+            subtitle="Child",
+            entity_type="child",
+            url=f"/my-kids/{student.id}",
+        )
+        for student, user in rows
+    ]
+    return SearchResultGroup(entity_type="child", label="Children", items=items, total=total)
+
+
+def _search_assignments(db: Session, term: str, limit: int, course_ids: list[int] | None) -> SearchResultGroup:
+    """Search assignments by title, scoped to accessible courses."""
+    query = db.query(Assignment, Course).join(Course, Assignment.course_id == Course.id).filter(
+        Assignment.title.ilike(f"%{escape_like(term)}%"),
+    )
+    if course_ids is not None:
+        query = query.filter(Assignment.course_id.in_(course_ids))
+
+    total = query.count()
+    rows = query.order_by(Assignment.due_date.desc().nullslast()).limit(limit).all()
+
+    items = [
+        SearchResultItem(
+            id=a.id,
+            title=a.title,
+            subtitle=c.name,
+            entity_type="assignment",
+            url=f"/courses/{c.id}/assignments/{a.id}",
+        )
+        for a, c in rows
+    ]
+    return SearchResultGroup(entity_type="assignment", label="Assignments", items=items, total=total)
 
 
 def _search_courses(db: Session, term: str, limit: int, course_ids: list[int] | None) -> SearchResultGroup:
@@ -272,7 +327,7 @@ def global_search(
     term = q.strip()
 
     # Determine which types to search
-    all_types = {"course", "study_guide", "task", "course_content", "faq", "note"}
+    all_types = {"child", "course", "assignment", "study_guide", "task", "course_content", "faq", "note"}
     if types:
         requested = {t.strip() for t in types.split(",")} & all_types
     else:
@@ -289,6 +344,12 @@ def global_search(
         admin_user_ids = user_ids
 
     groups: list[SearchResultGroup] = []
+
+    if "child" in requested and current_user.role == UserRole.PARENT:
+        groups.append(_search_children(db, term, limit, current_user.id))
+
+    if "assignment" in requested:
+        groups.append(_search_assignments(db, term, limit, course_ids))
 
     if "course" in requested:
         groups.append(_search_courses(db, term, limit, course_ids))
