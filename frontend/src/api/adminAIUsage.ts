@@ -86,4 +86,10 @@ export const adminAIUsageApi = {
 
   resetUserCount: (userId: number) =>
     api.post(`/api/admin/ai-usage/users/${userId}/reset`).then((r) => r.data),
+
+  bulkSetLimit: (limit: number, resetCounts: boolean = false) =>
+    api.post<{ updated_count: number; new_limit: number }>('/api/admin/ai-usage/bulk-set-limit', {
+      ai_usage_limit: limit,
+      reset_counts: resetCounts,
+    }).then((r) => r.data),
 };

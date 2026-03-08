@@ -21,6 +21,8 @@ from app.schemas.ai_usage import (
     AILimitRequestResponse,
     AILimitAdminAction,
     AILimitSetRequest,
+    AIBulkSetLimitRequest,
+    AIBulkSetLimitResponse,
     AIUsageUserResponse,
     AIUsageUserList,
     AILimitRequestList,
@@ -343,6 +345,26 @@ def reset_user_usage(
     db.refresh(target_user)
     logger.info("Admin %s reset AI usage count for user %s", current_user.id, user_id)
     return target_user
+
+
+@admin_router.post("/bulk-set-limit", response_model=AIBulkSetLimitResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+def bulk_set_limit(
+    request: Request,
+    body: AIBulkSetLimitRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Set AI usage limit for all users at once. Optionally reset counts."""
+    updated = db.query(User).update({User.ai_usage_limit: body.ai_usage_limit})
+    if body.reset_counts:
+        db.query(User).update({User.ai_usage_count: 0})
+    db.commit()
+    logger.info(
+        "Admin %s bulk-set AI limit to %d for %d users (reset_counts=%s)",
+        current_user.id, body.ai_usage_limit, updated, body.reset_counts,
+    )
+    return AIBulkSetLimitResponse(updated_count=updated, new_limit=body.ai_usage_limit)
 
 
 @admin_router.get("/history", response_model=AIUsageHistoryList)
