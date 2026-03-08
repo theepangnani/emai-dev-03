@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.sql import func
 import enum
 
@@ -41,6 +41,9 @@ class User(Base):
 
     # Onboarding setup checklist
     onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Tutorial completion tracking (JSON: {"step_name": true, ...})
+    tutorial_completed = Column(Text, default="{}")
 
     # AI usage limits
     ai_usage_limit = Column(Integer, default=10)
