@@ -5,6 +5,31 @@
   max-width: 860px;
 }
 
+/* --- Search bar --- */
+
+.help-search-wrap { position: relative; }
+.help-search-input { width: 100%; padding: 12px 16px; font-size: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-ink); outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+.help-search-input:focus { border-color: var(--color-accent); }
+.help-search-input::placeholder { color: var(--color-ink-muted); }
+.help-search-spinner { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border: 2px solid var(--color-border); border-top-color: var(--color-accent); border-radius: 50%; animation: help-spin 0.6s linear infinite; }
+@keyframes help-spin { to { transform: translateY(-50%) rotate(360deg); } }
+.help-search-results { display: flex; flex-direction: column; gap: 8px; }
+.help-search-empty { font-size: 14px; color: var(--color-ink-muted); text-align: center; padding: 16px; }
+.help-article-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+.help-article-card.expanded { border-color: var(--color-accent); }
+.help-article-header { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: transparent; border: none; cursor: pointer; text-align: left; }
+.help-article-header:hover { background: var(--color-surface-alt); }
+.help-article-info { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.help-article-title { font-size: 15px; font-weight: 600; color: var(--color-ink); margin: 0; font-family: var(--font-display); }
+.help-article-category { font-size: 11px; font-weight: 600; color: var(--color-accent); background: var(--color-accent-light, rgba(73, 184, 192, 0.1)); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.help-article-content { padding: 0 20px 20px; border-top: 1px solid var(--color-border); }
+.help-article-content h2 { font-size: 17px; margin: 16px 0 8px; color: var(--color-ink); }
+.help-article-content h3 { font-size: 15px; margin: 14px 0 6px; color: var(--color-ink); }
+.help-article-content p { font-size: 14px; line-height: 1.6; color: var(--color-ink-muted); margin: 6px 0; }
+.help-article-content ul, .help-article-content ol { padding-left: 20px; font-size: 14px; line-height: 1.6; color: var(--color-ink-muted); }
+.help-article-content strong { color: var(--color-ink); }
+
+
 /* ─── Tutorial styles ─── */
 
 .tut-header {

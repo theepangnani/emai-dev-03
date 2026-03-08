@@ -23,6 +23,7 @@ from app.models.student_email import StudentEmail, EmailType
 from app.models.waitlist import Waitlist
 from app.models.ai_limit_request import AILimitRequest
 from app.models.note import Note
+from app.models.note_version import NoteVersion
 from app.models.data_export import DataExportRequest
 
 from app.models.ai_usage_history import AIUsageHistory
@@ -30,6 +31,9 @@ from app.models.ai_usage_history import AIUsageHistory
 from app.models.source_file import SourceFile
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
+from app.models.calendar_feed import CalendarFeed
+from app.models.calendar_event import CalendarEvent
+from app.models.help_article import HelpArticle
 
 __all__ = [
     "User",
@@ -73,9 +77,13 @@ __all__ = [
     "Waitlist",
     "AILimitRequest",
 "Note",
+    "NoteVersion",
 "DataExportRequest",
     "AIUsageHistory",
     "SourceFile",
     "ContentImage",
     "ResourceLink",
+    "CalendarFeed",
+    "CalendarEvent",
+    "HelpArticle",
 ]

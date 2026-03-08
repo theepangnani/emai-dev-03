@@ -10,7 +10,7 @@ from app.models.student import Student, parent_students
 from app.models.teacher import Teacher
 from app.models.course import Course, student_courses
 from app.models.student_email import StudentEmail, EmailType
-from app.schemas.user import UserResponse, SwitchRoleRequest
+from app.schemas.user import UserResponse, SwitchRoleRequest, UpdateInterestsRequest
 from app.schemas.student_email import StudentEmailCreate, StudentEmailResponse, SetPrimaryRequest
 from app.api.deps import get_current_user, require_role
 
@@ -19,6 +19,9 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 def _user_response(user: User) -> UserResponse:
     """Build a UserResponse with the roles list populated."""
+    used = user.storage_used_bytes or 0
+    limit = user.storage_limit_bytes or 104857600
+    pct = (used / limit * 100) if limit > 0 else 0
     return UserResponse(
         id=user.id,
         email=user.email or "",
@@ -31,6 +34,12 @@ def _user_response(user: User) -> UserResponse:
         needs_onboarding=user.needs_onboarding or False,
         onboarding_completed=user.onboarding_completed or False,
         email_verified=user.email_verified or False,
+        interests=user.interests,
+        storage_used_bytes=used,
+        storage_limit_bytes=limit,
+        upload_limit_bytes=user.upload_limit_bytes or 10485760,
+        storage_used_pct=round(pct, 1),
+        storage_warning=pct >= 80,
         created_at=user.created_at,
     )
 

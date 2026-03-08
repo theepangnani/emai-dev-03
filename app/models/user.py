@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import BigInteger, Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.sql import func
 import enum
 
@@ -42,6 +42,9 @@ class User(Base):
     # Onboarding setup checklist
     onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Tutorial completion tracking (JSON: {"step_name": true, ...})
+    tutorial_completed = Column(Text, default="{}")
+
     # AI usage limits
     ai_usage_limit = Column(Integer, default=10)
     ai_usage_count = Column(Integer, default=0)
@@ -51,13 +54,17 @@ class User(Base):
     locked_until = Column(DateTime(timezone=True), nullable=True)
     last_failed_login = Column(DateTime(timezone=True), nullable=True)
 
-    # AI usage limits
-    ai_usage_limit = Column(Integer, default=10)
-    ai_usage_count = Column(Integer, default=0)
-
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
+
+    # Storage limits (#1007)
+    storage_used_bytes = Column(BigInteger, default=0)
+    storage_limit_bytes = Column(BigInteger, default=104857600)
+    upload_limit_bytes = Column(Integer, default=10485760)
+
+    # Daily email digest opt-in
+    daily_digest_enabled = Column(Boolean, default=False)
 
     # Account deletion (soft-delete with 30-day grace period)
     deletion_requested_at = Column(DateTime(timezone=True), nullable=True)

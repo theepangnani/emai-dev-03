@@ -13,7 +13,7 @@ interface User {
   needs_onboarding: boolean;
   onboarding_completed: boolean;
   email_verified: boolean;
-  // Storage (#1007)
+  interests: string[];
   storage_used_bytes?: number;
   storage_limit_bytes?: number;
   upload_limit_bytes?: number;

@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { briefingApi } from '../../api/briefing';
-import type { BriefingChildSection, BriefingTask, BriefingAssignment, HelpMyKidRequest } from '../../api/briefing';
-import { useToast } from '../Toast';
+import type { BriefingChildSection, BriefingTask, BriefingAssignment } from '../../api/briefing';
+import { HelpStudyMenu } from '../study/HelpStudyMenu';
 import './DailyBriefingCard.css';
 
 function BriefingSkeleton() {
@@ -21,88 +21,8 @@ function BriefingSkeleton() {
   );
 }
 
-function HelpMyKidMenu({
-  child,
-  onClose,
-}: {
-  child: BriefingChildSection;
-  onClose: () => void;
-}) {
-  const { toast } = useToast();
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const mutation = useMutation({
-    mutationFn: briefingApi.helpMyKid,
-    onSuccess: () => {
-      toast(`Study guide created for ${child.full_name.split(' ')[0]}!`, 'success');
-      onClose();
-    },
-    onError: () => {
-      toast('Failed to create study guide. Please try again.', 'error');
-    },
-  });
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
-
-  const items: { label: string; req: HelpMyKidRequest }[] = [];
-
-  for (const task of child.overdue_tasks) {
-    items.push({
-      label: `\u26a0 ${task.title}`,
-      req: { student_id: child.student_id, item_type: 'task', item_id: task.id },
-    });
-  }
-  for (const task of child.due_today_tasks) {
-    items.push({
-      label: `\u23f0 ${task.title}`,
-      req: { student_id: child.student_id, item_type: 'task', item_id: task.id },
-    });
-  }
-  for (const a of child.upcoming_assignments) {
-    items.push({
-      label: `\ud83d\udcda ${a.title}`,
-      req: { student_id: child.student_id, item_type: 'assignment', item_id: a.id },
-    });
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="help-my-kid-menu" ref={menuRef}>
-        <div className="help-my-kid-empty">No items to create a study guide for.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="help-my-kid-menu" ref={menuRef}>
-      <div className="help-my-kid-header">Generate study guide for:</div>
-      {items.map((item, idx) => (
-        <button
-          key={idx}
-          className="help-my-kid-item"
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate(item.req)}
-        >
-          {item.label}
-          {mutation.isPending && mutation.variables === item.req && (
-            <span className="help-my-kid-spinner" />
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function ChildSection({ child }: { child: BriefingChildSection }) {
-  const [showMenu, setShowMenu] = useState(false);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);
   const hasOverdue = child.overdue_tasks.length > 0;
   const hasDueToday = child.due_today_tasks.length > 0;
   const hasUpcoming = child.upcoming_assignments.length > 0;
@@ -115,19 +35,16 @@ function ChildSection({ child }: { child: BriefingChildSection }) {
           {child.needs_attention && <span className="briefing-attention-dot" />}
           {child.full_name.split(' ')[0]}
         </span>
-        <div className="briefing-help-wrapper">
-          <button
-            className="briefing-help-btn"
-            type="button"
-            onClick={() => setShowMenu((v) => !v)}
-          >
-            Help My Kid
-          </button>
-          {showMenu && (
-            <HelpMyKidMenu child={child} onClose={() => setShowMenu(false)} />
-          )}
-        </div>
+        <button className="briefing-help-btn" type="button" onClick={() => setShowHelpMenu(true)}>
+          Help My Kid
+        </button>
       </div>
+      {showHelpMenu && (
+        <HelpStudyMenu
+          studentId={child.student_id}
+          onClose={() => setShowHelpMenu(false)}
+        />
+      )}
 
       {allClear ? (
         <div className="briefing-child-clear">All caught up!</div>

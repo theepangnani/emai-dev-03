@@ -619,8 +619,6 @@ def update_feature_toggle(
     return {"feature": feature_key, "enabled": body.enabled}
 
 
-# -- Storage management endpoints (#1007) ---------------------
-
 class StorageLimitsUpdate(BaseModel):
     storage_limit_bytes: int | None = None
     upload_limit_bytes: int | None = None

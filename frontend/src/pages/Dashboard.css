@@ -304,8 +304,71 @@
     overflow-x: hidden;
     padding: 12px 4px;
     z-index: 5;
-    transition: width 0.2s ease;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
+  }
+
+  /* Expanded sidebar */
+  .persistent-sidebar.expanded {
+    width: 200px;
+    min-width: 200px;
+    padding: 12px 8px;
+  }
+
+  /* Show labels when expanded */
+  .persistent-sidebar.expanded .ps-nav-label {
+    display: block;
+    font-size: 13px;
+    max-width: 160px;
+  }
+
+  /* Switch to row layout when expanded */
+  .persistent-sidebar.expanded .ps-nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .persistent-sidebar.expanded .ps-action-item {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .persistent-sidebar.expanded .ps-action-label {
+    display: inline;
+    font-size: 13px;
+  }
+
+  /* Collapse toggle button */
+  .ps-collapse-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: 0 auto 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-ink-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .ps-collapse-toggle:hover {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent-strong);
+    border-color: var(--color-accent);
+  }
+
+  .ps-collapse-toggle svg {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .persistent-sidebar.expanded .ps-collapse-toggle svg {
+    transform: rotate(180deg);
   }
 
   /* Hide hamburger on tablet+ */
@@ -314,7 +377,115 @@
   }
 }
 
-/* No expanded sidebar at 1024px+ — always icon-only */
+/* ── Mobile bottom tab bar (<768px) ── */
+.mobile-tab-bar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding: 4px 0;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+  }
+
+  .mobile-tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 2px;
+    min-height: 44px;
+    min-width: 44px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-ink-muted);
+    font-size: 10px;
+    font-weight: 500;
+    position: relative;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab-item:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-tab-item.active {
+    color: var(--color-accent-strong);
+  }
+
+  .mobile-tab-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--color-accent-strong);
+  }
+
+  .mobile-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    position: relative;
+  }
+
+  .mobile-tab-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-tab-badge {
+    position: absolute;
+    top: -2px;
+    right: -6px;
+    background: var(--color-accent);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 10px;
+    min-width: 14px;
+    text-align: center;
+    line-height: 14px;
+  }
+
+  .mobile-tab-label {
+    font-size: 10px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60px;
+  }
+
+  /* Add bottom padding to main content so it doesn't hide behind tab bar */
+  .dashboard-main-full {
+    padding-bottom: 80px !important;
+  }
+
+  /* Footer hidden on mobile — tab bar replaces it */
+  .dashboard-footer {
+    padding-bottom: 72px;
+  }
+}
 
 /* Nav items in persistent sidebar */
 .persistent-sidebar-nav {
@@ -2509,19 +2680,60 @@ button.retry-btn:disabled {
   color: var(--color-border);
 }
 
-/* ── Mobile modal scroll fix ── */
+/* ── Mobile modal → full-screen sheet ── */
 @media (max-width: 480px) {
-  .modal {
-    max-height: calc(100vh - 2rem);
-    margin: 1rem;
-    width: calc(100% - 2rem) !important;
-    max-width: none !important;
-    border-radius: 12px;
-  }
-
-  /* Ensure modal overlay covers mobile viewport */
   .modal-overlay {
     padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-height: 95vh;
+    margin: 0;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 16px 16px 0 0;
+    animation: modalSlideUp 0.25s ease;
+  }
+
+  @keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(100%); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Drag handle indicator for sheet modals */
+  .modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 2px;
+    margin: 8px auto 0;
+    flex-shrink: 0;
+  }
+}
+
+/* ── Touch-friendly tap targets ── */
+@media (max-width: 767px) {
+  /* Ensure minimum 44px tap targets on all interactive elements */
+  button, a, [role="tab"], [role="button"], select, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+
+  /* Prevent horizontal scroll */
+  .dashboard, .dashboard-body, .dashboard-main-full {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Stack dashboard cards vertically */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-sections {
+    grid-template-columns: 1fr;
   }
 }
 

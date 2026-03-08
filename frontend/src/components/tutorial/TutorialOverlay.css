@@ -1,0 +1,81 @@
+.tutorial-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+}
+
+.tutorial-tooltip {
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #1a1a2e);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  z-index: 10001;
+  animation: tutorialFadeIn 0.25s ease-out;
+}
+
+@keyframes tutorialFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tutorial-tooltip-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--primary, #6c63ff);
+}
+
+.tutorial-tooltip-content {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  color: var(--text-secondary, #555);
+}
+
+.tutorial-tooltip-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tutorial-tooltip-progress {
+  font-size: 0.75rem;
+  color: var(--text-muted, #999);
+}
+
+.tutorial-tooltip-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tutorial-skip-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+}
+
+.tutorial-skip-btn:hover {
+  color: var(--text-primary, #1a1a2e);
+}
+
+.tutorial-next-btn {
+  background: var(--primary, #6c63ff);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tutorial-next-btn:hover {
+  background: var(--primary-dark, #5a52d5);
+}

@@ -91,6 +91,12 @@ class UserResponse(BaseModel):
     email_verified: bool = False
     deletion_requested_at: datetime | None = None
     deletion_confirmed_at: datetime | None = None
+    interests: list[str] = []
+    storage_used_bytes: int = 0
+    storage_limit_bytes: int = 104857600
+    upload_limit_bytes: int = 10485760
+    storage_used_pct: float = 0.0
+    storage_warning: bool = False
     created_at: datetime
 
     @field_validator("roles", mode="before")
@@ -100,6 +106,22 @@ class UserResponse(BaseModel):
             return v
         if isinstance(v, str) and v:
             return [r.strip() for r in v.split(",") if r.strip()]
+        return []
+
+    @field_validator("interests", mode="before")
+    @classmethod
+    def parse_interests(cls, v: object) -> list[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str) and v:
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+            return []
         return []
 
     class Config:
@@ -129,6 +151,27 @@ class ResetPasswordRequest(BaseModel):
 class OnboardingRequest(BaseModel):
     roles: list[str]
     teacher_type: str | None = Field(default=None, max_length=50)
+
+
+class UpdateInterestsRequest(BaseModel):
+    interests: list[str] = Field(default_factory=list)
+
+    @field_validator('interests', mode='before')
+    @classmethod
+    def validate_interests(cls, v: list[str]) -> list[str]:
+        if len(v) > 10:
+            raise ValueError("Maximum 10 interests allowed")
+        cleaned = []
+        for item in v:
+            if not isinstance(item, str):
+                raise ValueError("Each interest must be a string")
+            stripped = item.strip().lower()
+            if not stripped:
+                continue
+            if len(stripped) > 50:
+                raise ValueError("Each interest must be 50 characters or less")
+            cleaned.append(stripped)
+        return cleaned
 
 
 class EmailVerifyRequest(BaseModel):
