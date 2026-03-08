@@ -27,11 +27,18 @@ class StudyGuide(Base):
     parent_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True)
     content_hash = Column(String(64), nullable=True)  # SHA-256 for duplicate detection
 
+    # Sharing (parent → child)
+    shared_with_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    shared_at = Column(DateTime(timezone=True), nullable=True)
+    viewed_at = Column(DateTime(timezone=True), nullable=True)
+    viewed_count = Column(Integer, default=0)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    user = relationship("User", backref=backref("study_guides", passive_deletes=True))
+    user = relationship("User", foreign_keys=[user_id], backref=backref("study_guides", passive_deletes=True))
+    shared_with_user = relationship("User", foreign_keys=[shared_with_user_id])
     assignment = relationship("Assignment", backref="study_guides")
     course = relationship("Course", backref="study_guides")
     course_content = relationship("CourseContent", backref="study_guides")

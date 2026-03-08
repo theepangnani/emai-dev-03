@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
-import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild } from '../api/client';
+import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild, SharedWithMeGuide, SharedGuideStatus } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -102,6 +102,12 @@ export function StudyGuidesPage() {
 
   // In-progress generation placeholders
   const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
+
+  // Parent-Child Study Link (#1414)
+  const isStudent = user?.role === 'student';
+  const [sharedWithMe, setSharedWithMe] = useState<SharedWithMeGuide[]>([]);
+  const [sharedStatus, setSharedStatus] = useState<Map<number, SharedGuideStatus>>(new Map());
+  const [sharingGuideId, setSharingGuideId] = useState<number | null>(null);
 
   // Create task from guide
   const [taskModalGuide, setTaskModalGuide] = useState<StudyGuide | null>(null);
@@ -287,14 +293,22 @@ export function StudyGuidesPage() {
       setContentGuideMap(guideMap);
 
       if (isParent) {
-        const [childrenData, linkedData] = await Promise.all([
+        const [childrenData, linkedData, statusData] = await Promise.all([
           parentApi.getChildren(),
           courseContentsApi.getLinkedCourseIds(),
+          studyApi.getSharedStatus(),
         ]);
         setChildren(childrenData);
         setLinkedCourseIds(new Set(linkedData.linked_course_ids));
         setCourseStudentMap(linkedData.course_student_map);
         setLinkedChildren(linkedData.children);
+        setSharedStatus(new Map(statusData.map(s => [s.id, s])));
+      }
+
+      // Student: load guides shared by parent (#1414)
+      if (isStudent) {
+        const shared = await studyApi.getSharedWithMe();
+        setSharedWithMe(shared);
       }
     } catch {
       setLoadError(true);
@@ -328,6 +342,20 @@ export function StudyGuidesPage() {
   useEffect(() => {
     loadArchived();
   }, [filterChild]);
+
+  // Share a study guide with a child (#1414)
+  const handleShareGuide = async (guideId: number, studentId: number) => {
+    try {
+      setSharingGuideId(guideId);
+      await studyApi.shareGuide(guideId, studentId);
+      const statusData = await studyApi.getSharedStatus();
+      setSharedStatus(new Map(statusData.map(s => [s.id, s])));
+    } catch (err: any) {
+      console.error('Failed to share guide', err);
+    } finally {
+      setSharingGuideId(null);
+    }
+  };
 
   // Close course search dropdown on outside click
   useEffect(() => {
@@ -1378,10 +1406,45 @@ export function StudyGuidesPage() {
                         {guideTypeLabel(guide.guide_type)}
                         {guide.version > 1 && <span className="version-badge">v{guide.version}</span>}
                         <span className="guide-row-date">{new Date(guide.created_at).toLocaleDateString()}</span>
+                        {isParent && sharedStatus.get(guide.id)?.status === 'viewed' && (
+                          <span className="guide-share-badge guide-share-viewed">Viewed</span>
+                        )}
+                        {isParent && sharedStatus.get(guide.id)?.status === 'shared' && (
+                          <span className="guide-share-badge guide-share-sent">Shared</span>
+                        )}
                       </span>
                     </div>
                   </div>
                   <div className="guide-row-actions">
+                    {/* Share with child (#1414) */}
+                    {isParent && children.length === 1 && !sharedStatus.get(guide.id)?.shared_with_user_id && (
+                      <button
+                        className="guide-convert-btn guide-share-btn"
+                        title={`Share with ${children[0].full_name}`}
+                        disabled={sharingGuideId === guide.id}
+                        onClick={() => handleShareGuide(guide.id, children[0].student_id)}
+                      >
+                        {sharingGuideId === guide.id ? '...' : 'Share'}
+                      </button>
+                    )}
+                    {isParent && children.length > 1 && !sharedStatus.get(guide.id)?.shared_with_user_id && (
+                      <div className="guide-assign-dropdown">
+                        <button className="guide-convert-btn guide-share-btn" title="Share with child" disabled={sharingGuideId === guide.id}>
+                          {sharingGuideId === guide.id ? '...' : 'Share'}
+                        </button>
+                        <div className="guide-assign-dropdown-content">
+                          {children.map(child => (
+                            <button
+                              key={child.student_id}
+                              className="guide-assign-dropdown-item"
+                              onClick={() => handleShareGuide(guide.id, child.student_id)}
+                            >
+                              {child.full_name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {guide.guide_type !== 'quiz' && (
                       <button className="guide-convert-btn" title="Generate quiz" onClick={() => handleConvertGuide(guide, 'quiz')}>
                         &#10067;
@@ -1414,6 +1477,35 @@ export function StudyGuidesPage() {
                     <button className="guide-delete-btn" title="Delete" onClick={() => handleDeleteLegacyGuide(guide.id)}>
                       &#128465;
                     </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Shared by Parent section for students (#1414) */}
+        {isStudent && sharedWithMe.length > 0 && (
+          <div className="guides-section">
+            <h3>Shared by Parent ({sharedWithMe.length})</h3>
+            <div className="guides-list">
+              {sharedWithMe.map(guide => (
+                <div key={`shared-${guide.id}`} className="guide-row">
+                  <div className="guide-row-main" onClick={() => navigate(`/study/guide/${guide.id}`)}>
+                    <span className="guide-row-icon">
+                      {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '\uD83C\uDCCF' : '\uD83D\uDCD6'}
+                    </span>
+                    <div className="guide-row-info">
+                      <span className="guide-row-title">
+                        {guide.title}
+                        <span className="guide-share-badge guide-share-from-parent">From {guide.shared_by_name}</span>
+                      </span>
+                      <span className="guide-row-meta">
+                        {guideTypeLabel(guide.guide_type)}
+                        <span className="guide-row-date">Shared {new Date(guide.shared_at).toLocaleDateString()}</span>
+                        {guide.viewed_at && <span className="guide-share-badge guide-share-viewed">Viewed</span>}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}

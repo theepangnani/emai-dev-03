@@ -112,6 +112,8 @@ export type {
   QuizResultSummary,
   QuizHistoryStats,
   ResolvedStudent,
+  SharedGuideStatus,
+  SharedWithMeGuide,
 } from './study';
 export { messagesApi } from './messages';
 export type {
