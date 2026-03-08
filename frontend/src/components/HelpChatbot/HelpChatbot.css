@@ -16,8 +16,7 @@
   justify-content: center;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  /* Relative for badge overlay positioning */
-  overflow: visible;
+  overflow: hidden;
 }
 
 .help-chatbot-fab:hover {
@@ -26,23 +25,10 @@
 }
 
 .help-chatbot-fab-logo {
-  width: 34px;
-  height: 34px;
+  width: 110%;
+  height: 110%;
   object-fit: contain;
   filter: brightness(0) invert(1);
-}
-
-.help-chatbot-fab-badge {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  width: 18px;
-  height: 18px;
-  background: #fff;
-  border-radius: 50%;
-  padding: 3px;
-  color: var(--color-accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Chat Panel */
@@ -92,10 +78,11 @@
 }
 
 .help-chatbot-header-logo {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   filter: brightness(0) invert(1);
+  margin: -4px;
 }
 
 .help-chatbot-header h3 {
