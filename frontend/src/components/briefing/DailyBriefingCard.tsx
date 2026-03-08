@@ -3,6 +3,11 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { briefingApi } from '../../api/briefing';
 import type { BriefingChildSection, BriefingTask, BriefingAssignment, HelpMyKidRequest } from '../../api/briefing';
 import { useToast } from '../Toast';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { briefingApi } from '../../api/briefing';
+import type { BriefingChildSection, BriefingTask, BriefingAssignment } from '../../api/briefing';
+import { HelpStudyMenu } from '../study/HelpStudyMenu';
 import './DailyBriefingCard.css';
 
 function BriefingSkeleton() {
@@ -103,6 +108,7 @@ function HelpMyKidMenu({
 
 function ChildSection({ child }: { child: BriefingChildSection }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);
   const hasOverdue = child.overdue_tasks.length > 0;
   const hasDueToday = child.due_today_tasks.length > 0;
   const hasUpcoming = child.upcoming_assignments.length > 0;
@@ -127,7 +133,16 @@ function ChildSection({ child }: { child: BriefingChildSection }) {
             <HelpMyKidMenu child={child} onClose={() => setShowMenu(false)} />
           )}
         </div>
+        <button className="briefing-help-btn" type="button" onClick={() => setShowHelpMenu(true)}>
+          Help My Kid
+        </button>
       </div>
+      {showHelpMenu && (
+        <HelpStudyMenu
+          studentId={child.student_id}
+          onClose={() => setShowHelpMenu(false)}
+        />
+      )}
 
       {allClear ? (
         <div className="briefing-child-clear">All caught up!</div>

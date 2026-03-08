@@ -29,6 +29,7 @@ import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'videos';
@@ -167,6 +168,7 @@ export function CourseMaterialDetailPage() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
@@ -481,6 +483,16 @@ export function CourseMaterialDetailPage() {
           </div>
 
           <div className="cm-header-toolbar">
+            {isParent && resolvedStudent && (
+              <button className="cm-toolbar-btn" title="Help Study" aria-label="Help Study menu" onClick={() => setShowHelpStudyMenu(true)}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M7 7.5a3 3 0 015.2 1.5c0 2-3 2-3 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <circle cx="10" cy="15" r="0.8" fill="currentColor"/>
+                </svg>
+                <span className="cm-toolbar-btn-label">Help Study</span>
+              </button>
+            )}
             <button className={`cm-toolbar-btn${showNotesPanel ? ' active' : ''}`} title="Notes" aria-label="Toggle notes" onClick={() => setShowNotesPanel(v => !v)}>
               <NoteIcon />
               <span className="cm-toolbar-btn-label">Notes</span>
@@ -682,6 +694,14 @@ export function CourseMaterialDetailPage() {
       {/* Contextual notes: selection tooltip + FAB */}
       {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
+      )}
+      {showHelpStudyMenu && resolvedStudent && (
+        <HelpStudyMenu
+          studentId={resolvedStudent.student_user_id}
+          courseId={content?.course_id}
+          courseContentId={contentId}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
       )}
     </DashboardLayout>
   );

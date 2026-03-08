@@ -17,6 +17,7 @@ import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
 import { WeeklyDigestCard } from '../components/briefing/WeeklyDigestCard';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -99,6 +100,7 @@ export function ParentDashboard() {
   const pd = useParentDashboard();
   const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
 
@@ -368,6 +370,66 @@ export function ParentDashboard() {
             }
             return null;
           })()}
+
+          {/* Quick Action Bar (#837 unified) */}
+          <RoleQuickActions
+            actions={[
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                ),
+                label: 'View Class Materials',
+                onClick: () => pd.navigate('/course-materials'),
+              },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                ),
+                label: 'Upload Class Material',
+                onClick: () => pd.setShowStudyModal(true),
+              },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9 9a3 3 0 015.12 1.5c0 2-3 2-3 4" />
+                    <circle cx="12" cy="18" r="0.5" fill="currentColor" />
+                  </svg>
+                ),
+                label: 'Help My Kid',
+                onClick: () => setShowHelpStudyMenu(true),
+              },
+            ] satisfies QuickAction[]}
+            maxVisible={3}
+          />
+
+          {/* Task urgency pills below CTAs */}
+          {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
+            <div className="pd-task-status-pills">
+              {pd.taskCounts.overdue > 0 && (
+                <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
+                  {pd.taskCounts.overdue} overdue
+                </button>
+              )}
+              {pd.taskCounts.dueToday > 0 && (
+                <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>
+                  {pd.taskCounts.dueToday} due today
+                </button>
+              )}
+              {pd.taskCounts.upcoming > 0 && (
+                <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>
+                  {pd.taskCounts.upcoming} next 3 days
+                </button>
+              )}
+            </div>
+          )}
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
               <div className="pd-onboard-tip" role="status">
@@ -809,6 +871,18 @@ export function ParentDashboard() {
         open={pd.showLimitModal}
         onClose={() => pd.setShowLimitModal(false)}
       />
+      {showHelpStudyMenu && pd.selectedChild != null && (
+        <HelpStudyMenu
+          studentId={pd.selectedChild}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
+      )}
+      {showHelpStudyMenu && pd.selectedChild == null && pd.children.length > 0 && (
+        <HelpStudyMenu
+          studentId={pd.children[0].student_id}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
+      )}
     </DashboardLayout>
   );
 }
