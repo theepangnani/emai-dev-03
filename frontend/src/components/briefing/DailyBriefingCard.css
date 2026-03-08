@@ -105,6 +105,80 @@
   border-color: #d1d5db;
 }
 
+.briefing-help-wrapper {
+  position: relative;
+}
+
+/* Help My Kid dropdown menu */
+.help-my-kid-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  min-width: 240px;
+  max-width: 320px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+}
+
+.help-my-kid-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  padding: 6px 12px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.help-my-kid-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 0.82rem;
+  color: var(--text-primary, #1f2937);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.help-my-kid-item:hover {
+  background: #f3f4f6;
+}
+
+.help-my-kid-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.help-my-kid-empty {
+  padding: 12px;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #6b7280);
+  text-align: center;
+}
+
+.help-my-kid-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: hmk-spin 0.6s linear infinite;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+@keyframes hmk-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Task groups */
 .briefing-task-group {
   margin-bottom: 8px;
