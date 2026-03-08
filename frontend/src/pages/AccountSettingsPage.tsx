@@ -293,6 +293,7 @@ export function AccountSettingsPage() {
           </section>
         )}
 
+
         <section className="account-section account-danger-zone">
           <h2>Danger Zone</h2>
           <div className="danger-zone-content">

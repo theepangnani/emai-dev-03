@@ -1092,58 +1092,26 @@ with engine.connect() as conn:
     if "users" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("users")}
         if "storage_used_bytes" not in existing_cols:
-            try: conn.execute(text("ALTER TABLE users ADD COLUMN storage_used_bytes BIGINT DEFAULT 0")); logger.info("Added storage_used_bytes")
-            except Exception: conn.rollback()
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN storage_used_bytes BIGINT DEFAULT 0"))
+                logger.info("Added storage_used_bytes")
+            except Exception:
+                conn.rollback()
         conn.commit()
         if "storage_limit_bytes" not in existing_cols:
-            try: conn.execute(text("ALTER TABLE users ADD COLUMN storage_limit_bytes BIGINT DEFAULT 104857600")); logger.info("Added storage_limit_bytes")
-            except Exception: conn.rollback()
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN storage_limit_bytes BIGINT DEFAULT 104857600"))
+                logger.info("Added storage_limit_bytes")
+            except Exception:
+                conn.rollback()
         conn.commit()
         if "upload_limit_bytes" not in existing_cols:
-            try: conn.execute(text("ALTER TABLE users ADD COLUMN upload_limit_bytes INTEGER DEFAULT 10485760")); logger.info("Added upload_limit_bytes")
-            except Exception: conn.rollback()
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN upload_limit_bytes INTEGER DEFAULT 10485760"))
+                logger.info("Added upload_limit_bytes")
+            except Exception:
+                conn.rollback()
         conn.commit()
-
-    # -- help_articles: seed data (#1420) --
-    if "help_articles" in inspector.get_table_names():
-        row = conn.execute(text("SELECT COUNT(*) FROM help_articles")).scalar()
-        if row == 0:
-            seed_articles = [
-                ("getting-started", "Getting Started with ClassBridge", "getting-started",
-                 "## Welcome to ClassBridge\n\nClassBridge is an AI-powered education platform.\n\n### First Steps\n\n1. **Create your account**\n2. **Complete onboarding**\n3. **Connect Google Classroom** (optional)\n4. **Explore the dashboard**\n\n### Key Features\n\n- **AI Study Tools** -- Generate study guides, quizzes, and flashcards\n- **Task Management** -- Create and track tasks\n- **Messaging** -- Communicate with teachers and parents\n- **Google Classroom Sync** -- Import courses and assignments",
-                 None, 1),
-                ("parent-guide", "Parent Guide", "parent-guide",
-                 "## Parent Guide\n\nMonitor your children's progress and communicate with teachers.\n\n### Adding Your Child\n\n1. Click the **+** button on child pills\n2. Enter your child's name\n3. Optional: provide email for invite\n\n### Google Classroom\n\nClick **Connect Google Classroom** to import courses and grades.\n\n### Study Materials\n\n1. **Upload Documents** -- PDFs, Word docs, PowerPoint\n2. Select AI tools to generate\n3. Review and print materials",
-                 "parent", 2),
-                ("student-guide", "Student Guide", "student-guide",
-                 "## Student Guide\n\nOrganize your studies with AI-powered tools.\n\n### Dashboard\n\nSee urgency pills, quick actions, and upcoming timeline.\n\n### Study Hub\n\n1. Create or join courses\n2. Upload materials\n3. Generate AI study tools\n\n### AI Study Tools\n\n- **Study Guides** -- Structured summaries\n- **Quizzes** -- Easy, Medium, Hard difficulty\n- **Flashcards** -- Flip cards from your material",
-                 "student", 3),
-                ("teacher-guide", "Teacher Guide", "teacher-guide",
-                 "## Teacher Guide\n\nManage your classroom and communicate with parents.\n\n### Courses\n\n1. Click **Create Course**\n2. Enter name, subject, description\n3. Connect Google Classroom optionally\n\n### Students\n\nClick **Add Student** in the Student Roster.\n\n### Materials\n\nUpload from **Course Materials** in the sidebar.",
-                 "teacher", 4),
-                ("ai-study-tools", "AI Study Tools", "ai-tools",
-                 "## AI Study Tools\n\nGenerate personalized study materials from your content.\n\n### Study Guides\n\nStructured summaries with key concepts.\n\n### Practice Quizzes\n\nMultiple-choice at Easy, Medium, or Hard.\n\n### Flashcards\n\nFlip cards with keyboard navigation and shuffle.",
-                 None, 5),
-                ("google-classroom", "Google Classroom Integration", "getting-started",
-                 "## Google Classroom Integration\n\nSync courses, assignments, and grades.\n\n### Connecting\n\n1. Go to Dashboard\n2. Click **Connect Google Classroom**\n3. Sign in and grant permissions",
-                 None, 6),
-                ("account-settings", "Account & Settings", "account-settings",
-                 "## Account & Settings\n\n### Password\n\nUse **Forgot Password** on the login page.\n\n### AI Credits\n\nMonthly allowance for generating study materials.\n\n### Data Privacy\n\nExport data or delete account (30-day grace period).",
-                 None, 7),
-                ("messaging", "Messaging & Communication", "communication",
-                 "## Messaging\n\n### Sending Messages\n\n1. Go to **Messages**\n2. Click **New Message**\n3. Select recipient\n4. Type and send",
-                 None, 8),
-                ("tasks-calendar", "Tasks & Calendar", "account-settings",
-                 "## Tasks & Calendar\n\n### Creating Tasks\n\n1. Go to **Tasks**\n2. Click **+** button\n3. Set title, due date, priority\n\n### Calendar\n\nMonth, Week, 3-Day, Day views. Drag to reschedule.",
-                 None, 9),
-            ]
-            for slug, title, category, content_val, role, order in seed_articles:
-                conn.execute(text(
-                    "INSERT INTO help_articles (slug, title, category, content, role, display_order) "
-                    "VALUES (:slug, :title, :category, :content, :role, :order)"
-                ), {"slug": slug, "title": title, "category": category, "content": content_val, "role": role, "order": order})
-            conn.commit()
-            logger.info("Seeded help_articles with %d articles (#1420)", len(seed_articles))
 
     # ── users: daily_digest_enabled column (#1406) ─────────────
     if "users" in inspector.get_table_names():
