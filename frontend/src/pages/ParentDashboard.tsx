@@ -6,6 +6,7 @@ import { AlertBanner } from '../components/parent/AlertBanner';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { DailyBriefingCard } from '../components/briefing/DailyBriefingCard';
+import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
@@ -259,6 +260,10 @@ export function ParentDashboard() {
 
           {/* Above-grid elements */}
           <div className="dash-above-grid">
+            {/* Daily Briefing Card */}
+            <DailyBriefingCard />
+            <ConversationStartersCard studentId={pd.selectedChild ?? undefined} />
+
             {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
