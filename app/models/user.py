@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
+=======
+from sqlalchemy import BigInteger, Column, Integer, String, Boolean, DateTime, Enum
+>>>>>>> 7a37703 (feat: add premium storage/upload limits per user (#1007))
 from sqlalchemy.sql import func
 import enum
 
@@ -61,6 +65,11 @@ class User(Base):
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
+
+    # Storage limits (#1007)
+    storage_used_bytes = Column(BigInteger, default=0)
+    storage_limit_bytes = Column(BigInteger, default=104857600)
+    upload_limit_bytes = Column(Integer, default=10485760)
 
     # Account deletion (soft-delete with 30-day grace period)
     deletion_requested_at = Column(DateTime(timezone=True), nullable=True)
