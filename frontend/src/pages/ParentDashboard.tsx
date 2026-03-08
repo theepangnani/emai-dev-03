@@ -15,6 +15,7 @@ import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
+import { WeeklyDigestCard } from '../components/briefing/WeeklyDigestCard';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import './ParentDashboard.css';
 
@@ -433,6 +434,9 @@ export function ParentDashboard() {
               navigate={pd.navigate}
             />
           )}
+
+          {/* Weekly Progress Pulse (#1413) */}
+          {viewMode === 'full' && <WeeklyDigestCard />}
 
           {/* Student Detail moved to MyKids page */}
 
