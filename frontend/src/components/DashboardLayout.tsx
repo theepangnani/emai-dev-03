@@ -9,7 +9,8 @@ import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
-import { HelpChatbot } from './HelpChatbot/HelpChatbot';
+import { SpeedDialFAB } from './SpeedDialFAB';
+import { FABProvider } from '../context/FABContext';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -305,6 +306,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const showVerifyBanner = user && !user.email_verified && !verifyBannerDismissed;
 
   return (
+    <FABProvider>
     <>
       {/* Skip to content link for keyboard users */}
       <a href="#main-content" className="skip-to-content">
@@ -540,8 +542,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         <OnboardingTour steps={TEACHER_TOUR_STEPS} storageKey="tour_completed_teacher" />
       )}
 
-      <HelpChatbot />
+      <SpeedDialFAB />
       </div>
     </>
+    </FABProvider>
   );
 }

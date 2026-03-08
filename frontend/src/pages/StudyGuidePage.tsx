@@ -15,7 +15,7 @@ import { downloadAsPdf } from '../utils/exportUtils';
 import { PageNav } from '../components/PageNav';
 import { useAIUsage } from '../hooks/useAIUsage';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
-import { NotesFAB } from '../components/NotesFAB';
+import { useRegisterNotesFAB } from '../context/FABContext';
 import { NotesPanel } from '../components/NotesPanel';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { useTextSelection } from '../hooks/useTextSelection';
@@ -49,6 +49,8 @@ export function StudyGuidePage() {
   const { atLimit, remaining, invalidate: refreshAIUsage } = useAIUsage();
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
+  useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
@@ -258,7 +260,6 @@ export function StudyGuidePage() {
       )}
       {guide.course_content_id && (
         <>
-          <NotesFAB courseContentId={guide.course_content_id} isOpen={notesOpen} onToggle={() => setNotesOpen(!notesOpen)} />
           <NotesPanel
             courseContentId={guide.course_content_id}
             isOpen={notesOpen}
