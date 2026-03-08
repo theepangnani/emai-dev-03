@@ -121,6 +121,7 @@ class UserResponse(BaseModel):
                     return parsed
             except (json.JSONDecodeError, TypeError):
                 pass
+            return []
         return []
 
     class Config:

@@ -1124,6 +1124,34 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # -- users: storage limit columns (#1007) --
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "storage_used_bytes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN storage_used_bytes BIGINT DEFAULT 0"))
+                logger.info("Added storage_used_bytes column to users (#1007)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "storage_limit_bytes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN storage_limit_bytes BIGINT DEFAULT 104857600"))
+                logger.info("Added storage_limit_bytes column to users (#1007)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "upload_limit_bytes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN upload_limit_bytes INTEGER DEFAULT 10485760"))
+                logger.info("Added upload_limit_bytes column to users (#1007)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 app = FastAPI(
@@ -1261,6 +1289,7 @@ app.include_router(help_routes.router, prefix="/api")
 app.include_router(briefing.router, prefix="/api")
 app.include_router(parent_ai.router, prefix="/api")
 app.include_router(weekly_digest.router, prefix="/api")
+app.include_router(study_sharing.router, prefix="/api")
 app.include_router(calendar_import.router, prefix="/api")
 app.include_router(tutorials.router, prefix="/api")
 app.include_router(readiness.router, prefix="/api")

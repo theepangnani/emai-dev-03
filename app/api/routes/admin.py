@@ -635,6 +635,7 @@ def get_user_storage(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
+    """View storage usage for a specific user."""
     from app.services.storage_limits import get_storage_info
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -655,6 +656,7 @@ def update_user_storage_limits(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
+    """Set custom storage limits for a user."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -672,6 +674,7 @@ def update_user_storage_limits(
         details=f"storage_limit={body.storage_limit_bytes}, upload_limit={body.upload_limit_bytes}",
     )
     db.commit()
+
     from app.services.storage_limits import get_storage_info
     return get_storage_info(user)
 
@@ -683,10 +686,13 @@ def get_storage_overview(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
+    """Platform-wide storage statistics."""
     total_used = db.query(func.coalesce(func.sum(User.storage_used_bytes), 0)).scalar()
     total_limit = db.query(func.coalesce(func.sum(User.storage_limit_bytes), 0)).scalar()
     user_count = db.query(func.count(User.id)).filter(User.storage_used_bytes > 0).scalar()
     total_users = db.query(func.count(User.id)).scalar()
+
+
     return {
         "total_storage_used_bytes": total_used,
         "total_storage_limit_bytes": total_limit,
