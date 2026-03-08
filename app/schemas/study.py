@@ -147,6 +147,55 @@ class FlashcardSetResponse(BaseModel):
         from_attributes = True
 
 
+class MindMapGenerateRequest(BaseModel):
+    """Request to generate a mind map."""
+    assignment_id: int | None = None
+    course_id: int | None = None
+    course_content_id: int | None = None
+    topic: str | None = Field(default=None, max_length=200)
+    content: str | None = Field(default=None, max_length=50000)
+    regenerate_from_id: int | None = None
+    focus_prompt: str | None = Field(default=None, max_length=2000)
+
+    @field_validator('topic', 'focus_prompt', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
+
+
+class MindMapBranch(BaseModel):
+    """A single mind map branch child."""
+    label: str
+    detail: str = ""
+
+
+class MindMapBranchGroup(BaseModel):
+    """A top-level mind map branch with children."""
+    label: str
+    children: list[MindMapBranch] = []
+
+
+class MindMapData(BaseModel):
+    """The mind map data structure."""
+    central_topic: str
+    branches: list[MindMapBranchGroup] = []
+
+
+class MindMapResponse(BaseModel):
+    """Mind map response."""
+    id: int
+    title: str
+    mind_map: MindMapData
+    guide_type: str = "mind_map"
+    version: int = 1
+    parent_guide_id: int | None = None
+    created_at: datetime
+    auto_created_tasks: list[AutoCreatedTask] = []
+
+    class Config:
+        from_attributes = True
+
+
 class StudyGuideUpdate(BaseModel):
     """Request to update a study guide (e.g. assign/categorize to a course, rename)."""
     title: str | None = Field(default=None, max_length=200)
