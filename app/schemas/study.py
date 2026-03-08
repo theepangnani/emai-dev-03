@@ -47,6 +47,13 @@ class StudyGuideResponse(BaseModel):
     archived_at: datetime | None = None
     auto_created_tasks: list[AutoCreatedTask] = []
 
+    # Sharing fields
+    shared_with_user_id: int | None = None
+    shared_at: datetime | None = None
+    viewed_at: datetime | None = None
+    viewed_count: int = 0
+    shared_with_name: str | None = None
+
     class Config:
         from_attributes = True
 

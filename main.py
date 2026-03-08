@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1002,6 +1002,42 @@ with engine.connect() as conn:
                 ), {"slug": slug, "title": title, "category": category, "content": content, "role": role, "order": order})
             conn.commit()
             logger.info("Seeded help_articles with %d articles (#1420)", len(seed_articles))
+    # ── study_guides: sharing columns (#1414) ──────────────────
+    if "study_guides" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
+        if "shared_with_user_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN shared_with_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL"))
+                logger.info("Added 'shared_with_user_id' column to study_guides (#1414)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
+        if "shared_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN shared_at {col_type}"))
+                logger.info("Added 'shared_at' column to study_guides (#1414)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
+        if "viewed_at" not in existing_cols:
+            col_type = "TIMESTAMPTZ" if is_pg else "DATETIME"
+            try:
+                conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN viewed_at {col_type}"))
+                logger.info("Added 'viewed_at' column to study_guides (#1414)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
+        if "viewed_count" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN viewed_count INTEGER DEFAULT 0"))
+                logger.info("Added 'viewed_count' column to study_guides (#1414)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
 
 
 _is_prod = "sqlite" not in settings.database_url
@@ -1109,6 +1145,7 @@ app.include_router(courses.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(google_classroom.router, prefix="/api")
 app.include_router(study.router, prefix="/api")
+app.include_router(study_sharing.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
