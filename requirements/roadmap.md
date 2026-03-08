@@ -251,6 +251,7 @@
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
 - [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
+- [ ] **Digital Wallet & Subscription System** — Stripe payments, subscription tiers (Free $0 / Plus $5 / Unlimited $10), digital wallet with auto-refill, one-time credit purchases replacing "Request More" flow, invoice module for school board billing, admin revenue dashboard (§6.60, #1384-#1392)
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
 - [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
@@ -386,6 +387,32 @@ See §9 Mobile App Development for detailed specification.
 - Offline mode — Issue #337
 
 **GitHub Issues:** #364-#380 (pilot MVP + post-pilot)
+
+### Phase 2 (WOW Features — Parent Value & Engagement) — #1403-#1420
+
+Features that answer the pilot feedback question: *"Why should I use ClassBridge?"* — transforming ClassBridge from a passive viewer to an active parenting tool.
+
+| Priority | Feature | Epic | AI Cost | WOW Impact |
+|----------|---------|------|---------|------------|
+| 1 | **Smart Daily Briefing** — proactive "what matters today" | #1403 | $0 | Highest — answers "why open ClassBridge" |
+| 2 | **Help My Kid** — one-tap study material generation | #1407 | ~$0.02/use | Highest — instant parent action |
+| 3 | **Global Search + Smart Shortcuts** — find anything instantly | #1410 | $0 | Medium — power users love it |
+| 4 | **Weekly Progress Pulse** — email digest every Sunday | #1413 | $0 | High — passive value, no login needed |
+| 5 | **Parent-Child Study Link** — feedback loop on sent materials | #1414 | $0 | High — emotional connection |
+| 6 | **Dashboard Redesign** — clean, persona-based, 3-section layouts | #1415 | $0 | High — first impression |
+| 7 | **Help Page + Chatbot** — document WOW features for discoverability | #1420 | $0 | Medium — user education |
+| 8 | **Responsible AI Parent Tools** — readiness checks, parent briefings, practice problems, weak spots, conversation starters | #1421 | ~$0.02/use | Highest — "Parents First" differentiator |
+| 9 | **Smart Data Import** — photo capture, email forwarding, ICS calendar sync | #1431 | ~$0.02/photo | High — Layer 1→2 accelerator |
+
+**Recommended implementation order:**
+1. **#1415** Dashboard Redesign (foundation — cleans up the canvas)
+2. **#1431** Smart Data Import — Calendar ICS first ($0, quick win), then Photo Capture (WOW)
+3. **#1403** Smart Daily Briefing (core parent value — feeds from imported data)
+4. **#1407** Help My Kid + **#1421** Responsible AI Tools (the WOW actions — build together)
+5. **#1410** Global Search (utility, enhances everything)
+6. **#1414** Parent-Child Study Link (feedback loop)
+7. **#1413** Weekly Progress Pulse (passive engagement)
+8. **#1420** Help Page + Chatbot updates (documentation)
 
 ### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
 

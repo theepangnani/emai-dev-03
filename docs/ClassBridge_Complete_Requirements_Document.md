@@ -936,6 +936,37 @@ Administrators manage the platform, users, content, and system health. Admin acc
 - [ ] Google Calendar push integration
 - [ ] Central document repository
 
+### Phase 2 (WOW Features — Parent Value & Engagement) — NEW (March 2026)
+
+Features that answer pilot feedback: *"Why should I use ClassBridge?"* — transforming ClassBridge from a passive viewer to an active parenting tool.
+
+**Core Principle: Parents First, Responsible AI** — AI helps parents understand and engage; AI challenges students, never shortcuts their learning.
+
+| Priority | Feature | Epic | AI Cost | WOW Impact |
+|----------|---------|------|---------|------------|
+| 1 | **Smart Daily Briefing** — proactive "what matters today" | #1403 | $0 | Highest |
+| 2 | **Help My Kid** — one-tap study material generation | #1407 | ~$0.02/use | Highest |
+| 3 | **Global Search + Smart Shortcuts** | #1410 | $0 | Medium |
+| 4 | **Weekly Progress Pulse** — email digest every Sunday | #1413 | $0 | High |
+| 5 | **Parent-Child Study Link** — feedback loop | #1414 | $0 | High |
+| 6 | **Dashboard Redesign** — clean, persona-based layouts | #1415 | $0 | High |
+| 7 | **Responsible AI Parent Tools** — readiness checks, parent briefings, practice problems, weak spots, conversation starters | #1421 | ~$0.02/use | Highest |
+
+**Responsible AI Parent Tools (§6.66):**
+- **"Is My Kid Ready?" Assessment** — 5-question diagnostic, parent sees gap report, student must answer
+- **Parent Briefing Notes** — plain-language topic summary for parents only, student never sees
+- **Practice Problem Sets** — open-ended problems student must solve (not multiple choice)
+- **Weak Spot Report** — SQL aggregation of quiz results, zero AI cost
+- **Conversation Starters** — dinner table prompts based on what child is studying
+
+**Dashboard Redesign (§6.65) — 3-section max per role:**
+- Parent v5: Daily Briefing + Child Snapshot + Quick Actions
+- Student v4: Coming Up + Recent Study + Quick Actions
+- Teacher v2: Student Alerts + My Classes + Quick Actions
+- Admin v2: Platform Health + Recent Activity + Quick Actions
+
+**Hybrid Search Strategy:** All search is SQL ILIKE ($0). AI only invoked on explicit generation actions.
+
 ### Phase 2 (Intelligence & Data)
 - [x] Performance Analytics Dashboard - IMPLEMENTED (#469-#474)
 - [x] Quiz Results History - IMPLEMENTED (#574, #621)

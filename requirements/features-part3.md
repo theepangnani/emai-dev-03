@@ -1883,3 +1883,465 @@ components/HelpChatbot/
 - [ ] NotesFAB z-index coordination + mobile bottom sheet (#1363)
 
 ---
+
+### 6.60 Digital Wallet & Subscription System — Payments, Plans, Invoicing (Phase 2+)
+
+**Epic:** #1384
+**Issues:** #1385-#1392
+**Dependencies:** AI Usage Limits (§6.54, #1116), Premium Accounts (#1007), Monetization Plan (#761)
+
+Build a complete monetization system: digital wallet, subscription plans, one-time credit purchases, and invoice generation for billing clients.
+
+#### Subscription Tiers
+
+| Tier | Price | AI Credits/Month | Features |
+|------|-------|-----------------|----------|
+| **Free** | $0 | 10 (auto-reset) | Basic features, manual credit requests via admin |
+| **Plus** | $5/mo | 500 | Premium features (TBD), priority support |
+| **Unlimited** | $10/mo | Unlimited | All premium features, unlimited AI usage |
+
+Free tier users can also purchase additional credits à la carte:
+| Pack | Credits | Price |
+|------|---------|-------|
+| Starter | 50 | $2.00 |
+| Standard | 200 | $5.00 |
+| Bulk | 500 | $10.00 |
+
+#### 6.60.1 Stripe Integration (#1385)
+
+Payment processing foundation using Stripe.
+
+- Stripe Customer created on user registration (`stripe_customer_id` on users table)
+- Webhook endpoint `POST /api/payments/webhook` handles: `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.*`
+- Webhook signature verification for security
+- Env vars: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
+
+#### 6.60.2 Subscription Plans (#1386)
+
+Recurring billing via Stripe Checkout and Customer Portal.
+
+**Data model additions to `users` table:**
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| subscription_tier | VARCHAR(20) | 'free' | free / plus / unlimited |
+| subscription_stripe_id | VARCHAR(255) | NULL | Stripe subscription ID |
+| subscription_status | VARCHAR(20) | 'active' | active / past_due / canceled / trialing |
+| subscription_period_end | DATETIME | NULL | Current billing period end |
+| credits_reset_at | DATETIME | NULL | Last monthly credit reset |
+
+**API Endpoints:**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/subscriptions/checkout` | Authenticated | Create Stripe Checkout session |
+| POST | `/api/subscriptions/portal` | Authenticated | Open Stripe Customer Portal |
+| GET | `/api/subscriptions/status` | Authenticated | Current plan + status |
+| PATCH | `/api/subscriptions/change-plan` | Authenticated | Switch plans |
+
+**Behaviors:**
+- Monthly cron resets `ai_usage_count` per tier (10 Free, 500 Plus, skip Unlimited)
+- Unlimited tier bypasses AI usage limit checks entirely
+- 3-day grace period on failed payments before downgrade to Free
+
+#### 6.60.3 Digital Wallet (#1387)
+
+Per-user balance for credit purchases and one-time payments.
+
+**`wallets` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | |
+| user_id | INTEGER FK UNIQUE | One wallet per user |
+| balance_cents | INTEGER DEFAULT 0 | Balance in cents |
+| auto_refill_enabled | BOOLEAN DEFAULT FALSE | |
+| auto_refill_threshold_cents | INTEGER DEFAULT 0 | Trigger refill below this |
+| auto_refill_amount_cents | INTEGER DEFAULT 500 | Amount to add ($5.00) |
+
+**`wallet_transactions` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | |
+| wallet_id | INTEGER FK | |
+| type | VARCHAR(20) | deposit / purchase / refund / subscription_credit |
+| amount_cents | INTEGER | +deposit, -purchase |
+| description | TEXT | |
+| stripe_payment_intent_id | VARCHAR(255) NULL | |
+| created_at | DATETIME | |
+
+**API Endpoints:**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/wallet` | Authenticated | Balance + recent transactions |
+| GET | `/api/wallet/transactions` | Authenticated | Full history (paginated) |
+| POST | `/api/wallet/deposit` | Authenticated | Add funds via Stripe |
+| PATCH | `/api/wallet/auto-refill` | Authenticated | Configure auto-refill |
+
+#### 6.60.4 One-Time Credit Purchases (#1388)
+
+Buy AI credits à la carte. Replaces "Request More Credits" admin flow for paid users.
+
+- `POST /api/credits/purchase` — Buy a credit pack (wallet or card)
+- `GET /api/credits/packs` — List available packs with prices
+- ConfirmModal shows "Buy More Credits" for wallet/subscription users, "Request More Credits" for free-only
+- Deducts from wallet balance (preferred) or charges card directly
+
+#### 6.60.5 Subscription Frontend (#1389)
+
+- **Pricing page** (`/pricing`) — 3-column plan comparison with "Current Plan" badge
+- **Billing settings** (`/settings/billing`) — Plan, credits, wallet, transactions, invoices
+- **Tier badge** in header next to username
+- **Buy Credits modal** — Credit pack cards, one-click wallet purchase
+
+#### 6.60.6 Invoice Module (#1390)
+
+Generate and send invoices to clients (school boards, parents).
+
+**`invoices` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | |
+| invoice_number | VARCHAR(20) UNIQUE | Auto-generated (CB-YYYY-NNNN) |
+| user_id | INTEGER FK NULL | Associated user |
+| client_name | VARCHAR(200) | Recipient |
+| client_email | VARCHAR(200) | |
+| status | VARCHAR(20) | draft / sent / paid / overdue / cancelled |
+| subtotal_cents | INTEGER | |
+| tax_rate | DECIMAL(5,2) DEFAULT 13.00 | HST (Ontario) |
+| tax_cents | INTEGER | |
+| total_cents | INTEGER | |
+| due_date | DATE | |
+| notes | TEXT NULL | |
+
+**`invoice_items` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | |
+| invoice_id | INTEGER FK | |
+| description | VARCHAR(500) | |
+| quantity | INTEGER | |
+| unit_price_cents | INTEGER | |
+| total_cents | INTEGER | |
+
+**API Endpoints:**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/admin/invoices` | Admin | Create invoice |
+| GET | `/api/admin/invoices` | Admin | List all (filterable) |
+| POST | `/api/admin/invoices/{id}/send` | Admin | Send via email |
+| PATCH | `/api/admin/invoices/{id}/mark-paid` | Admin | Mark paid |
+| GET | `/api/admin/invoices/{id}/pdf` | Admin | Download PDF |
+| GET | `/api/invoices` | Authenticated | Own invoices |
+
+**Features:** Auto-increment invoice numbers, line item editor, 13% HST, branded PDF generation, SendGrid email delivery, overdue detection cron job.
+
+#### 6.60.7 Admin Subscription Management (#1391)
+
+- Subscription user table with tier control
+- Revenue dashboard: MRR, subscriber count, churn, growth charts
+- Grant bonus credits, override tier limits
+- Payment transaction history
+
+#### Sub-tasks
+
+- [ ] Stripe integration: account, SDK, webhooks (#1385)
+- [ ] Subscription plans: data model, Checkout, management API (#1386)
+- [ ] Digital wallet: balance, funding, auto-refill, transactions (#1387)
+- [ ] Credit purchases: buy packs, replace "Request More" flow (#1388)
+- [ ] Subscription frontend: pricing page, billing settings (#1389)
+- [ ] Invoice module: generate, send, track invoices (#1390)
+- [ ] Admin subscription management + revenue dashboard (#1391)
+- [ ] Backend + frontend tests (#1392)
+
+### 6.60.1 Product Strategy: Two Layers — Infrastructure vs Intelligence
+
+**GitHub Issue:** #1430
+
+ClassBridge features fall into two strategic layers:
+
+| Layer | Purpose | Examples |
+|-------|---------|---------|
+| **Layer 1: Infrastructure** (existing) | Mirror & organize school data | Google Classroom sync, calendar, messaging, tasks, study guides |
+| **Layer 2: Intelligence** (WOW features) | Tell parents what to DO with that data | Daily Briefing, Help My Kid, Weak Spot Reports, Readiness Checks |
+
+**Layer 1 is table stakes** — it gets parents in the door, but they compare it 1:1 against Google Classroom and shrug. **Layer 2 is the moat** — no other tool does this. Google Classroom doesn't tell a parent "Your child failed 3 geometry questions this week — here's a practice set."
+
+**The Car Analogy:** Layer 1 is the engine. Layer 2 is the steering wheel. Parents don't buy a car because it has an engine — every car has one. They buy it because of how it drives.
+
+**Recommendations:**
+1. Don't remove or de-emphasize existing features — they feed Layer 2
+2. Reposition them in the UI as supporting tools, not the headline
+3. Lead with proactive features on the dashboard — Daily Briefing front and center
+4. Marketing shift: "View your child's assignments" → "Know exactly how to help your child tonight"
+
+---
+
+### 6.61 Smart Daily Briefing — Proactive Parent Intelligence (Phase 2)
+
+A proactive daily summary that tells parents **what matters today** across all children — the #1 answer to "why should I open ClassBridge?"
+
+**GitHub Epic:** #1403
+
+**Design Philosophy:**
+- **Zero AI cost** — pure SQL aggregation against tasks, assignments, study_guides
+- **Urgency-first** — overdue → due today → due this week
+- **Per-child breakdown** with merge view for multi-child families
+- **Optional email delivery** — morning digest via SendGrid
+
+**Backend:**
+- `GET /api/briefing/daily` — aggregates today's priorities per child
+- Returns: greeting, per-child overdue/due_today/due_this_week items, study activity signals, summary counts
+- Student variant: same endpoint returns own data when role=STUDENT
+- Role: PARENT or STUDENT
+
+**Frontend:**
+- `DailyBriefing` component replaces Today's Focus header on Parent Dashboard
+- Compact card per child: urgency counts + top items with "Help Study" buttons (§6.62)
+- "All caught up!" positive state with celebration styling
+- Progressive disclosure: summary counts visible, expand for item details
+- Mobile: stacks vertically, briefing first
+
+**Email Digest (optional):**
+- Daily email at 7 AM (EST default) via SendGrid cron
+- `daily_briefing.html` template with per-child summary
+- New fields: `users.daily_digest_enabled` (Boolean, default false)
+- Unsubscribe link in footer
+
+**Sub-tasks:**
+- [ ] Backend: daily briefing aggregation endpoint (#1404)
+- [ ] Frontend: briefing card on parent dashboard (#1405)
+- [ ] Email: optional daily morning digest (#1406)
+
+### 6.62 Help My Kid — One-Tap Study Actions (Phase 2)
+
+Parent sees an upcoming test → taps **"Help Study"** → ClassBridge generates a practice quiz and sends it to the child's dashboard with a notification.
+
+**GitHub Epic:** #1407
+
+**User Flow:**
+1. Parent sees "Emma has Math test tomorrow" in Daily Briefing or anywhere in app
+2. Parent taps "Help Study" button
+3. Modal: "Generate study help for Emma's Math test?" — Quiz / Study Guide / Flashcards
+4. Parent confirms → AI generates in background (existing pipeline)
+5. Emma gets notification: "Mom sent you a practice quiz for tomorrow's Math test!"
+6. Material appears on Emma's dashboard with "From Parent" badge
+
+**Backend:**
+- `POST /api/help-study` — generates study material for child, auto-notifies
+- Request: `{ student_id, source_type, source_id, material_type, topic_hint }`
+- Tags material with `generated_by_user_id` (parent) + `generated_for_user_id` (student)
+- Creates notification for student
+- New fields: `study_guides.generated_by_user_id`, `study_guides.generated_for_user_id` (FK, nullable)
+
+**Frontend:**
+- "Help Study" buttons on: Daily Briefing items, Task Detail, Course Material Detail, Calendar popover
+- Generation modal with material type selector
+- Non-blocking (background generation, existing pattern)
+
+**AI Cost:** ~$0.02/call (existing gpt-4o-mini pipeline, governed by §6.54 usage limits)
+
+**Source Material Linking (Derived Content):**
+
+Generated materials maintain a **lineage chain** back to their source via a self-referential FK on `study_guides`:
+
+```
+study_guides table (existing — add 3 nullable FK columns):
+  + source_study_guide_id  (FK → study_guides.id)  — "derived from" link
+  + generated_by_user_id   (FK → users.id)          — who triggered generation
+  + generated_for_user_id  (FK → users.id)          — who it's for (child)
+```
+
+**Why self-referential FK (not a new table):**
+- No new entity type — a generated quiz is still a `study_guide` with `guide_type=quiz`
+- Existing CRUD, permissions, and UI all work unchanged
+- Source traceability: Original Document → Study Guide → Quiz → Word Problems (chain via `source_study_guide_id`)
+- UI shows "Derived from: [Math Chapter 5 Study Guide]" as a clickable link on material detail page
+
+**Constraints:**
+- Max 2 levels deep (original → derived → sub-derived). Prevents infinite chains
+- Soft-delete only on source materials. If hard-deleted, set children's `source_study_guide_id = NULL`
+- Dedup: same content_hash + 60-second window (existing pattern) prevents duplicate derived materials
+
+**UI:**
+- Material detail page shows "Derived from: [source title]" breadcrumb link
+- Source material detail page shows "Derived materials: [Quiz] [Flashcards] [Word Problems]" section
+- "Generate More" dropdown on any material: Quiz / Flashcards / Word Problems / Summary — creates a new `study_guide` with `source_study_guide_id` pointing to current
+
+**Sub-tasks:**
+- [ ] Backend: one-tap generation with auto-notify (#1408)
+- [ ] Frontend: Help Study buttons + generation modal (#1409)
+
+### 6.63 Weekly Progress Pulse — Email Digest (Phase 2)
+
+Weekly email digest summarizing the past week and previewing the next. Sent Sunday evening.
+
+**GitHub Epic:** #1413
+
+**Email Content:**
+- Per-child: completed assignments/tasks count, overdue items, quiz scores, next week preview
+- "All caught up!" celebration for children with no overdue
+- Direct links to ClassBridge for each item
+- Unsubscribe link
+
+**Backend:**
+- Weekly digest aggregation service (queries tasks, assignments, quiz results per child)
+- `weekly_progress_pulse.html` email template
+- Cloud Scheduler / cron: Sunday 6 PM EST
+- Parent preferences: opt-in/out
+
+**AI Cost:** $0.00 — pure SQL + SendGrid
+
+**Sub-tasks:**
+- [ ] Backend: weekly digest aggregation service
+- [ ] Email template: weekly_progress_pulse.html
+- [ ] Cron/Cloud Scheduler trigger
+- [ ] Parent notification preferences
+
+### 6.64 Parent-Child Study Link — Feedback Loop (Phase 2)
+
+When a parent generates study material (§6.62), a feedback loop tracks completion and reports back.
+
+**GitHub Epic:** #1414
+
+**Flow:**
+1. Parent generates quiz → child notified
+2. Child completes quiz → parent notified with score + struggle areas
+3. Parent sees "Study Help I've Sent" with completion status
+
+**Data Model:**
+```sql
+study_help_links:
+  id, sender_user_id (parent), recipient_user_id (student),
+  study_guide_id, source_type, source_id,
+  status (sent/opened/completed), score (nullable),
+  created_at, completed_at
+```
+
+**Frontend:**
+- Parent: "Study Help I've Sent" section (items + scores)
+- Student: "From Parent" badge on received materials
+- Notifications both directions
+
+**AI Cost:** $0.00 for tracking. Generation cost covered by §6.62.
+
+### 6.65 Dashboard Redesign — Clean, Persona-Based Layouts (Phase 2)
+
+Redesign all four dashboards to be clean, uncluttered, and persona-driven.
+
+**GitHub Epic:** #1415
+
+**Design Philosophy:**
+- **One-screen rule**: Everything visible without scrolling on desktop (1080p)
+- **3-section max**: Each dashboard has at most 3 primary sections
+- **White space is a feature**: Generous padding, no visual noise
+- **Role-specific language**: Parents see "your children", students see "your classes"
+- **Action-first**: Lead with what the user can DO
+
+**Per-Role Layouts:**
+
+| Dashboard | Sections | Issue |
+|-----------|----------|-------|
+| Parent v5 | Daily Briefing + Child Snapshot + Quick Actions | #1416 |
+| Student v4 | Coming Up + Recent Study + Quick Actions | #1417 |
+| Teacher v2 | Student Alerts + My Classes + Quick Actions | #1418 |
+| Admin v2 | Platform Health + Recent Activity + Quick Actions | #1419 |
+
+**Sub-tasks:**
+- [ ] Parent Dashboard v5 (#1416)
+- [ ] Student Dashboard v4 (#1417)
+- [ ] Teacher Dashboard v2 (#1418)
+- [ ] Admin Dashboard v2 (#1419)
+- [ ] DashboardLayout header cleanup
+- [ ] CSS dead code removal (v1-v4 remnants)
+
+### 6.66 Responsible AI Parent Tools — Parent-First Study Toolkit (Phase 2)
+
+A suite of parent-first AI tools designed around the principle: *"Make the parent's life easier, make the student do the work."*
+
+**GitHub Epic:** #1421
+
+**Responsible AI Test — every tool must pass:**
+- Does it require the student to DO something? ✅
+- Does it help the PARENT understand and engage? ✅
+- Could the student use it to avoid studying? ❌ → Don't build it
+
+**Tools:**
+
+| # | Tool | For Parent | For Student | AI Cost | Guide Type |
+|---|------|-----------|-------------|---------|------------|
+| 1 | **"Is My Kid Ready?" Assessment** | Readiness score + gap areas | Must answer 5 questions | ~$0.02 | `readiness` |
+| 2 | **Parent Briefing Notes** | Plain-language topic summary + home help tips | Never sees it | ~$0.01 | `parent_briefing` |
+| 3 | **Practice Problem Sets** | "I gave extra practice" | Must solve open-ended problems | ~$0.02 | `practice_problems` |
+| 4 | **Weak Spot Report** | Trend analysis over time | Sees own progress | $0.00 | N/A (SQL) |
+| 5 | **Conversation Starters** | Dinner table engagement prompts | N/A | ~$0.005 | N/A (cached) |
+
+**Data Model:**
+- Tools 1-3 reuse `study_guides` table with new `guide_type` values (`readiness`, `parent_briefing`, `practice_problems`)
+- `source_study_guide_id` links back to source material (§6.62 lineage chain)
+- Parent Briefing visibility: `generated_for_user_id = parent_id` + RBAC prevents student access
+- Weak Spot Report: pure SQL aggregation of existing `quiz_results` table
+- Conversation Starters: cached per course material, regenerate on new content
+
+**Revised "Help Study" Menu (§6.62 update):**
+- Primary actions: Quick Assessment, Practice Problems, Parent Briefing
+- Secondary ("More options"): Quiz, Study Guide, Flashcards
+- Parent Briefing only visible to parent role
+
+**Sub-tasks:**
+- [ ] "Is My Kid Ready?" readiness assessment (#1422)
+- [ ] Parent Briefing Notes (#1423)
+- [ ] Practice Problem Sets (#1424)
+- [ ] Weak Spot Report (#1425)
+- [ ] Conversation Starters (#1426)
+- [ ] Frontend: revised Help Study menu (#1427)
+- [ ] Tests (#1428)
+
+### 6.67 Smart Data Import — Parent-Powered School Data (Phase 2)
+
+School boards won't grant API access. Google Classroom OAuth requires individual setup. Manual upload creates friction. **Solution: empower parents to bring their own data in.**
+
+**GitHub Epic:** #1431
+
+**Key Insight:** Don't ask the school board for permission. Parents already have the data — report cards, emails, handouts, calendar feeds. Make it effortless to import.
+
+**This is a Layer 1 → Layer 2 accelerator** (#1430): the easier data flows in, the smarter Daily Briefing (#1403) and Help My Kid (#1407) become.
+
+#### 6.67.1 Photo Capture (#1432)
+
+Parent photographs assignment sheet / report card → GPT-4o-mini vision extracts structured data (title, due date, subject, grade).
+
+- Endpoint: `POST /api/import/photo` (multipart)
+- AI cost: ~$0.02/photo
+- Returns preview → parent confirms/edits → saved as assignment, task, or content
+- Original photo stored as attachment
+- Mobile-friendly camera integration
+
+#### 6.67.2 Email Forwarding (#1433)
+
+Parent forwards school email to `import@classbridge.ca` → system parses assignment details automatically.
+
+- SendGrid Inbound Parse webhook → `POST /api/import/email-webhook`
+- Match incoming email to parent by registered email address
+- AI cost: ~$0.01/email for structured extraction
+- Pending imports queue with 7-day expiry + review UI
+- Optional: parent sets auto-forwarding rule for zero ongoing effort
+
+#### 6.67.3 Calendar Import / ICS Feed (#1434)
+
+Parent pastes school calendar URL → ClassBridge syncs events, due dates, school holidays.
+
+- Endpoint: `POST /api/import/calendar` (URL input)
+- Python `icalendar` library for parsing — **$0 AI cost**
+- `calendar_feeds` table: user_id, url, last_synced, refresh_interval
+- Daily auto-refresh, duplicate detection by UID
+- Events appear in ClassBridge calendar + Daily Briefing
+
+#### Deprioritized
+
+- **Browser extension:** Higher dev cost, store approvals, maintenance burden
+- **Direct school board integrations:** Long sales cycle, legal complexity, unlikely in Phase 2
+
+**Sub-tasks:**
+- [ ] Photo Capture: snap & import (#1432)
+- [ ] Email Forwarding: parse school emails (#1433)
+- [ ] Calendar Import: ICS feed sync (#1434)
+
+---
