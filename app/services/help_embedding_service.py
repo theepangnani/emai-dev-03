@@ -204,7 +204,7 @@ class HelpEmbeddingService:
                 from app.core.config import settings
                 import openai
 
-                client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+                client = openai.AsyncOpenAI(api_key=settings.openai_api_key.strip())
                 texts = [chunk["text"] for chunk in all_chunks]
 
                 # Batch in groups of 100 (API limit is 2048)
@@ -253,7 +253,7 @@ class HelpEmbeddingService:
             from app.core.config import settings
             import openai
 
-            client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+            client = openai.AsyncOpenAI(api_key=settings.openai_api_key.strip())
             response = await client.embeddings.create(
                 model="text-embedding-3-small",
                 input=[query],
