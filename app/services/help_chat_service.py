@@ -165,7 +165,7 @@ class HelpChatService:
             from app.core.config import settings
             import anthropic
 
-            client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+            client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.strip())
             response = await client.messages.create(
                 model=settings.claude_model,
                 system=system_prompt,
