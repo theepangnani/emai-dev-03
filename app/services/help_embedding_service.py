@@ -234,7 +234,7 @@ class HelpEmbeddingService:
 
         except Exception as e:
             logger.error(f"Failed to initialize help embedding service: {e}")
-            self._initialized = True  # Mark as initialized to prevent retry loops
+            # Leave _initialized = False so the next request retries initialization
 
     # ------------------------------------------------------------------
     # Semantic search
@@ -244,6 +244,8 @@ class HelpEmbeddingService:
         self, query: str, top_k: int = 5, role_filter: Optional[str] = None
     ) -> list[ChunkResult]:
         """Search for relevant chunks using cosine similarity."""
+        if not self._initialized:
+            await self.initialize()
         if not self.chunks:
             return []
 
