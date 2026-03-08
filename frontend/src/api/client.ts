@@ -189,3 +189,5 @@ export { activityApi } from './activity';
 export type { ActivityItem } from './activity';
 export { briefingApi } from './briefing';
 export type { DailyBriefingResponse, BriefingChildSection } from './briefing';
+export { parentAIApi } from './parentAI';
+export type { WeakSpot, WeakSpotsResponse, ReadinessItem, ReadinessCheckResponse, PracticeProblem, PracticeProblemsResponse } from './parentAI';
