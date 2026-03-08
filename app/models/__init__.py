@@ -30,8 +30,12 @@ from app.models.ai_usage_history import AIUsageHistory
 from app.models.source_file import SourceFile
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
+<<<<<<< HEAD
 from app.models.calendar_feed import CalendarFeed
 from app.models.calendar_event import CalendarEvent
+=======
+from app.models.help_article import HelpArticle
+>>>>>>> origin/feat/help-page
 
 __all__ = [
     "User",
@@ -80,6 +84,10 @@ __all__ = [
     "SourceFile",
     "ContentImage",
     "ResourceLink",
+<<<<<<< HEAD
     "CalendarFeed",
     "CalendarEvent",
+=======
+    "HelpArticle",
+>>>>>>> origin/feat/help-page
 ]

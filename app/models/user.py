@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import BigInteger, Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.sql import func
 import enum

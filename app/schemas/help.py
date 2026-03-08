@@ -1,4 +1,20 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
+
+
+class HelpArticleResponse(BaseModel):
+    id: int
+    slug: str
+    title: str
+    content: str
+    category: str
+    role: str | None
+    display_order: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class ConversationMessage(BaseModel):
