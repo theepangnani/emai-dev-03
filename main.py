@@ -941,6 +941,17 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # ── users: notification_preferences column (#966) ──────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "notification_preferences" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN notification_preferences TEXT"))
+                logger.info("Added 'notification_preferences' column to users (#966)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
     # --- Notes: highlights_json column (#1185) ---
     try:
         conn.execute(text("ALTER TABLE notes ADD COLUMN highlights_json TEXT"))
