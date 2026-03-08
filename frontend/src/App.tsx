@@ -80,6 +80,7 @@ const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => 
 const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
 const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage').then((m) => ({ default: m.ConfirmDeletionPage })));
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
+const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -134,6 +135,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <LinkRequestsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai-tools"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentAITools />
                   </ProtectedRoute>
                 }
               />
