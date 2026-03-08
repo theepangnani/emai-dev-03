@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.sql import func
 import enum
 
@@ -58,6 +58,9 @@ class User(Base):
     # Teacher communication sync state
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
+
+    # Interests/hobbies for AI prompt personalization
+    interests = Column(Text, nullable=True)  # JSON array string, e.g. '["pokemon","basketball"]'
 
     # Account deletion (soft-delete with 30-day grace period)
     deletion_requested_at = Column(DateTime(timezone=True), nullable=True)

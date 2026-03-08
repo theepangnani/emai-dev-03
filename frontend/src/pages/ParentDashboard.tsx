@@ -676,6 +676,42 @@ export function ParentDashboard() {
                     </div>
                     <label>Postal Code<input type="text" value={pd.editChildPostal} onChange={(e) => pd.setEditChildPostal(e.target.value)} placeholder="e.g., A1B 2C3" disabled={pd.editChildLoading} /></label>
                     <label>Notes<textarea value={pd.editChildNotes} onChange={(e) => pd.setEditChildNotes(e.target.value)} placeholder="Any additional notes about your child..." disabled={pd.editChildLoading} rows={3} /></label>
+                    <label>Interests / Hobbies
+                      <div className="interests-tag-input" style={{ marginTop: 4 }}>
+                        <div className="interests-tags">
+                          {pd.editChildInterests.map((interest: string, i: number) => (
+                            <span key={i} className="interest-tag">
+                              {interest}
+                              <button type="button" className="interest-tag-remove" onClick={() => pd.setEditChildInterests(pd.editChildInterests.filter((_: string, idx: number) => idx !== i))}>&times;</button>
+                            </span>
+                          ))}
+                          {pd.editChildInterests.length < 10 && (
+                            <input
+                              type="text"
+                              className="interest-input"
+                              value={pd.editChildInterestInput}
+                              onChange={e => pd.setEditChildInterestInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const v = pd.editChildInterestInput.trim().toLowerCase();
+                                  if (v && v.length <= 50 && !pd.editChildInterests.includes(v)) {
+                                    pd.setEditChildInterests([...pd.editChildInterests, v]);
+                                    pd.setEditChildInterestInput('');
+                                  }
+                                } else if (e.key === 'Backspace' && !pd.editChildInterestInput && pd.editChildInterests.length > 0) {
+                                  pd.setEditChildInterests(pd.editChildInterests.slice(0, -1));
+                                }
+                              }}
+                              placeholder={pd.editChildInterests.length === 0 ? 'Type an interest and press Enter...' : ''}
+                              maxLength={50}
+                              disabled={pd.editChildLoading}
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>{pd.editChildInterests.length}/10 - AI will use these to personalize study materials</span>
+                    </label>
                   </div>
                 )}
               </div>

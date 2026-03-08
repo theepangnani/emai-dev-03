@@ -151,6 +151,18 @@ def _build_image_list(images: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _interests_instruction(interests: list[str] | None) -> str:
+    """Build the interest-based personalization instruction for AI prompts."""
+    if not interests:
+        return ""
+    return (
+        f"\n\nThe student is interested in: {', '.join(interests)}. "
+        "Where relevant, use analogies, examples, and references from these interests "
+        "to make the content more engaging and relatable. "
+        "Do not force connections — only use interest-based examples when they naturally fit the topic."
+    )
+
+
 async def generate_study_guide(
     assignment_title: str,
     assignment_description: str,
@@ -159,6 +171,7 @@ async def generate_study_guide(
     custom_prompt: str | None = None,
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
+    interests: list[str] | None = None,
 ) -> str:
     """
     Generate a study guide for an assignment.
@@ -230,6 +243,8 @@ Place each image near the relevant content in your study guide. Do not force ima
 step-by-step with clear explanations so students can learn the process. For conceptual material, create
 well-organized study guides. Use simple language, practical examples, and clean Markdown formatting."""
 
+    system_prompt += _interests_instruction(interests)
+
     return await generate_content(prompt, system_prompt, max_tokens=2000)
 
 
@@ -240,6 +255,7 @@ async def generate_quiz(
     focus_prompt: str | None = None,
     difficulty: str | None = None,
     images: list[dict] | None = None,
+    interests: list[str] | None = None,
 ) -> str:
     """
     Generate a practice quiz from content.
@@ -327,6 +343,8 @@ The source material contains these images. If a quiz question or flashcard relat
 understanding, not just memorization. Make wrong answers plausible but clearly incorrect.
 Always return valid JSON."""
 
+    system_prompt += _interests_instruction(interests)
+
     # ~250 tokens per question (question + 4 options + explanation), plus buffer for dates section
     max_tokens = max(2000, num_questions * 250 + 500)
     return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
@@ -338,6 +356,7 @@ async def generate_flashcards(
     num_cards: int = 10,
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
+    interests: list[str] | None = None,
 ) -> str:
     """
     Generate flashcards from content.
@@ -396,6 +415,8 @@ The source material contains these images. If a quiz question or flashcard relat
     system_prompt = """You are an expert at creating effective study flashcards.
 Focus on key concepts and important details. Make cards concise but informative.
 Always return valid JSON."""
+
+    system_prompt += _interests_instruction(interests)
 
     # ~100 tokens per flashcard (front + back), plus buffer for dates section
     max_tokens = max(1500, num_cards * 100 + 500)

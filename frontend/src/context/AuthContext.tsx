@@ -13,6 +13,7 @@ interface User {
   needs_onboarding: boolean;
   onboarding_completed: boolean;
   email_verified: boolean;
+  interests: string[];
 }
 
 interface AuthContextType {
