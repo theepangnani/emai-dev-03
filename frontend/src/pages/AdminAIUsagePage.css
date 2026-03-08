@@ -104,6 +104,9 @@
 /* Search */
 .ai-usage-search {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .ai-usage-search input {
@@ -273,6 +276,18 @@
 
 .ai-usage-btn.reset:hover:not(:disabled) {
   background: #e65100;
+  color: #fff;
+}
+
+.ai-usage-btn.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.ai-usage-btn.primary:hover:not(:disabled) {
+  opacity: 0.9;
+  background: var(--color-accent);
   color: #fff;
 }
 

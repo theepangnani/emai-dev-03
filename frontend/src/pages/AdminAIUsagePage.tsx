@@ -52,6 +52,7 @@ export function AdminAIUsagePage() {
   // Modals / inline state
   const [limitModal, setLimitModal] = useState<{ user: AIUsageUser; value: number } | null>(null);
   const [confirmReset, setConfirmReset] = useState<number | null>(null);
+  const [bulkLimitModal, setBulkLimitModal] = useState<{ value: number; resetCounts: boolean } | null>(null);
   const [approveAmounts, setApproveAmounts] = useState<Record<number, number>>({});
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
@@ -147,6 +148,20 @@ export function AdminAIUsagePage() {
     try {
       await adminAIUsageApi.setUserLimit(limitModal.user.id, limitModal.value);
       setLimitModal(null);
+      loadUsers();
+      adminAIUsageApi.getSummary().then(setSummary).catch(() => {});
+    } finally {
+      setActionBusy(key, false);
+    }
+  };
+
+  const handleBulkSetLimit = async () => {
+    if (!bulkLimitModal) return;
+    const key = 'bulk-limit';
+    setActionBusy(key, true);
+    try {
+      await adminAIUsageApi.bulkSetLimit(bulkLimitModal.value, bulkLimitModal.resetCounts);
+      setBulkLimitModal(null);
       loadUsers();
       adminAIUsageApi.getSummary().then(setSummary).catch(() => {});
     } finally {
@@ -312,6 +327,12 @@ export function AdminAIUsagePage() {
                   setUsersPage(0);
                 }}
               />
+              <button
+                className="ai-usage-btn primary"
+                onClick={() => setBulkLimitModal({ value: 10, resetCounts: false })}
+              >
+                Set Limit for All
+              </button>
             </div>
 
             {usersLoading ? (
@@ -718,6 +739,49 @@ export function AdminAIUsagePage() {
                   onClick={handleSetLimit}
                 >
                   Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {bulkLimitModal && (
+          <div className="ai-usage-modal-overlay" onClick={() => setBulkLimitModal(null)}>
+            <div className="ai-usage-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>Set Limit for All Users</h3>
+              <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', margin: '0 0 16px' }}>
+                This will update the AI credit limit for <strong>every user</strong> on the platform.
+              </p>
+              <label htmlFor="bulk-limit-input">New Limit</label>
+              <input
+                id="bulk-limit-input"
+                type="number"
+                min={0}
+                value={bulkLimitModal.value}
+                onChange={(e) =>
+                  setBulkLimitModal({ ...bulkLimitModal, value: parseInt(e.target.value, 10) || 0 })
+                }
+              />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={bulkLimitModal.resetCounts}
+                  onChange={(e) =>
+                    setBulkLimitModal({ ...bulkLimitModal, resetCounts: e.target.checked })
+                  }
+                />
+                Also reset all usage counts to 0
+              </label>
+              <div className="ai-usage-modal-actions">
+                <button className="ai-usage-modal-btn" onClick={() => setBulkLimitModal(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="ai-usage-modal-btn primary"
+                  disabled={!!actionLoading['bulk-limit']}
+                  onClick={handleBulkSetLimit}
+                >
+                  {actionLoading['bulk-limit'] ? 'Applying...' : 'Apply to All'}
                 </button>
               </div>
             </div>

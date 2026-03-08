@@ -83,6 +83,16 @@ class AILimitRequestList(BaseModel):
     total: int
 
 
+class AIBulkSetLimitRequest(BaseModel):
+    ai_usage_limit: int = Field(..., ge=0)
+    reset_counts: bool = False
+
+
+class AIBulkSetLimitResponse(BaseModel):
+    updated_count: int
+    new_limit: int
+
+
 class AIUsageSummaryTopUser(BaseModel):
     id: int
     full_name: str
