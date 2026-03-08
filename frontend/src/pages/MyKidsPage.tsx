@@ -16,6 +16,8 @@ import type { CalendarAssignment } from '../components/calendar/types';
 import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
+import { DailyBriefingCard } from '../components/briefing/DailyBriefingCard';
+import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import './MyKidsPage.css';
 
 const CHILD_COLORS = [
@@ -63,6 +65,8 @@ export function MyKidsPage() {
   const [showMaterials, setShowMaterials] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [showTeachers, setShowTeachers] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [showConversation, setShowConversation] = useState(false);
 
   // Reassign class material to course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
@@ -987,6 +991,32 @@ export function MyKidsPage() {
                 selectedChildId={selectedChild ?? undefined}
                 onViewDetails={() => navigate('/grades')}
               />
+            )}
+          </div>
+
+          {/* ── Daily Briefing ──────────────────────── */}
+          <div className="mykids-section section-card">
+            <button className="mykids-section-header section-card-header" onClick={() => setShowBriefing(p => !p)}>
+              <span className={`section-chevron${showBriefing ? ' expanded' : ''}`}>&#9654;</span>
+              <span className="section-icon" aria-hidden="true">&#128240;</span> Daily Briefing
+            </button>
+            {showBriefing && (
+              <div className="section-card-body">
+                <DailyBriefingCard />
+              </div>
+            )}
+          </div>
+
+          {/* ── Dinner Table Talk ──────────────────── */}
+          <div className="mykids-section section-card">
+            <button className="mykids-section-header section-card-header" onClick={() => setShowConversation(p => !p)}>
+              <span className={`section-chevron${showConversation ? ' expanded' : ''}`}>&#9654;</span>
+              <span className="section-icon" aria-hidden="true">&#128172;</span> Dinner Table Talk
+            </button>
+            {showConversation && (
+              <div className="section-card-body">
+                <ConversationStartersCard studentId={selectedChild} />
+              </div>
             )}
           </div>
 

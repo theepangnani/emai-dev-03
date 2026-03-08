@@ -1,41 +1,35 @@
 import { useState, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { conversationStartersApi } from '../../api/conversationStarters';
 import type { ConversationStartersResponse } from '../../api/conversationStarters';
 import './ConversationStartersCard.css';
 
 interface Props {
-  /** If provided, generate for a specific child. Otherwise uses daily endpoint. */
-  studentId?: number;
+  studentId: number;
 }
 
 export function ConversationStartersCard({ studentId }: Props) {
-  const queryClient = useQueryClient();
+  const [data, setData] = useState<ConversationStartersResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data, isLoading, error } = useQuery<ConversationStartersResponse>({
-    queryKey: ['conversation-starters', studentId ?? 'daily'],
-    queryFn: () =>
-      studentId
-        ? conversationStartersApi.generate(studentId)
-        : conversationStartersApi.getDaily(),
-    staleTime: 5 * 60 * 1000, // 5 min
-    retry: 1,
-  });
-
-  const handleRefresh = useCallback(async () => {
-    if (!studentId || isRefreshing) return;
-    setIsRefreshing(true);
+  const handleGenerate = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const fresh = await conversationStartersApi.generate(studentId);
-      queryClient.setQueryData(['conversation-starters', studentId], fresh);
-    } catch {
-      // silently fail — stale data still visible
+      const result = await conversationStartersApi.generate(studentId);
+      setData(result);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setError(
+        status === 429
+          ? 'AI credit limit reached. Request more credits from settings.'
+          : 'Could not generate conversation starters.'
+      );
     } finally {
-      setIsRefreshing(false);
+      setIsLoading(false);
     }
-  }, [studentId, isRefreshing, queryClient]);
+  }, [studentId]);
 
   const handleCopy = useCallback((text: string, idx: number) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -43,6 +37,26 @@ export function ConversationStartersCard({ studentId }: Props) {
       setTimeout(() => setCopiedIdx(null), 2000);
     });
   }, []);
+
+  // Initial state — show generate button
+  if (!data && !isLoading && !error) {
+    return (
+      <div className="conv-starters-card">
+        <div className="conv-starters-header">
+          <h4 className="conv-starters-title">
+            <span className="conv-starters-title-icon" aria-hidden="true">&#128172;</span>
+            Dinner Table Talk
+          </h4>
+        </div>
+        <p className="conv-starters-subtitle">
+          Get conversation starters to chat about school at dinner. Uses 1 AI credit.
+        </p>
+        <button className="conv-starters-generate" onClick={handleGenerate}>
+          Generate Conversation Ideas
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -56,12 +70,12 @@ export function ConversationStartersCard({ studentId }: Props) {
   }
 
   if (error) {
-    const msg = (error as { response?: { status?: number } })?.response?.status === 429
-      ? 'AI credit limit reached. Request more credits from settings.'
-      : 'Could not load conversation starters.';
     return (
       <div className="conv-starters-card">
-        <div className="conv-starters-error">{msg}</div>
+        <div className="conv-starters-error">{error}</div>
+        <button className="conv-starters-generate" onClick={handleGenerate}>
+          Try Again
+        </button>
       </div>
     );
   }
@@ -69,7 +83,7 @@ export function ConversationStartersCard({ studentId }: Props) {
   if (!data || data.starters.length === 0) {
     return (
       <div className="conv-starters-card">
-        <div className="conv-starters-empty">No conversation starters yet. Link a child to get started.</div>
+        <div className="conv-starters-empty">No conversation starters generated.</div>
       </div>
     );
   }
@@ -81,16 +95,14 @@ export function ConversationStartersCard({ studentId }: Props) {
           <span className="conv-starters-title-icon" aria-hidden="true">&#128172;</span>
           Dinner Table Talk
         </h4>
-        {studentId && (
-          <button
-            className="conv-starters-refresh"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            title="Generate new conversation starters"
-          >
-            {isRefreshing ? 'Generating...' : 'Refresh'}
-          </button>
-        )}
+        <button
+          className="conv-starters-refresh"
+          onClick={handleGenerate}
+          disabled={isLoading}
+          title="Generate new conversation starters (uses 1 AI credit)"
+        >
+          {isLoading ? 'Generating...' : 'Refresh'}
+        </button>
       </div>
       <p className="conv-starters-subtitle">
         Natural ways to chat with {data.student_name} about school
