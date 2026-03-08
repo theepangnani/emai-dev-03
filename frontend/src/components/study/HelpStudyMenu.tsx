@@ -8,6 +8,7 @@ export interface HelpStudyMenuProps {
   courseContentId?: number;
   assignmentId?: number;
   onClose: () => void;
+  onGenerate?: (type: 'study_guide' | 'quiz' | 'flashcards') => void;
 }
 
 interface MenuItem {
@@ -24,6 +25,7 @@ export function HelpStudyMenu({
   courseContentId,
   assignmentId,
   onClose,
+  onGenerate,
 }: HelpStudyMenuProps) {
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -62,19 +64,19 @@ export function HelpStudyMenu({
       icon: '\u{1F4DD}',
       label: 'Create Study Guide',
       description: 'Generate notes for this topic',
-      action: () => { navigate(buildMaterialUrl('guide')); onClose(); },
+      action: () => { if (onGenerate) { onGenerate('study_guide'); } else { navigate(buildMaterialUrl('guide')); } onClose(); },
     },
     {
       icon: '\u2753',
       label: 'Create Quiz',
       description: 'Test knowledge with questions',
-      action: () => { navigate(buildMaterialUrl('quiz')); onClose(); },
+      action: () => { if (onGenerate) { onGenerate('quiz'); } else { navigate(buildMaterialUrl('quiz')); } onClose(); },
     },
     {
       icon: '\u{1F0CF}',
       label: 'Create Flashcards',
       description: 'Quick review cards',
-      action: () => { navigate(buildMaterialUrl('flashcards')); onClose(); },
+      action: () => { if (onGenerate) { onGenerate('flashcards'); } else { navigate(buildMaterialUrl('flashcards')); } onClose(); },
     },
   ];
 
@@ -113,9 +115,8 @@ export function HelpStudyMenu({
       label: 'Conversation Starters',
       description: 'Dinner table discussion prompts',
       action: () => {
-        const params = new URLSearchParams({ studentId: String(studentId) });
-        if (courseId) params.set('courseId', String(courseId));
-        navigate(`/dashboard?${params.toString()}`);
+        const params = new URLSearchParams({ student_id: String(studentId) });
+        navigate(`/my-kids?${params.toString()}`);
         onClose();
       },
     },

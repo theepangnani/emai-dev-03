@@ -831,6 +831,11 @@ export function CourseMaterialDetailPage() {
           courseId={content?.course_id}
           courseContentId={contentId}
           onClose={() => setShowHelpStudyMenu(false)}
+          onGenerate={(type) => {
+            const tabMap = { study_guide: 'guide' as TabKey, quiz: 'quiz' as TabKey, flashcards: 'flashcards' as TabKey };
+            setActiveTab(tabMap[type]);
+            handleGenerate(type);
+          }}
         />
       )}
     </DashboardLayout>
