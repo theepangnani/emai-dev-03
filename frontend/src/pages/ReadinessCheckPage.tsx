@@ -97,7 +97,7 @@ export function ReadinessCheckPage() {
   // ── Load children + courses for create form ──
   useEffect(() => {
     if (!isParent) return;
-    parentApi.listChildren().then(setChildren).catch(() => {});
+    parentApi.getChildren().then(setChildren).catch(() => {});
   }, [isParent]);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export function ReadinessCheckPage() {
 
   // ── Open pending quiz (student view) ──
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const openQuiz = async (item: ReadinessListItem) => {
+  const openQuiz = async (_item: ReadinessListItem) => {
     // We need to re-fetch the assessment to get questions
     // The list endpoint doesn't have questions, so use the report endpoint which will 400 if not complete
     // Instead, fetch from the study guide directly — but we don't have that API
@@ -223,7 +223,7 @@ export function ReadinessCheckPage() {
                 <option value="">Choose a child...</option>
                 {children.map(c => (
                   <option key={c.student_id} value={c.student_id}>
-                    {c.name}
+                    {c.full_name}
                   </option>
                 ))}
               </select>

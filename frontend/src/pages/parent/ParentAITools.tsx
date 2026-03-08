@@ -128,7 +128,7 @@ export function ParentAITools() {
 
   if (loading) {
     return (
-      <DashboardLayout title="AI Tools">
+      <DashboardLayout>
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -136,7 +136,7 @@ export function ParentAITools() {
 
   if (children.length === 0) {
     return (
-      <DashboardLayout title="AI Tools">
+      <DashboardLayout>
         <div className="pai-empty">
           <h2>No children linked</h2>
           <p>Link a child from the My Kids page to use AI tools.</p>
@@ -146,7 +146,7 @@ export function ParentAITools() {
   }
 
   return (
-    <DashboardLayout title="AI Tools">
+    <DashboardLayout>
       <div className="pai-container">
         <div className="pai-header">
           <h1>Responsible AI Tools</h1>

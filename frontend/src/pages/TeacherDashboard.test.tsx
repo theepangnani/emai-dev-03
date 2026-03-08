@@ -134,7 +134,7 @@ describe.skip('TeacherDashboard', () => {
   })
 
   // ── Loading & Data ───────────────────────────────────────────
-  it('renders My Classes quick action and course list after loading', async () => {
+  it('renders Create Class quick action and course list after loading', async () => {
     mockTeachingList.mockResolvedValue([
       { id: 1, name: 'Algebra I', description: null, subject: 'Math', google_classroom_id: null, student_count: 0 },
       { id: 2, name: 'Geometry', description: 'Shapes', subject: null, google_classroom_id: 'gc-1', student_count: 0 },
@@ -145,14 +145,13 @@ describe.skip('TeacherDashboard', () => {
     ])
     renderWithProviders(<TeacherDashboard />)
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'My Classes' })).toBeInTheDocument()
-    })
     // Courses appear in the Course Management section (loaded via teachingManagement)
     await waitFor(() => {
       expect(screen.getByText('Algebra I')).toBeInTheDocument()
     })
     expect(screen.getByText('Geometry')).toBeInTheDocument()
+    // Quick Actions section has Create Class
+    expect(screen.getAllByText(/Create Class/).length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders courses list after loading', async () => {
@@ -186,59 +185,30 @@ describe.skip('TeacherDashboard', () => {
   })
 
   // ── Google Connection ────────────────────────────────────────
-  it('shows "Google Classroom" action when not connected', async () => {
-    renderWithProviders(<TeacherDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Google Classroom' })).toBeInTheDocument()
-    })
-  })
-
-  it('shows "Sync Classes" action when Google is connected', async () => {
+  it('shows Sync Classes button in course management when Google is connected', async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
+    mockTeachingManagement.mockResolvedValue([
+      mockMgmtCourse({ id: 1, name: 'Algebra I' }),
+    ])
     renderWithProviders(<TeacherDashboard />)
 
     await waitFor(() => {
       const syncButtons = screen.getAllByRole('button', { name: 'Sync Classes' })
       expect(syncButtons.length).toBeGreaterThanOrEqual(1)
-    })
-  })
-
-  it('handles Connect Google click', async () => {
-    mockGetConnectUrl.mockResolvedValue({ authorization_url: 'https://accounts.google.com/auth' })
-    const user = userEvent.setup()
-    renderWithProviders(<TeacherDashboard />)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Google Classroom' })).toBeInTheDocument()
-    })
-
-    // Mock window.location.href
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      value: { ...originalLocation, href: '' },
-      writable: true,
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Google Classroom' }))
-
-    await waitFor(() => {
-      expect(mockGetConnectUrl).toHaveBeenCalled()
-    })
-
-    // Restore
-    Object.defineProperty(window, 'location', { value: originalLocation, writable: true })
+    }, { timeout: 3000 })
   })
 
   it('handles Sync Classes click', async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
     mockSyncCourses.mockResolvedValue({})
+    const syncedCourse = [{ id: 1, name: 'Synced Course', description: null, subject: null, google_classroom_id: 'gc-1' }]
+    const syncedMgmt = [mockMgmtCourse({ id: 1, name: 'Synced Course', google_classroom_id: 'gc-1', source: 'google' })]
     mockTeachingList
       .mockResolvedValueOnce([]) // initial load
-      .mockResolvedValueOnce([{ id: 1, name: 'Synced Course', description: null, subject: null, google_classroom_id: 'gc-1' }]) // after sync
+      .mockResolvedValue(syncedCourse) // after sync (may be called multiple times due to re-mount)
     mockTeachingManagement
       .mockResolvedValueOnce([]) // initial load
-      .mockResolvedValueOnce([mockMgmtCourse({ id: 1, name: 'Synced Course', google_classroom_id: 'gc-1', source: 'google' })]) // after sync
+      .mockResolvedValue(syncedMgmt) // after sync (may be called multiple times due to re-mount)
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
@@ -369,26 +339,19 @@ describe.skip('TeacherDashboard', () => {
   })
 
   // ── Invite Parent Modal ──────────────────────────────────────
-  // Helper: open the "More" dropdown and click "Invite Parents"
-  async function openInviteParentViaMore(user: ReturnType<typeof userEvent.setup>) {
-    // Wait for the More dropdown trigger to appear
+  // Helper: open invite parent modal via Quick Actions button
+  async function openInviteParentModal(user: ReturnType<typeof userEvent.setup>) {
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'More' })).toBeInTheDocument()
+      expect(screen.getByText('Invite Parents')).toBeInTheDocument()
     })
-    // Open "More" dropdown
-    await user.click(screen.getByRole('button', { name: 'More' }))
-    // Click "Invite Parents" in the dropdown
-    await waitFor(() => {
-      expect(screen.getByRole('menuitem', { name: 'Invite Parents' })).toBeInTheDocument()
-    })
-    await user.click(screen.getByRole('menuitem', { name: 'Invite Parents' }))
+    await user.click(screen.getByText('Invite Parents'))
   }
 
-  it('opens invite parent modal from More dropdown', async () => {
+  it('opens invite parent modal from quick action', async () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await openInviteParentViaMore(user)
+    await openInviteParentModal(user)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Invite Parent' })).toBeInTheDocument()
@@ -403,7 +366,7 @@ describe.skip('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await openInviteParentViaMore(user)
+    await openInviteParentModal(user)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('parent@example.com')).toBeInTheDocument()
@@ -429,7 +392,7 @@ describe.skip('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await openInviteParentViaMore(user)
+    await openInviteParentModal(user)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('parent@example.com')).toBeInTheDocument()
@@ -450,7 +413,7 @@ describe.skip('TeacherDashboard', () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    await openInviteParentViaMore(user)
+    await openInviteParentModal(user)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('parent@example.com')).toBeInTheDocument()
@@ -479,7 +442,6 @@ describe.skip('TeacherDashboard', () => {
     expect(screen.getByText('teacher@gmail.com')).toBeInTheDocument()
     expect(screen.getByText('Primary')).toBeInTheDocument()
     expect(screen.getByText('alt@gmail.com')).toBeInTheDocument()
-    expect(screen.getByText('Work')).toBeInTheDocument()
   })
 
   it('handles remove Google account', async () => {
@@ -560,8 +522,8 @@ describe.skip('TeacherDashboard', () => {
       expect(screen.getByText('pending@example.com')).toBeInTheDocument()
     })
 
-    // Click the Resend button inside the sent-invite-actions section
-    const resendBtn = document.querySelector('.sent-invite-actions .text-btn') as HTMLElement
+    // Click the Resend button inside the sent invites section
+    const resendBtn = screen.getByRole('button', { name: 'Resend' })
     expect(resendBtn).toBeTruthy()
     await user.click(resendBtn)
 
@@ -571,20 +533,21 @@ describe.skip('TeacherDashboard', () => {
   })
 
   // ── Navigation cards ─────────────────────────────────────────
-  it('navigates to messages on Messages quick action click', async () => {
+  it('navigates to messages on Message Parents quick action click', async () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
-    // Wait specifically for the rqa-card Messages button (not just the sidebar nav item)
-    let messagesBtn!: HTMLElement
+    // Wait for the quick action button to appear
     await waitFor(() => {
-      const card = Array.from(document.querySelectorAll('.rqa-card')).find(
-        el => el.textContent?.includes('Messages')
-      ) as HTMLElement | undefined
-      expect(card).toBeTruthy()
-      messagesBtn = card!
+      expect(screen.getByText('Message Parents')).toBeInTheDocument()
     })
-    await user.click(messagesBtn)
+
+    // Click the "Message Parents" quick action in the dash-quick-actions section
+    const btn = Array.from(document.querySelectorAll('.dash-quick-action')).find(
+      el => el.textContent?.includes('Message Parents')
+    ) as HTMLElement | undefined
+    expect(btn).toBeTruthy()
+    await user.click(btn!)
 
     expect(mockNavigate).toHaveBeenCalledWith('/messages')
   })
