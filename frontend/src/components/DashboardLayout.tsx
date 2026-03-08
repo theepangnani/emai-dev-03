@@ -12,7 +12,6 @@ import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STE
 import { TutorialOverlay, triggerTutorial } from './tutorial/TutorialOverlay';
 import { TUTORIAL_KEYS, PARENT_TUTORIAL_STEPS, STUDENT_TUTORIAL_STEPS, TEACHER_TUTORIAL_STEPS } from './tutorial/tutorialSteps';
 import { SpeedDialFAB } from './SpeedDialFAB';
-import { FABProvider } from '../context/FABContext';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -334,7 +333,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const showVerifyBanner = user && !user.email_verified && !verifyBannerDismissed;
 
   return (
-    <FABProvider>
     <>
       {/* Skip to content link for keyboard users */}
       <a href="#main-content" className="skip-to-content">
@@ -626,6 +624,5 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       <SpeedDialFAB />
       </div>
     </>
-    </FABProvider>
   );
 }

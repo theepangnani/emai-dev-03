@@ -1,5 +1,6 @@
 import { Suspense, lazy, type ComponentType, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { FABProvider } from './context/FABContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -105,6 +106,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
         <BrowserRouter>
+          <FABProvider>
           <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -419,6 +421,7 @@ function App() {
             </Routes>
           </Suspense>
           </ErrorBoundary>
+          </FABProvider>
         </BrowserRouter>
         </ToastProvider>
       </AuthProvider>
