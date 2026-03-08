@@ -21,6 +21,8 @@ export function useChildEditor({ loadDashboard }: UseChildEditorParams) {
   const [editChildProvince, setEditChildProvince] = useState('');
   const [editChildPostal, setEditChildPostal] = useState('');
   const [editChildNotes, setEditChildNotes] = useState('');
+  const [editChildInterests, setEditChildInterests] = useState<string[]>([]);
+  const [editChildInterestInput, setEditChildInterestInput] = useState('');
   const [editChildLoading, setEditChildLoading] = useState(false);
   const [editChildError, setEditChildError] = useState('');
   const [editChildOptionalOpen, setEditChildOptionalOpen] = useState(false);
@@ -39,6 +41,8 @@ export function useChildEditor({ loadDashboard }: UseChildEditorParams) {
     setEditChildProvince('');
     setEditChildPostal('');
     setEditChildNotes('');
+    setEditChildInterests([]);
+    setEditChildInterestInput('');
     setEditChildError('');
     setEditChildOptionalOpen(false);
   };
@@ -65,6 +69,7 @@ export function useChildEditor({ loadDashboard }: UseChildEditorParams) {
       if (editChildProvince.trim() !== (editChild.province || '')) payload.province = editChildProvince.trim() || undefined;
       if (editChildPostal.trim() !== (editChild.postal_code || '')) payload.postal_code = editChildPostal.trim() || undefined;
       if (editChildNotes.trim() !== (editChild.notes || '')) payload.notes = editChildNotes.trim() || undefined;
+      if (JSON.stringify(editChildInterests) !== JSON.stringify(editChild.interests ?? [])) payload.interests = editChildInterests;
 
       if (Object.keys(payload).length === 0) {
         closeEditChildModal();
@@ -87,7 +92,9 @@ export function useChildEditor({ loadDashboard }: UseChildEditorParams) {
     editChildDob, setEditChildDob, editChildPhone, setEditChildPhone,
     editChildAddress, setEditChildAddress, editChildCity, setEditChildCity,
     editChildProvince, setEditChildProvince, editChildPostal, setEditChildPostal,
-    editChildNotes, setEditChildNotes, editChildLoading, editChildError,
+    editChildNotes, setEditChildNotes,
+    editChildInterests, setEditChildInterests, editChildInterestInput, setEditChildInterestInput,
+    editChildLoading, editChildError,
     editChildOptionalOpen, setEditChildOptionalOpen,
     handleEditChild, closeEditChildModal,
   };

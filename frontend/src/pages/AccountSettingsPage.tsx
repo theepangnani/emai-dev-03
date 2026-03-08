@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountDeletionApi } from '../api/accountDeletion';
+import { authApi } from '../api/auth';
 import { dailyDigestApi, type DailyDigestPreview } from '../api/dailyDigest';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -9,7 +10,7 @@ import { StorageUsageBar } from '../components/StorageUsageBar';
 import './AccountSettingsPage.css';
 
 export function AccountSettingsPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -17,7 +18,42 @@ export function AccountSettingsPage() {
   const [digestPreview, setDigestPreview] = useState<DailyDigestPreview | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
 
+  // Interests state
+  const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
+  const [interestInput, setInterestInput] = useState('');
+  const [interestsSaved, setInterestsSaved] = useState(false);
+  const interestInputRef = useRef<HTMLInputElement>(null);
+
   const isParent = user?.roles?.includes('parent') || user?.role === 'parent';
+
+  const interestsMutation = useMutation({
+    mutationFn: (newInterests: string[]) => authApi.updateInterests(newInterests),
+    onSuccess: () => {
+      refreshUser();
+      setInterestsSaved(true);
+      setTimeout(() => setInterestsSaved(false), 3000);
+    },
+  });
+
+  const addInterest = (value: string) => {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed || trimmed.length > 50 || interests.length >= 10 || interests.includes(trimmed)) return;
+    setInterests(prev => [...prev, trimmed]);
+    setInterestInput('');
+  };
+
+  const removeInterest = (index: number) => {
+    setInterests(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleInterestKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addInterest(interestInput);
+    } else if (e.key === 'Backspace' && !interestInput && interests.length > 0) {
+      removeInterest(interests.length - 1);
+    }
+  };
 
   const digestSettingsQuery = useQuery({
     queryKey: ['digestSettings'],
@@ -109,6 +145,48 @@ export function AccountSettingsPage() {
               <span className="account-info-value">{user?.roles?.join(', ') || user?.role || 'N/A'}</span>
             </div>
           </div>
+        </section>
+
+        <section className="account-section">
+          <h2>Learn Your Way</h2>
+          <p className="account-interests-desc">
+            Add your interests and hobbies so AI-generated study materials use relatable examples. Up to 10 interests.
+          </p>
+          <div className="interests-tag-input" onClick={() => interestInputRef.current?.focus()}>
+            <div className="interests-tags">
+              {interests.map((interest, i) => (
+                <span key={i} className="interest-tag">
+                  {interest}
+                  <button type="button" className="interest-tag-remove" onClick={() => removeInterest(i)}>&times;</button>
+                </span>
+              ))}
+              {interests.length < 10 && (
+                <input
+                  ref={interestInputRef}
+                  type="text"
+                  className="interest-input"
+                  value={interestInput}
+                  onChange={e => setInterestInput(e.target.value)}
+                  onKeyDown={handleInterestKeyDown}
+                  placeholder={interests.length === 0 ? 'Type an interest and press Enter...' : ''}
+                  maxLength={50}
+                />
+              )}
+            </div>
+          </div>
+          <div className="interests-actions">
+            <span className="interests-count">{interests.length}/10</span>
+            <button
+              className="account-btn account-btn-save-interests"
+              onClick={() => interestsMutation.mutate(interests)}
+              disabled={interestsMutation.isPending || JSON.stringify(interests) === JSON.stringify(user?.interests ?? [])}
+            >
+              {interestsMutation.isPending ? 'Saving...' : interestsSaved ? 'Saved!' : 'Save Interests'}
+            </button>
+          </div>
+          {interestsMutation.isError && (
+            <p className="account-error" style={{ marginTop: 8 }}>Failed to save interests.</p>
+          )}
         </section>
 
         <section className="account-section">

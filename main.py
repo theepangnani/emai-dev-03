@@ -959,6 +959,17 @@ with engine.connect() as conn:
     except Exception:
         conn.rollback()
 
+    # ── users: interests column (#1437, #1440) ──────────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "interests" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN interests TEXT"))
+                logger.info("Added 'interests' column to users (#1437)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
     # --- Resource links table safety migration (#1319) ---
     # create_all() handles new tables, but add explicit CREATE IF NOT EXISTS for resilience
     try:

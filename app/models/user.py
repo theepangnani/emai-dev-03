@@ -60,6 +60,9 @@ class User(Base):
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
 
+    # Interests/hobbies for AI prompt personalization
+    interests = Column(Text, nullable=True)  # JSON array string, e.g. '["pokemon","basketball"]'
+
     # Storage limits (#1007)
     storage_used_bytes = Column(BigInteger, default=0)
     storage_limit_bytes = Column(BigInteger, default=104857600)
