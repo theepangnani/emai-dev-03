@@ -22,6 +22,7 @@ import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import type { StudyFormat } from '../components/study/FormatSelector';
 import { NotesPanel } from '../components/NotesPanel';
 import { useRegisterNotesFAB } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
@@ -427,6 +428,19 @@ export function CourseMaterialDetailPage() {
     await handleGenerate(type);
   };
 
+  const handleFormatSelect = useCallback((format: StudyFormat) => {
+    const formatToTab: Record<StudyFormat, TabKey | null> = {
+      study_guide: 'guide',
+      quiz: 'quiz',
+      flashcards: 'flashcards',
+      mind_map: null, // coming soon — no action
+    };
+    const tab = formatToTab[format];
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [setActiveTab]);
+
   if (loading) return <DashboardLayout showBackButton headerSlot={() => null}><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
     <DashboardLayout showBackButton headerSlot={() => null}>
@@ -569,6 +583,7 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
               atLimit={atLimit}
               courseContentId={contentId}
+              onFormatSelect={handleFormatSelect}
             />
           )}
 
@@ -585,6 +600,7 @@ export function CourseMaterialDetailPage() {
               resolvedStudent={resolvedStudent}
               linkedTasks={linkedTasks[quiz?.id ?? 0] ?? []}
               atLimit={atLimit}
+              onFormatSelect={handleFormatSelect}
             />
           )}
 
@@ -600,6 +616,7 @@ export function CourseMaterialDetailPage() {
               isActiveTab={activeTab === 'flashcards'}
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
               atLimit={atLimit}
+              onFormatSelect={handleFormatSelect}
             />
           )}
 
