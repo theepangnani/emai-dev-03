@@ -16,6 +16,7 @@ import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -97,6 +98,7 @@ export function ParentDashboard() {
   const pd = useParentDashboard();
   const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
 
@@ -392,8 +394,19 @@ export function ParentDashboard() {
                 label: 'Upload Class Material',
                 onClick: () => pd.setShowStudyModal(true),
               },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9 9a3 3 0 015.12 1.5c0 2-3 2-3 4" />
+                    <circle cx="12" cy="18" r="0.5" fill="currentColor" />
+                  </svg>
+                ),
+                label: 'Help My Kid',
+                onClick: () => setShowHelpStudyMenu(true),
+              },
             ] satisfies QuickAction[]}
-            maxVisible={2}
+            maxVisible={3}
           />
 
           {/* Task urgency pills below CTAs */}
@@ -828,6 +841,18 @@ export function ParentDashboard() {
         open={pd.showLimitModal}
         onClose={() => pd.setShowLimitModal(false)}
       />
+      {showHelpStudyMenu && pd.selectedChild != null && (
+        <HelpStudyMenu
+          studentId={pd.selectedChild}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
+      )}
+      {showHelpStudyMenu && pd.selectedChild == null && pd.children.length > 0 && (
+        <HelpStudyMenu
+          studentId={pd.children[0].student_id}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
+      )}
     </DashboardLayout>
   );
 }
