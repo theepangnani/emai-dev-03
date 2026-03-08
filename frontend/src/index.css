@@ -122,6 +122,9 @@ body:has(.modal-overlay) {
   --z-base: 0;
   --z-dropdown: 100;
   --z-sticky: 200;
+  --z-fab: 900;
+  --z-fab-chatbot: 910;
+  --z-chatbot-panel: 920;
   --z-modal: 1000;
   --z-toast: 10000;
 

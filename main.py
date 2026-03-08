@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1087,6 +1087,7 @@ app.include_router(account_deletion.admin_router, prefix="/api")
 app.include_router(data_export.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 app.include_router(resource_links.router, prefix="/api")
+app.include_router(help_routes.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1242,6 +1243,12 @@ async def startup_event():
     # from app.jobs.teacher_comm_sync import check_teacher_communications
     # scheduler.add_job(check_teacher_communications, IntervalTrigger(minutes=15), id="teacher_comm_sync", replace_existing=True)
     start_scheduler()
+
+    # Initialize help chatbot embedding service (non-blocking)
+    import asyncio
+    from app.services.help_embedding_service import help_embedding_service
+    asyncio.create_task(help_embedding_service.initialize())
+
     logger.info("EMAI application started successfully")
 
 

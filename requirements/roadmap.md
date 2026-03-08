@@ -151,6 +151,7 @@
 - [x] **Mobile responsive layout fixes** — Suppress welcome section on detail sub-pages (CourseMaterialDetailPage, TaskDetailPage, StudyPage); add 480px header breakpoint (compact logo, truncated username); mobile GlobalSearch sizing; MaterialContextMenu dropdown repositioning; toolbar horizontal scroll at 768px (#1098) (IMPLEMENTED, PR #1099)
 - [x] **Teacher Resource Links** — Auto-extract YouTube videos and URLs from uploaded documents and teacher communications; Videos & Links tab on Course Material Detail; YouTube embed player with topic grouping; CRUD API; link extraction service (§6.57, #1319-#1326) (IMPLEMENTED)
 - [x] **Image Retention in Study Guides** — Extract, store, and re-embed images from uploaded PDF/DOCX/PPTX into AI-generated study guides; ContentImage model; image serving endpoint; AI prompt integration with `{{IMG-N}}` markers; authenticated frontend rendering; fallback "Additional Figures" section; +5-10% cost per generation (§6.58, #1308-#1313) (IMPLEMENTED)
+- [ ] **AI Help Chatbot** — RAG-powered floating chatbot on all pages; searches FAQ/help/video knowledge base; role-aware + context-aware responses; inline YouTube/Loom video embeds; 30 req/hr rate limit; in-memory vector store; gpt-4o-mini + text-embedding-3-small (§6.59, #1355-#1363)
 
 #### Waitlist System & AI Usage Limits (§6.53, §6.54) — Pre-Launch — #1106-#1124
 - [ ] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation

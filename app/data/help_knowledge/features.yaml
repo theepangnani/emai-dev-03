@@ -1,0 +1,708 @@
+# ClassBridge Help Knowledge Base — Feature Reference
+# Documents all major implemented features with step-by-step how-to guides.
+
+# ============================================================
+# INTEGRATIONS
+# ============================================================
+
+- id: feature-google-classroom
+  name: "Google Classroom Integration"
+  description: "Connect your Google Classroom account to automatically sync courses, assignments, rosters, and due dates into ClassBridge."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Go to your dashboard and click 'Connect Google Classroom' or 'Sync Classroom'."
+    - "Step 2: Authorize ClassBridge in the Google consent screen."
+    - "Step 3: Your courses and assignments are imported automatically."
+    - "Step 4: Use the Sync button anytime to pull latest changes."
+  tags: [google-classroom, integration, sync, courses]
+
+- id: feature-google-multi-account
+  name: "Multi-Google Account Management"
+  description: "Teachers can connect multiple Google accounts to sync courses from different schools or institutions."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to the Teacher Dashboard."
+    - "Step 2: Find the Google Account Management section."
+    - "Step 3: Click 'Add Another Google Account' and authorize."
+    - "Step 4: Courses from all connected accounts appear in your course list."
+  tags: [google-classroom, teacher, multiple-accounts]
+
+# ============================================================
+# AI STUDY TOOLS
+# ============================================================
+
+- id: feature-study-guide-generation
+  name: "AI Study Guide Generation"
+  description: "Generate structured study guides from course materials using AI. Guides include key concepts, summaries, and explanations tailored to the content."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Upload a course material or open an existing one."
+    - "Step 2: Navigate to the Study Guide tab."
+    - "Step 3: Optionally enter a focus prompt to guide the AI."
+    - "Step 4: Click Generate. The guide appears when ready (non-blocking)."
+  tags: [ai, study-guide, generation, study-tools]
+
+- id: feature-quiz-generation
+  name: "AI Practice Quiz Generation"
+  description: "Generate multiple-choice practice quizzes from course materials. Quizzes test understanding and provide immediate scoring with correct answers."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Open a course material detail page."
+    - "Step 2: Navigate to the Quiz tab."
+    - "Step 3: Click Generate Quiz (uses 1 AI credit)."
+    - "Step 4: Answer questions and see your score with explanations."
+  tags: [ai, quiz, generation, study-tools, assessment]
+
+- id: feature-flashcard-generation
+  name: "AI Flashcard Generation"
+  description: "Generate study flashcards from course materials. Cards show questions or terms on the front and answers on the back, with shuffle and keyboard navigation."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Open a course material detail page."
+    - "Step 2: Navigate to the Flashcards tab."
+    - "Step 3: Click Generate Flashcards (uses 1 AI credit)."
+    - "Step 4: Flip cards by clicking, use arrow keys to navigate, and shuffle to randomize."
+  tags: [ai, flashcards, generation, study-tools]
+
+- id: feature-ai-credits
+  name: "AI Usage Credits & Limits"
+  description: "Each AI generation uses one credit. Users start with 10 credits and can request more from admins when the limit is reached."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Check your remaining credits on the dashboard badge."
+    - "Step 2: When credits run low, a warning banner appears."
+    - "Step 3: If you reach your limit, click 'Request More' on the limit-reached modal."
+    - "Step 4: Enter the number of credits needed and a reason."
+    - "Step 5: An admin reviews and approves or adjusts your request."
+  tags: [ai, credits, limits, usage]
+
+- id: feature-focus-prompt
+  name: "AI Focus Prompt"
+  description: "Guide AI-generated content by providing an optional focus prompt. Tell the AI what to emphasize, which chapters to cover, or what topics to prioritize."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: During AI generation, find the 'Focus on...' text field."
+    - "Step 2: Enter your specific focus (e.g., 'Chapter 5 vocabulary' or 'Causes of WWI')."
+    - "Step 3: Click Generate. The AI tailors its output to your focus area."
+  tags: [ai, focus-prompt, customization, study-tools]
+
+- id: feature-math-ai
+  name: "Math-Aware AI Generation"
+  description: "AI automatically detects math content and adjusts output. Study guides include worked solutions, quizzes test problem-solving, and flashcards show problems with step-by-step answers."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Upload or paste math-related content (equations, problems, exercises)."
+    - "Step 2: Generate any AI tool (study guide, quiz, or flashcards)."
+    - "Step 3: The AI detects math content and provides step-by-step worked solutions."
+  tags: [ai, math, study-tools, generation]
+
+# ============================================================
+# REGISTRATION & AUTHENTICATION
+# ============================================================
+
+- id: feature-waitlist
+  name: "Waitlist Registration System"
+  description: "ClassBridge uses a waitlist for controlled access. Users join the waitlist, admins approve, and approved users receive a registration link."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Visit the ClassBridge landing page and click 'Join the Waitlist'."
+    - "Step 2: Enter your name, email, and select your role(s)."
+    - "Step 3: Check your email for a waitlist confirmation."
+    - "Step 4: When approved, click the registration link in the approval email."
+    - "Step 5: Complete registration with your password."
+  tags: [registration, waitlist, getting-started]
+
+- id: feature-onboarding
+  name: "Post-Registration Onboarding"
+  description: "After registering, a guided onboarding screen lets you select your role(s) and teacher type. This determines which dashboard and features you access."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: After registering, you are redirected to the onboarding screen."
+    - "Step 2: Select your role(s): Parent, Student, or Teacher."
+    - "Step 3: If Teacher, choose School Teacher or Private Tutor."
+    - "Step 4: Click Continue to access your role-specific dashboard."
+  tags: [onboarding, registration, roles, getting-started]
+
+- id: feature-password-reset
+  name: "Password Reset"
+  description: "Reset a forgotten password via email. A secure reset link is sent with a 1-hour expiry. Password strength validation ensures a secure new password."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Click 'Forgot password?' on the login page."
+    - "Step 2: Enter your email address and submit."
+    - "Step 3: Check your email for a reset link (valid for 1 hour)."
+    - "Step 4: Click the link and enter a new password."
+    - "Step 5: You are redirected to login after 3 seconds."
+  tags: [password, reset, authentication, security]
+
+- id: feature-email-verification
+  name: "Email Verification"
+  description: "Verify your email address after registration. A verification link is sent automatically. Verification is soft-gated — you can use ClassBridge without verifying, but a banner reminds you."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: After registering, check your email for a verification link."
+    - "Step 2: Click the link within 24 hours to verify."
+    - "Step 3: If you missed it, click 'Resend' on the dashboard verification banner."
+  tags: [email, verification, registration, account]
+
+- id: feature-google-oauth
+  name: "Google OAuth Login"
+  description: "Log in using your Google account instead of email/password. Google OAuth includes CSRF protection with state tokens."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Click 'Sign in with Google' on the login page."
+    - "Step 2: Select your Google account and authorize ClassBridge."
+    - "Step 3: You are logged in and redirected to your dashboard."
+  tags: [login, google, oauth, authentication]
+
+# ============================================================
+# COURSE MANAGEMENT
+# ============================================================
+
+- id: feature-course-creation
+  name: "Course Creation"
+  description: "Create courses for organizing materials, assignments, and student enrollments. All roles can create courses; teachers can assign students."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Go to the Courses page and click the create course button."
+    - "Step 2: Enter a course name and optional description."
+    - "Step 3: Optionally enter a teacher email to assign a teacher."
+    - "Step 4: Save the course. You can now add materials and students."
+  tags: [courses, create, management]
+
+- id: feature-course-enrollment
+  name: "Course Enrollment"
+  description: "Students can self-enroll in public courses, teachers can add students by email, and parents can assign courses to their children."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1 (Student): Browse courses and click 'Enroll' on a public course."
+    - "Step 1 (Teacher): Open course detail, go to Student Roster, click 'Add Student'."
+    - "Step 1 (Parent): Go to Courses page and click 'Assign Course' for a child."
+  tags: [courses, enrollment, students, roster]
+
+- id: feature-course-roster
+  name: "Teacher Course Roster Management"
+  description: "Teachers can add and remove students from their courses. Adding a new email sends an invitation; adding an existing student enrolls them immediately."
+  roles: [teacher, admin]
+  how_to:
+    - "Step 1: Open the course detail page."
+    - "Step 2: Scroll to the Student Roster section."
+    - "Step 3: Click 'Add Student' and enter their email."
+    - "Step 4: To remove a student, click the remove button next to their name."
+  tags: [teacher, course, roster, students, management]
+
+- id: feature-assignment-management
+  name: "Manual Assignment Creation"
+  description: "Teachers can create, edit, and delete assignments for their courses. Students receive notifications for new assignments. Google Classroom synced assignments are read-only."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Open the course detail page."
+    - "Step 2: Go to the Assignments section."
+    - "Step 3: Click 'Create Assignment' and fill in title, description, due date, and points."
+    - "Step 4: Enrolled students are automatically notified."
+  tags: [teacher, assignments, create, course, management]
+
+# ============================================================
+# COURSE MATERIALS
+# ============================================================
+
+- id: feature-material-upload
+  name: "Course Material Upload"
+  description: "Upload documents (PDF, Word, Excel, PPT, images, text, ZIP) or paste text. Supports multi-file upload (up to 10 files, 20 MB each), drag-and-drop, and clipboard paste."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Click the upload button on the dashboard or Course Materials page."
+    - "Step 2: Drag and drop files or click to browse, or paste text."
+    - "Step 3: Select a course to associate the material with."
+    - "Step 4: Optionally select AI tools to generate on upload."
+    - "Step 5: Click Upload to save."
+  tags: [course-materials, upload, document, file]
+
+- id: feature-material-lifecycle
+  name: "Course Material Lifecycle Management"
+  description: "Materials support editing, archiving, restoring, and permanent deletion. Auto-archive after 1 year, auto-delete after 7 years of no access."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: On Course Materials page, use the pencil, folder, or trash icons per item."
+    - "Step 2: Trash archives the material (soft delete). Toggle 'Show Archive' to see archived items."
+    - "Step 3: In the archive, use restore or permanent delete buttons."
+  tags: [course-materials, archive, lifecycle, management]
+
+- id: feature-material-detail
+  name: "Course Material Detail Page"
+  description: "View and manage a course material with tabs for Original Document, Study Guide, Quiz, and Flashcards. Edit content inline, replace documents, and generate AI tools."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Click on any course material to open its detail page."
+    - "Step 2: Use tabs to switch between Document, Study Guide, Quiz, and Flashcards."
+    - "Step 3: Click the + icon on the Document tab for Edit, Replace, or Download options."
+    - "Step 4: Generate AI tools from any tab that does not have content yet."
+  tags: [course-materials, detail, tabs, study-tools]
+
+- id: feature-ocr
+  name: "Image OCR Text Extraction"
+  description: "Upload images of documents, handwritten notes, or textbook pages. ClassBridge uses OCR to extract text for AI study tool generation."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Upload an image file (PNG, JPG, GIF) via the upload modal."
+    - "Step 2: ClassBridge automatically extracts text using OCR."
+    - "Step 3: Generate study guides, quizzes, or flashcards from the extracted text."
+  tags: [course-materials, ocr, image, upload]
+
+# ============================================================
+# TASK MANAGEMENT
+# ============================================================
+
+- id: feature-task-creation
+  name: "Task Creation & Management"
+  description: "Create tasks with titles, descriptions, due dates, priorities, and assignees. Tasks can be linked to courses and notes."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Go to the Tasks page and click the + icon."
+    - "Step 2: Select 'New Task' from the menu."
+    - "Step 3: Fill in title, due date, priority (high/medium/low), and optionally assign to a student."
+    - "Step 4: Save the task. It appears in your task list and calendar."
+  tags: [tasks, create, management, organize]
+
+- id: feature-task-filters
+  name: "Task Filtering & Due Date Views"
+  description: "Filter tasks by status, priority, due date (overdue, today, this week), and assignee. Dashboard links navigate to pre-filtered task views."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Go to the Tasks page."
+    - "Step 2: Use the filter dropdowns at the top: Status, Priority, Due, Assignee."
+    - "Step 3: Alternatively, click overdue or due-today counts on the dashboard."
+    - "Step 4: Filters sync with the URL for bookmarking."
+  tags: [tasks, filter, due-date, organize]
+
+- id: feature-task-reminders
+  name: "Automatic Task Reminders"
+  description: "Background job sends daily notifications for tasks due in 1 or 3 days. Reminder timing is customizable per user."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Reminders are enabled by default (1 and 3 days before due)."
+    - "Step 2: Go to Account Settings to customize reminder days."
+    - "Step 3: Reminders appear as in-app notifications at 8:00 AM."
+  tags: [tasks, reminders, notifications, settings]
+
+- id: feature-task-inline-edit
+  name: "Task Inline Editing"
+  description: "Edit tasks directly on the task detail page without opening a separate form. Toggle edit mode to change any field."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Click on a task to open its detail page."
+    - "Step 2: Click the Edit button to enter inline edit mode."
+    - "Step 3: Modify title, description, due date, priority, status, or assignee."
+    - "Step 4: Click Save to apply changes."
+  tags: [tasks, edit, detail, management]
+
+# ============================================================
+# MESSAGING
+# ============================================================
+
+- id: feature-messaging
+  name: "Parent-Teacher Messaging"
+  description: "Secure in-app messaging between parents and teachers. Conversations are organized by participant with real-time message delivery and email notifications."
+  roles: [parent, teacher]
+  how_to:
+    - "Step 1: Go to the Messages page from the sidebar."
+    - "Step 2: Click 'New Conversation' and select a recipient."
+    - "Step 3: Type your message and click Send."
+    - "Step 4: The recipient receives an in-app notification and email."
+  tags: [messaging, parent-teacher, communication]
+
+- id: feature-admin-messaging
+  name: "Admin Messaging (Broadcast & Individual)"
+  description: "Admins can send broadcast messages to all users or individual messages to specific users. Messages are delivered as in-app notifications and emails."
+  roles: [admin]
+  how_to:
+    - "Step 1 (Broadcast): Click 'Send Broadcast' on the Admin Dashboard."
+    - "Step 2: Enter subject and body, preview, and send."
+    - "Step 1 (Individual): Click the message icon next to a user in the user table."
+    - "Step 2: Compose the message and send."
+  tags: [admin, messaging, broadcast, communication]
+
+- id: feature-user-to-admin-messaging
+  name: "User-to-Admin Messaging"
+  description: "Any authenticated user can send messages to admin users. All admins see the conversation and receive email notifications."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Go to the Messages page."
+    - "Step 2: Click 'New Conversation' and select any admin from the recipient list."
+    - "Step 3: Send your message. All admins are notified."
+  tags: [messaging, admin, support, communication]
+
+- id: feature-message-email-notifications
+  name: "Message Email Notifications"
+  description: "When you receive a new in-app message, an email notification is sent with the sender name and message preview. Deduplication prevents spam for rapid messages."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Email notifications are enabled by default."
+    - "Step 2: Go to Account Settings to toggle email notifications on/off."
+  tags: [messaging, email, notifications]
+
+# ============================================================
+# MY KIDS (Parent)
+# ============================================================
+
+- id: feature-my-kids
+  name: "My Kids Page"
+  description: "Central hub for parents to manage their children. View child profiles with colored avatars, course counts, task progress, and next deadlines. Add children, link teachers, and reset passwords."
+  roles: [parent]
+  how_to:
+    - "Step 1: Click 'Child Profiles' in the sidebar."
+    - "Step 2: View all children as enhanced cards with stats and progress bars."
+    - "Step 3: Click a child tab to see their courses, materials, tasks, and teachers."
+    - "Step 4: Use the + icon to add children, classes, or upload materials."
+  tags: [my-kids, parent, children, management]
+
+- id: feature-teacher-linking
+  name: "Parent-to-Teacher Linking"
+  description: "Parents can link teachers to their children by email for direct messaging, bypassing course enrollment. Unregistered teachers receive invitation emails."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to My Kids and select a child."
+    - "Step 2: In the Teachers section, click 'Add Teacher'."
+    - "Step 3: Enter the teacher's email address."
+    - "Step 4: If the teacher is on ClassBridge, they are linked immediately. Otherwise, an invite is sent."
+  tags: [my-kids, teacher-linking, parent, communication]
+
+- id: feature-child-password-reset
+  name: "Parent-Managed Child Password Reset"
+  description: "Parents can reset or set passwords for their linked children from the My Kids page."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to My Kids and select a child."
+    - "Step 2: Click 'Reset Password' in the Teachers section header."
+    - "Step 3: Choose 'Send Reset Email' (if child has email) or 'Set Directly'."
+    - "Step 4: For direct set, enter and confirm the new password."
+  tags: [my-kids, password, reset, parent, security]
+
+# ============================================================
+# NOTES
+# ============================================================
+
+- id: feature-contextual-notes
+  name: "Contextual Notes System"
+  description: "Take notes per course material with a floating draggable panel. Notes auto-save, support rich text, and can be converted to tasks."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Open any course material."
+    - "Step 2: Click the Notes button or floating note icon (bottom-right)."
+    - "Step 3: Type in the notes panel. Content auto-saves every second."
+    - "Step 4: Click the task icon to create a task from your notes."
+  tags: [notes, study-tools, auto-save, tasks]
+
+- id: feature-text-selection-notes
+  name: "Text Selection to Notes"
+  description: "Highlight text on study guides or course materials and add it to your notes as a blockquote. Highlighted text is displayed with a yellow overlay."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Select text on a study guide or course material."
+    - "Step 2: Click the 'Add to Notes' tooltip that appears."
+    - "Step 3: The text is added as a blockquote in your notes panel."
+    - "Step 4: The original text is highlighted in yellow. Click a highlight to remove it."
+  tags: [notes, text-selection, highlights, study-tools]
+
+# ============================================================
+# CALENDAR
+# ============================================================
+
+- id: feature-calendar
+  name: "Calendar Views"
+  description: "Visual calendar on the Tasks page showing assignments and tasks. Supports Month, Week, 3-Day, and Day views with color-coded entries."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Go to the Tasks page and expand the calendar section."
+    - "Step 2: Use the view toggle to switch between Month, Week, 3-Day, or Day."
+    - "Step 3: Click on a day to see a detail modal with all items for that date."
+    - "Step 4: Drag tasks to different days to reschedule them."
+  tags: [calendar, tasks, views, schedule]
+
+- id: feature-calendar-drag-drop
+  name: "Calendar Drag-and-Drop Rescheduling"
+  description: "Drag tasks to different days in the calendar to reschedule their due dates. Uses HTML5 native drag and drop with optimistic UI updates."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: In the calendar month or week view, click and hold a task."
+    - "Step 2: Drag it to the target day cell or column."
+    - "Step 3: The task's due date updates immediately."
+    - "Step 4: If the update fails, the task reverts to its original position."
+  tags: [calendar, drag-and-drop, reschedule, tasks]
+
+# ============================================================
+# DASHBOARDS
+# ============================================================
+
+- id: feature-parent-dashboard
+  name: "Parent Dashboard"
+  description: "Urgency-first dashboard with child filter pills, Today's Focus header showing overdue/due-today counts, alert banner, quick action popover, and collapsible student detail panel."
+  roles: [parent]
+  how_to:
+    - "Step 1: Log in as a parent to see your dashboard."
+    - "Step 2: Click child pills at the top to filter by child (click again to deselect)."
+    - "Step 3: Review urgency badges (overdue, due today, upcoming)."
+    - "Step 4: Click the + icon for quick actions like uploading materials or creating tasks."
+    - "Step 5: Expand the student detail panel to see courses, materials, and tasks."
+  tags: [dashboard, parent, overview, urgency]
+
+- id: feature-student-dashboard
+  name: "Student Dashboard"
+  description: "Focused command center with hero greeting, urgency pills, quick action cards, unified Coming Up timeline, recent materials, and course chips."
+  roles: [student]
+  how_to:
+    - "Step 1: Log in as a student to see your dashboard."
+    - "Step 2: Review urgency pills showing overdue and due-today counts."
+    - "Step 3: Use quick action cards to upload materials, create courses, or generate study guides."
+    - "Step 4: Check the Coming Up timeline for upcoming assignments and tasks."
+  tags: [dashboard, student, overview, timeline]
+
+- id: feature-teacher-dashboard
+  name: "Teacher Dashboard"
+  description: "Manage courses, create assignments, connect Google Classroom, invite parents, and communicate with parent-teacher messaging."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Log in as a teacher to see your dashboard."
+    - "Step 2: View your courses and click any to manage roster and assignments."
+    - "Step 3: Use the Invite Parent card to bring parents onto the platform."
+    - "Step 4: Connect Google Classroom to sync existing courses."
+  tags: [dashboard, teacher, courses, management]
+
+- id: feature-admin-dashboard
+  name: "Admin Dashboard"
+  description: "Platform overview with user management, broadcast messaging, waitlist management, AI usage monitoring, audit logs, and inspiration message management."
+  roles: [admin]
+  how_to:
+    - "Step 1: Log in as an admin to see your dashboard."
+    - "Step 2: View platform stats and the user management table."
+    - "Step 3: Use sidebar links to access Waitlist, AI Usage, Audit Log, and more."
+    - "Step 4: Send broadcasts or individual messages from the dashboard."
+  tags: [dashboard, admin, management, overview]
+
+# ============================================================
+# ADMIN FEATURES
+# ============================================================
+
+- id: feature-admin-user-management
+  name: "User Management Table"
+  description: "Searchable, filterable, paginated table of all platform users. View details, send messages, manage roles, and adjust AI limits."
+  roles: [admin]
+  how_to:
+    - "Step 1: On the Admin Dashboard, find the user management table."
+    - "Step 2: Use the search bar to find users by name or email."
+    - "Step 3: Filter by role using the dropdown."
+    - "Step 4: Click actions per user row to message, adjust limits, or manage roles."
+  tags: [admin, user-management, search, filter]
+
+- id: feature-admin-waitlist
+  name: "Waitlist Management Panel"
+  description: "Review, approve, decline, and manage waitlist entries. View stats, add admin notes, send reminders, and bulk-approve users."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > Waitlist from the sidebar."
+    - "Step 2: Review the summary stats bar (pending, approved, registered, declined)."
+    - "Step 3: Click Approve or Decline for pending entries."
+    - "Step 4: Use Send Reminder for approved users who have not registered."
+  tags: [admin, waitlist, management, approval]
+
+- id: feature-admin-ai-usage
+  name: "AI Usage Management"
+  description: "Monitor AI credit usage across all users. Adjust limits, reset counts, view generation history, and handle credit increase requests."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > AI Usage from the sidebar."
+    - "Step 2: Overview tab shows usage stats and per-user table."
+    - "Step 3: Usage History tab shows all AI generations with filters."
+    - "Step 4: Credit Requests tab shows pending requests to approve or decline."
+  tags: [admin, ai-usage, credits, management]
+
+- id: feature-admin-audit-log
+  name: "Audit Log"
+  description: "Comprehensive log of platform actions including logins, password resets, role changes, broadcast sends, and security events."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > Audit Log from the sidebar."
+    - "Step 2: Browse the log entries sorted by date."
+    - "Step 3: Filter by action type, user, or date range."
+  tags: [admin, audit-log, security, monitoring]
+
+- id: feature-admin-inspiration
+  name: "Inspiration Message Management"
+  description: "Create and manage motivational quotes shown on dashboards and in emails. Messages are role-targeted so users see relevant inspiration."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > Inspiration Messages from the sidebar."
+    - "Step 2: Click 'Add Message' to create a new quote."
+    - "Step 3: Enter the message text, optional author, and select target roles."
+    - "Step 4: Toggle active/inactive to control visibility."
+  tags: [admin, inspiration, messages, content]
+
+- id: feature-admin-faq-management
+  name: "FAQ Management"
+  description: "Create, edit, and organize FAQ entries visible to users on the FAQ page. Control categories, role visibility, and content."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > FAQ Management from the sidebar."
+    - "Step 2: View existing FAQs and click to edit."
+    - "Step 3: Add new FAQ entries with question, answer, category, and role tags."
+  tags: [admin, faq, management, content]
+
+- id: feature-admin-deletion-requests
+  name: "Account Deletion Request Management"
+  description: "Review and process account deletion requests from users. Approve to permanently remove data or reject to keep the account."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > Deletion Requests from the sidebar."
+    - "Step 2: Review pending deletion requests."
+    - "Step 3: Click Approve to proceed with deletion or Reject to deny."
+  tags: [admin, deletion, account, privacy]
+
+# ============================================================
+# SEARCH & NAVIGATION
+# ============================================================
+
+- id: feature-global-search
+  name: "Global Search"
+  description: "Search across courses, study guides, tasks, and course content using Ctrl+K (Cmd+K). Results are grouped by type with role-based access filtering."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Press Ctrl+K (or Cmd+K) or click the search bar in the header."
+    - "Step 2: Type at least 2 characters."
+    - "Step 3: Browse results grouped by type (courses, guides, tasks, content)."
+    - "Step 4: Click a result to navigate to its detail page."
+  tags: [search, global, navigation, keyboard]
+
+- id: feature-sidebar-navigation
+  name: "Icon-Only Sidebar Navigation"
+  description: "Persistent icon-only sidebar on desktop with hover tooltips. Converts to hamburger overlay on mobile. Role-specific navigation items."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: The sidebar is always visible on desktop (icon-only)."
+    - "Step 2: Hover over icons to see tooltip labels."
+    - "Step 3: Click any icon to navigate to that page."
+    - "Step 4: On mobile (<768px), tap the hamburger menu to open the sidebar overlay."
+  tags: [navigation, sidebar, layout, mobile]
+
+# ============================================================
+# THEMES & UI
+# ============================================================
+
+- id: feature-themes
+  name: "Theme System"
+  description: "Three visual themes: Light (teal accent), Dark (purple/cyan), and Focus (sage/amber). Themes are toggled via header button and persisted."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Click the theme toggle button in the header."
+    - "Step 2: The theme cycles through Light, Dark, and Focus."
+    - "Step 3: Your preference is saved and persists across sessions."
+  tags: [themes, appearance, ui, settings]
+
+- id: feature-toast-notifications
+  name: "Toast Notifications"
+  description: "Brief popup notifications for success, error, and info events. Auto-dismiss after 3-5 seconds or click to dismiss."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Toast notifications appear automatically for actions like saving, deleting, or errors."
+    - "Step 2: Success toasts dismiss after 3 seconds, errors after 5 seconds."
+    - "Step 3: Click any toast to dismiss it immediately."
+  tags: [notifications, toast, ui, feedback]
+
+- id: feature-loading-skeletons
+  name: "Loading Skeletons"
+  description: "Animated skeleton screens replace loading text on all pages. Provides visual feedback while data is loading."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Loading skeletons appear automatically when a page is fetching data."
+    - "Step 2: The shimmer animation indicates content is loading."
+    - "Step 3: Content replaces the skeleton once data is ready."
+  tags: [loading, skeleton, ui, performance]
+
+# ============================================================
+# TUTORIAL & HELP
+# ============================================================
+
+- id: feature-tutorial
+  name: "Interactive Tutorial"
+  description: "Role-based tutorial pages with step-by-step walkthroughs, images, and progress tracking. Covers key workflows for each role."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Click 'Tutorial' in the sidebar navigation."
+    - "Step 2: Browse sections relevant to your role."
+    - "Step 3: Click through steps with prev/next navigation."
+    - "Step 4: View images and descriptions for each feature."
+  tags: [tutorial, help, getting-started, onboarding]
+
+- id: feature-help-center
+  name: "Help Center"
+  description: "Central help page with FAQs, AI chatbot, and links to tutorials and support. Access from the Help link in the sidebar."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Click 'Help' in the sidebar navigation."
+    - "Step 2: Browse FAQs by category or search for topics."
+    - "Step 3: Use the AI Help Chatbot for instant answers."
+    - "Step 4: Message an admin for complex issues."
+  tags: [help, faq, chatbot, support]
+
+# ============================================================
+# INVITES
+# ============================================================
+
+- id: feature-invite-system
+  name: "Invitation System"
+  description: "Unified invite system for students, teachers, and parents. Invites include course context for auto-enrollment on acceptance."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Invites are triggered when you add a user who is not yet on ClassBridge."
+    - "Step 2: The user receives an email with a registration link."
+    - "Step 3: On registration, they are automatically linked to you and enrolled in any relevant course."
+  tags: [invites, registration, enrollment, communication]
+
+- id: feature-teacher-invite-parent
+  name: "Teacher Invites Parent"
+  description: "Teachers can invite parents to join ClassBridge and auto-link them to a specific student."
+  roles: [teacher]
+  how_to:
+    - "Step 1: On the Teacher Dashboard, find the 'Invite Parent' card."
+    - "Step 2: Enter the parent's email and select the related student."
+    - "Step 3: An invitation email is sent. On acceptance, the parent is linked to the student."
+  tags: [teacher, invite, parent, communication]
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+- id: feature-notification-bell
+  name: "Notification Bell"
+  description: "In-app notification center in the header. Shows unread count badge, recent notifications, and opens a full-content modal when clicked."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Click the bell icon in the top header to see recent notifications."
+    - "Step 2: Click any notification to open a full-content popup modal."
+    - "Step 3: Notifications are marked as read when opened."
+    - "Step 4: Use 'Mark All Read' to clear the unread count."
+  tags: [notifications, bell, ui, alerts]
+
+# ============================================================
+# SECURITY
+# ============================================================
+
+- id: feature-rate-limiting
+  name: "Rate Limiting"
+  description: "API rate limits protect against abuse. Login is limited to 5/min, registration to 3/min, AI generation to 10/min, and file upload to 20/min."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Rate limits are enforced automatically."
+    - "Step 2: If you hit a limit, wait a moment before retrying."
+    - "Step 3: Rate limit headers in responses show your remaining allowance."
+  tags: [security, rate-limiting, protection]
+
+- id: feature-multi-role
+  name: "Multi-Role Support"
+  description: "Hold multiple roles simultaneously (e.g., Parent + Teacher). Switch between roles using the header dropdown. Authorization checks all held roles."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Select multiple roles during onboarding."
+    - "Step 2: A role switcher dropdown appears in the header."
+    - "Step 3: Click the dropdown and select which role's dashboard to view."
+    - "Step 4: You retain access to features from all your roles."
+  tags: [roles, multi-role, switching, access]

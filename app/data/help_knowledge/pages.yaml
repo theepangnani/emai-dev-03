@@ -1,0 +1,387 @@
+# ClassBridge Help Knowledge Base — Page Reference
+# Maps every authenticated route to its description and key actions.
+
+# ============================================================
+# DASHBOARDS
+# ============================================================
+
+- id: page-dashboard
+  route: "/dashboard"
+  page_name: "Dashboard"
+  description: "Your main hub after logging in. Shows a role-specific dashboard: Parents see child filter pills, Today's Focus urgency header, alert banners, and a student detail panel. Students see a hero greeting with urgency pills, quick action cards, and a Coming Up timeline. Teachers see their courses, Google account management, and invite tools. Admins see platform stats and user management."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "View urgency counts (overdue, due today, upcoming)"
+    - "Filter by child (parent) or review quick actions (student)"
+    - "Upload materials or create tasks via the + icon popover"
+    - "Navigate to courses, tasks, messages, and more"
+
+# ============================================================
+# COURSES
+# ============================================================
+
+- id: page-courses
+  route: "/courses"
+  page_name: "Courses"
+  description: "List and manage all your courses. Parents see their children's enrolled courses plus self-created courses. Students can browse and enroll in public courses. Teachers see courses they teach. Click any course card to see materials and details."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Create a new course"
+    - "Enroll in a public course (student)"
+    - "Assign a course to a child (parent)"
+    - "Click a course to view its detail page"
+
+- id: page-course-detail
+  route: "/courses/:id"
+  page_name: "Course Detail"
+  description: "View and manage a specific course including its description, assigned teacher, student roster, assignments, and course materials. Teachers can add/remove students and create assignments."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "View course information and assigned teacher"
+    - "Manage student roster (teacher)"
+    - "Create, edit, or delete assignments (teacher)"
+    - "View enrolled students and course materials"
+
+# ============================================================
+# COURSE MATERIALS
+# ============================================================
+
+- id: page-course-materials
+  route: "/course-materials"
+  page_name: "Course Materials"
+  description: "Browse all course materials with filtering by child, course, and content type. Upload new materials, move materials between courses, and access the archive. Each item shows its type, course, and creation date."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Upload new course materials"
+    - "Filter by child, course, or content type"
+    - "Edit, move, or archive materials"
+    - "Toggle archive view to see archived items"
+
+- id: page-course-material-detail
+  route: "/course-materials/:id"
+  page_name: "Course Material Detail"
+  description: "View a specific course material with tabs for Original Document, Study Guide, Quiz, and Flashcards. Edit content inline, replace documents, generate AI study tools, and take contextual notes."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Switch between Document, Study Guide, Quiz, and Flashcards tabs"
+    - "Edit document content inline or replace the file"
+    - "Generate AI study materials (study guide, quiz, flashcards)"
+    - "Open the notes panel to take notes"
+    - "Highlight text and add it to notes"
+
+# ============================================================
+# STUDY (Student)
+# ============================================================
+
+- id: page-study
+  route: "/study"
+  page_name: "Study Hub"
+  description: "Unified study page for students combining course list, per-course materials, upload functionality, and quiz progress stats. Select a course to see its materials filtered by type."
+  roles: [student]
+  key_actions:
+    - "Select a course from the left panel"
+    - "Browse materials for the selected course"
+    - "Filter materials by type (guide, quiz, flashcards)"
+    - "Upload new materials to a course"
+    - "View quiz progress stats (average score, best score)"
+
+- id: page-study-guide
+  route: "/study/guide/:id"
+  page_name: "Study Guide"
+  description: "Full-page view of an AI-generated study guide. Read the structured content, highlight text for notes, and access the notes panel via the floating action button."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Read the generated study guide content"
+    - "Highlight text and add to notes"
+    - "Open notes panel via the floating action button"
+    - "Print or regenerate the study guide"
+
+- id: page-study-quiz
+  route: "/study/quiz/:id"
+  page_name: "Practice Quiz"
+  description: "Take an AI-generated practice quiz. Answer multiple-choice questions, submit for scoring, and review correct answers with explanations."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Answer multiple-choice questions"
+    - "Submit quiz for scoring"
+    - "Review correct answers and explanations"
+    - "Open notes panel to capture study notes"
+
+- id: page-study-flashcards
+  route: "/study/flashcards/:id"
+  page_name: "Flashcards"
+  description: "Study with AI-generated flashcards. Click to flip cards, navigate with arrow keys, and shuffle for randomized review."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Click a card to flip between front and back"
+    - "Use arrow keys or buttons to navigate between cards"
+    - "Shuffle cards for random order"
+    - "Open notes panel to capture study notes"
+
+# ============================================================
+# TASKS
+# ============================================================
+
+- id: page-tasks
+  route: "/tasks"
+  page_name: "Tasks"
+  description: "View and manage all tasks with filters for status, priority, due date, and assignee. Includes a collapsible calendar section for visual scheduling and drag-and-drop task rescheduling."
+  roles: [parent, student, teacher]
+  key_actions:
+    - "Create new tasks via the + icon"
+    - "Filter tasks by status, priority, due date, and assignee"
+    - "Expand the calendar to see tasks visually"
+    - "Drag tasks to different days to reschedule"
+    - "Click a task to view its detail page"
+
+- id: page-task-detail
+  route: "/tasks/:id"
+  page_name: "Task Detail"
+  description: "View and edit a specific task. Toggle inline edit mode to change the title, description, due date, priority, status, and assignee."
+  roles: [parent, student, teacher]
+  key_actions:
+    - "View task details (title, description, due date, priority)"
+    - "Toggle edit mode to modify any field"
+    - "Mark task as completed"
+    - "Navigate to linked course or note"
+
+# ============================================================
+# MESSAGES
+# ============================================================
+
+- id: page-messages
+  route: "/messages"
+  page_name: "Messages"
+  description: "In-app messaging center for parent-teacher communication and admin contact. View conversations, send new messages, and start new conversations with teachers, parents, or admins."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "View existing conversations"
+    - "Start a new conversation with a teacher, parent, or admin"
+    - "Send and receive messages"
+    - "See admin messages with 'Admin' badge"
+
+# ============================================================
+# MY KIDS (Parent)
+# ============================================================
+
+- id: page-my-kids
+  route: "/my-kids"
+  page_name: "My Kids"
+  description: "Parent hub for managing children. View enhanced child cards with colored avatars, course counts, task progress bars, and next deadline countdowns. Add children, link teachers, manage courses, and reset passwords."
+  roles: [parent]
+  key_actions:
+    - "View all children with stats and progress"
+    - "Add a new child via the + icon"
+    - "Select a child tab to see courses, materials, tasks, and teachers"
+    - "Link a teacher to a child"
+    - "Reset a child's password"
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+- id: page-notifications
+  route: "/notifications"
+  page_name: "Notifications"
+  description: "Full notifications page showing all your in-app notifications with timestamps. Click any notification to view its full content."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "View all notifications sorted by date"
+    - "Click a notification to see full content"
+    - "Mark notifications as read"
+
+# ============================================================
+# TEACHER COMMUNICATIONS
+# ============================================================
+
+- id: page-teacher-communications
+  route: "/teacher-communications"
+  page_name: "Teacher Communications"
+  description: "View emails and announcements from teachers synced from Google Classroom and Gmail. Includes AI-generated summaries of important communications."
+  roles: [parent]
+  key_actions:
+    - "Browse synced teacher emails and announcements"
+    - "View AI-generated communication summaries"
+    - "Refresh to pull latest communications"
+
+# ============================================================
+# TUTORIAL & HELP
+# ============================================================
+
+- id: page-tutorial
+  route: "/tutorial"
+  page_name: "Tutorial"
+  description: "Interactive role-based tutorial with step-by-step walkthroughs and images. Content is tailored to your role covering key workflows from getting started to advanced features."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Browse tutorial sections for your role"
+    - "Navigate through steps with prev/next buttons"
+    - "View images and descriptions for each feature"
+
+- id: page-help
+  route: "/help"
+  page_name: "Help Center"
+  description: "Central help page with access to FAQs, the AI Help Chatbot, tutorials, and support options. Browse categories or ask the chatbot a question."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Browse help topics and categories"
+    - "Use the AI Help Chatbot for instant answers"
+    - "Navigate to FAQs or tutorials"
+    - "Contact an admin for support"
+
+- id: page-faq
+  route: "/faq"
+  page_name: "FAQ"
+  description: "Frequently Asked Questions page organized by category. Search for specific topics or browse categories like Getting Started, Google Classroom, AI Study Tools, and more."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Search FAQs by keyword"
+    - "Browse categories"
+    - "Click a question to expand the answer"
+
+- id: page-faq-detail
+  route: "/faq/:id"
+  page_name: "FAQ Detail"
+  description: "Detailed view of a specific FAQ entry with the full question and answer."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Read the full FAQ answer"
+    - "Navigate back to the FAQ list"
+
+# ============================================================
+# ADMIN PAGES
+# ============================================================
+
+- id: page-admin-audit-log
+  route: "/admin/audit-log"
+  page_name: "Audit Log"
+  description: "Comprehensive log of platform actions for admin review. Includes logins, password resets, role changes, broadcasts, security events, and more. Filterable by action type, user, and date."
+  roles: [admin]
+  key_actions:
+    - "Browse audit log entries"
+    - "Filter by action type, user, or date range"
+    - "Search for specific events"
+
+- id: page-admin-inspiration
+  route: "/admin/inspiration"
+  page_name: "Inspiration Messages"
+  description: "Manage motivational quotes shown on user dashboards and in emails. Create, edit, activate, or deactivate messages. Assign target roles for role-specific inspiration."
+  roles: [admin]
+  key_actions:
+    - "Create new inspiration messages"
+    - "Edit or delete existing messages"
+    - "Toggle message active/inactive status"
+    - "Assign target roles"
+
+- id: page-admin-waitlist
+  route: "/admin/waitlist"
+  page_name: "Waitlist Management"
+  description: "Review and manage waitlist entries. View summary stats (pending, approved, registered, declined). Approve or decline entries, add admin notes, and send registration reminders."
+  roles: [admin]
+  key_actions:
+    - "View waitlist summary statistics"
+    - "Approve or decline pending entries"
+    - "Send registration reminders to approved users"
+    - "Add admin notes to entries"
+    - "Bulk approve multiple entries"
+
+- id: page-admin-ai-usage
+  route: "/admin/ai-usage"
+  page_name: "AI Usage Management"
+  description: "Monitor and manage AI credit usage across the platform. Three tabs: Overview (stats and per-user table), Usage History (full audit log of generations), and Credit Requests (approve or decline user requests for more credits)."
+  roles: [admin]
+  key_actions:
+    - "View platform-wide AI usage statistics"
+    - "Adjust individual user credit limits"
+    - "Reset a user's usage count"
+    - "View generation history filtered by user, type, or date"
+    - "Approve or decline credit increase requests"
+
+- id: page-admin-faq
+  route: "/admin/faq"
+  page_name: "FAQ Management"
+  description: "Admin interface for creating, editing, and organizing FAQ entries displayed on the user-facing FAQ page. Control categories, content, and role visibility."
+  roles: [admin]
+  key_actions:
+    - "Create new FAQ entries"
+    - "Edit existing questions and answers"
+    - "Assign categories and role visibility"
+    - "Reorder FAQ entries"
+
+- id: page-admin-deletion-requests
+  route: "/admin/deletion-requests"
+  page_name: "Deletion Requests"
+  description: "Review and process account deletion requests from users. Approve requests to permanently delete user data or reject to retain the account."
+  roles: [admin]
+  key_actions:
+    - "View pending deletion requests"
+    - "Approve or reject deletion requests"
+    - "View request details and user information"
+
+# ============================================================
+# SETTINGS & ACCOUNT
+# ============================================================
+
+- id: page-settings-account
+  route: "/settings/account"
+  page_name: "Account Settings"
+  description: "Manage your account settings including notification preferences, email notifications toggle, task reminder timing, password changes, and account deletion requests."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Update notification preferences"
+    - "Toggle email notifications on/off"
+    - "Customize task reminder timing"
+    - "Change password"
+    - "Request account deletion"
+
+- id: page-settings-emails
+  route: "/settings/emails"
+  page_name: "Email Settings"
+  description: "Student email configuration page for managing email-related preferences and teacher communication monitoring settings."
+  roles: [student]
+  key_actions:
+    - "Configure email preferences"
+    - "Manage teacher communication settings"
+
+# ============================================================
+# OTHER PAGES
+# ============================================================
+
+- id: page-link-requests
+  route: "/link-requests"
+  page_name: "Link Requests"
+  description: "View and respond to parent-student link requests. Students can approve or reject requests from parents who want to link their accounts."
+  roles: [parent, student]
+  key_actions:
+    - "View pending link requests"
+    - "Approve or reject parent link requests (student)"
+    - "View sent link requests (parent)"
+
+- id: page-quiz-history
+  route: "/quiz-history"
+  page_name: "Quiz History"
+  description: "View your quiz attempt history including scores, dates, and associated course materials. Track progress over time."
+  roles: [parent, student, teacher]
+  key_actions:
+    - "View past quiz attempts and scores"
+    - "Track progress over time"
+    - "Navigate to quiz detail for review"
+
+- id: page-analytics
+  route: "/analytics"
+  page_name: "Analytics"
+  description: "Grade analytics dashboard showing student performance data, trends, and AI-powered insights across courses and assignments."
+  roles: [parent, student, admin]
+  key_actions:
+    - "View grade trends and performance data"
+    - "Filter by child or course"
+    - "Generate AI insights on performance"
+
+- id: page-confirm-deletion
+  route: "/confirm-deletion"
+  page_name: "Confirm Account Deletion"
+  description: "Confirmation page for account deletion requests. Click the confirmation link from your email to verify the deletion request."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Confirm account deletion"
+    - "Cancel and keep your account"

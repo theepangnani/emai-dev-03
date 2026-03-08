@@ -1,0 +1,293 @@
+# ClassBridge Help Knowledge Base — Tutorial Video Placeholders
+# URLs and durations will be populated with Loom recordings later.
+
+# ============================================================
+# GETTING STARTED
+# ============================================================
+
+- id: video-getting-started-registration
+  title: "How to: Join the Waitlist and Register"
+  description: "This video shows how to join the ClassBridge waitlist, what happens after approval, and how to complete the registration process with password setup."
+  url: ""
+  provider: "loom"
+  tags: [getting-started, registration, waitlist]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-getting-started-onboarding
+  title: "How to: Complete Onboarding and Choose Your Role"
+  description: "This video walks through the post-registration onboarding screen where you select your role (Parent, Student, or Teacher) and get directed to your personalized dashboard."
+  url: ""
+  provider: "loom"
+  tags: [getting-started, onboarding, roles]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-getting-started-dashboard-tour
+  title: "How to: Navigate Your Dashboard"
+  description: "This video provides a tour of the dashboard layout including the sidebar navigation, header search, notification bell, theme toggle, and role switcher."
+  url: ""
+  provider: "loom"
+  tags: [getting-started, dashboard, navigation]
+  roles: [parent, student, teacher, admin]
+  duration: ""
+
+# ============================================================
+# GOOGLE CLASSROOM
+# ============================================================
+
+- id: video-google-classroom-connect
+  title: "How to: Connect Google Classroom"
+  description: "This video shows how to connect your Google account, authorize ClassBridge, and sync your courses and assignments from Google Classroom."
+  url: ""
+  provider: "loom"
+  tags: [google-classroom, integration, sync]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-google-classroom-sync
+  title: "How to: Sync and Manage Google Classroom Data"
+  description: "This video explains how courses and assignments sync from Google Classroom, how to manually refresh, and the difference between school and private classrooms."
+  url: ""
+  provider: "loom"
+  tags: [google-classroom, sync, courses]
+  roles: [parent, student, teacher]
+  duration: ""
+
+# ============================================================
+# AI STUDY TOOLS
+# ============================================================
+
+- id: video-ai-study-guide
+  title: "How to: Generate an AI Study Guide"
+  description: "This video demonstrates uploading a document and generating a study guide with an optional focus prompt. Shows the non-blocking generation flow."
+  url: ""
+  provider: "loom"
+  tags: [ai, study-guide, generation, study-tools]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-ai-quiz
+  title: "How to: Generate and Take a Practice Quiz"
+  description: "This video shows how to generate a practice quiz from course materials, answer questions, and review your score with correct answers."
+  url: ""
+  provider: "loom"
+  tags: [ai, quiz, generation, study-tools]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-ai-flashcards
+  title: "How to: Generate and Study Flashcards"
+  description: "This video covers generating flashcards from course materials, flipping cards, shuffling, and using keyboard navigation for efficient study."
+  url: ""
+  provider: "loom"
+  tags: [ai, flashcards, generation, study-tools]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-ai-credits
+  title: "How to: Manage Your AI Credits"
+  description: "This video explains the AI credit system, how to check your remaining credits, and how to request more credits when you reach your limit."
+  url: ""
+  provider: "loom"
+  tags: [ai, credits, limits, usage]
+  roles: [parent, student, teacher]
+  duration: ""
+
+# ============================================================
+# COURSE MATERIALS
+# ============================================================
+
+- id: video-upload-materials
+  title: "How to: Upload Course Materials"
+  description: "This video shows how to upload documents via drag-and-drop, paste text, select AI tools during upload, and manage multi-file uploads."
+  url: ""
+  provider: "loom"
+  tags: [course-materials, upload, getting-started]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-material-detail
+  title: "How to: Use the Course Material Detail Page"
+  description: "This video walks through the course material detail page tabs (Document, Study Guide, Quiz, Flashcards), editing content, replacing documents, and generating AI tools."
+  url: ""
+  provider: "loom"
+  tags: [course-materials, detail, study-tools]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-material-archive
+  title: "How to: Archive, Restore, and Delete Course Materials"
+  description: "This video demonstrates archiving course materials, viewing the archive, restoring items, and permanently deleting them."
+  url: ""
+  provider: "loom"
+  tags: [course-materials, archive, lifecycle]
+  roles: [parent, student, teacher]
+  duration: ""
+
+# ============================================================
+# TASKS & CALENDAR
+# ============================================================
+
+- id: video-tasks-create
+  title: "How to: Create and Manage Tasks"
+  description: "This video covers creating tasks with titles, due dates, priorities, and assignees. Also shows inline editing and status updates."
+  url: ""
+  provider: "loom"
+  tags: [tasks, create, management]
+  roles: [parent, student, teacher]
+  duration: ""
+
+- id: video-calendar-views
+  title: "How to: Use the Calendar"
+  description: "This video shows the calendar on the Tasks page with Month, Week, 3-Day, and Day views. Demonstrates clicking days for detail modals and drag-and-drop rescheduling."
+  url: ""
+  provider: "loom"
+  tags: [calendar, views, tasks, schedule]
+  roles: [parent, student, teacher]
+  duration: ""
+
+# ============================================================
+# MESSAGING
+# ============================================================
+
+- id: video-messaging
+  title: "How to: Send and Receive Messages"
+  description: "This video shows how to start conversations with teachers, parents, and admins. Covers the Messages page layout, composing messages, and notification settings."
+  url: ""
+  provider: "loom"
+  tags: [messaging, communication, notifications]
+  roles: [parent, student, teacher]
+  duration: ""
+
+# ============================================================
+# MY KIDS (Parent)
+# ============================================================
+
+- id: video-mykids-add-child
+  title: "How to: Add and Manage Your Children"
+  description: "This video shows parents how to add children, view child profiles with stats and progress, link teachers, and reset child passwords from the My Kids page."
+  url: ""
+  provider: "loom"
+  tags: [my-kids, parent, children, getting-started]
+  roles: [parent]
+  duration: ""
+
+- id: video-mykids-teacher-link
+  title: "How to: Link a Teacher to Your Child"
+  description: "This video demonstrates adding a teacher by email, the invitation flow for unregistered teachers, and managing linked teachers."
+  url: ""
+  provider: "loom"
+  tags: [my-kids, teacher-linking, parent]
+  roles: [parent]
+  duration: ""
+
+# ============================================================
+# NOTES
+# ============================================================
+
+- id: video-notes
+  title: "How to: Take Notes and Highlight Text"
+  description: "This video shows the contextual notes panel, auto-save, text selection to notes, persistent highlights, and creating tasks from notes."
+  url: ""
+  provider: "loom"
+  tags: [notes, highlights, study-tools]
+  roles: [parent, student, teacher]
+  duration: ""
+
+# ============================================================
+# ADMIN
+# ============================================================
+
+- id: video-admin-user-management
+  title: "How to: Manage Users (Admin)"
+  description: "This video covers the admin user management table including searching, filtering by role, sending individual messages, and adjusting AI limits."
+  url: ""
+  provider: "loom"
+  tags: [admin, user-management]
+  roles: [admin]
+  duration: ""
+
+- id: video-admin-waitlist
+  title: "How to: Manage the Waitlist (Admin)"
+  description: "This video shows the admin waitlist panel including reviewing entries, approving/declining, adding notes, and sending registration reminders."
+  url: ""
+  provider: "loom"
+  tags: [admin, waitlist, management]
+  roles: [admin]
+  duration: ""
+
+- id: video-admin-broadcast
+  title: "How to: Send Broadcast Messages (Admin)"
+  description: "This video demonstrates composing and sending broadcast messages to all users, previewing content, and viewing broadcast history."
+  url: ""
+  provider: "loom"
+  tags: [admin, broadcast, messaging]
+  roles: [admin]
+  duration: ""
+
+- id: video-admin-ai-usage
+  title: "How to: Monitor AI Usage (Admin)"
+  description: "This video covers the AI Usage management panel including the overview, usage history, handling credit requests, and adjusting per-user limits."
+  url: ""
+  provider: "loom"
+  tags: [admin, ai-usage, credits, management]
+  roles: [admin]
+  duration: ""
+
+# ============================================================
+# STUDENT
+# ============================================================
+
+- id: video-student-study-hub
+  title: "How to: Use the Study Hub (Student)"
+  description: "This video walks students through the Study Hub page including course selection, material browsing, uploading content, and viewing quiz progress stats."
+  url: ""
+  provider: "loom"
+  tags: [student, study-hub, courses, materials]
+  roles: [student]
+  duration: ""
+
+# ============================================================
+# TEACHER
+# ============================================================
+
+- id: video-teacher-course-management
+  title: "How to: Create Courses and Manage Rosters (Teacher)"
+  description: "This video shows teachers how to create courses, add students by email, create assignments, and manage their course roster."
+  url: ""
+  provider: "loom"
+  tags: [teacher, courses, roster, assignments]
+  roles: [teacher]
+  duration: ""
+
+- id: video-teacher-invite-parent
+  title: "How to: Invite Parents to ClassBridge (Teacher)"
+  description: "This video demonstrates the teacher invite parent flow including selecting the student, entering the parent email, and the invitation process."
+  url: ""
+  provider: "loom"
+  tags: [teacher, invite, parent]
+  roles: [teacher]
+  duration: ""
+
+# ============================================================
+# ACCOUNT & SETTINGS
+# ============================================================
+
+- id: video-themes
+  title: "How to: Change Themes and Customize Appearance"
+  description: "This video shows how to switch between Light, Dark, and Focus themes using the header toggle button."
+  url: ""
+  provider: "loom"
+  tags: [themes, appearance, settings]
+  roles: [parent, student, teacher, admin]
+  duration: ""
+
+- id: video-password-reset
+  title: "How to: Reset Your Password"
+  description: "This video walks through the forgot password flow including requesting a reset email, clicking the link, and setting a new secure password."
+  url: ""
+  provider: "loom"
+  tags: [password, reset, account, security]
+  roles: [parent, student, teacher, admin]
+  duration: ""

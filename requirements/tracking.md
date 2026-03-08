@@ -1,6 +1,6 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 7, 2026):** 846 total issues — 682 closed (81%), 164 open (19%)
+**Summary (as of Mar 7, 2026):** 855 total issues — 682 closed (80%), 173 open (20%)
 - **Features built:** 250 enhancements closed
 - **Bugs fixed:** 173 bugs closed
 - **Other closed:** 259 (pilot prep, docs, testing, misc)
@@ -648,6 +648,17 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #841: AI auto-task creation extracts historical dates from article content as due dates~~ ✅
 - ~~Issue #858: bug: Calendar default view should be 3-Day, not Week~~ ✅
 
+### Phase 1 - Open (AI Help Chatbot — §6.59, #1355-#1363)
+- Issue #1355: Epic: AI Help Chatbot — RAG-Powered In-App Assistant (§6.59)
+- Issue #1356: Help Chatbot: Knowledge base YAML files — FAQ, features, videos, pages (§6.59.1)
+- Issue #1357: Help Chatbot: Embedding service + in-memory vector store (§6.59.2)
+- Issue #1358: Help Chatbot: RAG chat service + system prompt (§6.59.3)
+- Issue #1359: Help Chatbot: API endpoint POST /api/help/chat (§6.59.4)
+- Issue #1360: Help Chatbot: Frontend widget — FAB, chat panel, message bubbles (§6.59.5)
+- Issue #1361: Help Chatbot: Video embed component — YouTube + Loom inline players (§6.59.6)
+- Issue #1362: Help Chatbot: Backend + frontend tests (§6.59.7)
+- Issue #1363: Help Chatbot: NotesFAB z-index coordination + mobile bottom sheet (§6.59.8)
+
 ### Phase 1 - Features Built (Image Retention & Resource Links — Mar 7, 2026)
 - ~~Issue #1308: feat: ContentImage model and database migration for image retention~~ ✅
 - ~~Issue #1309: feat: extract and store images during document upload~~ ✅
@@ -671,6 +682,7 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #1304: Task urgency pills and hero text broken due to date parsing bug~~ ✅
 - ~~Issue #1306: fix: CoursesPage child selector missing All icon, color dots, and + context menu~~ ✅
 - ~~Issue #1314: fix: 'Failed to download document' on course-materials document tab~~ ✅
+- ~~Issue #1337: fix: YouTube embeds show broken placeholders — CSP missing frame-src (§6.57)~~ ✅
 
 ### Phase 1 - Features Built (UX & UI Polish)
 - ~~Issue #239: UX: Add confirmation dialogs to destructive actions missing them~~ ✅

@@ -1,0 +1,782 @@
+# ClassBridge Help Knowledge Base — Frequently Asked Questions
+# Each entry is tagged by applicable roles and searchable tags.
+
+# ============================================================
+# GETTING STARTED
+# ============================================================
+
+- id: faq-getting-started-1
+  question: "How do I create a ClassBridge account?"
+  answer: "Visit the ClassBridge landing page and click 'Join the Waitlist'. Once approved by an admin, you will receive an email with a registration link. Click the link, fill in your name, email, and password, then complete the onboarding step to select your role."
+  roles: [parent, student, teacher, admin]
+  tags: [registration, getting-started, waitlist]
+
+- id: faq-getting-started-2
+  question: "What roles are available in ClassBridge?"
+  answer: "ClassBridge has four roles: Parent, Student, Teacher, and Admin. Parents monitor their children's progress and communicate with teachers. Students access study tools and manage tasks. Teachers manage courses and rosters. Admins oversee the platform. You can hold multiple roles simultaneously."
+  roles: [parent, student, teacher, admin]
+  tags: [roles, getting-started, registration]
+
+- id: faq-getting-started-3
+  question: "Can I have more than one role?"
+  answer: "Yes. During onboarding you can select multiple roles such as Parent and Teacher. You can switch between active roles using the role switcher dropdown in the header. Each role gives you access to a different dashboard and features."
+  roles: [parent, student, teacher, admin]
+  tags: [roles, multi-role, getting-started]
+
+- id: faq-getting-started-4
+  question: "How do I switch between roles?"
+  answer: "If you have multiple roles, a role switcher dropdown appears in the top header next to your name. Select the role you want to activate and the dashboard will update to match that role's view."
+  roles: [parent, student, teacher, admin]
+  tags: [roles, multi-role, dashboard]
+
+- id: faq-getting-started-5
+  question: "What is the onboarding screen?"
+  answer: "After registering, you are taken to an onboarding screen where you select how you will use ClassBridge. Choose Parent, Student, or Teacher (or multiple). If you select Teacher, you will also pick your teacher type (School Teacher or Private Tutor). This step is required before accessing the dashboard."
+  roles: [parent, student, teacher]
+  tags: [onboarding, registration, getting-started]
+
+- id: faq-getting-started-6
+  question: "How does the waitlist work?"
+  answer: "ClassBridge uses a waitlist to manage early access. Submit your name, email, and preferred roles on the waitlist page. An admin reviews submissions and approves users. Once approved, you receive an email with a unique registration link valid for 14 days."
+  roles: [parent, student, teacher]
+  tags: [waitlist, registration, getting-started]
+
+- id: faq-getting-started-7
+  question: "I was approved but lost my registration email. What do I do?"
+  answer: "Contact ClassBridge support or ask the admin to send a registration reminder from the admin waitlist panel. The admin can resend your invite link with a refreshed token."
+  roles: [parent, student, teacher]
+  tags: [waitlist, registration, email]
+
+- id: faq-getting-started-8
+  question: "Where can I find the tutorial?"
+  answer: "Click the 'Tutorial' link in the sidebar navigation. The tutorial is tailored to your role and walks you through key features step by step with images and descriptions."
+  roles: [parent, student, teacher, admin]
+  tags: [tutorial, getting-started, help]
+
+# ============================================================
+# LOGIN & AUTHENTICATION
+# ============================================================
+
+- id: faq-login-1
+  question: "How do I log in?"
+  answer: "Go to the login page and enter your email and password. After successful login, you will be redirected to your role-specific dashboard. If you registered via Google OAuth, you can also log in with your Google account."
+  roles: [parent, student, teacher, admin]
+  tags: [login, authentication, getting-started]
+
+- id: faq-login-2
+  question: "I forgot my password. How do I reset it?"
+  answer: "Click 'Forgot password?' on the login page. Enter your email address and a reset link will be sent to you. The link is valid for 1 hour. Click it, set a new password that meets the strength requirements (8+ characters, uppercase, lowercase, digit, special character), and log in."
+  roles: [parent, student, teacher, admin]
+  tags: [password, reset, login, authentication]
+
+- id: faq-login-3
+  question: "What are the password requirements?"
+  answer: "Passwords must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character."
+  roles: [parent, student, teacher, admin]
+  tags: [password, security, registration]
+
+- id: faq-login-4
+  question: "My session expired. What happened?"
+  answer: "Access tokens expire after 24 hours. ClassBridge automatically refreshes your session using a refresh token (valid for 30 days). If both expire, you will be redirected to the login page. Simply log in again."
+  roles: [parent, student, teacher, admin]
+  tags: [login, session, authentication, token]
+
+- id: faq-login-5
+  question: "Can I log in with Google?"
+  answer: "Yes. If you connected your Google account, you can use Google OAuth to log in. Click 'Sign in with Google' on the login page and authorize with your Google account."
+  roles: [parent, student, teacher, admin]
+  tags: [login, google, oauth, authentication]
+
+# ============================================================
+# GOOGLE CLASSROOM
+# ============================================================
+
+- id: faq-google-classroom-1
+  question: "How do I connect Google Classroom?"
+  answer: "Go to your dashboard and click 'Connect Google Classroom' or use the Sync Classroom quick action. You will be redirected to Google to authorize ClassBridge. Once connected, your courses and assignments are automatically synced."
+  roles: [parent, student, teacher]
+  tags: [google-classroom, integration, sync, getting-started]
+
+- id: faq-google-classroom-2
+  question: "What data is synced from Google Classroom?"
+  answer: "ClassBridge syncs your courses, assignments (including due dates and descriptions), and student rosters. Course materials and grades from Google Classroom are imported so you can generate study tools from them."
+  roles: [parent, student, teacher]
+  tags: [google-classroom, sync, courses, assignments]
+
+- id: faq-google-classroom-3
+  question: "Can I connect multiple Google accounts?"
+  answer: "Teachers can manage multiple Google accounts for different schools or institutions. Each connected account syncs its own set of courses. Use the Google account management section on your Teacher Dashboard."
+  roles: [teacher]
+  tags: [google-classroom, multiple-accounts, teacher]
+
+- id: faq-google-classroom-4
+  question: "What is the difference between school and private Google Classroom?"
+  answer: "School classrooms are associated with a school board's Google Workspace. Students can see assignments and due dates but cannot download documents directly (for privacy compliance). Private classrooms give full access to all content including document downloads."
+  roles: [parent, student, teacher]
+  tags: [google-classroom, school, private, classroom-type]
+
+- id: faq-google-classroom-5
+  question: "Why are my Google Classroom courses not appearing?"
+  answer: "Make sure you authorized ClassBridge with the correct Google account. Courses sync automatically after connection. Try clicking the Sync button on your dashboard. If the issue persists, disconnect and reconnect your Google account."
+  roles: [parent, student, teacher]
+  tags: [google-classroom, troubleshooting, sync]
+
+- id: faq-google-classroom-6
+  question: "Can I disconnect Google Classroom?"
+  answer: "Yes. Go to your dashboard settings and remove the Google account connection. Your previously synced courses and assignments will remain in ClassBridge but will no longer receive updates from Google Classroom."
+  roles: [parent, student, teacher]
+  tags: [google-classroom, disconnect, settings]
+
+- id: faq-google-classroom-7
+  question: "How often does Google Classroom sync?"
+  answer: "Teacher communications sync automatically every 15 minutes via a background job. You can also trigger a manual sync at any time from your dashboard by clicking the sync button."
+  roles: [parent, student, teacher]
+  tags: [google-classroom, sync, frequency]
+
+# ============================================================
+# AI STUDY TOOLS
+# ============================================================
+
+- id: faq-ai-study-tools-1
+  question: "What AI study tools are available?"
+  answer: "ClassBridge offers three AI-powered study tools: Study Guides (structured summaries with key concepts), Practice Quizzes (multiple-choice questions to test understanding), and Flashcards (front/back cards for memorization). All are generated from your course materials."
+  roles: [parent, student, teacher]
+  tags: [ai, study-guide, quiz, flashcards, study-tools]
+
+- id: faq-ai-study-tools-2
+  question: "How do I generate a study guide?"
+  answer: "Upload a course material (PDF, Word, image, etc.) or paste text, then select 'Study Guide' as the AI tool to generate. You can also go to any existing course material and click the Study Guide tab to generate one. A focus prompt lets you tell the AI what to emphasize."
+  roles: [parent, student, teacher]
+  tags: [ai, study-guide, generation, upload]
+
+- id: faq-ai-study-tools-3
+  question: "How do I generate a practice quiz?"
+  answer: "From any course material, navigate to the Quiz tab and generate a practice quiz. You can also select Quiz during the upload process. The AI creates multiple-choice questions based on the material content. After answering, you see your score and correct answers."
+  roles: [parent, student, teacher]
+  tags: [ai, quiz, generation, study-tools]
+
+- id: faq-ai-study-tools-4
+  question: "How do flashcards work?"
+  answer: "Flashcards are generated from your course materials. Each card has a question or term on the front and the answer on the back. Click a card to flip it. Use the shuffle button to randomize the order. Navigate with arrow keys or the next/previous buttons."
+  roles: [parent, student, teacher]
+  tags: [ai, flashcards, study-tools]
+
+- id: faq-ai-study-tools-5
+  question: "What is a focus prompt?"
+  answer: "A focus prompt is an optional instruction you give the AI when generating study materials. For example, you might write 'Focus on Chapter 5 vocabulary' or 'Emphasize the causes of World War II'. This helps the AI tailor the output to your specific study needs."
+  roles: [parent, student, teacher]
+  tags: [ai, focus-prompt, study-tools, generation]
+
+- id: faq-ai-study-tools-6
+  question: "Does the AI handle math content?"
+  answer: "Yes. When the AI detects math problems, equations, or exercises in your material, it adjusts its output. Study guides include step-by-step worked solutions, quizzes test problem-solving with numerical choices, and flashcards show problems on the front with worked solutions on the back."
+  roles: [parent, student, teacher]
+  tags: [ai, math, study-tools]
+
+- id: faq-ai-study-tools-7
+  question: "What are AI credits?"
+  answer: "Each AI generation (study guide, quiz, or flashcard set) uses one AI credit. New users start with 10 credits. You can see your remaining credits on your dashboard. When you run out, you can request more credits from the admin."
+  roles: [parent, student, teacher]
+  tags: [ai, credits, usage, limits]
+
+- id: faq-ai-study-tools-8
+  question: "I ran out of AI credits. How do I get more?"
+  answer: "When your credits are exhausted, click the 'Request More' button that appears. Fill in how many additional credits you need and a brief reason. An admin will review your request and can approve or adjust the amount."
+  roles: [parent, student, teacher]
+  tags: [ai, credits, request, limits]
+
+- id: faq-ai-study-tools-9
+  question: "Is the AI generation blocking? Can I keep working while it runs?"
+  answer: "No, AI generation is fully non-blocking. After you submit, the modal closes immediately and a 'Generating...' placeholder appears in your materials list. You can continue working. When generation completes, the placeholder is replaced with your new study material."
+  roles: [parent, student, teacher]
+  tags: [ai, generation, non-blocking, study-tools]
+
+- id: faq-ai-study-tools-10
+  question: "Can I regenerate a study guide with different focus?"
+  answer: "Yes. Go to the course material detail page, navigate to the Study Guide tab, and click regenerate. You can enter a new focus prompt to change what the AI emphasizes. This uses one AI credit."
+  roles: [parent, student, teacher]
+  tags: [ai, regenerate, study-guide, focus-prompt]
+
+# ============================================================
+# COURSE MATERIALS
+# ============================================================
+
+- id: faq-course-materials-1
+  question: "What file types can I upload?"
+  answer: "ClassBridge supports PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), images (PNG, JPG, GIF), text files (.txt), and ZIP archives. You can upload up to 10 files at once, each up to 20 MB."
+  roles: [parent, student, teacher]
+  tags: [upload, file-types, course-materials]
+
+- id: faq-course-materials-2
+  question: "How do I upload course materials?"
+  answer: "Click the upload button on your dashboard or the Course Materials page. Drag and drop files into the upload zone or click to browse. You can also paste text directly. Optionally select AI tools to generate study materials during upload."
+  roles: [parent, student, teacher]
+  tags: [upload, course-materials, getting-started]
+
+- id: faq-course-materials-3
+  question: "Can I paste text instead of uploading a file?"
+  answer: "Yes. The upload modal includes a text area where you can paste content directly. This is useful for copying text from websites, emails, or other sources that are not in a file format."
+  roles: [parent, student, teacher]
+  tags: [upload, paste, text, course-materials]
+
+- id: faq-course-materials-4
+  question: "How do I edit a course material?"
+  answer: "Open the course material detail page and go to the Original Document tab. Click the + icon to access Edit Content, Upload/Replace Document, or Download options. When editing, the content becomes editable inline. Click Save when done."
+  roles: [parent, student, teacher]
+  tags: [course-materials, edit, document]
+
+- id: faq-course-materials-5
+  question: "What happens when I edit course material content?"
+  answer: "When you modify the text content of a course material, all linked study guides, quizzes, and flashcards are automatically archived. A toast notification tells you how many were archived. You will see a prompt to regenerate study materials with the updated content."
+  roles: [parent, student, teacher]
+  tags: [course-materials, edit, archive, regeneration]
+
+- id: faq-course-materials-6
+  question: "How do I replace an uploaded document?"
+  answer: "Open the course material detail page, click the + icon on the Original Document tab, and select 'Upload/Replace Document'. Drag and drop or browse for the new file. The replacement uploads in the background."
+  roles: [parent, student, teacher]
+  tags: [course-materials, replace, upload, document]
+
+- id: faq-course-materials-7
+  question: "How do I archive or delete a course material?"
+  answer: "On the Course Materials page, click the trash icon next to any material to archive it. Archived materials can be viewed by toggling 'Show Archive'. From the archive view, you can restore or permanently delete items."
+  roles: [parent, student, teacher]
+  tags: [course-materials, archive, delete, lifecycle]
+
+- id: faq-course-materials-8
+  question: "How does the automatic archiving work?"
+  answer: "Course materials older than 1 year are automatically archived when accessed. Materials not viewed for 7 years are permanently deleted along with their linked study guides. This happens on access, not via a background job."
+  roles: [parent, student, teacher]
+  tags: [course-materials, archive, retention, lifecycle]
+
+- id: faq-course-materials-9
+  question: "Can I move a course material to a different course?"
+  answer: "Yes. On the Course Materials page, click the folder icon next to any material. A course selector modal opens where you can choose a different course or create a new one. The material is reassigned to the selected course."
+  roles: [parent, student, teacher]
+  tags: [course-materials, move, course, organize]
+
+- id: faq-course-materials-10
+  question: "Does ClassBridge support OCR for images?"
+  answer: "Yes. When you upload an image (PNG, JPG, etc.), ClassBridge extracts text using OCR so it can be used to generate AI study materials. This works for photos of handwritten notes, textbook pages, and printed documents."
+  roles: [parent, student, teacher]
+  tags: [upload, ocr, images, course-materials]
+
+# ============================================================
+# MESSAGING
+# ============================================================
+
+- id: faq-messaging-1
+  question: "How do I send a message to a teacher?"
+  answer: "Go to the Messages page from the sidebar. Click 'New Conversation' and select a teacher from the recipient list. Teachers appear if they are linked to your child or assigned to one of your child's courses. Type your message and click Send."
+  roles: [parent]
+  tags: [messaging, teacher, communication]
+
+- id: faq-messaging-2
+  question: "How do I message a parent?"
+  answer: "Go to the Messages page and click 'New Conversation'. Parents who are linked to students in your courses will appear in the recipient list. Select a parent, compose your message, and send."
+  roles: [teacher]
+  tags: [messaging, parent, communication]
+
+- id: faq-messaging-3
+  question: "How do I message an admin?"
+  answer: "Go to the Messages page and click 'New Conversation'. All admin users appear in the recipient list for every role. Select an admin to start a conversation. Your message will be visible to all admin users."
+  roles: [parent, student, teacher]
+  tags: [messaging, admin, communication, support]
+
+- id: faq-messaging-4
+  question: "Do I get email notifications for messages?"
+  answer: "Yes, if you have email notifications enabled. When someone sends you a message, you receive both an in-app notification (bell icon) and an email with the sender name and message preview. Duplicate notifications within 5 minutes are suppressed."
+  roles: [parent, student, teacher, admin]
+  tags: [messaging, email, notifications]
+
+- id: faq-messaging-5
+  question: "How do I disable email notifications?"
+  answer: "Go to your account settings and toggle off email notifications. You will still receive in-app notifications through the notification bell, but no emails will be sent for new messages."
+  roles: [parent, student, teacher, admin]
+  tags: [messaging, email, notifications, settings]
+
+- id: faq-messaging-6
+  question: "Can students send messages?"
+  answer: "Students can send messages to admin users. The messaging system is primarily designed for parent-teacher communication, but students can reach out to admins for help or support."
+  roles: [student]
+  tags: [messaging, student, communication]
+
+# ============================================================
+# TASKS
+# ============================================================
+
+- id: faq-tasks-1
+  question: "How do I create a task?"
+  answer: "Go to the Tasks page and click the + icon to open the quick action menu, then select 'New Task'. Fill in the title, description, due date, priority, and optionally assign it to a student. You can also create tasks from the dashboard quick actions."
+  roles: [parent, student, teacher]
+  tags: [tasks, create, getting-started]
+
+- id: faq-tasks-2
+  question: "How do I filter tasks?"
+  answer: "The Tasks page offers multiple filters: Status (all, pending, completed), Priority (high, medium, low), Due Date (overdue, today, this week), and Assignee (filter by student). Filters sync with the URL so you can bookmark filtered views."
+  roles: [parent, student, teacher]
+  tags: [tasks, filter, organize]
+
+- id: faq-tasks-3
+  question: "Can I drag and drop tasks on the calendar?"
+  answer: "Yes. On the Tasks page, expand the calendar section. You can drag any task to a different day in month view or week view to reschedule it. The due date updates immediately. Only tasks can be dragged; Google Classroom assignments remain fixed."
+  roles: [parent, student, teacher]
+  tags: [tasks, calendar, drag-and-drop, reschedule]
+
+- id: faq-tasks-4
+  question: "How do task reminders work?"
+  answer: "ClassBridge sends automatic task reminders based on your preferences. By default, you receive notifications 1 and 3 days before a task is due. You can customize reminder timing in your settings. Reminders are sent as in-app notifications."
+  roles: [parent, student, teacher]
+  tags: [tasks, reminders, notifications, settings]
+
+- id: faq-tasks-5
+  question: "Can I edit a task after creating it?"
+  answer: "Yes. Open the task detail page by clicking on a task. Click the edit button to toggle inline editing mode. You can change the title, description, due date, priority, status, and assignee. Click Save when done."
+  roles: [parent, student, teacher]
+  tags: [tasks, edit, detail]
+
+- id: faq-tasks-6
+  question: "How do I link a task to a course?"
+  answer: "When creating or editing a task, you can select a course from the course dropdown. This associates the task with that course, making it appear in course-filtered views and the calendar with the course's color coding."
+  roles: [parent, student, teacher]
+  tags: [tasks, course, link, organize]
+
+- id: faq-tasks-7
+  question: "What do the overdue and due-today counts on the dashboard mean?"
+  answer: "These counts show how many tasks have due dates that have passed (overdue) or are due today. Click on these counts to navigate directly to the Tasks page filtered to show only those items. Counts update based on the selected child filter."
+  roles: [parent, student]
+  tags: [tasks, dashboard, overdue, due-today]
+
+- id: faq-tasks-8
+  question: "Can I archive completed tasks?"
+  answer: "Completed tasks remain visible in your task list with a completed status. Use the status filter to hide completed tasks from view. There is no separate archive for tasks like there is for course materials."
+  roles: [parent, student, teacher]
+  tags: [tasks, archive, completed, filter]
+
+# ============================================================
+# MY KIDS (Parents)
+# ============================================================
+
+- id: faq-my-kids-1
+  question: "How do I add a child to ClassBridge?"
+  answer: "Go to the My Kids page and click the + icon, then select 'Add Child'. Enter your child's name, grade, and email. If the child already has a ClassBridge account, they will receive a link request to approve the connection. If not, an invite email is sent for them to register."
+  roles: [parent]
+  tags: [my-kids, add-child, parent, getting-started]
+
+- id: faq-my-kids-2
+  question: "Can I manage multiple children?"
+  answer: "Yes. Add each child from the My Kids page. On the dashboard, child filter pills appear at the top so you can switch between children. Click a child's name to see their courses, materials, and tasks. Click again to deselect and see all children combined."
+  roles: [parent]
+  tags: [my-kids, multiple-children, parent, dashboard]
+
+- id: faq-my-kids-3
+  question: "How do I link a teacher to my child?"
+  answer: "Go to the My Kids page, select a child, and find the Teachers section. Click 'Add Teacher' and enter the teacher's email. If the teacher is already on ClassBridge, they are linked immediately and receive a notification. If not, an invitation email is sent."
+  roles: [parent]
+  tags: [my-kids, teacher-linking, parent, messaging]
+
+- id: faq-my-kids-4
+  question: "How do I reset my child's password?"
+  answer: "Go to the My Kids page, select a child, and click 'Reset Password' in the Teachers section header. If your child has an email, you can either send a reset link or set a password directly. If they have no email, you can only set the password directly."
+  roles: [parent]
+  tags: [my-kids, password, reset, parent]
+
+- id: faq-my-kids-5
+  question: "What are the quick stats on the child cards?"
+  answer: "Each child card shows their name, grade, school, number of courses, active tasks, overdue task count, and a task completion progress bar. It also shows the next upcoming deadline with a countdown like 'due tomorrow' or 'due in 3 days'."
+  roles: [parent]
+  tags: [my-kids, stats, child-card, parent]
+
+- id: faq-my-kids-6
+  question: "How does the link request approval work?"
+  answer: "When a parent tries to add an active student who already has a ClassBridge account, a link request is created. The student must approve the request before the parent-child link is established. Placeholder students (created by parents) are linked immediately without approval."
+  roles: [parent, student]
+  tags: [my-kids, link-request, approval, parent-student]
+
+- id: faq-my-kids-7
+  question: "Can I see my child's notes?"
+  answer: "Yes. Parents can view their child's notes in read-only mode. When viewing a course material that your child has notes on, you can toggle between your own notes and your child's notes. Highlights made by your child are also visible."
+  roles: [parent]
+  tags: [my-kids, notes, parent, read-only]
+
+# ============================================================
+# ACCOUNT & SETTINGS
+# ============================================================
+
+- id: faq-account-1
+  question: "How do I verify my email?"
+  answer: "After registering, a verification email is sent with a 24-hour link. Click the link to verify. If you missed it, look for the verification banner on your dashboard and click 'Resend'. Email verification is recommended but not required to use ClassBridge."
+  roles: [parent, student, teacher, admin]
+  tags: [account, email-verification, settings]
+
+- id: faq-account-2
+  question: "How do I change the theme?"
+  answer: "Click the theme toggle button in the header (sun/moon icon). ClassBridge offers three themes: Light (clean and bright), Dark (deep with purple accents), and Focus (warm muted tones for study sessions). Your preference is saved automatically."
+  roles: [parent, student, teacher, admin]
+  tags: [account, theme, settings, appearance]
+
+- id: faq-account-3
+  question: "How do I delete my account?"
+  answer: "Go to your Account Settings page and request account deletion. You will receive a confirmation email. Click the confirmation link to complete the deletion. An admin must approve the request before your data is permanently removed."
+  roles: [parent, student, teacher]
+  tags: [account, delete, settings, privacy]
+
+- id: faq-account-4
+  question: "Where can I update my notification preferences?"
+  answer: "Go to Account Settings to manage your notification preferences including email notifications and task reminder timing. Task reminders default to 1 and 3 days before the due date, and you can customize these intervals."
+  roles: [parent, student, teacher, admin]
+  tags: [account, notifications, settings, preferences]
+
+- id: faq-account-5
+  question: "Is my data secure?"
+  answer: "Yes. ClassBridge uses JWT authentication with encrypted tokens, bcrypt password hashing, CORS protection, rate limiting on sensitive endpoints, and security headers (HSTS, CSP, X-Frame-Options). Google OAuth uses state tokens for CSRF protection."
+  roles: [parent, student, teacher, admin]
+  tags: [account, security, privacy]
+
+- id: faq-account-6
+  question: "How do I change my password?"
+  answer: "Go to Account Settings and use the change password option. You will need to enter your current password and set a new one that meets the strength requirements. Alternatively, use the forgot password flow from the login page."
+  roles: [parent, student, teacher, admin]
+  tags: [account, password, change, settings]
+
+# ============================================================
+# ADMIN
+# ============================================================
+
+- id: faq-admin-1
+  question: "How do I manage users?"
+  answer: "The Admin Dashboard includes a user management table with search, filter by role, and pagination. You can view user details, send individual messages, manage roles, and adjust AI usage limits for each user."
+  roles: [admin]
+  tags: [admin, user-management, dashboard]
+
+- id: faq-admin-2
+  question: "How do I send a broadcast message?"
+  answer: "On the Admin Dashboard, click 'Send Broadcast'. Enter a subject and body, preview the message, then click 'Send to All Users'. The message is delivered as both an in-app notification and email to all active users."
+  roles: [admin]
+  tags: [admin, broadcast, messaging]
+
+- id: faq-admin-3
+  question: "How do I manage the waitlist?"
+  answer: "Go to Admin > Waitlist. You see a summary of pending, approved, registered, and declined entries. For pending entries, click Approve or Decline. Approved users receive a registration email. You can add admin notes, send reminders, and bulk-approve entries."
+  roles: [admin]
+  tags: [admin, waitlist, management]
+
+- id: faq-admin-4
+  question: "How do I manage AI usage limits?"
+  answer: "Go to Admin > AI Usage. The Overview tab shows usage stats and a per-user table. You can adjust any user's credit limit, reset their usage count, or view their generation history. The Credit Requests tab shows pending requests that you can approve or decline."
+  roles: [admin]
+  tags: [admin, ai-usage, credits, management]
+
+- id: faq-admin-5
+  question: "What is the audit log?"
+  answer: "The audit log at Admin > Audit Log records important actions like logins, password resets, role changes, broadcast sends, and security events. You can search and filter by action type, user, and date range."
+  roles: [admin]
+  tags: [admin, audit-log, security]
+
+- id: faq-admin-6
+  question: "How do I manage inspiration messages?"
+  answer: "Go to Admin > Inspiration Messages. You can create, edit, and delete motivational quotes that appear on dashboards and in emails. Each message is tagged with applicable roles so users see role-relevant inspiration."
+  roles: [admin]
+  tags: [admin, inspiration, messages, management]
+
+- id: faq-admin-7
+  question: "How do I send a message to a specific user?"
+  answer: "In the user management table on the Admin Dashboard, click the message icon next to any user. A modal opens where you can compose a subject and body. The message is sent as an in-app notification and email."
+  roles: [admin]
+  tags: [admin, messaging, individual, user-management]
+
+- id: faq-admin-8
+  question: "How do I view broadcast history?"
+  answer: "On the Admin Dashboard, the Broadcast History section shows all past broadcasts with subject, date, and recipient counts. You can view the full content of any broadcast, reuse it as a template for a new one, or resend it."
+  roles: [admin]
+  tags: [admin, broadcast, history]
+
+- id: faq-admin-9
+  question: "How do I handle account deletion requests?"
+  answer: "Go to Admin > Deletion Requests to see pending account deletion requests. Review each request and approve or reject it. Approved deletions permanently remove the user's data."
+  roles: [admin]
+  tags: [admin, deletion, account, management]
+
+- id: faq-admin-10
+  question: "How do I manage FAQ entries?"
+  answer: "Go to Admin > FAQ Management to create, edit, and organize FAQ entries that appear on the user-facing FAQ page. You can add questions and answers, assign them to categories, and control which roles can see each entry."
+  roles: [admin]
+  tags: [admin, faq, management, content]
+
+# ============================================================
+# TEACHER
+# ============================================================
+
+- id: faq-teacher-1
+  question: "How do I create a course?"
+  answer: "On your Teacher Dashboard, click 'Create Course'. Enter the course name, description, and optionally a subject area. The course is created and you can start adding students, assignments, and materials."
+  roles: [teacher]
+  tags: [teacher, course, create, getting-started]
+
+- id: faq-teacher-2
+  question: "How do I add students to my course?"
+  answer: "Open the course detail page and go to the Student Roster section. Click 'Add Student' and enter the student's email. If the student has an account, they are enrolled immediately. If not, an invitation email is sent with a link to register and auto-enroll."
+  roles: [teacher]
+  tags: [teacher, course, roster, students, enroll]
+
+- id: faq-teacher-3
+  question: "How do I create assignments?"
+  answer: "Open the course detail page and go to the Assignments section. Click 'Create Assignment' and fill in the title, description, due date, and max points. Enrolled students are notified about the new assignment. Note: Google Classroom synced assignments cannot be edited in ClassBridge."
+  roles: [teacher]
+  tags: [teacher, assignments, create, course]
+
+- id: faq-teacher-4
+  question: "How do I invite a parent to ClassBridge?"
+  answer: "On your Teacher Dashboard, use the 'Invite Parent' card. Enter the parent's email and select which student they are related to. An invitation email is sent. When the parent registers and accepts, they are automatically linked to the student."
+  roles: [teacher]
+  tags: [teacher, invite, parent, communication]
+
+- id: faq-teacher-5
+  question: "What is the difference between a School Teacher and Private Tutor?"
+  answer: "School Teachers are associated with a school and their courses are tagged as school classrooms. Private Tutors teach independently and their courses are private classrooms. Private tutors will get marketplace features (availability, profiles, booking) in a future phase."
+  roles: [teacher]
+  tags: [teacher, teacher-type, school, private-tutor]
+
+- id: faq-teacher-6
+  question: "How do I remove a student from my course?"
+  answer: "Open the course detail page and go to the Student Roster section. Click the remove button next to the student you want to unenroll. The student loses access to the course but their previously generated study materials are preserved."
+  roles: [teacher]
+  tags: [teacher, course, roster, remove, students]
+
+# ============================================================
+# NOTES
+# ============================================================
+
+- id: faq-notes-1
+  question: "How do I take notes on a course material?"
+  answer: "Open any course material and click the Notes button in the toolbar or the floating note icon in the bottom-right corner. A draggable notes panel opens where you can type notes. Notes auto-save every second."
+  roles: [parent, student, teacher]
+  tags: [notes, course-materials, study-tools]
+
+- id: faq-notes-2
+  question: "How does text selection to notes work?"
+  answer: "While viewing a study guide or course material, highlight any text. An 'Add to Notes' tooltip appears. Click it to add the selected text as a blockquote in your notes panel. The notes panel opens automatically if closed."
+  roles: [parent, student, teacher]
+  tags: [notes, text-selection, highlights, study-tools]
+
+- id: faq-notes-3
+  question: "How do highlights work?"
+  answer: "When you add text to your notes via selection, the original text is highlighted in yellow on the study guide or course material. Highlights persist across sessions. Click on a highlight to remove it. Each user has their own separate highlights."
+  roles: [parent, student, teacher]
+  tags: [notes, highlights, study-tools]
+
+- id: faq-notes-4
+  question: "Can I create tasks from my notes?"
+  answer: "Yes. In the notes panel, you can create a task linked to your current note. This is useful for turning study reminders or follow-up items into actionable tasks with due dates."
+  roles: [parent, student, teacher]
+  tags: [notes, tasks, study-tools]
+
+- id: faq-notes-5
+  question: "Are my notes private?"
+  answer: "Yes. Each user has their own notes per course material. Parents can view their child's notes in read-only mode, but cannot edit them. Admins can view any note for support purposes."
+  roles: [parent, student, teacher]
+  tags: [notes, privacy, permissions]
+
+# ============================================================
+# CALENDAR
+# ============================================================
+
+- id: faq-calendar-1
+  question: "Where is the calendar?"
+  answer: "The calendar is on the Tasks page. It defaults to collapsed; click the expand button to open it. The calendar shows assignments and tasks with color-coded entries matching their course colors."
+  roles: [parent, student, teacher]
+  tags: [calendar, tasks, navigation]
+
+- id: faq-calendar-2
+  question: "What views does the calendar support?"
+  answer: "The calendar supports Month, Week, 3-Day, and Day views. Use the toggle buttons in the calendar header to switch between views. Each view shows assignments and tasks differently — chips in month view, cards in week/day view."
+  roles: [parent, student, teacher]
+  tags: [calendar, views, navigation]
+
+- id: faq-calendar-3
+  question: "Can I reschedule tasks by dragging them?"
+  answer: "Yes. In the calendar's month or week view, drag a task to a different day to reschedule it. The due date updates immediately via an optimistic UI update. Only tasks can be dragged; Google Classroom assignments cannot be moved."
+  roles: [parent, student, teacher]
+  tags: [calendar, drag-and-drop, tasks, reschedule]
+
+- id: faq-calendar-4
+  question: "What happens when I click a day on the calendar?"
+  answer: "Clicking a day opens a Day Detail Modal showing all assignments and tasks for that date. From this modal, you can view details, create new tasks, or navigate to specific items."
+  roles: [parent, student, teacher]
+  tags: [calendar, day-detail, navigation]
+
+# ============================================================
+# COURSES
+# ============================================================
+
+- id: faq-courses-1
+  question: "How do I create a course?"
+  answer: "Go to the Courses page and click the create course button. Enter a course name, description, and optionally assign a teacher by email. Parents can also assign courses to their children. Students can create their own courses as well."
+  roles: [parent, student, teacher]
+  tags: [courses, create, getting-started]
+
+- id: faq-courses-2
+  question: "How do I enroll in a course as a student?"
+  answer: "Go to the Courses page and browse available public courses. Click 'Enroll' on any course to join it. Private courses require a teacher or admin to add you. You can also be enrolled automatically through a Google Classroom sync."
+  roles: [student]
+  tags: [courses, enroll, student]
+
+- id: faq-courses-3
+  question: "How do I assign a course to my child?"
+  answer: "On the Courses page, click 'Assign Course' and select your child and the course. Alternatively, on the My Kids page, go to the Courses section for a child and add a course from there."
+  roles: [parent]
+  tags: [courses, assign, parent, my-kids]
+
+- id: faq-courses-4
+  question: "How do I assign a teacher to a course?"
+  answer: "When creating or editing a course, enter the teacher's email in the Teacher Email field. If the teacher has a ClassBridge account, they are assigned immediately. If not, an invitation is sent and the teacher is auto-assigned when they register."
+  roles: [parent, teacher, admin]
+  tags: [courses, teacher, assign]
+
+- id: faq-courses-5
+  question: "What is the difference between public and private courses?"
+  answer: "Public courses are visible to all students for self-enrollment. Private courses are only accessible to students who are explicitly enrolled by a teacher, parent, or admin. Google Classroom synced courses inherit their visibility setting."
+  roles: [parent, student, teacher]
+  tags: [courses, public, private, visibility]
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+- id: faq-notifications-1
+  question: "How do notifications work?"
+  answer: "ClassBridge sends notifications through three channels: the in-app notification bell (top header), email, and in-app messages. Click the bell icon to see recent notifications. Click any notification to view its full content in a popup modal."
+  roles: [parent, student, teacher, admin]
+  tags: [notifications, bell, channels]
+
+- id: faq-notifications-2
+  question: "What events trigger notifications?"
+  answer: "Notifications are sent for: new messages, task reminders, assignment due dates, link requests, parent requests, new assignments posted, AI credit request outcomes, admin broadcasts, teacher linking, and student enrollment."
+  roles: [parent, student, teacher, admin]
+  tags: [notifications, events, triggers]
+
+- id: faq-notifications-3
+  question: "How do I mark notifications as read?"
+  answer: "Click on any notification in the bell dropdown to open it — this automatically marks it as read. You can also mark all notifications as read using the 'Mark All Read' option."
+  roles: [parent, student, teacher, admin]
+  tags: [notifications, read, manage]
+
+# ============================================================
+# SEARCH
+# ============================================================
+
+- id: faq-search-1
+  question: "How does global search work?"
+  answer: "Press Ctrl+K (or Cmd+K on Mac) or click the search bar in the header. Type at least 2 characters to search across courses, study guides, tasks, and course content. Results are grouped by type and clicking a result navigates to its detail page."
+  roles: [parent, student, teacher, admin]
+  tags: [search, global, navigation]
+
+- id: faq-search-2
+  question: "What can I search for?"
+  answer: "Global search finds courses (by name or description), study guides (by title), tasks (by title or description), and course content (by title or description). Results are filtered based on your role and access permissions."
+  roles: [parent, student, teacher, admin]
+  tags: [search, global, content]
+
+# ============================================================
+# INVITES
+# ============================================================
+
+- id: faq-invites-1
+  question: "How do invitations work?"
+  answer: "ClassBridge uses email invitations to bring new users to the platform. Teachers can invite students and parents, parents can invite teachers. Each invite creates a unique link. When the recipient clicks it and registers, they are automatically connected to the inviter."
+  roles: [parent, student, teacher]
+  tags: [invites, registration, communication]
+
+- id: faq-invites-2
+  question: "I received an invitation email. What do I do?"
+  answer: "Click the registration link in the email. It takes you to the ClassBridge registration page with your name and email pre-filled. Set a password and complete registration. You will be automatically connected to the person who invited you."
+  roles: [parent, student, teacher]
+  tags: [invites, registration, getting-started]
+
+- id: faq-invites-3
+  question: "Can I resend an invitation?"
+  answer: "Currently, teachers and parents who send invites can request the admin to resend them. Admin can trigger reminder emails for approved waitlist entries. The resend feature for general invites is planned for a future update."
+  roles: [parent, teacher]
+  tags: [invites, resend, communication]
+
+# ============================================================
+# HELP & SUPPORT
+# ============================================================
+
+- id: faq-help-1
+  question: "Where can I get help?"
+  answer: "Click the Help link in the sidebar navigation to access the Help Center. You can browse FAQs, use the AI Help Chatbot for instant answers, or message an admin directly through the Messages page."
+  roles: [parent, student, teacher, admin]
+  tags: [help, support, faq, chatbot]
+
+- id: faq-help-2
+  question: "How does the AI Help Chatbot work?"
+  answer: "The AI Help Chatbot uses knowledge about ClassBridge features and common questions to provide instant answers. Ask any question about how to use the platform and it will guide you. For complex issues, it can suggest contacting an admin."
+  roles: [parent, student, teacher, admin]
+  tags: [help, chatbot, ai, support]
+
+- id: faq-help-3
+  question: "Where can I find the FAQ?"
+  answer: "Go to the FAQ page from the Help section or directly at /faq. FAQs are organized by category and you can search for specific topics. Click any question to expand the answer."
+  roles: [parent, student, teacher, admin]
+  tags: [help, faq, navigation]
+
+# ============================================================
+# TEACHER COMMUNICATIONS
+# ============================================================
+
+- id: faq-teacher-comms-1
+  question: "What are teacher communications?"
+  answer: "Teacher Communications shows emails and announcements from your child's teachers that were synced from Google Classroom or Gmail. ClassBridge monitors these channels and provides AI-generated summaries of important communications."
+  roles: [parent]
+  tags: [teacher-communications, google, email, parent]
+
+- id: faq-teacher-comms-2
+  question: "How often are teacher communications synced?"
+  answer: "Teacher communications sync automatically every 15 minutes via a background job. You can also manually refresh from the Teacher Communications page."
+  roles: [parent]
+  tags: [teacher-communications, sync, frequency]
+
+# ============================================================
+# STUDENT-SPECIFIC
+# ============================================================
+
+- id: faq-student-1
+  question: "What is the Study Hub?"
+  answer: "The Study Hub at /study is a unified page for students that combines course list, materials per course, upload functionality, and quiz progress stats in one place. Select a course to see its materials, filter by type, and upload new content."
+  roles: [student]
+  tags: [student, study-hub, courses, materials]
+
+- id: faq-student-2
+  question: "How do I view my quiz history?"
+  answer: "Your quiz progress stats (average score, best score, attempt count) are shown in the Study Hub for each course. You can also view detailed quiz results on the course material detail page under the Quiz tab."
+  roles: [student]
+  tags: [student, quiz, history, study-tools]
+
+- id: faq-student-3
+  question: "What is the Coming Up timeline?"
+  answer: "The Coming Up section on the Student Dashboard shows your upcoming assignments and tasks for the next 7 days, sorted chronologically. It merges assignments from Google Classroom with tasks you created, giving you one unified view of what is due."
+  roles: [student]
+  tags: [student, dashboard, timeline, upcoming]
+
+- id: faq-student-4
+  question: "Can I create my own courses?"
+  answer: "Yes. Students can create their own courses for self-study. Go to the Courses page or use the 'Create Course' quick action on your dashboard. You can upload materials and generate AI study tools for your custom courses."
+  roles: [student]
+  tags: [student, courses, create, self-study]
+
+# ============================================================
+# PRIVACY & TERMS
+# ============================================================
+
+- id: faq-privacy-1
+  question: "Where can I read the privacy policy?"
+  answer: "Visit /privacy to read ClassBridge's full privacy policy. It explains what data is collected, how it is used, your rights, and our data retention practices."
+  roles: [parent, student, teacher, admin]
+  tags: [privacy, policy, legal]
+
+- id: faq-privacy-2
+  question: "Where can I read the terms of service?"
+  answer: "Visit /terms to read ClassBridge's terms of service. It covers acceptable use, account responsibilities, and platform rules."
+  roles: [parent, student, teacher, admin]
+  tags: [terms, legal, service]
