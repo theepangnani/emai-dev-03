@@ -22,8 +22,11 @@ from app.schemas.ai_usage import (
     AILimitAdminAction,
     AILimitSetRequest,
     AIUsageUserResponse,
+    AIUsageUserList,
+    AILimitRequestList,
     AIUsageHistoryResponse,
     AIUsageHistoryList,
+    AIUsageSummaryResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -126,12 +129,13 @@ def get_user_history(
 admin_router = APIRouter(prefix="/admin/ai-usage", tags=["Admin AI Usage"])
 
 
-@admin_router.get("/", response_model=list[AIUsageUserResponse])
+@admin_router.get("/", response_model=AIUsageUserList)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_users_usage(
     request: Request,
     search: str | None = Query(None),
-    sort_by: Literal["usage", "limit", "name"] = Query("name"),
+    sort_by: Literal["ai_usage_count", "ai_usage_limit", "name", "usage", "limit"] = Query("name"),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -149,18 +153,48 @@ def list_users_usage(
             )
         )
 
-    if sort_by == "usage":
-        query = query.order_by(desc(User.ai_usage_count))
-    elif sort_by == "limit":
-        query = query.order_by(desc(User.ai_usage_limit))
+    if sort_by in ("usage", "ai_usage_count"):
+        col = User.ai_usage_count
+    elif sort_by in ("limit", "ai_usage_limit"):
+        col = User.ai_usage_limit
     else:
-        query = query.order_by(User.full_name)
+        col = User.full_name
 
+    query = query.order_by(desc(col) if sort_dir == "desc" else col.asc())
+
+    total = query.count()
     users = query.offset(skip).limit(limit).all()
-    return users
+    return AIUsageUserList(items=users, total=total)
 
 
-@admin_router.get("/requests", response_model=list[AILimitRequestResponse])
+@admin_router.get("/summary", response_model=AIUsageSummaryResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_usage_summary(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Get AI usage summary: total calls and top users."""
+    total_calls = db.query(func.coalesce(func.sum(User.ai_usage_count), 0)).scalar()
+
+    top_users = (
+        db.query(User.id, User.full_name, User.ai_usage_count)
+        .filter(User.ai_usage_count > 0)
+        .order_by(desc(User.ai_usage_count))
+        .limit(5)
+        .all()
+    )
+
+    return AIUsageSummaryResponse(
+        total_ai_calls=total_calls,
+        top_users=[
+            {"id": u.id, "full_name": u.full_name, "ai_usage_count": u.ai_usage_count}
+            for u in top_users
+        ],
+    )
+
+
+@admin_router.get("/requests", response_model=AILimitRequestList)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_limit_requests(
     request: Request,
@@ -176,6 +210,7 @@ def list_limit_requests(
     if request_status != "all":
         query = query.filter(AILimitRequest.status == request_status)
 
+    total = query.count()
     records = query.order_by(desc(AILimitRequest.created_at)).offset(skip).limit(limit).all()
 
     # Enrich with user info
@@ -187,7 +222,7 @@ def list_limit_requests(
             resp.user_email = rec.user.email
             resp.user_role = rec.user.role.value if rec.user.role else None
         results.append(resp)
-    return results
+    return AILimitRequestList(items=results, total=total)
 
 
 @admin_router.patch("/requests/{request_id}/approve", response_model=AILimitRequestResponse)

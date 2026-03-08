@@ -71,3 +71,26 @@ class AIUsageHistoryResponse(BaseModel):
 class AIUsageHistoryList(BaseModel):
     items: list[AIUsageHistoryResponse]
     total: int
+
+
+class AIUsageUserList(BaseModel):
+    items: list[AIUsageUserResponse]
+    total: int
+
+
+class AILimitRequestList(BaseModel):
+    items: list[AILimitRequestResponse]
+    total: int
+
+
+class AIUsageSummaryTopUser(BaseModel):
+    id: int
+    full_name: str
+    ai_usage_count: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AIUsageSummaryResponse(BaseModel):
+    total_ai_calls: int
+    top_users: list[AIUsageSummaryTopUser]
