@@ -85,6 +85,19 @@ export interface LinkedTeacher {
   created_at: string | null;
 }
 
+export interface BriefingNote {
+  id: number;
+  user_id: number;
+  course_id: number | null;
+  course_content_id: number | null;
+  title: string;
+  content: string;
+  guide_type: string;
+  created_at: string;
+  course_name: string | null;
+  student_name: string | null;
+}
+
 // Parent API
 export const parentApi = {
   getDashboard: async () => {
@@ -186,5 +199,24 @@ export const parentApi = {
       ...(message ? { message } : {}),
     });
     return response.data as { message: string };
+  },
+
+  // Parent Briefing Notes
+  generateBriefingNote: async (courseContentId: number, studentUserIdOrStudentId: number, useStudentId = false) => {
+    const response = await api.post('/api/parent-ai/briefing-notes', {
+      course_content_id: courseContentId,
+      ...(useStudentId ? { student_id: studentUserIdOrStudentId } : { student_user_id: studentUserIdOrStudentId }),
+    });
+    return response.data as BriefingNote;
+  },
+
+  listBriefingNotes: async (studentId?: number) => {
+    const params = studentId ? { student_id: studentId } : {};
+    const response = await api.get('/api/parent-ai/briefing-notes', { params });
+    return response.data as BriefingNote[];
+  },
+
+  deleteBriefingNote: async (noteId: number) => {
+    await api.delete(`/api/parent-ai/briefing-notes/${noteId}`);
   },
 };

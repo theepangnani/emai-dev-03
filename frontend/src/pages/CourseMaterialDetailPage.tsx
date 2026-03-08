@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild } from '../api/client';
+import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { resourceLinksApi, type ResourceLinkGroup } from '../api/resourceLinks';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,7 @@ import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { VideosLinksTab } from './course-material/VideosLinksTab';
+import { BriefingTab } from './course-material/BriefingTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
@@ -31,8 +32,8 @@ import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'videos';
-const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'videos'];
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'videos' | 'briefing';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'videos', 'briefing'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -79,6 +80,15 @@ function VideosIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <rect x="1.5" y="3" width="13" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M6.5 6v4l3.5-2-3.5-2z" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function BriefingTabIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M11 1H5a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M6 5h4M6 7.5h4M6 10h2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -199,6 +209,10 @@ export function CourseMaterialDetailPage() {
   const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Record<number, TaskItem[]>>({});
 
+  // Parent briefing notes
+  const [briefingNote, setBriefingNote] = useState<BriefingNote | undefined>(undefined);
+  const [generatingBriefing, setGeneratingBriefing] = useState(false);
+
   // Unlinked material state (#623)
   const [isUnlinked, setIsUnlinked] = useState(false);
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
@@ -276,6 +290,15 @@ export function CourseMaterialDetailPage() {
       })
       .catch(() => {});
   }, [isParent, content?.course_id]);
+
+  // Load parent briefing note
+  useEffect(() => {
+    if (!isParent || !contentId) return;
+    parentApi.listBriefingNotes().then(notes => {
+      const match = notes.find(n => n.course_content_id === contentId);
+      setBriefingNote(match);
+    }).catch(() => {});
+  }, [isParent, contentId]);
 
   const studyGuide = guides.find(g => g.guide_type === 'study_guide');
   const quiz = guides.find(g => g.guide_type === 'quiz');
@@ -427,6 +450,39 @@ export function CourseMaterialDetailPage() {
     await handleGenerate(type);
   };
 
+  const handleGenerateBriefing = async () => {
+    if (!content || !resolvedStudent) return;
+    if (atLimit) { setShowLimitModal(true); return; }
+    setGeneratingBriefing(true);
+    setActiveTab('briefing');
+    try {
+      const note = await parentApi.generateBriefingNote(contentId, resolvedStudent.student_user_id);
+      setBriefingNote(note);
+      refreshAIUsage();
+    } catch (err) {
+      setError('Failed to generate parent briefing');
+      setFaqCode(extractFaqCode(err));
+    } finally {
+      setGeneratingBriefing(false);
+    }
+  };
+
+  const handleDeleteBriefing = async (note: BriefingNote) => {
+    const ok = await confirm({
+      title: 'Delete Parent Briefing',
+      message: `Delete "${note.title}"?`,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
+    try {
+      await parentApi.deleteBriefingNote(note.id);
+      setBriefingNote(undefined);
+      showToast('Parent briefing deleted');
+    } catch {
+      showToast('Failed to delete parent briefing');
+    }
+  };
+
   if (loading) return <DashboardLayout showBackButton headerSlot={() => null}><DetailSkeleton /></DashboardLayout>;
   if (error || !content) return (
     <DashboardLayout showBackButton headerSlot={() => null}>
@@ -443,6 +499,7 @@ export function CourseMaterialDetailPage() {
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
+    ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
     { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
@@ -605,6 +662,19 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'videos' && (
             <VideosLinksTab courseContentId={contentId} />
+          )}
+
+          {activeTab === 'briefing' && isParent && (
+            <BriefingTab
+              briefingNote={briefingNote}
+              generating={generatingBriefing}
+              onGenerate={handleGenerateBriefing}
+              onDelete={handleDeleteBriefing}
+              hasSourceContent={hasSourceContent}
+              atLimit={atLimit}
+              studentName={resolvedStudent?.student_name}
+              courseContentId={contentId}
+            />
           )}
 
         </div>
