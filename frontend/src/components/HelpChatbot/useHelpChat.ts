@@ -17,7 +17,7 @@ export interface ChatMessage {
 }
 
 interface HelpChatResponse {
-  answer: string;
+  reply: string;
   videos?: VideoInfo[];
   sources?: string[];
 }
@@ -47,13 +47,13 @@ export function useHelpChat() {
 
       const { data } = await api.post<HelpChatResponse>('/api/help/chat', {
         message: text,
-        conversation_history: recentMessages,
+        conversation: recentMessages,
       });
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: data.answer,
+        content: data.reply,
         videos: data.videos,
         sources: data.sources,
         timestamp: new Date(),
