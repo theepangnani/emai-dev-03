@@ -75,8 +75,11 @@ def send_multi_channel_notification(
 
     notification = None
 
+    # Resolve notification type value for preference checks
+    notif_type_value = notification_type.value if hasattr(notification_type, 'value') else str(notification_type)
+
     # Channel 1: In-app notification bell
-    if "app_notification" in channels:
+    if "app_notification" in channels and recipient.should_notify(notif_type_value, "in_app"):
         notification = Notification(
             user_id=recipient.id,
             type=notification_type,
@@ -93,7 +96,7 @@ def send_multi_channel_notification(
         db.add(notification)
 
     # Channel 2: Email
-    if "email" in channels and recipient.email and recipient.email_notifications:
+    if "email" in channels and recipient.email and recipient.email_notifications and recipient.should_notify(notif_type_value, "email"):
         try:
             email_html = _build_notification_email(title, content, link)
             send_email_sync(recipient.email, title, email_html)

@@ -15,6 +15,8 @@ from app.schemas.notification import (
     NotificationPreferences,
     NotificationSuppressionResponse,
     UnreadCountResponse,
+    AdvancedNotificationPreferences,
+    AdvancedNotificationPreferencesUpdate,
 )
 from app.api.deps import get_current_user
 
@@ -269,6 +271,44 @@ def update_notification_settings(
     )
 
     return prefs
+
+
+@router.get("/preferences", response_model=AdvancedNotificationPreferences)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_notification_preferences(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Get advanced per-category notification preferences."""
+    prefs = current_user.get_notification_preferences()
+    return AdvancedNotificationPreferences(**prefs)
+
+
+@router.patch("/preferences", response_model=AdvancedNotificationPreferences)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_notification_preferences(
+    request: Request,
+    update: AdvancedNotificationPreferencesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Partially update per-category notification preferences."""
+    current_prefs = current_user.get_notification_preferences()
+
+    # Merge only provided fields
+    update_data = update.model_dump(exclude_none=True)
+    for category, channels in update_data.items():
+        if category in current_prefs:
+            current_prefs[category].update(channels)
+        else:
+            current_prefs[category] = channels
+
+    current_user.set_notification_preferences(current_prefs)
+    db.commit()
+    db.refresh(current_user)
+
+    logger.info(f"Updated notification preferences for user {current_user.id}")
+    return AdvancedNotificationPreferences(**current_user.get_notification_preferences())
 
 
 @router.get("/suppressions", response_model=list[NotificationSuppressionResponse])

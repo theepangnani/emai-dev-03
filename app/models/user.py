@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.sql import func
 import enum
+import json
 
 from app.db.database import Base
 
@@ -38,6 +39,7 @@ class User(Base):
     email_notifications = Column(Boolean, default=True)
     assignment_reminder_days = Column(String(50), default="1,3")
     task_reminder_days = Column(String(50), default="1,3")
+    notification_preferences = Column(Text, nullable=True)  # JSON: per-category in_app/email toggles
 
     # Onboarding setup checklist
     onboarding_dismissed_at = Column(DateTime(timezone=True), nullable=True)
@@ -88,3 +90,60 @@ class User(Base):
     def set_roles(self, roles: list["UserRole"]) -> None:
         """Set the roles column from a list of UserRole enums."""
         self.roles = ",".join(r.value for r in roles)
+
+    # ── Notification preference helpers ──────────────────────────
+
+    DEFAULT_NOTIFICATION_PREFERENCES: dict = {
+        "assignments": {"in_app": True, "email": True},
+        "messages": {"in_app": True, "email": True},
+        "study_guides": {"in_app": True, "email": False},
+        "tasks": {"in_app": True, "email": True},
+        "system": {"in_app": True, "email": False},
+    }
+
+    # Map NotificationType values to preference categories
+    NOTIFICATION_TYPE_TO_CATEGORY: dict = {
+        "assignment_due": "assignments",
+        "grade_posted": "assignments",
+        "assessment_upcoming": "assignments",
+        "project_due": "assignments",
+        "message": "messages",
+        "parent_request": "messages",
+        "link_request": "messages",
+        "study_guide_created": "study_guides",
+        "material_uploaded": "study_guides",
+        "task_due": "tasks",
+        "system": "system",
+    }
+
+    def get_notification_preferences(self) -> dict:
+        """Return parsed notification preferences, falling back to defaults."""
+        if self.notification_preferences:
+            try:
+                saved = json.loads(self.notification_preferences)
+                # Merge with defaults so new categories get default values
+                merged = {}
+                for cat, defaults in self.DEFAULT_NOTIFICATION_PREFERENCES.items():
+                    merged[cat] = {**defaults, **saved.get(cat, {})}
+                return merged
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return dict(self.DEFAULT_NOTIFICATION_PREFERENCES)
+
+    def set_notification_preferences(self, prefs: dict) -> None:
+        """Persist notification preferences as JSON."""
+        self.notification_preferences = json.dumps(prefs)
+
+    def should_notify(self, notification_type_value: str, channel: str) -> bool:
+        """Check if user wants notifications for a given type and channel.
+
+        Args:
+            notification_type_value: e.g. "assignment_due", "message"
+            channel: "in_app" or "email"
+        """
+        category = self.NOTIFICATION_TYPE_TO_CATEGORY.get(notification_type_value)
+        if not category:
+            return True  # Unknown types default to enabled
+        prefs = self.get_notification_preferences()
+        cat_prefs = prefs.get(category, {})
+        return cat_prefs.get(channel, True)
