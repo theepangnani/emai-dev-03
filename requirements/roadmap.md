@@ -404,15 +404,17 @@ Features that answer the pilot feedback question: *"Why should I use ClassBridge
 | 8 | **Responsible AI Parent Tools** — readiness checks, parent briefings, practice problems, weak spots, conversation starters | #1421 | ~$0.02/use | Highest — "Parents First" differentiator |
 | 9 | **Smart Data Import** — photo capture, email forwarding, ICS calendar sync | #1431 | ~$0.02/photo | High — Layer 1→2 accelerator |
 
-**Recommended implementation order:**
-1. **#1415** Dashboard Redesign (foundation — cleans up the canvas)
-2. **#1431** Smart Data Import — Calendar ICS first ($0, quick win), then Photo Capture (WOW)
-3. **#1403** Smart Daily Briefing (core parent value — feeds from imported data)
-4. **#1407** Help My Kid + **#1421** Responsible AI Tools (the WOW actions — build together)
-5. **#1410** Global Search (utility, enhances everything)
-6. **#1414** Parent-Child Study Link (feedback loop)
-7. **#1413** Weekly Progress Pulse (passive engagement)
-8. **#1420** Help Page + Chatbot updates (documentation)
+**Phased delivery plan (5 weeks, ship weekly to pilot users):**
+
+| Phase | Name | Ship Date | Issues | Theme |
+|-------|------|-----------|--------|-------|
+| **2A** | The Hook | March 15 | #1403, #1404, #1405, #1407, #1408, #1409 | Daily Briefing + Help My Kid |
+| **2B** | The Dashboard | March 22 | #1415, #1416, #1417, #1425 | Persona-based layouts + Weak Spots |
+| **2C** | The Loop | March 29 | #1414, #1422 | Parent-child feedback loop |
+| **2D** | The Retention | April 5 | #1413, #1434, #1424 | Email digest + Calendar + Practice |
+| **2E** | The Polish | April 14 | #1410, #1411, #1412, #1418, #1419, #1420 | Search + Help + QA |
+
+**Deferred (post April 14):** Photo Capture (#1432), Email Forwarding (#1433), Parent Briefing Notes (#1423), Conversation Starters (#1426), Daily Email Digest (#1406), Monetization (#1384-#1392), Learn Your Way Paywall/Monetization (#1441)
 
 ### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
 

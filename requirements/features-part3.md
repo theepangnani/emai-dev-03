@@ -2344,4 +2344,75 @@ Parent pastes school calendar URL → ClassBridge syncs events, due dates, schoo
 - [ ] Email Forwarding: parse school emails (#1433)
 - [ ] Calendar Import: ICS feed sync (#1434)
 
+### 6.68 AI Integration Strategy — Decision Log
+
+**GitHub Issue:** #1435
+
+#### Perplexity Integration — REJECTED
+
+| Factor | Assessment |
+|--------|-----------|
+| What Perplexity does | Web search + AI summarization for general knowledge |
+| What ClassBridge needs | Analysis of **private student data** (grades, assignments, study history) |
+| Data overlap | Zero — Perplexity has no access to student school data |
+| Cost | ~$5/1000 queries vs GPT-4o-mini ~$0.15/1000 |
+| Responsible AI | Students could use it to get answers without studying — **fails the test** |
+
+**Decision:** ClassBridge's AI value is contextual (private student data + uploaded course content). A general web search engine adds cost, risk, and zero differentiation. If web enrichment is needed later (Phase 4+), a YouTube API search ($0) covers the primary use case.
+
+### 6.69 "Learn Your Way" — Interest-Based Personalized Learning (Phase 2)
+
+Inspired by [Google's Learn Your Way](https://learnyourway.withgoogle.com/) and requested by a Grade 10 pilot student. Transforms existing study tools into a personalized learning experience.
+
+**GitHub Epic:** #1436
+
+**Core Concept:** Instead of a single "Generate Study Guide" button, students choose HOW they want to learn:
+
+| Format | Description | Status |
+|--------|-------------|--------|
+| Study Guide | Enriched text with inline questions | Already built |
+| Quiz Me | Comprehension check questions | Already built |
+| Flashcards | Key terms and definitions | Already built |
+| "Explain Like I'm Into..." | Interest-based analogies (Pokemon, Basketball, Minecraft, etc.) | **New** |
+| Mind Map | Visual knowledge structure (interactive nodes) | **New** |
+| Audio Lessons | AI teacher + virtual student dialogue | Deferred (Phase 3+ — needs TTS) |
+
+**Interest-Based Personalization:**
+- Students set interests in profile (Pokemon, Basketball, Soccer, Minecraft, Music, Art, Gaming, Cooking, Space, Animals, or custom)
+- AI prompts modified to use analogies from student's interests
+- Example: Chemistry + Pokemon → "Hydrogen is Normal-type — everywhere, combines with anything. H + O fusion = Water (H₂O)"
+- AI cost: $0 additional (same API call, modified prompt)
+
+**Learning Science Principles (from Google's research):**
+1. Inspire active learning
+2. Manage cognitive load
+3. Adapt to the learner
+4. Stimulate curiosity
+5. Deepen metacognition
+
+**Responsible AI Test:** ✅
+- Student must READ and ENGAGE with content
+- Based on THEIR course material, not generic web answers
+- Can't skip studying — it IS studying, in their language
+
+**Data Model:**
+- `users` table: add `interests TEXT DEFAULT NULL` (JSON array)
+- `study_guides` table: existing `guide_type` extended with `mind_map` value
+- Generation endpoints: add optional `interest: str` parameter
+
+**Sub-tasks:**
+- [ ] Backend: interest-based prompt customization (#1437)
+- [ ] Frontend: "Learn Your Way" format selector UI (#1438)
+- [ ] Backend + Frontend: Mind Map generation and rendering (#1439)
+- [ ] Student profile: interests/hobbies setting (#1440)
+
+### 6.69.5 Monetization Strategy
+
+- Learn Your Way is a **premium feature** behind a paywall
+- Free tier: Standard AI study guides (current functionality)
+- Premium tier: Interest-based personalized content (Learn Your Way)
+- Upgrade UX: Show a preview/teaser of personalized content, then prompt to upgrade
+- Pricing model: TBD (per-credit or subscription)
+- Suggested by pilot user feedback (Grade 10 student)
+
 ---
