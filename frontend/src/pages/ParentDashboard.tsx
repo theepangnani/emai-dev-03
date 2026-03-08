@@ -408,27 +408,6 @@ export function ParentDashboard() {
             maxVisible={3}
           />
 
-          {/* Task urgency pills below CTAs */}
-          {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
-            <div className="pd-task-status-pills">
-              {pd.taskCounts.overdue > 0 && (
-                <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
-                  {pd.taskCounts.overdue} overdue
-                </button>
-              )}
-              {pd.taskCounts.dueToday > 0 && (
-                <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>
-                  {pd.taskCounts.dueToday} due today
-                </button>
-              )}
-              {pd.taskCounts.upcoming > 0 && (
-                <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>
-                  {pd.taskCounts.upcoming} next 3 days
-                </button>
-              )}
-            </div>
-          )}
-
           {!tipDismissed && pd.courseMaterials.length === 0 && (
               <div className="pd-onboard-tip" role="status">
                 <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
@@ -453,6 +432,25 @@ export function ParentDashboard() {
                     {pd.taskCounts.upcoming > 0 && <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>{pd.taskCounts.upcoming} next 3 days</button>}
                   </div>
                 )}
+                {(() => {
+                  const activeTasks = pd.filteredTasks.filter(t => !t.is_completed && !t.archived_at);
+                  const topTasks = activeTasks.slice(0, 5);
+                  if (topTasks.length === 0) return <p className="dash-empty-hint">No active tasks</p>;
+                  return (
+                    <div className="dash-task-list">
+                      {topTasks.map(t => (
+                        <div key={t.id} className="dash-task-row" onClick={() => pd.navigate(`/tasks/${t.id}`)} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') pd.navigate(`/tasks/${t.id}`); }}>
+                          <span className={`task-priority-dot ${t.priority || 'medium'}`} />
+                          <span className="dash-task-title">{t.title}</span>
+                          {t.due_date && <span className="dash-task-due">{new Date(t.due_date.length === 10 ? t.due_date + 'T00:00:00' : t.due_date).toLocaleDateString()}</span>}
+                        </div>
+                      ))}
+                      {activeTasks.length > 5 && (
+                        <button className="dash-task-more" onClick={() => pd.navigate('/tasks')}>View all {activeTasks.length} tasks</button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </section>
 
