@@ -172,8 +172,9 @@ ClassBridge is designed as a **parent-first platform**. Parents can manage their
 
 #### Path 2: Parent Links Existing Student by Email (with Auto-Create) - IMPLEMENTED
 - A parent links to a student by email from the Parent Dashboard via `POST /api/parent/children/link`
-- **If the student account exists:** Links immediately — creates entry in `parent_students` join table
-- **If no account exists for that email:** System auto-creates a User (role=student) + Student record, generates an invite via the Unified Invite System (30-day expiry), and returns the invite link to the parent
+- **If the student account exists and is active (has password):** Creates a `LinkRequest` requiring student approval. The student receives a notification and must approve before the link is established. Parent sees an info toast explaining the student needs to approve.
+- **If the student account exists but is a placeholder (no password):** Links immediately and generates an invite so the child can set their password
+- **If no account exists for that email:** System auto-creates a User (role=student) + Student record, generates an invite via the Unified Invite System (30-day expiry), and sends an invitation email to the child. Parent sees the invite link and a notice that the email was sent.
 - **If the email belongs to a non-student account:** Returns an error (cannot link to parent/teacher/admin accounts)
 - Parent can optionally provide the child's full name; if omitted, the email prefix is used
 - Multiple parents can link to the same student (e.g., mother, father, guardian)
@@ -191,12 +192,14 @@ ClassBridge is designed as a **parent-first platform**. Parents can manage their
 - **Note:** This only works if the parent's Google account has Google Classroom courses (e.g., parent is also a teacher)
 
 #### Student Email Policy
-| Scenario | Email Required? | Student Can Log In? | Managed By |
-|----------|----------------|---------------------|------------|
-| Parent creates child with name only | No | No — parent manages | Parent |
-| Parent creates child with email | Yes | Yes — via invite link | Parent + Student |
-| Student self-registers | Yes | Yes — has password | Student |
-| Google Classroom discovery | Yes (from Google) | Yes — via invite link | Parent + Student |
+| Scenario | Email Required? | Student Can Log In? | Managed By | Parent Feedback |
+|----------|----------------|---------------------|------------|-----------------|
+| Parent creates child with name only | No | No — parent manages | Parent | Success toast |
+| Parent creates child with email | Yes | Yes — via invite link | Parent + Student | Modal: email sent + invite link |
+| Parent links active student by email | Yes | Yes — already has password | Parent + Student | Toast: link request pending approval |
+| Parent links new student by email | Yes | Yes — via invite link | Parent + Student | Modal: email sent + invite link |
+| Student self-registers | Yes | Yes — has password | Student | N/A |
+| Google Classroom discovery | Yes (from Google) | Yes — via invite link | Parent + Student | N/A |
 
 #### Email Identity Merging (MVP 1.5)
 - Students may have both a **personal email** (used in MVP-1) and a **school email** (available when school board approves ClassBridge)

@@ -128,7 +128,9 @@ class TestAdminAIUsage:
         resp = client.get("/api/admin/ai-usage/", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
+        assert "items" in data and "total" in data
+        assert isinstance(data["items"], list)
+        assert isinstance(data["total"], int)
 
     def test_admin_list_requests(self, client, users):
         # First create a credit request
@@ -142,7 +144,9 @@ class TestAdminAIUsage:
         resp = client.get("/api/admin/ai-usage/requests", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
+        assert "items" in data and "total" in data
+        assert isinstance(data["items"], list)
+        assert isinstance(data["total"], int)
 
     def test_admin_approve_request(self, client, users, db_session):
         from app.models.ai_limit_request import AILimitRequest
@@ -235,8 +239,8 @@ class TestAdminAIUsage:
         resp = client.get("/api/admin/ai-usage/requests", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
-        statuses = {r["status"] for r in data}
+        assert "items" in data and "total" in data
+        statuses = {r["status"] for r in data["items"]}
         # Should include more than just pending
         assert len(statuses) >= 2
 
@@ -246,8 +250,8 @@ class TestAdminAIUsage:
         resp = client.get("/api/admin/ai-usage/requests?status=pending", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
-        for r in data:
+        assert "items" in data and "total" in data
+        for r in data["items"]:
             assert r["status"] == "pending"
 
 
@@ -376,3 +380,70 @@ class TestAIUsageHistory:
         ).count()
 
         assert after == before + 1
+
+
+# ── Regression: paginated format & summary (#1353) ──────────
+
+class TestAdminAIUsageResponseFormat:
+    """Regression tests for #1353: admin endpoints must return {items, total}."""
+
+    def test_users_list_returns_paginated(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data, "users list must return {items, total}, not a flat list"
+        assert "total" in data
+        assert isinstance(data["items"], list)
+        assert data["total"] >= 1
+
+    def test_requests_list_returns_paginated(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/requests", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data, "requests list must return {items, total}, not a flat list"
+        assert "total" in data
+
+    def test_summary_endpoint_exists(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/summary", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total_ai_calls" in data
+        assert "top_users" in data
+        assert isinstance(data["top_users"], list)
+
+    def test_summary_counts_usage(self, client, users, db_session):
+        """Summary total_ai_calls reflects user counts."""
+        users["student"].ai_usage_count = 7
+        db_session.commit()
+
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/summary", headers=headers)
+        data = resp.json()
+        assert data["total_ai_calls"] >= 7
+
+    def test_summary_top_users_populated(self, client, users, db_session):
+        """Top users list should include users with ai_usage_count > 0."""
+        users["student"].ai_usage_count = 10
+        db_session.commit()
+
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/summary", headers=headers)
+        data = resp.json()
+        top_ids = [u["id"] for u in data["top_users"]]
+        assert users["student"].id in top_ids
+
+    def test_users_list_sort_dir(self, client, users, db_session):
+        """sort_dir parameter should be accepted."""
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage/?sort_by=ai_usage_count&sort_dir=desc", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+
+    def test_summary_requires_admin(self, client, users):
+        headers = _auth(client, users["student"].email)
+        resp = client.get("/api/admin/ai-usage/summary", headers=headers)
+        assert resp.status_code == 403
