@@ -5,7 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func, or_
+from sqlalchemy import case, desc, func, or_
 
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -131,6 +131,17 @@ def get_user_history(
 admin_router = APIRouter(prefix="/admin/ai-usage", tags=["Admin AI Usage"])
 
 
+def _log_admin_action(db: Session, admin_id: int, action_type: str, target_user_id: int | None, details: str):
+    from app.models.ai_usage_history import AIAdminActionLog
+    entry = AIAdminActionLog(
+        admin_user_id=admin_id,
+        action_type=action_type,
+        target_user_id=target_user_id,
+        details=details,
+    )
+    db.add(entry)
+
+
 @admin_router.get("", response_model=AIUsageUserList)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_users_usage(
@@ -156,13 +167,24 @@ def list_users_usage(
         )
 
     if sort_by in ("usage", "ai_usage_count"):
-        col = User.ai_usage_count
+        # Show users who exceeded their limit first
+        at_limit_expr = case(
+            (
+                (User.ai_usage_limit > 0) & (User.ai_usage_count >= User.ai_usage_limit),
+                1,
+            ),
+            else_=0,
+        )
+        if sort_dir == "desc":
+            query = query.order_by(desc(at_limit_expr), desc(User.ai_usage_count))
+        else:
+            query = query.order_by(at_limit_expr.asc(), User.ai_usage_count.asc())
     elif sort_by in ("limit", "ai_usage_limit"):
         col = User.ai_usage_limit
+        query = query.order_by(desc(col) if sort_dir == "desc" else col.asc())
     else:
         col = User.full_name
-
-    query = query.order_by(desc(col) if sort_dir == "desc" else col.asc())
+        query = query.order_by(desc(col) if sort_dir == "desc" else col.asc())
 
     total = query.count()
     users = query.offset(skip).limit(limit).all()
@@ -263,6 +285,7 @@ def approve_request(
         )
         db.add(notification)
 
+    _log_admin_action(db, current_user.id, "approve_request", ai_request.user_id, f"approved {body.approved_amount} credits (request #{request_id})")
     db.commit()
     db.refresh(ai_request)
     logger.info("Admin %s approved AI request #%d (+%d credits for user %s)", current_user.id, request_id, body.approved_amount, ai_request.user_id)
@@ -300,6 +323,7 @@ def decline_request(
         )
         db.add(notification)
 
+    _log_admin_action(db, current_user.id, "decline_request", ai_request.user_id, f"declined request #{request_id}")
     db.commit()
     db.refresh(ai_request)
     logger.info("Admin %s declined AI request #%d (user %s)", current_user.id, request_id, ai_request.user_id)
@@ -320,7 +344,9 @@ def set_user_limit(
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    old_limit = target_user.ai_usage_limit
     target_user.ai_usage_limit = body.ai_usage_limit
+    _log_admin_action(db, current_user.id, "set_limit", user_id, f"limit: {old_limit} -> {body.ai_usage_limit}")
     db.commit()
     db.refresh(target_user)
     logger.info("Admin %s set AI limit for user %s to %d", current_user.id, user_id, body.ai_usage_limit)
@@ -340,7 +366,9 @@ def reset_user_usage(
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    old_count = target_user.ai_usage_count or 0
     target_user.ai_usage_count = 0
+    _log_admin_action(db, current_user.id, "reset_count", user_id, f"count: {old_count} -> 0")
     db.commit()
     db.refresh(target_user)
     logger.info("Admin %s reset AI usage count for user %s", current_user.id, user_id)
@@ -359,6 +387,7 @@ def bulk_set_limit(
     updated = db.query(User).update({User.ai_usage_limit: body.ai_usage_limit})
     if body.reset_counts:
         db.query(User).update({User.ai_usage_count: 0})
+    _log_admin_action(db, current_user.id, "bulk_set_limit", None, f"set limit to {body.ai_usage_limit} for {updated} users (reset_counts={body.reset_counts})")
     db.commit()
     logger.info(
         "Admin %s bulk-set AI limit to %d for %d users (reset_counts=%s)",
@@ -422,3 +451,32 @@ def admin_list_usage_history(
         items.append(resp)
 
     return AIUsageHistoryList(items=items, total=total)
+
+
+@admin_router.get("/audit-log")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_admin_audit_log(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """List admin action audit log."""
+    from app.models.ai_usage_history import AIAdminActionLog
+    query = db.query(AIAdminActionLog)
+    total = query.count()
+    records = query.order_by(desc(AIAdminActionLog.created_at)).offset(skip).limit(limit).all()
+
+    items = []
+    for rec in records:
+        items.append({
+            "id": rec.id,
+            "admin_name": rec.admin_user.full_name if rec.admin_user else "Unknown",
+            "action_type": rec.action_type,
+            "target_user_name": rec.target_user.full_name if rec.target_user else None,
+            "details": rec.details,
+            "created_at": rec.created_at.isoformat() if rec.created_at else None,
+        })
+
+    return {"items": items, "total": total}

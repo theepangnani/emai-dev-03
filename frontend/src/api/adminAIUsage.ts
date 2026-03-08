@@ -92,4 +92,9 @@ export const adminAIUsageApi = {
       ai_usage_limit: limit,
       reset_counts: resetCounts,
     }).then((r) => r.data),
+
+  listAuditLog: async (params: { skip?: number; limit?: number }) => {
+    const { data } = await api.get('/api/admin/ai-usage/audit-log', { params });
+    return data;
+  },
 };

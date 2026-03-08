@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AIUsageResponse(BaseModel):
@@ -47,8 +47,15 @@ class AIUsageUserResponse(BaseModel):
     full_name: str
     email: str | None = None
     role: str
-    ai_usage_count: int
-    ai_usage_limit: int | None = None
+    ai_usage_count: int = 0
+    ai_usage_limit: int = 10
+
+    @field_validator('ai_usage_count', 'ai_usage_limit', mode='before')
+    @classmethod
+    def coalesce_none(cls, v, info):
+        if v is None:
+            return 10 if info.field_name == 'ai_usage_limit' else 0
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 

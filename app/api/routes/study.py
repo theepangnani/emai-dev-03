@@ -569,9 +569,6 @@ async def generate_study_guide_endpoint(
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
 
-    # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db, generation_type="study_guide", course_material_id=body.course_content_id)
-
     # Parse critical dates from AI response
     content, critical_dates = parse_critical_dates(raw_content)
 
@@ -584,6 +581,9 @@ async def generate_study_guide_endpoint(
     existing = study_service.find_recent_duplicate(current_user.id, content_hash)
     if existing:
         return existing
+
+    # Increment AI usage only when creating NEW content
+    increment_ai_usage(current_user, db, generation_type="study_guide", course_material_id=body.course_content_id)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -725,9 +725,6 @@ async def generate_quiz_endpoint(
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
 
-    # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db, generation_type="quiz", course_material_id=body.course_content_id)
-
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Quiz: {topic}", "quiz", body.assignment_id)
     existing = study_service.find_recent_duplicate(current_user.id, content_hash)
@@ -738,6 +735,9 @@ async def generate_quiz_endpoint(
             guide_type="quiz", version=existing.version,
             parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
         )
+
+    # Increment AI usage only when creating NEW content
+    increment_ai_usage(current_user, db, generation_type="quiz", course_material_id=body.course_content_id)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -875,9 +875,6 @@ async def generate_flashcards_endpoint(
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
 
-    # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db, generation_type="flashcards", course_material_id=body.course_content_id)
-
     # Deduplicate: return existing if same hash was created recently
     content_hash = study_service.compute_content_hash(f"Flashcards: {topic}", "flashcards", body.assignment_id)
     existing = study_service.find_recent_duplicate(current_user.id, content_hash)
@@ -888,6 +885,9 @@ async def generate_flashcards_endpoint(
             guide_type="flashcards", version=existing.version,
             parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
         )
+
+    # Increment AI usage only when creating NEW content
+    increment_ai_usage(current_user, db, generation_type="flashcards", course_material_id=body.course_content_id)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -1356,14 +1356,14 @@ async def generate_from_text_and_images(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
-
     # Deduplicate: return existing if same hash was created recently
     if study_guide.content_hash:
         existing = study_service.find_recent_duplicate(current_user.id, study_guide.content_hash)
         if existing:
             return existing
+
+    # Increment AI usage only when creating NEW content
+    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -1553,14 +1553,14 @@ async def generate_from_file_upload(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Increment AI usage after successful generation
-    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
-
     # Deduplicate: return existing if same hash was created recently
     if study_guide.content_hash:
         existing = study_service.find_recent_duplicate(current_user.id, study_guide.content_hash)
         if existing:
             return existing
+
+    # Increment AI usage only when creating NEW content
+    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
