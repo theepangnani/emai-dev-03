@@ -200,11 +200,11 @@ class HelpEmbeddingService:
             if cached_embeddings and len(cached_embeddings) == len(all_chunks):
                 embeddings = cached_embeddings
             else:
-                # Compute embeddings via OpenAI
+                # Compute embeddings via OpenAI (async to avoid blocking event loop)
                 from app.core.config import settings
                 import openai
 
-                client = openai.OpenAI(api_key=settings.openai_api_key)
+                client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
                 texts = [chunk["text"] for chunk in all_chunks]
 
                 # Batch in groups of 100 (API limit is 2048)
@@ -212,7 +212,7 @@ class HelpEmbeddingService:
                 batch_size = 100
                 for i in range(0, len(texts), batch_size):
                     batch = texts[i : i + batch_size]
-                    response = client.embeddings.create(
+                    response = await client.embeddings.create(
                         model="text-embedding-3-small",
                         input=batch,
                     )
@@ -240,7 +240,7 @@ class HelpEmbeddingService:
     # Semantic search
     # ------------------------------------------------------------------
 
-    def search(
+    async def search(
         self, query: str, top_k: int = 5, role_filter: Optional[str] = None
     ) -> list[ChunkResult]:
         """Search for relevant chunks using cosine similarity."""
@@ -251,8 +251,8 @@ class HelpEmbeddingService:
             from app.core.config import settings
             import openai
 
-            client = openai.OpenAI(api_key=settings.openai_api_key)
-            response = client.embeddings.create(
+            client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+            response = await client.embeddings.create(
                 model="text-embedding-3-small",
                 input=[query],
             )
