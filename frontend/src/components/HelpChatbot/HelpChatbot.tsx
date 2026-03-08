@@ -62,6 +62,7 @@ export function HelpChatbot() {
   }, [sendMessage]);
 
   const showWelcome = messages.length === 0;
+  const showChips = showWelcome || (!isLoading && error);
 
   return (
     <>
@@ -95,15 +96,16 @@ export function HelpChatbot() {
 
           <div className="help-chatbot-messages">
             {showWelcome && (
-              <>
-                <div className="help-chatbot-welcome">
-                  Hi! I'm ClassBridge Helper. Ask me anything about the platform.
-                </div>
-                <SuggestionChips
-                  onChipClick={handleChipClick}
-                  currentPage={location.pathname}
-                />
-              </>
+              <div className="help-chatbot-welcome">
+                Hi! I'm ClassBridge Helper. Ask me anything about the platform.
+              </div>
+            )}
+
+            {showChips && (
+              <SuggestionChips
+                onChipClick={handleChipClick}
+                currentPage={location.pathname}
+              />
             )}
 
             {messages.map((msg) => (
