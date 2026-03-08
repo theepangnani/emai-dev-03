@@ -93,3 +93,19 @@ async def test_rate_limit_error_returns_overloaded_message():
 
     assert "/help" in result.reply
     assert "overloaded" in result.reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_embedding_service_retries_after_failed_init():
+    """Regression: embedding service should retry initialization after failure, not stay broken."""
+    from app.services.help_embedding_service import HelpEmbeddingService
+
+    service = HelpEmbeddingService()
+
+    # Simulate failed init (e.g. OpenAI key missing)
+    with patch.object(service, "_load_yaml", side_effect=RuntimeError("API down")):
+        await service.initialize()
+
+    # After failure, _initialized should still be False so it retries
+    assert service._initialized is False, "Service should allow retry after failed init"
+    assert service.chunks == [], "Chunks should be empty after failed init"
