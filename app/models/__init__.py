@@ -30,6 +30,8 @@ from app.models.ai_usage_history import AIUsageHistory
 from app.models.source_file import SourceFile
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
+from app.models.calendar_feed import CalendarFeed
+from app.models.calendar_event import CalendarEvent
 
 __all__ = [
     "User",
@@ -78,4 +80,6 @@ __all__ = [
     "SourceFile",
     "ContentImage",
     "ResourceLink",
+    "CalendarFeed",
+    "CalendarEvent",
 ]
