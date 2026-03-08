@@ -17,6 +17,7 @@ import { DocumentTab } from './course-material/DocumentTab';
 import { StudyGuideTab } from './course-material/StudyGuideTab';
 import { QuizTab } from './course-material/QuizTab';
 import { FlashcardsTab } from './course-material/FlashcardsTab';
+import { MindMapTab } from './course-material/MindMapTab';
 import { VideosLinksTab } from './course-material/VideosLinksTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
@@ -31,8 +32,8 @@ import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'videos';
-const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'videos'];
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'mindmap', 'videos'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -70,6 +71,19 @@ function FlashcardIcon() {
       <rect x="1.5" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
       <rect x="4.5" y="5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="var(--color-surface, #fff)"/>
       <path d="M7 8.5h5M7 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function MindMapIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="3" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="13" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="3" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="13" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.1"/>
+      <path d="M6.2 6.2L4.2 4.5M9.8 6.2L11.8 4.5M6.2 9.8L4.2 11.5M9.8 9.8L11.8 11.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -193,6 +207,7 @@ export function CourseMaterialDetailPage() {
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
   const [flashcardsFocusPrompt, setFlashcardsFocusPrompt] = useState('');
+  const [mindmapFocusPrompt, setMindmapFocusPrompt] = useState('');
 
   const [toast, setToast] = useState<string | null>(null);
   const [showRegenPrompt, setShowRegenPrompt] = useState(false);
@@ -258,9 +273,11 @@ export function CourseMaterialDetailPage() {
     const sg = guides.find(g => g.guide_type === 'study_guide');
     const qz = guides.find(g => g.guide_type === 'quiz');
     const fc = guides.find(g => g.guide_type === 'flashcards');
+    const mm = guides.find(g => g.guide_type === 'mind_map');
     if (sg?.focus_prompt) setGuideFocusPrompt(prev => prev || sg.focus_prompt!);
     if (qz?.focus_prompt) setQuizFocusPrompt(prev => prev || qz.focus_prompt!);
     if (fc?.focus_prompt) setFlashcardsFocusPrompt(prev => prev || fc.focus_prompt!);
+    if (mm?.focus_prompt) setMindmapFocusPrompt(prev => prev || mm.focus_prompt!);
   }, [guides]);
 
   useEffect(() => {
@@ -280,6 +297,7 @@ export function CourseMaterialDetailPage() {
   const studyGuide = guides.find(g => g.guide_type === 'study_guide');
   const quiz = guides.find(g => g.guide_type === 'quiz');
   const flashcardSet = guides.find(g => g.guide_type === 'flashcards');
+  const mindMapGuide = guides.find(g => g.guide_type === 'mind_map');
 
   const hasSourceContent = !!(content?.text_content || content?.description);
 
@@ -288,13 +306,13 @@ export function CourseMaterialDetailPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards', difficulty?: string) => {
+  const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards' | 'mind_map', difficulty?: string) => {
     if (!content) return;
     if (atLimit) {
       setShowLimitModal(true);
       return;
     }
-    const labels = { study_guide: 'Study Guide', quiz: 'Practice Quiz', flashcards: 'Flashcards' };
+    const labels = { study_guide: 'Study Guide', quiz: 'Practice Quiz', flashcards: 'Flashcards', mind_map: 'Mind Map' };
     const ok = await confirm({
       title: `Generate ${labels[type]}`,
       message: `Generate a ${labels[type].toLowerCase()} from "${content.title}"? This will use 1 AI credit. You have ${remaining} remaining.`,
@@ -308,9 +326,10 @@ export function CourseMaterialDetailPage() {
     if (!ok) return;
 
     setGenerating(type);
-    setActiveTab(type === 'study_guide' ? 'guide' : type);
+    const tabMap: Record<string, TabKey> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards', mind_map: 'mindmap' };
+    setActiveTab(tabMap[type] || 'guide');
     try {
-      const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt };
+      const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt, mind_map: mindmapFocusPrompt };
       const fp = promptMap[type].trim() || undefined;
       if (type === 'study_guide') {
         await studyApi.generateGuide({
@@ -330,7 +349,7 @@ export function CourseMaterialDetailPage() {
           focus_prompt: fp,
           difficulty,
         });
-      } else {
+      } else if (type === 'flashcards') {
         await studyApi.generateFlashcards({
           course_content_id: contentId,
           course_id: content.course_id,
@@ -339,10 +358,18 @@ export function CourseMaterialDetailPage() {
           num_cards: extractCardCount(fp),
           focus_prompt: fp,
         });
+      } else if (type === 'mind_map') {
+        await studyApi.generateMindMap({
+          course_content_id: contentId,
+          course_id: content.course_id,
+          topic: content.title,
+          content: content.text_content || content.description || '',
+          focus_prompt: fp,
+        });
       }
       await loadData();
       refreshAIUsage();
-      setActiveTab(type === 'study_guide' ? 'guide' : type);
+      setActiveTab(tabMap[type] || 'guide');
       // Show toast if tasks were auto-created
       const updatedGuides = await studyApi.listGuides({ course_content_id: contentId });
       const newGuide = updatedGuides.find(g => g.guide_type === type);
@@ -422,7 +449,7 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  const handleRegenerate = async (type: 'study_guide' | 'quiz' | 'flashcards') => {
+  const handleRegenerate = async (type: 'study_guide' | 'quiz' | 'flashcards' | 'mind_map') => {
     setShowRegenPrompt(false);
     await handleGenerate(type);
   };
@@ -442,6 +469,7 @@ export function CourseMaterialDetailPage() {
     { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
+    { key: 'mindmap' as TabKey, label: 'Mind Map', shortLabel: 'Map', hasContent: !!mindMapGuide, icon: <MindMapIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
@@ -603,6 +631,20 @@ export function CourseMaterialDetailPage() {
             />
           )}
 
+          {activeTab === 'mindmap' && (
+            <MindMapTab
+              mindMap={mindMapGuide}
+              generating={generating}
+              focusPrompt={mindmapFocusPrompt}
+              onFocusPromptChange={setMindmapFocusPrompt}
+              onGenerate={() => handleGenerate('mind_map')}
+              onDelete={handleDeleteGuide}
+              hasSourceContent={hasSourceContent}
+              linkedTasks={linkedTasks[mindMapGuide?.id ?? 0] ?? []}
+              atLimit={atLimit}
+            />
+          )}
+
           {activeTab === 'videos' && (
             <VideosLinksTab courseContentId={contentId} />
           )}
@@ -674,6 +716,7 @@ export function CourseMaterialDetailPage() {
             <button className="cm-action-btn" onClick={() => handleRegenerate('study_guide')}>{'\u2728'} Study Guide</button>
             <button className="cm-action-btn" onClick={() => handleRegenerate('quiz')}>{'\u2728'} Quiz</button>
             <button className="cm-action-btn" onClick={() => handleRegenerate('flashcards')}>{'\u2728'} Flashcards</button>
+            <button className="cm-action-btn" onClick={() => handleRegenerate('mind_map')}>{'\u2728'} Mind Map</button>
             <button className="cm-action-btn" onClick={() => setShowRegenPrompt(false)}>Dismiss</button>
           </div>
         </div>

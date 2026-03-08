@@ -65,6 +65,32 @@ export interface FlashcardSet {
   auto_created_tasks?: AutoCreatedTask[];
 }
 
+export interface MindMapBranch {
+  label: string;
+  detail: string;
+}
+
+export interface MindMapBranchGroup {
+  label: string;
+  children: MindMapBranch[];
+}
+
+export interface MindMapData {
+  central_topic: string;
+  branches: MindMapBranchGroup[];
+}
+
+export interface MindMap {
+  id: number;
+  title: string;
+  mind_map: MindMapData;
+  guide_type: string;
+  version: number;
+  parent_guide_id: number | null;
+  created_at: string;
+  auto_created_tasks?: AutoCreatedTask[];
+}
+
 export interface SupportedFormats {
   documents: string[];
   spreadsheets: string[];
@@ -145,6 +171,11 @@ export const studyApi = {
   generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
     const response = await api.post('/api/study/flashcards/generate', params);
     return response.data as FlashcardSet;
+  },
+
+  generateMindMap: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; regenerate_from_id?: number; focus_prompt?: string }) => {
+    const response = await api.post('/api/study/mind-map/generate', params);
+    return response.data as MindMap;
   },
 
   checkDuplicate: async (params: { title?: string; guide_type: string; assignment_id?: number; course_id?: number }) => {
