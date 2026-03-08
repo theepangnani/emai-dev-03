@@ -473,6 +473,11 @@ export function CourseDetailPage() {
       title: 'Generate Study Guide',
       message: `Generate a study guide from "${item.title}"? This will use 1 AI credit. You have ${remaining} remaining.`,
       confirmLabel: 'Generate',
+      ...(remaining <= 0 ? {
+        disableConfirm: true,
+        extraActionLabel: 'Request More Credits',
+        onExtraAction: () => setShowLimitModal(true),
+      } : {}),
     });
     if (!ok) return;
 

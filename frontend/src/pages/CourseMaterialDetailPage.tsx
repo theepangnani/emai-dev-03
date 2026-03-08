@@ -296,6 +296,11 @@ export function CourseMaterialDetailPage() {
       title: `Generate ${labels[type]}`,
       message: `Generate a ${labels[type].toLowerCase()} from "${content.title}"? This will use 1 AI credit. You have ${remaining} remaining.`,
       confirmLabel: 'Generate',
+      ...(remaining <= 0 ? {
+        disableConfirm: true,
+        extraActionLabel: 'Request More Credits',
+        onExtraAction: () => setShowLimitModal(true),
+      } : {}),
     });
     if (!ok) return;
 

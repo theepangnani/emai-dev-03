@@ -8,6 +8,9 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'default' | 'danger';
+  disableConfirm?: boolean;
+  extraActionLabel?: string;
+  onExtraAction?: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -19,6 +22,9 @@ export function ConfirmModal({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'default',
+  disableConfirm,
+  extraActionLabel,
+  onExtraAction,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -44,9 +50,15 @@ export function ConfirmModal({
         <p id="confirm-message" className="confirm-modal-message">{message}</p>
         <div className="modal-actions">
           <button className="cancel-btn" onClick={onCancel}>{cancelLabel}</button>
+          {extraActionLabel && onExtraAction && (
+            <button className="generate-btn" onClick={onExtraAction}>
+              {extraActionLabel}
+            </button>
+          )}
           <button
             className={variant === 'danger' ? 'danger-btn' : 'generate-btn'}
             onClick={onConfirm}
+            disabled={disableConfirm}
           >
             {confirmLabel}
           </button>
@@ -63,6 +75,9 @@ interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'default' | 'danger';
+  disableConfirm?: boolean;
+  extraActionLabel?: string;
+  onExtraAction?: () => void;
 }
 
 interface ConfirmState extends ConfirmOptions {
@@ -94,6 +109,13 @@ export function useConfirm() {
     setState(null);
   }, []);
 
+  const handleExtraAction = useCallback(() => {
+    stateRef.current?.onExtraAction?.();
+    stateRef.current?.resolve(false);
+    stateRef.current = null;
+    setState(null);
+  }, []);
+
   const confirmModal = state ? (
     <ConfirmModal
       open={true}
@@ -102,6 +124,9 @@ export function useConfirm() {
       confirmLabel={state.confirmLabel}
       cancelLabel={state.cancelLabel}
       variant={state.variant}
+      disableConfirm={state.disableConfirm}
+      extraActionLabel={state.extraActionLabel}
+      onExtraAction={state.onExtraAction ? handleExtraAction : undefined}
       onConfirm={handleConfirm}
       onCancel={handleCancel}
     />
