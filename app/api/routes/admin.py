@@ -617,3 +617,89 @@ def update_feature_toggle(
 
     logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
     return {"feature": feature_key, "enabled": body.enabled}
+
+
+# -- Storage management endpoints (#1007) ---------------------
+
+class StorageLimitsUpdate(BaseModel):
+    storage_limit_bytes: int | None = None
+    upload_limit_bytes: int | None = None
+
+
+@router.get("/users/{user_id}/storage")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_user_storage(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """View storage usage for a specific user."""
+    from app.services.storage_limits import get_storage_info
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    info = get_storage_info(user)
+    info["user_id"] = user.id
+    info["full_name"] = user.full_name
+    info["email"] = user.email
+    return info
+
+
+@router.patch("/users/{user_id}/storage-limits")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_user_storage_limits(
+    request: Request,
+    user_id: int,
+    body: StorageLimitsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Set custom storage limits for a user."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.storage_limit_bytes is not None:
+        if body.storage_limit_bytes < 0:
+            raise HTTPException(status_code=400, detail="storage_limit_bytes must be non-negative")
+        user.storage_limit_bytes = body.storage_limit_bytes
+    if body.upload_limit_bytes is not None:
+        if body.upload_limit_bytes < 0:
+            raise HTTPException(status_code=400, detail="upload_limit_bytes must be non-negative")
+        user.upload_limit_bytes = body.upload_limit_bytes
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="update",
+        resource_type="storage_limits",
+        resource_id=user.id,
+        details=f"storage_limit={body.storage_limit_bytes}, upload_limit={body.upload_limit_bytes}",
+    )
+    db.commit()
+
+    from app.services.storage_limits import get_storage_info
+    return get_storage_info(user)
+
+
+@router.get("/storage/overview")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def get_storage_overview(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Platform-wide storage statistics."""
+    total_used = db.query(func.coalesce(func.sum(User.storage_used_bytes), 0)).scalar()
+    total_limit = db.query(func.coalesce(func.sum(User.storage_limit_bytes), 0)).scalar()
+    user_count = db.query(func.count(User.id)).filter(User.storage_used_bytes > 0).scalar()
+    total_users = db.query(func.count(User.id)).scalar()
+
+    return {
+        "total_storage_used_bytes": total_used,
+        "total_storage_limit_bytes": total_limit,
+        "users_with_files": user_count,
+        "total_users": total_users,
+        "avg_usage_bytes": total_used // max(user_count, 1),
+    }

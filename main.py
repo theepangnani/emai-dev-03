@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -963,6 +963,34 @@ with engine.connect() as conn:
         conn.rollback()
 
 
+    # -- users: storage limit columns (#1007) --
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "storage_used_bytes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN storage_used_bytes BIGINT DEFAULT 0"))
+                logger.info("Added storage_used_bytes column to users (#1007)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "storage_limit_bytes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN storage_limit_bytes BIGINT DEFAULT 104857600"))
+                logger.info("Added storage_limit_bytes column to users (#1007)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+        if "upload_limit_bytes" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN upload_limit_bytes INTEGER DEFAULT 10485760"))
+                logger.info("Added upload_limit_bytes column to users (#1007)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 app = FastAPI(
@@ -1098,6 +1126,8 @@ app.include_router(resource_links.router, prefix="/api")
 app.include_router(help_routes.router, prefix="/api")
 app.include_router(briefing.router, prefix="/api")
 app.include_router(parent_ai.router, prefix="/api")
+app.include_router(weekly_digest.router, prefix="/api")
+app.include_router(study_sharing.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
