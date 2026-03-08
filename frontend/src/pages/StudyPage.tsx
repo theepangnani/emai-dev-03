@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { getCourseColor } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
@@ -700,6 +701,10 @@ export function StudyPage() {
           )}
         </div>
       )}
+      <AILimitRequestModal
+        open={studyTools.showLimitModal}
+        onClose={() => studyTools.setShowLimitModal(false)}
+      />
     </DashboardLayout>
   );
 }

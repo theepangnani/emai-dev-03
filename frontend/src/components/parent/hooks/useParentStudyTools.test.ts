@@ -31,6 +31,17 @@ vi.mock('../../../api/client', () => ({
   },
 }))
 
+const mockInvalidateAI = vi.fn()
+let mockAtLimit = false
+
+vi.mock('../../../hooks/useAIUsage', () => ({
+  useAIUsage: () => ({
+    atLimit: mockAtLimit,
+    remaining: mockAtLimit ? 0 : 5,
+    invalidate: mockInvalidateAI,
+  }),
+}))
+
 const mockGenerateGuide = vi.fn().mockResolvedValue({ id: 1 })
 
 const mockNavigate = vi.fn()
@@ -42,6 +53,7 @@ function createImageFile(name = 'image.png'): File {
 describe('useParentStudyTools – error detail surfacing (#1393)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAtLimit = false
     mockGetDefault.mockResolvedValue({ id: 100 })
     mockGenerateGuide.mockResolvedValue({ id: 1 })
   })
@@ -122,11 +134,36 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
       expect(result.current.backgroundGeneration!.error).toBe('Network Error')
     })
   })
+
+  it('shows limit modal instead of generating when credits exhausted', async () => {
+    mockAtLimit = true
+
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: 'Test',
+        content: 'Content',
+        types: ['study_guide'],
+        mode: 'text',
+      })
+    })
+
+    // Should NOT start generation
+    expect(result.current.backgroundGeneration).toBeNull()
+    // Should show the limit modal
+    expect(result.current.showLimitModal).toBe(true)
+    // Should NOT call the API
+    expect(mockGenerateGuide).not.toHaveBeenCalled()
+  })
 })
 
 describe('useParentStudyTools – pasted images upload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAtLimit = false
     mockGetDefault.mockResolvedValue({ id: 100 })
     mockGenerateGuide.mockResolvedValue({ id: 1 })
     mockCreate.mockResolvedValue({ id: 1 })
