@@ -17,8 +17,6 @@ import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
-import { RoleQuickActions } from '../components/RoleQuickActions';
-import type { QuickAction } from '../components/RoleQuickActions';
 import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';

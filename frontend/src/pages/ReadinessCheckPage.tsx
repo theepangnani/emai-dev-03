@@ -8,9 +8,8 @@ import type {
   ReadinessCheckResponse,
   ReadinessReport,
   ReadinessListItem,
-  ReadinessQuestion,
 } from '../api/readiness';
-import { parentApi, coursesApi } from '../api/client';
+import { parentApi } from '../api/client';
 import type { ChildSummary } from '../api/client';
 import './ReadinessCheckPage.css';
 
@@ -45,7 +44,7 @@ type View = 'list' | 'create' | 'quiz' | 'report';
 export function ReadinessCheckPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const isParent = user?.role === 'parent';
 
   // State
@@ -179,6 +178,7 @@ export function ReadinessCheckPage() {
   };
 
   // ── Open pending quiz (student view) ──
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openQuiz = async (item: ReadinessListItem) => {
     // We need to re-fetch the assessment to get questions
     // The list endpoint doesn't have questions, so use the report endpoint which will 400 if not complete
@@ -455,7 +455,7 @@ export function ReadinessCheckPage() {
                 onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    item.status === 'completed' ? openReport(item.id) : openQuiz(item);
+                    if (item.status === 'completed') { openReport(item.id); } else { openQuiz(item); }
                   }
                 }}
               >
