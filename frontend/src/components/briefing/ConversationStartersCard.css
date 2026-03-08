@@ -145,6 +145,24 @@
   font-size: 0.85rem;
 }
 
+.conv-starters-generate {
+  display: block;
+  margin: 8px auto 0;
+  padding: 10px 20px;
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.conv-starters-generate:hover {
+  opacity: 0.9;
+}
+
 .conv-starters-loading {
   display: flex;
   align-items: center;

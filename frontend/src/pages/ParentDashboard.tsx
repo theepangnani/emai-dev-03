@@ -5,8 +5,6 @@ import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
-import { DailyBriefingCard } from '../components/briefing/DailyBriefingCard';
-import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
@@ -259,10 +257,6 @@ export function ParentDashboard() {
 
           {/* Above-grid elements */}
           <div className="dash-above-grid">
-            {/* Daily Briefing Card */}
-            <DailyBriefingCard />
-            <ConversationStartersCard studentId={pd.selectedChild ?? undefined} />
-
             {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
@@ -449,10 +443,9 @@ export function ParentDashboard() {
           <div className="dashboard-redesign">
             <section className="dash-section dash-section--primary">
               <div className="dash-section-header">
-                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Daily Briefing</h3>
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Tasks Overview</h3>
               </div>
               <div className="dash-section-body">
-                <DailyBriefingCard />
                 {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
                   <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
                     {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
@@ -478,7 +471,7 @@ export function ParentDashboard() {
                 <h3 className="dash-section-title">Quick Actions</h3>
               </div>
               <div className="dash-quick-actions">
-                <button className="dash-quick-action" onClick={() => pd.navigate('/help-my-kid')}><span className="dash-quick-action-icon">&#128161;</span> Help My Kid</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/ai-tools')}><span className="dash-quick-action-icon">&#128161;</span> Help My Kid</button>
                 <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}><span className="dash-quick-action-icon">&#9989;</span> Create Task</button>
                 <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">&#128218;</span> View Courses</button>
                 <button className="dash-quick-action" onClick={() => pd.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
