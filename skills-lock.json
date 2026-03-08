@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "e8118284a6365753790d44bb2758a6032b3af27fa84696428d9233f2be0f4e78"
     },
+    "product-designer": {
+      "source": "borghei/claude-skills",
+      "sourceType": "github",
+      "computedHash": "40754c8e04a7d2504f1ac6271d577f7c59dc57eec4a2acc67c30a79dee3d8784"
+    },
     "product-requirements": {
       "source": "cexll/myclaude",
       "sourceType": "github",
