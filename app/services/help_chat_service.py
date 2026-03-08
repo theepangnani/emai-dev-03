@@ -142,8 +142,8 @@ class HelpChatService:
                 retrieved_chunks=context_text
             )
 
-            # 3. Build message history
-            messages = [{"role": "system", "content": system_prompt}]
+            # 3. Build message history for Claude (system prompt is separate)
+            messages = []
 
             # Add conversation history (last 5 exchanges)
             if conversation_history:
@@ -157,19 +157,20 @@ class HelpChatService:
             # Add current message
             messages.append({"role": "user", "content": message})
 
-            # 4. Call OpenAI (async to avoid blocking the event loop)
+            # 4. Call Claude via Anthropic API (async to avoid blocking the event loop)
             from app.core.config import settings
-            import openai
+            import anthropic
 
-            client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
+            client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+            response = await client.messages.create(
+                model=settings.claude_model,
+                system=system_prompt,
                 messages=messages,
                 max_tokens=800,
                 temperature=0.3,  # Lower temperature for factual help responses
             )
 
-            reply = response.choices[0].message.content or "I'm sorry, I couldn't generate a response. Please try again."
+            reply = response.content[0].text if response.content else "I'm sorry, I couldn't generate a response. Please try again."
 
             # 5. Extract sources and videos
             sources = [chunk.source_id for chunk in chunks if chunk.score > 0.3]
@@ -188,12 +189,15 @@ class HelpChatService:
 
             # Provide a user-friendly error hint based on the exception type
             error_name = type(e).__name__
-            if "AuthenticationError" in error_name or "api_key" in str(e).lower():
+            error_str = str(e).lower()
+            if "AuthenticationError" in error_name or "api_key" in error_str:
                 hint = "AI service configuration error."
-            elif "RateLimitError" in error_name:
+            elif "RateLimitError" in error_name or "rate_limit" in error_str:
                 hint = "AI service is temporarily overloaded."
-            elif "Timeout" in error_name or "ConnectionError" in error_name:
+            elif "Timeout" in error_name or "ConnectionError" in error_name or "connect" in error_str:
                 hint = "AI service is unreachable."
+            elif "PermissionDenied" in error_name or "permission" in error_str:
+                hint = "AI service permission error."
             else:
                 hint = "An unexpected error occurred."
 
