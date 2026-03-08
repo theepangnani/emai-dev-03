@@ -44,18 +44,20 @@ export function useFABContext() {
  * Automatically unregisters on unmount.
  */
 export function useRegisterNotesFAB(config: NotesFABConfig | null) {
-  const { registerNotesFAB, unregisterNotesFAB } = useFABContext();
+  const ctx = useContext(FABContext);
   // Register/update whenever key props change
   useEffect(() => {
+    if (!ctx) return;
     if (config) {
-      registerNotesFAB(config);
+      ctx.registerNotesFAB(config);
     } else {
-      unregisterNotesFAB();
+      ctx.unregisterNotesFAB();
     }
-  }, [config?.courseContentId, config?.isOpen, config?.hasNote, registerNotesFAB, unregisterNotesFAB]);
+  }, [ctx, config?.courseContentId, config?.isOpen, config?.hasNote]);
 
   // Unregister only on unmount
   useEffect(() => {
-    return () => unregisterNotesFAB();
-  }, [unregisterNotesFAB]);
+    if (!ctx) return;
+    return () => ctx.unregisterNotesFAB();
+  }, [ctx]);
 }
