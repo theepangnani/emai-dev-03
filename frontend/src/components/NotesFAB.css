@@ -13,8 +13,8 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(42, 159, 168, 0.35);
-  z-index: 899;
-  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  z-index: var(--z-fab, 900);
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s, bottom 0.3s ease;
   animation: fab-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -52,6 +52,16 @@
   border: 2px solid #fff;
 }
 
+/* When Help Chatbot FAB is present — shift NotesFAB up to make room */
+.notes-fab.has-chatbot-fab {
+  bottom: 88px;
+}
+
+/* When the chatbot panel is open — shift NotesFAB further up to avoid overlap */
+.notes-fab.chatbot-panel-open {
+  bottom: 440px;
+}
+
 /* Dark mode */
 [data-theme="dark"] .notes-fab {
   box-shadow: 0 4px 16px rgba(42, 159, 168, 0.25);
@@ -61,12 +71,37 @@
   border-color: var(--color-surface, #1e1e1e);
 }
 
-/* Mobile: slightly smaller, less intrusive */
+/* Tablet and below: smaller FAB, safe-area padding */
+@media (max-width: 768px) {
+  .notes-fab {
+    width: 48px;
+    height: 48px;
+    bottom: 16px;
+    right: 16px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .notes-fab.has-chatbot-fab {
+    bottom: 76px;
+  }
+
+  /* When chatbot panel is open as full-width bottom sheet on mobile,
+     hide NotesFAB to avoid overlap */
+  .notes-fab.chatbot-panel-open {
+    bottom: 60vh;
+  }
+}
+
+/* Small phones */
 @media (max-width: 480px) {
   .notes-fab {
     width: 46px;
     height: 46px;
     bottom: 16px;
     right: 16px;
+  }
+
+  .notes-fab.has-chatbot-fab {
+    bottom: 72px;
   }
 }

@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-6"
 
+    # OpenAI (used for embeddings in help chatbot RAG pipeline)
+    openai_api_key: str = ""
+
     # Study guide limits
     max_study_guides_per_student: int = 100
     max_study_guides_per_parent: int = 200

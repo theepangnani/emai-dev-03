@@ -62,5 +62,8 @@ WARNING
 *scratchpad*
 tmp_*.txt
 
+# Help chatbot embeddings cache
+app/data/help_knowledge/.embeddings_cache.json
+
 # Claude worktrees
 .claude/worktrees/

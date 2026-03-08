@@ -6,9 +6,13 @@ interface NotesFABProps {
   courseContentId: number;
   isOpen: boolean;
   onToggle: () => void;
+  /** When true, shifts the FAB up to make room for the Help Chatbot FAB */
+  hasChatbotFab?: boolean;
+  /** When true, shifts the FAB further up to avoid the open chatbot panel */
+  chatbotPanelOpen?: boolean;
 }
 
-export function NotesFAB({ courseContentId, isOpen, onToggle }: NotesFABProps) {
+export function NotesFAB({ courseContentId, isOpen, onToggle, hasChatbotFab, chatbotPanelOpen }: NotesFABProps) {
   const [hasNote, setHasNote] = useState(false);
 
   useEffect(() => {
@@ -17,9 +21,16 @@ export function NotesFAB({ courseContentId, isOpen, onToggle }: NotesFABProps) {
     }).catch(() => {});
   }, [courseContentId, isOpen]);
 
+  const classNames = [
+    'notes-fab',
+    isOpen && 'notes-fab--open',
+    hasChatbotFab && 'has-chatbot-fab',
+    chatbotPanelOpen && 'chatbot-panel-open',
+  ].filter(Boolean).join(' ');
+
   return (
     <button
-      className={`notes-fab${isOpen ? ' notes-fab--open' : ''}`}
+      className={classNames}
       onClick={onToggle}
       title={isOpen ? 'Close notes' : 'Open notes'}
       aria-label={isOpen ? 'Close notes' : 'Open notes'}

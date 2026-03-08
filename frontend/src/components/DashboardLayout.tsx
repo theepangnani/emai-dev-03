@@ -9,6 +9,7 @@ import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
+import { HelpChatbot } from './HelpChatbot/HelpChatbot';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -538,6 +539,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       {user?.role === 'teacher' && (
         <OnboardingTour steps={TEACHER_TOUR_STEPS} storageKey="tour_completed_teacher" />
       )}
+
+      <HelpChatbot />
       </div>
     </>
   );
