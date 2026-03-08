@@ -185,8 +185,20 @@ class HelpChatService:
             if "HTTPException" in type(e).__name__:
                 raise  # Re-raise rate limit errors
             logger.error(f"Help chat generation failed: {e}")
+
+            # Provide a user-friendly error hint based on the exception type
+            error_name = type(e).__name__
+            if "AuthenticationError" in error_name or "api_key" in str(e).lower():
+                hint = "AI service configuration error."
+            elif "RateLimitError" in error_name:
+                hint = "AI service is temporarily overloaded."
+            elif "Timeout" in error_name or "ConnectionError" in error_name:
+                hint = "AI service is unreachable."
+            else:
+                hint = "An unexpected error occurred."
+
             return ChatResponse(
-                reply="I'm having trouble right now. Please try again in a moment, or visit the Help page for common questions.",
+                reply=f"{hint} Please try again in a moment, or visit the [Help page](/help) for common questions.",
                 sources=[],
                 videos=[]
             )

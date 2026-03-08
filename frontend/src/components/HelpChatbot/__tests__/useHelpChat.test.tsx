@@ -105,4 +105,52 @@ describe('useHelpChat', () => {
     expect(secondCall[1]).toHaveProperty('conversation')
     expect(secondCall[1]).not.toHaveProperty('conversation_history')
   })
+
+  it('shows rate limit error for 429 responses', async () => {
+    mockedApi.post.mockRejectedValueOnce({ response: { status: 429 } })
+
+    const { result } = renderHook(() => useHelpChat())
+
+    act(() => {
+      result.current.sendMessage('test')
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.error).toMatch(/request limit/i)
+  })
+
+  it('shows auth error for 401 responses', async () => {
+    mockedApi.post.mockRejectedValueOnce({ response: { status: 401 } })
+
+    const { result } = renderHook(() => useHelpChat())
+
+    act(() => {
+      result.current.sendMessage('test')
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.error).toMatch(/session expired/i)
+  })
+
+  it('shows help page link for generic network errors', async () => {
+    mockedApi.post.mockRejectedValueOnce(new Error('Network Error'))
+
+    const { result } = renderHook(() => useHelpChat())
+
+    act(() => {
+      result.current.sendMessage('test')
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.error).toContain('/help')
+  })
 })

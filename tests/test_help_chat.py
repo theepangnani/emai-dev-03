@@ -1,0 +1,95 @@
+"""Tests for help chat service error handling."""
+
+import sys
+import pytest
+from unittest.mock import patch, MagicMock
+from types import ModuleType
+
+from app.services.help_chat_service import HelpChatService
+
+
+def _make_mock_embedding_module(side_effect):
+    """Create a mock module for help_embedding_service with a given side_effect on search."""
+    mod = ModuleType("app.services.help_embedding_service")
+    mock_service = MagicMock()
+    mock_service.search.side_effect = side_effect
+    mod.help_embedding_service = mock_service  # type: ignore[attr-defined]
+    return mod
+
+
+@pytest.mark.asyncio
+async def test_openai_auth_error_returns_specific_message():
+    """Regression: generic errors should include error type + /help link."""
+    service = HelpChatService()
+
+    class AuthenticationError(Exception):
+        pass
+
+    mock_mod = _make_mock_embedding_module(AuthenticationError("Invalid API key"))
+    with patch.dict(sys.modules, {"app.services.help_embedding_service": mock_mod}):
+        result = await service.generate_response(
+            message="How do I connect Google Classroom?",
+            user_id=1,
+            user_role="parent",
+        )
+
+    assert "/help" in result.reply, "Error reply must include /help link"
+    assert "configuration" in result.reply.lower() or "error" in result.reply.lower()
+    assert "I'm having trouble right now" not in result.reply
+
+
+@pytest.mark.asyncio
+async def test_timeout_error_returns_unreachable_message():
+    """Timeout errors should say the service is unreachable."""
+    service = HelpChatService()
+
+    class TimeoutError(Exception):
+        pass
+
+    mock_mod = _make_mock_embedding_module(TimeoutError("Connection timed out"))
+    with patch.dict(sys.modules, {"app.services.help_embedding_service": mock_mod}):
+        result = await service.generate_response(
+            message="Help me",
+            user_id=2,
+            user_role="student",
+        )
+
+    assert "/help" in result.reply
+    assert "unreachable" in result.reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_generic_error_returns_unexpected_message():
+    """Unknown errors should say 'unexpected' and still include /help link."""
+    service = HelpChatService()
+
+    mock_mod = _make_mock_embedding_module(ValueError("something weird"))
+    with patch.dict(sys.modules, {"app.services.help_embedding_service": mock_mod}):
+        result = await service.generate_response(
+            message="What is this?",
+            user_id=3,
+            user_role="teacher",
+        )
+
+    assert "/help" in result.reply
+    assert "unexpected" in result.reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_error_returns_overloaded_message():
+    """OpenAI rate limit errors should mention overloaded."""
+    service = HelpChatService()
+
+    class RateLimitError(Exception):
+        pass
+
+    mock_mod = _make_mock_embedding_module(RateLimitError("Rate limit exceeded"))
+    with patch.dict(sys.modules, {"app.services.help_embedding_service": mock_mod}):
+        result = await service.generate_response(
+            message="Help",
+            user_id=4,
+            user_role="admin",
+        )
+
+    assert "/help" in result.reply
+    assert "overloaded" in result.reply.lower()

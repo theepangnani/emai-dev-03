@@ -60,8 +60,15 @@ export function useHelpChat() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch {
-      setError('Sorry, something went wrong. Please try again.');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 429) {
+        setError('You\u2019ve reached the request limit. Please wait a few minutes and try again.');
+      } else if (status === 401 || status === 403) {
+        setError('Session expired. Please refresh the page and log in again.');
+      } else {
+        setError('Could not reach the help service. Please try again, or visit the Help page at /help.');
+      }
     } finally {
       setIsLoading(false);
     }
