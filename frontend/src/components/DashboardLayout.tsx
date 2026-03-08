@@ -161,6 +161,35 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
+  // Sidebar collapsed/expanded state persisted in localStorage
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar_expanded') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarExpanded(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sidebar_expanded', String(next)); } catch { /* */ }
+      return next;
+    });
+  }, []);
+
+  const handleSidebarMouseEnter = useCallback(() => {
+    if (sidebarExpanded) return;
+    hoverTimerRef.current = setTimeout(() => setSidebarHovered(true), 200);
+  }, [sidebarExpanded]);
+
+  const handleSidebarMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setSidebarHovered(false);
+  }, []);
+
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
   const navItems = useMemo(() => {
@@ -431,12 +460,27 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
       <div className="dashboard-body">
         {/* Persistent sidebar (>=768px) */}
-        <aside className="persistent-sidebar" aria-label="Main navigation">
+        <aside
+          className={`persistent-sidebar${sidebarExpanded || sidebarHovered ? ' expanded' : ''}`}
+          aria-label="Main navigation"
+          onMouseEnter={handleSidebarMouseEnter}
+          onMouseLeave={handleSidebarMouseLeave}
+        >
+          <button
+            className="ps-collapse-toggle"
+            onClick={toggleSidebar}
+            title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <nav className="persistent-sidebar-nav">
             {navItems.map((item) => (
               <button
                 key={item.path}
-                className={`ps-nav-item${location.pathname === item.path ? ' active' : ''}`}
+                className={`ps-nav-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
                 onClick={() => navigate(item.path)}
                 title={item.label}
                 aria-label={item.label}
@@ -529,6 +573,26 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         <span className="dashboard-footer-divider">|</span>
         <a href="mailto:support@classbridge.ca">Contact Us</a>
       </footer>
+
+      {/* Mobile bottom tab bar (<768px) */}
+      <nav className="mobile-tab-bar" aria-label="Mobile navigation">
+        {navItems.slice(0, 5).map((item) => (
+          <button
+            key={item.path}
+            className={`mobile-tab-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
+            onClick={() => navigate(item.path)}
+            aria-label={item.label}
+          >
+            <span className="mobile-tab-icon">
+              <NavIcon name={item.label} />
+              {item.path === '/messages' && unreadCount > 0 && (
+                <span className="mobile-tab-badge">{unreadCount}</span>
+              )}
+            </span>
+            <span className="mobile-tab-label">{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
       <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
