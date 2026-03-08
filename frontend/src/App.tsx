@@ -80,6 +80,7 @@ const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => 
 const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
 const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage').then((m) => ({ default: m.ConfirmDeletionPage })));
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
+const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -126,6 +127,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyKidsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/readiness-check"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                    <ReadinessCheckPage />
                   </ProtectedRoute>
                 }
               />
