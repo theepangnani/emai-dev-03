@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 
 export interface NotesFABConfig {
   courseContentId: number;
@@ -26,8 +26,10 @@ export function FABProvider({ children }: { children: ReactNode }) {
     setNotesFAB(null);
   }, []);
 
+  const value = useMemo(() => ({ notesFAB, registerNotesFAB, unregisterNotesFAB }), [notesFAB, registerNotesFAB, unregisterNotesFAB]);
+
   return (
-    <FABContext.Provider value={{ notesFAB, registerNotesFAB, unregisterNotesFAB }}>
+    <FABContext.Provider value={value}>
       {children}
     </FABContext.Provider>
   );
@@ -50,6 +52,9 @@ export function useFABContext() {
  */
 export function useRegisterNotesFAB(config: NotesFABConfig | null) {
   const ctx = useContext(FABContext);
+  const unregisterRef = useRef<(() => void) | undefined>(undefined);
+  unregisterRef.current = ctx?.unregisterNotesFAB;
+
   // Register/update whenever key props change
   useEffect(() => {
     if (!ctx) return;
@@ -58,11 +63,11 @@ export function useRegisterNotesFAB(config: NotesFABConfig | null) {
     } else {
       ctx.unregisterNotesFAB();
     }
-  }, [ctx, config?.courseContentId, config?.isOpen, config?.hasNote]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.courseContentId, config?.isOpen, config?.hasNote]);
 
   // Unregister only on unmount
   useEffect(() => {
-    if (!ctx) return;
-    return () => ctx.unregisterNotesFAB();
-  }, [ctx]);
+    return () => unregisterRef.current?.();
+  }, []);
 }
