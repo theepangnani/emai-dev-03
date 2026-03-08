@@ -72,7 +72,8 @@ export function HelpChatbot() {
           onClick={() => setIsOpen(true)}
           aria-label="Open help chat"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <img src="/logo-icon.png" alt="" className="help-chatbot-fab-logo" />
+          <svg className="help-chatbot-fab-badge" viewBox="0 0 24 24" fill="currentColor">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
@@ -82,7 +83,10 @@ export function HelpChatbot() {
       {isOpen && (
         <div className="help-chatbot-panel">
           <div className="help-chatbot-header">
-            <h3>ClassBridge Help</h3>
+            <div className="help-chatbot-header-title">
+              <img src="/logo-icon.png" alt="" className="help-chatbot-header-logo" />
+              <h3>ClassBridge Help</h3>
+            </div>
             <button
               className="help-chatbot-close"
               onClick={() => setIsOpen(false)}
