@@ -78,11 +78,11 @@
 }
 
 .help-chatbot-header-logo {
-  width: 28px;
-  height: 28px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   filter: brightness(0) invert(1);
-  margin: -4px;
+  margin: -14px -8px -14px -4px;
 }
 
 .help-chatbot-header h3 {

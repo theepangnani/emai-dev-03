@@ -128,7 +128,7 @@ class HelpChatService:
         try:
             # 1. Retrieve relevant chunks
             from app.services.help_embedding_service import help_embedding_service
-            chunks = help_embedding_service.search(
+            chunks = await help_embedding_service.search(
                 query=message,
                 top_k=5,
                 role_filter=user_role
@@ -157,12 +157,12 @@ class HelpChatService:
             # Add current message
             messages.append({"role": "user", "content": message})
 
-            # 4. Call OpenAI
+            # 4. Call OpenAI (async to avoid blocking the event loop)
             from app.core.config import settings
             import openai
 
-            client = openai.OpenAI(api_key=settings.openai_api_key)
-            response = client.chat.completions.create(
+            client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+            response = await client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=800,
