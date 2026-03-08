@@ -815,7 +815,7 @@ export function StudentDashboard() {
           )}
           {studyTools.backgroundGeneration.status === 'error' && (
             <>
-              <span>Failed to generate {studyTools.backgroundGeneration.type}</span>
+              <span>Failed to generate {studyTools.backgroundGeneration.type}{studyTools.backgroundGeneration.error ? `: ${studyTools.backgroundGeneration.error}` : ''}</span>
               <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
             </>
           )}

@@ -134,7 +134,9 @@ export function useParentStudyTools({
         const resultId = result?.id || result?.course_content_id;
         setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
       } catch (err: any) {
-        setBackgroundGeneration({ status: 'error', type: typeLabel, error: err?.message || 'Generation failed' });
+        const raw = err?.response?.data?.detail || err?.message || 'Generation failed';
+        const detail = typeof raw === 'string' && raw.length > 150 ? raw.slice(0, 147) + '...' : raw;
+        setBackgroundGeneration({ status: 'error', type: typeLabel, error: detail });
       }
     })();
   };
