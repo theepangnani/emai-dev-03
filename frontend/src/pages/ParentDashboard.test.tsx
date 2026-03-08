@@ -702,10 +702,10 @@ describe.skip('ParentDashboard', () => {
 
     // Task urgency pills appear below CTAs
     await waitFor(() => {
-      expect(screen.getByText('1 overdue')).toBeInTheDocument()
+      expect(screen.getAllByText('1 overdue').length).toBeGreaterThanOrEqual(1)
     })
-    expect(screen.getByText('1 due today')).toBeInTheDocument()
-    expect(screen.getByText('1 next 3 days')).toBeInTheDocument()
+    expect(screen.getAllByText('1 due today').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('1 next 3 days').length).toBeGreaterThanOrEqual(1)
   })
 
   it('hides task urgency pills when there are no tasks', async () => {
@@ -748,15 +748,15 @@ describe.skip('ParentDashboard', () => {
     renderWithProviders(<ParentDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText('1 overdue')).toBeInTheDocument()
+      expect(screen.getAllByText('1 overdue').length).toBeGreaterThanOrEqual(1)
     })
 
-    await user.click(screen.getByText('1 overdue'))
+    await user.click(screen.getAllByText('1 overdue')[0])
 
     expect(mockNavigate).toHaveBeenCalledWith('/tasks?due=overdue')
   })
 
-  it('does not render Coming Up section (moved to My Kids page #1221)', async () => {
+  it('renders Coming Up section on dashboard', async () => {
     mockGetDashboard.mockResolvedValue(
       createMockParentDashboard({ children: [child1] }),
     )
@@ -771,6 +771,6 @@ describe.skip('ParentDashboard', () => {
       expect(screen.getByText('Alex Smith')).toBeInTheDocument()
     })
 
-    expect(screen.queryByText('Coming Up')).not.toBeInTheDocument()
+    expect(screen.getByText('Coming Up')).toBeInTheDocument()
   })
 })

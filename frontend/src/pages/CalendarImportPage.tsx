@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { calendarImportApi, CalendarFeed } from '../api/calendarImport';
+import { calendarImportApi } from '../api/calendarImport';
+import type { CalendarFeed } from '../api/calendarImport';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import './CalendarImportPage.css';

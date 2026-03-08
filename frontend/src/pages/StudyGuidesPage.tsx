@@ -1458,83 +1458,11 @@ export function StudyGuidesPage() {
                       <span className="category-count">({groupedByCategory.uncategorized.length})</span>
                     </button>
                   )}
-                  <div className="guide-row-main" onClick={() => navigateToContent(item)}>
-                    <span className="guide-row-icon">{contentTypeIcon(item.content_type, item.id)}</span>
-                    <div className="guide-row-info">
-                      <span className="guide-row-title">
-                        {item.title}
-                        {/* Unlinked badge (#623) */}
-                        {isUnlinked && (
-                          <span className="guide-unlinked-badge">Not assigned</span>
-                        )}
-                      </span>
-                      <span className="guide-row-meta">
-                        {item.course_name && (
-                          <span className="guide-course-badge">{item.course_name}</span>
-                        )}
-                        {contentGuideMap[item.id] && (
-                          <span className="guide-type-label">
-                            {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
-                          </span>
-                        )}
-                        <span className="guide-row-date">
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                            <circle cx="8" cy="8" r="6.5"/>
-                            <path d="M8 4.5v4l2.5 1.5" strokeLinecap="round"/>
-                          </svg>
-                          {item.updated_at
-                            ? `Updated ${new Date(item.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-                            : new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                          }
-                        </span>
-                      </span>
+                  {!collapsedCategories.has('__uncategorized__') && (
+                    <div className="guides-list">
+                      {groupedByCategory.uncategorized.map(item => renderContentRow(item))}
                     </div>
-                  </div>
-                  <div className="guide-row-actions">
-                    {/* Quick assign dropdown for unlinked items (#623) */}
-                    {isUnlinked && linkedChildren.length === 1 && (
-                      <button
-                        className="guide-assign-btn"
-                        title={`Assign to ${linkedChildren[0].full_name}`}
-                        onClick={() => handleQuickAssign(item, linkedChildren[0].student_id)}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                          <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                        Assign
-                      </button>
-                    )}
-                    {isUnlinked && linkedChildren.length > 1 && (
-                      <div className="guide-assign-dropdown">
-                        <button className="guide-assign-btn" title="Assign to child">
-                          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                            <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                          </svg>
-                          Assign
-                        </button>
-                        <div className="guide-assign-dropdown-content">
-                          {linkedChildren.map(child => (
-                            <button
-                              key={child.student_id}
-                              className="guide-assign-dropdown-item"
-                              onClick={() => handleQuickAssign(item, child.student_id)}
-                            >
-                              {child.full_name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <button className="guide-convert-btn" title="View" onClick={() => navigateToContent(item)}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                        <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
-                        <circle cx="8" cy="8" r="2.5"/>
-                      </svg>
-                    </button>
-                    <button className="guide-convert-btn" title="Edit" onClick={() => setEditContent(item)}>&#9998;</button>
-                    <button className="guide-convert-btn" title="Move to class" onClick={() => { setReassignContent(item); setCategorizeCourseId(''); setCategorizeSearch(''); setCategorizeNewName(''); }}>&#128194;</button>
-                    <button className="guide-delete-btn" title="Archive" onClick={() => handleArchiveContent(item.id)}>&#128465;</button>
-                  </div>
+                  )}
                 </div>
               )}
 
