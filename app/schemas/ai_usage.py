@@ -46,9 +46,17 @@ class AIUsageUserResponse(BaseModel):
     id: int
     full_name: str
     email: str | None = None
-    role: str
+    role: str = "unknown"
     ai_usage_count: int = 0
     ai_usage_limit: int = 10
+
+    @field_validator('role', mode='before')
+    @classmethod
+    def coalesce_role(cls, v):
+        if v is None:
+            return "unknown"
+        # Handle enum values
+        return v.value if hasattr(v, 'value') else str(v)
 
     @field_validator('ai_usage_count', 'ai_usage_limit', mode='before')
     @classmethod
