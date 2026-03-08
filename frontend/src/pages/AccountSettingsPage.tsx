@@ -4,6 +4,7 @@ import { accountDeletionApi } from '../api/accountDeletion';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
+import { StorageUsageBar } from '../components/StorageUsageBar';
 import './AccountSettingsPage.css';
 
 export function AccountSettingsPage() {
@@ -69,6 +70,15 @@ export function AccountSettingsPage() {
               <span className="account-info-value">{user?.roles?.join(', ') || user?.role || 'N/A'}</span>
             </div>
           </div>
+        </section>
+
+        <section className="account-section">
+          <h2>Storage Usage</h2>
+          <StorageUsageBar
+            usedBytes={user?.storage_used_bytes ?? 0}
+            limitBytes={user?.storage_limit_bytes ?? 104857600}
+            uploadLimitBytes={user?.upload_limit_bytes ?? 10485760}
+          />
         </section>
 
         <section className="account-section account-danger-zone">
