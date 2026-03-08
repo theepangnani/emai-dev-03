@@ -697,3 +697,42 @@
 .invite-menu-item + .invite-menu-item {
   border-top: 1px solid var(--color-border);
 }
+
+/* ── Quick Actions ── */
+.mykids-quick-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mykids-quick-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 8px);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.mykids-quick-action:hover {
+  background: var(--color-surface-hover, #f9fafb);
+  box-shadow: var(--shadow-soft);
+}
+
+.mykids-qa-icon {
+  font-size: 16px;
+}
+
+@media (max-width: 480px) {
+  .mykids-quick-actions {
+    flex-direction: column;
+  }
+}

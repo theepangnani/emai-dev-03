@@ -196,9 +196,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
-        { label: 'Briefings', path: '/parent-briefing-notes' },
-        { label: 'AI Tools', path: '/ai-tools' },
-        { label: 'Readiness', path: '/readiness-check' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
