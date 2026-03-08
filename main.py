@@ -1151,6 +1151,17 @@ with engine.connect() as conn:
                 conn.rollback()
         conn.commit()
 
+    # Widen ai_usage_history.generation_type from VARCHAR(20) to VARCHAR(50)
+    # "conversation_starters" is 22 chars and exceeds the old limit
+    if "sqlite" not in settings.database_url:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE ai_usage_history ALTER COLUMN generation_type TYPE VARCHAR(50)"))
+                conn.commit()
+                logger.info("Widened ai_usage_history.generation_type to VARCHAR(50)")
+            except Exception:
+                conn.rollback()
+
 
 _is_prod = "sqlite" not in settings.database_url
 

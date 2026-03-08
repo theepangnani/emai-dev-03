@@ -12,7 +12,7 @@ class AIUsageHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    generation_type = Column(String(20), nullable=False)  # study_guide, quiz, flashcard
+    generation_type = Column(String(50), nullable=False)  # study_guide, quiz, flashcard, conversation_starters, etc.
     course_material_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
     credits_used = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
