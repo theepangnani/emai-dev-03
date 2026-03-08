@@ -73,9 +73,12 @@ export function TutorialOverlay({ tutorialKey, steps, autoShow = true }: Tutoria
   }, [visible, currentStep, steps, handleComplete]);
 
   useEffect(() => {
-    positionTooltip();
+    const frame = requestAnimationFrame(positionTooltip);
     window.addEventListener('resize', positionTooltip);
-    return () => window.removeEventListener('resize', positionTooltip);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', positionTooltip);
+    };
   }, [positionTooltip]);
 
   const handleNext = () => {

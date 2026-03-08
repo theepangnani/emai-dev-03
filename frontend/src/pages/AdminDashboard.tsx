@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -21,7 +21,6 @@ interface TrendCounts {
 }
 
 export function AdminDashboard() {
-  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
