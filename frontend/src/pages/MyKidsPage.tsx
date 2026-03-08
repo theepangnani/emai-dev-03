@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
+import { useToast } from '../components/Toast';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
 import { CollapsibleSection } from '../components/parent/CollapsibleSection';
@@ -40,6 +41,7 @@ export function MyKidsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { confirm, confirmModal } = useConfirm();
+  const { toast } = useToast();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const urlStudentId = searchParams.get('student_id');
@@ -394,6 +396,7 @@ export function MyKidsPage() {
         setAddChildInviteLink(result.invite_link);
       } else {
         closeAddChildModal();
+        toast(`${addChildName.trim()} added successfully`, 'success');
       }
       // Refresh children list
       const kids = await parentApi.getChildren();
@@ -422,8 +425,12 @@ export function MyKidsPage() {
       );
       if (result.invite_link) {
         setAddChildInviteLink(result.invite_link);
+      } else if (result.link_request_pending) {
+        closeAddChildModal();
+        toast(`A link request has been sent to ${result.full_name}. They need to approve it before you can manage their account.`, 'info');
       } else {
         closeAddChildModal();
+        toast(`${result.full_name} linked successfully`, 'success');
       }
       // Refresh children list
       const kids = await parentApi.getChildren();
