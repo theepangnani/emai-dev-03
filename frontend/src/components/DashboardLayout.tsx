@@ -205,10 +205,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
-<<<<<<< HEAD
         { label: 'AI Tools', path: '/ai-tools' },
-=======
->>>>>>> origin/feat/readiness-assessment
         { label: 'Readiness', path: '/readiness-check' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
