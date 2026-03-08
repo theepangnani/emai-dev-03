@@ -491,3 +491,50 @@ Always return valid JSON."""
     # ~100 tokens per flashcard (front + back), plus buffer for dates section
     max_tokens = max(1500, num_cards * 100 + 500)
     return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
+
+
+async def generate_parent_briefing(
+    topic_title: str,
+    course_name: str,
+    source_content: str,
+    student_name: str = "your child",
+) -> str:
+    """
+    Generate a parent-friendly briefing note about a topic their child is learning.
+
+    Returns Markdown-formatted content with sections for parents.
+    """
+    logger.info(f"Generating parent briefing | topic={topic_title} | course={course_name}")
+
+    prompt = f"""Create a parent-friendly briefing note about the following topic that {student_name} is studying:
+
+**Topic:** {topic_title}
+**Course:** {course_name}
+
+**Source Material:**
+{source_content}
+
+Please organize your response with these sections:
+
+## What This Topic Is About
+Explain the topic in plain, everyday language. Assume the parent may not be an expert in this subject.
+
+## Key Concepts {student_name} Needs to Understand
+List the main ideas and skills their child should take away from this material.
+
+## How You Can Help at Home
+Practical suggestions for how the parent can support their child's learning on this topic — conversation starters, activities, or real-world connections.
+
+## Common Misconceptions to Watch For
+Things students often get wrong about this topic, so the parent can gently correct misunderstandings.
+
+Format the response in clean Markdown."""
+
+    system_prompt = (
+        "You are writing for a parent who may not be an expert in this subject. "
+        "Use simple, clear language. Focus on what the parent needs to know to support "
+        "their child, NOT on teaching the subject itself. Be warm and encouraging. "
+        "Keep explanations concise — parents are busy. Avoid jargon unless you explain it."
+    )
+
+    return await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.5)

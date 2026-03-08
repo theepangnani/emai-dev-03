@@ -77,6 +77,7 @@ const DataExportPage = lazyRetry(() => import('./pages/DataExportPage').then((m)
 // StudyPage will be created by another agent — lazy import registered here for the /study route
 const StudyPage = lazyRetry(() => import('./pages/StudyPage').then((m) => ({ default: m.StudyPage })));
 const WaitlistPage = lazyRetry(() => import('./pages/WaitlistPage').then((m) => ({ default: m.WaitlistPage })));
+const ParentBriefingNotesPage = lazyRetry(() => import('./pages/ParentBriefingNotesPage').then((m) => ({ default: m.ParentBriefingNotesPage })));
 const NotificationPreferencesPage = lazyRetry(() => import('./pages/NotificationPreferencesPage').then((m) => ({ default: m.NotificationPreferencesPage })));
 const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage').then((m) => ({ default: m.AccountSettingsPage })));
 const CalendarImportPage = lazyRetry(() => import('./pages/CalendarImportPage').then((m) => ({ default: m.CalendarImportPage })));
@@ -130,6 +131,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyKidsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent-briefing-notes"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentBriefingNotesPage />
                   </ProtectedRoute>
                 }
               />

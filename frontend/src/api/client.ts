@@ -146,6 +146,7 @@ export type {
   DiscoveredChild,
   DiscoverChildrenResponse,
   LinkedTeacher,
+  BriefingNote,
 } from './parent';
 export { invitesApi } from './invites';
 export type { InviteResponse } from './invites';
