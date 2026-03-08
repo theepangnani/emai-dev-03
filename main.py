@@ -323,6 +323,21 @@ with engine.connect() as conn:
                 except Exception:
                     conn.rollback()
         conn.commit()
+        # Material grouping columns (#992)
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        if "category" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN category VARCHAR(100)"))
+                logger.info("Added 'category' column to course_contents")
+            except Exception:
+                conn.rollback()
+        if "display_order" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN display_order INTEGER DEFAULT 0"))
+                logger.info("Added 'display_order' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
     if "study_guides" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
         if "archived_at" not in existing_cols:
