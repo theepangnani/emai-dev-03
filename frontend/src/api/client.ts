@@ -189,3 +189,5 @@ export { activityApi } from './activity';
 export type { ActivityItem } from './activity';
 export { briefingApi } from './briefing';
 export type { DailyBriefingResponse, BriefingChildSection } from './briefing';
+export { dailyDigestApi } from './dailyDigest';
+export type { DigestSettings, DailyDigestPreview, DigestSendResponse } from './dailyDigest';

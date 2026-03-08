@@ -59,6 +59,9 @@ class User(Base):
     gmail_last_sync = Column(DateTime(timezone=True), nullable=True)
     classroom_last_sync = Column(DateTime(timezone=True), nullable=True)
 
+    # Daily email digest opt-in
+    daily_digest_enabled = Column(Boolean, default=False)
+
     # Account deletion (soft-delete with 30-day grace period)
     deletion_requested_at = Column(DateTime(timezone=True), nullable=True)
     deletion_confirmed_at = Column(DateTime(timezone=True), nullable=True)

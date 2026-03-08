@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, daily_digest
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -962,6 +962,17 @@ with engine.connect() as conn:
     except Exception:
         conn.rollback()
 
+    # ── users: daily_digest_enabled column (#1406) ─────────────
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        if "daily_digest_enabled" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN daily_digest_enabled BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'daily_digest_enabled' column to users (#1406)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1097,6 +1108,7 @@ app.include_router(activity.router, prefix="/api")
 app.include_router(resource_links.router, prefix="/api")
 app.include_router(help_routes.router, prefix="/api")
 app.include_router(briefing.router, prefix="/api")
+app.include_router(daily_digest.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
