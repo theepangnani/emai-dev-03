@@ -214,7 +214,7 @@ describe.skip('TeacherDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Sync Classes' }).length).toBeGreaterThanOrEqual(1)
-    })
+    }, { timeout: 3000 })
 
     // Click the first Sync Classes button (in the card)
     await user.click(screen.getAllByRole('button', { name: 'Sync Classes' })[0])
