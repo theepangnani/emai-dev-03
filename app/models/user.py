@@ -68,6 +68,9 @@ class User(Base):
     storage_limit_bytes = Column(BigInteger, default=104857600)
     upload_limit_bytes = Column(Integer, default=10485760)
 
+    # Daily email digest opt-in
+    daily_digest_enabled = Column(Boolean, default=False)
+
     # Account deletion (soft-delete with 30-day grace period)
     deletion_requested_at = Column(DateTime(timezone=True), nullable=True)
     deletion_confirmed_at = Column(DateTime(timezone=True), nullable=True)

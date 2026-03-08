@@ -195,3 +195,5 @@ export { parentAIApi } from './parentAI';
 export type { WeakSpot, WeakSpotsResponse, ReadinessItem, ReadinessCheckResponse, PracticeProblem, PracticeProblemsResponse } from './parentAI';
 export { weeklyDigestApi } from './weeklyDigest';
 export type { WeeklyDigestResponse, ChildDigest, WeeklyDigestSendResponse } from './weeklyDigest';
+export { dailyDigestApi } from './dailyDigest';
+export type { DigestSettings, DailyDigestPreview, DigestSendResponse } from './dailyDigest';
