@@ -258,115 +258,118 @@ export function ParentDashboard() {
           {/* Above-grid elements */}
           <div className="dash-above-grid">
             {/* View Mode Toggle (#832) */}
-            <div className="pd-view-toggle-row">
-              <button
-                className="pd-view-toggle"
-                onClick={handleToggleViewMode}
-                aria-label={viewMode === 'full' ? 'Switch to simplified view' : 'Switch to full view'}
-                type="button"
-              >
-                <span className={`pd-view-toggle-option ${viewMode === 'simplified' ? 'active' : ''}`}>Simplified</span>
-                <span className={`pd-view-toggle-option ${viewMode === 'full' ? 'active' : ''}`}>Full</span>
-              </button>
-            </div>
+          <div className="pd-view-toggle-row">
+            <button
+              className="pd-view-toggle"
+              onClick={handleToggleViewMode}
+              aria-label={viewMode === 'full' ? 'Switch to simplified view' : 'Switch to full view'}
+              type="button"
+            >
+              <span className={`pd-view-toggle-option ${viewMode === 'simplified' ? 'active' : ''}`}>Simplified</span>
+              <span className={`pd-view-toggle-option ${viewMode === 'full' ? 'active' : ''}`}>Full</span>
+            </button>
+          </div>
 
-            {/* Child Filter (#830) */}
-            <div className={`pd-child-selector-wrapper${canScrollLeft ? ' can-scroll-left' : ''}${canScrollRight ? ' can-scroll-right' : ''}`}>
-              <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={(el) => { (childTabsRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (childScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}>
-                {pd.children.length > 1 && (
-                  <button
-                    role="tab"
-                    aria-selected={pd.selectedChild === null}
-                    tabIndex={pd.selectedChild === null ? 0 : -1}
-                    className={`pd-child-tab pd-child-tab-all ${pd.selectedChild === null ? 'active' : ''}`}
-                    onClick={() => pd.handleAllChildrenClick()}
-                    onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
-                    title="All children"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </button>
-                )}
-                {pd.children.map((child, index) => {
-                  const isSelected = pd.selectedChild === child.student_id;
-                  const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
-                  const tabKeyIndex = pd.children.length > 1 ? index + 1 : index;
-                  return (
-                    <button
-                      key={child.student_id}
-                      role="tab"
-                      aria-selected={isSelected}
-                      tabIndex={isSelected || (pd.selectedChild === null && pd.children.length <= 1 && index === 0) ? 0 : -1}
-                      className={`pd-child-tab ${isSelected ? 'active' : ''}`}
-                      onClick={() => pd.handleChildTabClick(child.student_id)}
-                      onKeyDown={(e) => handleChildTabKeyDown(e, tabKeyIndex)}
-                    >
-                      <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                      {child.full_name}
-                      {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
-                      {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
-                    </button>
-                  );
-                })}
-                <AddActionButton actions={[
-                  { icon: '\u2705', label: 'New Task', onClick: () => pd.setShowCreateTaskModal(true) },
-                ]} />
-              </div>
-            </div>
-
-            <AlertBanner
-              pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
-              onResendInvite={pd.handleResendInvite}
-              resendingId={pd.resendingId}
-            />
-
-            {pd.backgroundGeneration && (
-              <div className={`pd-generation-banner ${pd.backgroundGeneration.status}`}>
-                {pd.backgroundGeneration.status === 'generating' && (
-                  <>
-                    <span className="pd-gen-spinner" />
-                    <span>{pd.backgroundGeneration.type === 'Material' ? 'Uploading material...' : `Generating ${pd.backgroundGeneration.type}...`}</span>
-                  </>
-                )}
-                {pd.backgroundGeneration.status === 'success' && (
-                  <>
-                    <span>{pd.backgroundGeneration.type === 'Material' ? 'Material uploaded!' : `${pd.backgroundGeneration.type} ready!`}</span>
-                    <button className="pd-gen-view-btn" onClick={() => { pd.navigate('/course-materials'); pd.dismissBackgroundGeneration(); }}>
-                      View
-                    </button>
-                    <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
-                  </>
-                )}
-                {pd.backgroundGeneration.status === 'error' && (
-                  <>
-                    <span>{pd.backgroundGeneration.type === 'Material' ? 'Upload failed' : `Failed to generate ${pd.backgroundGeneration.type}`}{pd.backgroundGeneration.error ? `: ${pd.backgroundGeneration.error}` : ''}</span>
-                    <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {(() => {
-              const selectedChildData = pd.selectedChild
-                ? pd.children.find(c => c.student_id === pd.selectedChild)
-                : null;
-              if (selectedChildData && selectedChildData.course_count === 0) {
+          {/* Child Filter (#830) */}
+          <div className={`pd-child-selector-wrapper${canScrollLeft ? ' can-scroll-left' : ''}${canScrollRight ? ' can-scroll-right' : ''}`}>
+            <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={(el) => { (childTabsRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (childScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}>
+              {/* "All" tab — always first (#830) */}
+              {pd.children.length > 1 && (
+                <button
+                  role="tab"
+                  aria-selected={pd.selectedChild === null}
+                  tabIndex={pd.selectedChild === null ? 0 : -1}
+                  className={`pd-child-tab pd-child-tab-all ${pd.selectedChild === null ? 'active' : ''}`}
+                  onClick={() => pd.handleAllChildrenClick()}
+                  onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
+                  title="All children"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </button>
+              )}
+              {pd.children.map((child, index) => {
+                const isSelected = pd.selectedChild === child.student_id;
+                const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
+                // When "All" tab is present, keyboard index is offset by 1
+                const tabKeyIndex = pd.children.length > 1 ? index + 1 : index;
                 return (
-                  <GoogleClassroomPrompt
-                    childName={selectedChildData.full_name}
-                    childStudentId={selectedChildData.student_id}
-                    onAddManually={() => pd.navigate('/courses')}
-                  />
+                  <button
+                    key={child.student_id}
+                    role="tab"
+                    aria-selected={isSelected}
+                    tabIndex={isSelected || (pd.selectedChild === null && pd.children.length <= 1 && index === 0) ? 0 : -1}
+                    className={`pd-child-tab ${isSelected ? 'active' : ''}`}
+                    onClick={() => pd.handleChildTabClick(child.student_id)}
+                    onKeyDown={(e) => handleChildTabKeyDown(e, tabKeyIndex)}
+                  >
+                    <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                    {child.full_name}
+                    {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
+                    {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
+                  </button>
                 );
-              }
-              return null;
-            })()}
+              })}
+              <AddActionButton actions={[
+                { icon: '\u2705', label: 'New Task', onClick: () => pd.setShowCreateTaskModal(true) },
+              ]} />
+            </div>
+          </div>
 
-            {!tipDismissed && pd.courseMaterials.length === 0 && (
+          <AlertBanner
+            pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
+            onResendInvite={pd.handleResendInvite}
+            resendingId={pd.resendingId}
+          />
+
+          {pd.backgroundGeneration && (
+            <div className={`pd-generation-banner ${pd.backgroundGeneration.status}`}>
+              {pd.backgroundGeneration.status === 'generating' && (
+                <>
+                  <span className="pd-gen-spinner" />
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Uploading material...' : `Generating ${pd.backgroundGeneration.type}...`}</span>
+                </>
+              )}
+              {pd.backgroundGeneration.status === 'success' && (
+                <>
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Material uploaded!' : `${pd.backgroundGeneration.type} ready!`}</span>
+                  <button className="pd-gen-view-btn" onClick={() => { pd.navigate('/course-materials'); pd.dismissBackgroundGeneration(); }}>
+                    View
+                  </button>
+                  <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
+                </>
+              )}
+              {pd.backgroundGeneration.status === 'error' && (
+                <>
+                  <span>{pd.backgroundGeneration.type === 'Material' ? 'Upload failed' : `Failed to generate ${pd.backgroundGeneration.type}`}{pd.backgroundGeneration.error ? `: ${pd.backgroundGeneration.error}` : ''}</span>
+                  <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Google Classroom connection prompt when selected child has 0 courses (#874) */}
+          {(() => {
+            const selectedChildData = pd.selectedChild
+              ? pd.children.find(c => c.student_id === pd.selectedChild)
+              : null;
+            if (selectedChildData && selectedChildData.course_count === 0) {
+              return (
+                <GoogleClassroomPrompt
+                  childName={selectedChildData.full_name}
+                  childStudentId={selectedChildData.student_id}
+                  onAddManually={() => pd.navigate('/courses')}
+                />
+              );
+            }
+            return null;
+          })()}
+
+          {!tipDismissed && pd.courseMaterials.length === 0 && (
               <div className="pd-onboard-tip" role="status">
                 <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
                 <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
@@ -378,82 +381,41 @@ export function ParentDashboard() {
 
           {/* 3-Section Dashboard Grid (#1415) */}
           <div className="dashboard-redesign">
-            {/* Section 1: Daily Briefing */}
             <section className="dash-section dash-section--primary">
               <div className="dash-section-header">
-                <h3 className="dash-section-title">
-                  <span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span>
-                  Daily Briefing
-                </h3>
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Daily Briefing</h3>
               </div>
               <div className="dash-section-body">
                 <DailyBriefingCard />
                 {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
                   <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
-                    {pd.taskCounts.overdue > 0 && (
-                      <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>
-                        {pd.taskCounts.overdue} overdue
-                      </button>
-                    )}
-                    {pd.taskCounts.dueToday > 0 && (
-                      <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>
-                        {pd.taskCounts.dueToday} due today
-                      </button>
-                    )}
-                    {pd.taskCounts.upcoming > 0 && (
-                      <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>
-                        {pd.taskCounts.upcoming} next 3 days
-                      </button>
-                    )}
+                    {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
+                    {pd.taskCounts.dueToday > 0 && <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>{pd.taskCounts.dueToday} due today</button>}
+                    {pd.taskCounts.upcoming > 0 && <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>{pd.taskCounts.upcoming} next 3 days</button>}
                   </div>
                 )}
               </div>
             </section>
 
-            {/* Section 2: Coming Up */}
             <section className="dash-section dash-section--secondary">
               <div className="dash-section-header">
-                <h3 className="dash-section-title">
-                  <span className="dash-section-title-icon" aria-hidden="true">&#128197;</span>
-                  Coming Up
-                </h3>
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128197;</span> Coming Up</h3>
                 <a href="/tasks" className="dash-section-link">All tasks</a>
               </div>
               <div className="dash-section-body">
-                {viewMode === 'full' && (
-                  <RecentActivityPanel
-                    selectedChild={pd.selectedChild}
-                    navigate={pd.navigate}
-                  />
-                )}
-
-                {/* Weekly Progress Pulse (#1413) */}
-                {viewMode === 'full' && <WeeklyDigestCard />}
+                {viewMode === 'full' && <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />}
               </div>
             </section>
 
-            {/* Section 3: Quick Actions */}
             <section className="dash-section dash-section--actions">
               <div className="dash-section-header">
                 <h3 className="dash-section-title">Quick Actions</h3>
               </div>
               <div className="dash-quick-actions">
-                <button className="dash-quick-action" onClick={() => pd.navigate('/help-my-kid')}>
-                  <span className="dash-quick-action-icon">&#128161;</span>
-                  Help My Kid
-                </button>
-                <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}>
-                  <span className="dash-quick-action-icon">&#9989;</span>
-                  Create Task
-                </button>
-                <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}>
-                  <span className="dash-quick-action-icon">&#128218;</span>
-                  View Courses
-                </button>
-                <button className="dash-quick-action" onClick={() => pd.setShowStudyModal(true)}>
-                  <span className="dash-quick-action-icon">&#128228;</span>
-                  Upload Material
-                </button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/help-my-kid')}><span className="dash-quick-action-icon">&#128161;</span> Help My Kid</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}><span className="dash-quick-action-icon">&#9989;</span> Create Task</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">&#128218;</span> View Courses</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
               </div>
             </section>
           </div>
