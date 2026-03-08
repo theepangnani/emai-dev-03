@@ -1020,6 +1020,22 @@ export function MyKidsPage() {
             )}
           </div>
 
+          {/* ── Quick Actions ──────────────────────── */}
+          <div className="mykids-quick-actions">
+            <button className="mykids-quick-action" onClick={() => navigate('/parent-briefing-notes')}>
+              <span className="mykids-qa-icon" aria-hidden="true">&#128240;</span>
+              <span>Briefings</span>
+            </button>
+            <button className="mykids-quick-action" onClick={() => navigate('/ai-tools')}>
+              <span className="mykids-qa-icon" aria-hidden="true">&#129302;</span>
+              <span>AI Tools</span>
+            </button>
+            <button className="mykids-quick-action" onClick={() => navigate('/readiness-check')}>
+              <span className="mykids-qa-icon" aria-hidden="true">&#9989;</span>
+              <span>Readiness</span>
+            </button>
+          </div>
+
           {/* ── Linked Teachers ────────────────────── */}
           <div className="mykids-section section-card">
             <div className="mykids-section-header-row">
