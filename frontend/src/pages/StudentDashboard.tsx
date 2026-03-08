@@ -13,6 +13,7 @@ import { extractFaqCode } from '../utils/faqUtils';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
@@ -938,6 +939,10 @@ export function StudentDashboard() {
           </div>
         </div>
       )}
+      <AILimitRequestModal
+        open={studyTools.showLimitModal}
+        onClose={() => studyTools.setShowLimitModal(false)}
+      />
     </DashboardLayout>
   );
 }

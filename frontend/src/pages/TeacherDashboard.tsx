@@ -5,6 +5,7 @@ import { useFeature } from '../hooks/useFeatureToggle';
 import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import type { InspirationData } from '../components/DashboardLayout';
@@ -895,6 +896,10 @@ export function TeacherDashboard() {
           )}
         </div>
       )}
+      <AILimitRequestModal
+        open={studyTools.showLimitModal}
+        onClose={() => studyTools.setShowLimitModal(false)}
+      />
     </DashboardLayout>
   );
 }

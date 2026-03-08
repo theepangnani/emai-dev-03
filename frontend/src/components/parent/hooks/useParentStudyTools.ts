@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { studyApi } from '../../../api/client';
 import { courseContentsApi, coursesApi } from '../../../api/courses';
+import { useAIUsage } from '../../../hooks/useAIUsage';
 import type { DuplicateCheckResponse } from '../../../api/client';
 import type { StudyMaterialGenerateParams } from '../../CreateStudyMaterialModal';
 import type { CalendarAssignment } from '../../calendar/types';
@@ -20,6 +21,10 @@ export function useParentStudyTools({
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const [studyModalInitialTitle, setStudyModalInitialTitle] = useState('');
   const [studyModalInitialContent, setStudyModalInitialContent] = useState('');
+
+  // AI credits
+  const { atLimit, remaining, invalidate: refreshAIUsage } = useAIUsage();
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   // One-click study generation state
   const [generatingStudyId, setGeneratingStudyId] = useState<number | null>(null);
@@ -133,6 +138,7 @@ export function useParentStudyTools({
 
         const resultId = result?.id || result?.course_content_id;
         setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
+        refreshAIUsage();
       } catch (err: any) {
         const raw = err?.response?.data?.detail || err?.message || 'Generation failed';
         const detail = typeof raw === 'string' && raw.length > 150 ? raw.slice(0, 147) + '...' : raw;
@@ -216,6 +222,12 @@ export function useParentStudyTools({
           setBackgroundGeneration({ status: 'error', type: 'Material', error: 'Upload failed' });
         }
       })();
+      return;
+    }
+
+    // Pre-flight: block AI generation if credits exhausted
+    if (atLimit) {
+      setShowLimitModal(true);
       return;
     }
 
@@ -311,6 +323,10 @@ export function useParentStudyTools({
 
   const handleOneClickStudy = async (assignment: CalendarAssignment) => {
     if (generatingStudyId) return;
+    if (atLimit) {
+      setShowLimitModal(true);
+      return;
+    }
     setGeneratingStudyId(assignment.id);
     try {
       const dupResult = await studyApi.checkDuplicate({
@@ -360,5 +376,7 @@ export function useParentStudyTools({
     generatingStudyId, handleOneClickStudy, handleViewStudyGuides,
     // Background generation
     backgroundGeneration, dismissBackgroundGeneration,
+    // AI credits
+    showLimitModal, setShowLimitModal, atLimit, remaining,
   };
 }

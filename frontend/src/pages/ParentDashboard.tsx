@@ -14,6 +14,7 @@ import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import './ParentDashboard.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
@@ -819,6 +820,10 @@ export function ParentDashboard() {
         onCreated={() => { pd.setShowCreateTaskModal(false); pd.loadDashboard(); }}
       />
       {pd.confirmModal}
+      <AILimitRequestModal
+        open={pd.showLimitModal}
+        onClose={() => pd.setShowLimitModal(false)}
+      />
     </DashboardLayout>
   );
 }
