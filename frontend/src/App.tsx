@@ -82,6 +82,7 @@ const CalendarImportPage = lazyRetry(() => import('./pages/CalendarImportPage').
 const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage').then((m) => ({ default: m.ConfirmDeletionPage })));
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
 const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
+const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -128,6 +129,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyKidsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/readiness-check"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                    <ReadinessCheckPage />
                   </ProtectedRoute>
                 }
               />

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func as sa_func
+from sqlalchemy import and_, func as sa_func
 from sqlalchemy.orm import Session
 
 from app.models.assignment import Assignment, StudentAssignment
@@ -61,7 +61,7 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
 
     # ── Batch queries ──
 
-    # 1. Tasks for children
+    # 1. Tasks for children in the past 7 days
     tasks = (
         db.query(Task)
         .filter(
@@ -116,6 +116,10 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
         )
         for sa in sa_rows:
             sa_status[(sa.student_id, sa.assignment_id)] = sa
+
+    student_ids_by_course: dict[int, list[int]] = {}
+    for sid, course in course_rows:
+        student_ids_by_course.setdefault(course.id, []).append(sid)
 
     # 4. Study guide counts per child (last 7 days)
     study_counts: dict[int, int] = {}
@@ -262,19 +266,11 @@ def render_digest_email_html(digest: WeeklyDigestResponse) -> str:
                 f'<li style="color:#dc2626;margin:4px 0;">{o.title} (due {o.due_date or "N/A"})</li>'
                 for o in child.overdue_items
             )
-            overdue_html = (
-                '<div style="margin-top:12px;">'
-                '<strong style="color:#dc2626;">Overdue:</strong>'
-                f'<ul style="margin:4px 0 0 16px;padding:0;">{items}</ul>'
-                '</div>'
-            )
+            overdue_html = f'<div style="margin-top:12px;"><strong style="color:#dc2626;">Overdue:</strong><ul style="margin:4px 0 0 16px;padding:0;">{items}</ul></div>'
 
         quiz_html = ""
         if child.quiz_scores.quiz_count > 0:
-            quiz_html = (
-                f'<div style="margin-top:4px;">Quizzes taken: {child.quiz_scores.quiz_count}'
-                f' (avg {child.quiz_scores.average_percentage}%)</div>'
-            )
+            quiz_html = f'<div style="margin-top:4px;">Quizzes taken: {child.quiz_scores.quiz_count} (avg {child.quiz_scores.average_percentage}%)</div>'
 
         children_html += f"""
         <div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:12px;border-left:4px solid #4f46e5;">
@@ -298,10 +294,7 @@ def render_digest_email_html(digest: WeeklyDigestResponse) -> str:
       {digest.overall_summary}
     </div>
     <p style="margin-top:24px;text-align:center;">
-      <a href="https://www.classbridge.ca/dashboard"
-         style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">
-        View Dashboard
-      </a>
+      <a href="https://www.classbridge.ca/dashboard" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">View Dashboard</a>
     </p>
     """
 
