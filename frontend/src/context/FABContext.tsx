@@ -33,10 +33,15 @@ export function FABProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const NOOP_FAB_CONTEXT: FABContextValue = {
+  notesFAB: null,
+  registerNotesFAB: () => {},
+  unregisterNotesFAB: () => {},
+};
+
 export function useFABContext() {
   const ctx = useContext(FABContext);
-  if (!ctx) throw new Error('useFABContext must be used within FABProvider');
-  return ctx;
+  return ctx ?? NOOP_FAB_CONTEXT;
 }
 
 /**
