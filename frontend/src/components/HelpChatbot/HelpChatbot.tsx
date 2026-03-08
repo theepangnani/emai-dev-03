@@ -124,7 +124,15 @@ export function HelpChatbot() {
             )}
 
             {error && (
-              <div className="help-chatbot-error">{error}</div>
+              <div className="help-chatbot-error">
+                {error.includes('/help') ? (
+                  <>
+                    {error.split('/help')[0]}
+                    <a href="/help" style={{ color: 'inherit', textDecoration: 'underline' }}>/help</a>
+                    {error.split('/help')[1]}
+                  </>
+                ) : error}
+              </div>
             )}
 
             <div ref={messagesEndRef} />
