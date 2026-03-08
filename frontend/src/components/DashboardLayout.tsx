@@ -119,6 +119,23 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M12 6v6l4 2"/>
     </svg>
   ),
+  Briefings: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <line x1="10" y1="9" x2="8" y2="9"/>
+    </svg>
+  ),
+  'AI Tools': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93L12 22"/>
+      <path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"/>
+      <path d="M4.5 12.5L8 11l-1 4"/>
+      <path d="M19.5 12.5L16 11l1 4"/>
+    </svg>
+  ),
   Help: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
@@ -169,34 +186,8 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
-  // Sidebar collapsed/expanded state persisted in localStorage
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
-    try {
-      return localStorage.getItem('sidebar_expanded') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [sidebarHovered, setSidebarHovered] = useState(false);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sidebar always expanded (collapse feature removed for simplicity)
 
-  const toggleSidebar = useCallback(() => {
-    setSidebarExpanded(prev => {
-      const next = !prev;
-      try { localStorage.setItem('sidebar_expanded', String(next)); } catch { /* */ }
-      return next;
-    });
-  }, []);
-
-  const handleSidebarMouseEnter = useCallback(() => {
-    if (sidebarExpanded) return;
-    hoverTimerRef.current = setTimeout(() => setSidebarHovered(true), 200);
-  }, [sidebarExpanded]);
-
-  const handleSidebarMouseLeave = useCallback(() => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setSidebarHovered(false);
-  }, []);
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
@@ -491,21 +482,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       <div className="dashboard-body">
         {/* Persistent sidebar (>=768px) */}
         <aside
-          className={`persistent-sidebar${sidebarExpanded || sidebarHovered ? ' expanded' : ''}`}
+          className="persistent-sidebar expanded"
           aria-label="Main navigation"
-          onMouseEnter={handleSidebarMouseEnter}
-          onMouseLeave={handleSidebarMouseLeave}
         >
-          <button
-            className="ps-collapse-toggle"
-            onClick={toggleSidebar}
-            title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-            aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
           <nav className="persistent-sidebar-nav">
             {navItems.map((item) => (
               <button
