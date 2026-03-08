@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
+import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 
@@ -20,6 +21,7 @@ interface FlashcardsTabProps {
   isActiveTab: boolean;
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
+  onFormatSelect?: (format: StudyFormat) => void;
 }
 
 function FocusIcon() {
@@ -53,6 +55,7 @@ export function FlashcardsTab({
   isActiveTab,
   linkedTasks = [],
   atLimit = false,
+  onFormatSelect,
 }: FlashcardsTabProps) {
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -218,6 +221,12 @@ export function FlashcardsTab({
         </div>
       ) : (
         <div className="cm-empty-tab">
+          {onFormatSelect && (
+            <FormatSelector
+              selected="flashcards"
+              onSelect={onFormatSelect}
+            />
+          )}
           <div className="cm-empty-tab-icon"><EmptyFlashcardIcon /></div>
           <h3>No flashcards yet</h3>
           <p>Generate flashcards to review key concepts from this material with an interactive card deck.</p>

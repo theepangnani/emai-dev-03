@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountDeletionApi } from '../api/accountDeletion';
+import { dailyDigestApi, type DailyDigestPreview } from '../api/dailyDigest';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
@@ -12,6 +13,44 @@ export function AccountSettingsPage() {
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [showDigestPreview, setShowDigestPreview] = useState(false);
+  const [digestPreview, setDigestPreview] = useState<DailyDigestPreview | null>(null);
+  const [sendResult, setSendResult] = useState<string | null>(null);
+
+  const isParent = user?.roles?.includes('parent') || user?.role === 'parent';
+
+  const digestSettingsQuery = useQuery({
+    queryKey: ['digestSettings'],
+    queryFn: dailyDigestApi.getSettings,
+    enabled: isParent,
+  });
+
+  const digestToggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => dailyDigestApi.updateSettings({ daily_digest_enabled: enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['digestSettings'] });
+    },
+  });
+
+  const digestPreviewMutation = useMutation({
+    mutationFn: dailyDigestApi.preview,
+    onSuccess: (data) => {
+      setDigestPreview(data);
+      setShowDigestPreview(true);
+    },
+  });
+
+  const digestSendMutation = useMutation({
+    mutationFn: dailyDigestApi.send,
+    onSuccess: (data) => {
+      setSendResult(data.message);
+      setTimeout(() => setSendResult(null), 5000);
+    },
+    onError: () => {
+      setSendResult('Failed to send test email.');
+      setTimeout(() => setSendResult(null), 5000);
+    },
+  });
 
   const statusQuery = useQuery({
     queryKey: ['deletionStatus'],
@@ -80,6 +119,102 @@ export function AccountSettingsPage() {
             uploadLimitBytes={user?.upload_limit_bytes ?? 10485760}
           />
         </section>
+
+        {isParent && (
+          <section className="account-section">
+            <h2>Daily Email Digest</h2>
+            <p style={{ color: '#6b7280', marginBottom: 16 }}>
+              Receive a daily morning email summarizing overdue tasks, items due today, and upcoming assignments for your children.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={digestSettingsQuery.data?.daily_digest_enabled ?? false}
+                  onChange={(e) => digestToggleMutation.mutate(e.target.checked)}
+                  disabled={digestToggleMutation.isPending || digestSettingsQuery.isLoading}
+                  style={{ width: 18, height: 18, accentColor: '#4f46e5' }}
+                />
+                <span style={{ fontWeight: 500 }}>Enable daily digest emails</span>
+              </label>
+              {digestToggleMutation.isPending && <span style={{ color: '#6b7280', fontSize: 13 }}>Saving...</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                className="account-btn account-btn-secondary"
+                onClick={() => digestPreviewMutation.mutate()}
+                disabled={digestPreviewMutation.isPending}
+              >
+                {digestPreviewMutation.isPending ? 'Loading...' : 'Preview Digest'}
+              </button>
+              <button
+                className="account-btn account-btn-secondary"
+                onClick={() => digestSendMutation.mutate()}
+                disabled={digestSendMutation.isPending}
+                style={{ background: '#4f46e5', color: '#fff', borderColor: '#4f46e5' }}
+              >
+                {digestSendMutation.isPending ? 'Sending...' : 'Send Test Email'}
+              </button>
+            </div>
+            {sendResult && (
+              <p style={{ marginTop: 12, color: digestSendMutation.isError ? '#dc2626' : '#059669', fontSize: 14 }}>
+                {sendResult}
+              </p>
+            )}
+            {showDigestPreview && digestPreview && (
+              <div style={{ marginTop: 16, padding: 16, background: '#f9fafb', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ margin: 0 }}>Digest Preview</h3>
+                  <button
+                    onClick={() => setShowDigestPreview(false)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#6b7280' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+                <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 8px' }}>{digestPreview.date}</p>
+                <p style={{ margin: '0 0 16px' }}>{digestPreview.greeting}</p>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <div style={{ padding: '8px 12px', background: digestPreview.total_overdue > 0 ? '#fef2f2' : '#f0fdf4', borderRadius: 8, fontSize: 14 }}>
+                    <strong>{digestPreview.total_overdue}</strong> overdue
+                  </div>
+                  <div style={{ padding: '8px 12px', background: digestPreview.total_due_today > 0 ? '#fffbeb' : '#f0fdf4', borderRadius: 8, fontSize: 14 }}>
+                    <strong>{digestPreview.total_due_today}</strong> due today
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#eef2ff', borderRadius: 8, fontSize: 14 }}>
+                    <strong>{digestPreview.total_upcoming}</strong> upcoming
+                  </div>
+                </div>
+                {digestPreview.children.map((child) => (
+                  <div key={child.student_id} style={{ marginBottom: 12, padding: 12, background: '#fff', borderRadius: 8, borderLeft: '3px solid #4f46e5' }}>
+                    <strong>{child.full_name}</strong>
+                    {child.grade_level && <span style={{ color: '#6b7280', marginLeft: 8, fontSize: 13 }}>Grade {child.grade_level}</span>}
+                    {child.needs_attention && <span style={{ marginLeft: 8, background: '#fef2f2', color: '#dc2626', fontSize: 11, padding: '2px 6px', borderRadius: 8 }}>Needs attention</span>}
+                    {child.overdue_tasks.length > 0 && (
+                      <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: 13, color: '#dc2626' }}>
+                        {child.overdue_tasks.map((t) => <li key={t.id}>{t.title}{t.course_name ? ` (${t.course_name})` : ''}</li>)}
+                      </ul>
+                    )}
+                    {child.due_today_tasks.length > 0 && (
+                      <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: 13, color: '#d97706' }}>
+                        {child.due_today_tasks.map((t) => <li key={t.id}>{t.title}{t.course_name ? ` (${t.course_name})` : ''}</li>)}
+                      </ul>
+                    )}
+                    {child.upcoming_assignments.length > 0 && (
+                      <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: 13, color: '#4b5563' }}>
+                        {child.upcoming_assignments.map((a) => <li key={a.id}>{a.title} ({a.course_name})</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+                {digestPreview.children.length === 0 && (
+                  <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No children linked to your account.</p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
 
         <section className="account-section account-danger-zone">
           <h2>Danger Zone</h2>

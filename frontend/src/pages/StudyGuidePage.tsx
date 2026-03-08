@@ -82,6 +82,10 @@ export function StudyGuidePage() {
       try {
         const data = await studyApi.getGuide(parseInt(id));
         setGuide(data);
+        // Auto-mark shared guide as viewed (#1414)
+        if (data.shared_with_user_id && data.shared_with_user_id === user?.id) {
+          studyApi.markViewed(data.id).catch(() => {});
+        }
         // Show task prompt for new/regenerated guides
         if (isNewGuide) {
           setShowTaskPrompt(true);

@@ -621,6 +621,7 @@ def update_feature_toggle(
 
 # --- Storage limit admin endpoints (#1007) ---
 
+
 class StorageLimitsUpdate(BaseModel):
     storage_limit_bytes: int | None = None
     upload_limit_bytes: int | None = None
