@@ -53,6 +53,8 @@ class CourseContentUpdate(BaseModel):
     reference_url: Optional[str] = Field(default=None, max_length=1000)
     google_classroom_url: Optional[str] = Field(default=None, max_length=1000)
     course_id: Optional[int] = None
+    category: Optional[str] = Field(default=None, max_length=100)
+    display_order: Optional[int] = None
 
     @field_validator('title', 'description', mode='before')
     @classmethod
@@ -89,6 +91,8 @@ class CourseContentResponse(BaseModel):
     has_file: bool = False
     download_restricted: bool = False
     source_files_count: int = 0
+    category: Optional[str] = None
+    display_order: int = 0
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
@@ -101,6 +105,16 @@ class CourseContentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BulkCategorizeRequest(BaseModel):
+    content_ids: list[int] = Field(min_length=1)
+    category: str = Field(min_length=1, max_length=100)
+
+    @field_validator('category', mode='before')
+    @classmethod
+    def _strip_category(cls, v: object) -> object:
+        return strip_whitespace(v)
 
 
 class CourseContentUpdateResponse(CourseContentResponse):

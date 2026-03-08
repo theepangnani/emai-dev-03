@@ -107,6 +107,11 @@ vi.mock('../components/PageNav', () => ({
   PageNav: () => null,
 }))
 
+vi.mock('../context/FABContext', () => ({
+  useRegisterNotesFAB: () => {},
+  useFABContext: () => ({ notesFAB: null, registerNotesFAB: () => {}, unregisterNotesFAB: () => {} }),
+}))
+
 import { CourseMaterialDetailPage } from './CourseMaterialDetailPage'
 
 describe('CourseMaterialDetailPage', () => {
