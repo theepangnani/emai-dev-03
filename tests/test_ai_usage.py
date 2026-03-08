@@ -84,7 +84,7 @@ def maxed_out_user(db_session):
 class TestGetAIUsage:
     def test_get_ai_usage(self, client, users):
         headers = _auth(client, users["student"].email)
-        resp = client.get("/api/ai-usage/", headers=headers)
+        resp = client.get("/api/ai-usage", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "count" in data
@@ -125,7 +125,7 @@ class TestRequestCredits:
 class TestAdminAIUsage:
     def test_admin_list_usage(self, client, users):
         headers = _auth(client, users["admin"].email)
-        resp = client.get("/api/admin/ai-usage/", headers=headers)
+        resp = client.get("/api/admin/ai-usage", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data and "total" in data
@@ -389,7 +389,7 @@ class TestAdminAIUsageResponseFormat:
 
     def test_users_list_returns_paginated(self, client, users):
         headers = _auth(client, users["admin"].email)
-        resp = client.get("/api/admin/ai-usage/", headers=headers)
+        resp = client.get("/api/admin/ai-usage", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data, "users list must return {items, total}, not a flat list"
@@ -438,7 +438,7 @@ class TestAdminAIUsageResponseFormat:
     def test_users_list_sort_dir(self, client, users, db_session):
         """sort_dir parameter should be accepted."""
         headers = _auth(client, users["admin"].email)
-        resp = client.get("/api/admin/ai-usage/?sort_by=ai_usage_count&sort_dir=desc", headers=headers)
+        resp = client.get("/api/admin/ai-usage?sort_by=ai_usage_count&sort_dir=desc", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -447,3 +447,21 @@ class TestAdminAIUsageResponseFormat:
         headers = _auth(client, users["student"].email)
         resp = client.get("/api/admin/ai-usage/summary", headers=headers)
         assert resp.status_code == 403
+
+
+class TestTrailingSlashRegression:
+    """Regression test for #1397: routes must work WITHOUT trailing slash."""
+
+    def test_admin_users_no_trailing_slash(self, client, users):
+        headers = _auth(client, users["admin"].email)
+        resp = client.get("/api/admin/ai-usage", headers=headers)
+        assert resp.status_code == 200, (
+            f"GET /api/admin/ai-usage returned {resp.status_code}, expected 200"
+        )
+
+    def test_user_usage_no_trailing_slash(self, client, users):
+        headers = _auth(client, users["student"].email)
+        resp = client.get("/api/ai-usage", headers=headers)
+        assert resp.status_code == 200, (
+            f"GET /api/ai-usage returned {resp.status_code}, expected 200"
+        )

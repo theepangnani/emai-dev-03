@@ -40,7 +40,7 @@ router = APIRouter(prefix="/ai-usage", tags=["AI Usage"])
 AI_WARNING_THRESHOLD = 0.8  # Warn when usage >= 80% of limit
 
 
-@router.get("/", response_model=AIUsageResponse)
+@router.get("", response_model=AIUsageResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_current_usage(
     request: Request,
@@ -131,7 +131,7 @@ def get_user_history(
 admin_router = APIRouter(prefix="/admin/ai-usage", tags=["Admin AI Usage"])
 
 
-@admin_router.get("/", response_model=AIUsageUserList)
+@admin_router.get("", response_model=AIUsageUserList)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_users_usage(
     request: Request,
