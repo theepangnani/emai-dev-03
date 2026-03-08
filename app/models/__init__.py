@@ -30,6 +30,7 @@ from app.models.ai_usage_history import AIUsageHistory
 from app.models.source_file import SourceFile
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
+from app.models.help_article import HelpArticle
 
 __all__ = [
     "User",
@@ -78,4 +79,5 @@ __all__ = [
     "SourceFile",
     "ContentImage",
     "ResourceLink",
+    "HelpArticle",
 ]
