@@ -111,6 +111,7 @@ export const adminApi = {
     return response.data as { feature: string; enabled: boolean };
   },
 
+  // Storage limits (#1007)
   getUserStorage: async (userId: number) => {
     const response = await api.get(`/api/admin/users/${userId}/storage`);
     return response.data as UserStorageInfo;

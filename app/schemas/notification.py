@@ -59,3 +59,25 @@ class NotificationSuppressionResponse(BaseModel):
 
 class UnreadCountResponse(BaseModel):
     count: int
+
+
+# ── Advanced per-category notification preferences (#966) ──────
+
+class ChannelPreference(BaseModel):
+    in_app: bool = True
+    email: bool = True
+
+class AdvancedNotificationPreferences(BaseModel):
+    assignments: ChannelPreference = ChannelPreference(in_app=True, email=True)
+    messages: ChannelPreference = ChannelPreference(in_app=True, email=True)
+    study_guides: ChannelPreference = ChannelPreference(in_app=True, email=False)
+    tasks: ChannelPreference = ChannelPreference(in_app=True, email=True)
+    system: ChannelPreference = ChannelPreference(in_app=True, email=False)
+
+class AdvancedNotificationPreferencesUpdate(BaseModel):
+    """Partial update — all fields optional."""
+    assignments: Optional[ChannelPreference] = None
+    messages: Optional[ChannelPreference] = None
+    study_guides: Optional[ChannelPreference] = None
+    tasks: Optional[ChannelPreference] = None
+    system: Optional[ChannelPreference] = None

@@ -619,6 +619,9 @@ def update_feature_toggle(
     return {"feature": feature_key, "enabled": body.enabled}
 
 
+# --- Storage limit admin endpoints (#1007) ---
+
+
 class StorageLimitsUpdate(BaseModel):
     storage_limit_bytes: int | None = None
     upload_limit_bytes: int | None = None
@@ -657,22 +660,17 @@ def update_user_storage_limits(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
     if body.storage_limit_bytes is not None:
         if body.storage_limit_bytes < 0:
-            raise HTTPException(status_code=400, detail="storage_limit_bytes must be non-negative")
+            raise HTTPException(status_code=400, detail="must be >= 0")
         user.storage_limit_bytes = body.storage_limit_bytes
     if body.upload_limit_bytes is not None:
         if body.upload_limit_bytes < 0:
-            raise HTTPException(status_code=400, detail="upload_limit_bytes must be non-negative")
+            raise HTTPException(status_code=400, detail="must be >= 0")
         user.upload_limit_bytes = body.upload_limit_bytes
-
     log_action(
-        db,
-        user_id=current_user.id,
-        action="update",
-        resource_type="storage_limits",
-        resource_id=user.id,
+        db, user_id=current_user.id, action="update",
+        resource_type="storage_limits", resource_id=user.id,
         details=f"storage_limit={body.storage_limit_bytes}, upload_limit={body.upload_limit_bytes}",
     )
     db.commit()
@@ -693,6 +691,7 @@ def get_storage_overview(
     total_limit = db.query(func.coalesce(func.sum(User.storage_limit_bytes), 0)).scalar()
     user_count = db.query(func.count(User.id)).filter(User.storage_used_bytes > 0).scalar()
     total_users = db.query(func.count(User.id)).scalar()
+
 
     return {
         "total_storage_used_bytes": total_used,
