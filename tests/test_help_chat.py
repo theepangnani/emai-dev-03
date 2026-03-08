@@ -18,7 +18,7 @@ def _make_mock_embedding_module(side_effect):
 
 
 @pytest.mark.asyncio
-async def test_openai_auth_error_returns_specific_message():
+async def test_auth_error_returns_specific_message():
     """Regression: generic errors should include error type + /help link."""
     service = HelpChatService()
 
@@ -77,7 +77,7 @@ async def test_generic_error_returns_unexpected_message():
 
 @pytest.mark.asyncio
 async def test_rate_limit_error_returns_overloaded_message():
-    """OpenAI rate limit errors should mention overloaded."""
+    """API rate limit errors should mention overloaded."""
     service = HelpChatService()
 
     class RateLimitError(Exception):
