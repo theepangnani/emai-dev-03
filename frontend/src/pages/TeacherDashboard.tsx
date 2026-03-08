@@ -13,8 +13,6 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
-import { RoleQuickActions } from '../components/RoleQuickActions';
-import type { QuickAction } from '../components/RoleQuickActions';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
 import './TeacherDashboard.css';
 import './DashboardGrid.css';
@@ -66,7 +64,7 @@ export function TeacherDashboard() {
   // Sent invites state
   const [sentInvites, setSentInvites] = useState<InviteResponse[]>([]);
   const [resendingId, setResendingId] = useState<number | null>(null);
-  const [resentToastId, setResentToastId] = useState<number | null>(null);
+  const [_resentToastId, setResentToastId] = useState<number | null>(null);
   const [invitesExpanded, setInvitesExpanded] = useState(true);
   const [googleAccountsExpanded, setGoogleAccountsExpanded] = useState(true);
   const [resendError, setResendError] = useState<string | null>(null);
@@ -135,15 +133,6 @@ export function TeacherDashboard() {
     }
   };
 
-  const handleConnectGoogle = async () => {
-    try {
-      const { authorization_url } = await googleApi.getConnectUrl();
-      window.location.href = authorization_url;
-    } catch {
-      // Failed to connect
-    }
-  };
-
   const handleSyncCourses = async () => {
     setSyncing(true);
     setSyncMessage('');
@@ -187,15 +176,6 @@ export function TeacherDashboard() {
       setCreateError(err.response?.data?.detail || 'Failed to create class');
     } finally {
       setCreateLoading(false);
-    }
-  };
-
-  const handleAddGoogleAccount = async () => {
-    try {
-      const { authorization_url } = await googleApi.getConnectUrl(true);
-      window.location.href = authorization_url;
-    } catch {
-      // Failed to start add-account flow
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { MindMapData, MindMapBranchGroup } from '../../api/study';
 import type { TaskItem } from '../../api/tasks';
