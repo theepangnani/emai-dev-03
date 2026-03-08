@@ -25,6 +25,7 @@ import { StreakHistory } from '../components/StreakHistory';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary } from '../api/grades';
 import './StudentDashboard.css';
+import './DashboardGrid.css';
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -581,204 +582,126 @@ export function StudentDashboard() {
         </div>
       )}
 
-      {/* ── Quick Actions (#837 unified) ────────────────── */}
-      <RoleQuickActions
-        actions={[
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            ),
-            label: 'Class Material',
-            onClick: () => studyTools.setShowStudyModal(true),
-          },
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-            ),
-            label: 'Study Guide',
-            onClick: () => navigate('/study'),
-          },
-          {
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 11 12 14 22 4" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-              </svg>
-            ),
-            label: 'Create Task',
-            onClick: () => navigate('/tasks?create=true'),
-          },
-        ] satisfies QuickAction[]}
-        maxVisible={3}
-      />
-
       {/* ── Continue Studying ─────────────────────────────── */}
       <ContinueStudying studyGuides={studyGuides} courses={courses} />
 
-      {/* ── Courses Section ──────────────────────────────── */}
-      <section className="sd-panel sd-courses">
-        <div className="sd-panel-header">
-          <h2>Your Courses</h2>
-          <div className="sd-courses-actions">
-            {googleConnected && (
-              <button className="sd-text-btn" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>
-                {isSyncing ? 'Syncing...' : 'Sync'}
-              </button>
-            )}
-            {googleConnected && (
-              <button className="sd-text-btn danger" onClick={handleDisconnectGoogle} disabled={disconnecting}>
-                {disconnecting ? '...' : 'Disconnect'}
-              </button>
-            )}
-            <button className="sd-text-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>
-              Invite Teacher
-            </button>
+      {/* ── 3-Section Dashboard Grid (#1416) ────────────── */}
+      <div className="dashboard-redesign">
+        {/* Section 1: My Day */}
+        <section className="dash-section dash-section--primary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title">
+              <span className="dash-section-title-icon" aria-hidden="true">&#128197;</span>
+              My Day
+            </h3>
+            <Link to="/tasks" className="dash-section-link">All tasks</Link>
           </div>
-        </div>
-        {courses.length > 0 ? (
-          <div className="sd-course-chips">
-            {courses.map(course => {
-              const courseGrade = gradeSummary?.courses.find(c => c.course_id === course.id);
-              return (
-                <Link key={course.id} to={`/courses`} className="sd-course-chip">
-                  <span className="sd-course-name">{course.name}</span>
-                  {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
-                  {courseGrade && (
-                    <span className={`sd-grade-tag sd-grade-${courseGrade.color}`}>
-                      {courseGrade.letter_grade}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-            <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>
-              + Add Class
-            </button>
-          </div>
-        ) : (
-          <EmptyState
-            title="No classes yet"
-            description={gcEnabled ? "Create a class or connect Google Classroom to get started." : "Create a class to get started."}
-            variant="compact"
-            className="sd-empty"
-            actions={[
-              { label: 'Create Class', onClick: () => setShowCreateCourseModal(true) },
-              ...(gcEnabled && !googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : []),
-            ]}
-          />
-        )}
-      </section>
-
-      {/* ── Main Content Grid ────────────────────────────── */}
-      <div className="sd-main-grid">
-        {/* Coming Up */}
-        <section className="sd-panel sd-coming-up">
-          <div className="sd-panel-header">
-            <h2>Coming Up</h2>
-            <Link to="/tasks" className="sd-see-all">All tasks</Link>
-          </div>
-          {timelineItems.length > 0 ? (
-            <div className="sd-timeline">
-              {timelineItems.slice(0, 8).map(item => (
-                <div
-                  key={item.id}
-                  className={`sd-timeline-item ${item.urgency}`}
-                  onClick={() => {
-                    if (item.type === 'task') navigate(`/tasks/${item.sourceId}`);
-                  }}
-                  role={item.type === 'task' ? 'button' : undefined}
-                  tabIndex={item.type === 'task' ? 0 : undefined}
-                >
-                  <div className="sd-timeline-dot" />
-                  <div className="sd-timeline-content">
-                    <span className="sd-timeline-title">{item.title}</span>
-                    <div className="sd-timeline-meta">
-                      {item.dueDate && (
-                        <span className={`sd-timeline-date ${item.urgency}`}>
-                          {formatRelativeDate(item.dueDate)}
-                        </span>
-                      )}
-                      {item.courseName && (
-                        <span className="sd-timeline-course">{item.courseName}</span>
-                      )}
-                      <span className={`sd-timeline-type ${item.type}`}>
-                        {item.type === 'assignment' ? 'Assignment' : 'Task'}
-                      </span>
+          <div className="dash-section-body">
+            {timelineItems.length > 0 ? (
+              <div className="sd-timeline">
+                {timelineItems.slice(0, 8).map(item => (
+                  <div
+                    key={item.id}
+                    className={`sd-timeline-item ${item.urgency}`}
+                    onClick={() => { if (item.type === 'task') navigate(`/tasks/${item.sourceId}`); }}
+                    role={item.type === 'task' ? 'button' : undefined}
+                    tabIndex={item.type === 'task' ? 0 : undefined}
+                  >
+                    <div className="sd-timeline-dot" />
+                    <div className="sd-timeline-content">
+                      <span className="sd-timeline-title">{item.title}</span>
+                      <div className="sd-timeline-meta">
+                        {item.dueDate && <span className={`sd-timeline-date ${item.urgency}`}>{formatRelativeDate(item.dueDate)}</span>}
+                        {item.courseName && <span className="sd-timeline-course">{item.courseName}</span>}
+                        <span className={`sd-timeline-type ${item.type}`}>{item.type === 'assignment' ? 'Assignment' : 'Task'}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {timelineItems.length > 8 && (
-                <Link to="/tasks" className="sd-timeline-more">
-                  +{timelineItems.length - 8} more items
-                </Link>
-              )}
+                ))}
+                {timelineItems.length > 8 && <Link to="/tasks" className="sd-timeline-more">+{timelineItems.length - 8} more items</Link>}
+              </div>
+            ) : (
+              <EmptyState icon={'\u{1F389}'} title="Nothing coming up" description="You're all clear!" className="sd-empty" />
+            )}
+            <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '16px 0' }} />
+            <div className="sd-panel-header" style={{ marginBottom: 8 }}>
+              <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Your Courses</h4>
+              <div className="sd-courses-actions">
+                {googleConnected && <button className="sd-text-btn" onClick={handleSyncWithTypeChoice} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync'}</button>}
+                {googleConnected && <button className="sd-text-btn danger" onClick={handleDisconnectGoogle} disabled={disconnecting}>{disconnecting ? '...' : 'Disconnect'}</button>}
+                <button className="sd-text-btn" onClick={() => { setInviteTeacherMsg(null); setInviteTeacherEmail(''); setShowInviteTeacherModal(true); }}>Invite Teacher</button>
+              </div>
             </div>
-          ) : (
-            <EmptyState
-              icon={'\u{1F389}'}
-              title="Nothing coming up"
-              description="You're all clear! Create a course or upload materials to get started."
-              className="sd-empty"
-            />
-          )}
+            {courses.length > 0 ? (
+              <div className="sd-course-chips">
+                {courses.map(course => {
+                  const courseGrade = gradeSummary?.courses.find(c => c.course_id === course.id);
+                  return (
+                    <Link key={course.id} to="/courses" className="sd-course-chip">
+                      <span className="sd-course-name">{course.name}</span>
+                      {course.google_classroom_id && <span className="sd-google-tag">Google</span>}
+                      {courseGrade && <span className={`sd-grade-tag sd-grade-${courseGrade.color}`}>{courseGrade.letter_grade}</span>}
+                    </Link>
+                  );
+                })}
+                <button className="sd-course-chip add" onClick={() => setShowCreateCourseModal(true)}>+ Add Class</button>
+              </div>
+            ) : (
+              <EmptyState title="No classes yet" description={gcEnabled ? "Create a class or connect Google Classroom." : "Create a class to get started."} variant="compact" className="sd-empty"
+                actions={[{ label: 'Create Class', onClick: () => setShowCreateCourseModal(true) }, ...(gcEnabled && !googleConnected ? [{ label: 'Connect Classroom', onClick: handleConnectGoogle, variant: 'secondary' as const }] : [])]} />
+            )}
+          </div>
         </section>
 
-        {/* Recent Study Materials */}
-        <section className="sd-panel sd-materials">
-          <div className="sd-panel-header">
-            <h2>Study Materials</h2>
-            <Link to="/course-materials" className="sd-see-all">See all</Link>
+        {/* Section 2: Study Materials */}
+        <section className="dash-section dash-section--secondary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title">
+              <span className="dash-section-title-icon" aria-hidden="true">&#128221;</span>
+              Study Materials
+            </h3>
+            <Link to="/course-materials" className="dash-section-link">See all</Link>
           </div>
-          {recentGuides.length > 0 ? (
-            <div className="sd-materials-list">
-              {recentGuides.map(guide => (
-                <Link
-                  key={guide.id}
-                  to={
-                    guide.guide_type === 'quiz'
-                      ? `/study/quiz/${guide.id}`
-                      : guide.guide_type === 'flashcards'
-                      ? `/study/flashcards/${guide.id}`
-                      : `/study/guide/${guide.id}`
-                  }
-                  className="sd-material-row"
-                >
-                  <span className="sd-material-icon">
-                    {guide.guide_type === 'quiz' ? '\u{2753}' : guide.guide_type === 'flashcards' ? '\u{1F0CF}' : '\u{1F4D6}'}
-                  </span>
-                  <div className="sd-material-info">
-                    <span className="sd-material-title">{guide.title}</span>
-                    <span className="sd-material-meta">
-                      {guide.guide_type.replace('_', ' ')}
-                      {guide.version > 1 && ` \u00B7 v${guide.version}`}
-                    </span>
-                  </div>
-                  <span className="sd-material-date">
-                    {new Date(guide.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={'\u{1F4DD}'}
-              title="No study materials yet"
-              description="Upload class materials or paste your notes to generate study guides."
-              action={{ label: 'Upload Class Material', onClick: () => studyTools.setShowStudyModal(true) }}
-              className="sd-empty"
-            />
-          )}
+          <div className="dash-section-body">
+            {recentGuides.length > 0 ? (
+              <div className="sd-materials-list">
+                {recentGuides.map(guide => (
+                  <Link key={guide.id} to={guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : `/study/guide/${guide.id}`} className="sd-material-row">
+                    <span className="sd-material-icon">{guide.guide_type === 'quiz' ? '\u{2753}' : guide.guide_type === 'flashcards' ? '\u{1F0CF}' : '\u{1F4D6}'}</span>
+                    <div className="sd-material-info">
+                      <span className="sd-material-title">{guide.title}</span>
+                      <span className="sd-material-meta">{guide.guide_type.replace('_', ' ')}{guide.version > 1 && ` \u00B7 v${guide.version}`}</span>
+                    </div>
+                    <span className="sd-material-date">{new Date(guide.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon={'\u{1F4DD}'} title="No study materials yet" description="Upload class materials or paste your notes to generate study guides."
+                action={{ label: 'Upload Class Material', onClick: () => studyTools.setShowStudyModal(true) }} className="sd-empty" />
+            )}
+          </div>
+        </section>
+
+        {/* Section 3: Quick Actions */}
+        <section className="dash-section dash-section--actions">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title">Quick Actions</h3>
+          </div>
+          <div className="dash-quick-actions">
+            <button className="dash-quick-action" onClick={() => studyTools.setShowStudyModal(true)}>
+              <span className="dash-quick-action-icon">&#128218;</span>
+              Start Studying
+            </button>
+            <button className="dash-quick-action" onClick={() => navigate('/tasks')}>
+              <span className="dash-quick-action-icon">&#128197;</span>
+              View Calendar
+            </button>
+            <button className="dash-quick-action" onClick={() => navigate('/courses')}>
+              <span className="dash-quick-action-icon">&#127891;</span>
+              My Courses
+            </button>
+          </div>
         </section>
       </div>
 
