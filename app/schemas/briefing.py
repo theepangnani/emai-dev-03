@@ -43,3 +43,16 @@ class DailyBriefingResponse(BaseModel):
     total_due_today: int = 0
     total_upcoming: int = 0
     attention_needed: bool = False  # True if any child needs attention
+
+
+class HelpMyKidRequest(BaseModel):
+    """Request to generate a study guide for a parent's child."""
+    student_id: int
+    item_type: str  # "task" or "assignment"
+    item_id: int
+
+
+class HelpMyKidResponse(BaseModel):
+    """Response after generating a study guide via Help My Kid."""
+    study_guide_id: int
+    title: str

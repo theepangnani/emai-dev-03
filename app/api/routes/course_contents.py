@@ -20,12 +20,14 @@ from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
+from app.services.storage_limits import check_upload_allowed, record_upload, record_deletion
 from app.services.file_processor import process_file, extract_images_from_file, FileProcessingError
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
 from app.core.config import settings
 from app.services.link_extraction_service import extract_and_enrich_links
 from app.schemas.course_content import (
+    BulkCategorizeRequest,
     CourseContentCreate,
     CourseContentUpdate,
     CourseContentResponse,
@@ -401,6 +403,7 @@ async def upload_course_content_file(
             detail=f"File size exceeds {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
         )
 
+    check_upload_allowed(current_user, len(file_content))
     filename = file.filename or "unknown"
     stored_path = save_file(file_content, filename)
 
@@ -423,6 +426,7 @@ async def upload_course_content_file(
         created_by_user_id=current_user.id,
     )
     db.add(content)
+    record_upload(db, current_user, len(file_content))
     db.commit()
     db.refresh(content)
 
@@ -538,6 +542,7 @@ async def upload_multi_files(
             )
         file_entries.append((f.filename or "unknown", file_bytes, f.content_type))
 
+    check_upload_allowed(current_user, total_size)
     # Extract text from all files
     text_parts: list[str] = []
     for fname, fbytes, _ in file_entries:
@@ -577,6 +582,7 @@ async def upload_multi_files(
         )
         db.add(source)
 
+    record_upload(db, current_user, total_size)
     db.commit()
     db.refresh(content)
 
@@ -642,6 +648,60 @@ async def upload_multi_files(
         )
 
     return _to_response(content)
+
+
+@router.post("/bulk-categorize")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def bulk_categorize(
+    request: Request,
+    data: BulkCategorizeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Assign multiple course content items to a category."""
+    contents = db.query(CourseContent).filter(
+        CourseContent.id.in_(data.content_ids),
+    ).all()
+    if not contents:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No matching content items found")
+    updated = 0
+    for content in contents:
+        if _can_modify_content(db, current_user, content):
+            content.category = data.category
+            updated += 1
+    db.commit()
+    return {"updated": updated, "category": data.category}
+
+
+@router.get("/categories")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_categories(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all distinct categories for course contents accessible by the current user."""
+    from sqlalchemy import distinct
+    query = db.query(distinct(CourseContent.category)).filter(
+        CourseContent.category.isnot(None),
+        CourseContent.category != "",
+        CourseContent.archived_at.is_(None),
+    )
+    # Scope to user's content
+    if current_user.role == UserRole.PARENT:
+        child_student_ids = [s.id for s in db.query(Student).join(parent_students).filter(parent_students.c.parent_id == current_user.id).all()]
+        if child_student_ids:
+            child_course_ids = [sc.course_id for sc in db.execute(student_courses.select().where(student_courses.c.student_id.in_(child_student_ids))).fetchall()]
+            query = query.filter(CourseContent.course_id.in_(child_course_ids))
+        else:
+            query = query.filter(CourseContent.created_by_user_id == current_user.id)
+    elif current_user.role == UserRole.STUDENT:
+        query = query.filter(CourseContent.created_by_user_id == current_user.id)
+    elif current_user.role == UserRole.TEACHER:
+        query = query.filter(CourseContent.created_by_user_id == current_user.id)
+    # ADMIN sees all
+    categories = sorted([row[0] for row in query.all()])
+    return categories
 
 
 @router.get("/linked-course-ids")
@@ -1128,6 +1188,10 @@ def permanent_delete_course_content(
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
 
+    if content.file_size and content.created_by_user_id:
+        creator = db.query(User).filter(User.id == content.created_by_user_id).first()
+        if creator:
+            record_deletion(db, creator, content.file_size)
     _permanent_delete_content(db, content)
     db.commit()
 

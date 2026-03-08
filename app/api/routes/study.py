@@ -32,6 +32,9 @@ from app.schemas.study import (
     FlashcardGenerateRequest,
     FlashcardSetResponse,
     Flashcard,
+    MindMapGenerateRequest,
+    MindMapResponse,
+    MindMapData,
     DuplicateCheckRequest,
     DuplicateCheckResponse,
     AutoCreatedTask,
@@ -39,7 +42,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, check_content_safe
+from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -950,6 +953,146 @@ async def generate_flashcards_endpoint(
         title=study_guide.title,
         cards=cards,
         guide_type="flashcards",
+        version=study_guide.version,
+        parent_guide_id=study_guide.parent_guide_id,
+        created_at=study_guide.created_at,
+        auto_created_tasks=[AutoCreatedTask(**t) for t in created_tasks],
+    )
+
+
+@router.post("/mind-map/generate", response_model=MindMapResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_mind_map_endpoint(
+    request: Request,
+    body: MindMapGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a mind map from an assignment or custom content."""
+    if body.focus_prompt:
+        safe, reason = check_content_safe(body.focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
+    study_service = StudyService(db)
+
+    # Handle versioning
+    version = 1
+    parent_guide_id = None
+    if body.regenerate_from_id:
+        parent_guide_id, version = study_service.get_version_info(body.regenerate_from_id, current_user.id)
+
+    topic = body.topic or "Mind Map"
+    content = body.content or ""
+
+    if body.assignment_id:
+        assignment = db.query(Assignment).filter(Assignment.id == body.assignment_id).first()
+        if not assignment:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+        if assignment.course_id and not can_access_course(db, current_user, assignment.course_id):
+            raise HTTPException(status_code=403, detail="No access to this assignment's course")
+        topic = assignment.title
+        content = assignment.description or ""
+
+    # Fallback: fetch text from CourseContent when no explicit content provided
+    if not content and body.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == body.course_content_id).first()
+        if cc:
+            content = cc.text_content or cc.description or ""
+            if not topic or topic == "Mind Map":
+                topic = cc.title
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide assignment_id or content to generate a mind map",
+        )
+
+    # Check AI usage limit before generation
+    check_ai_usage(current_user, db)
+
+    # Fetch image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, body.course_content_id)
+
+    # Generate mind map using AI
+    try:
+        raw_map = await generate_mind_map(
+            topic=topic,
+            content=content,
+            focus_prompt=body.focus_prompt,
+            images=images_metadata,
+        )
+        map_json = strip_json_fences(raw_map)
+        mind_map_data = json.loads(map_json)
+        # Validate structure
+        mind_map = MindMapData(**mind_map_data)
+    except json.JSONDecodeError:
+        logger.error("Failed to parse mind map JSON response (first 500 chars): %s", raw_map[:500])
+        raise HTTPException(status_code=500, detail="Failed to parse mind map response")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error("Mind map generation failed: %s: %s", type(e).__name__, e)
+        detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+        raise HTTPException(status_code=500, detail=detail[:500])
+
+    # Deduplicate: return existing if same hash was created recently
+    content_hash = study_service.compute_content_hash(f"Mind Map: {topic}", "mind_map", body.assignment_id)
+    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
+    if existing:
+        existing_data = MindMapData(**json.loads(existing.content))
+        return MindMapResponse(
+            id=existing.id, title=existing.title, mind_map=existing_data,
+            guide_type="mind_map", version=existing.version,
+            parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
+        )
+
+    # Increment AI usage only when creating NEW content
+    increment_ai_usage(current_user, db, generation_type="mind_map", course_material_id=body.course_content_id)
+
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, f"Mind Map: {topic}", content,
+        course_id=body.course_id,
+        course_content_id=body.course_content_id,
+    )
+
+    # Enforce limit and save to database
+    enforce_study_guide_limit(db, current_user)
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        assignment_id=body.assignment_id,
+        course_id=resolved_course_id,
+        course_content_id=resolved_cc_id,
+        title=f"Mind Map: {topic}",
+        content=map_json,
+        guide_type="mind_map",
+        version=version,
+        parent_guide_id=parent_guide_id,
+        content_hash=content_hash,
+        focus_prompt=body.focus_prompt or None,
+    )
+    db.add(study_guide)
+    db.flush()
+
+    # Create a generic review task
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    critical_dates = [{"date": today_str, "title": f"Review: Mind Map: {topic}", "priority": "medium"}]
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        resolved_course_id, resolved_cc_id,
+    )
+
+    db.commit()
+    db.refresh(study_guide)
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
+    return MindMapResponse(
+        id=study_guide.id,
+        title=study_guide.title,
+        mind_map=mind_map,
+        guide_type="mind_map",
         version=study_guide.version,
         parent_guide_id=study_guide.parent_guide_id,
         created_at=study_guide.created_at,

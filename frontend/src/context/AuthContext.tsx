@@ -14,6 +14,11 @@ interface User {
   onboarding_completed: boolean;
   email_verified: boolean;
   interests: string[];
+  storage_used_bytes?: number;
+  storage_limit_bytes?: number;
+  upload_limit_bytes?: number;
+  storage_used_pct?: number;
+  storage_warning?: boolean;
 }
 
 interface AuthContextType {

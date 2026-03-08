@@ -6,6 +6,7 @@ import { AlertBanner } from '../components/parent/AlertBanner';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { DailyBriefingCard } from '../components/briefing/DailyBriefingCard';
+import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
@@ -16,7 +17,9 @@ import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import './ParentDashboard.css';
+import './DashboardGrid.css';
 
 /** Section-specific skeleton that matches the Parent Dashboard layout. */
 function DashboardSkeleton() {
@@ -97,6 +100,7 @@ export function ParentDashboard() {
   const pd = useParentDashboard();
   const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
 
@@ -253,10 +257,13 @@ export function ParentDashboard() {
           {/* Onboarding Setup Checklist (#869) */}
           <SetupChecklist />
 
-          {/* Daily Briefing Card */}
-          <DailyBriefingCard />
+          {/* Above-grid elements */}
+          <div className="dash-above-grid">
+            {/* Daily Briefing Card */}
+            <DailyBriefingCard />
+            <ConversationStartersCard studentId={pd.selectedChild ?? undefined} />
 
-          {/* View Mode Toggle (#832) */}
+            {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">
             <button
               className="pd-view-toggle"
@@ -392,8 +399,19 @@ export function ParentDashboard() {
                 label: 'Upload Class Material',
                 onClick: () => pd.setShowStudyModal(true),
               },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9 9a3 3 0 015.12 1.5c0 2-3 2-3 4" />
+                    <circle cx="12" cy="18" r="0.5" fill="currentColor" />
+                  </svg>
+                ),
+                label: 'Help My Kid',
+                onClick: () => setShowHelpStudyMenu(true),
+              },
             ] satisfies QuickAction[]}
-            maxVisible={2}
+            maxVisible={3}
           />
 
           {/* Task urgency pills below CTAs */}
@@ -418,26 +436,55 @@ export function ParentDashboard() {
           )}
 
           {!tipDismissed && pd.courseMaterials.length === 0 && (
-            <div className="pd-onboard-tip" role="status">
-              <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
-              <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
-              <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
-              <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)} aria-label="Dismiss tip">&times;</button>
-            </div>
-          )}
+              <div className="pd-onboard-tip" role="status">
+                <span className="pd-onboard-tip-icon" aria-hidden="true">💡</span>
+                <span className="pd-onboard-tip-text">Upload class materials to generate AI study guides for your child</span>
+                <button className="pd-onboard-tip-action" onClick={() => pd.setShowStudyModal(true)}>Upload Now</button>
+                <button className="pd-onboard-tip-dismiss" onClick={() => setTipDismissed(true)} aria-label="Dismiss tip">&times;</button>
+              </div>
+            )}
+          </div>
 
-          {/* Recent Activity Feed (#1225/#1226) — Full mode only */}
-          {viewMode === 'full' && (
-            <RecentActivityPanel
-              selectedChild={pd.selectedChild}
-              navigate={pd.navigate}
-            />
-          )}
+          {/* 3-Section Dashboard Grid (#1415) */}
+          <div className="dashboard-redesign">
+            <section className="dash-section dash-section--primary">
+              <div className="dash-section-header">
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Daily Briefing</h3>
+              </div>
+              <div className="dash-section-body">
+                <DailyBriefingCard />
+                {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
+                  <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
+                    {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
+                    {pd.taskCounts.dueToday > 0 && <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>{pd.taskCounts.dueToday} due today</button>}
+                    {pd.taskCounts.upcoming > 0 && <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>{pd.taskCounts.upcoming} next 3 days</button>}
+                  </div>
+                )}
+              </div>
+            </section>
 
-          {/* Student Detail moved to MyKids page */}
+            <section className="dash-section dash-section--secondary">
+              <div className="dash-section-header">
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128197;</span> Coming Up</h3>
+                <a href="/tasks" className="dash-section-link">All tasks</a>
+              </div>
+              <div className="dash-section-body">
+                {viewMode === 'full' && <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />}
+              </div>
+            </section>
 
-
-          {/* Calendar moved to Tasks page */}
+            <section className="dash-section dash-section--actions">
+              <div className="dash-section-header">
+                <h3 className="dash-section-title">Quick Actions</h3>
+              </div>
+              <div className="dash-quick-actions">
+                <button className="dash-quick-action" onClick={() => pd.navigate('/help-my-kid')}><span className="dash-quick-action-icon">&#128161;</span> Help My Kid</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}><span className="dash-quick-action-icon">&#9989;</span> Create Task</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">&#128218;</span> View Courses</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
+              </div>
+            </section>
+          </div>
         </>
       )}
 
@@ -864,6 +911,18 @@ export function ParentDashboard() {
         open={pd.showLimitModal}
         onClose={() => pd.setShowLimitModal(false)}
       />
+      {showHelpStudyMenu && pd.selectedChild != null && (
+        <HelpStudyMenu
+          studentId={pd.selectedChild}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
+      )}
+      {showHelpStudyMenu && pd.selectedChild == null && pd.children.length > 0 && (
+        <HelpStudyMenu
+          studentId={pd.children[0].student_id}
+          onClose={() => setShowHelpStudyMenu(false)}
+        />
+      )}
     </DashboardLayout>
   );
 }

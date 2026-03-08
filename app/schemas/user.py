@@ -92,6 +92,11 @@ class UserResponse(BaseModel):
     deletion_requested_at: datetime | None = None
     deletion_confirmed_at: datetime | None = None
     interests: list[str] = []
+    storage_used_bytes: int = 0
+    storage_limit_bytes: int = 104857600
+    upload_limit_bytes: int = 10485760
+    storage_used_pct: float = 0.0
+    storage_warning: bool = False
     created_at: datetime
 
     @field_validator("roles", mode="before")

@@ -1,0 +1,182 @@
+/* ── Mind Map Variables ─────────────────────── */
+.mm-container {
+  --mm-color-1: #2a9fa8;
+  --mm-color-2: #e67e22;
+  --mm-color-3: #9b59b6;
+  --mm-color-4: #27ae60;
+  --mm-color-5: #e74c3c;
+  --mm-color-6: #3498db;
+  overflow-x: auto;
+  padding: 1rem 0;
+}
+
+/* ── Canvas: radial layout on desktop ──────── */
+.mm-canvas {
+  position: relative;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Center node ───────────────────────────── */
+.mm-center-node {
+  position: relative;
+  z-index: 2;
+  background: var(--color-accent-strong, #2a9fa8);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 2rem;
+  text-align: center;
+  max-width: 220px;
+  box-shadow: 0 4px 16px rgba(42, 159, 168, 0.25);
+}
+
+/* ── Branch positioning (desktop radial) ───── */
+.mm-branch {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(
+    calc(-50% + var(--branch-x)),
+    calc(-50% + var(--branch-y))
+  );
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 220px;
+}
+
+/* ── SVG connector lines ───────────────────── */
+.mm-connector {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+  /* Offset so line starts from center of canvas, not center of branch */
+  transform: translate(
+    calc(var(--branch-x) * -1),
+    calc(var(--branch-y) * -1)
+  );
+}
+
+/* ── Branch label button ───────────────────── */
+.mm-branch-label {
+  background: var(--color-surface, #fff);
+  border: 2px solid var(--branch-color);
+  color: var(--branch-color);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.15s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.mm-branch-label:hover {
+  background: color-mix(in srgb, var(--branch-color) 8%, transparent);
+  transform: scale(1.04);
+}
+
+.mm-expand-icon {
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
+/* ── Children list ─────────────────────────── */
+.mm-children {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mm-child {
+  background: var(--color-surface, #fff);
+  border-left: 3px solid var(--branch-color);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.82rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  text-align: left;
+}
+
+.mm-child-label {
+  font-weight: 600;
+  display: block;
+  color: var(--color-text, #1a1a2e);
+}
+
+.mm-child-detail {
+  display: block;
+  color: var(--color-text-secondary, #666);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}
+
+/* ── Mobile: vertical list layout ──────────── */
+@media (max-width: 768px) {
+  .mm-canvas {
+    flex-direction: column;
+    min-height: auto;
+    gap: 0;
+  }
+
+  .mm-center-node {
+    margin-bottom: 1.25rem;
+  }
+
+  .mm-branch {
+    position: static;
+    transform: none;
+    max-width: 100%;
+    width: 100%;
+    margin-bottom: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .mm-connector {
+    display: none;
+  }
+
+  .mm-branch-label {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 0.75rem;
+  }
+
+  .mm-children {
+    width: 100%;
+    padding-left: 0.5rem;
+  }
+
+  .mm-child {
+    width: 100%;
+  }
+}
+
+/* ── Dark mode support ─────────────────────── */
+[data-theme="dark"] .mm-center-node {
+  box-shadow: 0 4px 16px rgba(42, 159, 168, 0.4);
+}
+
+[data-theme="dark"] .mm-branch-label {
+  background: var(--color-surface, #1e1e2e);
+}
+
+[data-theme="dark"] .mm-child {
+  background: var(--color-surface, #1e1e2e);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}

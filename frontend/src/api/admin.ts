@@ -110,4 +110,11 @@ export const adminApi = {
     const response = await api.patch(`/api/admin/features/${key}`, { enabled });
     return response.data as { feature: string; enabled: boolean };
   },
+
+  getUserStorage: async (userId: number) => { const r = await api.get(`/api/admin/users/${userId}/storage`); return r.data as UserStorageInfo; },
+  updateUserStorageLimits: async (userId: number, limits: { storage_limit_bytes?: number; upload_limit_bytes?: number }) => { const r = await api.patch(`/api/admin/users/${userId}/storage-limits`, limits); return r.data as UserStorageInfo; },
+  getStorageOverview: async () => { const r = await api.get('/api/admin/storage/overview'); return r.data as StorageOverview; },
 };
+export interface UserStorageInfo { storage_used_bytes: number; storage_limit_bytes: number; upload_limit_bytes: number; storage_used_pct: number; warning: boolean; critical: boolean; user_id?: number; full_name?: string; email?: string; }
+export interface StorageOverview { total_storage_used_bytes: number; total_storage_limit_bytes: number; users_with_files: number; total_users: number; avg_usage_bytes: number; }
+

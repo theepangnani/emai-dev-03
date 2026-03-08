@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { studyApi, type StudyGuide, type ResolvedStudent } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
+import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 
@@ -26,6 +27,7 @@ interface QuizTabProps {
   resolvedStudent: ResolvedStudent | null;
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
+  onFormatSelect?: (format: StudyFormat) => void;
 }
 
 function FocusIcon() {
@@ -60,6 +62,7 @@ export function QuizTab({
   resolvedStudent,
   linkedTasks = [],
   atLimit = false,
+  onFormatSelect,
 }: QuizTabProps) {
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -286,6 +289,12 @@ export function QuizTab({
         </div>
       ) : (
         <div className="cm-empty-tab">
+          {onFormatSelect && (
+            <FormatSelector
+              selected="quiz"
+              onSelect={onFormatSelect}
+            />
+          )}
           <div className="cm-empty-tab-icon"><EmptyQuizIcon /></div>
           <h3>No quiz yet</h3>
           <p>Generate a practice quiz to test understanding of this material with multiple-choice questions.</p>

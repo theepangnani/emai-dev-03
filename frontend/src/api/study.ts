@@ -23,6 +23,38 @@ export interface StudyGuide {
   created_at: string;
   archived_at: string | null;
   auto_created_tasks?: AutoCreatedTask[];
+  // Sharing fields
+  shared_with_user_id?: number | null;
+  shared_at?: string | null;
+  viewed_at?: string | null;
+  viewed_count?: number;
+  shared_with_name?: string | null;
+}
+
+// Sharing types
+export interface SharedGuideStatus {
+  id: number;
+  title: string;
+  guide_type: string;
+  shared_with_user_id: number | null;
+  shared_with_name: string | null;
+  shared_at: string | null;
+  viewed_at: string | null;
+  viewed_count: number;
+  status: 'not_shared' | 'shared' | 'viewed';
+  created_at: string;
+}
+
+export interface SharedWithMeGuide {
+  id: number;
+  title: string;
+  content: string;
+  guide_type: string;
+  shared_by_name: string;
+  shared_at: string;
+  viewed_at: string | null;
+  viewed_count: number;
+  created_at: string;
 }
 
 export interface DuplicateCheckResponse {
@@ -58,6 +90,32 @@ export interface FlashcardSet {
   id: number;
   title: string;
   cards: Flashcard[];
+  guide_type: string;
+  version: number;
+  parent_guide_id: number | null;
+  created_at: string;
+  auto_created_tasks?: AutoCreatedTask[];
+}
+
+export interface MindMapBranch {
+  label: string;
+  detail: string;
+}
+
+export interface MindMapBranchGroup {
+  label: string;
+  children: MindMapBranch[];
+}
+
+export interface MindMapData {
+  central_topic: string;
+  branches: MindMapBranchGroup[];
+}
+
+export interface MindMap {
+  id: number;
+  title: string;
+  mind_map: MindMapData;
   guide_type: string;
   version: number;
   parent_guide_id: number | null;
@@ -145,6 +203,11 @@ export const studyApi = {
   generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
     const response = await api.post('/api/study/flashcards/generate', params);
     return response.data as FlashcardSet;
+  },
+
+  generateMindMap: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; regenerate_from_id?: number; focus_prompt?: string }) => {
+    const response = await api.post('/api/study/mind-map/generate', params);
+    return response.data as MindMap;
   },
 
   checkDuplicate: async (params: { title?: string; guide_type: string; assignment_id?: number; course_id?: number }) => {
@@ -287,5 +350,26 @@ export const studyApi = {
   resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
     const response = await api.get('/api/quiz-results/resolve-student', { params });
     return response.data as ResolvedStudent | null;
+  },
+
+  // Study Sharing (Parent-Child Study Link #1414)
+  shareGuide: async (guideId: number, studentId: number) => {
+    const response = await api.post(`/api/study-guides/${guideId}/share`, { student_id: studentId });
+    return response.data;
+  },
+
+  getSharedWithMe: async () => {
+    const response = await api.get('/api/study-guides/shared-with-me');
+    return response.data as SharedWithMeGuide[];
+  },
+
+  markViewed: async (guideId: number) => {
+    const response = await api.post(`/api/study-guides/${guideId}/mark-viewed`);
+    return response.data;
+  },
+
+  getSharedStatus: async () => {
+    const response = await api.get('/api/study-guides/shared-status');
+    return response.data as SharedGuideStatus[];
   },
 };

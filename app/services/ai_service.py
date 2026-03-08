@@ -350,6 +350,76 @@ Always return valid JSON."""
     return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
 
 
+async def generate_mind_map(
+    topic: str,
+    content: str,
+    focus_prompt: str | None = None,
+    images: list[dict] | None = None,
+) -> str:
+    """
+    Generate a mind map structure from content.
+
+    Args:
+        topic: The topic/title for the mind map
+        content: Content to base the mind map on
+        focus_prompt: Optional focus area
+        images: Optional image metadata
+
+    Returns:
+        JSON string with mind map structure
+    """
+    logger.info(f"Generating mind map | topic={topic}")
+    prompt = f"""Create a mind map for the following educational content:
+
+**Topic:** {topic}
+
+**Content:**
+{content}
+
+Create a structured mind map with:
+- A central topic
+- 3-6 main branches radiating from the center
+- Each branch should have 2-5 children with brief details
+- Keep labels concise (1-4 words)
+- Details should be brief explanatory notes (under 60 characters)
+
+Format your response as a JSON object with this structure:
+```json
+{{
+  "central_topic": "Main Topic",
+  "branches": [
+    {{
+      "label": "Branch Name",
+      "children": [
+        {{ "label": "Child Label", "detail": "Brief explanation" }},
+        {{ "label": "Another Child", "detail": "Brief explanation" }}
+      ]
+    }}
+  ]
+}}
+```
+
+Return ONLY the JSON object, no other text."""
+
+    if images:
+        image_list = _build_image_list(images)
+        prompt += f"""
+
+**SOURCE IMAGES:**
+The source material contains these images. Reference relevant images using ![description]({{{{IMG-N}}}}) in detail fields where appropriate.
+
+{image_list}"""
+
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Prioritize these topics in the mind map."
+
+    system_prompt = """You are an expert at creating educational mind maps that help students
+visualize and organize knowledge. Create clear, well-structured mind maps with logical groupings.
+Always return valid JSON."""
+
+    return await generate_content(prompt, system_prompt, max_tokens=2000, temperature=0.5)
+
+
 async def generate_flashcards(
     topic: str,
     content: str,
