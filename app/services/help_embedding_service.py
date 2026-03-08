@@ -131,7 +131,7 @@ class HelpEmbeddingService:
 
     def _compute_content_hash(self) -> str:
         """Hash all YAML files to detect changes."""
-        hasher = hashlib.md5()
+        hasher = hashlib.md5(usedforsecurity=False)
         for filename in sorted(["faq.yaml", "features.yaml", "videos.yaml", "pages.yaml"]):
             filepath = KNOWLEDGE_BASE_DIR / filename
             if filepath.exists():
