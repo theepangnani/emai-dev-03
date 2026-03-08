@@ -5,6 +5,7 @@ import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
+import { DailyBriefingCard } from '../components/briefing/DailyBriefingCard';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
@@ -251,6 +252,9 @@ export function ParentDashboard() {
         <>
           {/* Onboarding Setup Checklist (#869) */}
           <SetupChecklist />
+
+          {/* Daily Briefing Card */}
+          <DailyBriefingCard />
 
           {/* View Mode Toggle (#832) */}
           <div className="pd-view-toggle-row">

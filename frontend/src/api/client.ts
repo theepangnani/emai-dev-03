@@ -187,3 +187,5 @@ export { dataExportApi } from './dataExport';
 export type { DataExportRequest as DataExportRequestItem } from './dataExport';
 export { activityApi } from './activity';
 export type { ActivityItem } from './activity';
+export { briefingApi } from './briefing';
+export type { DailyBriefingResponse, BriefingChildSection } from './briefing';
