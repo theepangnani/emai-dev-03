@@ -34,7 +34,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, DataExportRequest, SourceFile
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
@@ -1245,6 +1245,26 @@ async def startup_event():
         process_expired_account_deletions,
         CronTrigger(hour=4, minute=0),
         id="account_deletion_cleanup",
+        replace_existing=True,
+    )
+
+    # Cleanup note versions older than 365 days, daily at 3:30 AM (#1139)
+    def cleanup_note_versions():
+        _db = SessionLocal()
+        try:
+            from app.api.routes.notes import cleanup_old_versions
+            deleted = cleanup_old_versions(_db)
+            if deleted:
+                logger.info(f"Cleaned up {deleted} note versions older than 365 days")
+        except Exception as e:
+            logger.warning(f"Note version cleanup failed: {e}")
+        finally:
+            _db.close()
+
+    scheduler.add_job(
+        cleanup_note_versions,
+        CronTrigger(hour=3, minute=30),
+        id="note_version_cleanup",
         replace_existing=True,
     )
 

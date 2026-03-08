@@ -1,15 +1,18 @@
 import re
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.note import Note
+from app.models.note_version import NoteVersion
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
-from app.schemas.note import NoteListItem, NoteResponse, NoteUpsert
+from app.schemas.note import NoteListItem, NoteResponse, NoteUpsert, NoteVersionListItem, NoteVersionResponse
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -38,6 +41,35 @@ def _get_linked_child_user_ids(db: Session, parent_id: int) -> list[int]:
         Student.id.in_(child_student_ids)
     ).all()
     return [s[0] for s in students]
+
+
+def _save_version(db: Session, note: Note, user_id: int) -> NoteVersion:
+    """Save the current note content as a new version before updating."""
+    max_version = db.query(sa_func.coalesce(sa_func.max(NoteVersion.version_number), 0)).filter(
+        NoteVersion.note_id == note.id
+    ).scalar()
+
+    version = NoteVersion(
+        note_id=note.id,
+        content=note.content,
+        version_number=max_version + 1,
+        created_by_user_id=user_id,
+    )
+    db.add(version)
+    return version
+
+
+def _verify_note_access(db: Session, note: Note, current_user: User) -> None:
+    """Raise 404 if user cannot access the note."""
+    if note.user_id == current_user.id:
+        return
+    if current_user.has_role(UserRole.PARENT):
+        child_user_ids = _get_linked_child_user_ids(db, current_user.id)
+        if note.user_id in child_user_ids:
+            return
+    if current_user.has_role(UserRole.ADMIN):
+        return
+    raise HTTPException(status_code=404, detail="Note not found")
 
 
 @router.get("/", response_model=list[NoteListItem])
@@ -105,22 +137,8 @@ def get_note(
     note = db.query(Note).filter(Note.id == note_id).first()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
-
-    # Owner can always see their own note
-    if note.user_id == current_user.id:
-        return note
-
-    # Parent can see child's note
-    if current_user.has_role(UserRole.PARENT):
-        child_user_ids = _get_linked_child_user_ids(db, current_user.id)
-        if note.user_id in child_user_ids:
-            return note
-
-    # Admin can see any note
-    if current_user.has_role(UserRole.ADMIN):
-        return note
-
-    raise HTTPException(status_code=404, detail="Note not found")
+    _verify_note_access(db, note, current_user)
+    return note
 
 
 @router.put("/", response_model=NoteResponse)
@@ -134,13 +152,16 @@ def upsert_note(
     """Create or update a note. Empty content auto-deletes the note."""
     plain = _strip_html(data.content)
 
-    # Empty content → auto-delete
+    # Empty content -> auto-delete
     if not plain:
         existing = db.query(Note).filter(
             Note.user_id == current_user.id,
             Note.course_content_id == data.course_content_id,
         ).first()
         if existing:
+            # Save version before deleting
+            if existing.content and existing.content.strip():
+                _save_version(db, existing, current_user.id)
             db.delete(existing)
             db.commit()
         return Response(status_code=204)
@@ -151,6 +172,9 @@ def upsert_note(
     ).first()
 
     if existing:
+        # Save current content as a version before overwriting
+        if existing.content and existing.content != data.content:
+            _save_version(db, existing, current_user.id)
         existing.content = data.content
         existing.plain_text = plain
         existing.has_images = _has_images(data.content)
@@ -190,3 +214,106 @@ def delete_note(
         raise HTTPException(status_code=404, detail="Note not found")
     db.delete(note)
     db.commit()
+
+
+# --- Version history endpoints ---
+
+@router.get("/{note_id}/versions", response_model=list[NoteVersionListItem])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_versions(
+    request: Request,
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all saved versions for a note."""
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    _verify_note_access(db, note, current_user)
+
+    versions = db.query(NoteVersion).filter(
+        NoteVersion.note_id == note_id
+    ).order_by(NoteVersion.version_number.desc()).all()
+
+    result = []
+    for v in versions:
+        plain = _strip_html(v.content)
+        result.append(NoteVersionListItem(
+            id=v.id,
+            note_id=v.note_id,
+            version_number=v.version_number,
+            created_at=v.created_at,
+            created_by_user_id=v.created_by_user_id,
+            preview=plain[:120] + ("..." if len(plain) > 120 else ""),
+        ))
+    return result
+
+
+@router.get("/{note_id}/versions/{version_id}", response_model=NoteVersionResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_version(
+    request: Request,
+    note_id: int,
+    version_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """View a specific version's full content."""
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    _verify_note_access(db, note, current_user)
+
+    version = db.query(NoteVersion).filter(
+        NoteVersion.id == version_id,
+        NoteVersion.note_id == note_id,
+    ).first()
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return version
+
+
+@router.post("/{note_id}/restore/{version_id}", response_model=NoteResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def restore_version(
+    request: Request,
+    note_id: int,
+    version_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Restore a previous version. Saves the current content as a new version first."""
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    # Only owner can restore
+    if note.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the note owner can restore versions")
+
+    version = db.query(NoteVersion).filter(
+        NoteVersion.id == version_id,
+        NoteVersion.note_id == note_id,
+    ).first()
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    # Save current content as a new version before restoring
+    if note.content and note.content != version.content:
+        _save_version(db, note, current_user.id)
+
+    # Restore the old version's content
+    note.content = version.content
+    note.plain_text = _strip_html(version.content)
+    note.has_images = _has_images(version.content)
+    db.commit()
+    db.refresh(note)
+    return note
+
+
+def cleanup_old_versions(db: Session) -> int:
+    """Delete note versions older than 365 days. Returns count of deleted rows."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=365)
+    count = db.query(NoteVersion).filter(NoteVersion.created_at < cutoff).delete()
+    db.commit()
+    return count
