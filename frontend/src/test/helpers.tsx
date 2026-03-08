@@ -2,6 +2,7 @@ import { render, type RenderOptions } from '@testing-library/react'
 import { BrowserRouter, MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '../context/ThemeContext'
+import { FABProvider } from '../context/FABContext'
 import type { ReactElement, ReactNode } from 'react'
 
 /**
@@ -35,11 +36,13 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={options?.initialEntries ?? ['/']}>
-            {children}
-          </MemoryRouter>
-        </QueryClientProvider>
+        <FABProvider>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={options?.initialEntries ?? ['/']}>
+              {children}
+            </MemoryRouter>
+          </QueryClientProvider>
+        </FABProvider>
       </ThemeProvider>
     )
   }

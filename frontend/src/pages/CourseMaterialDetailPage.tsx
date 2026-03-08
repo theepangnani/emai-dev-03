@@ -23,7 +23,7 @@ import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { NotesPanel } from '../components/NotesPanel';
-import { NotesFAB } from '../components/NotesFAB';
+import { useRegisterNotesFAB } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
@@ -204,6 +204,9 @@ export function CourseMaterialDetailPage() {
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
 
   const contentId = parseInt(id || '0');
+
+  const toggleNotes = useCallback(() => setShowNotesPanel(v => !v), []);
+  useRegisterNotesFAB(contentId ? { courseContentId: contentId, isOpen: showNotesPanel, onToggle: toggleNotes } : null);
 
   // Fetch resource links count for tab badge
   const { data: resourceLinkGroups = [] } = useQuery<ResourceLinkGroup[]>({
@@ -680,7 +683,6 @@ export function CourseMaterialDetailPage() {
       {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
-      <NotesFAB courseContentId={contentId} isOpen={showNotesPanel} onToggle={() => setShowNotesPanel(v => !v)} />
     </DashboardLayout>
   );
 }

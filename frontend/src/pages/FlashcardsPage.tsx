@@ -7,7 +7,7 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
 import { PageNav } from '../components/PageNav';
-import { NotesFAB } from '../components/NotesFAB';
+import { useRegisterNotesFAB } from '../context/FABContext';
 import { NotesPanel } from '../components/NotesPanel';
 import './FlashcardsPage.css';
 
@@ -25,6 +25,8 @@ export function FlashcardsPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
+  useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
 
   // Mastery tracking: keyed by card front text (stable identifier)
   const [cardProgress, setCardProgress] = useState<Map<string, CardDifficulty>>(new Map());
@@ -400,7 +402,6 @@ export function FlashcardsPage() {
       )}
       {guide.course_content_id && (
         <>
-          <NotesFAB courseContentId={guide.course_content_id} isOpen={notesOpen} onToggle={() => setNotesOpen(!notesOpen)} />
           <NotesPanel courseContentId={guide.course_content_id} isOpen={notesOpen} onClose={() => setNotesOpen(false)} />
         </>
       )}

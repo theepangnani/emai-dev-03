@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
@@ -8,7 +8,7 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
 import { PageNav } from '../components/PageNav';
-import { NotesFAB } from '../components/NotesFAB';
+import { useRegisterNotesFAB } from '../context/FABContext';
 import { NotesPanel } from '../components/NotesPanel';
 import './QuizPage.css';
 
@@ -32,6 +32,8 @@ export function QuizPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const savedResultId = useRef<number | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
+  useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -315,7 +317,6 @@ export function QuizPage() {
       )}
       {guide.course_content_id && (
         <>
-          <NotesFAB courseContentId={guide.course_content_id} isOpen={notesOpen} onToggle={() => setNotesOpen(!notesOpen)} />
           <NotesPanel courseContentId={guide.course_content_id} isOpen={notesOpen} onClose={() => setNotesOpen(false)} />
         </>
       )}
