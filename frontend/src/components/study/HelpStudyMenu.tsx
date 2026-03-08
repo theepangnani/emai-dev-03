@@ -87,7 +87,7 @@ export function HelpStudyMenu({
         const params = new URLSearchParams({ studentId: String(studentId) });
         if (courseId) params.set('courseId', String(courseId));
         if (assignmentId) params.set('assignmentId', String(assignmentId));
-        navigate(`/readiness?${params.toString()}`);
+        navigate(`/readiness-check?${params.toString()}`);
         onClose();
       },
     },
@@ -98,7 +98,7 @@ export function HelpStudyMenu({
       action: () => {
         const params = new URLSearchParams({ studentId: String(studentId) });
         if (courseId) params.set('courseId', String(courseId));
-        navigate(`/weak-spots?${params.toString()}`);
+        navigate(`/ai-tools?${params.toString()}`);
         onClose();
       },
     },
@@ -115,7 +115,7 @@ export function HelpStudyMenu({
       action: () => {
         const params = new URLSearchParams({ studentId: String(studentId) });
         if (courseId) params.set('courseId', String(courseId));
-        navigate(`/conversation-starters?${params.toString()}`);
+        navigate(`/dashboard?${params.toString()}`);
         onClose();
       },
     },
@@ -126,7 +126,7 @@ export function HelpStudyMenu({
       action: () => {
         const params = new URLSearchParams({ studentId: String(studentId) });
         if (courseId) params.set('courseId', String(courseId));
-        navigate(`/parent-briefing?${params.toString()}`);
+        navigate(`/parent-briefing-notes?${params.toString()}`);
         onClose();
       },
     },
