@@ -73,6 +73,7 @@ export function useParentStudyTools({
     files?: File[];  // multi-file: text extraction happens inside the background task
     pastedImages?: File[];
     regenerateId?: number;
+    courseId?: number;
     courseContentId?: number;
   }) => {
     const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
@@ -95,6 +96,7 @@ export function useParentStudyTools({
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             focus_prompt: params.focusPrompt,
+            course_id: params.courseId,
             course_content_id: params.courseContentId,
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
@@ -106,6 +108,7 @@ export function useParentStudyTools({
             num_questions: params.type === 'quiz' ? 10 : undefined,
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             focus_prompt: params.focusPrompt,
+            course_id: params.courseId,
             course_content_id: params.courseContentId,
           });
         } else if (params.type === 'study_guide') {
@@ -114,6 +117,7 @@ export function useParentStudyTools({
             content: content || undefined,
             regenerate_from_id: params.regenerateId,
             focus_prompt: params.focusPrompt,
+            course_id: params.courseId,
             course_content_id: params.courseContentId,
           });
         } else if (params.type === 'quiz') {
@@ -123,6 +127,7 @@ export function useParentStudyTools({
             num_questions: 10,
             regenerate_from_id: params.regenerateId,
             focus_prompt: params.focusPrompt,
+            course_id: params.courseId,
             course_content_id: params.courseContentId,
           });
         } else if (params.type === 'flashcards') {
@@ -132,6 +137,7 @@ export function useParentStudyTools({
             num_cards: 15,
             regenerate_from_id: params.regenerateId,
             focus_prompt: params.focusPrompt,
+            course_id: params.courseId,
             course_content_id: params.courseContentId,
           });
         }
@@ -316,6 +322,7 @@ export function useParentStudyTools({
         files: sharedCourseContentId ? undefined : (isMultiFile ? files : undefined),
         pastedImages: sharedCourseContentId ? undefined : modalParams.pastedImages,
         regenerateId: duplicateCheck?.existing_guide?.id,
+        courseId: modalParams.courseId,
         courseContentId: sharedCourseContentId,
       });
     }

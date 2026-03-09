@@ -190,6 +190,7 @@ export default function UploadMaterialWizard({
   };
 
   const hasNoContent = selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
+  const needsCourse = !!(managedCourses && managedCourses.length > 0 && !internalCourseId);
 
   const handleSubmit = (withAITools: boolean) => {
     const hasFiles = selectedFiles.length > 0;
@@ -197,6 +198,11 @@ export default function UploadMaterialWizard({
 
     if (effectiveMode === 'text' && !studyContent.trim() && pastedImages.length === 0 && !selectedMaterialId) {
       setError('Please upload a file, paste content, or paste images');
+      return;
+    }
+
+    if (managedCourses && managedCourses.length > 0 && !internalCourseId) {
+      setError('Please select a class');
       return;
     }
 
@@ -293,8 +299,8 @@ export default function UploadMaterialWizard({
           {step === 1 ? (
             <>
               <button className="btn-secondary" onClick={onClose} disabled={isGenerating}>Cancel</button>
-              <button className="btn-link" onClick={() => handleSubmit(false)} disabled={isGenerating || hasNoContent}>Just Upload</button>
-              <button className="btn-primary" onClick={() => setStep(2)} disabled={hasNoContent}>Next &rarr;</button>
+              <button className="btn-link" onClick={() => handleSubmit(false)} disabled={isGenerating || hasNoContent || needsCourse}>Just Upload</button>
+              <button className="btn-primary" onClick={() => setStep(2)} disabled={hasNoContent || needsCourse}>Next &rarr;</button>
             </>
           ) : (
             <>
