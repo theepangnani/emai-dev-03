@@ -11,6 +11,10 @@ interface ConfirmModalProps {
   disableConfirm?: boolean;
   extraActionLabel?: string;
   onExtraAction?: () => void;
+  promptLabel?: string;
+  promptPlaceholder?: string;
+  promptValue?: string;
+  onPromptChange?: (value: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -25,6 +29,10 @@ export function ConfirmModal({
   disableConfirm,
   extraActionLabel,
   onExtraAction,
+  promptLabel,
+  promptPlaceholder,
+  promptValue,
+  onPromptChange,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -48,6 +56,19 @@ export function ConfirmModal({
         </div>
         <h2 id="confirm-title">{title}</h2>
         <p id="confirm-message" className="confirm-modal-message">{message}</p>
+        {onPromptChange && (
+          <div className="confirm-modal-prompt">
+            {promptLabel && <label className="confirm-modal-prompt-label">{promptLabel}</label>}
+            <input
+              type="text"
+              className="confirm-modal-prompt-input"
+              placeholder={promptPlaceholder || ''}
+              value={promptValue || ''}
+              onChange={(e) => onPromptChange(e.target.value)}
+              autoFocus
+            />
+          </div>
+        )}
         <div className="modal-actions">
           <button className="cancel-btn" onClick={onCancel}>{cancelLabel}</button>
           {extraActionLabel && onExtraAction && (
@@ -78,10 +99,13 @@ interface ConfirmOptions {
   disableConfirm?: boolean;
   extraActionLabel?: string;
   onExtraAction?: () => void;
+  promptLabel?: string;
+  promptPlaceholder?: string;
 }
 
 interface ConfirmState extends ConfirmOptions {
   resolve: (value: boolean) => void;
+  promptValue: string;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -91,16 +115,10 @@ export function useConfirm() {
 
   const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
     return new Promise((resolve) => {
-      const s = { ...options, resolve };
+      const s = { ...options, resolve, promptValue: '' };
       stateRef.current = s;
       setState(s);
     });
-  }, []);
-
-  const handleConfirm = useCallback(() => {
-    stateRef.current?.resolve(true);
-    stateRef.current = null;
-    setState(null);
   }, []);
 
   const handleCancel = useCallback(() => {
@@ -116,7 +134,27 @@ export function useConfirm() {
     setState(null);
   }, []);
 
-  const confirmModal = state ? (
+  const handlePromptChange = useCallback((value: string) => {
+    if (stateRef.current) {
+      stateRef.current = { ...stateRef.current, promptValue: value };
+      setState({ ...stateRef.current });
+    }
+  }, []);
+
+  const lastPromptValueRef = useRef('');
+
+  // Override handleConfirm to capture prompt value before clearing
+  const handleConfirmWithPrompt = useCallback(() => {
+    lastPromptValueRef.current = stateRef.current?.promptValue ?? '';
+    stateRef.current?.resolve(true);
+    stateRef.current = null;
+    setState(null);
+  }, []);
+
+  const getLastPromptValue = useCallback(() => lastPromptValueRef.current, []);
+
+  // Replace onConfirm in modal with the prompt-capturing version
+  const confirmModalFinal = state ? (
     <ConfirmModal
       open={true}
       title={state.title}
@@ -127,10 +165,14 @@ export function useConfirm() {
       disableConfirm={state.disableConfirm}
       extraActionLabel={state.extraActionLabel}
       onExtraAction={state.onExtraAction ? handleExtraAction : undefined}
-      onConfirm={handleConfirm}
+      promptLabel={state.promptLabel}
+      promptPlaceholder={state.promptPlaceholder}
+      promptValue={state.promptValue}
+      onPromptChange={state.promptLabel ? handlePromptChange : undefined}
+      onConfirm={handleConfirmWithPrompt}
       onCancel={handleCancel}
     />
   ) : null;
 
-  return { confirm, confirmModal };
+  return { confirm, confirmModal: confirmModalFinal, getLastPromptValue };
 }
