@@ -42,7 +42,7 @@ export function StudyGuidePage() {
   const [showTaskPrompt, setShowTaskPrompt] = useState(false);
   const [exporting, setExporting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
-  const { confirm, confirmModal } = useConfirm();
+  const { confirm, confirmModal, getLastPromptValue } = useConfirm();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
@@ -138,6 +138,8 @@ export function StudyGuidePage() {
       title: 'Regenerate Study Guide',
       message: `This will use 1 AI credit. You have ${remaining} remaining. Continue?`,
       confirmLabel: 'Regenerate',
+      promptLabel: 'Focus on (optional)',
+      promptPlaceholder: 'e.g., photosynthesis, the Calvin cycle',
       ...(remaining <= 0 ? {
         disableConfirm: true,
         extraActionLabel: 'Request More Credits',
@@ -145,11 +147,13 @@ export function StudyGuidePage() {
       } : {}),
     });
     if (!ok) return;
+    const focusPrompt = getLastPromptValue();
     try {
       const result = await studyApi.generateGuide({
         title: guide.title.replace(/^Study Guide: /, ''),
         content: guide.content,
         regenerate_from_id: guide.id,
+        ...(focusPrompt ? { focus_prompt: focusPrompt } : {}),
       });
       refreshAIUsage();
       navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
@@ -204,6 +208,7 @@ export function StudyGuidePage() {
           <span className="sg-title-icon" aria-hidden="true">&#128214;</span>
           <h2>{guide.title}</h2>
           <MaterialContextMenu items={[
+            { label: 'Create Study Guide', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 2h8l4 4v10a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 10l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>, onClick: () => handleRegenerate() },
             { label: 'Create Task', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M7 7h6M7 10.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="14.5" cy="14.5" r="4.5" fill="var(--color-accent-strong, #2a9fa8)"/><path d="M14.5 12.5v4M12.5 14.5h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>, onClick: () => setShowTaskModal(true) },
             { label: 'Edit Class Material', icon: <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M13.586 3.586a2 2 0 112.828 2.828l-9.5 9.5L3 17l1.086-3.914 9.5-9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>, onClick: () => setShowEditModal(true) },
           ]} />
