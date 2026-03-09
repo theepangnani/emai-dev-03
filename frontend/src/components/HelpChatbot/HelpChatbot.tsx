@@ -73,7 +73,7 @@ export function HelpChatbot() {
           onClick={() => setIsOpen(true)}
           aria-label="Open help chat"
         >
-          <img src="/logo-icon.png" alt="" className="help-chatbot-fab-logo" />
+          <img src="/chat-icon.png" alt="" className="help-chatbot-fab-logo" />
         </button>
       )}
 
@@ -82,7 +82,7 @@ export function HelpChatbot() {
         <div className="help-chatbot-panel">
           <div className="help-chatbot-header">
             <div className="help-chatbot-header-title">
-              <img src="/logo-icon.png" alt="" className="help-chatbot-header-logo" />
+              <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
               <h3>ClassBridge Help</h3>
             </div>
             <button
