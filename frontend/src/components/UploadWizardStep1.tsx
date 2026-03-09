@@ -214,7 +214,7 @@ function UploadWizardStep1({
               }}
               disabled={isGenerating}
             >
-              <option value="">Select a class (optional)</option>
+              <option value="">Select a class</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
