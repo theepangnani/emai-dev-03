@@ -152,7 +152,7 @@ export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityP
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapsed(); } }}
       >
         <div className="pd-activity-header-left">
-          <h3 className="pd-activity-heading">Recent Activity</h3>
+          <h3 className="pd-activity-heading"><span className="dash-section-title-icon" aria-hidden="true">&#128337;</span> Recent Activity</h3>
           {activities && activities.length > 0 && (
             <span className="pd-activity-count-badge">{activities.length}</span>
           )}

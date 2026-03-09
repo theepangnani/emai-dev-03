@@ -18,26 +18,23 @@ vi.mock('../../api/activity', () => ({
 
 function createActivity(overrides: Partial<ActivityItem> = {}): ActivityItem {
   return {
-    activity_type: 'task_created',
+    activity_type: 'material_uploaded',
     title: 'Test Activity',
     description: 'A test description',
-    resource_type: 'task',
+    resource_type: 'course_content',
     resource_id: 1,
     student_id: null,
     student_name: null,
     created_at: new Date().toISOString(),
-    icon_type: 'plus-square',
+    icon_type: 'file-text',
     ...overrides,
   };
 }
 
-const ALL_TYPES: ActivityItem['activity_type'][] = [
-  'course_created',
-  'task_created',
+/* Only material_uploaded and message_received are shown after filter */
+const VISIBLE_TYPES: ActivityItem['activity_type'][] = [
   'material_uploaded',
-  'task_completed',
   'message_received',
-  'notification_received',
 ];
 
 /* ── Tests ──────────────────────────────────────────────── */
@@ -48,6 +45,8 @@ describe('RecentActivityPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    // Start expanded for most tests
+    localStorage.setItem('pd-activity-collapsed', '0');
   });
 
   it('renders loading skeleton initially', () => {
@@ -61,21 +60,21 @@ describe('RecentActivityPanel', () => {
 
   it('renders activity items after fetch', async () => {
     const items = [
-      createActivity({ title: 'New Course', activity_type: 'course_created' }),
-      createActivity({ title: 'New Task', activity_type: 'task_created' }),
+      createActivity({ title: 'New Notes', activity_type: 'material_uploaded' }),
+      createActivity({ title: 'New message', activity_type: 'message_received' }),
     ];
     mockGetRecent.mockResolvedValue(items);
     renderWithProviders(
       <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
     );
     await waitFor(() => {
-      expect(screen.getByText('New Course')).toBeInTheDocument();
-      expect(screen.getByText('New Task')).toBeInTheDocument();
+      expect(screen.getByText('New Notes')).toBeInTheDocument();
+      expect(screen.getByText('New message')).toBeInTheDocument();
     });
   });
 
-  it('each activity type shows correct icon', async () => {
-    const items = ALL_TYPES.map((type, i) =>
+  it('visible activity types show correct icons', async () => {
+    const items = VISIBLE_TYPES.map((type, i) =>
       createActivity({ activity_type: type, title: `Item ${type}`, resource_id: i + 1 }),
     );
     mockGetRecent.mockResolvedValue(items);
@@ -83,34 +82,23 @@ describe('RecentActivityPanel', () => {
       <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
     );
     await waitFor(() => {
-      for (const type of ALL_TYPES) {
+      for (const type of VISIBLE_TYPES) {
         expect(screen.getByTestId(`activity-icon-${type}`)).toBeInTheDocument();
       }
     });
   });
 
-  it('clicking a course_created row navigates to /courses', async () => {
-    mockGetRecent.mockResolvedValue([
-      createActivity({ activity_type: 'course_created', title: 'Math 101' }),
-    ]);
+  it('filters out non-visible activity types', async () => {
+    const items = [
+      createActivity({ activity_type: 'course_created', title: 'Should Hide' }),
+      createActivity({ activity_type: 'material_uploaded', title: 'Should Show' }),
+    ];
+    mockGetRecent.mockResolvedValue(items);
     renderWithProviders(
       <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
     );
-    await waitFor(() => screen.getByText('Math 101'));
-    fireEvent.click(screen.getByTestId('activity-row'));
-    expect(mockNavigate).toHaveBeenCalledWith('/courses');
-  });
-
-  it('clicking a task_created row navigates to /tasks/:id (#1236)', async () => {
-    mockGetRecent.mockResolvedValue([
-      createActivity({ activity_type: 'task_created', title: 'Do homework', resource_id: 77 }),
-    ]);
-    renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
-    );
-    await waitFor(() => screen.getByText('Do homework'));
-    fireEvent.click(screen.getByTestId('activity-row'));
-    expect(mockNavigate).toHaveBeenCalledWith('/tasks/77');
+    await waitFor(() => screen.getByText('Should Show'));
+    expect(screen.queryByText('Should Hide')).not.toBeInTheDocument();
   });
 
   it('clicking a material_uploaded row navigates to /course-materials/:id', async () => {
@@ -137,35 +125,23 @@ describe('RecentActivityPanel', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/messages');
   });
 
-  it('notification_received row does not navigate', async () => {
-    mockGetRecent.mockResolvedValue([
-      createActivity({ activity_type: 'notification_received', title: 'Alert' }),
-    ]);
-    renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
-    );
-    await waitFor(() => screen.getByText('Alert'));
-    fireEvent.click(screen.getByTestId('activity-row'));
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
   it('collapse/expand toggles content visibility', async () => {
+    localStorage.setItem('pd-activity-collapsed', '1'); // start collapsed
     mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
     renderWithProviders(
       <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
     );
-    await waitFor(() => screen.getByText('Item 1'));
 
     const body = screen.getByTestId('activity-body');
     // Default is collapsed
     expect(body).toHaveClass('pd-activity-body-collapsed');
 
     // Click header to expand
-    fireEvent.click(screen.getByText('Recent Activity'));
+    fireEvent.click(screen.getByText(/Recent Activity/));
     expect(body).not.toHaveClass('pd-activity-body-collapsed');
 
     // Click again to collapse
-    fireEvent.click(screen.getByText('Recent Activity'));
+    fireEvent.click(screen.getByText(/Recent Activity/));
     expect(body).toHaveClass('pd-activity-body-collapsed');
   });
 
@@ -227,13 +203,13 @@ describe('RecentActivityPanel', () => {
     );
     await waitFor(() => screen.getByText('Test Activity'));
 
-    // First click expands (collapsed -> expanded = '0')
-    fireEvent.click(screen.getByText('Recent Activity'));
-    expect(localStorage.getItem('pd-activity-collapsed')).toBe('0');
-
-    // Second click collapses (expanded -> collapsed = '1')
-    fireEvent.click(screen.getByText('Recent Activity'));
+    // Click to collapse (expanded -> collapsed = '1')
+    fireEvent.click(screen.getByText(/Recent Activity/));
     expect(localStorage.getItem('pd-activity-collapsed')).toBe('1');
+
+    // Click to expand (collapsed -> expanded = '0')
+    fireEvent.click(screen.getByText(/Recent Activity/));
+    expect(localStorage.getItem('pd-activity-collapsed')).toBe('0');
   });
 });
 
@@ -256,21 +232,19 @@ describe('formatRelativeTime', () => {
   });
 
   it('returns "yesterday" for 1 day ago', () => {
-    const d = new Date(Date.now() - 30 * 3_600_000);
+    const d = new Date(Date.now() - 36 * 3_600_000);
     expect(formatRelativeTime(d.toISOString())).toBe('yesterday');
   });
 
   it('returns "Xd ago" for 2-6 days', () => {
-    const d = new Date(Date.now() - 4 * 86_400_000);
-    expect(formatRelativeTime(d.toISOString())).toBe('4d ago');
+    const d = new Date(Date.now() - 3 * 86_400_000);
+    expect(formatRelativeTime(d.toISOString())).toBe('3d ago');
   });
 
-  it('returns "MMM D" format for older dates', () => {
-    const d = new Date(2026, 2, 5); // Mar 5, 2026
-    // Only test if it's more than 7 days ago
-    const diffDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-    if (diffDays >= 7) {
-      expect(formatRelativeTime(d.toISOString())).toBe('Mar 5');
-    }
+  it('returns "Mon DD" for 7+ days', () => {
+    const d = new Date(Date.now() - 10 * 86_400_000);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const expected = `${months[d.getMonth()]} ${d.getDate()}`;
+    expect(formatRelativeTime(d.toISOString())).toBe(expected);
   });
 });
