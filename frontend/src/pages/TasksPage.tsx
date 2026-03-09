@@ -501,7 +501,7 @@ export function TasksPage() {
         )}
 
         {/* Collapsible Calendar Section */}
-        {isParent && (
+        {(
           <>
             <div className="calendar-collapse-section">
               <button className="calendar-collapse-toggle" onClick={toggleCalendar}>

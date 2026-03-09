@@ -141,8 +141,8 @@ export function StudentDashboard() {
     try { const v = localStorage.getItem('sd-materials-collapsed'); return v !== null ? v === '1' : true; } catch { return true; }
   });
 
-  const toggleMyDay = () => setMyDayCollapsed(prev => { const next = !prev; try { localStorage.setItem('sd-myday-collapsed', next ? '1' : '0'); } catch {} return next; });
-  const toggleMaterials = () => setMaterialsCollapsed(prev => { const next = !prev; try { localStorage.setItem('sd-materials-collapsed', next ? '1' : '0'); } catch {} return next; });
+  const toggleMyDay = () => setMyDayCollapsed(prev => { const next = !prev; try { localStorage.setItem('sd-myday-collapsed', next ? '1' : '0'); } catch { /* ignore */ } return next; });
+  const toggleMaterials = () => setMaterialsCollapsed(prev => { const next = !prev; try { localStorage.setItem('sd-materials-collapsed', next ? '1' : '0'); } catch { /* ignore */ } return next; });
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -703,17 +703,21 @@ export function StudentDashboard() {
             <h3 className="dash-section-title">Quick Actions</h3>
           </div>
           <div className="dash-quick-actions">
+            <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
+              <span className="dash-quick-action-icon">&#128214;</span>
+              View Study Guides
+            </button>
             <button className="dash-quick-action" onClick={() => studyTools.setShowStudyModal(true)}>
-              <span className="dash-quick-action-icon">&#128218;</span>
-              Start Studying
+              <span className="dash-quick-action-icon">&#128228;</span>
+              Upload Class Materials
             </button>
             <button className="dash-quick-action" onClick={() => navigate('/tasks')}>
-              <span className="dash-quick-action-icon">&#128197;</span>
-              View Calendar
+              <span className="dash-quick-action-icon">&#9989;</span>
+              Create Tasks
             </button>
-            <button className="dash-quick-action" onClick={() => navigate('/courses')}>
-              <span className="dash-quick-action-icon">&#127891;</span>
-              My Courses
+            <button className="dash-quick-action" onClick={() => navigate('/messages')}>
+              <span className="dash-quick-action-icon">&#128172;</span>
+              Send Message
             </button>
           </div>
         </section>
