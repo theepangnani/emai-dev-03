@@ -9,6 +9,7 @@ import './RecentActivityPanel.css';
 interface RecentActivityPanelProps {
   selectedChild: number | null; // null = all children
   navigate: (path: string) => void;
+  viewMode?: 'simplified' | 'full';
 }
 
 /* ── Relative time helper ───────────────────────────────── */
@@ -119,8 +120,8 @@ function getNavigationPath(item: ActivityItem): string | null {
 
 /* ── Component ──────────────────────────────────────────── */
 
-export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityPanelProps) {
-  const [collapsed, setCollapsed] = useState(() => {
+export function RecentActivityPanel({ selectedChild, navigate, viewMode }: RecentActivityPanelProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('pd-activity-collapsed');
       if (saved !== null) return saved === '1';
@@ -128,8 +129,10 @@ export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityP
     return true; // collapsed by default
   });
 
+  const collapsed = viewMode === 'simplified' ? true : internalCollapsed;
+
   const toggleCollapsed = useCallback(() => {
-    setCollapsed(prev => {
+    setInternalCollapsed(prev => {
       const next = !prev;
       try { localStorage.setItem('pd-activity-collapsed', next ? '1' : '0'); } catch { /* ignore */ }
       return next;
