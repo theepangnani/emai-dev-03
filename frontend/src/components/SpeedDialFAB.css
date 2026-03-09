@@ -113,11 +113,12 @@
   position: relative;
 }
 
-.speed-dial-action--chat > svg {
+.speed-dial-action--chat > img {
   background: var(--color-accent, #6366f1);
-  color: #fff;
-  padding: 13px;
+  padding: 8px;
   box-sizing: content-box;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 /* Notes sub-action */
