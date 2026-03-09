@@ -121,6 +121,42 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.dash-section-body--collapsed {
+  max-height: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Collapsible header ─────────────────── */
+
+.dash-section-header--collapsible {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+}
+
+.dash-section-header--collapsible[aria-expanded="true"] {
+  margin-bottom: 16px;
+}
+
+.dash-section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-section-chevron {
+  transition: transform 0.2s ease;
+  color: var(--color-ink-muted);
+}
+
+.dash-section-chevron--collapsed {
+  transform: rotate(-90deg);
 }
 
 /* Scrollbar styling for section body */

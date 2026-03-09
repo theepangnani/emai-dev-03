@@ -57,6 +57,7 @@ vi.mock('../components/ConfirmModal', () => ({
   useConfirm: () => ({
     confirm: mockConfirm,
     confirmModal: null,
+    getLastPromptValue: () => '',
   }),
 }))
 
