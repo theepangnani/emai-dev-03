@@ -126,10 +126,14 @@ export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityP
     });
   }, []);
 
-  const { data: activities, isLoading, isError, refetch } = useQuery({
+  const { data: rawActivities, isLoading, isError, refetch } = useQuery({
     queryKey: ['activity', 'recent', selectedChild],
-    queryFn: () => activityApi.getRecent(selectedChild ?? undefined, 5),
+    queryFn: () => activityApi.getRecent(selectedChild ?? undefined, 20),
   });
+
+  const activities = rawActivities?.filter(
+    a => a.activity_type === 'material_uploaded' || a.activity_type === 'message_received'
+  ).slice(0, 5);
 
   const handleRowClick = useCallback((item: ActivityItem) => {
     const path = getNavigationPath(item);
