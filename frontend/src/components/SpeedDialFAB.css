@@ -113,10 +113,29 @@
   position: relative;
 }
 
-.speed-dial-action--chat > img {
-  background: var(--color-accent, #6366f1);
-  padding: 13px;
-  box-sizing: content-box;
+.speed-dial-chat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-accent, #49b8c0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.speed-dial-action:hover .speed-dial-chat-icon {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.speed-dial-chat-icon > img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   filter: brightness(0) invert(1);
 }
@@ -194,10 +213,10 @@
     height: 48px;
   }
 
-  .speed-dial-action--chat > img {
-    width: 40px !important;
-    height: 40px !important;
-    padding: 11px;
+  .speed-dial-chat-icon {
+    width: 40px;
+    height: 40px;
+    padding: 8px;
   }
 
   .speed-dial-action--notes > svg {
