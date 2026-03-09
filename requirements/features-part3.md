@@ -2193,7 +2193,7 @@ Weekly email digest summarizing the past week and previewing the next. Sent Sund
 - [ ] Backend: weekly digest aggregation service
 - [ ] Email template: weekly_progress_pulse.html
 - [ ] Cron/Cloud Scheduler trigger
-- [ ] Parent notification preferences
+- [x] Parent notification preferences — advanced per-category notification preferences (PR #1464)
 
 ### 6.64 Parent-Child Study Link — Feedback Loop (Phase 2)
 
@@ -2239,7 +2239,7 @@ Redesign all four dashboards to be clean, uncluttered, and persona-driven.
 
 | Dashboard | Sections | Issue |
 |-----------|----------|-------|
-| Parent v5 | Daily Briefing + Child Snapshot + Quick Actions | #1416 |
+| Parent v5 | Daily Briefing + Child Snapshot + Quick Actions + Recent Activity (study guides & messages only) | #1416 |
 | Student v4 | Coming Up + Recent Study + Quick Actions | #1417 |
 | Teacher v2 | Student Alerts + My Classes + Quick Actions | #1418 |
 | Admin v2 | Platform Health + Recent Activity + Quick Actions | #1419 |
@@ -2287,12 +2287,12 @@ A suite of parent-first AI tools designed around the principle: *"Make the paren
 
 **Sub-tasks:**
 - [ ] "Is My Kid Ready?" readiness assessment (#1422)
-- [ ] Parent Briefing Notes (#1423)
+- [x] Parent Briefing Notes (#1423, PR #1467)
 - [ ] Practice Problem Sets (#1424)
 - [ ] Weak Spot Report (#1425)
-- [ ] Conversation Starters (#1426)
-- [ ] Frontend: revised Help Study menu (#1427)
-- [ ] Tests (#1428)
+- [x] Conversation Starters (#1426, PR #1485) — moved to My Kids page, on-demand generation
+- [x] Frontend: revised Help Study menu (#1427, PR #1480) — route fixes for blank pages
+- [x] Tests (#1428, PR #1471)
 
 ### 6.67 Smart Data Import — Parent-Powered School Data (Phase 2)
 
@@ -2401,10 +2401,10 @@ Inspired by [Google's Learn Your Way](https://learnyourway.withgoogle.com/) and 
 - Generation endpoints: add optional `interest: str` parameter
 
 **Sub-tasks:**
-- [ ] Backend: interest-based prompt customization (#1437)
-- [ ] Frontend: "Learn Your Way" format selector UI (#1438)
-- [ ] Backend + Frontend: Mind Map generation and rendering (#1439)
-- [ ] Student profile: interests/hobbies setting (#1440)
+- [x] Backend: interest-based prompt customization (#1437, PR #1469)
+- [x] Frontend: "Learn Your Way" format selector UI (#1438, PR #1469)
+- [x] Backend + Frontend: Mind Map generation and rendering (#1439, PR #1469)
+- [x] Student profile: interests/hobbies setting (#1440, PR #1469)
 
 ### 6.69.5 Monetization Strategy
 
@@ -2414,5 +2414,63 @@ Inspired by [Google's Learn Your Way](https://learnyourway.withgoogle.com/) and 
 - Upgrade UX: Show a preview/teaser of personalized content, then prompt to upgrade
 - Pricing model: TBD (per-credit or subscription)
 - Suggested by pilot user feedback (Grade 10 student)
+
+### 6.70 Advanced Per-Category Notification Preferences (Phase 2) - IMPLEMENTED
+
+Fine-grained notification preferences allowing users to control notifications per category rather than a single global toggle.
+
+**GitHub:** PR #1464
+
+**Implementation:**
+- Per-category toggles: assignments, tasks, messages, briefings, study_help, system
+- Backend: `notification_preferences` table with per-user, per-category enabled/disabled settings
+- `GET/PUT /api/notifications/settings` — retrieve and update per-category preferences
+- Frontend: Settings page with individual toggle switches per notification category
+- Backwards compatible: defaults all categories to enabled for existing users
+
+**Sub-tasks:**
+- [x] Backend: per-category notification preferences model and endpoints (PR #1464)
+- [x] Frontend: notification preferences settings UI (PR #1464)
+
+### 6.71 Premium Storage & Upload Limits (Phase 2) - IMPLEMENTED
+
+Tiered storage and upload limits based on user subscription tier (free vs premium).
+
+**GitHub:** PR #1470
+
+**Implementation:**
+- Free tier: limited study guide storage and file upload counts
+- Premium tier: higher limits for storage and uploads
+- Backend enforces limits at generation and upload endpoints
+- Frontend displays usage vs limit with upgrade prompts when approaching limits
+- Admin can override limits per user
+
+**Sub-tasks:**
+- [x] Backend: tiered storage/upload limit enforcement (PR #1470)
+- [x] Frontend: usage display and upgrade prompts (PR #1470)
+
+### 6.72 Sidebar Always-Expanded with Icons (Phase 2) - IMPLEMENTED
+
+Sidebar navigation updated to always show expanded state with proper icons for all menu items. Collapse/toggle feature removed for simplicity.
+
+**GitHub:** PR #1483 (fixes #1482)
+
+**Implementation:**
+- Added missing icons to all sidebar navigation items
+- Removed sidebar collapse/expand toggle — sidebar is always fully expanded
+- Consistent icon set across all roles (parent, student, teacher, admin)
+- Fixes blank/missing icon states reported in #1482
+
+### 6.73 Briefing & Conversation Starters Relocated to My Kids (Phase 2) - IMPLEMENTED
+
+Daily briefing summary and conversation starters moved from the parent dashboard to the My Kids page, available on-demand per child rather than as a dashboard-level component.
+
+**GitHub:** PR #1485 (fixes #1484)
+
+**Implementation:**
+- Daily briefing card moved from parent dashboard to My Kids page (per-child context)
+- Conversation starters ("Dinner Table Talk") relocated to My Kids page alongside briefing
+- On-demand generation: parents trigger briefing/starters when they want them, not auto-loaded
+- Reduces dashboard clutter; parent dashboard focuses on urgency items only
 
 ---
