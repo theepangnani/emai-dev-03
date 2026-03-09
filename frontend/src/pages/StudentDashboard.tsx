@@ -134,6 +134,16 @@ export function StudentDashboard() {
     localStorage.getItem('student-upload-onboarding-dismissed') === 'true'
   );
 
+  const [myDayCollapsed, setMyDayCollapsed] = useState(() => {
+    try { const v = localStorage.getItem('sd-myday-collapsed'); return v !== null ? v === '1' : true; } catch { return true; }
+  });
+  const [materialsCollapsed, setMaterialsCollapsed] = useState(() => {
+    try { const v = localStorage.getItem('sd-materials-collapsed'); return v !== null ? v === '1' : true; } catch { return true; }
+  });
+
+  const toggleMyDay = () => setMyDayCollapsed(prev => { const next = !prev; try { localStorage.setItem('sd-myday-collapsed', next ? '1' : '0'); } catch {} return next; });
+  const toggleMaterials = () => setMaterialsCollapsed(prev => { const next = !prev; try { localStorage.setItem('sd-materials-collapsed', next ? '1' : '0'); } catch {} return next; });
+
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     const firstName = user?.full_name?.split(' ')[0] || 'there';
@@ -587,14 +597,17 @@ export function StudentDashboard() {
       <div className="dashboard-redesign">
         {/* Section 1: My Day */}
         <section className="dash-section dash-section--primary">
-          <div className="dash-section-header">
+          <div className="dash-section-header dash-section-header--collapsible" onClick={toggleMyDay} role="button" tabIndex={0} aria-expanded={!myDayCollapsed} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMyDay(); } }}>
             <h3 className="dash-section-title">
               <span className="dash-section-title-icon" aria-hidden="true">&#128197;</span>
               My Day
             </h3>
-            <Link to="/tasks" className="dash-section-link">All tasks</Link>
+            <div className="dash-section-header-right">
+              <Link to="/tasks" className="dash-section-link" onClick={e => e.stopPropagation()}>All tasks</Link>
+              <svg className={`dash-section-chevron${myDayCollapsed ? ' dash-section-chevron--collapsed' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            </div>
           </div>
-          <div className="dash-section-body">
+          <div className={`dash-section-body${myDayCollapsed ? ' dash-section-body--collapsed' : ''}`}>
             {timelineItems.length > 0 ? (
               <div className="sd-timeline">
                 {timelineItems.slice(0, 8).map(item => (
@@ -653,14 +666,17 @@ export function StudentDashboard() {
 
         {/* Section 2: Study Materials */}
         <section className="dash-section dash-section--secondary">
-          <div className="dash-section-header">
+          <div className="dash-section-header dash-section-header--collapsible" onClick={toggleMaterials} role="button" tabIndex={0} aria-expanded={!materialsCollapsed} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMaterials(); } }}>
             <h3 className="dash-section-title">
               <span className="dash-section-title-icon" aria-hidden="true">&#128221;</span>
               Study Materials
             </h3>
-            <Link to="/course-materials" className="dash-section-link">See all</Link>
+            <div className="dash-section-header-right">
+              <Link to="/course-materials" className="dash-section-link" onClick={e => e.stopPropagation()}>See all</Link>
+              <svg className={`dash-section-chevron${materialsCollapsed ? ' dash-section-chevron--collapsed' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            </div>
           </div>
-          <div className="dash-section-body">
+          <div className={`dash-section-body${materialsCollapsed ? ' dash-section-body--collapsed' : ''}`}>
             {recentGuides.length > 0 ? (
               <div className="sd-materials-list">
                 {recentGuides.map(guide => (
