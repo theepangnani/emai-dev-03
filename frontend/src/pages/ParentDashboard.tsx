@@ -432,7 +432,7 @@ export function ParentDashboard() {
           <div className="dashboard-redesign">
             <section className="dash-section dash-section--primary">
               <div className="dash-section-header" onClick={() => setTasksCollapsed(c => !c)} role="button" tabIndex={0} style={{ cursor: 'pointer' }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTasksCollapsed(c => !c); } }}>
-                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Tasks Overview</h3>
+                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Tasks Overview{(pd.taskCounts.overdue + pd.taskCounts.dueToday + pd.taskCounts.upcoming) > 0 && <span className="pd-activity-count-badge">{pd.taskCounts.overdue + pd.taskCounts.dueToday + pd.taskCounts.upcoming}</span>}</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <a href="/tasks" className="dash-section-link" onClick={e => e.stopPropagation()}>All tasks</a>
                   <svg className={`pd-activity-chevron${tasksCollapsed ? ' pd-activity-collapsed' : ''}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
