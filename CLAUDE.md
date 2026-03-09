@@ -44,3 +44,10 @@ npm run lint
 ## Config
 Backend: `.env` (`DATABASE_URL`, `SECRET_KEY`, `GOOGLE_CLIENT_ID`, `OPENAI_API_KEY`, `SENDGRID_API_KEY`)
 Frontend: `frontend/.env.production` (`VITE_API_URL`)
+
+## Rules for Claude
+1. **No unrequested features.** Only implement exactly what is asked. Do not add "wow factor" extras, bonus UI, or speculative enhancements.
+2. **Run lint + tests before every commit.** Run `npm run build` and `npm run lint` (frontend) and `pytest` (backend) before committing. If tests or lint fail, fix them before pushing.
+3. **Update test mocks when changing hooks/APIs.** When modifying a shared hook (e.g., `useConfirm`, `useAIUsage`), find and update ALL test files that mock it.
+4. **One concern per PR.** Each PR should address a single issue. Do not bundle unrelated changes.
+5. **Minimal changes only.** Fix the specific issue without refactoring surrounding code, adding comments, or "improving" things that weren't asked about.
