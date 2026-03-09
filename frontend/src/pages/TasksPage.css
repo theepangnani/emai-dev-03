@@ -81,6 +81,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: stretch;
 }
 
 .tasks-child-selector .child-tab-all.active {
