@@ -310,6 +310,9 @@
   text-align: center;
   padding: 3rem 1rem;
   color: var(--text-secondary, #6b7280);
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
 }
 .readiness-empty p {
   margin-bottom: 1rem;
