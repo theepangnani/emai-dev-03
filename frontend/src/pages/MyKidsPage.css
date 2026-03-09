@@ -595,6 +595,14 @@
   flex-direction: column;
   gap: 4px;
   position: relative;
+  flex: 1 1 0;
+  min-width: 200px;
+  max-width: 340px;
+}
+
+.child-tab-wrapper .child-tab {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .invite-status-badge {
