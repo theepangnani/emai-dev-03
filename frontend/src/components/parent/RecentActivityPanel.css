@@ -3,9 +3,6 @@
    ============================================ */
 
 .pd-activity-panel {
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: var(--radius-md, 12px);
   overflow: hidden;
 }
 
@@ -32,11 +29,14 @@
 }
 
 .pd-activity-heading {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-ink, #1a1a2e);
   margin: 0;
   font-family: var(--font-display, inherit);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pd-activity-count-badge {
