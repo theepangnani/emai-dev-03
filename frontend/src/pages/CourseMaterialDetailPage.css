@@ -286,6 +286,18 @@
 .cm-tab.empty {
   color: var(--color-muted-border);
 }
+/* Tabs with content get a subtle fill to show they're populated */
+.cm-tab.has-content:not(.active) {
+  color: var(--color-ink);
+  background: var(--color-accent-subtle, rgba(124, 77, 255, 0.06));
+}
+/* Source Document tab gets a distinct accent */
+.cm-tab.source-doc {
+  border-left: 2px solid var(--color-purple, #7c4dff);
+}
+.cm-tab.source-doc.active {
+  background: var(--color-accent-subtle, rgba(124, 77, 255, 0.08));
+}
 
 .cm-tab-icon {
   display: inline-flex;

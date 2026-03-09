@@ -18,6 +18,7 @@ interface StudyGuideTabProps {
   atLimit?: boolean;
   courseContentId?: number;
   onFormatSelect?: (format: StudyFormat) => void;
+  onViewDocument?: () => void;
 }
 
 function FocusIcon() {
@@ -51,6 +52,7 @@ export function StudyGuideTab({
   atLimit = false,
   courseContentId,
   onFormatSelect,
+  onViewDocument,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -94,6 +96,9 @@ export function StudyGuideTab({
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+            {onViewDocument && (
+              <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
+            )}
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'study_guide' && (

@@ -430,6 +430,21 @@ async def upload_course_content_file(
     db.commit()
     db.refresh(content)
 
+    # Store file as SourceFile for Cloud Run persistence (#1557)
+    try:
+        source = SourceFile(
+            course_content_id=content.id,
+            filename=filename,
+            file_type=file.content_type,
+            file_size=len(file_content),
+            file_data=file_content,
+        )
+        db.add(source)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.warning("Failed to store SourceFile for single upload: %s", e)
+
     # Extract and store images from the uploaded file (#1309)
     try:
         images = extract_images_from_file(file_content, filename)
@@ -962,18 +977,36 @@ def download_course_content_file(
                        "You can view assignment details but cannot download documents.",
             )
 
-    if not content.file_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file attached to this content")
+    # Try disk file first, fall back to SourceFile in DB (#1557)
+    if content.file_path:
+        file_abs = get_file_path(content.file_path)
+        if file_abs.exists():
+            return FileResponse(
+                path=str(file_abs),
+                filename=content.original_filename or content.file_path,
+                media_type=content.mime_type or "application/octet-stream",
+            )
 
-    file_abs = get_file_path(content.file_path)
-    if not file_abs.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
-
-    return FileResponse(
-        path=str(file_abs),
-        filename=content.original_filename or content.file_path,
-        media_type=content.mime_type or "application/octet-stream",
+    # Fall back to first SourceFile (multi-file uploads or disk file lost)
+    source = (
+        db.query(SourceFile)
+        .filter(SourceFile.course_content_id == content_id)
+        .order_by(SourceFile.id)
+        .first()
     )
+    if source and source.file_data:
+        filename = source.filename or content.original_filename or f"file-{content_id}"
+        media_type = source.file_type or content.mime_type or "application/octet-stream"
+        return Response(
+            content=source.file_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(source.file_data)),
+            },
+        )
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file attached to this content")
 
 
 @router.patch("/{content_id}", response_model=CourseContentUpdateResponse)

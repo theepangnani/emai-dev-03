@@ -544,7 +544,7 @@ export function CourseMaterialDetailPage() {
     { key: 'mindmap' as TabKey, label: 'Mind Map', shortLabel: 'Map', hasContent: !!mindMapGuide, icon: <MindMapIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
-    { key: 'document', label: 'Document', shortLabel: 'Doc', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
+    { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
   return (
@@ -638,7 +638,7 @@ export function CourseMaterialDetailPage() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
+              className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ' has-content'}${tab.key === 'document' ? ' source-doc' : ''}`}
               onClick={() => setActiveTab(tab.key)}
               role="tab"
               aria-selected={activeTab === tab.key}
@@ -681,6 +681,7 @@ export function CourseMaterialDetailPage() {
               atLimit={atLimit}
               courseContentId={contentId}
               onFormatSelect={handleFormatSelect}
+              onViewDocument={() => setActiveTab('document')}
             />
           )}
 
@@ -698,6 +699,7 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[quiz?.id ?? 0] ?? []}
               atLimit={atLimit}
               onFormatSelect={handleFormatSelect}
+              onViewDocument={() => setActiveTab('document')}
             />
           )}
 
@@ -714,6 +716,7 @@ export function CourseMaterialDetailPage() {
               linkedTasks={linkedTasks[flashcardSet?.id ?? 0] ?? []}
               atLimit={atLimit}
               onFormatSelect={handleFormatSelect}
+              onViewDocument={() => setActiveTab('document')}
             />
           )}
 
