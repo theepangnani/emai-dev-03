@@ -97,10 +97,21 @@ export default function UploadMaterialWizard({
     setIsDragging(false);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setError('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setManagedCourses(courses);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setInternalCourseId(courses?.length === 1 ? courses[0].id : (selectedCourseId ?? ''));
+
+    // Use provided courses, or fetch them if not provided
+    if (courses && courses.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setManagedCourses(courses);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInternalCourseId(courses.length === 1 ? courses[0].id : (selectedCourseId ?? ''));
+    } else {
+      // Fetch courses when not provided by parent
+      coursesApi.list().then((data) => {
+        const mapped = data.map((c: { id: number; name: string }) => ({ id: c.id, name: c.name }));
+        setManagedCourses(mapped);
+        setInternalCourseId(mapped.length === 1 ? mapped[0].id : (selectedCourseId ?? ''));
+      }).catch(() => { /* courses will remain undefined — selector won't show */ });
+    }
   }, [open, initialTitle, initialContent, courses, selectedCourseId]);
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
