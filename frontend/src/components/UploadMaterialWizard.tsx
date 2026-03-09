@@ -71,10 +71,13 @@ export default function UploadMaterialWizard({
   const [internalCourseId, setInternalCourseId] = useState<number | ''>(selectedCourseId ?? '');
 
   const selectedFilesRef = useRef<File[]>([]);
+  const prevOpenRef = useRef(false);
 
-  // Reset state when modal opens — intentional sync setState on open to reset form fields
+  // Reset state only when modal first opens (open transitions false → true)
   useEffect(() => {
-    if (!open) return;
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (!open || wasOpen) return; // skip if closing or already open
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
     // eslint-disable-next-line react-hooks/set-state-in-effect
