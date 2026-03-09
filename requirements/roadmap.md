@@ -414,7 +414,19 @@ Features that answer the pilot feedback question: *"Why should I use ClassBridge
 | **2D** | The Retention | April 5 | #1413, #1434, #1424 | Email digest + Calendar + Practice |
 | **2E** | The Polish | April 14 | #1410, #1411, #1412, #1418, #1419, #1420 | Search + Help + QA |
 
-**Deferred (post April 14):** Photo Capture (#1432), Email Forwarding (#1433), Parent Briefing Notes (#1423), Conversation Starters (#1426), Daily Email Digest (#1406), Monetization (#1384-#1392), Learn Your Way Paywall/Monetization (#1441)
+**Completed (March 8):**
+- [x] **Per-Category Notification Preferences** (PR #1464) — fine-grained per-category notification controls
+- [x] **Parent Briefing Notes** (#1423, PR #1467) — plain-language topic summaries for parents
+- [x] **Learn Your Way** (PR #1469) — interest-based AI personalization with mind maps
+- [x] **Premium Storage/Upload Limits** (PR #1470) — tiered limits per subscription level
+- [x] **Responsible AI Parent Tools Tests** (PR #1471) — test coverage for parent tools
+- [x] **Conversation Starters** (#1426, PR #1485) — moved to My Kids page, on-demand
+- [x] **Briefing relocated to My Kids** (PR #1485) — on-demand per-child context
+- [x] **Sidebar icons + always-expanded** (PR #1483) — missing icons fixed, collapse removed
+- [x] **HelpStudyMenu route fix** (PR #1480) — blank readiness page resolved
+- [x] **generation_type VARCHAR widened** (PR #1481) — VARCHAR(20) to VARCHAR(50)
+
+**Deferred (post April 14):** Photo Capture (#1432), Email Forwarding (#1433), Daily Email Digest (#1406), Monetization (#1384-#1392), Learn Your Way Paywall/Monetization (#1441)
 
 ### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
 
