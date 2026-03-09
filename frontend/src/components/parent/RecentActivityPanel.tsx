@@ -112,7 +112,7 @@ function getNavigationPath(item: ActivityItem): string | null {
     case 'task_completed': return `/tasks/${item.resource_id}`;
     case 'message_received': return '/messages';
     case 'notification_received': return null;
-    case 'study_guide_generated': return `/course-materials/${item.resource_id}`;
+    case 'study_guide_generated': return `/course-materials/${item.resource_id}?tab=guide`;
     default: return null;
   }
 }

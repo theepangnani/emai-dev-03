@@ -196,27 +196,29 @@ def get_recent_activity(
             ))
 
     # ── 6. Study guides generated ──
+    # Join through course_content → student_courses to resolve which child
+    # the guide belongs to, and to get the correct course_content_id for navigation.
     guide_rows = (
-        db.query(StudyGuide)
+        db.query(StudyGuide, student_courses.c.student_id)
+        .join(CourseContent, CourseContent.id == StudyGuide.course_content_id)
+        .join(student_courses, student_courses.c.course_id == CourseContent.course_id)
         .filter(
-            StudyGuide.user_id.in_(student_user_ids + [user_id]),
+            student_courses.c.student_id.in_(student_ids),
             StudyGuide.archived_at.is_(None),
         )
         .order_by(StudyGuide.created_at.desc())
         .limit(limit)
         .all()
     )
-    for guide in guide_rows:
-        child_user_id = guide.user_id if guide.user_id in student_user_ids else None
-        sid = student_id_by_user_id.get(child_user_id) if child_user_id else None
-        sname = student_name_by_user_id.get(child_user_id) if child_user_id else None
+    for guide, sid in guide_rows:
+        sname = student_name_by_student_id.get(sid)
         guide_label = {"quiz": "Quiz", "flashcards": "Flashcards"}.get(guide.guide_type, "Study Guide")
         items.append(ActivityItem(
             activity_type=ActivityType.STUDY_GUIDE_GENERATED,
             title=guide.title,
             description=f"{guide_label} generated{(' for ' + sname) if sname else ''}",
             resource_type="study_guide",
-            resource_id=guide.id,
+            resource_id=guide.course_content_id,
             student_id=sid,
             student_name=sname,
             created_at=guide.created_at or datetime.now(timezone.utc),

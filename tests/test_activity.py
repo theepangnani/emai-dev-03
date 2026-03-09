@@ -225,3 +225,80 @@ def test_non_parent_forbidden(client, family):
     headers = _auth(client, "actchild@test.com")
     resp = client.get("/api/activity/recent", headers=headers)
     assert resp.status_code == 403
+
+
+def test_study_guide_uses_course_content_id(client, db_session, family):
+    """Study guide activity resource_id must be the CourseContent ID, not StudyGuide ID (#1550)."""
+    from app.models.course_content import CourseContent
+    from app.models.study_guide import StudyGuide
+
+    cc = CourseContent(
+        title="Act Guide Content",
+        course_id=family["course"].id,
+        content_type="notes",
+        created_by_user_id=family["parent"].id,
+    )
+    db_session.add(cc)
+    db_session.commit()
+
+    guide = StudyGuide(
+        user_id=family["parent"].id,
+        course_content_id=cc.id,
+        course_id=family["course"].id,
+        title="Act Guide Content",
+        content="guide content",
+        guide_type="study_guide",
+    )
+    db_session.add(guide)
+    db_session.commit()
+
+    # resource_id must equal the CourseContent ID, not the StudyGuide ID
+    assert guide.id != cc.id, "IDs must differ to validate the fix"
+
+    headers = _auth(client, "actparent@test.com")
+    resp = client.get("/api/activity/recent", headers=headers)
+    data = resp.json()
+    guide_items = [i for i in data if i["activity_type"] == "study_guide_generated" and i["title"] == "Act Guide Content"]
+    assert len(guide_items) >= 1
+    assert guide_items[0]["resource_id"] == cc.id
+
+
+def test_study_guide_filtered_by_child(client, db_session, family):
+    """Study guide activities must respect the student_id filter (#1550)."""
+    from app.models.course_content import CourseContent
+    from app.models.study_guide import StudyGuide
+
+    cc = CourseContent(
+        title="Act Filtered Guide",
+        course_id=family["course"].id,
+        content_type="notes",
+        created_by_user_id=family["parent"].id,
+    )
+    db_session.add(cc)
+    db_session.commit()
+
+    guide = StudyGuide(
+        user_id=family["parent"].id,
+        course_content_id=cc.id,
+        course_id=family["course"].id,
+        title="Act Filtered Guide",
+        content="guide content",
+        guide_type="quiz",
+    )
+    db_session.add(guide)
+    db_session.commit()
+
+    headers = _auth(client, "actparent@test.com")
+
+    # Guide is linked to course enrolled by student (child 1), not student2
+    # Filtering to student2 should NOT show this guide
+    resp = client.get(f"/api/activity/recent?student_id={family['student2'].id}", headers=headers)
+    data = resp.json()
+    guide_items = [i for i in data if i["activity_type"] == "study_guide_generated" and i["title"] == "Act Filtered Guide"]
+    assert len(guide_items) == 0
+
+    # Filtering to student (child 1) SHOULD show this guide
+    resp = client.get(f"/api/activity/recent?student_id={family['student'].id}", headers=headers)
+    data = resp.json()
+    guide_items = [i for i in data if i["activity_type"] == "study_guide_generated" and i["title"] == "Act Filtered Guide"]
+    assert len(guide_items) >= 1
