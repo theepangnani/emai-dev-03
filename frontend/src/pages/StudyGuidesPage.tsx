@@ -564,7 +564,7 @@ export function StudyGuidesPage() {
     // Check guide type first for better icons on quiz/flashcard items
     if (itemId && contentGuideMap[itemId]) {
       const guideTypes = contentGuideMap[itemId];
-      if (guideTypes.includes('quiz')) return '\u2753';
+      if (guideTypes.includes('quiz')) return '\uD83D\uDCCB';
       if (guideTypes.includes('flashcards')) return '\uD83C\uDCCF';
       if (guideTypes.includes('study_guide')) return '\uD83D\uDCD6';
     }
@@ -1127,7 +1127,10 @@ export function StudyGuidesPage() {
               )}
               {contentGuideMap[item.id] && (
                 <span className="guide-type-label">
-                  {contentGuideMap[item.id].map(t => guideTypeLabel(t)).join(', ')}
+                  {(filterType !== 'all'
+                    ? contentGuideMap[item.id].filter(t => t === filterType)
+                    : contentGuideMap[item.id]
+                  ).map(t => guideTypeLabel(t)).join(', ')}
                 </span>
               )}
               <span className="guide-row-date">{new Date(item.created_at).toLocaleDateString()}</span>
@@ -1331,7 +1334,7 @@ export function StudyGuidesPage() {
           {[
             { key: 'all', label: 'All' },
             { key: 'study_guide', label: '\uD83D\uDCD6 Study Guides' },
-            { key: 'quiz', label: '\u2753 Quizzes' },
+            { key: 'quiz', label: '\uD83D\uDCCB Quizzes' },
             { key: 'flashcards', label: '\uD83C\uDCCF Flashcards' },
           ].map(tab => (
             <button
