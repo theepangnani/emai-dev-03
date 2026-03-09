@@ -7,6 +7,13 @@ import type { StudyMaterialType } from '../components/UploadMaterialWizard'
 
 vi.mock('../components/UploadMaterialWizard.css', () => ({}))
 
+vi.mock('../api/courses', () => ({
+  coursesApi: {
+    list: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({ id: 1, name: 'Test Course' }),
+  },
+}))
+
 // Mock URL.createObjectURL / revokeObjectURL for pasted image thumbnails
 beforeEach(() => {
   global.URL.createObjectURL = vi.fn(() => 'blob:mock')
