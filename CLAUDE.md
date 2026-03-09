@@ -51,3 +51,4 @@ Frontend: `frontend/.env.production` (`VITE_API_URL`)
 3. **Update test mocks when changing hooks/APIs.** When modifying a shared hook (e.g., `useConfirm`, `useAIUsage`), find and update ALL test files that mock it.
 4. **One concern per PR.** Each PR should address a single issue. Do not bundle unrelated changes.
 5. **Minimal changes only.** Fix the specific issue without refactoring surrounding code, adding comments, or "improving" things that weren't asked about.
+6. **Parallel sessions: use an integration branch.** When multiple Claude sessions run in parallel, each should push to its own feature branch. All feature branches must be merged into a shared integration branch (e.g., `integrate/batch-name`) where conflicts are resolved. Only then merge the integration branch to master as a single PR. Never push multiple independent branches directly to master in parallel.
