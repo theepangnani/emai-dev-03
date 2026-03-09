@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-03-09
 
 ---
 
@@ -16,7 +16,7 @@ This requirements document is split into multiple files for easier navigation an
 | **REQUIREMENTS.md** (this file) | 1-5 | Overview, vision, problem, goals, roles |
 | [requirements/features-part1.md](requirements/features-part1.md) | 6.1-6.14 | Core features: Integrations, AI Study Tools, Registration, Courses, Content, Analytics, Communication, Teachers, Tasks, Audit |
 | [requirements/features-part2.md](requirements/features-part2.md) | 6.15-6.28 | UI & Auth features: Themes, Layout, Search, Mobile, UI Polish, Calendar, Parent UX, Security, Multi-Role, Materials Lifecycle, Password Reset, Design Consistency (6.27), **Upload Modal Redesign (6.28)** |
-| [requirements/features-part3.md](requirements/features-part3.md) | 6.27-6.73 | Extended features: Messaging, Teacher Linking, Roster, My Kids, Assignments, Enrollment, Invites, Security Phase 2, Reminders, Infrastructure, Admin, Onboarding, Verification, Course Planning, Emails, **Waitlist System (6.53)**, **AI Usage Limits (6.54)**, **Contextual Notes System (6.55)**, **Teacher Resource Links (6.57)**, **Image Retention in Study Guides (6.58)**, **AI Help Chatbot (6.59)**, **Digital Wallet & Subscriptions (6.60)**, **Smart Daily Briefing (6.61)**, **Help My Kid (6.62)**, **Weekly Progress Pulse (6.63)**, **Parent-Child Study Link (6.64)**, **Dashboard Redesign (6.65)**, **Responsible AI Parent Tools (6.66)**, **Smart Data Import (6.67)**, **Per-Category Notifications (6.70)**, **Premium Storage Limits (6.71)**, **Sidebar Always-Expanded (6.72)**, **Briefing to My Kids (6.73)** |
+| [requirements/features-part3.md](requirements/features-part3.md) | 6.27-6.83 | Extended features: Messaging, Teacher Linking, Roster, My Kids, Assignments, Enrollment, Invites, Security Phase 2, Reminders, Infrastructure, Admin, Onboarding, Verification, Course Planning, Emails, **Waitlist System (6.53)**, **AI Usage Limits (6.54)**, **Contextual Notes System (6.55)**, **Teacher Resource Links (6.57)**, **Image Retention in Study Guides (6.58)**, **AI Help Chatbot (6.59)**, **Digital Wallet & Subscriptions (6.60)**, **Smart Daily Briefing (6.61)**, **Help My Kid (6.62)**, **Weekly Progress Pulse (6.63)**, **Parent-Child Study Link (6.64)**, **Dashboard Redesign (6.65)**, **Responsible AI Parent Tools (6.66)**, **Smart Data Import (6.67)**, **Per-Category Notifications (6.70)**, **Premium Storage Limits (6.71)**, **Sidebar Always-Expanded (6.72)**, **Briefing to My Kids (6.73)**, **Mind Map Generation (6.74)**, **Notes Revision History (6.75)**, **Course Material Grouping (6.76)**, **Daily Morning Email Digest (6.77)**, **ICS Calendar Import (6.78)**, **Tutorial Completion Tracking (6.79)**, **Command Palette Search (6.80)**, **Recent Activity Panel (6.81)**, **LaTeX Math Rendering (6.82)**, **Help/FAQ for Responsible AI (6.83)** |
 | [requirements/dashboards.md](requirements/dashboards.md) | 7 | Role-Based Dashboards (Parent, Student, Teacher, Admin) |
 | [design/UI_AUDIT_REPORT.md](design/UI_AUDIT_REPORT.md) | — | UI/UX Audit Report: User journeys, friction points, Phase 1 improvements, Phase 2 features (#668) |
 | [docs/ClassBridge_UI_UX_Assessment_Report.docx](docs/ClassBridge_UI_UX_Assessment_Report.docx) | — | Comprehensive HCD Assessment Report: Design system audit, role-specific evaluation, accessibility, responsive, user journeys, risk register (#827) |

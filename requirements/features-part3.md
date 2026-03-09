@@ -2074,7 +2074,7 @@ ClassBridge features fall into two strategic layers:
 
 ---
 
-### 6.61 Smart Daily Briefing — Proactive Parent Intelligence (Phase 2)
+### 6.61 Smart Daily Briefing — Proactive Parent Intelligence (Phase 2) - IMPLEMENTED
 
 A proactive daily summary that tells parents **what matters today** across all children — the #1 answer to "why should I open ClassBridge?"
 
@@ -2106,11 +2106,11 @@ A proactive daily summary that tells parents **what matters today** across all c
 - Unsubscribe link in footer
 
 **Sub-tasks:**
-- [ ] Backend: daily briefing aggregation endpoint (#1404)
-- [ ] Frontend: briefing card on parent dashboard (#1405)
-- [ ] Email: optional daily morning digest (#1406)
+- [x] Backend: daily briefing aggregation endpoint (#1404)
+- [x] Frontend: briefing card on parent dashboard (#1405)
+- [x] Email: optional daily morning digest (#1406)
 
-### 6.62 Help My Kid — One-Tap Study Actions (Phase 2)
+### 6.62 Help My Kid — One-Tap Study Actions (Phase 2) - IMPLEMENTED
 
 Parent sees an upcoming test → taps **"Help Study"** → ClassBridge generates a practice quiz and sends it to the child's dashboard with a notification.
 
@@ -2195,7 +2195,7 @@ Weekly email digest summarizing the past week and previewing the next. Sent Sund
 - [ ] Cron/Cloud Scheduler trigger
 - [x] Parent notification preferences — advanced per-category notification preferences (PR #1464)
 
-### 6.64 Parent-Child Study Link — Feedback Loop (Phase 2)
+### 6.64 Parent-Child Study Link — Feedback Loop (Phase 2) - IMPLEMENTED
 
 When a parent generates study material (§6.62), a feedback loop tracks completion and reports back.
 
@@ -2222,7 +2222,7 @@ study_help_links:
 
 **AI Cost:** $0.00 for tracking. Generation cost covered by §6.62.
 
-### 6.65 Dashboard Redesign — Clean, Persona-Based Layouts (Phase 2)
+### 6.65 Dashboard Redesign — Clean, Persona-Based Layouts (Phase 2) - IMPLEMENTED
 
 Redesign all four dashboards to be clean, uncluttered, and persona-driven.
 
@@ -2245,8 +2245,8 @@ Redesign all four dashboards to be clean, uncluttered, and persona-driven.
 | Admin v2 | Platform Health + Recent Activity + Quick Actions | #1419 |
 
 **Sub-tasks:**
-- [ ] Parent Dashboard v5 (#1416)
-- [ ] Student Dashboard v4 (#1417)
+- [x] Parent Dashboard v5 (#1416)
+- [x] Student Dashboard v4 (#1417)
 - [ ] Teacher Dashboard v2 (#1418)
 - [ ] Admin Dashboard v2 (#1419)
 - [ ] DashboardLayout header cleanup
@@ -2472,5 +2472,128 @@ Daily briefing summary and conversation starters moved from the parent dashboard
 - Conversation starters ("Dinner Table Talk") relocated to My Kids page alongside briefing
 - On-demand generation: parents trigger briefing/starters when they want them, not auto-loaded
 - Reduces dashboard clutter; parent dashboard focuses on urgency items only
+
+### 6.74 Mind Map Generation & Rendering (Phase 2) - IMPLEMENTED
+
+Interactive mind map visualization for course materials with expandable/collapsible nodes.
+
+**GitHub:** PR #1469 (part of Learn Your Way, #1439)
+
+**Implementation:**
+- New `guide_type = 'mind_map'` in study_guides table
+- AI generates hierarchical JSON structure from course content
+- Frontend renders interactive node graph with expand/collapse
+- Available via "Learn Your Way" format selector and Help Study menu
+
+### 6.75 Notes Revision History (Phase 2) - IMPLEMENTED
+
+365-day version retention for contextual notes with diff viewing.
+
+**GitHub:** PR #1469 (#1139)
+
+**Implementation:**
+- `note_versions` table stores previous versions with timestamps
+- `GET /api/notes/{id}/versions` — list version history
+- `GET /api/notes/{id}/versions/{version_id}` — retrieve specific version
+- Auto-creates version snapshot on each note save
+- Frontend: version history panel with restore capability
+- 365-day retention policy
+
+### 6.76 Course Material Grouping by Category (Phase 2) - IMPLEMENTED
+
+Course materials can be organized and filtered by category for easier navigation.
+
+**GitHub:** PR #1469 (#992)
+
+**Implementation:**
+- Category field on course_contents with predefined categories
+- Filter UI on CoursesPage and CourseDetailPage
+- Category badges on material cards
+
+### 6.77 Daily Morning Email Digest (Phase 2) - IMPLEMENTED
+
+Automated daily email sent to parents summarizing their children's upcoming tasks and overdue items.
+
+**GitHub:** PR #1469 (#1406)
+
+**Implementation:**
+- SendGrid email template `daily_briefing.html`
+- `users.daily_digest_enabled` boolean field (opt-in)
+- Morning cron aggregates per-child data and sends digest
+- Unsubscribe link in footer
+
+### 6.78 ICS Calendar Import (Phase 2) - IMPLEMENTED
+
+Parents can import school calendar events via ICS URL for automatic sync.
+
+**GitHub:** PR #1469 (#1434)
+
+**Implementation:**
+- `POST /api/import/calendar` — accepts ICS URL
+- `calendar_feeds` table: user_id, url, last_synced
+- Python icalendar library for parsing
+- Events appear in ClassBridge calendar view
+- Daily auto-refresh with duplicate detection
+
+### 6.79 Tutorial Completion Tracking (Phase 2) - IMPLEMENTED
+
+Track which tutorial/onboarding steps users have completed with backend persistence.
+
+**GitHub:** PR #1469 (#1210)
+
+**Implementation:**
+- `tutorial_completions` table: user_id, tutorial_key, completed_at
+- `GET/POST /api/tutorials/completions` endpoints
+- Frontend checks completion state to show/hide tutorial prompts
+- Persists across sessions and devices
+
+### 6.80 Command Palette Search (Phase 2) - IMPLEMENTED
+
+Upgraded global search to a command palette interface with Ctrl+K shortcut.
+
+**GitHub:** PR #1469 (#1410, #1411, #1412)
+
+**Implementation:**
+- Ctrl+K / Cmd+K keyboard shortcut to open
+- Searches across children, assignments, courses, study guides, tasks
+- Recent searches and keyboard navigation
+- Grouped results with type icons and preview text
+
+### 6.81 Recent Activity Panel (Phase 2) - IMPLEMENTED
+
+Real-time activity feed for parent dashboard showing recent study guide generations and messages.
+
+**GitHub:** PR #1469 (#1225, #1226, #1227)
+
+**Implementation:**
+- `GET /api/activity/recent` — aggregates recent study guides and messages per child
+- Filters: by child, by type (study_guides, messages only for parents)
+- RecentActivityPanel component with collapsible sections
+- Task click deep-links to /tasks/:id
+- Simplified view: collapsed by default, expandable on demand
+- Child filter properly excludes unrelated children's activity
+
+### 6.82 LaTeX Math Rendering in Study Guides (Phase 2) - IMPLEMENTED
+
+Study guides render LaTeX math expressions ($...$ inline and $$...$$ block).
+
+**GitHub:** PR #1555 (#1552)
+
+**Implementation:**
+- Added remark-math + rehype-katex to ReactMarkdown pipeline
+- AI prompt updated to explicitly use LaTeX notation for math content
+- Supports both inline ($x^2$) and block ($$\int_0^1 f(x)dx$$) math
+- KaTeX CSS loaded for proper rendering
+
+### 6.83 Help/FAQ for Responsible AI Tools (Phase 2) - IMPLEMENTED
+
+Help page sections explaining each Responsible AI parent tool with usage guidance.
+
+**GitHub:** PR #1549 (#1548)
+
+**Implementation:**
+- FAQ entries for each AI tool: readiness assessment, parent briefing, practice problems
+- Explains responsible AI principles and how each tool helps parents without enabling shortcuts
+- Integrated into existing Help page article system
 
 ---

@@ -132,7 +132,7 @@ GitHub Issues: #198, #199, #200, #557
 
 #### Status: Phase 1 — Partially implemented (sidebar + hierarchy + Today's Focus done, visual polish remaining)
 
-### 6.17 Global Search (Phase 1.5)
+### 6.17 Global Search (Phase 1.5) - IMPLEMENTED
 
 A unified search field in the DashboardLayout header that searches across the entire ClassBridge platform. Available to all roles (parent, student, teacher, admin).
 
@@ -160,6 +160,8 @@ A unified search field in the DashboardLayout header that searches across the en
 - Type icons per category: courses (🎓), study guides (📖), tasks (📋), content (📄)
 - Keyboard: Escape closes, Ctrl+K / Cmd+K to focus search
 - Click result → navigate to detail page, click outside → close
+
+**Upgrade to Command Palette (Phase 2):** Upgraded to a full command palette interface with Ctrl+K/Cmd+K shortcut. Searches across children, assignments, courses, study guides, and tasks. Includes recent searches and keyboard navigation with grouped results. See §6.80. (#1410, #1411, #1412)
 
 **Implementation Steps:**
 1. Create `app/schemas/search.py` (SearchResultItem, SearchResponse)
@@ -467,38 +469,40 @@ Extended password reset capabilities for all user types and parent-managed child
 - `frontend/src/pages/MyKidsPage.tsx` — Reset Password modal
 - `frontend/src/api/parent.ts` — `resetChildPassword` API method
 
-### 6.27 Design Consistency Initiative
+### 6.27 Design Consistency Initiative - IMPLEMENTED
 
 Cross-page UI consistency pass ensuring all 24 pages follow identical layout, component, and styling patterns.
 
 **GitHub Issues:** #1246, #1247, #1248, #1249, #1250, #1251, #1252, #1253, #1254
 
+**Comprehensive Migration Note:** All pages now use DashboardLayout+PageNav, shared CSS patterns (section-card, list-row, empty-state, btn-* classes), standardized loading states. Orphaned CSS cleaned up across the codebase.
+
 #### 6.27.1 Universal Page Shell
-- [ ] Every page wrapped in `<DashboardLayout>` with `<PageNav>` breadcrumbs
-- [ ] StudyGuidePage: add DashboardLayout + PageNav (#1246)
-- [ ] QuizPage: add DashboardLayout + PageNav (#1247)
-- [ ] FlashcardsPage: add DashboardLayout + PageNav (#1248)
-- [ ] TeacherCommsPage: replace custom header with DashboardLayout (#1249)
-- [ ] CoursesPage + CourseDetailPage: add PageNav breadcrumbs (#1250)
+- [x] Every page wrapped in `<DashboardLayout>` with `<PageNav>` breadcrumbs
+- [x] StudyGuidePage: add DashboardLayout + PageNav (#1246)
+- [x] QuizPage: add DashboardLayout + PageNav (#1247)
+- [x] FlashcardsPage: add DashboardLayout + PageNav (#1248)
+- [x] TeacherCommsPage: replace custom header with DashboardLayout (#1249)
+- [x] CoursesPage + CourseDetailPage: add PageNav breadcrumbs (#1250)
 
 #### 6.27.2 Shared CSS Patterns (#1251, #1252)
-- [ ] `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-icon` in Dashboard.css
-- [ ] `.section-card`, `.section-card-header`, `.section-card-body` in Dashboard.css
-- [ ] `.list-row`, `.list-row-icon`, `.list-row-body`, `.list-row-action` in Dashboard.css
-- [ ] Standardized `.empty-state` pattern (icon + title + description + CTA)
+- [x] `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-icon` in Dashboard.css
+- [x] `.section-card`, `.section-card-header`, `.section-card-body` in Dashboard.css
+- [x] `.list-row`, `.list-row-icon`, `.list-row-body`, `.list-row-action` in Dashboard.css
+- [x] Standardized `.empty-state` pattern (icon + title + description + CTA)
 
 #### 6.27.3 Page Migration (#1251, #1252, #1253)
-- [ ] All pages migrated to shared button classes
-- [ ] All pages migrated to shared section-card pattern
-- [ ] All pages migrated to shared list-row pattern
-- [ ] All pages use standard empty-state pattern
-- [ ] All pages use PageSkeleton/ListSkeleton for loading states
+- [x] All pages migrated to shared button classes
+- [x] All pages migrated to shared section-card pattern
+- [x] All pages migrated to shared list-row pattern
+- [x] All pages use standard empty-state pattern
+- [x] All pages use PageSkeleton/ListSkeleton for loading states
 
 #### 6.27.4 CSS Cleanup (#1254)
-- [ ] Orphaned per-page CSS removed after migration
-- [ ] Total CSS line reduction documented
+- [x] Orphaned per-page CSS removed after migration
+- [x] Total CSS line reduction documented
 
-### 6.28 Upload Modal Redesign: Two-Step Wizard
+### 6.28 Upload Modal Redesign: Two-Step Wizard - IMPLEMENTED
 
 Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a single dense form into a progressive two-step wizard. The current modal overwhelms novice users by presenting file upload, text paste, AI tool checkboxes, title, course selector, material selector, focus prompts, and duplicate warnings all at once. The redesign prioritizes simplicity and usability across all roles (Parent, Student, Teacher, Admin).
 
