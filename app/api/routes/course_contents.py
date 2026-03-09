@@ -1006,7 +1006,15 @@ def download_course_content_file(
             },
         )
 
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file attached to this content")
+    # File is gone and no SourceFile — clear stale file_path so has_file becomes false
+    if content.file_path:
+        content.file_path = None
+        content.original_filename = None
+        content.file_size = None
+        content.mime_type = None
+        db.commit()
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Original file is no longer available")
 
 
 @router.patch("/{content_id}", response_model=CourseContentUpdateResponse)

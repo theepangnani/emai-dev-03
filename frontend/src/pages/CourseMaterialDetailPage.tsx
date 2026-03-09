@@ -452,8 +452,14 @@ export function CourseMaterialDetailPage() {
     setDownloading(true);
     try {
       await courseContentsApi.download(content.id, content.original_filename || undefined);
-    } catch {
-      showToast('Failed to download document');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        showToast('Original file is no longer available');
+        setContent(prev => prev ? { ...prev, has_file: false } : prev);
+      } else {
+        showToast('Failed to download document');
+      }
     } finally {
       setDownloading(false);
     }
