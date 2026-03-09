@@ -697,6 +697,9 @@
 .invite-menu-item + .invite-menu-item {
   border-top: 1px solid var(--color-border);
 }
+.invite-menu-item--danger {
+  color: var(--color-danger, #ef4444);
+}
 
 /* ── Quick Actions ── */
 .mykids-quick-actions {

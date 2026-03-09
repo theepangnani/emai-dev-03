@@ -187,6 +187,11 @@ export const parentApi = {
     return response.data;
   },
 
+  removeChild: async (studentId: number) => {
+    const response = await api.delete(`/api/parent/children/${studentId}`);
+    return response.data;
+  },
+
   resetChildPassword: async (studentId: number, newPassword?: string) => {
     const response = await api.post(`/api/parent/children/${studentId}/reset-password`, {
       ...(newPassword ? { new_password: newPassword } : {}),
