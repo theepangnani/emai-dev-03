@@ -55,12 +55,15 @@
 /* Single-action mode (just chat, no speed dial) */
 .speed-dial-trigger--single {
   overflow: hidden;
+  background: #fff;
+  border-radius: 16px;
 }
 
 .speed-dial-single-logo {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 4px;
 }
 
 /* ── Sub-action buttons ── */
@@ -115,11 +118,12 @@
 .speed-dial-chat-icon {
   width: 70px;
   height: 70px;
-  border-radius: 50%;
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #fff;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
@@ -133,7 +137,8 @@
 .speed-dial-chat-icon > img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 6px;
 }
 
 /* Notes sub-action */
@@ -210,8 +215,8 @@
   }
 
   .speed-dial-chat-icon {
-    width: 62px;
-    height: 62px;
+    width: 60px;
+    height: 60px;
   }
 
   .speed-dial-action--notes > svg {
