@@ -164,7 +164,9 @@ export function SpeedDialFAB() {
             onClick={openChat}
             aria-label="Open help chat"
           >
-            <img src="/logo-icon.png" alt="" className="speed-dial-action-logo" />
+            <span className="speed-dial-chat-icon">
+              <img src="/logo-icon.png" alt="" className="speed-dial-action-logo" />
+            </span>
             <span className="speed-dial-action-label">Chat</span>
           </button>
           <button
