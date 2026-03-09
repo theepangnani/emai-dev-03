@@ -459,9 +459,11 @@ export function ParentDashboard() {
               )}
             </section>
 
-            <section className="dash-section dash-section--secondary">
-              {viewMode === 'full' && <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />}
-            </section>
+            {viewMode === 'full' && (
+              <section className="dash-section dash-section--secondary">
+                <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />
+              </section>
+            )}
 
             <section className="dash-section dash-section--actions">
               <div className="dash-section-header">
