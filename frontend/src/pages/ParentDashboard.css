@@ -361,6 +361,11 @@
   color: white;
 }
 
+.pd-child-tab-all {
+  padding: 10px 14px;
+  align-self: stretch;
+}
+
 /* "All" tab (#830) */
 .pd-child-tab-all.active {
   background: var(--color-accent);
