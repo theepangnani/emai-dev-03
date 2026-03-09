@@ -115,7 +115,7 @@
 
 .speed-dial-action--chat > img {
   background: var(--color-accent, #6366f1);
-  padding: 8px;
+  padding: 13px;
   box-sizing: content-box;
   object-fit: contain;
   filter: brightness(0) invert(1);
@@ -194,9 +194,10 @@
     height: 48px;
   }
 
-  .speed-dial-action-logo {
+  .speed-dial-action--chat > img {
     width: 40px !important;
     height: 40px !important;
+    padding: 11px;
   }
 
   .speed-dial-action--notes > svg {
