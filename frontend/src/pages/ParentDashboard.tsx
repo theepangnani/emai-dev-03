@@ -476,10 +476,10 @@ export function ParentDashboard() {
                 <h3 className="dash-section-title">Quick Actions</h3>
               </div>
               <div className="dash-quick-actions">
-                <button className="dash-quick-action" onClick={() => pd.navigate('/ai-tools')}><span className="dash-quick-action-icon">&#128161;</span> Help My Kid</button>
-                <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}><span className="dash-quick-action-icon">&#9989;</span> Create Task</button>
-                <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">&#128218;</span> View Courses</button>
-                <button className="dash-quick-action" onClick={() => pd.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/ai-tools')}><span className="dash-quick-action-icon">💡</span> Help My Kid</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">📚</span> View Classes</button>
+                <button className="dash-quick-action" onClick={() => pd.navigate('/courses?create=1')}><span className="dash-quick-action-icon">➕</span> Create Class</button>
+                <button className="dash-quick-action" onClick={() => pd.setShowCreateTaskModal(true)}><span className="dash-quick-action-icon">✅</span> Create Task</button>
               </div>
             </section>
           </div>

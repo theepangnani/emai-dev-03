@@ -94,7 +94,7 @@ export function CoursesPage() {
   const [expandedLoading, setExpandedLoading] = useState(false);
 
   // Create course modal
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('create') === '1');
   const [courseName, setCourseName] = useState('');
   const [courseSubject, setCourseSubject] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
