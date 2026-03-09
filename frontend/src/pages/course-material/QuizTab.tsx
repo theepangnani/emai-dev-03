@@ -28,6 +28,7 @@ interface QuizTabProps {
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
   onFormatSelect?: (format: StudyFormat) => void;
+  onViewDocument?: () => void;
 }
 
 function FocusIcon() {
@@ -63,6 +64,7 @@ export function QuizTab({
   linkedTasks = [],
   atLimit = false,
   onFormatSelect,
+  onViewDocument,
 }: QuizTabProps) {
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -197,6 +199,9 @@ export function QuizTab({
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+            {onViewDocument && (
+              <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
+            )}
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'quiz' && (

@@ -22,6 +22,7 @@ interface FlashcardsTabProps {
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
   onFormatSelect?: (format: StudyFormat) => void;
+  onViewDocument?: () => void;
 }
 
 function FocusIcon() {
@@ -56,6 +57,7 @@ export function FlashcardsTab({
   linkedTasks = [],
   atLimit = false,
   onFormatSelect,
+  onViewDocument,
 }: FlashcardsTabProps) {
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -155,6 +157,9 @@ export function FlashcardsTab({
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+            {onViewDocument && (
+              <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
+            )}
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'flashcards' && (
