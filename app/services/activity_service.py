@@ -141,56 +141,58 @@ def get_recent_activity(
             icon_type=ActivityType.MATERIAL_UPLOADED.value,
         ))
 
-    # ── 4. Messages received ──
-    message_rows = (
-        db.query(Message)
-        .join(Conversation, Conversation.id == Message.conversation_id)
-        .filter(
-            or_(
-                Conversation.participant_1_id == user_id,
-                Conversation.participant_2_id == user_id,
-            ),
-            Message.sender_id != user_id,
+    # ── 4. Messages received (skip when filtering by specific child) ──
+    if student_id is None:
+        message_rows = (
+            db.query(Message)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .filter(
+                or_(
+                    Conversation.participant_1_id == user_id,
+                    Conversation.participant_2_id == user_id,
+                ),
+                Message.sender_id != user_id,
+            )
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+            .all()
         )
-        .order_by(Message.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-    for msg in message_rows:
-        sender = db.query(User).filter(User.id == msg.sender_id).first()
-        sender_name = sender.full_name if sender else "Someone"
-        items.append(ActivityItem(
-            activity_type=ActivityType.MESSAGE_RECEIVED,
-            title=f"Message from {sender_name}",
-            description=msg.content[:100] if msg.content else "",
-            resource_type="message",
-            resource_id=msg.id,
-            student_id=None,
-            student_name=None,
-            created_at=msg.created_at or datetime.now(timezone.utc),
-            icon_type=ActivityType.MESSAGE_RECEIVED.value,
-        ))
+        for msg in message_rows:
+            sender = db.query(User).filter(User.id == msg.sender_id).first()
+            sender_name = sender.full_name if sender else "Someone"
+            items.append(ActivityItem(
+                activity_type=ActivityType.MESSAGE_RECEIVED,
+                title=f"Message from {sender_name}",
+                description=msg.content[:100] if msg.content else "",
+                resource_type="message",
+                resource_id=msg.id,
+                student_id=None,
+                student_name=None,
+                created_at=msg.created_at or datetime.now(timezone.utc),
+                icon_type=ActivityType.MESSAGE_RECEIVED.value,
+            ))
 
-    # ── 5. Notifications received ──
-    notif_rows = (
-        db.query(Notification)
-        .filter(Notification.user_id == user_id)
-        .order_by(Notification.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-    for notif in notif_rows:
-        items.append(ActivityItem(
-            activity_type=ActivityType.NOTIFICATION_RECEIVED,
-            title=notif.title,
-            description=notif.content or "",
-            resource_type="notification",
-            resource_id=notif.id,
-            student_id=None,
-            student_name=None,
-            created_at=notif.created_at or datetime.now(timezone.utc),
-            icon_type=ActivityType.NOTIFICATION_RECEIVED.value,
-        ))
+    # ── 5. Notifications received (skip when filtering by specific child) ──
+    if student_id is None:
+        notif_rows = (
+            db.query(Notification)
+            .filter(Notification.user_id == user_id)
+            .order_by(Notification.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        for notif in notif_rows:
+            items.append(ActivityItem(
+                activity_type=ActivityType.NOTIFICATION_RECEIVED,
+                title=notif.title,
+                description=notif.content or "",
+                resource_type="notification",
+                resource_id=notif.id,
+                student_id=None,
+                student_name=None,
+                created_at=notif.created_at or datetime.now(timezone.utc),
+                icon_type=ActivityType.NOTIFICATION_RECEIVED.value,
+            ))
 
     # Sort all items by created_at descending and take the top `limit`
     items.sort(key=lambda x: x.created_at, reverse=True)
