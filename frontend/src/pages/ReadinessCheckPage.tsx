@@ -189,7 +189,7 @@ export function ReadinessCheckPage() {
 
   // ── Render ──
   return (
-    <DashboardLayout>
+    <DashboardLayout headerSlot={() => null}>
       <div className="readiness-page">
         <div className="readiness-header">
           <h1>Is My Kid Ready?</h1>
