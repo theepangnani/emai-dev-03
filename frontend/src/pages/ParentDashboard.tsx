@@ -91,14 +91,14 @@ function loadViewMode(): 'simplified' | 'full' {
     const saved = localStorage.getItem(VIEW_MODE_KEY);
     if (saved === 'simplified' || saved === 'full') return saved;
   } catch { /* ignore */ }
-  return 'full';
+  return 'simplified';
 }
 
 export function ParentDashboard() {
   const pd = useParentDashboard();
   const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
-  const [tasksCollapsed, setTasksCollapsed] = useState(false);
+  const [tasksCollapsed, setTasksCollapsed] = useState(() => loadViewMode() === 'simplified');
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
@@ -135,6 +135,7 @@ export function ParentDashboard() {
     setViewMode(prev => {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
+      setTasksCollapsed(next === 'simplified');
       if (next === 'simplified') {
         const collapsed: SectionStates = { comingUp: false, studentDetail: false };
         setSectionStates(collapsed);
@@ -281,7 +282,7 @@ export function ParentDashboard() {
                   aria-selected={pd.selectedChild === null}
                   tabIndex={pd.selectedChild === null ? 0 : -1}
                   className={`pd-child-tab pd-child-tab-all ${pd.selectedChild === null ? 'active' : ''}`}
-                  onClick={() => pd.handleAllChildrenClick()}
+                  onClick={() => { pd.handleAllChildrenClick(); setTasksCollapsed(false); if (viewMode === 'simplified') { setViewMode('full'); try { localStorage.setItem(VIEW_MODE_KEY, 'full'); } catch { /* ignore */ } } }}
                   onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
                   title="All children"
                 >
@@ -305,7 +306,7 @@ export function ParentDashboard() {
                     aria-selected={isSelected}
                     tabIndex={isSelected || (pd.selectedChild === null && pd.children.length <= 1 && index === 0) ? 0 : -1}
                     className={`pd-child-tab ${isSelected ? 'active' : ''}`}
-                    onClick={() => pd.handleChildTabClick(child.student_id)}
+                    onClick={() => { pd.handleChildTabClick(child.student_id); setTasksCollapsed(false); if (viewMode === 'simplified') { setViewMode('full'); try { localStorage.setItem(VIEW_MODE_KEY, 'full'); } catch { /* ignore */ } } }}
                     onKeyDown={(e) => handleChildTabKeyDown(e, tabKeyIndex)}
                   >
                     <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
