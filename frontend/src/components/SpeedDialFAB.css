@@ -62,8 +62,7 @@
 .speed-dial-single-logo {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  padding: 4px;
+  object-fit: cover;
 }
 
 /* ── Sub-action buttons ── */
@@ -137,8 +136,7 @@
 .speed-dial-chat-icon > img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  padding: 6px;
+  object-fit: cover;
 }
 
 /* Notes sub-action */
