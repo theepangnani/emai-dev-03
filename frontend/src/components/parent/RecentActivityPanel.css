@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 0;
   cursor: pointer;
   user-select: none;
   transition: background 0.15s ease;
@@ -82,7 +82,7 @@
 }
 
 .pd-activity-list {
-  padding: 0 16px 16px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -284,6 +284,6 @@
   }
 
   .pd-activity-header {
-    padding: 12px 16px;
+    padding: 0;
   }
 }
