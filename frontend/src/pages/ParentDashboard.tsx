@@ -98,6 +98,7 @@ export function ParentDashboard() {
   const pd = useParentDashboard();
   const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [tasksCollapsed, setTasksCollapsed] = useState(false);
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const childTabsRef = useRef<HTMLDivElement>(null);
   const childScrollRef = useRef<HTMLDivElement>(null);
@@ -421,47 +422,44 @@ export function ParentDashboard() {
           {/* 3-Section Dashboard Grid (#1415) */}
           <div className="dashboard-redesign">
             <section className="dash-section dash-section--primary">
-              <div className="dash-section-header">
+              <div className="dash-section-header" onClick={() => setTasksCollapsed(c => !c)} role="button" tabIndex={0} style={{ cursor: 'pointer' }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTasksCollapsed(c => !c); } }}>
                 <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Tasks Overview</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <a href="/tasks" className="dash-section-link" onClick={e => e.stopPropagation()}>All tasks</a>
+                  <svg className={`pd-activity-chevron${tasksCollapsed ? ' pd-activity-collapsed' : ''}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </div>
               </div>
-              <div className="dash-section-body">
-                {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
-                  <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
-                    {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
-                    {pd.taskCounts.dueToday > 0 && <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>{pd.taskCounts.dueToday} due today</button>}
-                    {pd.taskCounts.upcoming > 0 && <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>{pd.taskCounts.upcoming} next 3 days</button>}
-                  </div>
-                )}
-                {(() => {
-                  const activeTasks = pd.filteredTasks.filter(t => !t.is_completed && !t.archived_at);
-                  const topTasks = activeTasks.slice(0, 5);
-                  if (topTasks.length === 0) return <p className="dash-empty-hint">No active tasks</p>;
-                  return (
-                    <div className="dash-task-list">
-                      {topTasks.map(t => (
-                        <div key={t.id} className="dash-task-row" onClick={() => pd.navigate(`/tasks/${t.id}`)} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') pd.navigate(`/tasks/${t.id}`); }}>
-                          <span className={`task-priority-dot ${t.priority || 'medium'}`} />
-                          <span className="dash-task-title">{t.title}</span>
-                          {t.due_date && <span className="dash-task-due">{new Date(t.due_date.length === 10 ? t.due_date + 'T00:00:00' : t.due_date).toLocaleDateString()}</span>}
-                        </div>
-                      ))}
-                      {activeTasks.length > 5 && (
-                        <button className="dash-task-more" onClick={() => pd.navigate('/tasks')}>View all {activeTasks.length} tasks</button>
-                      )}
+              {!tasksCollapsed && (
+                <div className="dash-section-body">
+                  {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
+                    <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
+                      {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
+                      {pd.taskCounts.dueToday > 0 && <button className="pd-status-pill pd-status-pill-today" onClick={() => pd.navigate('/tasks?due=today')}>{pd.taskCounts.dueToday} due today</button>}
+                      {pd.taskCounts.upcoming > 0 && <button className="pd-status-pill pd-status-pill-upcoming" onClick={() => pd.navigate('/tasks?due=upcoming')}>{pd.taskCounts.upcoming} next 3 days</button>}
                     </div>
-                  );
-                })()}
-              </div>
+                  )}
+                  {(() => {
+                    const activeTasks = pd.filteredTasks.filter(t => !t.is_completed && !t.archived_at);
+                    const topTasks = activeTasks.slice(0, 5);
+                    if (topTasks.length === 0) return <p className="dash-empty-hint">No active tasks</p>;
+                    return (
+                      <div className="dash-task-list">
+                        {topTasks.map(t => (
+                          <div key={t.id} className="dash-task-row" onClick={() => pd.navigate(`/tasks/${t.id}`)} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') pd.navigate(`/tasks/${t.id}`); }}>
+                            <span className={`task-priority-dot ${t.priority || 'medium'}`} />
+                            <span className="dash-task-title">{t.title}</span>
+                            {t.due_date && <span className="dash-task-due">{new Date(t.due_date.length === 10 ? t.due_date + 'T00:00:00' : t.due_date).toLocaleDateString()}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </section>
 
             <section className="dash-section dash-section--secondary">
-              <div className="dash-section-header">
-                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128197;</span> Coming Up</h3>
-                <a href="/tasks" className="dash-section-link">All tasks</a>
-              </div>
-              <div className="dash-section-body">
-                {viewMode === 'full' && <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />}
-              </div>
+              {viewMode === 'full' && <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} />}
             </section>
 
             <section className="dash-section dash-section--actions">
