@@ -128,7 +128,7 @@ export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityP
 
   const { data: activities, isLoading, isError, refetch } = useQuery({
     queryKey: ['activity', 'recent', selectedChild],
-    queryFn: () => activityApi.getRecent(selectedChild ?? undefined),
+    queryFn: () => activityApi.getRecent(selectedChild ?? undefined, 5),
   });
 
   const handleRowClick = useCallback((item: ActivityItem) => {
