@@ -73,10 +73,17 @@ function resolveImageMarkers(
 }
 
 const loadMarkdown = () =>
-  Promise.all([import('react-markdown'), import('remark-gfm')]).then(
-    ([md, gfm]) => {
-      const ReactMarkdown = md.default;
-      const remarkGfm = gfm.default;
+  Promise.all([
+    import('react-markdown'),
+    import('remark-gfm'),
+    import('remark-math'),
+    import('rehype-katex'),
+    import('katex/dist/katex.min.css'),
+  ]).then(([md, gfm, math, katex]) => {
+    const ReactMarkdown = md.default;
+    const remarkGfm = gfm.default;
+    const remarkMath = math.default;
+    const rehypeKatex = katex.default;
 
       function MarkdownRenderer({
         content,
@@ -124,7 +131,8 @@ const loadMarkdown = () =>
 
         return (
           <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex]}
             components={{ img: imgComponent }}
           >
             {resolved}
