@@ -13,6 +13,8 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { PageSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { SearchableSelect, MultiSearchableSelect } from '../components/SearchableSelect';
+import type { SearchableOption } from '../components/SearchableSelect';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
 import './TeacherDashboard.css';
 import './DashboardGrid.css';
@@ -49,6 +51,11 @@ export function TeacherDashboard() {
   const [courseDescription, setCourseDescription] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState<SearchableOption | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<SearchableOption[]>([]);
+  const [showCreateTeacher, setShowCreateTeacher] = useState(false);
+  const [newTeacherName, setNewTeacherName] = useState('');
+  const [newTeacherEmail, setNewTeacherEmail] = useState('');
 
   // Invite parent modal state
   const [showInviteParentModal, setShowInviteParentModal] = useState(false);
@@ -159,18 +166,61 @@ export function TeacherDashboard() {
     setCourseSubject('');
     setCourseDescription('');
     setCreateError('');
+    setSelectedTeacher(null);
+    setSelectedStudents([]);
+    setShowCreateTeacher(false);
+    setNewTeacherName('');
+    setNewTeacherEmail('');
+  };
+
+  const handleSearchTeachers = async (q: string): Promise<SearchableOption[]> => {
+    const results = await coursesApi.searchTeachers(q);
+    return results.map(t => ({
+      id: t.id,
+      label: t.name,
+      sublabel: t.email || (t.is_shadow ? 'Shadow teacher' : undefined),
+    }));
+  };
+
+  const handleSearchStudents = async (q: string): Promise<SearchableOption[]> => {
+    const results = await coursesApi.searchStudents(q);
+    return results.map(s => ({
+      id: s.id,
+      label: s.name,
+      sublabel: s.email,
+    }));
   };
 
   const handleCreateCourse = async () => {
     if (!courseName.trim()) return;
+    if (!selectedTeacher && !showCreateTeacher) {
+      setCreateError('A teacher is required');
+      return;
+    }
+    if (showCreateTeacher && !newTeacherName.trim()) {
+      setCreateError('Teacher name is required');
+      return;
+    }
+    if (newTeacherEmail && !isValidEmail(newTeacherEmail.trim())) {
+      setCreateError('Please enter a valid teacher email');
+      return;
+    }
     setCreateLoading(true);
     setCreateError('');
     try {
-      await coursesApi.create({
+      const data: Parameters<typeof coursesApi.create>[0] = {
         name: courseName.trim(),
         description: courseDescription.trim() || undefined,
         subject: courseSubject.trim() || undefined,
-      });
+        student_ids: selectedStudents.map(s => s.id),
+      };
+      if (selectedTeacher) {
+        data.teacher_id = selectedTeacher.id;
+      } else if (showCreateTeacher) {
+        data.new_teacher_name = newTeacherName.trim();
+        data.new_teacher_email = newTeacherEmail.trim() || undefined;
+      }
+      await coursesApi.create(data);
       closeCreateModal();
       const coursesData = await coursesApi.teachingList();
       setCourses(coursesData);
@@ -485,8 +535,9 @@ export function TeacherDashboard() {
       {/* Create Course Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Create Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createCourseModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
+            <p className="modal-desc">Set up a new class with students and a teacher.</p>
             <div className="modal-form">
               <label>
                 Class Name *
@@ -496,7 +547,6 @@ export function TeacherDashboard() {
                   onChange={(e) => { setCourseName(e.target.value); setCreateError(''); }}
                   placeholder="e.g. Algebra I"
                   disabled={createLoading}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()}
                 />
               </label>
               <label>
@@ -515,10 +565,70 @@ export function TeacherDashboard() {
                   value={courseDescription}
                   onChange={(e) => setCourseDescription(e.target.value)}
                   placeholder="Brief description of the class..."
-                  rows={3}
+                  rows={2}
                   disabled={createLoading}
                 />
               </label>
+
+              <label>
+                Teacher *
+              </label>
+              {!showCreateTeacher ? (
+                <SearchableSelect
+                  placeholder="Search for a teacher by name or email..."
+                  onSearch={handleSearchTeachers}
+                  onSelect={(opt) => { setSelectedTeacher(opt); setCreateError(''); }}
+                  selected={selectedTeacher}
+                  onClear={() => setSelectedTeacher(null)}
+                  disabled={createLoading}
+                  createAction={{ label: '+ Create New Teacher', onClick: () => { setSelectedTeacher(null); setShowCreateTeacher(true); } }}
+                />
+              ) : (
+                <div className="create-teacher-inline">
+                  <div className="create-teacher-inline__header">
+                    <h4>New Teacher</h4>
+                    <button type="button" className="create-teacher-inline__cancel" onClick={() => { setShowCreateTeacher(false); setNewTeacherName(''); setNewTeacherEmail(''); }}>
+                      Back to search
+                    </button>
+                  </div>
+                  <label>
+                    Name *
+                    <input
+                      type="text"
+                      value={newTeacherName}
+                      onChange={(e) => { setNewTeacherName(e.target.value); setCreateError(''); }}
+                      placeholder="e.g. Ms. Johnson"
+                      disabled={createLoading}
+                    />
+                  </label>
+                  <label>
+                    Email (optional)
+                    <input
+                      type="email"
+                      value={newTeacherEmail}
+                      onChange={(e) => setNewTeacherEmail(e.target.value)}
+                      placeholder="teacher@school.com"
+                      disabled={createLoading}
+                    />
+                  </label>
+                  <p className="shadow-note">
+                    {newTeacherEmail ? 'An invitation will be sent to join ClassBridge as a teacher.' : 'No email = shadow teacher (can be invited later).'}
+                  </p>
+                </div>
+              )}
+
+              <label>
+                Students <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#6b7280' }}>(optional — students can enroll later)</span>
+              </label>
+              <MultiSearchableSelect
+                placeholder="Search students by name or email..."
+                onSearch={handleSearchStudents}
+                selected={selectedStudents}
+                onAdd={(opt) => { setSelectedStudents(prev => [...prev, opt]); setCreateError(''); }}
+                onRemove={(id) => setSelectedStudents(prev => prev.filter(s => s.id !== id))}
+                disabled={createLoading}
+              />
+
               {createError && <p className="link-error">{createError}</p>}
             </div>
             <div className="modal-actions">

@@ -11,8 +11,12 @@ class CourseCreate(BaseModel):
     subject: str | None = Field(default=None, max_length=100)
     teacher_id: int | None = None
     teacher_email: str | None = Field(default=None, max_length=255)
+    student_ids: list[int] = Field(default_factory=list)
+    # Inline teacher creation fields
+    new_teacher_name: str | None = Field(default=None, max_length=255)
+    new_teacher_email: str | None = Field(default=None, max_length=255)
 
-    @field_validator('name', 'description', 'subject', 'teacher_email', mode='before')
+    @field_validator('name', 'description', 'subject', 'teacher_email', 'new_teacher_name', 'new_teacher_email', mode='before')
     @classmethod
     def _strip_whitespace(cls, v: object) -> object:
         return strip_whitespace(v)
