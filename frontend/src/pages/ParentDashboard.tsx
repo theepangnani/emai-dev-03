@@ -66,6 +66,8 @@ function DashboardSkeleton() {
 // localStorage key for section collapse states
 const SECTION_STATES_KEY = 'pd-section-states';
 const VIEW_MODE_KEY = 'pd-view-mode';
+const VIEW_MODE_VERSION_KEY = 'pd-view-mode-v';
+const VIEW_MODE_VERSION = 2; // bump to force-reset all users to simplified
 
 interface SectionStates {
   comingUp: boolean;
@@ -88,6 +90,12 @@ function saveSectionStates(states: SectionStates) {
 
 function loadViewMode(): 'simplified' | 'full' {
   try {
+    const ver = localStorage.getItem(VIEW_MODE_VERSION_KEY);
+    if (ver !== String(VIEW_MODE_VERSION)) {
+      localStorage.setItem(VIEW_MODE_KEY, 'simplified');
+      localStorage.setItem(VIEW_MODE_VERSION_KEY, String(VIEW_MODE_VERSION));
+      return 'simplified';
+    }
     const saved = localStorage.getItem(VIEW_MODE_KEY);
     if (saved === 'simplified' || saved === 'full') return saved;
   } catch { /* ignore */ }
