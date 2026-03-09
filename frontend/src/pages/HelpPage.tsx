@@ -363,6 +363,71 @@ const FAQ_SECTIONS: FaqSection[] = [
     ],
   },
   {
+    title: 'Responsible AI Tools — What They Are & How They Work',
+    items: [
+      {
+        question: 'What is Weak Spots Analysis?',
+        answer:
+          'Weak Spots Analysis identifies topics where your child is struggling academically. It reviews up to 50 recent quiz results and 50 graded assignments, then uses AI to pinpoint specific topics with low scores. Each weak spot is rated by severity: "high" means consistently below 60%, "medium" means 60–75%, and "low" means 75–85%. You also get a suggested action for each weak spot — always focused on active learning (re-doing problems, reviewing material) rather than giving answers.',
+      },
+      {
+        question: 'How is the Weak Spots severity calculated?',
+        answer:
+          'The system collects your child\'s quiz scores (score/total, converted to a percentage) and assignment grades (grade/max points, converted to a percentage). It sends this data to AI which groups results by topic and assigns severity based on consistent performance: high severity = consistently below 60%, medium = 60–75%, low = 75–85%. At most 5 weak spots are returned, ordered worst-first. If your child is doing well across all topics, you\'ll see an encouraging message with no weak spots listed.',
+      },
+      {
+        question: 'What is the Readiness Check?',
+        answer:
+          'Readiness Check evaluates whether your child has studied enough for a specific assignment or test. Unlike Weak Spots, it does NOT use AI — it is a pure data check that examines four preparation indicators: (1) whether a study guide was created for the assignment, (2) whether practice quizzes were taken and scores achieved (80%+ is considered "done"), (3) whether flashcards were created, and (4) whether the assignment was submitted. Each indicator contributes to a readiness score from 1 to 5.',
+      },
+      {
+        question: 'How is the Readiness Score calculated?',
+        answer:
+          'The readiness score is built from four checks, each worth points: Study guide created = 1 point. Practice quizzes taken with best score 80%+ = 2 points (or 1 point if taken but below 80%). Flashcards created = 1 point. Assignment submitted = 1 point. The total (0–5) maps to a 1–5 readiness scale. Score meanings: 1 = hasn\'t started preparing, 2 = begun but more work needed, 3 = good progress, 4 = well-prepared and almost ready, 5 = fully prepared.',
+      },
+      {
+        question: 'What are Practice Problems?',
+        answer:
+          'Practice Problems generates a set of 7 custom practice questions for your child on a specific topic within a course. The problems are age-appropriate (based on your child\'s grade level) and vary in difficulty: 2 easy, 3 medium, and 2 challenging. Each problem includes a small hint to guide thinking without giving away the answer. Importantly, NO answers are provided — the goal is to encourage active learning through working out the solutions.',
+      },
+      {
+        question: 'Do these tools use my AI credits?',
+        answer:
+          'Weak Spots Analysis and Practice Problems each use 1 AI credit per request, as they involve AI-generated content. Readiness Check does NOT use any AI credits — it is a pure data lookup based on your child\'s activity on the platform.',
+      },
+    ],
+  },
+  {
+    title: 'How to Use Responsible AI Tools',
+    items: [
+      {
+        question: 'How do I run a Weak Spots Analysis?',
+        answer:
+          'Go to "Responsible AI Tools" from the sidebar (parent view). Expand the "Weak Spots Analysis" card. Select a child from the dropdown. Optionally select a specific course to narrow the analysis, or leave it on "All courses" for a broad view. Click "Analyze Weak Spots." The results will show a summary, the number of quizzes and assignments analyzed, and a list of weak spots with severity, details, and suggested actions.',
+      },
+      {
+        question: 'How do I use the Readiness Check?',
+        answer:
+          'Go to "Responsible AI Tools" from the sidebar. Expand the "Readiness Check" card. Select a child, then select a specific assignment from the dropdown (assignments come from courses your child is enrolled in). Click "Check Readiness." You\'ll see a readiness score (1–5) with a visual meter, a summary message, and a checklist showing which preparation steps have been completed (study guide, quizzes, flashcards, submission).',
+      },
+      {
+        question: 'How do I generate Practice Problems?',
+        answer:
+          'Go to "Responsible AI Tools" from the sidebar. Expand the "Practice Problems" card. Select a child, then select a course. Type in a topic (e.g., "Fractions," "Photosynthesis," "World War 2"). Click "Generate Practice Problems." You\'ll receive 7 problems with hints. Print or share these with your child — they are designed to be worked through without answers provided.',
+      },
+      {
+        question: 'What if Weak Spots shows "No quiz results or graded assignments found"?',
+        answer:
+          'This means your child has not yet completed any quizzes or received any graded assignments on ClassBridge. To get useful insights, your child needs to: (1) Have courses with uploaded materials, (2) Generate and take practice quizzes, and/or (3) Have assignment grades synced from Google Classroom. Once there is data, Weak Spots will be able to analyze it.',
+      },
+      {
+        question: 'Can students use these AI tools?',
+        answer:
+          'The Responsible AI Tools (Weak Spots, Readiness Check, Practice Problems) are currently available only to parents. Students have their own AI-powered study tools: Study Guide generation, Practice Quizzes, and Flashcards, which are available from the Study Hub when viewing course materials.',
+      },
+    ],
+  },
+  {
     title: 'Troubleshooting',
     items: [
       {
