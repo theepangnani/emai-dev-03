@@ -54,21 +54,16 @@
 
 /* Single-action mode (just chat, no speed dial) */
 .speed-dial-trigger--single {
-  overflow: visible;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-  width: auto;
-  height: auto;
-}
-
-.speed-dial-trigger--single:hover {
-  box-shadow: none;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 16px;
 }
 
 .speed-dial-single-logo {
-  width: 80px;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
 }
 
 /* ── Sub-action buttons ── */
@@ -121,20 +116,29 @@
 }
 
 .speed-dial-chat-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
 }
 
 .speed-dial-action:hover .speed-dial-chat-icon {
   transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .speed-dial-chat-icon > img {
-  width: 80px;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
 }
 
 /* Notes sub-action */
@@ -210,12 +214,9 @@
     height: 48px;
   }
 
-  .speed-dial-chat-icon > img {
-    width: 70px;
-  }
-
-  .speed-dial-single-logo {
-    width: 70px;
+  .speed-dial-chat-icon {
+    width: 60px;
+    height: 60px;
   }
 
   .speed-dial-action--notes > svg {
