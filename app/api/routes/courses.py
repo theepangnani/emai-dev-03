@@ -102,6 +102,71 @@ def _resolve_teacher_by_email(db: Session, email: str, inviter: User, course: Co
     return None
 
 
+@router.get("/teachers/search")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def search_teachers(
+    request: Request,
+    q: str = Query("", max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Search teachers by name or email. Returns both platform and shadow teachers."""
+    results = []
+    query = db.query(Teacher)
+    teachers = query.all()
+    q_lower = q.strip().lower()
+    for t in teachers:
+        name = None
+        email = None
+        if t.is_shadow:
+            name = t.full_name
+            email = t.google_email
+        elif t.user:
+            name = t.user.full_name
+            email = t.user.email
+        if not name:
+            continue
+        if q_lower and q_lower not in (name or "").lower() and q_lower not in (email or "").lower():
+            continue
+        results.append({
+            "id": t.id,
+            "name": name,
+            "email": email,
+            "is_shadow": t.is_shadow,
+        })
+    return results[:20]
+
+
+@router.get("/students/search")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def search_students_for_course(
+    request: Request,
+    q: str = Query("", max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Search students by name or email for course enrollment."""
+    from app.models.user import User as UserModel
+    results = []
+    students = db.query(Student).all()
+    q_lower = q.strip().lower()
+    for s in students:
+        user = db.query(UserModel).filter(UserModel.id == s.user_id).first()
+        if not user:
+            continue
+        name = user.full_name or ""
+        email = user.email or ""
+        if q_lower and q_lower not in name.lower() and q_lower not in email.lower():
+            continue
+        results.append({
+            "id": s.id,
+            "user_id": user.id,
+            "name": name,
+            "email": email,
+        })
+    return results[:20]
+
+
 @router.post("/", response_model=CourseResponse)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_course(
@@ -114,7 +179,7 @@ def create_course(
     if not any(current_user.has_role(r) for r in [UserRole.TEACHER, UserRole.PARENT, UserRole.STUDENT, UserRole.ADMIN]):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to create courses")
 
-    course_dict = course_data.model_dump(exclude={"teacher_id", "teacher_email"})
+    course_dict = course_data.model_dump(exclude={"teacher_id", "teacher_email", "student_ids", "new_teacher_name", "new_teacher_email"})
     course_dict["created_by_user_id"] = current_user.id
 
     if current_user.role == UserRole.TEACHER:
@@ -127,9 +192,62 @@ def create_course(
     elif current_user.role == UserRole.STUDENT:
         course_dict["is_private"] = True
 
+    # Handle inline teacher creation
+    if course_data.new_teacher_name:
+        new_teacher = Teacher(
+            is_shadow=not bool(course_data.new_teacher_email),
+            is_platform_user=bool(course_data.new_teacher_email),
+            full_name=course_data.new_teacher_name.strip(),
+            google_email=course_data.new_teacher_email.strip().lower() if course_data.new_teacher_email else None,
+        )
+        db.add(new_teacher)
+        db.flush()
+        course_dict["teacher_id"] = new_teacher.id
+        course_dict["is_private"] = False
+
+        # Send invitation if email provided
+        if course_data.new_teacher_email:
+            email = course_data.new_teacher_email.strip().lower()
+            existing_invite = db.query(Invite).filter(
+                Invite.email == email,
+                Invite.invite_type == InviteType.TEACHER,
+                Invite.accepted_at.is_(None),
+            ).first()
+            if not existing_invite:
+                token = secrets.token_urlsafe(32)
+                invite = Invite(
+                    email=email,
+                    invite_type=InviteType.TEACHER,
+                    token=token,
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+                    invited_by_user_id=current_user.id,
+                    metadata_json={"source": "create_class_inline"},
+                )
+                db.add(invite)
+                db.flush()
+                invite_link = f"{settings.frontend_url}/accept-invite?token={token}"
+                try:
+                    body = (
+                        f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">You\'re invited to teach on ClassBridge</h2>'
+                        f'<p style="color:#333;line-height:1.6;margin:0 0 24px 0;"><strong>{current_user.full_name}</strong> invited you to join ClassBridge as a teacher.</p>'
+                        f'<a href="{invite_link}" style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:16px;">Accept Invitation</a>'
+                    )
+                    html = wrap_branded_email(body)
+                    html = add_inspiration_to_email(html, db, "teacher")
+                    send_email_sync(email, f"{current_user.full_name} invited you to teach on ClassBridge", html)
+                except Exception as e:
+                    logger.warning(f"Failed to send teacher invite email to {email}: {e}")
+
     course = Course(**course_dict)
     db.add(course)
     db.flush()
+
+    # Handle existing teacher_id from request
+    if course_data.teacher_id and not course.teacher_id:
+        teacher = db.query(Teacher).filter(Teacher.id == course_data.teacher_id).first()
+        if teacher:
+            course.teacher_id = teacher.id
+            course.is_private = False
 
     # Resolve teacher by email if provided and no teacher_id yet
     if course_data.teacher_email and not course.teacher_id:
@@ -137,6 +255,20 @@ def create_course(
         if teacher_id:
             course.teacher_id = teacher_id
             course.is_private = False
+
+    # Enroll students
+    if course_data.student_ids:
+        for sid in course_data.student_ids:
+            student = db.query(Student).filter(Student.id == sid).first()
+            if student:
+                already = db.execute(
+                    student_courses.select().where(
+                        student_courses.c.student_id == student.id,
+                        student_courses.c.course_id == course.id,
+                    )
+                ).first()
+                if not already:
+                    db.execute(insert(student_courses).values(student_id=student.id, course_id=course.id))
 
     log_action(db, user_id=current_user.id, action="create", resource_type="course", resource_id=course.id, details={"name": course.name})
     db.commit()

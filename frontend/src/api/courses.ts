@@ -107,9 +107,28 @@ export const coursesApi = {
     return response.data;
   },
 
-  create: async (data: { name: string; description?: string; subject?: string; teacher_email?: string }) => {
+  create: async (data: {
+    name: string;
+    description?: string;
+    subject?: string;
+    teacher_email?: string;
+    teacher_id?: number;
+    student_ids?: number[];
+    new_teacher_name?: string;
+    new_teacher_email?: string;
+  }) => {
     const response = await api.post('/api/courses/', data);
     return response.data;
+  },
+
+  searchTeachers: async (q: string) => {
+    const response = await api.get('/api/courses/teachers/search', { params: { q } });
+    return response.data as Array<{ id: number; name: string; email: string | null; is_shadow: boolean }>;
+  },
+
+  searchStudents: async (q: string) => {
+    const response = await api.get('/api/courses/students/search', { params: { q } });
+    return response.data as Array<{ id: number; user_id: number; name: string; email: string }>;
   },
 
   update: async (id: number, data: { name?: string; description?: string; subject?: string; teacher_email?: string }) => {
