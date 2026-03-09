@@ -11,6 +11,7 @@ from app.models.message import Conversation, Message
 from app.models.notification import Notification
 from app.models.student import Student, parent_students
 from app.models.task import Task
+from app.models.study_guide import StudyGuide
 from app.models.user import User
 from app.schemas.activity import ActivityItem, ActivityType
 
@@ -193,6 +194,34 @@ def get_recent_activity(
                 created_at=notif.created_at or datetime.now(timezone.utc),
                 icon_type=ActivityType.NOTIFICATION_RECEIVED.value,
             ))
+
+    # ── 6. Study guides generated ──
+    guide_rows = (
+        db.query(StudyGuide)
+        .filter(
+            StudyGuide.user_id.in_(student_user_ids + [user_id]),
+            StudyGuide.archived_at.is_(None),
+        )
+        .order_by(StudyGuide.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for guide in guide_rows:
+        child_user_id = guide.user_id if guide.user_id in student_user_ids else None
+        sid = student_id_by_user_id.get(child_user_id) if child_user_id else None
+        sname = student_name_by_user_id.get(child_user_id) if child_user_id else None
+        guide_label = {"quiz": "Quiz", "flashcards": "Flashcards"}.get(guide.guide_type, "Study Guide")
+        items.append(ActivityItem(
+            activity_type=ActivityType.STUDY_GUIDE_GENERATED,
+            title=guide.title,
+            description=f"{guide_label} generated{(' for ' + sname) if sname else ''}",
+            resource_type="study_guide",
+            resource_id=guide.id,
+            student_id=sid,
+            student_name=sname,
+            created_at=guide.created_at or datetime.now(timezone.utc),
+            icon_type=ActivityType.STUDY_GUIDE_GENERATED.value,
+        ))
 
     # Sort all items by created_at descending and take the top `limit`
     items.sort(key=lambda x: x.created_at, reverse=True)

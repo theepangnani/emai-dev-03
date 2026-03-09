@@ -1,7 +1,7 @@
 import { api } from './client';
 
 export interface ActivityItem {
-  activity_type: 'course_created' | 'task_created' | 'material_uploaded' | 'task_completed' | 'message_received' | 'notification_received';
+  activity_type: 'course_created' | 'task_created' | 'material_uploaded' | 'task_completed' | 'message_received' | 'notification_received' | 'study_guide_generated';
   title: string;
   description: string;
   resource_type: string;

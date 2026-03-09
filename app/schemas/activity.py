@@ -13,6 +13,7 @@ class ActivityType(str, enum.Enum):
     TASK_COMPLETED = "task_completed"
     MESSAGE_RECEIVED = "message_received"
     NOTIFICATION_RECEIVED = "notification_received"
+    STUDY_GUIDE_GENERATED = "study_guide_generated"
 
 
 class ActivityItem(BaseModel):

@@ -91,6 +91,15 @@ const ICON_CONFIG: Record<ActivityItem['activity_type'], { bg: string; icon: Rea
       </svg>
     ),
   },
+  study_guide_generated: {
+    bg: '#10B981',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+      </svg>
+    ),
+  },
 };
 
 /* ── Navigation mapping ─────────────────────────────────── */
@@ -103,6 +112,7 @@ function getNavigationPath(item: ActivityItem): string | null {
     case 'task_completed': return `/tasks/${item.resource_id}`;
     case 'message_received': return '/messages';
     case 'notification_received': return null;
+    case 'study_guide_generated': return `/course-materials/${item.resource_id}`;
     default: return null;
   }
 }
@@ -132,7 +142,7 @@ export function RecentActivityPanel({ selectedChild, navigate }: RecentActivityP
   });
 
   const activities = rawActivities?.filter(
-    a => a.activity_type === 'material_uploaded' || a.activity_type === 'message_received'
+    a => a.activity_type === 'material_uploaded' || a.activity_type === 'message_received' || a.activity_type === 'study_guide_generated'
   ).slice(0, 5);
 
   const handleRowClick = useCallback((item: ActivityItem) => {
