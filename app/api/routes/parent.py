@@ -1581,6 +1581,38 @@ def unlink_teacher_from_child(
     return {"message": "Teacher unlinked from student"}
 
 
+@router.delete("/children/{student_id}")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def remove_child(
+    student_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Remove (unlink) a child from this parent. Does not delete the student account."""
+    from sqlalchemy import delete as sa_delete
+
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Child not found")
+
+    db.execute(
+        sa_delete(parent_students).where(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+    )
+    db.commit()
+    return {"message": "Child removed"}
+
+
 @router.post("/children/{student_id}/reset-password")
 @limiter.limit("5/minute", key_func=get_user_id_or_ip)
 def reset_child_password(

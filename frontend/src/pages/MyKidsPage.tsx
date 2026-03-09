@@ -118,11 +118,19 @@ export function MyKidsPage() {
   const [addCourseLoading, setAddCourseLoading] = useState(false);
   const [addCourseError, setAddCourseError] = useState('');
 
+  // Edit child state
+  const [editingChild, setEditingChild] = useState<ChildSummary | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editGrade, setEditGrade] = useState('');
+  const [editSchool, setEditSchool] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
+
   // Invite resend state
   const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
   const [resendSuccess, setResendSuccess] = useState<number | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
-  const [openInviteMenuId, setOpenInviteMenuId] = useState<number | null>(null);
+  const [openChildMenuId, setOpenChildMenuId] = useState<number | null>(null);
 
   // Focus traps for modals
   const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
@@ -130,13 +138,13 @@ export function MyKidsPage() {
   const assignCourseModalRef = useFocusTrap<HTMLDivElement>(!!assignCourseModal, () => setAssignCourseModal(null));
   const reassignContentModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
 
-  // Close invite context menu on outside click
+  // Close child context menu on outside click
   useEffect(() => {
-    if (!openInviteMenuId) return;
-    const close = () => setOpenInviteMenuId(null);
+    if (!openChildMenuId) return;
+    const close = () => setOpenChildMenuId(null);
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
-  }, [openInviteMenuId]);
+  }, [openChildMenuId]);
 
   useEffect(() => {
     (async () => {
@@ -704,55 +712,92 @@ export function MyKidsPage() {
                 {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
               </span>
             </button>
-            {child.invite_status === 'pending' && child.invite_id && (
-              <div className="invite-menu-wrapper">
-                <button
-                  className="invite-menu-trigger"
-                  title="Invite options"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenInviteMenuId(openInviteMenuId === child.invite_id ? null : child.invite_id);
-                  }}
-                >
-                  ···
-                </button>
-                {openInviteMenuId === child.invite_id && (
-                  <div className="invite-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className="invite-menu-item"
-                      disabled={resendingInviteId === child.invite_id}
-                      onClick={async () => {
-                        setResendingInviteId(child.invite_id);
-                        setResendSuccess(null);
-                        try {
-                          await invitesApi.resend(child.invite_id!);
-                          setResendSuccess(child.invite_id);
-                          setTimeout(() => setResendSuccess(null), 3000);
-                        } catch {
-                          /* rate limit or other error — silently handled */
-                        } finally {
-                          setResendingInviteId(null);
-                        }
-                      }}
-                    >
-                      {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? '✓ Sent!' : 'Resend Invite'}
-                    </button>
-                    <button
-                      className="invite-menu-item"
-                      onClick={async () => {
-                        const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
-                        await navigator.clipboard.writeText(link);
-                        setCopiedInviteId(child.invite_id);
-                        setOpenInviteMenuId(null);
-                        setTimeout(() => setCopiedInviteId(null), 2000);
-                      }}
-                    >
-                      {copiedInviteId === child.invite_id ? '✓ Copied!' : 'Copy Invite Link'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="invite-menu-wrapper">
+              <button
+                className="invite-menu-trigger"
+                title="Child options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenChildMenuId(openChildMenuId === child.student_id ? null : child.student_id);
+                }}
+              >
+                ···
+              </button>
+              {openChildMenuId === child.student_id && (
+                <div className="invite-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="invite-menu-item"
+                    onClick={() => {
+                      setOpenChildMenuId(null);
+                      setEditingChild(child);
+                      setEditName(child.full_name);
+                      setEditGrade(child.grade_level != null ? String(child.grade_level) : '');
+                      setEditSchool(child.school_name || '');
+                    }}
+                  >
+                    Edit Child
+                  </button>
+                  {child.invite_status === 'pending' && child.invite_id && (
+                    <>
+                      <button
+                        className="invite-menu-item"
+                        disabled={resendingInviteId === child.invite_id}
+                        onClick={async () => {
+                          setResendingInviteId(child.invite_id);
+                          setResendSuccess(null);
+                          try {
+                            await invitesApi.resend(child.invite_id!);
+                            setResendSuccess(child.invite_id);
+                            setTimeout(() => setResendSuccess(null), 3000);
+                          } catch {
+                            /* rate limit or other error — silently handled */
+                          } finally {
+                            setResendingInviteId(null);
+                          }
+                        }}
+                      >
+                        {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? '✓ Sent!' : 'Resend Invite'}
+                      </button>
+                      <button
+                        className="invite-menu-item"
+                        onClick={async () => {
+                          const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
+                          await navigator.clipboard.writeText(link);
+                          setCopiedInviteId(child.invite_id);
+                          setOpenChildMenuId(null);
+                          setTimeout(() => setCopiedInviteId(null), 2000);
+                        }}
+                      >
+                        {copiedInviteId === child.invite_id ? '✓ Copied!' : 'Copy Invite Link'}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className="invite-menu-item invite-menu-item--danger"
+                    onClick={async () => {
+                      setOpenChildMenuId(null);
+                      const ok = await confirm({
+                        title: 'Remove Child',
+                        message: `Are you sure you want to remove ${child.full_name}? This will unlink them from your account but won't delete their account.`,
+                        confirmLabel: 'Remove',
+                        variant: 'danger',
+                      });
+                      if (!ok) return;
+                      try {
+                        await parentApi.removeChild(child.student_id);
+                        toast(`${child.full_name} has been removed`, 'success');
+                        setChildren(prev => prev.filter(c => c.student_id !== child.student_id));
+                        if (selectedChild === child.student_id) setSelectedChild(null);
+                      } catch {
+                        toast('Failed to remove child', 'error');
+                      }
+                    }}
+                  >
+                    Remove Child
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
         <AddActionButton actions={[
@@ -1408,6 +1453,52 @@ export function MyKidsPage() {
       )}
       {/* Add Child Modal */}
       {showAddChildModal && renderAddChildModal()}
+      {/* Edit Child Modal */}
+      {editingChild && (
+        <div className="modal-overlay" onClick={() => { setEditingChild(null); setEditError(''); }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h2>Edit Child</h2>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 24px' }}>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>Name
+                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginTop: 4, fontSize: 14, fontFamily: 'inherit' }} />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>Grade
+                <input type="number" value={editGrade} onChange={e => setEditGrade(e.target.value)} placeholder="e.g. 10" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginTop: 4, fontSize: 14, fontFamily: 'inherit' }} />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>School
+                <input type="text" value={editSchool} onChange={e => setEditSchool(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginTop: 4, fontSize: 14, fontFamily: 'inherit' }} />
+              </label>
+              {editError && <p style={{ color: 'var(--color-danger)', fontSize: 13, margin: 0 }}>{editError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => { setEditingChild(null); setEditError(''); }}>Cancel</button>
+              <button className="generate-btn" disabled={editLoading || !editName.trim()} onClick={async () => {
+                setEditLoading(true);
+                setEditError('');
+                try {
+                  const payload: Record<string, unknown> = {};
+                  if (editName.trim() !== editingChild.full_name) payload.full_name = editName.trim();
+                  const newGrade = editGrade ? parseInt(editGrade, 10) : null;
+                  if (newGrade !== editingChild.grade_level) payload.grade_level = newGrade ?? undefined;
+                  if (editSchool.trim() !== (editingChild.school_name || '')) payload.school_name = editSchool.trim() || undefined;
+                  if (Object.keys(payload).length > 0) {
+                    await parentApi.updateChild(editingChild.student_id, payload as any);
+                  }
+                  setEditingChild(null);
+                  // Refresh children
+                  const kids = await parentApi.getChildren();
+                  setChildren(kids);
+                  toast('Child updated', 'success');
+                } catch (err: any) {
+                  setEditError(err.response?.data?.detail || 'Failed to update');
+                } finally {
+                  setEditLoading(false);
+                }
+              }}>{editLoading ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmModal}
     </DashboardLayout>
   );
