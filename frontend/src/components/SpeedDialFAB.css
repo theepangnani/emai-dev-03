@@ -124,8 +124,8 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
-  padding: 10px;
-  box-sizing: border-box;
+  padding: 13px;
+  box-sizing: content-box;
 }
 
 .speed-dial-action:hover .speed-dial-chat-icon {
@@ -216,7 +216,7 @@
   .speed-dial-chat-icon {
     width: 40px;
     height: 40px;
-    padding: 8px;
+    padding: 11px;
   }
 
   .speed-dial-action--notes > svg {
