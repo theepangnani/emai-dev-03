@@ -84,6 +84,15 @@
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
+.searchable-select__create-action--prominent {
+  background: #eef0ff;
+  padding: 12px 14px;
+  font-size: 0.95rem;
 }
 
 .searchable-select__create-action:hover {
@@ -284,6 +293,10 @@
 }
 
 [data-theme="dark"] .searchable-select__create-action:hover {
+  background: #2a2a4e;
+}
+
+[data-theme="dark"] .searchable-select__create-action--prominent {
   background: #2a2a4e;
 }
 

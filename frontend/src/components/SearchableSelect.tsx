@@ -135,7 +135,7 @@ export function SearchableSelect({
           {createAction && (
             <button
               type="button"
-              className="searchable-select__create-action"
+              className={`searchable-select__create-action${!loading && options.length === 0 && query ? ' searchable-select__create-action--prominent' : ''}`}
               onClick={() => { setIsOpen(false); createAction.onClick(); }}
             >
               {createAction.label}
