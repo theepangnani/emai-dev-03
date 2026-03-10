@@ -57,19 +57,36 @@ function normalizeContent(content: string) {
     .trim();
 }
 
-/** Replace {{IMG-N}} markers with real API image URLs. */
+/** Replace {{IMG-N}} markers AND relative markdown image refs with real API image URLs. */
 function resolveImageMarkers(
   content: string,
   courseContentId: number,
   images: ContentImage[],
 ): string {
   const sorted = [...images].sort((a, b) => a.position_index - b.position_index);
-  return content.replace(/\{\{IMG-(\d+)\}\}/g, (_match, n) => {
+
+  // 1. Replace {{IMG-N}} markers
+  let result = content.replace(/\{\{IMG-(\d+)\}\}/g, (_match, n) => {
     const idx = parseInt(n, 10) - 1; // IMG-1 → index 0
     const img = sorted[idx];
     if (!img) return _match; // leave unresolved marker as-is
     return `/api/course-contents/${courseContentId}/images/${img.id}`;
   });
+
+  // 2. Replace relative/broken markdown image refs like ![alt](filename)
+  //    where the URL doesn't start with http or /api/
+  let imageIndex = 0;
+  result = result.replace(
+    /!\[([^\]]*)\]\((?!https?:\/\/)(?!\/api\/)([^)]+)\)/g,
+    (match, alt) => {
+      const img = sorted[imageIndex];
+      if (!img) return match;
+      imageIndex++;
+      return `![${alt}](/api/course-contents/${courseContentId}/images/${img.id})`;
+    },
+  );
+
+  return result;
 }
 
 const loadMarkdown = () =>
