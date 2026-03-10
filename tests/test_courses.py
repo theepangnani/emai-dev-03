@@ -548,3 +548,115 @@ class TestInviteAcceptWithCourse:
         # Verify auto-assigned
         db_session.refresh(course)
         assert course.teacher_id is not None
+
+
+# ── Enrollment Approval ─────────────────────────────────────
+
+class TestEnrollmentApproval:
+    """Tests for the enrollment approval system."""
+
+    def _create_approval_course(self, client, users, db_session):
+        """Helper: create a course with require_approval=True."""
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/courses/", json={
+            "name": "Approval Course",
+            "require_approval": True,
+        }, headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["require_approval"] is True
+        return data
+
+    def test_create_course_with_require_approval(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        assert course["require_approval"] is True
+
+    def test_enroll_creates_pending_request(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        # Unenroll student from default test course first (student is already enrolled in test course)
+        student_headers = _auth(client, users["student"].email)
+        resp = client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "pending"
+
+    def test_duplicate_pending_request_rejected(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        student_headers = _auth(client, users["student"].email)
+        client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+        # Try again
+        resp = client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+        assert resp.status_code == 400
+        assert "already pending" in resp.json()["detail"]
+
+    def test_enrollment_status_pending(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        student_headers = _auth(client, users["student"].email)
+        client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+        resp = client.get(f"/api/courses/{course['id']}/enrollment-status", headers=student_headers)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "pending"
+
+    def test_list_enrollment_requests(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        student_headers = _auth(client, users["student"].email)
+        client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+        teacher_headers = _auth(client, users["teacher"].email)
+        resp = client.get(f"/api/courses/{course['id']}/enrollment-requests", headers=teacher_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) >= 1
+        assert data[0]["status"] == "pending"
+        assert data[0]["student_name"] == "Course Student"
+
+    def test_approve_enrollment_request(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        student_headers = _auth(client, users["student"].email)
+        client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+
+        teacher_headers = _auth(client, users["teacher"].email)
+        reqs = client.get(f"/api/courses/{course['id']}/enrollment-requests", headers=teacher_headers).json()
+        req_id = reqs[0]["id"]
+
+        resp = client.patch(f"/api/courses/{course['id']}/enrollment-requests/{req_id}",
+                           json={"status": "approved"}, headers=teacher_headers)
+        assert resp.status_code == 200
+
+        # Student should now be enrolled
+        status_resp = client.get(f"/api/courses/{course['id']}/enrollment-status", headers=student_headers)
+        assert status_resp.json()["status"] == "enrolled"
+
+    def test_reject_enrollment_request(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        student_headers = _auth(client, users["student"].email)
+        client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+
+        teacher_headers = _auth(client, users["teacher"].email)
+        reqs = client.get(f"/api/courses/{course['id']}/enrollment-requests", headers=teacher_headers).json()
+        req_id = reqs[0]["id"]
+
+        resp = client.patch(f"/api/courses/{course['id']}/enrollment-requests/{req_id}",
+                           json={"status": "rejected"}, headers=teacher_headers)
+        assert resp.status_code == 200
+
+        # Student should not be enrolled
+        status_resp = client.get(f"/api/courses/{course['id']}/enrollment-status", headers=student_headers)
+        assert status_resp.json()["status"] == "none"
+
+    def test_non_approval_course_enrolls_directly(self, client, users, db_session):
+        """Courses without require_approval should still enroll directly."""
+        teacher_headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/courses/", json={"name": "Direct Enroll Course"}, headers=teacher_headers)
+        course = resp.json()
+        assert course["require_approval"] is False
+
+        student_headers = _auth(client, users["student"].email)
+        resp = client.post(f"/api/courses/{course['id']}/enroll", headers=student_headers)
+        assert resp.status_code == 200
+        assert "status" not in resp.json() or resp.json().get("status") != "pending"
+
+    def test_non_manager_cannot_list_requests(self, client, users, db_session):
+        course = self._create_approval_course(client, users, db_session)
+        outsider_headers = _auth(client, users["outsider"].email)
+        resp = client.get(f"/api/courses/{course['id']}/enrollment-requests", headers=outsider_headers)
+        assert resp.status_code == 403

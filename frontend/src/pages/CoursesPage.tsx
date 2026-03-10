@@ -34,6 +34,7 @@ interface CourseItem {
   teacher_name?: string | null;
   teacher_id?: number | null;
   is_private?: boolean;
+  require_approval?: boolean;
 }
 
 type SyncState = 'idle' | 'syncing' | 'done' | 'error';
@@ -72,6 +73,7 @@ export function CoursesPage() {
     return tab === 'browse' ? 'browse' : 'enrolled';
   });
   const [enrollingId, setEnrollingId] = useState<number | null>(null);
+  const [pendingCourseIds, setPendingCourseIds] = useState<Set<number>>(new Set());
     const [classroomTypeFilter, setClassroomTypeFilter] = useState("");
 
   // Browse search filters (server-side)
@@ -106,6 +108,7 @@ export function CoursesPage() {
   const [courseName, setCourseName] = useState('');
   const [courseSubject, setCourseSubject] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
+  const [courseRequireApproval, setCourseRequireApproval] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<SearchableOption | null>(null);
@@ -128,6 +131,7 @@ export function CoursesPage() {
   const [editCourseName, setEditCourseName] = useState('');
   const [editCourseSubject, setEditCourseSubject] = useState('');
   const [editCourseDescription, setEditCourseDescription] = useState('');
+  const [editCourseRequireApproval, setEditCourseRequireApproval] = useState(false);
   const [editCourseLoading, setEditCourseLoading] = useState(false);
   const [editCourseError, setEditCourseError] = useState('');
 
@@ -182,6 +186,15 @@ export function CoursesPage() {
         if (browseTeacher.trim()) params.teacher_name = browseTeacher.trim();
         const results = await coursesApi.browse(params);
         setAvailableCourses(results);
+        // Check pending status for require_approval courses
+        const approvalCourses = results.filter((c: CourseItem) => c.require_approval);
+        if (approvalCourses.length > 0) {
+          const statuses = await Promise.all(
+            approvalCourses.map((c: CourseItem) => coursesApi.enrollmentStatus(c.id).then((s: { status: string }) => ({ id: c.id, ...s })).catch(() => ({ id: c.id, status: 'none' })))
+          );
+          const pending = new Set<number>(statuses.filter((s: { id: number; status: string }) => s.status === 'pending').map((s: { id: number; status: string }) => s.id));
+          setPendingCourseIds(pending);
+        }
       } catch {
         // Fall back silently; user can retry
       } finally {
@@ -335,6 +348,7 @@ export function CoursesPage() {
         subject: courseSubject.trim() || undefined,
         description: courseDescription.trim() || undefined,
         student_ids: selectedStudents.map(s => s.id),
+        require_approval: courseRequireApproval,
       };
       if (selectedTeacher) {
         data.teacher_id = selectedTeacher.id;
@@ -366,6 +380,7 @@ export function CoursesPage() {
     setCourseName('');
     setCourseSubject('');
     setCourseDescription('');
+    setCourseRequireApproval(false);
     setCreateError('');
     setSelectedTeacher(null);
     setSelectedStudents([]);
@@ -435,12 +450,17 @@ export function CoursesPage() {
   const handleEnroll = async (courseId: number) => {
     setEnrollingId(courseId);
     try {
-      await coursesApi.enroll(courseId);
-      // Move course from available to enrolled
-      const course = availableCourses.find(c => c.id === courseId);
-      if (course) {
-        setEnrolledCourses(prev => [...prev, course]);
-        setAvailableCourses(prev => prev.filter(c => c.id !== courseId));
+      const result = await coursesApi.enroll(courseId);
+      if (result.status === 'pending') {
+        // Approval required — mark as pending
+        setPendingCourseIds(prev => new Set([...prev, courseId]));
+      } else {
+        // Direct enrollment
+        const course = availableCourses.find(c => c.id === courseId);
+        if (course) {
+          setEnrolledCourses(prev => [...prev, course]);
+          setAvailableCourses(prev => prev.filter(c => c.id !== courseId));
+        }
       }
     } catch (err: any) {
       setActionError(err.response?.data?.detail || 'Failed to enroll');
@@ -478,6 +498,7 @@ export function CoursesPage() {
     setEditCourseName(course.name);
     setEditCourseSubject(course.subject || '');
     setEditCourseDescription(course.description || '');
+    setEditCourseRequireApproval(course.require_approval || false);
     setEditCourseError('');
   };
 
@@ -495,6 +516,7 @@ export function CoursesPage() {
         name: editCourseName.trim(),
         subject: editCourseSubject.trim() || undefined,
         description: editCourseDescription.trim() || undefined,
+        require_approval: editCourseRequireApproval,
       });
       closeEditCourse();
       loadData();
@@ -982,11 +1004,11 @@ export function CoursesPage() {
                           </div>
                         </div>
                         <button
-                          className="courses-btn primary btn-primary btn-sm"
+                          className={`courses-btn primary btn-primary btn-sm${pendingCourseIds.has(course.id) ? ' btn-pending' : ''}`}
                           onClick={() => handleEnroll(course.id)}
-                          disabled={enrollingId === course.id}
+                          disabled={enrollingId === course.id || pendingCourseIds.has(course.id)}
                         >
-                          {enrollingId === course.id ? (<><span className="btn-spinner" /> Enrolling...</>) : 'Enroll'}
+                          {pendingCourseIds.has(course.id) ? 'Pending Approval' : enrollingId === course.id ? (<><span className="btn-spinner" /> Enrolling...</>) : course.require_approval ? 'Request to Join' : 'Enroll'}
                         </button>
                       </div>
                     ))}
@@ -1162,6 +1184,10 @@ export function CoursesPage() {
                 disabled={createLoading}
               />
 
+              <label className="toggle-label">
+                <input type="checkbox" checked={courseRequireApproval} onChange={(e) => setCourseRequireApproval(e.target.checked)} disabled={createLoading} />
+                Require approval to join
+              </label>
               {createError && <p className="link-error">{createError}</p>}
             </div>
             <div className="modal-actions">
@@ -1237,6 +1263,10 @@ export function CoursesPage() {
               <label>
                 Description
                 <textarea value={editCourseDescription} onChange={(e) => setEditCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={editCourseLoading} />
+              </label>
+              <label className="toggle-label">
+                <input type="checkbox" checked={editCourseRequireApproval} onChange={(e) => setEditCourseRequireApproval(e.target.checked)} disabled={editCourseLoading} />
+                Require approval to join
               </label>
               {editCourseError && <p className="link-error">{editCourseError}</p>}
             </div>

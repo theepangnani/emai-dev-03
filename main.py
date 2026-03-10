@@ -34,7 +34,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
@@ -186,6 +186,9 @@ with engine.connect() as conn:
         if "is_private" not in existing_cols:
             conn.execute(text("ALTER TABLE courses ADD COLUMN is_private BOOLEAN NOT NULL DEFAULT FALSE"))
             logger.info("Added 'is_private' column to courses")
+        if "require_approval" not in existing_cols:
+            conn.execute(text("ALTER TABLE courses ADD COLUMN require_approval BOOLEAN NOT NULL DEFAULT FALSE"))
+            logger.info("Added 'require_approval' column to courses")
         conn.commit()
     if "tasks" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
