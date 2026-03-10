@@ -32,7 +32,7 @@
   font-size: 11px;
   font-weight: 400;
   color: var(--color-ink-muted);
-  margin-top: -2px;
+  margin-top: 2px;
 }
 .pd-child-tab.active .child-tab-detail {
   color: rgba(255, 255, 255, 0.75);
@@ -384,6 +384,7 @@
 .child-tab-wrapper .pd-child-tab {
   width: 100%;
   box-sizing: border-box;
+  flex-wrap: wrap;
 }
 .invite-status-badge {
   font-size: 10px;
