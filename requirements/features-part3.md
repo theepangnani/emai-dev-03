@@ -2649,4 +2649,91 @@ Help page sections explaining each Responsible AI parent tool with usage guidanc
 - Explains responsible AI principles and how each tool helps parents without enabling shortcuts
 - Integrated into existing Help page article system
 
+### 6.84 Chat FAB Icon and Study Guide UI Polish (Phase 2) - IMPLEMENTED
+
+Iterative refinement of the Chat FAB sub-icon appearance and study guide UI elements.
+
+**GitHub:** #1615 (PRs #1499, #1503, #1505, #1515, #1529–#1537)
+
+**Implementation:**
+- Study guide UI: title icon, wider container, focus prompt for regeneration
+- Chat FAB: evolved from outline icon → filled icon → CB logo → rounded rectangle FAB
+- Final state: v7.1 logo icon in rounded rectangle, 512px resolution, object-fit cover
+- Header logo updated to v6.1 transparent background with proportional sizing
+- Create Study Guide added to course material context menu
+
+### 6.85 Upload Wizard Class Selection Fix (Phase 2) - IMPLEMENTED
+
+Fixed upload material wizard losing class selection and resetting on prop changes.
+
+**GitHub:** #1616 (PRs #1501, #1540, #1543, #1544)
+
+**Implementation:**
+- Prevent wizard from resetting when parent component re-renders on step 2
+- Class selection now persists and is applied to uploaded material
+- Class selector always visible and mandatory
+- Test mocks updated for coursesApi
+
+### 6.86 Collapsible Dashboard Panels and Simplified View (Phase 2) - IMPLEMENTED
+
+Dashboard panels (Tasks Overview, Recent Activity) are collapsible; simplified view collapses them by default.
+
+**GitHub:** #1617 (PRs #1507, #1509, #1511, #1512, #1514, #1542, #1559)
+
+**Implementation:**
+- Tasks Overview and Recent Activity panels have collapsible headers
+- Simplified view mode: both panels collapsed by default, expandable on demand
+- Activities limited to 5 items with "View All" link
+- Child cards on My Kids page: uniform size, three-dots menu (Edit/Remove)
+- Student dashboard: collapsible panels, updated quick actions, calendar on tasks page
+- Existing users force-reset to simplified view mode
+
+### 6.87 Parent Activity Feed Filtering (Phase 2) - IMPLEMENTED
+
+Parent Recent Activity filtered to show only study guides and messages.
+
+**GitHub:** #1618 (PRs #1516)
+
+**Implementation:**
+- `GET /api/activity/recent` filters to study_guide and message types for parents
+- Empty Recent Activity section hidden in simplified view
+- Child filter properly excludes unrelated children's activity
+
+### 6.88 Create Class Wizard Polish (Phase 2) - IMPLEMENTED
+
+Refined the Create Class wizard UX with multi-step flow and improved component interactions.
+
+**GitHub:** #1619 (PRs #1578, #1580, #1583, #1585, #1587, #1589)
+
+**Implementation:**
+- Parent Create Class: 3-step wizard (class details → teacher → students)
+- Ported redesigned modal to CoursesPage
+- SearchableSelect: sticky "Create New" action at top of dropdown
+- Wizard modal: removed unnecessary scrollbars, added min-height to teacher step
+- Step 3: inline Add Child form, then replaced with full Add Child modal
+- Child selection: replaced checkboxes with MultiSearchableSelect
+
+### 6.89 Dashboard Quick Actions Reorganization (Phase 2) - IMPLEMENTED
+
+Reorganized and expanded quick action buttons on parent/student dashboards.
+
+**GitHub:** #1620 (PRs #1590, #1567, #1595)
+
+**Implementation:**
+- Added: Quiz History, Add Child, Export Data, Reset Password, Create Class
+- Removed: duplicate Upload Material, Add Action (+) button from child selector
+- Reordered actions for better discoverability
+- Task count badge on Tasks Overview panel header
+
+### 6.90 MyKidsPage Final Polish (Phase 2) - IMPLEMENTED
+
+Final polish for the redesigned My Kids page layout and navigation.
+
+**GitHub:** #1622 (PRs #1612, #1613, #1614)
+
+**Implementation:**
+- School name displayed below student name in child selector tabs
+- View button navigates to course material detail page (not list)
+- Panel headers use shared SectionPanel component for consistency
+
 ---
