@@ -211,7 +211,7 @@ If the content is conceptual/reading material (no problems to solve), then:
 4. **Practice Questions** - 3-5 questions to test understanding
 5. **Resources** - Suggested areas to review
 
-Format the response in Markdown for easy reading. For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations (e.g., $\\frac{a}{b}$, $x^2$, $\\sqrt{n}$).
+Format the response in Markdown for easy reading. For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations (e.g., $\\frac{{a}}{{b}}$, $x^2$, $\\sqrt{{n}}$).
 
 IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions), include a section at the very end of your response in this exact format:
 --- CRITICAL_DATES ---
