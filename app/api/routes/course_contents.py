@@ -286,6 +286,22 @@ def _run_ai_generation_background(
                 except Exception:
                     pass
 
+            # Fetch image metadata for prompt enrichment
+            images_metadata = []
+            content_images = (
+                db.query(ContentImage)
+                .filter(ContentImage.course_content_id == content_id)
+                .order_by(ContentImage.position_index)
+                .all()
+            )
+            for img in content_images:
+                images_metadata.append({
+                    "id": img.id,
+                    "description": img.description or "",
+                    "position_context": img.position_context or "",
+                    "position_index": img.position_index,
+                })
+
             if ai_tool == "study_guide":
                 raw_content = await generate_study_guide(
                     assignment_title=title,
@@ -293,6 +309,7 @@ def _run_ai_generation_background(
                     course_name=course_name,
                     custom_prompt=ai_custom_prompt or None,
                     interests=_interests,
+                    images=images_metadata or None,
                 )
                 guide = StudyGuide(
                     user_id=user_id,
@@ -310,6 +327,7 @@ def _run_ai_generation_background(
                     content=text_content,
                     num_questions=5,
                     interests=_interests,
+                    images=images_metadata or None,
                 )
                 guide = StudyGuide(
                     user_id=user_id,
@@ -327,6 +345,7 @@ def _run_ai_generation_background(
                     content=text_content,
                     num_cards=10,
                     interests=_interests,
+                    images=images_metadata or None,
                 )
                 guide = StudyGuide(
                     user_id=user_id,
