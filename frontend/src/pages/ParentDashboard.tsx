@@ -8,7 +8,6 @@ import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
 import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
-import { AddActionButton } from '../components/AddActionButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { useFeature } from '../hooks/useFeatureToggle';
@@ -324,9 +323,6 @@ export function ParentDashboard() {
                   </button>
                 );
               })}
-              <AddActionButton actions={[
-                { icon: '\u2705', label: 'New Task', onClick: () => pd.setShowCreateTaskModal(true) },
-              ]} />
             </div>
           </div>
 
