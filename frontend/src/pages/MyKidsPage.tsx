@@ -10,13 +10,8 @@ import { PageSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import { useToast } from '../components/Toast';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
-import { ComingUpTimeline } from '../components/parent/ComingUpTimeline';
-import { CollapsibleSection } from '../components/parent/CollapsibleSection';
-import type { CalendarAssignment } from '../components/calendar/types';
-import { getCourseColor, TASK_PRIORITY_COLORS } from '../components/calendar/types';
 import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
-import { DailyBriefingCard } from '../components/briefing/DailyBriefingCard';
 import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import './MyKidsPage.css';
 import './DashboardGrid.css';
@@ -55,18 +50,12 @@ export function MyKidsPage() {
   const [loading, setLoading] = useState(true);
   const [sectionLoading, setSectionLoading] = useState(false);
 
-  // Coming Up data (all-children view)
-  const [allOverviews, setAllOverviews] = useState<ChildOverview[]>([]);
-  const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
-  const [showComingUp, setShowComingUp] = useState(false);
 
   // Collapsible sections
   const [showCourses, setShowCourses] = useState(false);
   const [showGrades, setShowGrades] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
-  const [showTasks, setShowTasks] = useState(false);
   const [showTeachers, setShowTeachers] = useState(false);
-  const [showBriefing, setShowBriefing] = useState(false);
   const [showConversation, setShowConversation] = useState(false);
 
   // Reassign class material to course
@@ -184,12 +173,9 @@ export function MyKidsPage() {
         Promise.all([
           coursesApi.list(),
           courseContentsApi.listAll(),
-          tasksApi.list(),
           ...children.map(c => parentApi.getChildOverview(c.student_id)),
-        ]).then(([courseList, mats, allTaskList, ...overviews]) => {
+        ]).then(([courseList, mats, ...overviews]) => {
           const typedOverviews = overviews as ChildOverview[];
-          setAllOverviews(typedOverviews);
-          setAllTasks((allTaskList as TaskItem[]).filter(t => !t.archived_at));
           const enrolled = new Set<number>();
           typedOverviews.forEach(ov => {
             ov.courses.forEach(c => enrolled.add(c.id));
@@ -202,8 +188,6 @@ export function MyKidsPage() {
         }).catch(() => {
           setUnassignedCourses([]);
           setUnassignedMaterials([]);
-          setAllOverviews([]);
-          setAllTasks([]);
         }).finally(() => setSectionLoading(false));
       }
       return;
@@ -260,60 +244,6 @@ export function MyKidsPage() {
     return { totalTasks, completed, completionPct, nextDeadline };
   }, [selectedChild, tasks]);
 
-  const activeTasks = tasks.filter(t => !t.is_completed);
-  const completedTasks = tasks.filter(t => t.is_completed);
-
-  // Build calendarAssignments for ComingUpTimeline
-  const calendarAssignments: CalendarAssignment[] = useMemo(() => {
-    const activeOverviews = selectedChild && overview ? [overview] : allOverviews;
-    const activeTks = selectedChild ? tasks : allTasks;
-    const courseIds = activeOverviews.flatMap(o => o.courses.map(c => c.id));
-
-    const assignments = activeOverviews.flatMap(ov =>
-      ov.assignments
-        .filter(a => a.due_date)
-        .map(a => ({
-          id: a.id,
-          title: a.title,
-          description: a.description,
-          courseId: a.course_id,
-          courseName: ov.courses.find(c => c.id === a.course_id)?.name || 'Unknown',
-          courseColor: getCourseColor(a.course_id, courseIds),
-          dueDate: new Date(a.due_date!),
-          childName: children.length > 1 ? ov.full_name : '',
-          maxPoints: a.max_points,
-          itemType: 'assignment' as const,
-        }))
-    );
-
-    const taskItems: CalendarAssignment[] = activeTks
-      .filter(t => !t.archived_at && t.due_date)
-      .map(t => ({
-        id: t.id + 1_000_000,
-        taskId: t.id,
-        title: t.title,
-        description: t.description,
-        courseId: 0,
-        courseName: '',
-        courseColor: TASK_PRIORITY_COLORS[t.priority || 'medium'],
-        dueDate: new Date(t.due_date!),
-        childName: t.assignee_name || '',
-        maxPoints: null,
-        itemType: 'task' as const,
-        priority: (t.priority || 'medium') as 'low' | 'medium' | 'high',
-        isCompleted: t.is_completed,
-      }));
-
-    return [...assignments, ...taskItems];
-  }, [selectedChild, overview, allOverviews, tasks, allTasks, children.length]);
-
-  const handleNavigateStudy = (assignment: CalendarAssignment) => {
-    if (assignment.itemType === 'task') {
-      navigate(`/tasks/${assignment.taskId ?? assignment.id}`);
-    } else {
-      navigate(`/study-guides?assignment_id=${assignment.id}`);
-    }
-  };
 
   const sidebarActions = [
     { label: '+ Course Material', icon: '\u{1F4C4}', onClick: () => navigate('/course-materials') },
@@ -893,7 +823,7 @@ export function MyKidsPage() {
       ) : sectionLoading ? (
         <PageSkeleton />
       ) : (
-        <div className="mykids-sections">
+        <>
           {/* ── Progress Summary ──────────────────── */}
           {selectedTaskStats && selectedTaskStats.totalTasks > 0 && (() => {
             const childIndex = children.findIndex(c => c.student_id === selectedChild);
@@ -920,6 +850,27 @@ export function MyKidsPage() {
             );
           })()}
 
+          {/* ── Quick Actions ──────────────────────── */}
+          <div className="dash-quick-actions" style={{ marginBottom: 16 }}>
+            <button className="dash-quick-action" onClick={() => navigate('/study-tools')}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#128228;</span>
+              <span>Upload Material</span>
+            </button>
+            <button className="dash-quick-action" onClick={() => navigate(selectedChild ? `/tasks?student_id=${selectedChild}` : '/tasks')}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#9989;</span>
+              <span>View Tasks</span>
+            </button>
+            <button className="dash-quick-action" onClick={() => navigate('/courses')}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#128218;</span>
+              <span>View Classes</span>
+            </button>
+            <button className="dash-quick-action" onClick={() => navigate('/ai-tools')}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#128161;</span>
+              <span>Help My Kid</span>
+            </button>
+          </div>
+
+          <div className="dashboard-redesign">
           {/* ── Class Materials ───────────────────── */}
           <div className="dash-section">
             <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showMaterials} onClick={() => setShowMaterials(p => !p)}>
@@ -947,6 +898,20 @@ export function MyKidsPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* ── Grades ────────────────────────────── */}
+          <div className="dash-section">
+            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showGrades} onClick={() => setShowGrades(p => !p)}>
+              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128202;</span> Grades</span>
+              <span className={`dash-section-chevron${!showGrades ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
+            </button>
+            {showGrades && (
+              <GradesSummaryCard
+                selectedChildId={selectedChild ?? undefined}
+                onViewDetails={() => navigate('/grades')}
+              />
             )}
           </div>
 
@@ -980,82 +945,6 @@ export function MyKidsPage() {
             )}
           </div>
 
-          {/* ── Coming Up Timeline (#1221) ─────────── */}
-          {calendarAssignments.length > 0 && (
-            <CollapsibleSection
-              title="Coming Up"
-              expanded={showComingUp}
-              onToggle={() => setShowComingUp(p => !p)}
-            >
-              <ComingUpTimeline
-                calendarAssignments={calendarAssignments}
-                selectedChild={selectedChild}
-                onNavigateStudy={handleNavigateStudy}
-              />
-            </CollapsibleSection>
-          )}
-
-          {/* ── Tasks ─────────────────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showTasks} onClick={() => setShowTasks(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9989;</span> Tasks <span className="mykids-count-badge">{activeTasks.length} active{completedTasks.length > 0 ? `, ${completedTasks.length} done` : ''}</span></span>
-              <span className={`dash-section-chevron${!showTasks ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showTasks && (
-              <div className="mykids-task-list">
-                {activeTasks.length === 0 && completedTasks.length === 0 ? (
-                  <p className="dash-empty-hint">No tasks assigned.</p>
-                ) : (
-                  <>
-                    {activeTasks.map(t => (
-                      <div key={t.id} className="mykids-task-row" onClick={() => navigate(`/tasks/${t.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/tasks/${t.id}`))} role="button" tabIndex={0}>
-                        <span className={`task-priority-badge ${t.priority || 'medium'}`} aria-label={`Priority: ${t.priority || 'medium'}`}>{(t.priority || 'medium') === 'high' ? '\u25B2 ' : (t.priority || 'medium') === 'low' ? '\u25BC ' : '\u25CF '}{t.priority || 'medium'}</span>
-                        <span className="mykids-task-title">{t.title}</span>
-                        {t.due_date && (
-                          <span className="mykids-task-due">
-                            {new Date(t.due_date).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                    {completedTasks.length > 0 && (
-                      <div className="mykids-completed-count">
-                        + {completedTasks.length} completed
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Grades ────────────────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showGrades} onClick={() => setShowGrades(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128202;</span> Grades</span>
-              <span className={`dash-section-chevron${!showGrades ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showGrades && (
-              <GradesSummaryCard
-                selectedChildId={selectedChild ?? undefined}
-                onViewDetails={() => navigate('/grades')}
-              />
-            )}
-          </div>
-
-          {/* ── Daily Briefing ──────────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showBriefing} onClick={() => setShowBriefing(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128240;</span> Daily Briefing</span>
-              <span className={`dash-section-chevron${!showBriefing ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showBriefing && (
-              <div className="dash-section-body">
-                <DailyBriefingCard />
-              </div>
-            )}
-          </div>
-
           {/* ── Dinner Table Talk ──────────────────── */}
           <div className="dash-section">
             <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showConversation} onClick={() => setShowConversation(p => !p)}>
@@ -1069,24 +958,8 @@ export function MyKidsPage() {
             )}
           </div>
 
-          {/* ── Quick Actions ──────────────────────── */}
-          <div className="dash-quick-actions">
-            <button className="dash-quick-action" onClick={() => navigate('/parent-briefing-notes')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128240;</span>
-              <span>Briefings</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/ai-tools')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#129302;</span>
-              <span>AI Tools</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/readiness-check')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#9989;</span>
-              <span>Readiness</span>
-            </button>
-          </div>
-
           {/* ── Linked Teachers ────────────────────── */}
-          <div className="dash-section">
+          <div className="dash-section dash-section--full">
             <div className="dash-section-header dash-section-header--collapsible" aria-expanded={showTeachers} onClick={() => setShowTeachers(p => !p)} role="button" tabIndex={0}>
               <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128105;&#8205;&#127979;</span> Teachers <span className="mykids-count-badge">{(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length}</span></span>
               <div className="dash-section-header-right">
@@ -1100,7 +973,7 @@ export function MyKidsPage() {
               </div>
             </div>
             {showTeachers && (
-              <div className="mykids-task-list">
+              <div className="mykids-list">
                 {/* Teachers from courses */}
                 {overview?.courses.filter(c => c.teacher_name).map(c => (
                   <div key={`course-${c.id}`} className="mykids-teacher-row">
@@ -1154,6 +1027,7 @@ export function MyKidsPage() {
             )}
           </div>
         </div>
+        </>
       )}
       {/* Add Teacher Modal */}
       {showAddTeacher && selectedChild && (
