@@ -684,7 +684,7 @@ export function StudyPage() {
               <button
                 className="sd-gen-view-btn"
                 onClick={() => {
-                  navigate('/course-materials');
+                  navigate(studyTools.backgroundGeneration?.resultId ? `/course-materials/${studyTools.backgroundGeneration.resultId}` : '/course-materials');
                   studyTools.dismissBackgroundGeneration();
                 }}
               >
