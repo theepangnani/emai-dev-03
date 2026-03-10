@@ -118,6 +118,11 @@ export function CoursesPage() {
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardChildSelections, setWizardChildSelections] = useState<Record<number, boolean>>({});
+  const [showAddChildInline, setShowAddChildInline] = useState(false);
+  const [addChildName, setAddChildName] = useState('');
+  const [addChildEmail, setAddChildEmail] = useState('');
+  const [addChildError, setAddChildError] = useState('');
+  const [addChildLoading, setAddChildLoading] = useState(false);
 
   // Assign course modal (parent only)
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -402,6 +407,10 @@ export function CoursesPage() {
     setNewTeacherEmail('');
     setWizardStep(1);
     setWizardChildSelections({});
+    setShowAddChildInline(false);
+    setAddChildName('');
+    setAddChildEmail('');
+    setAddChildError('');
   };
 
   const handleAssignCourses = async () => {
@@ -1369,6 +1378,86 @@ export function CoursesPage() {
                       ))}
                     </div>
                   )}
+
+                  {!showAddChildInline ? (
+                    <button
+                      type="button"
+                      className="create-teacher-inline__cancel"
+                      style={{ marginTop: '8px', color: '#6366f1', fontWeight: 500, cursor: 'pointer' }}
+                      onClick={() => { setShowAddChildInline(true); setAddChildError(''); setAddChildName(''); setAddChildEmail(''); }}
+                      disabled={createLoading}
+                    >
+                      + Add Child
+                    </button>
+                  ) : (
+                    <div className="create-teacher-inline" style={{ marginTop: '8px' }}>
+                      <div className="create-teacher-inline__header">
+                        <h4>New Child</h4>
+                        <button type="button" className="create-teacher-inline__cancel" onClick={() => { setShowAddChildInline(false); setAddChildName(''); setAddChildEmail(''); setAddChildError(''); }}>
+                          Cancel
+                        </button>
+                      </div>
+                      <label>
+                        Name *
+                        <input
+                          type="text"
+                          value={addChildName}
+                          onChange={(e) => { setAddChildName(e.target.value); setAddChildError(''); }}
+                          placeholder="e.g. Alex Smith"
+                          disabled={addChildLoading}
+                        />
+                      </label>
+                      <label>
+                        Email (optional)
+                        <input
+                          type="email"
+                          value={addChildEmail}
+                          onChange={(e) => setAddChildEmail(e.target.value)}
+                          placeholder="child@example.com"
+                          disabled={addChildLoading}
+                        />
+                      </label>
+                      {addChildError && <p className="link-error">{addChildError}</p>}
+                      <button
+                        type="button"
+                        className="generate-btn"
+                        style={{ marginTop: '4px' }}
+                        disabled={addChildLoading || !addChildName.trim()}
+                        onClick={async () => {
+                          setAddChildLoading(true);
+                          setAddChildError('');
+                          try {
+                            await parentApi.createChild(addChildName.trim(), 'guardian', addChildEmail.trim() || undefined);
+                            const kids = await parentApi.getChildren();
+                            setChildren(kids);
+                            // Auto-check the newly added child
+                            const newSelections = { ...wizardChildSelections };
+                            kids.forEach(k => {
+                              if (!(k.student_id in newSelections)) {
+                                newSelections[k.student_id] = true;
+                              }
+                            });
+                            setWizardChildSelections(newSelections);
+                            const selected = kids
+                              .filter(c => newSelections[c.student_id] ?? true)
+                              .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
+                            setSelectedStudents(selected);
+                            setShowAddChildInline(false);
+                            setAddChildName('');
+                            setAddChildEmail('');
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : 'Failed to add child';
+                            setAddChildError(msg);
+                          } finally {
+                            setAddChildLoading(false);
+                          }
+                        }}
+                      >
+                        {addChildLoading ? 'Adding...' : 'Add'}
+                      </button>
+                    </div>
+                  )}
+
                   <label className="toggle-label" style={{ marginTop: '8px' }}>
                     <input type="checkbox" checked={courseRequireApproval} onChange={(e) => setCourseRequireApproval(e.target.checked)} disabled={createLoading} />
                     Require approval to join
