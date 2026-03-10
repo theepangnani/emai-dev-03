@@ -469,7 +469,7 @@ export function TasksPage() {
             {/* "All" button — shown when there are multiple children */}
             {children.length > 1 && (
               <button
-                className={`child-tab child-tab-all${filterAssignee === 'all' ? ' active' : ''}`}
+                className={`pd-child-tab pd-child-tab-all${filterAssignee === 'all' ? ' active' : ''}`}
                 onClick={() => { setFilterAssignee('all'); searchParams.delete('assignee'); setSearchParams(searchParams, { replace: true }); sessionStorage.removeItem('selectedChildId'); }}
                 title="All children"
               >
@@ -484,12 +484,12 @@ export function TasksPage() {
             {children.map((child, index) => (
               <button
                 key={child.user_id}
-                className={`child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
+                className={`pd-child-tab${filterAssignee === child.user_id ? ' active' : ''}`}
                 onClick={() => { setFilterAssignee(child.user_id); searchParams.set('assignee', String(child.user_id)); setSearchParams(searchParams, { replace: true }); sessionStorage.setItem('selectedChildId', String(child.user_id)); }}
               >
-                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                <span className="pd-child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}
-                {child.grade_level != null && <span className="grade-badge">Grade {child.grade_level}</span>}
+                {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
               </button>
             ))}
             <AddActionButton actions={[
@@ -776,37 +776,61 @@ export function TasksPage() {
                 <>
                   {overdue.length > 0 && (
                     <>
-                      <div className="task-group-header task-group-overdue">Overdue <span>{overdue.length}</span></div>
+                      <div className="task-group-header task-group-overdue">
+                        <span className="task-group-icon">{'\uD83D\uDD34'}</span>
+                        Overdue
+                        <span className="task-group-count">{overdue.length}</span>
+                      </div>
                       {overdue.map(renderTaskRow)}
                     </>
                   )}
                   {dueToday.length > 0 && (
                     <>
-                      <div className="task-group-header task-group-today">Due Today <span>{dueToday.length}</span></div>
+                      <div className="task-group-header task-group-today">
+                        <span className="task-group-icon">{'\u2600\uFE0F'}</span>
+                        Due Today
+                        <span className="task-group-count">{dueToday.length}</span>
+                      </div>
                       {dueToday.map(renderTaskRow)}
                     </>
                   )}
                   {thisWeek.length > 0 && (
                     <>
-                      <div className="task-group-header task-group-week">This Week <span>{thisWeek.length}</span></div>
+                      <div className="task-group-header task-group-week">
+                        <span className="task-group-icon">{'\uD83D\uDCC5'}</span>
+                        This Week
+                        <span className="task-group-count">{thisWeek.length}</span>
+                      </div>
                       {thisWeek.map(renderTaskRow)}
                     </>
                   )}
                   {later.length > 0 && (
                     <>
-                      <div className="task-group-header">Later <span>{later.length}</span></div>
+                      <div className="task-group-header task-group-later">
+                        <span className="task-group-icon">{'\uD83D\uDD52'}</span>
+                        Later
+                        <span className="task-group-count">{later.length}</span>
+                      </div>
                       {later.map(renderTaskRow)}
                     </>
                   )}
                   {completedGroup.length > 0 && (
                     <>
-                      <div className="task-group-header">Completed <span>{completedGroup.length}</span></div>
+                      <div className="task-group-header task-group-completed">
+                        <span className="task-group-icon">{'\u2705'}</span>
+                        Completed
+                        <span className="task-group-count">{completedGroup.length}</span>
+                      </div>
                       {completedGroup.map(renderTaskRow)}
                     </>
                   )}
                   {archivedGroup.length > 0 && (
                     <>
-                      <div className="task-group-header">Archived <span>{archivedGroup.length}</span></div>
+                      <div className="task-group-header task-group-archived">
+                        <span className="task-group-icon">{'\uD83D\uDCE6'}</span>
+                        Archived
+                        <span className="task-group-count">{archivedGroup.length}</span>
+                      </div>
                       {archivedGroup.map(renderTaskRow)}
                     </>
                   )}
