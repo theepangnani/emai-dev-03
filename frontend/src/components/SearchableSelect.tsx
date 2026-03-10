@@ -154,6 +154,8 @@ interface MultiSearchableSelectProps {
   onAdd: (option: SearchableOption) => void;
   onRemove: (id: number) => void;
   disabled?: boolean;
+  /** Show a "create new" action at the bottom of results */
+  createAction?: { label: string; onClick: () => void };
 }
 
 export function MultiSearchableSelect({
@@ -163,6 +165,7 @@ export function MultiSearchableSelect({
   onAdd,
   onRemove,
   disabled,
+  createAction,
 }: MultiSearchableSelectProps) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<SearchableOption[]>([]);
@@ -261,6 +264,15 @@ export function MultiSearchableSelect({
               {opt.sublabel && <span className="searchable-select__option-sublabel">{opt.sublabel}</span>}
             </button>
           ))}
+          {createAction && (
+            <button
+              type="button"
+              className={`searchable-select__create-action${!loading && filteredOptions.length === 0 && query ? ' searchable-select__create-action--prominent' : ''}`}
+              onClick={() => { setIsOpen(false); createAction.onClick(); }}
+            >
+              {createAction.label}
+            </button>
+          )}
         </div>
       )}
     </div>
