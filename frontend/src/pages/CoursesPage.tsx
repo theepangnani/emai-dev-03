@@ -1247,7 +1247,7 @@ export function CoursesPage() {
               ))}
             </div>
 
-            <div className="modal-form">
+            <div className="modal-form" style={{ overflow: 'visible' }}>
               {/* Step 1: Class Details */}
               {wizardStep === 1 && (
                 <>
@@ -1466,7 +1466,7 @@ export function CoursesPage() {
               ))}
             </div>
 
-            <div className="modal-form">
+            <div className="modal-form" style={{ overflow: 'visible' }}>
               {/* Step 1: Class Details */}
               {wizardStep === 1 && (
                 <>
