@@ -40,6 +40,9 @@ interface UploadMaterialWizardProps {
   onRegenerate?: () => void;
   onDismissDuplicate?: () => void;
   showParentNote?: boolean;
+  childName?: string;
+  children?: { id: number; name: string }[];
+  onChildChange?: (studentId: number) => void;
 }
 
 export default function UploadMaterialWizard({
@@ -57,6 +60,9 @@ export default function UploadMaterialWizard({
   onRegenerate,
   onDismissDuplicate,
   showParentNote = false,
+  childName,
+  children,
+  onChildChange,
 }: UploadMaterialWizardProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [studyTitle, setStudyTitle] = useState('');
@@ -241,7 +247,23 @@ export default function UploadMaterialWizard({
         {/* Header */}
         <div className="uw-header">
           {step === 2 && <button className="uw-back-btn" onClick={() => setStep(1)}>&larr;</button>}
-          <h2>Upload Class Material</h2>
+          <div className="uw-header-titles">
+            <h2>Upload Class Material</h2>
+            {childName && !children?.length && (
+              <span className="uw-child-label">for {childName}</span>
+            )}
+            {children && children.length > 1 && onChildChange && (
+              <select
+                className="uw-child-select"
+                value={children.find(c => c.name === childName)?.id ?? ''}
+                onChange={(e) => onChildChange(Number(e.target.value))}
+              >
+                {children.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
           <span className="uw-step-indicator">Step {step} of 2</span>
         </div>
 

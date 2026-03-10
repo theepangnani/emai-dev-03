@@ -835,6 +835,9 @@ export function ParentDashboard() {
         isGenerating={pd.isGenerating}
         initialTitle={pd.studyModalInitialTitle}
         initialContent={pd.studyModalInitialContent}
+        childName={pd.selectedChildFirstName ?? undefined}
+        children={pd.children.map(c => ({ id: c.student_id, name: c.full_name }))}
+        onChildChange={(studentId) => pd.handleChildTabClick(studentId)}
         courses={pd.childCoursesForWizard}
         selectedCourseId={pd.childCoursesForWizard?.length === 1 ? pd.childCoursesForWizard[0].id : ''}
         duplicateCheck={pd.duplicateCheck}
