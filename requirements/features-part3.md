@@ -953,12 +953,12 @@ After a user successfully verifies their email via the verification link (§6.44
 **Subject line:** "You're Verified — Explore Everything ClassBridge Has to Offer"
 
 **Sub-tasks:**
-- [ ] Backend: Create `welcome.html` email template (#509)
-- [ ] Backend: Send welcome email on registration in `auth.py` (#509)
-- [ ] Backend: Create `email_verified_welcome.html` email template (#510)
-- [ ] Backend: Send acknowledgement email on verification in `auth.py` (#510)
-- [ ] Tests: Welcome email on registration (sent, skipped for Google OAuth) (#509)
-- [ ] Tests: Acknowledgement email on verification (sent on success, skipped on failure) (#510)
+- [x] Backend: Create `welcome.html` email template (#509) (IMPLEMENTED)
+- [x] Backend: Send welcome email on registration in `auth.py` (#509) (IMPLEMENTED)
+- [x] Backend: Create `email_verified_welcome.html` email template (#510) (IMPLEMENTED)
+- [x] Backend: Send acknowledgement email on verification in `auth.py` (#510) (IMPLEMENTED)
+- [x] Tests: Welcome email on registration (sent, skipped for Google OAuth) (#509) (IMPLEMENTED)
+- [x] Tests: Acknowledgement email on verification (sent on success, skipped on failure) (#510) (IMPLEMENTED)
 
 ### 6.49 Admin Email Template Management (Phase 2)
 
@@ -1326,7 +1326,7 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 - [x] Frontend UI — credits display, limit modal, request form (#1120)
 - [x] Admin AI Usage Management Panel (#1121)
 - [x] Backend + frontend tests (#1122, #1123, #1130)
-- [ ] Usage history audit log — `ai_usage_history` table + admin views (#1125)
+- [x] Usage history audit log — `ai_usage_history` table + admin views (#1125) (IMPLEMENTED)
 
 Control AI API costs by limiting the number of AI interactions per user. Default quota is 10 AI generations. Users can request more; admin approves via admin panel.
 
@@ -2664,15 +2664,17 @@ Iterative refinement of the Chat FAB sub-icon appearance and study guide UI elem
 
 ### 6.85 Upload Wizard Class Selection Fix (Phase 2) - IMPLEMENTED
 
-Fixed upload material wizard losing class selection and resetting on prop changes.
+Fixed upload material wizard losing class selection and resetting on prop changes. Added child context display and switching for parent users.
 
-**GitHub:** #1616 (PRs #1501, #1540, #1543, #1544)
+**GitHub:** #1616, #1625 (PRs #1501, #1540, #1543, #1544, #1624)
 
 **Implementation:**
 - Prevent wizard from resetting when parent component re-renders on step 2
 - Class selection now persists and is applied to uploaded material
 - Class selector always visible and mandatory
 - Test mocks updated for coursesApi
+- Modal header shows selected child's name for parent users
+- Child switcher dropdown when parent has multiple children (classes update on switch)
 
 ### 6.86 Collapsible Dashboard Panels and Simplified View (Phase 2) - IMPLEMENTED
 
@@ -2729,7 +2731,7 @@ Reorganized and expanded quick action buttons on parent/student dashboards.
 
 Final polish for the redesigned My Kids page layout and navigation.
 
-**GitHub:** #1622 (PRs #1612, #1613, #1614)
+**GitHub:** #1622, #1626 (PRs #1612, #1613, #1614)
 
 **Implementation:**
 - School name displayed below student name in child selector tabs
