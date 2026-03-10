@@ -245,7 +245,7 @@ well-organized study guides. Use simple language, practical examples, and clean 
 
     system_prompt += _interests_instruction(interests)
 
-    return await generate_content(prompt, system_prompt, max_tokens=2000)
+    return await generate_content(prompt, system_prompt, max_tokens=4096)
 
 
 async def generate_quiz(
