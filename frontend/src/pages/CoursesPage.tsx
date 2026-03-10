@@ -5,6 +5,7 @@ import type { ChildSummary, ChildOverview, CourseContentItem } from '../api/clie
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
+import { useToast } from '../components/Toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { isValidEmail } from '../utils/validation';
 import { SearchableSelect, MultiSearchableSelect } from '../components/SearchableSelect';
@@ -61,6 +62,7 @@ export function CoursesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { confirm, confirmModal } = useConfirm();
+  const { toast } = useToast();
   const isParent = user?.role === 'parent';
   const isStudent = user?.role === 'student';
   const urlStudentId = searchParams.get('student_id');
@@ -117,11 +119,14 @@ export function CoursesPage() {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [wizardStep, setWizardStep] = useState(1);
-  const [showAddChildInline, setShowAddChildInline] = useState(false);
+  const [showAddChildModal, setShowAddChildModal] = useState(false);
+  const [addChildTab, setAddChildTab] = useState<'create' | 'email'>('create');
   const [addChildName, setAddChildName] = useState('');
   const [addChildEmail, setAddChildEmail] = useState('');
-  const [addChildError, setAddChildError] = useState('');
+  const [addChildRelationship, setAddChildRelationship] = useState('guardian');
   const [addChildLoading, setAddChildLoading] = useState(false);
+  const [addChildError, setAddChildError] = useState('');
+  const [addChildInviteLink, setAddChildInviteLink] = useState('');
 
   // Assign course modal (parent only)
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -152,6 +157,7 @@ export function CoursesPage() {
   const assignModalRef = useFocusTrap<HTMLDivElement>(showAssignModal, () => setShowAssignModal(false));
   const editCourseModalRef = useFocusTrap<HTMLDivElement>(!!editCourse);
   const editContentModalRef = useFocusTrap<HTMLDivElement>(!!editContent);
+  const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
 
   useEffect(() => {
     loadData();
@@ -405,10 +411,90 @@ export function CoursesPage() {
     setNewTeacherName('');
     setNewTeacherEmail('');
     setWizardStep(1);
-    setShowAddChildInline(false);
     setAddChildName('');
     setAddChildEmail('');
     setAddChildError('');
+  };
+
+  const closeAddChildModal = () => {
+    setShowAddChildModal(false);
+    setAddChildTab('create');
+    setAddChildName('');
+    setAddChildEmail('');
+    setAddChildRelationship('guardian');
+    setAddChildError('');
+    setAddChildInviteLink('');
+  };
+
+  const handleCreateChild = async () => {
+    if (!addChildName.trim()) return;
+    if (addChildEmail.trim() && !isValidEmail(addChildEmail.trim())) {
+      setAddChildError('Please enter a valid email address');
+      return;
+    }
+    setAddChildLoading(true);
+    setAddChildError('');
+    try {
+      const result = await parentApi.createChild(
+        addChildName.trim(),
+        addChildRelationship,
+        addChildEmail.trim() || undefined,
+      );
+      if (result.invite_link) {
+        setAddChildInviteLink(result.invite_link);
+      } else {
+        closeAddChildModal();
+        toast(`${addChildName.trim()} added successfully`, 'success');
+      }
+      // Refresh children list and auto-select new child
+      const kids = await parentApi.getChildren();
+      setChildren(kids);
+      const newKid = kids.find(k => !selectedStudents.some(s => s.id === k.student_id));
+      if (newKid) {
+        setSelectedStudents(prev => [...prev, { id: newKid.student_id, label: newKid.full_name, sublabel: newKid.email || undefined }]);
+      }
+    } catch (err: any) {
+      setAddChildError(err.response?.data?.detail || 'Failed to create child');
+    } finally {
+      setAddChildLoading(false);
+    }
+  };
+
+  const handleLinkChild = async () => {
+    if (!addChildEmail.trim()) return;
+    if (!isValidEmail(addChildEmail.trim())) {
+      setAddChildError('Please enter a valid email address');
+      return;
+    }
+    setAddChildLoading(true);
+    setAddChildError('');
+    try {
+      const result = await parentApi.linkChild(
+        addChildEmail.trim(),
+        addChildRelationship,
+        addChildName.trim() || undefined,
+      );
+      if (result.invite_link) {
+        setAddChildInviteLink(result.invite_link);
+      } else if (result.link_request_pending) {
+        closeAddChildModal();
+        toast(`A link request has been sent to ${result.full_name}. They need to approve it before you can manage their account.`, 'info');
+      } else {
+        closeAddChildModal();
+        toast(`${result.full_name} linked successfully`, 'success');
+      }
+      // Refresh children list and auto-select new child
+      const kids = await parentApi.getChildren();
+      setChildren(kids);
+      const newKid = kids.find(k => !selectedStudents.some(s => s.id === k.student_id));
+      if (newKid) {
+        setSelectedStudents(prev => [...prev, { id: newKid.student_id, label: newKid.full_name, sublabel: newKid.email || undefined }]);
+      }
+    } catch (err: any) {
+      setAddChildError(err.response?.data?.detail || 'Failed to link child');
+    } finally {
+      setAddChildLoading(false);
+    }
   };
 
   const handleAssignCourses = async () => {
@@ -1347,82 +1433,20 @@ export function CoursesPage() {
               {wizardStep === 3 && (
                 <>
                   <label>Select children to enroll</label>
-                  {!showAddChildInline ? (
-                    <MultiSearchableSelect
-                      placeholder="Search your children..."
-                      onSearch={async (q) => {
-                        const query = q.toLowerCase();
-                        return children
-                          .filter(c => c.full_name.toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query)))
-                          .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
-                      }}
-                      selected={selectedStudents}
-                      onAdd={(opt) => setSelectedStudents(prev => [...prev, opt])}
-                      onRemove={(id) => setSelectedStudents(prev => prev.filter(s => s.id !== id))}
-                      disabled={createLoading}
-                      createAction={{ label: '+ Add Child', onClick: () => { setShowAddChildInline(true); setAddChildError(''); setAddChildName(''); setAddChildEmail(''); } }}
-                    />
-                  ) : (
-                    <div className="create-teacher-inline">
-                      <div className="create-teacher-inline__header">
-                        <h4>New Child</h4>
-                        <button type="button" className="create-teacher-inline__cancel" onClick={() => { setShowAddChildInline(false); setAddChildName(''); setAddChildEmail(''); setAddChildError(''); }}>
-                          Back to search
-                        </button>
-                      </div>
-                      <label>
-                        Name *
-                        <input
-                          type="text"
-                          value={addChildName}
-                          onChange={(e) => { setAddChildName(e.target.value); setAddChildError(''); }}
-                          placeholder="e.g. Alex Smith"
-                          disabled={addChildLoading}
-                        />
-                      </label>
-                      <label>
-                        Email (optional)
-                        <input
-                          type="email"
-                          value={addChildEmail}
-                          onChange={(e) => setAddChildEmail(e.target.value)}
-                          placeholder="child@example.com"
-                          disabled={addChildLoading}
-                        />
-                      </label>
-                      {addChildError && <p className="link-error">{addChildError}</p>}
-                      <button
-                        type="button"
-                        className="generate-btn"
-                        style={{ marginTop: '4px' }}
-                        disabled={addChildLoading || !addChildName.trim()}
-                        onClick={async () => {
-                          setAddChildLoading(true);
-                          setAddChildError('');
-                          try {
-                            await parentApi.createChild(addChildName.trim(), 'guardian', addChildEmail.trim() || undefined);
-                            const kids = await parentApi.getChildren();
-                            setChildren(kids);
-                            // Auto-select the newly added child
-                            const newKid = kids.find(k => !selectedStudents.some(s => s.id === k.student_id));
-                            if (newKid) {
-                              setSelectedStudents(prev => [...prev, { id: newKid.student_id, label: newKid.full_name, sublabel: newKid.email || undefined }]);
-                            }
-                            setShowAddChildInline(false);
-                            setAddChildName('');
-                            setAddChildEmail('');
-                          } catch (err: unknown) {
-                            const msg = err instanceof Error ? err.message : 'Failed to add child';
-                            setAddChildError(msg);
-                          } finally {
-                            setAddChildLoading(false);
-                          }
-                        }}
-                      >
-                        {addChildLoading ? 'Adding...' : 'Add'}
-                      </button>
-                    </div>
-                  )}
+                  <MultiSearchableSelect
+                    placeholder="Search your children..."
+                    onSearch={async (q) => {
+                      const query = q.toLowerCase();
+                      return children
+                        .filter(c => c.full_name.toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query)))
+                        .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
+                    }}
+                    selected={selectedStudents}
+                    onAdd={(opt) => setSelectedStudents(prev => [...prev, opt])}
+                    onRemove={(id) => setSelectedStudents(prev => prev.filter(s => s.id !== id))}
+                    disabled={createLoading}
+                    createAction={{ label: '+ Add Child', onClick: () => { setShowAddChildModal(true); } }}
+                  />
 
                   <label className="toggle-label" style={{ marginTop: '8px' }}>
                     <input type="checkbox" checked={courseRequireApproval} onChange={(e) => setCourseRequireApproval(e.target.checked)} disabled={createLoading} />
@@ -1739,6 +1763,145 @@ export function CoursesPage() {
                 {editContentLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAddChildModal && (
+        <div className="modal-overlay" onClick={closeAddChildModal}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Add Child" ref={addChildModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Add Child</h2>
+
+            <div className="link-tabs">
+              <button className={`link-tab ${addChildTab === 'create' ? 'active' : ''}`} onClick={() => { setAddChildTab('create'); setAddChildError(''); }}>
+                Create New
+              </button>
+              <button className={`link-tab ${addChildTab === 'email' ? 'active' : ''}`} onClick={() => { setAddChildTab('email'); setAddChildError(''); }}>
+                Link by Email
+              </button>
+            </div>
+
+            {addChildTab === 'create' && (
+              <>
+                {addChildInviteLink ? (
+                  <div className="modal-form">
+                    <div className="invite-success-box">
+                      <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child added successfully!</p>
+                      {addChildEmail.trim() && (
+                        <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                          An invitation email has been sent to <strong>{addChildEmail.trim()}</strong>. Your child needs to check their email and click the link to set up their account.
+                        </p>
+                      )}
+                      <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                        You can also share this link directly:
+                      </p>
+                      <div className="invite-link-container">
+                        <span className="invite-link">{addChildInviteLink}</span>
+                        <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(addChildInviteLink)}>Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="modal-desc">Add your child with just their name. Email is optional.</p>
+                    <div className="modal-form">
+                      <label>
+                        Child's Name *
+                        <input type="text" value={addChildName} onChange={(e) => setAddChildName(e.target.value)} placeholder="e.g. Alex Smith" disabled={addChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleCreateChild()} />
+                      </label>
+                      <label>
+                        Email (optional)
+                        <input type="email" value={addChildEmail} onChange={(e) => { setAddChildEmail(e.target.value); setAddChildError(''); }} placeholder="child@example.com" disabled={addChildLoading} />
+                      </label>
+                      <label>
+                        Relationship
+                        <select value={addChildRelationship} onChange={(e) => setAddChildRelationship(e.target.value)} disabled={addChildLoading}>
+                          <option value="mother">Mother</option>
+                          <option value="father">Father</option>
+                          <option value="guardian">Guardian</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      {addChildError && (
+                        <div className="modal-error">
+                          <span className="error-icon">!</span>
+                          <span className="error-message">{addChildError}</span>
+                          <button onClick={handleCreateChild} className="retry-btn" disabled={addChildLoading}>Try Again</button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                <div className="modal-actions">
+                  <button className="cancel-btn" onClick={closeAddChildModal} disabled={addChildLoading}>{addChildInviteLink ? 'Close' : 'Cancel'}</button>
+                  {!addChildInviteLink && (
+                    <button className="generate-btn" onClick={handleCreateChild} disabled={addChildLoading || !addChildName.trim()}>
+                      {addChildLoading ? <><span className="btn-spinner" /> Creating...</> : 'Add Child'}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
+            {addChildTab === 'email' && (
+              <>
+                {addChildInviteLink ? (
+                  <div className="modal-form">
+                    <div className="invite-success-box">
+                      <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Child linked successfully!</p>
+                      <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                        An invitation email has been sent to <strong>{addChildEmail.trim()}</strong>. Your child needs to check their email and click the link to set up their account.
+                      </p>
+                      <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                        You can also share this link directly:
+                      </p>
+                      <div className="invite-link-container">
+                        <span className="invite-link">{addChildInviteLink}</span>
+                        <button className="copy-link-btn" onClick={() => navigator.clipboard.writeText(addChildInviteLink)}>Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="modal-desc">Enter your child's email to link or create their account.</p>
+                    <div className="modal-form">
+                      <label>
+                        Child's Name
+                        <input type="text" value={addChildName} onChange={(e) => setAddChildName(e.target.value)} placeholder="e.g. Alex Smith" disabled={addChildLoading} />
+                      </label>
+                      <label>
+                        Student Email *
+                        <input type="email" value={addChildEmail} onChange={(e) => { setAddChildEmail(e.target.value); setAddChildError(''); }} placeholder="child@school.edu" disabled={addChildLoading} onKeyDown={(e) => e.key === 'Enter' && handleLinkChild()} />
+                      </label>
+                      <label>
+                        Relationship
+                        <select value={addChildRelationship} onChange={(e) => setAddChildRelationship(e.target.value)} disabled={addChildLoading}>
+                          <option value="mother">Mother</option>
+                          <option value="father">Father</option>
+                          <option value="guardian">Guardian</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      {addChildError && (
+                        <div className="modal-error">
+                          <span className="error-icon">!</span>
+                          <span className="error-message">{addChildError}</span>
+                          <button onClick={handleLinkChild} className="retry-btn" disabled={addChildLoading}>Try Again</button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                <div className="modal-actions">
+                  <button className="cancel-btn" onClick={closeAddChildModal} disabled={addChildLoading}>{addChildInviteLink ? 'Close' : 'Cancel'}</button>
+                  {!addChildInviteLink && (
+                    <button className="generate-btn" onClick={handleLinkChild} disabled={addChildLoading || !addChildEmail.trim()}>
+                      {addChildLoading ? <><span className="btn-spinner" /> Linking...</> : 'Link Child'}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
