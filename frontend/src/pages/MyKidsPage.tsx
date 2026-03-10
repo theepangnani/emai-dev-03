@@ -13,6 +13,7 @@ import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
 import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
+import { SectionPanel } from '../components/SectionPanel';
 import './MyKidsPage.css';
 import './DashboardGrid.css';
 
@@ -872,13 +873,8 @@ export function MyKidsPage() {
 
           <div className="dashboard-redesign">
           {/* ── Class Materials ───────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showMaterials} onClick={() => setShowMaterials(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128196;</span> Class Materials <span className="mykids-count-badge">{materials.length}</span></span>
-              <span className={`dash-section-chevron${!showMaterials ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showMaterials && (
-              <div className="dash-section-body mykids-list">
+          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)}>
+              <div className="mykids-list">
                 {materials.length === 0 ? (
                   <p className="dash-empty-hint">No class materials yet.</p>
                 ) : materials.map(m => (
@@ -898,31 +894,20 @@ export function MyKidsPage() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+          </SectionPanel>
 
           {/* ── Grades ────────────────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showGrades} onClick={() => setShowGrades(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128202;</span> Grades</span>
-              <span className={`dash-section-chevron${!showGrades ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showGrades && (
+          <SectionPanel title="Grades" icon="&#128202;" collapsed={!showGrades} onToggle={() => setShowGrades(p => !p)}>
               <GradesSummaryCard
                 selectedChildId={selectedChild ?? undefined}
                 onViewDetails={() => navigate('/grades')}
               />
-            )}
-          </div>
+          </SectionPanel>
 
           {/* ── Courses ───────────────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showCourses} onClick={() => setShowCourses(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128218;</span> Classes <span className="mykids-count-badge">{overview?.courses.length ?? 0}</span></span>
-              <span className={`dash-section-chevron${!showCourses ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showCourses && overview && (
-              <div className="dash-section-body mykids-list">
+          <SectionPanel title="Classes" icon="&#128218;" count={overview?.courses.length ?? 0} collapsed={!showCourses} onToggle={() => setShowCourses(p => !p)}>
+            {overview && (
+              <div className="mykids-list">
                 {overview.courses.length === 0 ? (
                   <GoogleClassroomPrompt
                     childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
@@ -943,36 +928,15 @@ export function MyKidsPage() {
                 ))}
               </div>
             )}
-          </div>
+          </SectionPanel>
 
           {/* ── Dinner Table Talk ──────────────────── */}
-          <div className="dash-section">
-            <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showConversation} onClick={() => setShowConversation(p => !p)}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128172;</span> Dinner Table Talk</span>
-              <span className={`dash-section-chevron${!showConversation ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-            </button>
-            {showConversation && (
-              <div className="dash-section-body">
+          <SectionPanel title="Dinner Table Talk" icon="&#128172;" collapsed={!showConversation} onToggle={() => setShowConversation(p => !p)}>
                 <ConversationStartersCard studentId={selectedChild} />
-              </div>
-            )}
-          </div>
+          </SectionPanel>
 
           {/* ── Linked Teachers ────────────────────── */}
-          <div className="dash-section dash-section--full">
-            <div className="dash-section-header dash-section-header--collapsible" aria-expanded={showTeachers} onClick={() => setShowTeachers(p => !p)} role="button" tabIndex={0}>
-              <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128105;&#8205;&#127979;</span> Teachers <span className="mykids-count-badge">{(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length}</span></span>
-              <div className="dash-section-header-right">
-                <button
-                  className="mykids-add-teacher-btn btn-primary btn-sm"
-                  onClick={(e) => { e.stopPropagation(); setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}
-                >
-                  + Add Teacher
-                </button>
-                <span className={`dash-section-chevron${!showTeachers ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-              </div>
-            </div>
-            {showTeachers && (
+          <SectionPanel title="Teachers" icon="&#128105;&#8205;&#127979;" count={(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length} collapsed={!showTeachers} onToggle={() => setShowTeachers(p => !p)} className="dash-section--full" headerRight={<button className="mykids-add-teacher-btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}>+ Add Teacher</button>}>
               <div className="mykids-list">
                 {/* Teachers from courses */}
                 {overview?.courses.filter(c => c.teacher_name).map(c => (
@@ -1024,8 +988,7 @@ export function MyKidsPage() {
                   <p className="dash-empty-hint">No teachers linked yet. Add a teacher by email to start messaging.</p>
                 )}
               </div>
-            )}
-          </div>
+          </SectionPanel>
         </div>
         </>
       )}
