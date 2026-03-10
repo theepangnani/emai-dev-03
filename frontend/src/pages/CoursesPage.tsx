@@ -790,10 +790,10 @@ export function CoursesPage() {
 
         {/* Parent: Child selector */}
         {isParent && children.length > 0 && (
-          <div className="child-selector" style={{ marginBottom: 20 }}>
+          <div className="cp-child-selector">
             {children.length > 1 && (
               <button
-                className={`child-tab child-tab-all ${selectedChild === null ? 'active' : ''}`}
+                className={`cp-child-tab cp-child-tab-all ${selectedChild === null ? 'active' : ''}`}
                 onClick={() => setSelectedChild(null)}
                 title="All children"
               >
@@ -808,10 +808,10 @@ export function CoursesPage() {
             {children.map((child, index) => (
               <button
                 key={child.student_id}
-                className={`child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
+                className={`cp-child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
                 onClick={() => setSelectedChild(selectedChild === child.student_id ? null : child.student_id)}
               >
-                <span className="child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
+                <span className="cp-child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
                 {child.full_name}
               </button>
             ))}
@@ -824,13 +824,13 @@ export function CoursesPage() {
 
         {/* Parent: Child's courses */}
         {isParent && (
-          <div className="courses-section">
-            <div className="courses-section-header">
+          <div className="cp-section">
+            <div className="cp-section-header">
               <button className="collapse-toggle" onClick={() => setChildCoursesExpanded(v => !v)}>
                 <span className={`section-chevron${childCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
-                <h3>{childName ? `${childName}'s Classes` : 'Classes'} ({childOverview?.courses.length ?? 0})</h3>
+                <h3 className="cp-section-title">{childName ? `${childName}'s Classes` : 'Classes'} ({childOverview?.courses.length ?? 0})</h3>
               </button>
-              <div className="courses-header-actions">
+              <div className="cp-section-header-right">
                 <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
@@ -857,12 +857,12 @@ export function CoursesPage() {
             {childCoursesExpanded && (
             <>
             {syncState === 'error' ? (
-              <div className="sync-error">
+              <div className="cp-sync-banner error">
                 <span>{syncMessage || 'Sync failed'}</span>
                 <button onClick={handleSyncCourses} className="retry-btn">Retry</button>
               </div>
             ) : syncMessage ? (
-              <div className="courses-sync-msg">{syncMessage}</div>
+              <div className="cp-sync-banner info">{syncMessage}</div>
             ) : null}
             {overviewLoading ? (
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -978,7 +978,7 @@ export function CoursesPage() {
             </div>
 
             {studentTab === 'enrolled' && (
-              <div className="courses-section">
+              <div className="cp-section">
                 {enrolledCourses.length > 0 ? (
                   <div className="courses-list">
                     {filterByType(enrolledCourses).map((course) => (
@@ -1066,7 +1066,7 @@ export function CoursesPage() {
             )}
 
             {studentTab === 'browse' && (
-              <div className="courses-section">
+              <div className="cp-section">
                 <div className="courses-search" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <input
                     type="text"
@@ -1134,11 +1134,11 @@ export function CoursesPage() {
 
         {/* Created courses section (parents, teachers, admins always; students only when they have created classes) */}
         {(!isStudent || myCourses.length > 0) && (
-        <div className="courses-section">
-          <div className="courses-section-header">
+        <div className="cp-section">
+          <div className="cp-section-header">
             <button className="collapse-toggle" onClick={() => setMyCoursesExpanded(v => !v)}>
               <span className={`section-chevron${myCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
-              <h3>{isParent || isStudent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
+              <h3 className="cp-section-title">{isParent || isStudent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
             </button>
             {!isParent && !isStudent && (
               <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class">
