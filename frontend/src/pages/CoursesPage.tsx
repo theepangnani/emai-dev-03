@@ -116,6 +116,8 @@ export function CoursesPage() {
   const [showCreateTeacher, setShowCreateTeacher] = useState(false);
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardChildSelections, setWizardChildSelections] = useState<Record<number, boolean>>({});
 
   // Assign course modal (parent only)
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -387,6 +389,8 @@ export function CoursesPage() {
     setShowCreateTeacher(false);
     setNewTeacherName('');
     setNewTeacherEmail('');
+    setWizardStep(1);
+    setWizardChildSelections({});
   };
 
   const handleAssignCourses = async () => {
@@ -1088,7 +1092,7 @@ export function CoursesPage() {
       </div>
 
       {/* Create Course Modal */}
-      {showCreateModal && (
+      {showCreateModal && !isParent && (
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
@@ -1201,6 +1205,225 @@ export function CoursesPage() {
               >
                 {createLoading ? 'Creating...' : 'Create Class'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parent Create Class Wizard */}
+      {showCreateModal && isParent && (
+        <div className="modal-overlay" onClick={closeCreateModal}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create Class</h2>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', margin: '0 0 16px' }}>
+              {[1, 2, 3].map((s) => (
+                <div key={s} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  color: wizardStep >= s ? '#6366f1' : '#9ca3af',
+                  fontWeight: wizardStep === s ? 600 : 400,
+                  fontSize: '0.85rem',
+                }}>
+                  <span style={{
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: wizardStep >= s ? '#6366f1' : '#e5e7eb',
+                    color: wizardStep >= s ? '#fff' : '#6b7280',
+                    fontSize: '0.75rem', fontWeight: 600,
+                  }}>{s}</span>
+                  {s === 1 ? 'Details' : s === 2 ? 'Teacher' : 'Students'}
+                  {s < 3 && <span style={{ color: '#d1d5db', margin: '0 2px' }}>—</span>}
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-form">
+              {/* Step 1: Class Details */}
+              {wizardStep === 1 && (
+                <>
+                  <label>
+                    Class Name *
+                    <input
+                      type="text"
+                      value={courseName}
+                      onChange={(e) => { setCourseName(e.target.value); setCreateError(''); }}
+                      placeholder="e.g. Algebra I"
+                      disabled={createLoading}
+                    />
+                  </label>
+                  <label>
+                    Subject
+                    <input
+                      type="text"
+                      value={courseSubject}
+                      onChange={(e) => setCourseSubject(e.target.value)}
+                      placeholder="e.g. Mathematics"
+                      disabled={createLoading}
+                    />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      value={courseDescription}
+                      onChange={(e) => setCourseDescription(e.target.value)}
+                      placeholder="Brief description of the class..."
+                      rows={2}
+                      disabled={createLoading}
+                    />
+                  </label>
+                </>
+              )}
+
+              {/* Step 2: Teacher */}
+              {wizardStep === 2 && (
+                <>
+                  <label>
+                    Teacher *
+                  </label>
+                  {!showCreateTeacher ? (
+                    <SearchableSelect
+                      placeholder="Search for a teacher by name or email..."
+                      onSearch={handleSearchTeachers}
+                      onSelect={(opt) => { setSelectedTeacher(opt); setCreateError(''); }}
+                      selected={selectedTeacher}
+                      onClear={() => setSelectedTeacher(null)}
+                      disabled={createLoading}
+                      createAction={{ label: '+ Create New Teacher', onClick: () => { setSelectedTeacher(null); setShowCreateTeacher(true); } }}
+                    />
+                  ) : (
+                    <div className="create-teacher-inline">
+                      <div className="create-teacher-inline__header">
+                        <h4>New Teacher</h4>
+                        <button type="button" className="create-teacher-inline__cancel" onClick={() => { setShowCreateTeacher(false); setNewTeacherName(''); setNewTeacherEmail(''); }}>
+                          Back to search
+                        </button>
+                      </div>
+                      <label>
+                        Name *
+                        <input
+                          type="text"
+                          value={newTeacherName}
+                          onChange={(e) => { setNewTeacherName(e.target.value); setCreateError(''); }}
+                          placeholder="e.g. Ms. Johnson"
+                          disabled={createLoading}
+                        />
+                      </label>
+                      <label>
+                        Email (optional)
+                        <input
+                          type="email"
+                          value={newTeacherEmail}
+                          onChange={(e) => setNewTeacherEmail(e.target.value)}
+                          placeholder="teacher@school.com"
+                          disabled={createLoading}
+                        />
+                      </label>
+                      <p className="shadow-note">
+                        {newTeacherEmail ? 'An invitation will be sent to join ClassBridge as a teacher.' : 'No email = shadow teacher (can be invited later).'}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Step 3: Students (children checkboxes) */}
+              {wizardStep === 3 && (
+                <>
+                  <label>Select children to enroll</label>
+                  {children.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>No linked children found.</p>
+                  ) : (
+                    <div className="discovered-list">
+                      {children.map((child) => (
+                        <label key={child.student_id} className="discovered-item">
+                          <input
+                            type="checkbox"
+                            checked={wizardChildSelections[child.student_id] ?? true}
+                            onChange={() => {
+                              const newVal = !(wizardChildSelections[child.student_id] ?? true);
+                              const next = { ...wizardChildSelections, [child.student_id]: newVal };
+                              setWizardChildSelections(next);
+                              // Keep selectedStudents in sync
+                              const selected = children
+                                .filter(c => next[c.student_id] ?? true)
+                                .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
+                              setSelectedStudents(selected);
+                            }}
+                            disabled={createLoading}
+                          />
+                          <div className="discovered-info">
+                            <span className="discovered-name">{child.full_name}</span>
+                            {child.email && <span className="discovered-email">{child.email}</span>}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <label className="toggle-label" style={{ marginTop: '8px' }}>
+                    <input type="checkbox" checked={courseRequireApproval} onChange={(e) => setCourseRequireApproval(e.target.checked)} disabled={createLoading} />
+                    Require approval to join
+                  </label>
+                </>
+              )}
+
+              {createError && <p className="link-error">{createError}</p>}
+            </div>
+
+            <div className="modal-actions">
+              {wizardStep === 1 && (
+                <>
+                  <button className="cancel-btn" onClick={closeCreateModal}>Cancel</button>
+                  <button
+                    className="generate-btn"
+                    onClick={() => setWizardStep(2)}
+                    disabled={!courseName.trim()}
+                  >
+                    Next
+                  </button>
+                </>
+              )}
+              {wizardStep === 2 && (
+                <>
+                  <button className="cancel-btn" onClick={() => setWizardStep(1)}>Back</button>
+                  <button
+                    className="generate-btn"
+                    onClick={() => {
+                      // Initialize child selections (all checked by default) if not already set
+                      setWizardChildSelections(prev => {
+                        if (Object.keys(prev).length > 0) {
+                          // Sync selectedStudents from existing selections
+                          const selected = children
+                            .filter(c => prev[c.student_id] ?? true)
+                            .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
+                          setSelectedStudents(selected);
+                          return prev;
+                        }
+                        const initial: Record<number, boolean> = {};
+                        children.forEach(c => { initial[c.student_id] = true; });
+                        // All children selected by default
+                        const selected = children.map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
+                        setSelectedStudents(selected);
+                        return initial;
+                      });
+                      setWizardStep(3);
+                    }}
+                    disabled={!selectedTeacher && !(showCreateTeacher && newTeacherName.trim())}
+                  >
+                    Next
+                  </button>
+                </>
+              )}
+              {wizardStep === 3 && (
+                <>
+                  <button className="cancel-btn" onClick={() => setWizardStep(2)} disabled={createLoading}>Back</button>
+                  <button
+                    className="generate-btn"
+                    onClick={handleCreateCourse}
+                    disabled={createLoading}
+                  >
+                    {createLoading ? 'Creating...' : 'Create Class'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
