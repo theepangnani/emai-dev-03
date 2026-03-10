@@ -193,7 +193,7 @@ Documents the end-to-end flow for parent-teacher-course visibility.
 - No parent notification when a teacher adds their child to a course (#238)
 - No real-time dashboard refresh (requires page reload)
 
-### 6.34 Course Enrollment (All Roles) (Phase 1) - PARTIAL
+### 6.34 Course Enrollment (All Roles) (Phase 1) - IMPLEMENTED
 
 Complete enrollment/unenrollment matrix for all roles.
 
@@ -220,6 +220,59 @@ Complete enrollment/unenrollment matrix for all roles.
 - [x] Frontend: Student browse/enroll/unenroll UI (#250)
 - [x] Backend: Add visibility check to self-enroll endpoint (#251) — rejects `is_private` courses
 - [ ] Backend: Notify parent when teacher enrolls child (#238)
+
+### 6.34.1 Class Code for Courses (Phase 1) - IMPLEMENTED
+
+Auto-generated 6-character alphanumeric code on each course for easy sharing and lookup.
+
+**Implementation:**
+- `class_code` column on Course (String(10), unique, indexed)
+- Auto-generated on course creation via `generate_class_code()`
+- `GET /api/courses/lookup?code=` endpoint for code-based lookup
+- Migration backfills existing courses
+- Frontend: display with copy-to-clipboard on CourseDetailPage
+
+**Sub-tasks:**
+- [x] Backend: class_code column + migration + backfill
+- [x] Backend: lookup endpoint
+- [x] Frontend: display + copy button
+- [x] Tests: all passing
+
+### 6.34.2 Enrollment Search & Browse (Phase 1) - IMPLEMENTED
+
+Enhanced course discovery with server-side search filters.
+
+**Implementation:**
+- `GET /api/courses/browse?search=&subject=&teacher_name=` endpoint
+- ILIKE matching on name/description, subject, teacher name
+- Excludes private, default, and already-enrolled courses
+- Frontend: three-field search form with debounced queries on CoursesPage browse tab
+
+**Sub-tasks:**
+- [x] Backend: browse endpoint with search filters
+- [x] Frontend: search form with debounce
+- [x] Tests: all passing
+
+### 6.34.3 Enrollment Approval System (Phase 1) - IMPLEMENTED
+
+Course owners can require approval for enrollment requests.
+
+**Implementation:**
+- `enrollment_requests` table: course_id, student_id, status (pending/approved/rejected), resolved_by/at
+- `require_approval` boolean on Course model (default False)
+- Modified `POST /api/courses/{id}/enroll` — creates pending request when require_approval=True
+- `GET /api/courses/{id}/enrollment-requests` — list pending (teacher/owner)
+- `PATCH /api/courses/{id}/enrollment-requests/{rid}` — approve/reject
+- `GET /api/courses/{id}/enrollment-status` — student checks status
+- Notifications: in-app to owner on request, to student on resolution
+- Frontend: "Request to Join" button, pending badge, approve/reject UI, require_approval toggle in create/edit
+
+**Sub-tasks:**
+- [x] Backend: enrollment_requests model + migration
+- [x] Backend: approval endpoints
+- [x] Backend: modify enroll endpoint for approval flow
+- [x] Frontend: request/pending/approve UI
+- [x] Tests: 9 new tests
 
 ### 6.35 Teacher Invite & Notification System (Phase 1) - PARTIAL
 

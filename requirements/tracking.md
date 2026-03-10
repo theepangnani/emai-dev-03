@@ -220,6 +220,11 @@ Current feature issues are tracked in GitHub:
 ### Phase 1 - Implemented (Feb 22: Print & PDF Export — #764, PR #763)
 - ~~Issue #764: Print and Download PDF for study materials~~ ✅ (Print + Download PDF buttons on all 4 Course Material Detail tabs; html2pdf.js dynamic import; static print views for quiz all-questions and flashcards all-cards; shared `exportUtils.ts` utility)
 
+### Phase 1 - Implemented (Mar 9: Enrollment Features — #1574, #1575, #1576)
+- ~~Issue #1574: feat: add class_code field to Course model~~ ✅ (PR #1573)
+- ~~Issue #1575: feat: enrollment search filters for course browse~~ ✅ (PR #1571)
+- ~~Issue #1576: feat: enrollment approval system for courses~~ ✅ (PR #1572)
+
 ### Phase 1 - In Progress (Student UX Simplification Sprint — Mar 2026)
 - Issue #1022: [Student UX] Merge Classes and Materials pages into unified Study Hub (/study) — IN PROGRESS
 - Issue #1023: [Student Nav] Remove Quiz History from primary navigation — embed stats in Study Hub — IN PROGRESS
