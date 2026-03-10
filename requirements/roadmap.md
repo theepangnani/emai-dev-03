@@ -151,24 +151,24 @@
 - [x] **Mobile responsive layout fixes** — Suppress welcome section on detail sub-pages (CourseMaterialDetailPage, TaskDetailPage, StudyPage); add 480px header breakpoint (compact logo, truncated username); mobile GlobalSearch sizing; MaterialContextMenu dropdown repositioning; toolbar horizontal scroll at 768px (#1098) (IMPLEMENTED, PR #1099)
 - [x] **Teacher Resource Links** — Auto-extract YouTube videos and URLs from uploaded documents and teacher communications; Videos & Links tab on Course Material Detail; YouTube embed player with topic grouping; CRUD API; link extraction service (§6.57, #1319-#1326) (IMPLEMENTED)
 - [x] **Image Retention in Study Guides** — Extract, store, and re-embed images from uploaded PDF/DOCX/PPTX into AI-generated study guides; ContentImage model; image serving endpoint; AI prompt integration with `{{IMG-N}}` markers; authenticated frontend rendering; fallback "Additional Figures" section; +5-10% cost per generation (§6.58, #1308-#1313) (IMPLEMENTED)
-- [ ] **AI Help Chatbot** — RAG-powered floating chatbot on all pages; searches FAQ/help/video knowledge base; role-aware + context-aware responses; inline YouTube/Loom video embeds; 30 req/hr rate limit; in-memory vector store; gpt-4o-mini + text-embedding-3-small (§6.59, #1355-#1363)
+- [x] **AI Help Chatbot** — RAG-powered floating chatbot on all pages; searches FAQ/help/video knowledge base; role-aware + context-aware responses; inline YouTube/Loom video embeds; 30 req/hr rate limit; in-memory vector store; gpt-4o-mini + text-embedding-3-small (§6.59, #1355-#1363) (IMPLEMENTED — #1355-#1363)
 
 #### Waitlist System & AI Usage Limits (§6.53, §6.54) — Pre-Launch — #1106-#1124
-- [ ] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation
-- [ ] **Waitlist API endpoints** — Public join + token verify; Admin list/approve/decline/remind
-- [ ] **Launch Landing Page** — New `/` with "Join Waitlist" + "Login" CTAs, hero section, branding
-- [ ] **Waitlist Form Page** — `/waitlist` with name, email, role checkboxes, success confirmation
-- [ ] **Login page update** — Replace "Sign Up" with "Join Waitlist" CTA
-- [ ] **Token-gated registration** — `/register?token=` validates invite token, pre-fills user data
-- [ ] **Waitlist email templates** — Confirmation, admin notification, approval/invitation, decline, reminder
-- [ ] **Admin Waitlist Panel** — `/admin/waitlist` with stats, filterable table, approve/decline/remind actions
-- [ ] **AI usage limits data model** — `ai_usage_limit`/`ai_usage_count` on users, `ai_limit_requests` table
-- [ ] **AI usage enforcement** — Count AI generations, block at limit, show remaining credits in UI
-- [ ] **AI usage request flow** — User requests more credits, admin approves/declines
-- [ ] **Admin AI Usage Panel** — Usage stats, pending requests, manual limit adjustment
-- [ ] **`WAITLIST_ENABLED` feature flag** — Env var to toggle waitlist mode on/off (revert for Phase 2)
-- [ ] **Backend tests** — Waitlist + AI limits route tests
-- [ ] **Frontend tests** — Waitlist + AI limits component tests
+- [x] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation (IMPLEMENTED — #1107)
+- [x] **Waitlist API endpoints** — Public join + token verify; Admin list/approve/decline/remind (IMPLEMENTED — #1108, #1109)
+- [x] **Launch Landing Page** — New `/` with "Join Waitlist" + "Login" CTAs, hero section, branding (IMPLEMENTED — #1111)
+- [x] **Waitlist Form Page** — `/waitlist` with name, email, role checkboxes, success confirmation (IMPLEMENTED — #1112)
+- [x] **Login page update** — Replace "Sign Up" with "Join Waitlist" CTA (IMPLEMENTED — #1113)
+- [x] **Token-gated registration** — `/register?token=` validates invite token, pre-fills user data (IMPLEMENTED — #1114)
+- [x] **Waitlist email templates** — Confirmation, admin notification, approval/invitation, decline, reminder (IMPLEMENTED — #1110)
+- [x] **Admin Waitlist Panel** — `/admin/waitlist` with stats, filterable table, approve/decline/remind actions (IMPLEMENTED — #1115)
+- [x] **AI usage limits data model** — `ai_usage_limit`/`ai_usage_count` on users, `ai_limit_requests` table (IMPLEMENTED — #1117)
+- [x] **AI usage enforcement** — Count AI generations, block at limit, show remaining credits in UI (IMPLEMENTED — #1118)
+- [x] **AI usage request flow** — User requests more credits, admin approves/declines (IMPLEMENTED — #1119)
+- [x] **Admin AI Usage Panel** — Usage stats, pending requests, manual limit adjustment (IMPLEMENTED — #1121)
+- [x] **`WAITLIST_ENABLED` feature flag** — Env var to toggle waitlist mode on/off (revert for Phase 2) (IMPLEMENTED — #1124)
+- [x] **Backend tests** — Waitlist + AI limits route tests (IMPLEMENTED — #1122)
+- [x] **Frontend tests** — Waitlist + AI limits component tests (IMPLEMENTED — #1123)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
 - [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
