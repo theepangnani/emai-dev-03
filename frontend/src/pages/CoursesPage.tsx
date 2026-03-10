@@ -117,7 +117,6 @@ export function CoursesPage() {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [wizardStep, setWizardStep] = useState(1);
-  const [wizardChildSelections, setWizardChildSelections] = useState<Record<number, boolean>>({});
   const [showAddChildInline, setShowAddChildInline] = useState(false);
   const [addChildName, setAddChildName] = useState('');
   const [addChildEmail, setAddChildEmail] = useState('');
@@ -406,7 +405,6 @@ export function CoursesPage() {
     setNewTeacherName('');
     setNewTeacherEmail('');
     setWizardStep(1);
-    setWizardChildSelections({});
     setShowAddChildInline(false);
     setAddChildName('');
     setAddChildEmail('');
@@ -1295,7 +1293,7 @@ export function CoursesPage() {
 
               {/* Step 2: Teacher */}
               {wizardStep === 2 && (
-                <>
+                <div style={{ minHeight: '200px' }}>
                   <label>
                     Teacher *
                   </label>
@@ -1342,59 +1340,34 @@ export function CoursesPage() {
                       </p>
                     </div>
                   )}
-                </>
+                </div>
               )}
 
-              {/* Step 3: Students (children checkboxes) */}
+              {/* Step 3: Students */}
               {wizardStep === 3 && (
                 <>
                   <label>Select children to enroll</label>
-                  {children.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>No linked children found.</p>
-                  ) : (
-                    <div className="discovered-list">
-                      {children.map((child) => (
-                        <label key={child.student_id} className="discovered-item">
-                          <input
-                            type="checkbox"
-                            checked={wizardChildSelections[child.student_id] ?? true}
-                            onChange={() => {
-                              const newVal = !(wizardChildSelections[child.student_id] ?? true);
-                              const next = { ...wizardChildSelections, [child.student_id]: newVal };
-                              setWizardChildSelections(next);
-                              // Keep selectedStudents in sync
-                              const selected = children
-                                .filter(c => next[c.student_id] ?? true)
-                                .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
-                              setSelectedStudents(selected);
-                            }}
-                            disabled={createLoading}
-                          />
-                          <div className="discovered-info">
-                            <span className="discovered-name">{child.full_name}</span>
-                            {child.email && <span className="discovered-email">{child.email}</span>}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
                   {!showAddChildInline ? (
-                    <button
-                      type="button"
-                      className="create-teacher-inline__cancel"
-                      style={{ marginTop: '8px', color: '#6366f1', fontWeight: 500, cursor: 'pointer' }}
-                      onClick={() => { setShowAddChildInline(true); setAddChildError(''); setAddChildName(''); setAddChildEmail(''); }}
+                    <MultiSearchableSelect
+                      placeholder="Search your children..."
+                      onSearch={async (q) => {
+                        const query = q.toLowerCase();
+                        return children
+                          .filter(c => c.full_name.toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query)))
+                          .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
+                      }}
+                      selected={selectedStudents}
+                      onAdd={(opt) => setSelectedStudents(prev => [...prev, opt])}
+                      onRemove={(id) => setSelectedStudents(prev => prev.filter(s => s.id !== id))}
                       disabled={createLoading}
-                    >
-                      + Add Child
-                    </button>
+                      createAction={{ label: '+ Add Child', onClick: () => { setShowAddChildInline(true); setAddChildError(''); setAddChildName(''); setAddChildEmail(''); } }}
+                    />
                   ) : (
-                    <div className="create-teacher-inline" style={{ marginTop: '8px' }}>
+                    <div className="create-teacher-inline">
                       <div className="create-teacher-inline__header">
                         <h4>New Child</h4>
                         <button type="button" className="create-teacher-inline__cancel" onClick={() => { setShowAddChildInline(false); setAddChildName(''); setAddChildEmail(''); setAddChildError(''); }}>
-                          Cancel
+                          Back to search
                         </button>
                       </div>
                       <label>
@@ -1430,18 +1403,11 @@ export function CoursesPage() {
                             await parentApi.createChild(addChildName.trim(), 'guardian', addChildEmail.trim() || undefined);
                             const kids = await parentApi.getChildren();
                             setChildren(kids);
-                            // Auto-check the newly added child
-                            const newSelections = { ...wizardChildSelections };
-                            kids.forEach(k => {
-                              if (!(k.student_id in newSelections)) {
-                                newSelections[k.student_id] = true;
-                              }
-                            });
-                            setWizardChildSelections(newSelections);
-                            const selected = kids
-                              .filter(c => newSelections[c.student_id] ?? true)
-                              .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
-                            setSelectedStudents(selected);
+                            // Auto-select the newly added child
+                            const newKid = kids.find(k => !selectedStudents.some(s => s.id === k.student_id));
+                            if (newKid) {
+                              setSelectedStudents(prev => [...prev, { id: newKid.student_id, label: newKid.full_name, sublabel: newKid.email || undefined }]);
+                            }
                             setShowAddChildInline(false);
                             setAddChildName('');
                             setAddChildEmail('');
@@ -1487,23 +1453,10 @@ export function CoursesPage() {
                   <button
                     className="generate-btn"
                     onClick={() => {
-                      // Initialize child selections (all checked by default) if not already set
-                      setWizardChildSelections(prev => {
-                        if (Object.keys(prev).length > 0) {
-                          // Sync selectedStudents from existing selections
-                          const selected = children
-                            .filter(c => prev[c.student_id] ?? true)
-                            .map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
-                          setSelectedStudents(selected);
-                          return prev;
-                        }
-                        const initial: Record<number, boolean> = {};
-                        children.forEach(c => { initial[c.student_id] = true; });
-                        // All children selected by default
-                        const selected = children.map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined }));
-                        setSelectedStudents(selected);
-                        return initial;
-                      });
+                      // Auto-select all children if none selected yet
+                      if (selectedStudents.length === 0 && children.length > 0) {
+                        setSelectedStudents(children.map(c => ({ id: c.student_id, label: c.full_name, sublabel: c.email || undefined })));
+                      }
                       setWizardStep(3);
                     }}
                     disabled={!selectedTeacher && !(showCreateTeacher && newTeacherName.trim())}
