@@ -1,44 +1,32 @@
 /* ── My Kids Page ──────────────────────────── */
+/* Uses dashboard design language from ParentDashboard.css and DashboardGrid.css */
 
-/* Child selector tabs */
-.child-selector {
+/* ── Sections container ─────────────────────── */
+.mykids-sections {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
 }
 
-.child-tab {
-  padding: 10px 20px;
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* "All children" icon button */
-.child-tab-all {
-  padding: 10px 16px;
+/* ── Count badge for section headers ────────── */
+.mykids-count-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: stretch;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: 4px;
 }
 
-.child-tab-all.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
-}
-
+/* ── Child tab detail line ──────────────────── */
 .child-tab-detail {
   width: 100%;
   font-size: 11px;
@@ -46,56 +34,11 @@
   color: var(--color-ink-muted);
   margin-top: -2px;
 }
-.child-tab.active .child-tab-detail {
+.pd-child-tab.active .child-tab-detail {
   color: rgba(255, 255, 255, 0.75);
 }
 
-.child-tab:hover {
-  border-color: var(--color-accent);
-  background: var(--color-surface-alt);
-}
-
-.child-tab.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: white;
-}
-
-.child-tab.active .grade-badge {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.grade-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--color-surface-alt);
-  color: var(--color-ink-muted);
-  font-weight: 600;
-}
-
-.mykids-empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--color-ink-muted);
-}
-.mykids-empty h3 {
-  margin-bottom: 8px;
-  color: var(--color-ink);
-}
-.mykids-btn {
-  margin-top: 16px;
-  padding: 10px 24px;
-  background: var(--color-accent);
-  color: var(--color-surface);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-/* Child avatar (used in assign-course modal) */
+/* ── Child avatar (used in assign-course modal) ─ */
 .mykids-child-avatar {
   width: 48px;
   height: 48px;
@@ -110,27 +53,16 @@
   letter-spacing: 0.5px;
 }
 
-/* Color dot for tabs */
-.child-color-dot {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.child-tab.active .child-color-dot {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
-}
-
-/* Progress summary bar (selected child) */
+/* ── Progress summary bar ───────────────────── */
 .mykids-progress-summary {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px 18px;
+  border-radius: 16px;
+  padding: 18px 22px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .mykids-progress-info {
   display: flex;
@@ -160,12 +92,12 @@
   flex: 1;
   height: 8px;
   background: var(--color-surface-alt);
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
 }
 .mykids-progress-fill {
   height: 100%;
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--color-accent);
   transition: width 0.4s ease;
   min-width: 2px;
@@ -178,57 +110,19 @@
   flex-shrink: 0;
 }
 
-/* Section icons */
-.section-icon {
-  font-size: 15px;
-  line-height: 1;
-}
-
-/* Sections */
-.mykids-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-}
-.mykids-section {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-.mykids-section-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  background: transparent;
-  border: none;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-ink);
-  cursor: pointer;
-  text-align: left;
-}
-.mykids-section-header:hover {
-  background: var(--color-surface-alt);
-}
-
-/* List layout for courses / materials */
+/* ── List layout for courses / materials ────── */
 .mykids-list {
   display: flex;
   flex-direction: column;
-  padding: 0 18px 8px;
+  padding: 0 4px 8px;
 }
 .mykids-list-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  margin-bottom: 4px;
-  border-radius: var(--radius-sm, 6px);
+  margin-bottom: 2px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -261,9 +155,9 @@
   flex-shrink: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  min-width: 44px;
-  min-height: 44px;
+  border-radius: 10px;
+  min-width: 36px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -286,31 +180,25 @@
 .mykids-badge {
   display: inline-block;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--color-success-light);
   color: var(--color-accent-strong);
   font-size: 11px;
   font-weight: 500;
   text-transform: capitalize;
 }
-.mykids-empty-hint {
-  padding: 0 18px 16px;
-  font-size: 13px;
-  color: var(--color-ink-muted);
-  font-style: italic;
-}
 
-/* Task list */
+/* ── Task list ──────────────────────────────── */
 .mykids-task-list {
-  padding: 0 18px 16px;
+  padding: 0 4px 16px;
 }
 .mykids-task-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  margin-bottom: 4px;
-  border-radius: var(--radius-sm, 6px);
+  margin-bottom: 2px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -356,26 +244,7 @@
   color: var(--color-ink-muted);
 }
 
-/* Teachers section */
-.mykids-section-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 14px 18px;
-}
-.mykids-section-header-row .mykids-section-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: none;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-ink);
-  cursor: pointer;
-  padding: 0;
-}
+/* ── Teachers section ───────────────────────── */
 .mykids-add-teacher-btn {
   padding: 8px 14px;
   font-size: 13px;
@@ -394,8 +263,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  margin-bottom: 4px;
-  border-radius: var(--radius-sm, 6px);
+  margin-bottom: 2px;
+  border-radius: 8px;
   transition: background 0.15s;
 }
 .mykids-teacher-row:last-child {
@@ -432,7 +301,6 @@
   background: var(--color-accent);
   color: var(--color-surface);
 }
-
 .mykids-remove-btn {
   padding: 8px 14px;
   font-size: 12px;
@@ -448,7 +316,7 @@
   border-color: var(--color-danger);
 }
 
-/* Add teacher modal */
+/* ── Add teacher modal ──────────────────────── */
 .mykids-modal-overlay {
   position: fixed;
   top: 0;
@@ -463,7 +331,7 @@
 }
 .mykids-modal {
   background: var(--color-surface);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
   width: 90%;
   max-width: 420px;
@@ -473,6 +341,7 @@
   margin: 0 0 16px 0;
   font-size: 18px;
   color: var(--color-ink);
+  font-family: var(--font-display);
 }
 .mykids-modal label {
   display: block;
@@ -519,13 +388,13 @@
   margin-bottom: 8px;
 }
 
-/* Assign button on unassigned course cards */
+/* ── Assign button on unassigned course cards ─ */
 .mykids-assign-btn {
   font-size: 16px !important;
   font-weight: 700;
 }
 
-/* Assign Course to Child modal */
+/* ── Assign Course to Child modal ─────────── */
 .mykids-assign-child-list {
   display: flex;
   flex-direction: column;
@@ -539,7 +408,7 @@
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-surface);
   color: var(--color-ink);
   font-size: 14px;
@@ -557,39 +426,6 @@
   cursor: not-allowed;
 }
 
-/* ── Action Buttons Grid ──────────────────── */
-.mykids-action-grid {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.mykids-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: var(--color-ink);
-}
-.mykids-action-btn:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent-subtle);
-}
-.mykids-action-icon {
-  font-size: 16px;
-  line-height: 1;
-}
-.mykids-action-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink);
-}
-
 /* ── Invite Status Badges ────────────────────── */
 .child-tab-wrapper {
   display: flex;
@@ -600,12 +436,10 @@
   min-width: 200px;
   max-width: 340px;
 }
-
-.child-tab-wrapper .child-tab {
+.child-tab-wrapper .pd-child-tab {
   width: 100%;
   box-sizing: border-box;
 }
-
 .invite-status-badge {
   font-size: 10px;
   font-weight: 600;
@@ -615,30 +449,27 @@
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
-
 .invite-status-active {
   background: #dcfce7;
   color: #166534;
 }
-.child-tab.active .invite-status-active {
+.pd-child-tab.active .invite-status-active {
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
-
 .invite-status-pending {
   background: #fef3c7;
   color: #92400e;
 }
-.child-tab.active .invite-status-pending {
+.pd-child-tab.active .invite-status-pending {
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
-
 .invite-status-email_unverified {
   background: #f3f4f6;
   color: #6b7280;
 }
-.child-tab.active .invite-status-email_unverified {
+.pd-child-tab.active .invite-status-email_unverified {
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
@@ -650,7 +481,6 @@
   right: 8px;
   z-index: 20;
 }
-
 .invite-menu-trigger {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
@@ -668,20 +498,18 @@
   background: var(--color-surface-hover);
   color: var(--color-ink);
 }
-
 .invite-menu-dropdown {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   min-width: 160px;
   overflow: hidden;
   z-index: 30;
 }
-
 .invite-menu-item {
   display: block;
   width: 100%;
@@ -710,41 +538,9 @@
   color: var(--color-danger, #ef4444);
 }
 
-/* ── Quick Actions ── */
-.mykids-quick-actions {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.mykids-quick-action {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm, 8px);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-ink);
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
-}
-
-.mykids-quick-action:hover {
-  background: var(--color-surface-hover, #f9fafb);
-  box-shadow: var(--shadow-soft);
-}
-
-.mykids-qa-icon {
-  font-size: 16px;
-}
-
+/* ── Responsive ─────────────────────────────── */
 @media (max-width: 480px) {
-  .mykids-quick-actions {
-    flex-direction: column;
+  .mykids-progress-summary {
+    padding: 14px;
   }
 }
