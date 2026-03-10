@@ -34,6 +34,7 @@ from app.models.resource_link import ResourceLink
 from app.models.calendar_feed import CalendarFeed
 from app.models.calendar_event import CalendarEvent
 from app.models.help_article import HelpArticle
+from app.models.enrollment_request import EnrollmentRequest
 
 __all__ = [
     "User",
@@ -86,4 +87,5 @@ __all__ = [
     "CalendarFeed",
     "CalendarEvent",
     "HelpArticle",
+    "EnrollmentRequest",
 ]

@@ -38,6 +38,7 @@ interface CourseDetail {
   teacher_email: string | null;
   created_by_user_id: number | null;
   is_private: boolean;
+  require_approval: boolean;
   created_at: string;
   google_classroom_id: string | null;
   classroom_type: string | null;
@@ -71,6 +72,11 @@ export function CourseDetailPage() {
   const [addStudentLoading, setAddStudentLoading] = useState(false);
   const [addStudentError, setAddStudentError] = useState('');
   const [addStudentSuccess, setAddStudentSuccess] = useState('');
+
+  // Enrollment requests
+  const [enrollmentRequests, setEnrollmentRequests] = useState<Array<{ id: number; course_id: number; student_id: number; student_name: string | null; student_email: string | null; status: string; created_at: string }>>([]);
+  const [enrollReqExpanded, setEnrollReqExpanded] = useState(true);
+  const [resolvingReqId, setResolvingReqId] = useState<number | null>(null);
 
   // Assignments
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
@@ -197,6 +203,13 @@ export function CourseDetailPage() {
       } catch {
         setStudents([]);
       }
+      // Load enrollment requests if course requires approval
+      if (courseData.require_approval) {
+        try {
+          const reqs = await coursesApi.listEnrollmentRequests(courseId);
+          setEnrollmentRequests(reqs);
+        } catch { /* ignore */ }
+      }
     } catch {
       setCourse(null);
     } finally {
@@ -248,6 +261,22 @@ export function CourseDetailPage() {
       await coursesApi.removeStudent(courseId, studentId);
       setStudents(prev => prev.filter(s => s.student_id !== studentId));
     } catch { /* ignore */ }
+  };
+
+  const handleResolveEnrollmentRequest = async (requestId: number, status: 'approved' | 'rejected') => {
+    setResolvingReqId(requestId);
+    try {
+      await coursesApi.resolveEnrollmentRequest(courseId, requestId, status);
+      setEnrollmentRequests(prev => prev.filter(r => r.id !== requestId));
+      if (status === 'approved') {
+        // Reload roster
+        try {
+          const roster = await coursesApi.listStudents(courseId);
+          setStudents(roster);
+        } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+    setResolvingReqId(null);
   };
 
   // Edit course handlers
@@ -902,6 +931,46 @@ export function CourseDetailPage() {
           </>
         )}
       </div>
+
+      {/* Enrollment Requests */}
+      {canManageRoster && course?.require_approval && enrollmentRequests.length > 0 && (
+        <div className="course-section-panel">
+          <div className="course-section-header">
+            <button className="collapse-toggle" onClick={() => setEnrollReqExpanded(v => !v)}>
+              <span className={`section-chevron${enrollReqExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Enrollment Requests <span className="badge-count">{enrollmentRequests.length}</span></h3>
+            </button>
+          </div>
+          {enrollReqExpanded && (
+            <div className="course-roster-list">
+              {enrollmentRequests.map(req => (
+                <div key={req.id} className="course-roster-row">
+                  <div className="course-roster-info">
+                    <span className="course-roster-name">{req.student_name || 'Unknown'}</span>
+                    <span className="course-roster-email">{req.student_email || ''}</span>
+                  </div>
+                  <div className="enrollment-req-actions">
+                    <button
+                      className="courses-btn primary btn-primary btn-sm"
+                      onClick={() => handleResolveEnrollmentRequest(req.id, 'approved')}
+                      disabled={resolvingReqId === req.id}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="courses-btn secondary btn-secondary btn-sm"
+                      onClick={() => handleResolveEnrollmentRequest(req.id, 'rejected')}
+                      disabled={resolvingReqId === req.id}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Student Roster */}
       {canManageRoster && (

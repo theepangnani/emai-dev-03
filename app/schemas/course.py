@@ -12,6 +12,7 @@ class CourseCreate(BaseModel):
     teacher_id: int | None = None
     teacher_email: str | None = Field(default=None, max_length=255)
     student_ids: list[int] = Field(default_factory=list)
+    require_approval: bool = False
     # Inline teacher creation fields
     new_teacher_name: str | None = Field(default=None, max_length=255)
     new_teacher_email: str | None = Field(default=None, max_length=255)
@@ -27,6 +28,7 @@ class CourseUpdate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=2000)
     subject: Optional[str] = Field(default=None, max_length=100)
     teacher_email: Optional[str] = Field(default=None, max_length=255)
+    require_approval: Optional[bool] = None
 
     @field_validator('name', 'description', 'subject', 'teacher_email', mode='before')
     @classmethod
@@ -48,6 +50,7 @@ class CourseResponse(BaseModel):
     created_by_user_id: int | None = None
     is_private: bool = False
     is_default: bool = False
+    require_approval: bool = False
     student_count: int = 0
     created_at: datetime
 
@@ -78,6 +81,26 @@ class TeacherCourseManagementResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class EnrollmentRequestResponse(BaseModel):
+    id: int
+    course_id: int
+    student_id: int
+    requested_by_user_id: int | None = None
+    status: str
+    student_name: str | None = None
+    student_email: str | None = None
+    created_at: datetime
+    resolved_at: datetime | None = None
+    resolved_by_user_id: int | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class EnrollmentRequestUpdate(BaseModel):
+    status: str  # "approved" or "rejected"
 
 
 class AddStudentRequest(BaseModel):

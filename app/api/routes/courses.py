@@ -18,7 +18,8 @@ from app.models.invite import Invite, InviteType
 from app.models.broadcast import Broadcast
 from app.models.notification import Notification, NotificationType
 from app.models.message import Conversation, Message
-from app.schemas.course import CourseCreate, CourseUpdate, CourseResponse, TeacherCourseManagementResponse, AddStudentRequest
+from app.models.enrollment_request import EnrollmentRequest
+from app.schemas.course import CourseCreate, CourseUpdate, CourseResponse, TeacherCourseManagementResponse, AddStudentRequest, EnrollmentRequestResponse, EnrollmentRequestUpdate
 from app.api.deps import get_current_user, require_role, can_access_course
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email, wrap_branded_email
@@ -682,6 +683,49 @@ def enroll_in_course(
             detail="Already enrolled in this course",
         )
 
+    # If course requires approval, create a pending request instead
+    if course.require_approval:
+        # Check for existing pending request
+        existing = db.query(EnrollmentRequest).filter(
+            EnrollmentRequest.course_id == course_id,
+            EnrollmentRequest.student_id == student.id,
+            EnrollmentRequest.status == "pending",
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Enrollment request already pending",
+            )
+        enrollment_request = EnrollmentRequest(
+            course_id=course_id,
+            student_id=student.id,
+            requested_by_user_id=current_user.id,
+            status="pending",
+        )
+        db.add(enrollment_request)
+
+        # Notify course owner
+        if course.created_by_user_id:
+            db.add(Notification(
+                user_id=course.created_by_user_id,
+                type=NotificationType.SYSTEM,
+                title=f"Enrollment request for {course.name}",
+                content=f"{current_user.full_name} requested to join {course.name}",
+                link=f"/courses/{course.id}",
+            ))
+        # Also notify teacher if different from creator
+        if course.teacher_id and course.teacher and course.teacher.user_id and course.teacher.user_id != course.created_by_user_id:
+            db.add(Notification(
+                user_id=course.teacher.user_id,
+                type=NotificationType.SYSTEM,
+                title=f"Enrollment request for {course.name}",
+                content=f"{current_user.full_name} requested to join {course.name}",
+                link=f"/courses/{course.id}",
+            ))
+
+        db.commit()
+        return {"message": "Enrollment request submitted and pending approval", "course_id": course_id, "course_name": course.name, "status": "pending"}
+
     student.courses.append(course)
     db.commit()
 
@@ -941,6 +985,154 @@ def remove_student_from_course(
     )
     db.commit()
     return {"message": "Student removed from course"}
+
+
+# ── Enrollment Requests ──────────────────────────────────────
+
+
+@router.get("/{course_id}/enrollment-requests", response_model=list[EnrollmentRequestResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_enrollment_requests(
+    request: Request,
+    course_id: int,
+    status_filter: str | None = Query(None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List enrollment requests for a course (teacher/owner/admin only)."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    _require_course_manager(db, current_user, course)
+
+    query = db.query(EnrollmentRequest).filter(EnrollmentRequest.course_id == course_id)
+    if status_filter:
+        query = query.filter(EnrollmentRequest.status == status_filter)
+    else:
+        query = query.filter(EnrollmentRequest.status == "pending")
+
+    requests = query.order_by(EnrollmentRequest.created_at.desc()).all()
+
+    results = []
+    for req in requests:
+        student_name = None
+        student_email = None
+        if req.student and req.student.user:
+            student_name = req.student.user.full_name
+            student_email = req.student.user.email
+        results.append(EnrollmentRequestResponse(
+            id=req.id,
+            course_id=req.course_id,
+            student_id=req.student_id,
+            requested_by_user_id=req.requested_by_user_id,
+            status=req.status,
+            student_name=student_name,
+            student_email=student_email,
+            created_at=req.created_at,
+            resolved_at=req.resolved_at,
+            resolved_by_user_id=req.resolved_by_user_id,
+        ))
+    return results
+
+
+@router.patch("/{course_id}/enrollment-requests/{request_id}")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def resolve_enrollment_request(
+    request: Request,
+    course_id: int,
+    request_id: int,
+    body: EnrollmentRequestUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Approve or reject an enrollment request."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    _require_course_manager(db, current_user, course)
+
+    if body.status not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="Status must be 'approved' or 'rejected'")
+
+    enrollment_req = db.query(EnrollmentRequest).filter(
+        EnrollmentRequest.id == request_id,
+        EnrollmentRequest.course_id == course_id,
+    ).first()
+    if not enrollment_req:
+        raise HTTPException(status_code=404, detail="Enrollment request not found")
+    if enrollment_req.status != "pending":
+        raise HTTPException(status_code=400, detail="Request already resolved")
+
+    from datetime import datetime as dt, timezone as tz
+    enrollment_req.status = body.status
+    enrollment_req.resolved_at = dt.now(tz.utc)
+    enrollment_req.resolved_by_user_id = current_user.id
+
+    if body.status == "approved":
+        # Enroll the student
+        already = db.execute(
+            student_courses.select().where(
+                student_courses.c.student_id == enrollment_req.student_id,
+                student_courses.c.course_id == course_id,
+            )
+        ).first()
+        if not already:
+            db.execute(insert(student_courses).values(
+                student_id=enrollment_req.student_id,
+                course_id=course_id,
+            ))
+
+    # Notify the requesting student
+    notify_user_id = enrollment_req.requested_by_user_id
+    if not notify_user_id and enrollment_req.student and enrollment_req.student.user_id:
+        notify_user_id = enrollment_req.student.user_id
+    if notify_user_id:
+        action = "approved" if body.status == "approved" else "declined"
+        db.add(Notification(
+            user_id=notify_user_id,
+            type=NotificationType.SYSTEM,
+            title=f"Enrollment {action} for {course.name}",
+            content=f"Your request to join {course.name} has been {action}.",
+            link=f"/courses/{course.id}" if body.status == "approved" else None,
+        ))
+
+    db.commit()
+    return {"message": f"Enrollment request {body.status}", "request_id": request_id}
+
+
+@router.get("/{course_id}/enrollment-status")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_enrollment_status(
+    request: Request,
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Check the current user's enrollment/pending status for a course."""
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        return {"status": "not_student"}
+
+    # Check enrolled
+    enrolled = db.execute(
+        student_courses.select().where(
+            student_courses.c.student_id == student.id,
+            student_courses.c.course_id == course_id,
+        )
+    ).first()
+    if enrolled:
+        return {"status": "enrolled"}
+
+    # Check pending request
+    pending = db.query(EnrollmentRequest).filter(
+        EnrollmentRequest.course_id == course_id,
+        EnrollmentRequest.student_id == student.id,
+        EnrollmentRequest.status == "pending",
+    ).first()
+    if pending:
+        return {"status": "pending", "request_id": pending.id}
+
+    return {"status": "none"}
 
 
 # ── Teacher Course Announcements ─────────────────────────────

@@ -680,3 +680,25 @@
     justify-content: flex-end;
   }
 }
+
+/* Enrollment request actions */
+.enrollment-req-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent, #4f46e5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+}

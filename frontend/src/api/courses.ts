@@ -121,6 +121,7 @@ export const coursesApi = {
     student_ids?: number[];
     new_teacher_name?: string;
     new_teacher_email?: string;
+    require_approval?: boolean;
   }) => {
     const response = await api.post('/api/courses/', data);
     return response.data;
@@ -136,7 +137,7 @@ export const coursesApi = {
     return response.data as Array<{ id: number; user_id: number; name: string; email: string }>;
   },
 
-  update: async (id: number, data: { name?: string; description?: string; subject?: string; teacher_email?: string }) => {
+  update: async (id: number, data: { name?: string; description?: string; subject?: string; teacher_email?: string; require_approval?: boolean }) => {
     const response = await api.patch(`/api/courses/${id}`, data);
     return response.data;
   },
@@ -189,6 +190,33 @@ export const coursesApi = {
 
   unenroll: async (courseId: number) => {
     const response = await api.delete(`/api/courses/${courseId}/enroll`);
+    return response.data;
+  },
+
+  enrollmentStatus: async (courseId: number) => {
+    const response = await api.get(`/api/courses/${courseId}/enrollment-status`);
+    return response.data as { status: string; request_id?: number };
+  },
+
+  listEnrollmentRequests: async (courseId: number, status?: string) => {
+    const params = status ? { status } : {};
+    const response = await api.get(`/api/courses/${courseId}/enrollment-requests`, { params });
+    return response.data as Array<{
+      id: number;
+      course_id: number;
+      student_id: number;
+      requested_by_user_id: number | null;
+      status: string;
+      student_name: string | null;
+      student_email: string | null;
+      created_at: string;
+      resolved_at: string | null;
+      resolved_by_user_id: number | null;
+    }>;
+  },
+
+  resolveEnrollmentRequest: async (courseId: number, requestId: number, status: 'approved' | 'rejected') => {
+    const response = await api.patch(`/api/courses/${courseId}/enrollment-requests/${requestId}`, { status });
     return response.data;
   },
 };

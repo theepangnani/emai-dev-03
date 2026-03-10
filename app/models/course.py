@@ -45,6 +45,7 @@ class Course(Base):
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     is_private = Column(Boolean, default=False, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
+    require_approval = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
