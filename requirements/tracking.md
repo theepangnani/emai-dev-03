@@ -1,8 +1,8 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 7, 2026):** 855 total issues — 682 closed (80%), 173 open (20%)
-- **Features built:** 250 enhancements closed
-- **Bugs fixed:** 173 bugs closed
+**Summary (as of Mar 10, 2026):** 863 total issues — 690 closed (80%), 173 open (20%)
+- **Features built:** 252 enhancements closed
+- **Bugs fixed:** 179 bugs closed
 - **Other closed:** 259 (pilot prep, docs, testing, misc)
 
 Current feature issues are tracked in GitHub:
@@ -300,6 +300,16 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #205: Parent UX: Reduce modal nesting~~ ✅
 - ~~Issue #206: Parent UX: Consolidated parent navigation via My Kids page~~ ✅
 - ~~Issue #207: Parent Dashboard: Collapsible/expandable calendar (now defaults to collapsed — #544)~~ ✅
+
+### Phase 2 — Dashboard & UI Polish Sprint (Mar 8-10, 2026)
+- ~~Issue #1615: Chat FAB icon and Study Guide UI polish iterations~~ ✅ (§6.84)
+- ~~Issue #1616: Upload wizard loses class selection and resets on prop changes~~ ✅ (§6.85)
+- ~~Issue #1617: Collapsible dashboard panels, simplified view, and child card styling~~ ✅ (§6.86)
+- ~~Issue #1618: Filter parent Recent Activity to relevant items only~~ ✅ (§6.87)
+- ~~Issue #1619: Create Class wizard polish and enrollment system follow-ups~~ ✅ (§6.88)
+- ~~Issue #1620: Dashboard quick actions reorganization and additions~~ ✅ (§6.89)
+- ~~Issue #1621: Document download 404 for pre-migration content (follow-up)~~ ✅
+- ~~Issue #1622: MyKidsPage polish — school name, View navigation, SectionPanel headers~~ ✅ (§6.90)
 
 ### Phase 2
 - ~~Issue #26: Performance Analytics Dashboard (umbrella — broken into #469-#474)~~ ✅
