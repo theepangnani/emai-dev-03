@@ -2,7 +2,7 @@
   max-width: 900px;
 }
 
-/* Course header */
+/* Course header — unified with dashboard section panel */
 .course-detail-header {
   display: flex;
   justify-content: space-between;
@@ -10,10 +10,15 @@
   gap: 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 24px 28px;
-  margin-bottom: 28px;
+  border-top: 4px solid transparent;
+  border-image: linear-gradient(90deg, var(--color-accent), var(--color-accent-warm)) 1;
+  border-image-slice: 1 0 0 0;
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-bottom: 24px;
   box-shadow: var(--shadow-soft);
+  background-image: linear-gradient(135deg, rgba(73, 184, 192, 0.03) 0%, rgba(244, 128, 31, 0.02) 100%);
+  overflow: hidden;
 }
 
 .course-detail-info h2 {
@@ -145,24 +150,35 @@
   opacity: 0.7;
 }
 
-/* Shared button styles (also in CoursesPage.css — duplicated for standalone use) */
+/* Shared button styles — unified with dashboard quick action aesthetic */
 .courses-btn {
   padding: 8px 16px;
-  border: none;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: inherit;
+  color: var(--color-ink);
+}
+
+.courses-btn:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .courses-btn.primary {
   background: var(--color-accent);
   color: white;
+  border-color: var(--color-accent);
 }
 
 .courses-btn.primary:hover {
   background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
 }
 
 .courses-btn.secondary {
@@ -179,6 +195,7 @@
 .courses-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Danger text button (delete in modals) */
@@ -260,30 +277,74 @@
   color: var(--brand-google);
 }
 
-/* Unified section panel (consistent across all sections) */
+/* Unified section panel — matches dash-section from DashboardGrid */
 .course-section-panel {
   margin-top: 20px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 20px 24px;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .course-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  cursor: pointer;
+  user-select: none;
 }
 
 .course-section-header h3 {
   margin: 0;
   font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-display);
   color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.course-section-header h3 .dash-section-title-icon {
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.course-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  margin-left: 4px;
+}
+
+.course-section-chevron {
+  transition: transform 0.2s ease;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  margin-left: 4px;
+}
+
+.course-section-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 
 .course-detail-action-btns {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .action-icon-btn {
@@ -335,16 +396,13 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  padding: 16px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  padding: 10px 12px;
+  border-radius: 8px;
+  transition: background 0.15s;
 }
 
 .cd-content-item:hover {
-  box-shadow: var(--shadow-soft);
-  border-color: var(--color-accent-light);
+  background: var(--color-surface-alt, #f9fafb);
 }
 
 .cd-content-item-info {
@@ -396,21 +454,22 @@
 }
 
 
-/* Upload drop zone */
+/* Upload drop zone — refined to match dashboard aesthetic */
 .upload-drop-zone {
   border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 32px 20px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
-  background: var(--color-bg, #fafafa);
+  background: var(--color-surface-alt, #f9fafb);
 }
 
 .upload-drop-zone:hover,
 .upload-drop-zone.dragging {
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
+  box-shadow: 0 0 0 3px rgba(73, 184, 192, 0.1);
 }
 
 .upload-drop-text {
@@ -527,13 +586,14 @@
 .course-roster-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-border);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
 }
 
-.course-roster-row:last-child {
-  border-bottom: none;
+.course-roster-row:hover {
+  background: var(--color-surface-alt, #f9fafb);
 }
 
 .course-roster-info {
@@ -587,13 +647,14 @@
 .course-assignment-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-border);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
 }
 
-.course-assignment-row:last-child {
-  border-bottom: none;
+.course-assignment-row:hover {
+  background: var(--color-surface-alt, #f9fafb);
 }
 
 .course-assignment-info {
@@ -654,7 +715,7 @@
 @media (max-width: 480px) {
   .course-detail-header {
     flex-direction: column;
-    padding: 18px 16px;
+    padding: 16px;
   }
 
   .course-section-header {
@@ -665,6 +726,7 @@
 
   .course-section-panel {
     padding: 16px;
+    border-radius: 12px;
   }
 
   .course-detail-action-btns {
