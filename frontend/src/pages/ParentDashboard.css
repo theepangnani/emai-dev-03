@@ -277,150 +277,7 @@
   }
 }
 
-/* ============================================
-   Child Selector
-   ============================================ */
-
-.pd-child-selector {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.pd-child-tab {
-  padding: 10px 20px;
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pd-child-tab:hover {
-  border-color: var(--color-accent);
-  background: var(--color-surface-alt);
-  transform: translateY(-1px);
-}
-
-.pd-child-tab.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
-}
-
-.pd-child-tab.active .pd-grade-badge {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.pd-child-color-dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: box-shadow 0.25s ease;
-}
-
-.pd-child-tab.active .pd-child-color-dot {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
-}
-
-.pd-grade-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--color-surface-alt);
-  color: var(--color-ink-muted);
-}
-
-.pd-overdue-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 10px;
-  background: var(--priority-high);
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.pd-child-tab.active .pd-overdue-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: white;
-}
-
-.pd-child-tab-all {
-  padding: 10px 14px;
-  align-self: stretch;
-}
-
-/* "All" tab (#830) */
-.pd-child-tab-all.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
-}
-
-/* ============================================
-   Child Selector Scroll Wrapper (#830)
-   ============================================ */
-
-.pd-child-selector-wrapper {
-  position: relative;
-  margin-bottom: 24px;
-}
-
-/* Gradient fade indicators for horizontal scroll on mobile (#830) */
-.pd-child-selector-wrapper::before,
-.pd-child-selector-wrapper::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 32px;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.pd-child-selector-wrapper::before {
-  left: 0;
-  background: linear-gradient(to right, var(--color-background, #fff) 0%, transparent 100%);
-  border-radius: 8px 0 0 8px;
-}
-
-.pd-child-selector-wrapper::after {
-  right: 0;
-  background: linear-gradient(to left, var(--color-background, #fff) 0%, transparent 100%);
-  border-radius: 0 8px 8px 0;
-}
-
-.pd-child-selector-wrapper.can-scroll-left::before {
-  opacity: 1;
-}
-
-.pd-child-selector-wrapper.can-scroll-right::after {
-  opacity: 1;
-}
-
-/* FAB button alignment in child selector row */
-.pd-child-selector .add-action-wrapper {
-  flex-shrink: 0;
-}
+/* Child Selector styles moved to components/ChildSelectorTabs.css */
 
 /* ============================================
    Task Status Pills
@@ -1232,10 +1089,6 @@
   }
 }
 
-.pd-child-selector {
-  animation: pd-fadeSlideIn 0.4s ease-out both;
-}
-
 .student-detail-panel {
   animation: pd-fadeSlideIn 0.4s ease-out 0.15s both;
 }
@@ -1249,24 +1102,6 @@
    ============================================ */
 
 @media (max-width: 768px) {
-  /* Child selector: ensure wrapping with smaller buttons */
-  .pd-child-selector-wrapper {
-    margin-bottom: 20px;
-    padding: 12px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .pd-child-selector {
-    gap: 8px;
-  }
-
-  .pd-child-tab {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-
   /* Task status pills: card-style grouping on mobile */
   .pd-task-status-pills {
     gap: 8px;
@@ -1325,19 +1160,6 @@
    ============================================ */
 
 @media (max-width: 480px) {
-  /* Child tabs: full width stacking */
-  .pd-child-selector {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .pd-child-tab {
-    width: 100%;
-    justify-content: center;
-    padding: 12px 16px;
-    font-size: 14px;
-  }
-
   /* Status pills: stack vertically on small phones */
   .pd-task-status-pills {
     flex-direction: column;
@@ -1622,23 +1444,7 @@
 
 /* -- A/B. Timeline mobile rules moved to components/parent/ComingUpTimeline.css -- */
 
-/* -- C. Child tab horizontal scroll at medium widths (481-768px) -- */
-@media (min-width: 481px) and (max-width: 768px) {
-  .pd-child-selector {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .pd-child-selector::-webkit-scrollbar {
-    display: none;
-  }
-
-  .pd-child-tab {
-    flex-shrink: 0;
-  }
-}
+/* -- C. Child tab horizontal scroll rules moved to components/ChildSelectorTabs.css -- */
 
 /* =========================================
    Dashboard Skeleton Loading States (#738)
