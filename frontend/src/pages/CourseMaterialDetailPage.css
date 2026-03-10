@@ -93,15 +93,19 @@
   text-decoration: underline;
 }
 
-/* ── Header Card ──────────────────────────────── */
+/* ── Header Card — unified with dashboard section panel ── */
 .cm-detail-header {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-top: 4px solid transparent;
+  border-image: linear-gradient(90deg, var(--color-accent), var(--color-accent-warm)) 1;
+  border-image-slice: 1 0 0 0;
+  border-radius: var(--radius-md);
   padding: 0;
   box-shadow: var(--shadow-soft);
   margin-bottom: 1.5rem;
   overflow: hidden;
+  background-image: linear-gradient(135deg, rgba(73, 184, 192, 0.03) 0%, rgba(244, 128, 31, 0.02) 100%);
 }
 
 .cm-header-main {
@@ -182,12 +186,12 @@
   text-transform: capitalize;
 }
 
-/* ── Header toolbar ───────────────────────────── */
+/* ── Header toolbar — matches dashboard section footer ── */
 .cm-header-toolbar {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 12px 28px;
+  padding: 12px 24px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface-alt);
 }
@@ -234,18 +238,19 @@
   flex-shrink: 0;
 }
 
-/* ── Tabs ─────────────────────────────────────── */
+/* ── Tabs — matches pd-view-toggle aesthetic ─── */
 .cm-tabs {
-  display: flex;
-  gap: 2px;
+  display: inline-flex;
+  gap: 0;
   margin-bottom: 1.5rem;
   overflow-x: auto;
-  padding: 4px;
-  background: var(--color-surface-alt);
-  border-radius: var(--radius-md);
+  padding: 2px;
+  background: var(--color-surface);
+  border-radius: 6px;
   border: 1px solid var(--color-border);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  width: 100%;
 }
 .cm-tabs::-webkit-scrollbar {
   display: none;
@@ -253,12 +258,12 @@
 
 .cm-tab {
   flex: 1;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: none;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 12px;
   font-weight: 500;
   color: var(--color-ink-muted);
   white-space: nowrap;
@@ -266,18 +271,18 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: all 0.2s ease;
   position: relative;
 }
 .cm-tab:hover {
-  color: var(--color-purple);
-  background: var(--color-surface);
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
 }
 .cm-tab.active {
-  color: var(--color-purple);
-  background: var(--color-surface);
+  color: white;
+  background: var(--color-accent);
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .cm-tab:focus-visible {
   box-shadow: 0 0 0 3px var(--color-accent-subtle);
@@ -289,14 +294,13 @@
 /* Tabs with content get a subtle fill to show they're populated */
 .cm-tab.has-content:not(.active) {
   color: var(--color-ink);
-  background: var(--color-accent-subtle, rgba(124, 77, 255, 0.06));
 }
 /* Source Document tab gets a distinct accent */
-.cm-tab.source-doc {
-  border-left: 2px solid var(--color-purple, #7c4dff);
+.cm-tab.source-doc:not(.active) {
+  border-left: none;
 }
 .cm-tab.source-doc.active {
-  background: var(--color-accent-subtle, rgba(124, 77, 255, 0.08));
+  background: var(--color-accent);
 }
 
 .cm-tab-icon {
@@ -306,6 +310,7 @@
 }
 .cm-tab.active .cm-tab-icon {
   opacity: 1;
+  color: white;
 }
 
 .cm-tab-empty-dot {
@@ -360,17 +365,17 @@
   min-height: 200px;
 }
 
-/* ── Tab content card wrapper ──────────────────── */
+/* ── Tab content card wrapper — matches dash-section ── */
 .cm-tab-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
 
 .cm-tab-card-body {
-  padding: 20px 24px;
+  padding: 24px;
 }
 
 /* Study guide tab card — slightly darker for visual distinction */
@@ -444,7 +449,7 @@
   background: var(--color-surface-alt);
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: 16px 16px 0 0;
 }
 
 .cm-action-btn {
@@ -496,18 +501,21 @@
   color: var(--color-danger);
 }
 
-/* ── Empty tab state ──────────────────────────── */
+/* ── Empty tab state — matches pd-empty-state ── */
 .cm-empty-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   padding: 60px 24px;
   color: var(--color-ink-muted);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: 16px;
 }
 .cm-empty-tab-icon {
-  width: 56px;
-  height: 56px;
+  width: 80px;
+  height: 80px;
   margin: 0 auto 16px;
   display: flex;
   align-items: center;
@@ -515,6 +523,7 @@
   background: var(--color-surface-alt);
   border-radius: 50%;
   color: var(--color-muted);
+  font-size: 32px;
 }
 .cm-empty-tab h3 {
   font-size: 1.05rem;
@@ -539,15 +548,15 @@
   background: var(--color-accent);
   color: #fff;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 14px;
   font-weight: 600;
-  transition: background 0.15s, transform 0.1s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 .cm-empty-tab .cm-empty-generate-btn:hover:not(:disabled) {
-  background: var(--color-accent-strong);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 .cm-empty-tab .cm-empty-generate-btn:disabled {
   opacity: 0.5;
@@ -555,6 +564,7 @@
 }
 .cm-empty-tab .cm-empty-generate-btn:disabled:hover {
   transform: none;
+  box-shadow: none;
 }
 
 .cm-file-info-card {
@@ -790,21 +800,21 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   font-size: 1.1rem;
   text-align: center;
   line-height: 1.6;
 }
 .cm-flashcard-front {
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
 }
 .cm-flashcard-back {
   background: var(--color-purple-light);
-  border: 2px solid var(--color-purple);
+  border: 1px solid var(--color-purple);
   transform: rotateY(180deg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-soft);
 }
 
 .cm-flashcard-controls {
@@ -824,7 +834,7 @@
   color: var(--color-accent-strong);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: 16px;
 }
 .cm-inline-generating p {
   font-weight: 500;

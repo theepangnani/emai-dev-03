@@ -1,0 +1,123 @@
+/* ============================================
+   SectionPanel — shared collapsible section
+   ============================================ */
+
+.section-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.section-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.section-panel__header--collapsible {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+}
+
+.section-panel__header--expanded {
+  margin-bottom: 16px;
+}
+
+.section-panel__header--static {
+  margin-bottom: 16px;
+}
+
+.section-panel__title {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-panel__title-icon {
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.section-panel__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
+  background: var(--color-accent, #49b8c0);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.section-panel__header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-panel__chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--color-ink-muted, #6B7280);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.section-panel__chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
+.section-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.section-panel__body--collapsed {
+  max-height: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar styling */
+.section-panel__body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.section-panel__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.section-panel__body::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+/* ── Responsive ─────────────────────────── */
+
+@media (max-width: 767px) {
+  .section-panel {
+    padding: 16px;
+    border-radius: 12px;
+  }
+}

@@ -1,11 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { dateKey } from '../components/calendar/types';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { AlertBanner } from '../components/parent/AlertBanner';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { TodaysFocusHeader } from '../components/parent/TodaysFocusHeader';
-import { useParentDashboard, CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { useParentDashboard } from '../components/parent/useParentDashboard';
 import { RoleQuickActions } from '../components/RoleQuickActions';
 import type { QuickAction } from '../components/RoleQuickActions';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -15,6 +15,8 @@ import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
+import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
+import { SectionPanel } from '../components/SectionPanel';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -107,36 +109,9 @@ export function ParentDashboard() {
   const [tipDismissed, setTipDismissed] = useState(false);
   const [tasksCollapsed, setTasksCollapsed] = useState(() => loadViewMode() === 'simplified');
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
-  const childTabsRef = useRef<HTMLDivElement>(null);
-  const childScrollRef = useRef<HTMLDivElement>(null);
-
   // Collapsible section states (#832) — sectionStates retained for simplified/full toggle
   const [, setSectionStates] = useState<SectionStates>(loadSectionStates);
   const [viewMode, setViewMode] = useState<'simplified' | 'full'>(loadViewMode);
-
-  // Scroll indicator state for child selector (#830)
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const updateScrollIndicators = useCallback(() => {
-    const el = childScrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
-  }, []);
-
-  useEffect(() => {
-    const el = childScrollRef.current;
-    if (!el) return;
-    updateScrollIndicators();
-    el.addEventListener('scroll', updateScrollIndicators, { passive: true });
-    const ro = new ResizeObserver(updateScrollIndicators);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener('scroll', updateScrollIndicators);
-      ro.disconnect();
-    };
-  }, [updateScrollIndicators, pd.children.length]);
 
   const handleToggleViewMode = useCallback(() => {
     setViewMode(prev => {
@@ -155,36 +130,6 @@ export function ParentDashboard() {
       return next;
     });
   }, []);
-
-  // Arrow key navigation for child selector tabs (ARIA tab pattern)
-  // Index 0 = "All" tab, index 1..N = individual children
-  const handleChildTabKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
-    const tabs = childTabsRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
-    if (!tabs || tabs.length === 0) return;
-    let nextIndex = -1;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      nextIndex = (index + 1) % tabs.length;
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      nextIndex = (index - 1 + tabs.length) % tabs.length;
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      nextIndex = 0;
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      nextIndex = tabs.length - 1;
-    }
-    if (nextIndex >= 0) {
-      tabs[nextIndex].focus();
-      if (nextIndex === 0) {
-        // "All" tab
-        pd.handleAllChildrenClick();
-      } else {
-        pd.handleChildTabClick(pd.children[nextIndex - 1].student_id);
-      }
-    }
-  }, [pd]);
 
   // Focus traps for modals
   const linkModalRef = useFocusTrap<HTMLDivElement>(!!pd.showLinkModal, pd.closeLinkModal);
@@ -280,51 +225,16 @@ export function ParentDashboard() {
           </div>
 
           {/* Child Filter (#830) */}
-          <div className={`pd-child-selector-wrapper${canScrollLeft ? ' can-scroll-left' : ''}${canScrollRight ? ' can-scroll-right' : ''}`}>
-            <div className="pd-child-selector" role="tablist" aria-label="Select child" ref={(el) => { (childTabsRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (childScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}>
-              {/* "All" tab — always first (#830) */}
-              {pd.children.length > 1 && (
-                <button
-                  role="tab"
-                  aria-selected={pd.selectedChild === null}
-                  tabIndex={pd.selectedChild === null ? 0 : -1}
-                  className={`pd-child-tab pd-child-tab-all ${pd.selectedChild === null ? 'active' : ''}`}
-                  onClick={() => { pd.handleAllChildrenClick(); setTasksCollapsed(false); if (viewMode === 'simplified') { setViewMode('full'); try { localStorage.setItem(VIEW_MODE_KEY, 'full'); } catch { /* ignore */ } } }}
-                  onKeyDown={(e) => handleChildTabKeyDown(e, 0)}
-                  title="All children"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </button>
-              )}
-              {pd.children.map((child, index) => {
-                const isSelected = pd.selectedChild === child.student_id;
-                const overdueCount = pd.childOverdueCounts.get(child.student_id) ?? 0;
-                // When "All" tab is present, keyboard index is offset by 1
-                const tabKeyIndex = pd.children.length > 1 ? index + 1 : index;
-                return (
-                  <button
-                    key={child.student_id}
-                    role="tab"
-                    aria-selected={isSelected}
-                    tabIndex={isSelected || (pd.selectedChild === null && pd.children.length <= 1 && index === 0) ? 0 : -1}
-                    className={`pd-child-tab ${isSelected ? 'active' : ''}`}
-                    onClick={() => { pd.handleChildTabClick(child.student_id); setTasksCollapsed(false); if (viewMode === 'simplified') { setViewMode('full'); try { localStorage.setItem(VIEW_MODE_KEY, 'full'); } catch { /* ignore */ } } }}
-                    onKeyDown={(e) => handleChildTabKeyDown(e, tabKeyIndex)}
-                  >
-                    <span className="pd-child-color-dot" aria-hidden="true" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-                    {child.full_name}
-                    {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
-                    {overdueCount > 0 && <span className="pd-overdue-badge" aria-label={`${overdueCount} overdue`}>{overdueCount}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <ChildSelectorTabs
+            children={pd.children}
+            selectedChild={pd.selectedChild}
+            onSelectChild={(id) => {
+              if (id === null) { pd.handleAllChildrenClick(); } else { pd.handleChildTabClick(id); }
+              setTasksCollapsed(false);
+              if (viewMode === 'simplified') { setViewMode('full'); try { localStorage.setItem(VIEW_MODE_KEY, 'full'); } catch { /* ignore */ } }
+            }}
+            childOverdueCounts={pd.childOverdueCounts}
+          />
 
           <AlertBanner
             pendingInvites={pd.pendingInvites.map(i => ({ id: i.id, email: i.email }))}
@@ -469,16 +379,15 @@ export function ParentDashboard() {
 
           {/* 3-Section Dashboard Grid (#1415) */}
           <div className="dashboard-redesign">
-            <section className="dash-section dash-section--primary">
-              <div className="dash-section-header" onClick={() => setTasksCollapsed(c => !c)} role="button" tabIndex={0} style={{ cursor: 'pointer' }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTasksCollapsed(c => !c); } }}>
-                <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#9728;&#65039;</span> Tasks Overview{(pd.taskCounts.overdue + pd.taskCounts.dueToday + pd.taskCounts.upcoming) > 0 && <span className="pd-activity-count-badge">{pd.taskCounts.overdue + pd.taskCounts.dueToday + pd.taskCounts.upcoming}</span>}</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <a href="/tasks" className="dash-section-link" onClick={e => e.stopPropagation()}>All tasks</a>
-                  <svg className={`pd-activity-chevron${tasksCollapsed ? ' pd-activity-collapsed' : ''}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                </div>
-              </div>
-              {!tasksCollapsed && (
-                <div className="dash-section-body">
+            <SectionPanel
+              title="Tasks Overview"
+              icon="&#9728;&#65039;"
+              count={pd.taskCounts.overdue + pd.taskCounts.dueToday + pd.taskCounts.upcoming}
+              collapsed={tasksCollapsed}
+              onToggle={() => setTasksCollapsed(c => !c)}
+              headerRight={<a href="/tasks" className="dash-section-link" onClick={e => e.stopPropagation()}>All tasks</a>}
+              className="dash-section--primary"
+            >
                   {(pd.taskCounts.overdue > 0 || pd.taskCounts.dueToday > 0 || pd.taskCounts.upcoming > 0) && (
                     <div className="pd-task-status-pills" style={{ marginTop: 12 }}>
                       {pd.taskCounts.overdue > 0 && <button className="pd-status-pill pd-status-pill-overdue" onClick={() => pd.navigate('/tasks?due=overdue')}>{pd.taskCounts.overdue} overdue</button>}
@@ -502,9 +411,7 @@ export function ParentDashboard() {
                       </div>
                     );
                   })()}
-                </div>
-              )}
-            </section>
+            </SectionPanel>
 
             <section className="dash-section dash-section--secondary">
               <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} viewMode={viewMode} />
