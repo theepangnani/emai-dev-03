@@ -92,6 +92,11 @@ export const coursesApi = {
     return response.data;
   },
 
+  browse: async (params: { search?: string; subject?: string; teacher_name?: string } = {}) => {
+    const response = await api.get('/api/courses/browse', { params });
+    return response.data;
+  },
+
   get: async (id: number) => {
     const response = await api.get(`/api/courses/${id}`);
     return response.data;

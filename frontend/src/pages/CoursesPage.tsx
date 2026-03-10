@@ -70,7 +70,12 @@ export function CoursesPage() {
   });
   const [enrollingId, setEnrollingId] = useState<number | null>(null);
     const [classroomTypeFilter, setClassroomTypeFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
+
+  // Browse search filters (server-side)
+  const [browseSearch, setBrowseSearch] = useState('');
+  const [browseSubject, setBrowseSubject] = useState('');
+  const [browseTeacher, setBrowseTeacher] = useState('');
+  const [browseLoading, setBrowseLoading] = useState(false);
 
   // Parent-specific state
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -158,18 +163,26 @@ export function CoursesPage() {
     }
   }, [selectedChild, children]);
 
-  // Debounced search term sync to URL
+  // Debounced server-side browse search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm) {
-        searchParams.set('q', searchTerm);
-      } else {
-        searchParams.delete('q');
+    if (!isStudent || studentTab !== 'browse') return;
+    setBrowseLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const params: Record<string, string> = {};
+        if (browseSearch.trim()) params.search = browseSearch.trim();
+        if (browseSubject.trim()) params.subject = browseSubject.trim();
+        if (browseTeacher.trim()) params.teacher_name = browseTeacher.trim();
+        const results = await coursesApi.browse(params);
+        setAvailableCourses(results);
+      } catch {
+        // Fall back silently; user can retry
+      } finally {
+        setBrowseLoading(false);
       }
-      setSearchParams(searchParams, { replace: true });
-    }, 300);
+    }, 350);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [browseSearch, browseSubject, browseTeacher, studentTab, isStudent]);
 
   const loadData = async () => {
     setLoadError(false);
@@ -197,14 +210,9 @@ export function CoursesPage() {
           setGoogleConnected(status.connected);
         } catch { /* ignore */ }
       } else if (isStudent) {
-        // Student: load enrolled courses and all visible courses for browsing
-        const [enrolled, allVisible] = await Promise.all([
-          coursesApi.enrolledByMe(),
-          coursesApi.list(),
-        ]);
+        // Student: load enrolled courses; browse courses loaded by browse effect
+        const enrolled = await coursesApi.enrolledByMe();
         setEnrolledCourses(enrolled);
-        const enrolledIds = new Set(enrolled.map((c: CourseItem) => c.id));
-        setAvailableCourses(allVisible.filter((c: CourseItem) => !enrolledIds.has(c.id) && !c.is_private));
       } else {
         // Teacher/Admin: show all visible courses
         const courses = await coursesApi.list();
@@ -533,11 +541,7 @@ export function CoursesPage() {
   };
 
 
-  const filteredAvailable = filterByType(availableCourses).filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.subject && c.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (c.teacher_name && c.teacher_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredAvailable = filterByType(availableCourses);
 
   const childName = childOverview?.full_name || children.find(c => c.student_id === selectedChild)?.full_name || '';
   const courseIds = (childOverview?.courses || []).map(c => c.id);
@@ -885,16 +889,35 @@ export function CoursesPage() {
 
             {studentTab === 'browse' && (
               <div className="courses-section">
-                <div className="courses-search">
+                <div className="courses-search" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <input
                     type="text"
-                    placeholder="Search classes by name, subject, or teacher..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name or description..."
+                    value={browseSearch}
+                    onChange={(e) => setBrowseSearch(e.target.value)}
                     className="courses-search-input"
+                    style={{ flex: '2 1 200px' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Subject..."
+                    value={browseSubject}
+                    onChange={(e) => setBrowseSubject(e.target.value)}
+                    className="courses-search-input"
+                    style={{ flex: '1 1 120px' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Teacher..."
+                    value={browseTeacher}
+                    onChange={(e) => setBrowseTeacher(e.target.value)}
+                    className="courses-search-input"
+                    style={{ flex: '1 1 120px' }}
                   />
                 </div>
-                {filteredAvailable.length > 0 ? (
+                {browseLoading ? (
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
+                ) : filteredAvailable.length > 0 ? (
                   <div className="courses-list">
                     {filteredAvailable.map((course) => (
                       <div key={course.id} className="course-list-row browse">
@@ -922,7 +945,7 @@ export function CoursesPage() {
                   </div>
                 ) : (
                   <EmptyState
-                    title={searchTerm ? 'No classes match your search.' : 'No available classes to browse.'}
+                    title={(browseSearch || browseSubject || browseTeacher) ? 'No classes match your search.' : 'No available classes to browse.'}
                     variant="compact"
                   />
                 )}

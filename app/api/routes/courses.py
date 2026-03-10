@@ -276,6 +276,59 @@ def create_course(
     return course
 
 
+@router.get("/browse", response_model=list[CourseResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def browse_courses(
+    request: Request,
+    search: str = Query("", max_length=200, description="Search by name or description"),
+    subject: str = Query("", max_length=100, description="Filter by subject"),
+    teacher_name: str = Query("", max_length=200, alias="teacher_name", description="Filter by teacher name"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STUDENT)),
+):
+    """Browse non-private courses for student enrollment.
+
+    Supports search filters on name/description, subject, and teacher name.
+    Excludes courses the student is already enrolled in.
+    """
+    query = db.query(Course).filter(
+        Course.is_private == False,  # noqa: E712
+        Course.is_default == False,  # noqa: E712
+    )
+
+    if search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            (Course.name.ilike(term)) | (Course.description.ilike(term))
+        )
+
+    if subject.strip():
+        query = query.filter(Course.subject.ilike(f"%{subject.strip()}%"))
+
+    if teacher_name.strip():
+        t_term = f"%{teacher_name.strip()}%"
+        # Join to Teacher and User to filter by teacher name
+        from sqlalchemy import or_
+        query = query.join(Teacher, Course.teacher_id == Teacher.id).outerjoin(
+            User, Teacher.user_id == User.id
+        ).filter(
+            or_(
+                Teacher.full_name.ilike(t_term),
+                User.full_name.ilike(t_term),
+            )
+        )
+
+    courses = query.order_by(Course.name).all()
+
+    # Exclude already-enrolled courses
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if student:
+        enrolled_ids = {c.id for c in student.courses}
+        courses = [c for c in courses if c.id not in enrolled_ids]
+
+    return courses
+
+
 @router.get("/", response_model=list[CourseResponse])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_courses(
