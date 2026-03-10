@@ -40,6 +40,7 @@ class CourseResponse(BaseModel):
     description: str | None
     subject: str | None
     google_classroom_id: str | None
+    class_code: str | None = None
     classroom_type: str | None = "manual"
     teacher_id: int | None
     teacher_name: str | None = None
@@ -61,6 +62,7 @@ class TeacherCourseManagementResponse(BaseModel):
     description: str | None
     subject: str | None
     google_classroom_id: str | None
+    class_code: str | None = None
     classroom_type: str | None = "manual"
     teacher_id: int | None
     teacher_name: str | None = None

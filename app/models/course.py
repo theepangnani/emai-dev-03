@@ -34,6 +34,9 @@ class Course(Base):
     # Google Classroom integration
     google_classroom_id = Column(String(255), unique=True, nullable=True)
 
+    # Shareable class code (6-char alphanumeric)
+    class_code = Column(String(10), unique=True, nullable=True, index=True)
+
     classroom_type = Column(String(20), nullable=False, default="manual", server_default="manual")  # "school", "private", or "manual"
 
     teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)

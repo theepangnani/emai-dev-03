@@ -41,6 +41,7 @@ interface CourseDetail {
   created_at: string;
   google_classroom_id: string | null;
   classroom_type: string | null;
+  class_code: string | null;
 }
 
 interface RosterStudent {
@@ -599,6 +600,24 @@ export function CourseDetailPage() {
               {course.classroom_type === 'private' && course.google_classroom_id && <span className="course-detail-badge private-gc">Private</span>}
               {course.is_private && <span className="course-detail-badge private">Private</span>}
             </div>
+            {course.class_code && (
+              <div className="course-detail-class-code">
+                <span className="class-code-label">Class Code:</span>
+                <code className="class-code-value">{course.class_code}</code>
+                <button
+                  className="class-code-copy-btn"
+                  title="Copy class code"
+                  onClick={() => {
+                    navigator.clipboard.writeText(course.class_code!);
+                    const btn = document.querySelector('.class-code-copy-btn');
+                    if (btn) {
+                      btn.textContent = 'Copied!';
+                      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                    }
+                  }}
+                >Copy</button>
+              </div>
+            )}
             {course.description && <p className="course-detail-desc">{course.description}</p>}
             {course.teacher_name && (
               <span className="course-detail-teacher">

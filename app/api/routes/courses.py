@@ -28,6 +28,19 @@ from app.domains.education.services import EducationService
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
+
+def generate_class_code(db: Session, length: int = 6) -> str:
+    """Generate a unique 6-character uppercase alphanumeric class code."""
+    import string
+    import random
+    chars = string.ascii_uppercase + string.digits
+    for _ in range(100):  # max attempts
+        code = ''.join(random.choices(chars, k=length))
+        existing = db.query(Course).filter(Course.class_code == code).first()
+        if not existing:
+            return code
+    raise RuntimeError("Unable to generate unique class code after 100 attempts")
+
 _template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates")
 
 
@@ -238,6 +251,7 @@ def create_course(
                 except Exception as e:
                     logger.warning(f"Failed to send teacher invite email to {email}: {e}")
 
+    course_dict["class_code"] = generate_class_code(db)
     course = Course(**course_dict)
     db.add(course)
     db.flush()
@@ -401,6 +415,7 @@ def list_teaching_courses_management(
             description=course.description,
             subject=course.subject,
             google_classroom_id=course.google_classroom_id,
+            class_code=course.class_code,
             classroom_type=course.classroom_type,
             teacher_id=course.teacher_id,
             teacher_name=course.teacher_name,
@@ -460,6 +475,24 @@ def get_default_course(
         if child:
             target_user = child
     return get_or_create_default_course(db, target_user)
+
+
+@router.get("/lookup", response_model=CourseResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def lookup_course_by_code(
+    request: Request,
+    code: str = Query(..., min_length=1, max_length=10),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Look up a course by its shareable class code."""
+    course = db.query(Course).filter(Course.class_code == code.upper()).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No course found with that class code",
+        )
+    return course
 
 
 @router.get("/{course_id}", response_model=CourseResponse)
