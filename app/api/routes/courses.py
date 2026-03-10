@@ -285,6 +285,19 @@ def create_course(
                 if not already:
                     db.execute(insert(student_courses).values(student_id=student.id, course_id=course.id))
 
+    # Auto-enroll the student creator in their own course
+    if current_user.role == UserRole.STUDENT:
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student:
+            already = db.execute(
+                student_courses.select().where(
+                    student_courses.c.student_id == student.id,
+                    student_courses.c.course_id == course.id,
+                )
+            ).first()
+            if not already:
+                db.execute(insert(student_courses).values(student_id=student.id, course_id=course.id))
+
     log_action(db, user_id=current_user.id, action="create", resource_type="course", resource_id=course.id, details={"name": course.name})
     db.commit()
     db.refresh(course)

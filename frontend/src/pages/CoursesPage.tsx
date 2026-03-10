@@ -232,9 +232,13 @@ export function CoursesPage() {
           setGoogleConnected(status.connected);
         } catch { /* ignore */ }
       } else if (isStudent) {
-        // Student: load enrolled courses; browse courses loaded by browse effect
-        const enrolled = await coursesApi.enrolledByMe();
+        // Student: load enrolled courses + created courses; browse courses loaded by browse effect
+        const [enrolled, created] = await Promise.all([
+          coursesApi.enrolledByMe(),
+          coursesApi.createdByMe(),
+        ]);
         setEnrolledCourses(enrolled);
+        setMyCourses(created);
       } else {
         // Teacher/Admin: show all visible courses
         const courses = await coursesApi.list();
@@ -364,6 +368,13 @@ export function CoursesPage() {
         const courses = await coursesApi.createdByMe();
         setMyCourses(courses);
         if (selectedChild) loadChildOverview(selectedChild);
+      } else if (isStudent) {
+        const [enrolled, created] = await Promise.all([
+          coursesApi.enrolledByMe(),
+          coursesApi.createdByMe(),
+        ]);
+        setEnrolledCourses(enrolled);
+        setMyCourses(created);
       } else {
         const courses = await coursesApi.list();
         setMyCourses(courses);
@@ -1028,15 +1039,15 @@ export function CoursesPage() {
           </>
         )}
 
-        {/* Parent: Created courses / Non-parent (non-student): All courses */}
-        {!isStudent && (
+        {/* Created courses section (parents, teachers, admins always; students only when they have created classes) */}
+        {(!isStudent || myCourses.length > 0) && (
         <div className="courses-section">
           <div className="courses-section-header">
             <button className="collapse-toggle" onClick={() => setMyCoursesExpanded(v => !v)}>
               <span className={`section-chevron${myCoursesExpanded ? ' expanded' : ''}`}>&#9654;</span>
-              <h3>{isParent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
+              <h3>{isParent || isStudent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
             </button>
-            {!isParent && (
+            {!isParent && !isStudent && (
               <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
@@ -1091,8 +1102,8 @@ export function CoursesPage() {
         )}
       </div>
 
-      {/* Create Course Modal */}
-      {showCreateModal && !isParent && (
+      {/* Create Course Modal (teacher/admin — single form) */}
+      {showCreateModal && !isParent && !isStudent && (
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
@@ -1419,6 +1430,155 @@ export function CoursesPage() {
                     className="generate-btn"
                     onClick={handleCreateCourse}
                     disabled={createLoading}
+                  >
+                    {createLoading ? 'Creating...' : 'Create Class'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Create Class Wizard (2-step) */}
+      {showCreateModal && isStudent && (
+        <div className="modal-overlay" onClick={closeCreateModal}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
+            <h2>Create Class</h2>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', margin: '0 0 16px' }}>
+              {[1, 2].map((s) => (
+                <div key={s} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  color: wizardStep >= s ? '#6366f1' : '#9ca3af',
+                  fontWeight: wizardStep === s ? 600 : 400,
+                  fontSize: '0.85rem',
+                }}>
+                  <span style={{
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: wizardStep >= s ? '#6366f1' : '#e5e7eb',
+                    color: wizardStep >= s ? '#fff' : '#6b7280',
+                    fontSize: '0.75rem', fontWeight: 600,
+                  }}>{s}</span>
+                  {s === 1 ? 'Details' : 'Teacher'}
+                  {s < 2 && <span style={{ color: '#d1d5db', margin: '0 2px' }}>—</span>}
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-form">
+              {/* Step 1: Class Details */}
+              {wizardStep === 1 && (
+                <>
+                  <label>
+                    Class Name *
+                    <input
+                      type="text"
+                      value={courseName}
+                      onChange={(e) => { setCourseName(e.target.value); setCreateError(''); }}
+                      placeholder="e.g. Algebra I"
+                      disabled={createLoading}
+                    />
+                  </label>
+                  <label>
+                    Subject
+                    <input
+                      type="text"
+                      value={courseSubject}
+                      onChange={(e) => setCourseSubject(e.target.value)}
+                      placeholder="e.g. Mathematics"
+                      disabled={createLoading}
+                    />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      value={courseDescription}
+                      onChange={(e) => setCourseDescription(e.target.value)}
+                      placeholder="Brief description of the class..."
+                      rows={2}
+                      disabled={createLoading}
+                    />
+                  </label>
+                </>
+              )}
+
+              {/* Step 2: Teacher + Create */}
+              {wizardStep === 2 && (
+                <>
+                  <label>
+                    Teacher *
+                  </label>
+                  {!showCreateTeacher ? (
+                    <SearchableSelect
+                      placeholder="Search for a teacher by name or email..."
+                      onSearch={handleSearchTeachers}
+                      onSelect={(opt) => { setSelectedTeacher(opt); setCreateError(''); }}
+                      selected={selectedTeacher}
+                      onClear={() => setSelectedTeacher(null)}
+                      disabled={createLoading}
+                      createAction={{ label: '+ Create New Teacher', onClick: () => { setSelectedTeacher(null); setShowCreateTeacher(true); } }}
+                    />
+                  ) : (
+                    <div className="create-teacher-inline">
+                      <div className="create-teacher-inline__header">
+                        <h4>New Teacher</h4>
+                        <button type="button" className="create-teacher-inline__cancel" onClick={() => { setShowCreateTeacher(false); setNewTeacherName(''); setNewTeacherEmail(''); }}>
+                          Back to search
+                        </button>
+                      </div>
+                      <label>
+                        Name *
+                        <input
+                          type="text"
+                          value={newTeacherName}
+                          onChange={(e) => { setNewTeacherName(e.target.value); setCreateError(''); }}
+                          placeholder="e.g. Ms. Johnson"
+                          disabled={createLoading}
+                        />
+                      </label>
+                      <label>
+                        Email (optional)
+                        <input
+                          type="email"
+                          value={newTeacherEmail}
+                          onChange={(e) => setNewTeacherEmail(e.target.value)}
+                          placeholder="teacher@school.com"
+                          disabled={createLoading}
+                        />
+                      </label>
+                      <p className="shadow-note">
+                        {newTeacherEmail ? 'An invitation will be sent to join ClassBridge as a teacher.' : 'No email = shadow teacher (can be invited later).'}
+                      </p>
+                    </div>
+                  )}
+                  <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '8px' }}>You will be automatically enrolled as a student in this class.</p>
+                </>
+              )}
+
+              {createError && <p className="link-error">{createError}</p>}
+            </div>
+
+            <div className="modal-actions">
+              {wizardStep === 1 && (
+                <>
+                  <button className="cancel-btn" onClick={closeCreateModal}>Cancel</button>
+                  <button
+                    className="generate-btn"
+                    onClick={() => setWizardStep(2)}
+                    disabled={!courseName.trim()}
+                  >
+                    Next
+                  </button>
+                </>
+              )}
+              {wizardStep === 2 && (
+                <>
+                  <button className="cancel-btn" onClick={() => setWizardStep(1)} disabled={createLoading}>Back</button>
+                  <button
+                    className="generate-btn"
+                    onClick={handleCreateCourse}
+                    disabled={createLoading || (!selectedTeacher && !(showCreateTeacher && newTeacherName.trim()))}
                   >
                     {createLoading ? 'Creating...' : 'Create Class'}
                   </button>
