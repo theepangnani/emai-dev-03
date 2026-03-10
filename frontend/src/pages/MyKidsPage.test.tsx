@@ -102,7 +102,7 @@ describe('MyKidsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('No children linked yet')).toBeInTheDocument()
     })
-    expect(document.querySelector('.mykids-btn')).toBeInTheDocument()
+    expect(document.querySelector('.pd-empty-state-cta')).toBeInTheDocument()
   })
 
   // Regression test for #1351: clicking Add Child in empty state must not crash.
@@ -119,7 +119,7 @@ describe('MyKidsPage', () => {
 
     const user = userEvent.setup()
     // Click the main content button (not the sidebar one)
-    const addBtn = document.querySelector('.mykids-btn') as HTMLElement
+    const addBtn = document.querySelector('.pd-empty-state-cta') as HTMLElement
     await user.click(addBtn)
 
     // Modal should be visible with both tabs and form fields
@@ -143,7 +143,7 @@ describe('MyKidsPage', () => {
     })
 
     const user = userEvent.setup()
-    const addBtn = document.querySelector('.mykids-btn') as HTMLElement
+    const addBtn = document.querySelector('.pd-empty-state-cta') as HTMLElement
     await user.click(addBtn)
 
     await waitFor(() => {
