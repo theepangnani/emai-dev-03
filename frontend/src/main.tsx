@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import './gradients.css'
 import App from './App.tsx'
 
 // Global handler for Vite chunk preload failures (CSS chunks, async deps).
