@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { api } from '../../api/client';
+
+const CHAT_STORAGE_KEY = 'classbridge-help-messages';
 
 export interface VideoInfo {
   title: string;
@@ -23,7 +25,22 @@ interface HelpChatResponse {
 }
 
 export function useHelpChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(CHAT_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.map((m: ChatMessage) => ({ ...m, timestamp: new Date(m.timestamp) }));
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    } catch { /* ignore */ }
+  }, [messages]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,5 +91,10 @@ export function useHelpChat() {
     }
   }, [messages]);
 
-  return { messages, sendMessage, isLoading, error };
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    try { sessionStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* ignore */ }
+  }, []);
+
+  return { messages, sendMessage, isLoading, error, clearMessages };
 }

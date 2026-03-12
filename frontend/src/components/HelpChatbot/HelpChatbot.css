@@ -107,6 +107,22 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
+.help-chatbot-clear {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.help-chatbot-clear:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* Messages area */
 .help-chatbot-messages {
   flex: 1;

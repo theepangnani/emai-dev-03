@@ -16,7 +16,7 @@ export function HelpChatbot() {
     }
   });
 
-  const { messages, sendMessage, isLoading, error } = useHelpChat();
+  const { messages, sendMessage, isLoading, error, clearMessages } = useHelpChat();
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,6 +85,16 @@ export function HelpChatbot() {
               <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
               <h3>ClassBridge Help</h3>
             </div>
+            {messages.length > 0 && (
+              <button
+                className="help-chatbot-clear"
+                onClick={clearMessages}
+                aria-label="Clear chat history"
+                title="Clear chat"
+              >
+                Clear
+              </button>
+            )}
             <button
               className="help-chatbot-close"
               onClick={() => setIsOpen(false)}
