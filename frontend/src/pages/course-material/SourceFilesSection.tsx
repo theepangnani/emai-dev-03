@@ -66,7 +66,7 @@ export function SourceFilesSection({ contentId, sourceFilesCount, initialExpande
     setViewBlobUrl(null);
     setViewLoading(true);
     try {
-      const url = await courseContentsApi.getSourceFileBlobUrl(contentId, file.id);
+      const url = await courseContentsApi.getSourceFileBlobUrl(contentId, file.id, file.file_type || undefined);
       setViewBlobUrl(url);
     } catch {
       /* fall through — shows loading state */

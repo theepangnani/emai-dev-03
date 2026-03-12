@@ -1,3 +1,4 @@
+import mimetypes
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -1327,7 +1328,9 @@ def download_source_file(
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file not found")
 
-    media_type = source.file_type or "application/octet-stream"
+    media_type = source.file_type
+    if not media_type:
+        media_type = mimetypes.guess_type(source.filename or "")[0] or "application/octet-stream"
     filename = source.filename or f"file-{file_id}"
 
     return Response(

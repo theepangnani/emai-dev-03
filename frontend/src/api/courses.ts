@@ -331,11 +331,16 @@ export const courseContentsApi = {
   },
 
   /** Fetch a source file as a blob URL (authenticated). Used for inline image/PDF preview. */
-  getSourceFileBlobUrl: async (contentId: number, fileId: number): Promise<string> => {
+  getSourceFileBlobUrl: async (contentId: number, fileId: number, expectedType?: string): Promise<string> => {
     const response = await api.get(`/api/course-contents/${contentId}/source-files/${fileId}/download`, {
       responseType: 'blob',
     });
-    return URL.createObjectURL(response.data);
+    let blob = response.data;
+    // If the blob type is generic but we know the expected type, re-create with correct type
+    if (expectedType && (!blob.type || blob.type === 'application/octet-stream')) {
+      blob = new Blob([blob], { type: expectedType });
+    }
+    return URL.createObjectURL(blob);
   },
 
   uploadMultiFiles: async (files: File[], courseId: number, title?: string, contentType?: string, aiTool?: string, aiCustomPrompt?: string) => {
