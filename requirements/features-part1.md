@@ -751,3 +751,21 @@ Persistent audit log tracking sensitive actions for FERPA/PIPEDA compliance and 
 - Non-blocking: `log_action()` silently fails on error, never blocks requests
 - Uses `String(20)` for action column (not Enum) for SQLite/PostgreSQL compatibility
 
+### 6.15 Session Management & Idle Timeout (Phase 1) - IMPLEMENTED
+
+#### Session Limits
+- **Refresh token lifetime:** 2 days (absolute session limit). Configured via `refresh_token_expire_days` in backend config
+- **Idle timeout:** 2 hours of inactivity triggers automatic logout
+- **Activity tracking:** mouse, keyboard, touch, and scroll events reset the idle timer
+
+#### Idle Timeout Warning
+- A warning modal appears 5 minutes before the idle timeout expires
+- Message: "Your session is about to expire. Click to stay logged in."
+- Clicking "Stay Logged In" resets the idle timer
+- If the user does not respond, `logout()` is called and the user is redirected to the login page
+
+#### Implementation
+- Idle tracking lives in `AuthContext.tsx` (frontend) — no separate files
+- Backend `refresh_token_expire_days` set to `2` in `app/core/config.py`
+- Event listeners and timers are cleaned up on unmount
+
