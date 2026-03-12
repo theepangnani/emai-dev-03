@@ -396,7 +396,7 @@ Features that answer the pilot feedback question: *"Why should I use ClassBridge
 |----------|---------|------|---------|------------|
 | 1 | **Smart Daily Briefing** — proactive "what matters today" | #1403 | $0 | Highest — answers "why open ClassBridge" |
 | 2 | **Help My Kid** — one-tap study material generation | #1407 | ~$0.02/use | Highest — instant parent action |
-| 3 | **Global Search + Smart Shortcuts** — find anything instantly | #1410 | $0 | Medium — power users love it |
+| 3 | **Global Search via Chatbot** — find anything instantly through Help Chatbot | #1630 (supersedes #1410) | $0 | Medium — power users love it |
 | 4 | **Weekly Progress Pulse** — email digest every Sunday | #1413 | $0 | High — passive value, no login needed |
 | 5 | **Parent-Child Study Link** — feedback loop on sent materials | #1414 | $0 | High — emotional connection |
 | 6 | **Dashboard Redesign** — clean, persona-based, 3-section layouts | #1415 | $0 | High — first impression |

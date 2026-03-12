@@ -161,7 +161,7 @@ A unified search field in the DashboardLayout header that searches across the en
 - Keyboard: Escape closes, Ctrl+K / Cmd+K to focus search
 - Click result → navigate to detail page, click outside → close
 
-**Upgrade to Command Palette (Phase 2):** Upgraded to a full command palette interface with Ctrl+K/Cmd+K shortcut. Searches across children, assignments, courses, study guides, and tasks. Includes recent searches and keyboard navigation with grouped results. See §6.80. (#1410, #1411, #1412)
+**Superseded by Help Chatbot (§6.59.9):** Global search functionality has been merged into the AI Help Chatbot (#1355) instead of a standalone search bar. The chatbot serves as the unified search interface — handling both help/FAQ questions and platform data search in one conversational UI. See §6.59.9, #1630. (Original #1410 closed as superseded.)
 
 **Implementation Steps:**
 1. Create `app/schemas/search.py` (SearchResultItem, SearchResponse)

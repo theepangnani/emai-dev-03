@@ -1796,8 +1796,9 @@ A persistent floating chatbot widget available on all authenticated pages that h
 
 - **Simplicity first** — Help tool, not a messaging system. Session-only (no DB persistence).
 - **User-first** — Context-aware suggestions, role-tailored answers, video tutorials inline.
-- **Cost-controlled** — Rate limited to 30 requests/hour per user. Static knowledge base (no user data search).
+- **Cost-controlled** — Rate limited to 30 requests/hour per user. Static knowledge base for help; SQL ILIKE for data search ($0 AI cost).
 - **Non-intrusive** — FAB in bottom-right, never auto-opens (subtle tooltip on first visit only).
+- **Unified search** — Also serves as global search across platform data (§6.59.9, #1630). Replaces standalone Global Search (#1410).
 
 #### Widget UX
 
@@ -1919,7 +1920,7 @@ components/HelpChatbot/
 #### What This Is NOT
 
 - Not a general AI chatbot (no homework help, no general knowledge)
-- Not a search engine for user data (no courses, grades, messages)
+- ~~Not a search engine for user data (no courses, grades, messages)~~ — **Superseded:** chatbot now also serves as global search (§6.59.9, #1630)
 - No persistent conversation history (session-only)
 - No admin panel for KB management in v1 (YAML files in repo)
 - No proactive popups (never opens on its own)
@@ -1934,6 +1935,52 @@ components/HelpChatbot/
 - [ ] Video embed component — YouTube + Loom inline players (#1361)
 - [ ] Backend + frontend tests (#1362)
 - [ ] NotesFAB z-index coordination + mobile bottom sheet (#1363)
+- [ ] Global Search integration — search across platform data (#1630)
+
+#### 6.59.9 Global Search Integration (#1630)
+
+**Supersedes:** #1410 (standalone Global Search)
+
+Extend the Help Chatbot to also function as the **unified global search** for ClassBridge. Users type queries into the chatbot and it handles both help/FAQ questions AND searching across platform data — one conversational interface instead of two separate tools.
+
+**Intent Routing:** The chatbot detects whether the user is:
+1. **Asking for help** → RAG against knowledge base (existing flow)
+2. **Searching for data** → SQL ILIKE search across entities, return grouped results
+3. **Requesting an action** → "upload", "create" → navigate to relevant page
+
+**Searchable Entities:**
+
+| Entity | Searchable Fields | Result Actions |
+|--------|-------------------|----------------|
+| Courses | name, description | View, Generate Study Guide |
+| Study Guides | title | View, Generate Quiz |
+| Tasks | title, description | View, Help Study |
+| Course Content | title, description | View, Generate Quiz |
+| FAQ | question text | View |
+| Notes | content (HTML-stripped) | View Material |
+
+**Smart Presets:**
+
+| Keyword | Behavior |
+|---------|----------|
+| "due" / "overdue" | Shows tasks/assignments due this week |
+| Child name | Shows that child's courses, tasks, materials |
+| "upload" | Shows "Upload Material" action card |
+| "create" | Shows creation options (course, task, study guide) |
+
+**Search Strategy:**
+- **SQL ILIKE** for data search — $0 AI cost
+- AI only used for intent detection (help vs search vs action) and formatting
+- Action buttons on search results for quick actions
+
+**Sub-tasks:**
+- [ ] Backend: `search_service` — unified SQL search across entities
+- [ ] Backend: intent classifier (help vs search vs action)
+- [ ] Backend: integrate search into `/api/help/chat` response pipeline
+- [ ] Frontend: render search results as structured cards in chat
+- [ ] Frontend: action buttons on search result cards
+- [ ] Frontend: smart preset detection + shortcuts
+- [ ] Tests
 
 ---
 

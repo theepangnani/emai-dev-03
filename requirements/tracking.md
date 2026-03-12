@@ -673,6 +673,7 @@ Current feature issues are tracked in GitHub:
 - Issue #1361: Help Chatbot: Video embed component — YouTube + Loom inline players (§6.59.6)
 - Issue #1362: Help Chatbot: Backend + frontend tests (§6.59.7)
 - Issue #1363: Help Chatbot: NotesFAB z-index coordination + mobile bottom sheet (§6.59.8)
+- Issue #1630: Help Chatbot: Global Search integration — search across platform data (§6.59.9) *(supersedes #1410)*
 
 ### Phase 1 - Features Built (Image Retention & Resource Links — Mar 7, 2026)
 - ~~Issue #1308: feat: ContentImage model and database migration for image retention~~ ✅
