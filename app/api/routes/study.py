@@ -560,7 +560,7 @@ async def generate_study_guide_endpoint(
 
     # Generate study guide using AI
     try:
-        raw_content = await generate_study_guide(
+        raw_content, is_truncated = await generate_study_guide(
             assignment_title=title,
             assignment_description=description,
             course_name=course_name,
@@ -621,6 +621,7 @@ async def generate_study_guide_endpoint(
         parent_guide_id=parent_guide_id,
         content_hash=content_hash,
         focus_prompt=body.focus_prompt or None,
+        is_truncated=is_truncated,
     )
     db.add(study_guide)
     db.flush()
@@ -646,6 +647,58 @@ async def generate_study_guide_endpoint(
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
     return resp
+
+
+@router.post("/{guide_id}/continue", response_model=StudyGuideResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def continue_study_guide(
+    guide_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Continue generating a truncated study guide."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == guide_id,
+        StudyGuide.user_id == current_user.id,
+        StudyGuide.guide_type == "study_guide",
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    if not guide.is_truncated:
+        raise HTTPException(status_code=400, detail="Study guide is not truncated")
+
+    check_ai_usage(current_user, db)
+
+    system_prompt = """You are an expert educational tutor. Continue the study guide from where it left off.
+Do not repeat content already covered. Pick up exactly where the previous content ended.
+Use simple language, practical examples, and clean Markdown formatting.
+For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations."""
+
+    prompt = f"""The following study guide was cut off due to length limits. Continue it from where it left off. Do not repeat any content already covered.
+
+**Previous content:**
+{guide.content}
+
+Continue the study guide from here:"""
+
+    from app.services.ai_service import generate_content
+    try:
+        continuation, stop_reason = await generate_content(prompt, system_prompt, max_tokens=4096)
+    except Exception as e:
+        logger.error("Study guide continuation failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {type(e).__name__}")
+
+    guide.content = guide.content + "\n\n" + continuation
+    guide.is_truncated = stop_reason == "max_tokens"
+
+    increment_ai_usage(current_user, db, generation_type="study_guide")
+    log_action(db, user_id=current_user.id, action="update", resource_type="study_guide", resource_id=guide.id, details={"action": "continue"})
+    db.commit()
+    db.refresh(guide)
+
+    return StudyGuideResponse.model_validate(guide)
 
 
 @router.post("/quiz/generate", response_model=QuizResponse)
@@ -1487,7 +1540,7 @@ async def generate_from_text_and_images(
             )
 
         else:  # study_guide
-            raw_content = await generate_study_guide(
+            raw_content, is_truncated = await generate_study_guide(
                 assignment_title=title,
                 assignment_description=extracted_text,
                 course_name="Pasted Content",
@@ -1507,6 +1560,7 @@ async def generate_from_text_and_images(
                 guide_type="study_guide",
                 content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
                 focus_prompt=focus_prompt or None,
+                is_truncated=is_truncated,
             )
 
     except json.JSONDecodeError:
@@ -1687,7 +1741,7 @@ async def generate_from_file_upload(
             )
 
         else:  # study_guide
-            raw_content = await generate_study_guide(
+            raw_content, is_truncated = await generate_study_guide(
                 assignment_title=title,
                 assignment_description=extracted_text,
                 course_name="Uploaded Content",
@@ -1707,6 +1761,7 @@ async def generate_from_file_upload(
                 guide_type="study_guide",
                 content_hash=study_service.compute_content_hash(f"Study Guide: {title}", "study_guide"),
                 focus_prompt=focus_prompt or None,
+                is_truncated=is_truncated,
             )
 
     except json.JSONDecodeError:

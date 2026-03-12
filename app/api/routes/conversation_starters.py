@@ -150,7 +150,7 @@ Here is the child's current school context:
 Return a JSON array of objects: [{{"prompt": "...", "context": "..."}}]
 Return ONLY the JSON array."""
 
-    raw = await generate_content(prompt, SYSTEM_PROMPT, max_tokens=800, temperature=0.8)
+    raw, _ = await generate_content(prompt, SYSTEM_PROMPT, max_tokens=800, temperature=0.8)
     increment_ai_usage(current_user, db, generation_type="conversation_starters")
 
     # Parse JSON from response
@@ -212,7 +212,7 @@ Here is the child's current school context:
 Return a JSON array of objects: [{{"prompt": "...", "context": "..."}}]
 Return ONLY the JSON array."""
 
-    raw = await generate_content(prompt, SYSTEM_PROMPT, max_tokens=800, temperature=0.8)
+    raw, _ = await generate_content(prompt, SYSTEM_PROMPT, max_tokens=800, temperature=0.8)
     increment_ai_usage(current_user, db, generation_type="conversation_starters")
 
     starters = _parse_starters(raw)

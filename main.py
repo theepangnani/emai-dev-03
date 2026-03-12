@@ -1190,6 +1190,17 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
 
+    # ── study_guides: is_truncated column (#1645) ──────────────────
+    if "study_guides" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
+        if "is_truncated" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN is_truncated BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'is_truncated' column to study_guides (#1645)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
     # Widen ai_usage_history.generation_type from VARCHAR(20) to VARCHAR(50)
     # "conversation_starters" is 22 chars and exceeds the old limit
     if "sqlite" not in settings.database_url:

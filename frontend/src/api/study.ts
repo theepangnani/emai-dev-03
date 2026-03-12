@@ -20,6 +20,7 @@ export interface StudyGuide {
   version: number;
   parent_guide_id: number | null;
   focus_prompt: string | null;
+  is_truncated?: boolean;
   created_at: string;
   archived_at: string | null;
   auto_created_tasks?: AutoCreatedTask[];
@@ -245,6 +246,11 @@ export const studyApi = {
 
   updateGuide: async (id: number, data: { title?: string; course_id?: number | null; course_content_id?: number | null }) => {
     const response = await api.patch(`/api/study/guides/${id}`, data);
+    return response.data as StudyGuide;
+  },
+
+  continueGuide: async (guideId: number) => {
+    const response = await api.post(`/api/study/${guideId}/continue`);
     return response.data as StudyGuide;
   },
 

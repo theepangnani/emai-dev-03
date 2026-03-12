@@ -56,7 +56,7 @@ async def generate_content(
     system_prompt: str = "You are an educational assistant helping students learn effectively.",
     max_tokens: int = 2000,
     temperature: float = 0.7,
-) -> str:
+) -> tuple[str, str]:
     """
     Generate content using Anthropic Claude API.
 
@@ -67,7 +67,7 @@ async def generate_content(
         temperature: Creativity level (0-1)
 
     Returns:
-        Generated text content
+        Tuple of (generated text content, stop_reason)
     """
     start_time = time.time()
     logger.info(f"Starting AI content generation | model={settings.claude_model} | max_tokens={max_tokens}")
@@ -89,14 +89,16 @@ async def generate_content(
 
         duration_ms = (time.time() - start_time) * 1000
         content = message.content[0].text
+        stop_reason = message.stop_reason
 
         # Log usage stats
         logger.info(
             f"AI generation completed | duration={duration_ms:.2f}ms | "
-            f"input_tokens={message.usage.input_tokens} | output_tokens={message.usage.output_tokens}"
+            f"input_tokens={message.usage.input_tokens} | output_tokens={message.usage.output_tokens} | "
+            f"stop_reason={stop_reason}"
         )
 
-        return content
+        return content, stop_reason
 
     except Exception as e:
         duration_ms = (time.time() - start_time) * 1000
@@ -133,7 +135,8 @@ Keep the summary to 1-3 sentences.
         "Use simple, clear language. Do not add information not in the original message."
     )
 
-    return await generate_content(prompt, system_prompt, max_tokens=200, temperature=0.3)
+    content, _ = await generate_content(prompt, system_prompt, max_tokens=200, temperature=0.3)
+    return content
 
 
 def _build_image_list(images: list[dict]) -> str:
@@ -172,7 +175,7 @@ async def generate_study_guide(
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
     interests: list[str] | None = None,
-) -> str:
+) -> tuple[str, bool]:
     """
     Generate a study guide for an assignment.
 
@@ -183,7 +186,7 @@ async def generate_study_guide(
         due_date: Optional due date string
 
     Returns:
-        Markdown-formatted study guide
+        Tuple of (Markdown-formatted study guide, is_truncated)
     """
     logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
     due_info = f"\nDue Date: {due_date}" if due_date else ""
@@ -245,7 +248,8 @@ well-organized study guides. Use simple language, practical examples, and clean 
 
     system_prompt += _interests_instruction(interests)
 
-    return await generate_content(prompt, system_prompt, max_tokens=4096)
+    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=4096)
+    return content, stop_reason == "max_tokens"
 
 
 async def generate_quiz(
@@ -347,7 +351,8 @@ Always return valid JSON."""
 
     # ~250 tokens per question (question + 4 options + explanation), plus buffer for dates section
     max_tokens = max(2000, num_questions * 250 + 500)
-    return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
+    content, _ = await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
+    return content
 
 
 async def generate_mind_map(
@@ -417,7 +422,8 @@ The source material contains these images. Reference relevant images using ![des
 visualize and organize knowledge. Create clear, well-structured mind maps with logical groupings.
 Always return valid JSON."""
 
-    return await generate_content(prompt, system_prompt, max_tokens=2000, temperature=0.5)
+    content, _ = await generate_content(prompt, system_prompt, max_tokens=2000, temperature=0.5)
+    return content
 
 
 async def generate_flashcards(
@@ -490,7 +496,8 @@ Always return valid JSON."""
 
     # ~100 tokens per flashcard (front + back), plus buffer for dates section
     max_tokens = max(1500, num_cards * 100 + 500)
-    return await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
+    content, _ = await generate_content(prompt, system_prompt, max_tokens=max_tokens, temperature=0.5)
+    return content
 
 
 async def generate_parent_briefing(
@@ -537,4 +544,5 @@ Format the response in clean Markdown."""
         "Keep explanations concise — parents are busy. Avoid jargon unless you explain it."
     )
 
-    return await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.5)
+    content, _ = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.5)
+    return content

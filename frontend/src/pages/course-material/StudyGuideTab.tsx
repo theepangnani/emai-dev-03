@@ -1,6 +1,7 @@
 import { Suspense, useRef, useState } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
+import { studyApi } from '../../api/study';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
@@ -19,6 +20,7 @@ interface StudyGuideTabProps {
   courseContentId?: number;
   onFormatSelect?: (format: StudyFormat) => void;
   onViewDocument?: () => void;
+  onContinue?: () => void;
 }
 
 function FocusIcon() {
@@ -53,9 +55,11 @@ export function StudyGuideTab({
   courseContentId,
   onFormatSelect,
   onViewDocument,
+  onContinue,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [continuing, setContinuing] = useState(false);
 
   const handlePrint = () => {
     if (printRef.current) printElement(printRef.current, studyGuide?.title || 'Study Guide');
@@ -69,6 +73,19 @@ export function StudyGuideTab({
       await downloadAsPdf(printRef.current, filename);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleContinue = async () => {
+    if (!studyGuide) return;
+    setContinuing(true);
+    try {
+      await studyApi.continueGuide(studyGuide.id);
+      onContinue?.();
+    } catch {
+      // silently fail — user can retry
+    } finally {
+      setContinuing(false);
     }
   };
 
@@ -114,6 +131,20 @@ export function StudyGuideTab({
               </Suspense>
             </ContentCard>
           </div>
+          {studyGuide.is_truncated && (
+            <div className="cm-truncated-banner">
+              {continuing ? (
+                <div className="cm-regen-status">
+                  <div className="cm-inline-spinner" />
+                  <span>Continuing study guide...</span>
+                </div>
+              ) : (
+                <button className="cm-action-btn" onClick={handleContinue} disabled={atLimit}>
+                  {'\u2728'} Continue generating
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : generating === 'study_guide' ? (
         <div className="cm-inline-generating">

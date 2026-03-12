@@ -368,9 +368,10 @@ Format as Markdown with headers. Be encouraging but honest. Keep it concise."""
         "Be encouraging and constructive."
     )
 
-    return await generate_content(
+    content, _ = await generate_content(
         prompt=prompt,
         system_prompt=system_prompt,
         max_tokens=1500,
         temperature=0.5,
     )
+    return content

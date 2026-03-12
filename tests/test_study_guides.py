@@ -976,7 +976,7 @@ class TestGenerateFromCourseContent:
         with patch(
             "app.api.routes.study.generate_study_guide",
             new_callable=AsyncMock,
-            return_value="# Study Guide\n\nPhotosynthesis overview.",
+            return_value=("# Study Guide\n\nPhotosynthesis overview.", False),
         ):
             resp = client.post(
                 "/api/study/generate",

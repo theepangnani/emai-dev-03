@@ -160,7 +160,7 @@ Return ONLY the JSON array."""
         "Questions should range from basic recall to higher-order thinking. Always return valid JSON."
     )
 
-    raw = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.5)
+    raw, _ = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.5)
 
     # Parse the JSON from AI response
     try:
@@ -304,7 +304,7 @@ Return ONLY the JSON object."""
         "Always return valid JSON."
     )
 
-    raw = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.3)
+    raw, _ = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.3)
 
     try:
         cleaned = raw.strip()

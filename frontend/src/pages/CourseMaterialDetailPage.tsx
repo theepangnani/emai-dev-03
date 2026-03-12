@@ -688,6 +688,7 @@ export function CourseMaterialDetailPage() {
               courseContentId={contentId}
               onFormatSelect={handleFormatSelect}
               onViewDocument={() => setActiveTab('document')}
+              onContinue={loadData}
             />
           )}
 

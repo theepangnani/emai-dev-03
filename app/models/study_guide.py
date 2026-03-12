@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Index
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
@@ -21,6 +21,7 @@ class StudyGuide(Base):
     content = Column(Text, nullable=False)  # Markdown or JSON content
     guide_type = Column(String(50), nullable=False)  # study_guide, quiz, flashcards
     focus_prompt = Column(String(2000), nullable=True)  # User-provided focus area saved for history
+    is_truncated = Column(Boolean, default=False, nullable=False)
 
     # Versioning
     version = Column(Integer, nullable=False, default=1)
