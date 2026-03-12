@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { courseContentsApi, type SourceFileItem } from '../../api/client';
+
+export interface SourceFilesSectionHandle {
+  scrollToAndExpand: () => void;
+}
 
 interface SourceFilesSectionProps {
   contentId: number;
@@ -32,7 +36,7 @@ function canViewInline(fileType: string | null): boolean {
   return fileType.startsWith('image/') || fileType === 'application/pdf';
 }
 
-export function SourceFilesSection({ contentId, sourceFilesCount, initialExpanded = false }: SourceFilesSectionProps) {
+export const SourceFilesSection = forwardRef<SourceFilesSectionHandle, SourceFilesSectionProps>(function SourceFilesSection({ contentId, sourceFilesCount, initialExpanded = false }, ref) {
   const [files, setFiles] = useState<SourceFileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(initialExpanded);
@@ -40,6 +44,14 @@ export function SourceFilesSection({ contentId, sourceFilesCount, initialExpande
   const [viewingFile, setViewingFile] = useState<SourceFileItem | null>(null);
   const [viewBlobUrl, setViewBlobUrl] = useState<string | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollToAndExpand() {
+      setExpanded(true);
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+  }));
 
   useEffect(() => {
     if (expanded && files.length === 0) {
@@ -82,7 +94,7 @@ export function SourceFilesSection({ contentId, sourceFilesCount, initialExpande
   };
 
   return (
-    <div className="cm-source-files">
+    <div className="cm-source-files" ref={sectionRef}>
       <button
         className="cm-source-files-toggle"
         onClick={() => setExpanded(!expanded)}
@@ -176,4 +188,4 @@ export function SourceFilesSection({ contentId, sourceFilesCount, initialExpande
       )}
     </div>
   );
-}
+});

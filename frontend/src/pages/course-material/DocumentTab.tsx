@@ -2,7 +2,7 @@ import { useState, useRef, Suspense } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse } from '../../api/client';
 import { ContentCard, MarkdownBody } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
-import { SourceFilesSection } from './SourceFilesSection';
+import { SourceFilesSection, type SourceFilesSectionHandle } from './SourceFilesSection';
 
 interface QuizItem {
   question: string;
@@ -94,6 +94,7 @@ export function DocumentTab({
   const [editSaving, setEditSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const sourceFilesRef = useRef<SourceFilesSectionHandle>(null);
 
   const handleStartEdit = () => {
     setEditTextContent(content.text_content || '');
@@ -169,6 +170,11 @@ export function DocumentTab({
               <button className="cm-action-btn" onClick={onShowReplaceModal}>
                 {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
               </button>
+              {(content.source_files_count ?? 0) > 0 && (
+                <button className="cm-action-btn" onClick={() => sourceFilesRef.current?.scrollToAndExpand()}>
+                  {'\u{1F4C2}'} Source Files ({content.source_files_count})
+                </button>
+              )}
             </>
           )}
         </div>
@@ -202,6 +208,7 @@ export function DocumentTab({
         </div>
       </div>
       <SourceFilesSection
+        ref={sourceFilesRef}
         contentId={content.id}
         sourceFilesCount={content.source_files_count ?? 0}
         initialExpanded={!content.has_file && (content.source_files_count ?? 0) > 0}
