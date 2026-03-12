@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import type { VideoInfo } from './useHelpChat';
 
@@ -65,11 +66,35 @@ function FeedbackButtons() {
 }
 
 export function ChatMessage({ role, content, videos, sources }: ChatMessageProps) {
+  const navigate = useNavigate();
+
   return (
     <div className={`help-chatbot-message help-chatbot-message--${role}`}>
       <div className="help-chatbot-bubble">
         {role === 'assistant' ? (
-          <ReactMarkdown>{content}</ReactMarkdown>
+          <ReactMarkdown components={{
+            a: ({ href, children }) => {
+              if (href && href.startsWith('/')) {
+                return (
+                  <a
+                    href={href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate(href);
+                    }}
+                    style={{ color: '#1a73e8', textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    {children}
+                  </a>
+                );
+              }
+              return (
+                <a href={href} target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              );
+            },
+          }}>{content}</ReactMarkdown>
         ) : (
           <p>{content}</p>
         )}

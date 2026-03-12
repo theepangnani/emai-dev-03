@@ -13,6 +13,7 @@ const mockedApi = vi.mocked(api)
 describe('useHelpChat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.clear()
   })
 
   it('sends correct field names and reads response correctly', async () => {
