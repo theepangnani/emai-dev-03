@@ -143,6 +143,10 @@ export function CoursesPage() {
   const [editCourseSubject, setEditCourseSubject] = useState('');
   const [editCourseDescription, setEditCourseDescription] = useState('');
   const [editCourseRequireApproval, setEditCourseRequireApproval] = useState(false);
+  const [editCourseTeacher, setEditCourseTeacher] = useState<SearchableOption | null>(null);
+  const [editCourseStudents, setEditCourseStudents] = useState<SearchableOption[]>([]);
+  const [editCourseOriginalStudents, setEditCourseOriginalStudents] = useState<SearchableOption[]>([]);
+  const [editStudentIdMap, setEditStudentIdMap] = useState<Record<number, number>>({});
   const [editCourseLoading, setEditCourseLoading] = useState(false);
   const [editCourseError, setEditCourseError] = useState('');
 
@@ -607,12 +611,25 @@ export function CoursesPage() {
     setEditCourseSubject(course.subject || '');
     setEditCourseDescription(course.description || '');
     setEditCourseRequireApproval(course.require_approval || false);
+    setEditCourseTeacher(course.teacher_id ? { id: course.teacher_id, label: course.teacher_name || 'Unknown' } : null);
+    coursesApi.listStudents(course.id).then(students => {
+      const opts = students.map(s => ({ id: s.user_id, label: s.full_name, sublabel: s.email }));
+      const idMap: Record<number, number> = {};
+      students.forEach(s => { idMap[s.user_id] = s.student_id; });
+      setEditCourseStudents(opts);
+      setEditCourseOriginalStudents(opts);
+      setEditStudentIdMap(idMap);
+    }).catch(() => {});
     setEditCourseError('');
   };
 
   const closeEditCourse = () => {
     setEditCourse(null);
     setEditCourseError('');
+    setEditCourseTeacher(null);
+    setEditCourseStudents([]);
+    setEditCourseOriginalStudents([]);
+    setEditStudentIdMap({});
   };
 
   const handleSaveEditCourse = async () => {
@@ -624,8 +641,22 @@ export function CoursesPage() {
         name: editCourseName.trim(),
         subject: editCourseSubject.trim() || undefined,
         description: editCourseDescription.trim() || undefined,
+        teacher_id: editCourseTeacher?.id ?? null,
         require_approval: editCourseRequireApproval,
       });
+      // Handle student changes
+      const originalIds = new Set(editCourseOriginalStudents.map(s => s.id));
+      const currentIds = new Set(editCourseStudents.map(s => s.id));
+      for (const student of editCourseStudents) {
+        if (!originalIds.has(student.id) && student.sublabel) {
+          await coursesApi.addStudent(editCourse.id, student.sublabel);
+        }
+      }
+      for (const student of editCourseOriginalStudents) {
+        if (!currentIds.has(student.id) && editStudentIdMap[student.id]) {
+          await coursesApi.removeStudent(editCourse.id, editStudentIdMap[student.id]);
+        }
+      }
       closeEditCourse();
       loadData();
     } catch (err: any) {
@@ -1713,6 +1744,28 @@ export function CoursesPage() {
                 Description
                 <textarea value={editCourseDescription} onChange={(e) => setEditCourseDescription(e.target.value)} placeholder="Class details..." rows={3} disabled={editCourseLoading} />
               </label>
+              <label>
+                Teacher
+              </label>
+              <SearchableSelect
+                placeholder="Search for a teacher..."
+                onSearch={handleSearchTeachers}
+                onSelect={(opt) => setEditCourseTeacher(opt)}
+                selected={editCourseTeacher}
+                onClear={() => setEditCourseTeacher(null)}
+                disabled={editCourseLoading}
+              />
+              <label>
+                Students
+              </label>
+              <MultiSearchableSelect
+                placeholder="Search students by name or email..."
+                onSearch={handleSearchStudents}
+                selected={editCourseStudents}
+                onAdd={(opt) => setEditCourseStudents(prev => [...prev, opt])}
+                onRemove={(id) => setEditCourseStudents(prev => prev.filter(s => s.id !== id))}
+                disabled={editCourseLoading}
+              />
               <label className="toggle-label">
                 <input type="checkbox" checked={editCourseRequireApproval} onChange={(e) => setEditCourseRequireApproval(e.target.checked)} disabled={editCourseLoading} />
                 Require approval to join

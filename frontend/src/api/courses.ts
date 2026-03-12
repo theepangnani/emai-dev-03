@@ -137,7 +137,7 @@ export const coursesApi = {
     return response.data as Array<{ id: number; user_id: number; name: string; email: string }>;
   },
 
-  update: async (id: number, data: { name?: string; description?: string; subject?: string; teacher_email?: string; require_approval?: boolean }) => {
+  update: async (id: number, data: { name?: string; description?: string; subject?: string; teacher_email?: string; teacher_id?: number | null; require_approval?: boolean }) => {
     const response = await api.patch(`/api/courses/${id}`, data);
     return response.data;
   },
