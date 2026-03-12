@@ -27,6 +27,7 @@ class CourseUpdate(BaseModel):
     name: Optional[str] = Field(default=None, max_length=200)
     description: Optional[str] = Field(default=None, max_length=2000)
     subject: Optional[str] = Field(default=None, max_length=100)
+    teacher_id: Optional[int] = None
     teacher_email: Optional[str] = Field(default=None, max_length=255)
     require_approval: Optional[bool] = None
 

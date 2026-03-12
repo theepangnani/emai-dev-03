@@ -608,8 +608,13 @@ def update_course(
 
     update_data = data.model_dump(exclude_unset=True)
     teacher_email = update_data.pop("teacher_email", None)
+    teacher_id = update_data.pop("teacher_id", None)
     for field, value in update_data.items():
         setattr(course, field, value)
+
+    # Handle teacher assignment by id
+    if teacher_id is not None:
+        course.teacher_id = teacher_id
 
     # Handle teacher assignment/unassignment by email
     if teacher_email is not None:
