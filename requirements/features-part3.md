@@ -2787,3 +2787,15 @@ Final polish for the redesigned My Kids page layout and navigation.
 - Panel headers use shared SectionPanel component for consistency
 
 ---
+
+### 6.91 Source Files Quick Navigation Button - PLANNED
+
+Add a "Source Files" button in the document tab action bar (next to Upload/Replace Document) so users can quickly discover and navigate to source files without scrolling.
+
+**GitHub:** #1639
+
+**Acceptance Criteria:**
+- [ ] Button visible next to Upload/Replace Document when source files exist
+- [ ] Clicking scrolls to and expands the Source Files section
+
+**Status:** PLANNED
