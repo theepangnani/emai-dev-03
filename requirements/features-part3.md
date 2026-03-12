@@ -325,6 +325,7 @@ Additional security improvements beyond the initial §6.23 risk audit fixes:
 
 #### 6.36.2 Security Headers (#141)
 - Added security middleware with HSTS (`Strict-Transport-Security`), CSP (`Content-Security-Policy`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection`, `Referrer-Policy`
+- CSP `img-src` must include `blob:` to allow authenticated image previews (source file viewer, AuthImage component use blob URLs created from authenticated API responses) (#1628)
 - Headers applied globally via FastAPI middleware
 
 #### 6.36.3 LIKE Pattern Injection Fix (#184)
