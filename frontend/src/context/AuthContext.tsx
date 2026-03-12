@@ -1,5 +1,8 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { authApi } from '../api/client';
+
+const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+const WARNING_BEFORE_MS = 5 * 60 * 1000; // 5 minutes before timeout
 
 interface User {
   id: number;
@@ -41,6 +44,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
+
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoutRef = useRef<() => void>(() => {});
+
+  const resetIdleTimers = useCallback(() => {
+    setShowIdleWarning(false);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    warningTimerRef.current = setTimeout(() => {
+      setShowIdleWarning(true);
+    }, IDLE_TIMEOUT_MS - WARNING_BEFORE_MS);
+    idleTimerRef.current = setTimeout(() => {
+      logoutRef.current();
+    }, IDLE_TIMEOUT_MS);
+  }, []);
+
+  // Idle timeout: track activity when user is logged in
+  useEffect(() => {
+    if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowIdleWarning(false);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      return;
+    }
+
+    const events: Array<keyof WindowEventMap> = ['mousemove', 'keydown', 'touchstart', 'scroll'];
+    const handleActivity = () => resetIdleTimers();
+
+    resetIdleTimers();
+    events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, handleActivity));
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [token, resetIdleTimers]);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -83,14 +126,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(identifier, data.password);
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     // Best-effort server-side token revocation
     authApi.logout().catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  // Keep logoutRef in sync so idle timer can call logout without stale closure
+  useEffect(() => {
+    logoutRef.current = logout;
+  }, [logout]);
 
   const switchRole = async (role: string) => {
     const userData = await authApi.switchRole(role);
@@ -124,6 +172,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, register, logout, switchRole, completeOnboarding, resendVerification, refreshUser }}>
       {children}
+      {showIdleWarning && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
+          <div style={{ background: '#fff', borderRadius: 8, padding: '2rem', maxWidth: 400, textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 1rem' }}>Session Expiring</h3>
+            <p style={{ margin: '0 0 1.5rem', color: '#555' }}>Your session is about to expire. Click to stay logged in.</p>
+            <button
+              onClick={resetIdleTimers}
+              style={{ padding: '0.5rem 1.5rem', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#4f46e5', color: '#fff', cursor: 'pointer' }}
+            >
+              Stay Logged In
+            </button>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }
