@@ -211,7 +211,7 @@ class TestWeakSpots:
         with patch(
             "app.api.routes.parent_ai.generate_content",
             new_callable=AsyncMock,
-            return_value=ai_response,
+            return_value=(ai_response, "end_turn"),
         ), patch(
             "app.api.routes.parent_ai.increment_ai_usage",
         ) as mock_increment:
@@ -234,7 +234,7 @@ class TestWeakSpots:
         with patch(
             "app.api.routes.parent_ai.generate_content",
             new_callable=AsyncMock,
-            return_value=ai_response,
+            return_value=(ai_response, "end_turn"),
         ), patch("app.api.routes.parent_ai.increment_ai_usage"):
             resp = client.post("/api/parent-ai/weak-spots",
                                json={"student_id": pai_data["student_rec"].id,
@@ -249,7 +249,7 @@ class TestWeakSpots:
         with patch(
             "app.api.routes.parent_ai.generate_content",
             new_callable=AsyncMock,
-            return_value="This is not JSON at all",
+            return_value=("This is not JSON at all", "end_turn"),
         ), patch("app.api.routes.parent_ai.increment_ai_usage"):
             resp = client.post("/api/parent-ai/weak-spots",
                                json={"student_id": pai_data["student_rec"].id},
@@ -396,7 +396,7 @@ class TestPracticeProblems:
         with patch(
             "app.api.routes.parent_ai.generate_content",
             new_callable=AsyncMock,
-            return_value=ai_response,
+            return_value=(ai_response, "end_turn"),
         ), patch(
             "app.api.routes.parent_ai.increment_ai_usage",
         ) as mock_increment:
@@ -422,7 +422,7 @@ class TestPracticeProblems:
         with patch(
             "app.api.routes.parent_ai.generate_content",
             new_callable=AsyncMock,
-            return_value="not json",
+            return_value=("not json", "end_turn"),
         ), patch("app.api.routes.parent_ai.increment_ai_usage"):
             resp = client.post("/api/parent-ai/practice-problems",
                                json={"student_id": pai_data["student_rec"].id,

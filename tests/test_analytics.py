@@ -268,7 +268,7 @@ def test_ai_insights_success(client, analytics_data):
     with patch(
         "app.services.ai_service.generate_content",
         new_callable=AsyncMock,
-        return_value="## Performance Summary\nDoing well!",
+        return_value=("## Performance Summary\nDoing well!", "end_turn"),
     ):
         resp = client.post(
             "/api/analytics/ai-insights",
@@ -580,7 +580,7 @@ def test_rbac_outsider_cannot_use_ai_insights(client, analytics_data):
     with patch(
         "app.services.ai_service.generate_content",
         new_callable=AsyncMock,
-        return_value="test",
+        return_value=("test", "end_turn"),
     ):
         resp = client.post(
             "/api/analytics/ai-insights",
@@ -738,7 +738,7 @@ def test_ai_insights_with_focus_area(client, analytics_data):
     with patch(
         "app.services.ai_service.generate_content",
         new_callable=AsyncMock,
-        return_value="## Math Focus\nNeed more practice.",
+        return_value=("## Math Focus\nNeed more practice.", "end_turn"),
     ):
         resp = client.post(
             "/api/analytics/ai-insights",
@@ -770,7 +770,7 @@ def test_ai_insights_as_student(client, analytics_data):
     with patch(
         "app.services.ai_service.generate_content",
         new_callable=AsyncMock,
-        return_value="## Your Performance\nGood progress!",
+        return_value=("## Your Performance\nGood progress!", "end_turn"),
     ):
         resp = client.post(
             "/api/analytics/ai-insights",

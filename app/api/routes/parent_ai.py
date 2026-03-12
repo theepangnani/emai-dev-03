@@ -351,7 +351,7 @@ Rules:
         "Be honest but supportive. Focus on actionable insights."
     )
 
-    raw = await generate_content(prompt, system_prompt, max_tokens=1000, temperature=0.3)
+    raw, _ = await generate_content(prompt, system_prompt, max_tokens=1000, temperature=0.3)
     increment_ai_usage(current_user, db, generation_type="parent_weak_spots")
 
     # Parse AI response
@@ -570,7 +570,7 @@ Return ONLY the JSON, no other text."""
         "Encourage learning through struggle and discovery."
     )
 
-    raw = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.6)
+    raw, _ = await generate_content(prompt, system_prompt, max_tokens=1500, temperature=0.6)
     increment_ai_usage(current_user, db, generation_type="parent_practice_problems")
 
     try:
