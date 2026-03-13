@@ -552,7 +552,14 @@
     flex-direction: column;
   }
 
+  .ai-usage-summary-card {
+    min-width: unset;
+  }
+
   .ai-usage-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     font-size: 12px;
   }
 
@@ -565,7 +572,154 @@
     max-width: 80px;
   }
 
+  .ai-usage-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .ai-usage-search input {
     max-width: 100%;
+  }
+
+  .ai-usage-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-usage-filter-input {
+    max-width: 100%;
+    min-width: unset;
+  }
+
+  .ai-usage-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ai-usage-tab {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .ai-usage-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .ai-usage-pagination {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .ai-usage-pagination button {
+    min-height: 44px;
+  }
+
+  .ai-usage-modal {
+    min-width: unset;
+    width: 90%;
+    max-width: 400px;
+  }
+
+  .ai-usage-modal-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-usage-header h2 {
+    font-size: 18px;
+  }
+
+  .ai-usage-subtitle {
+    font-size: 12px;
+  }
+
+  .ai-usage-summary-card {
+    padding: 12px 14px;
+  }
+
+  .ai-usage-summary-card h3 {
+    font-size: 11px;
+  }
+
+  .ai-usage-summary-value {
+    font-size: 22px;
+  }
+
+  .ai-usage-table th {
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  .ai-usage-table td {
+    padding: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .ai-usage-tab {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .ai-usage-progress-bar {
+    max-width: 60px;
+    min-width: 50px;
+  }
+
+  .ai-usage-progress-label {
+    font-size: 11px;
+  }
+
+  .ai-usage-actions {
+    gap: 4px;
+  }
+
+  .ai-usage-btn {
+    font-size: 11px;
+    padding: 8px 8px;
+  }
+
+  .ai-usage-approve-input {
+    width: 48px;
+    padding: 4px;
+    font-size: 11px;
+  }
+
+  .ai-usage-role {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .ai-usage-type-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .ai-usage-status-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .ai-usage-modal {
+    padding: 18px 16px;
+  }
+
+  .ai-usage-modal h3 {
+    font-size: 16px;
+  }
+
+  .ai-usage-top-list li {
+    font-size: 12px;
+  }
+
+  .ai-usage-pagination button {
+    padding: 8px 10px;
+    font-size: 12px;
   }
 }

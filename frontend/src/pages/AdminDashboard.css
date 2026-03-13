@@ -590,6 +590,90 @@
   transform: translateY(-1px);
 }
 
+/* Tablet responsive */
+@media (max-width: 768px) {
+  .admin-filters {
+    gap: 8px;
+  }
+
+  .admin-filters input {
+    min-width: 160px;
+  }
+
+  .admin-users-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-users-table th {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .admin-users-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .admin-pagination {
+    font-size: 13px;
+  }
+
+  .admin-pagination button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .admin-manage-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .admin-activity-item {
+    gap: 10px;
+    padding: 8px 10px;
+  }
+
+  .admin-activity-action {
+    font-size: 12px;
+  }
+
+  .admin-role-modal {
+    padding: 20px 20px;
+  }
+
+  .admin-message-modal {
+    padding: 20px 20px;
+  }
+
+  .admin-role-checkbox-row {
+    min-height: 44px;
+  }
+
+  .admin-toggle-history {
+    min-height: 44px;
+  }
+
+  .admin-activity-view-all {
+    min-height: 44px;
+  }
+
+  .admin-audit-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .empty-state {
+    padding: 28px 16px;
+  }
+
+  .empty-state-cta {
+    min-height: 44px;
+  }
+}
+
 /* Mobile responsive */
 @media (max-width: 480px) {
   .admin-filters {
@@ -645,5 +729,75 @@
   .admin-audit-link {
     padding: 8px 14px;
     font-size: 13px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .admin-manage-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .admin-activity-item {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .admin-activity-action {
+    font-size: 12px;
+  }
+
+  .admin-activity-time {
+    font-size: 10px;
+  }
+
+  .admin-role-modal {
+    padding: 20px 16px;
+  }
+
+  .admin-message-modal {
+    padding: 20px 16px;
+  }
+
+  .admin-message-modal h2 {
+    font-size: 18px;
+  }
+
+  .admin-msg-textarea {
+    min-height: 100px;
+  }
+
+  .admin-role-checkbox-row {
+    min-height: 44px;
+  }
+
+  .admin-toggle-history {
+    min-height: 44px;
+  }
+
+  .admin-activity-view-all {
+    min-height: 44px;
+  }
+
+  .empty-state {
+    padding: 24px 12px;
+  }
+
+  .empty-state-icon {
+    font-size: 32px;
+  }
+
+  .empty-state-title {
+    font-size: 14px;
+  }
+
+  .empty-state-text {
+    font-size: 13px;
+  }
+
+  .empty-state-cta {
+    min-height: 44px;
   }
 }
