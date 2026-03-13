@@ -10,19 +10,35 @@
   padding: 1rem 0;
 }
 
-/* ── Canvas: radial layout on desktop ──────── */
+/* ── Canvas: horizontal split layout on desktop */
 .mm-canvas {
-  position: relative;
-  min-height: 500px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 1.5rem;
+  min-height: 200px;
+}
+
+/* ── Side columns ─────────────────────────── */
+.mm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+  max-width: 380px;
+}
+
+.mm-side-left {
+  align-items: flex-end;
+}
+
+.mm-side-right {
+  align-items: flex-start;
 }
 
 /* ── Center node ───────────────────────────── */
 .mm-center-node {
-  position: relative;
-  z-index: 2;
   background: var(--color-accent-strong, #2a9fa8);
   color: #fff;
   font-weight: 700;
@@ -31,39 +47,48 @@
   border-radius: 2rem;
   text-align: center;
   max-width: 220px;
+  flex-shrink: 0;
   box-shadow: 0 4px 16px rgba(42, 159, 168, 0.25);
 }
 
-/* ── Branch positioning (desktop radial) ───── */
+/* ── Branch ─────────────────────────────────── */
 .mm-branch {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(
-    calc(-50% + var(--branch-x)),
-    calc(-50% + var(--branch-y))
-  );
-  z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  max-width: 220px;
+  max-width: 300px;
+  position: relative;
 }
 
-/* ── SVG connector lines ───────────────────── */
-.mm-connector {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  overflow: visible;
-  pointer-events: none;
-  /* Offset so line starts from center of canvas, not center of branch */
-  transform: translate(
-    calc(var(--branch-x) * -1),
-    calc(var(--branch-y) * -1)
-  );
+.mm-branch-left {
+  align-items: flex-end;
+}
+
+.mm-branch-right {
+  align-items: flex-start;
+}
+
+/* ── Connector line (CSS) ─────────────────── */
+.mm-branch-connector {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .mm-branch-connector {
+    display: block;
+    position: absolute;
+    top: 50%;
+    height: 2px;
+    width: 1.5rem;
+    transform: translateY(-50%);
+  }
+
+  .mm-branch-left .mm-branch-connector {
+    right: -1.5rem;
+  }
+
+  .mm-branch-right .mm-branch-connector {
+    left: -1.5rem;
+  }
 }
 
 /* ── Branch label button ───────────────────── */
@@ -130,7 +155,6 @@
 @media (max-width: 768px) {
   .mm-canvas {
     flex-direction: column;
-    min-height: auto;
     gap: 0;
   }
 
@@ -138,16 +162,20 @@
     margin-bottom: 1.25rem;
   }
 
+  .mm-side {
+    max-width: 100%;
+    width: 100%;
+    align-items: stretch;
+  }
+
   .mm-branch {
-    position: static;
-    transform: none;
     max-width: 100%;
     width: 100%;
     margin-bottom: 0.75rem;
     align-items: flex-start;
   }
 
-  .mm-connector {
+  .mm-branch-connector {
     display: none;
   }
 
