@@ -288,17 +288,121 @@
   color: var(--color-accent-strong);
 }
 
+/* ── Tablet breakpoint ── */
+@media (max-width: 768px) {
+  .submission-panel {
+    padding: 16px 18px;
+  }
+
+  .submission-header h4 {
+    font-size: 14px;
+  }
+
+  .submission-status-banner {
+    padding: 10px 14px;
+  }
+
+  .submission-drop-zone {
+    padding: 20px 14px;
+  }
+
+  .submission-drop-text {
+    font-size: 13px;
+  }
+
+  .submission-notes-section textarea {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+
+  .submission-cancel-btn,
+  .submission-submit-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* ── Mobile breakpoint ── */
 @media (max-width: 480px) {
   .submission-panel {
-    padding: 16px;
+    padding: 14px 12px;
+    margin-top: 8px;
+  }
+
+  .submission-header {
+    margin-bottom: 12px;
+  }
+
+  .submission-header h4 {
+    font-size: 13px;
+  }
+
+  .submission-status-banner {
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+
+  .submission-status-label {
+    font-size: 13px;
+  }
+
+  .submission-drop-zone {
+    padding: 18px 12px;
+  }
+
+  .submission-drop-text {
+    font-size: 13px;
+  }
+
+  .submission-drop-hint {
+    font-size: 11px;
+  }
+
+  .submission-file-info {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .submission-file-name {
+    font-size: 13px;
+  }
+
+  .submission-file-remove {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .submission-notes-section textarea {
+    font-size: 14px;
+    padding: 10px;
   }
 
   .submission-actions {
     flex-direction: column;
+    gap: 6px;
   }
 
   .submission-cancel-btn,
   .submission-submit-btn {
     width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .submission-close-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .submission-download-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }
