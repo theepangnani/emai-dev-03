@@ -264,33 +264,135 @@
   justify-content: flex-end;
 }
 
-@media (max-width: 480px) {
+/* ── Tablet ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-faq-page {
+    max-width: 100%;
+  }
+
   .admin-faq-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 10px;
+  }
+
+  .admin-faq-header h1 {
+    font-size: 16px;
   }
 
   .admin-faq-tabs {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-faq-tab {
-    padding: 8px 14px;
+    padding: 10px 16px;
     font-size: 13px;
     white-space: nowrap;
+    min-height: 44px;
   }
 
-  .admin-faq-table {
-    font-size: 12px;
+  .admin-faq-pending-card {
+    padding: 12px 14px;
+  }
+
+  .admin-faq-pending-actions {
+    flex-wrap: wrap;
+  }
+
+  .admin-faq-pending-actions button {
+    min-height: 44px;
+    min-width: 44px;
   }
 
   .admin-faq-table th,
   .admin-faq-table td {
-    padding: 8px 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .admin-faq-row-actions button {
+    min-height: 44px;
+    min-width: 44px;
   }
 
   .admin-faq-create-form {
-    padding: 16px;
+    padding: 16px 18px;
+    gap: 12px;
+  }
+
+  .admin-faq-create-form input[type="text"],
+  .admin-faq-create-form textarea,
+  .admin-faq-create-form select {
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+
+  .admin-faq-checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ── Phone ───────────────────────────────────── */
+@media (max-width: 480px) {
+  .admin-faq-header h1 {
+    font-size: 15px;
+  }
+
+  .admin-faq-tabs {
+    margin-bottom: 14px;
+  }
+
+  .admin-faq-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .admin-faq-pending-card {
+    padding: 10px 12px;
+  }
+
+  .admin-faq-pending-meta {
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .admin-faq-pending-content {
+    font-size: 13px;
+  }
+
+  .admin-faq-pending-actions {
+    flex-direction: column;
+  }
+
+  .admin-faq-pending-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .admin-faq-table th,
+  .admin-faq-table td {
+    padding: 8px 8px;
+    font-size: 11px;
+  }
+
+  .admin-faq-create-form {
+    padding: 12px;
+  }
+
+  .admin-faq-create-actions {
+    justify-content: stretch;
+  }
+
+  .admin-faq-create-actions button {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  .admin-faq-empty {
+    padding: 28px 14px;
+    font-size: 13px;
   }
 }
