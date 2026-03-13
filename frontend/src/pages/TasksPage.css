@@ -767,7 +767,70 @@
 }
 
 /* ============================================
-   Responsive
+   Responsive — tablet
+   ============================================ */
+@media (max-width: 768px) {
+  .tasks-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .tasks-filter-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tasks-filter-toggle {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .tasks-filters-panel {
+    padding: 12px 14px;
+  }
+
+  .tasks-chip-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .task-row {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .task-row-actions {
+    opacity: 1;
+  }
+
+  .task-row-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .task-group-header {
+    font-size: 15px;
+  }
+
+  .tasks-child-selector .pd-child-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .task-linked-context {
+    margin: 8px 12px 0;
+  }
+
+  /* Modal sizing */
+  .dashboard-modal-content {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* ============================================
+   Responsive — mobile
    ============================================ */
 @media (max-width: 480px) {
   .task-row-checkbox::before {
@@ -779,30 +842,53 @@
     bottom: -13px;
   }
 
-  .tasks-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  .tasks-header h3 {
+    font-size: 16px;
+  }
+
+  .tasks-filter-bar {
+    gap: 6px;
+  }
+
+  .tasks-filter-toggle {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 
   .tasks-filters-panel {
-    flex-direction: column;
     gap: 10px;
-    padding: 12px;
-  }
-
-  .tasks-chip-group {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    padding: 10px;
+    border-radius: 12px;
   }
 
   .tasks-chip-row {
     flex-wrap: wrap;
   }
 
+  .tasks-chip {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
   .task-row {
     padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .task-row-title {
+    font-size: 13px;
+  }
+
+  .task-row-meta {
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  .task-row-link {
+    max-width: 140px;
   }
 
   .tasks-child-selector {
@@ -810,7 +896,52 @@
   }
 
   .tasks-child-selector .pd-child-tab {
-    padding: 10px 16px;
+    padding: 10px 14px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .tasks-child-selector .pd-child-tab-all {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+
+  .task-group-header {
+    font-size: 14px;
+    margin: 12px 0 6px;
+  }
+
+  .tasks-empty {
+    padding: 28px 16px;
+  }
+
+  .task-modal-danger-zone {
+    flex-wrap: wrap;
+  }
+
+  .task-modal-archive-btn,
+  .task-modal-delete-btn {
+    min-height: 44px;
+    flex: 1;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .calendar-collapse-toggle {
+    min-height: 44px;
     font-size: 13px;
+  }
+
+  .task-linked-context {
+    margin: 6px 8px 0;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Modal sizing */
+  .dashboard-modal-content {
+    max-width: calc(100vw - 32px);
   }
 }
