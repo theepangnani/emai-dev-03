@@ -165,6 +165,22 @@
 }
 
 /* ── Mobile responsive ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .content-card {
+    padding: 1.25rem;
+  }
+
+  .content-card-body {
+    max-width: 100%;
+  }
+
+  .content-card-body table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @media (max-width: 480px) {
   .content-card {
     padding: 1rem;

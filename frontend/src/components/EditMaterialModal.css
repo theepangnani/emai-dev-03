@@ -20,3 +20,23 @@
 .edit-mat-course-list {
   max-height: 150px;
 }
+
+/* ── Mobile responsive ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .edit-material-modal {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-material-modal {
+    max-width: calc(100vw - 32px);
+  }
+
+  .edit-mat-course-item,
+  .edit-mat-form button,
+  .edit-mat-form select,
+  .edit-mat-form input {
+    min-height: 44px;
+  }
+}
