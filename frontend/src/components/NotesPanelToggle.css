@@ -51,3 +51,27 @@
 [data-theme="dark"] .notes-toggle-badge {
   border-color: var(--card-bg, #1e1e1e);
 }
+
+/* ── Responsive: tablet ── */
+@media (max-width: 768px) {
+  .notes-toggle-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+}
+
+/* ── Responsive: mobile ── */
+@media (max-width: 480px) {
+  .notes-toggle-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+    gap: 4px;
+    min-height: 44px;
+    border-radius: 6px;
+  }
+
+  .notes-toggle-label {
+    font-size: 12px;
+  }
+}

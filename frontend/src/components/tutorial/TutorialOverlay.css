@@ -79,3 +79,69 @@
 .tutorial-next-btn:hover {
   background: var(--primary-dark, #5a52d5);
 }
+
+/* ── Responsive: tablet ── */
+@media (max-width: 768px) {
+  .tutorial-tooltip {
+    max-width: 280px;
+    padding: 16px;
+  }
+
+  .tutorial-tooltip-title {
+    font-size: 0.925rem;
+    margin-bottom: 6px;
+  }
+
+  .tutorial-tooltip-content {
+    font-size: 0.8125rem;
+    margin-bottom: 12px;
+  }
+
+  .tutorial-skip-btn,
+  .tutorial-next-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ── Responsive: mobile ── */
+@media (max-width: 480px) {
+  .tutorial-tooltip {
+    max-width: 260px;
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .tutorial-tooltip-title {
+    font-size: 0.875rem;
+    margin-bottom: 4px;
+  }
+
+  .tutorial-tooltip-content {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+
+  .tutorial-tooltip-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tutorial-tooltip-progress {
+    font-size: 0.7rem;
+  }
+
+  .tutorial-tooltip-actions {
+    gap: 6px;
+  }
+
+  .tutorial-skip-btn,
+  .tutorial-next-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+}
