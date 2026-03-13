@@ -540,6 +540,19 @@
   color: #c62828;
 }
 
+/* Regeneration badge (#1651) */
+.ai-usage-regen-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #e3f2fd;
+  color: #1565c0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 /* Resolved info text */
 .ai-usage-resolved-info {
   font-size: 12px;

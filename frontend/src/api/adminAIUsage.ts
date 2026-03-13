@@ -43,10 +43,24 @@ export interface AIUsageHistoryEntry {
   generation_type: string;
   course_material_id: number | null;
   credits_used: number;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  estimated_cost_usd: number | null;
+  model_name: string | null;
+  is_regeneration: boolean;
+  parent_generation_id: number | null;
   created_at: string;
   user_name: string | null;
   user_email: string | null;
   course_material_title: string | null;
+}
+
+export interface AICostSummary {
+  total_cost_usd: number;
+  total_tokens: number;
+  by_type: Array<{ type: string; count: number; cost_usd: number; tokens: number }>;
+  by_user: Array<{ user_id: number; name: string; count: number; cost_usd: number }>;
 }
 
 export interface AIUsageHistoryList {
@@ -61,12 +75,16 @@ export const adminAIUsageApi = {
   getSummary: () =>
     api.get<AIUsageSummary>('/api/admin/ai-usage/summary').then((r) => r.data),
 
+  getCostSummary: (params?: { date_from?: string; date_to?: string }) =>
+    api.get<AICostSummary>('/api/admin/ai-usage/cost-summary', { params }).then((r) => r.data),
+
   listRequests: (params?: { status?: string; skip?: number; limit?: number }) =>
     api.get<AILimitRequestList>('/api/admin/ai-usage/requests', { params }).then((r) => r.data),
 
   listHistory: (params?: {
     user_id?: number;
     generation_type?: string;
+    type?: string;
     date_from?: string;
     date_to?: string;
     search?: string;

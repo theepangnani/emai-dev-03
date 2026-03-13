@@ -74,6 +74,13 @@ class AIUsageHistoryResponse(BaseModel):
     generation_type: str
     course_material_id: int | None = None
     credits_used: int
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    estimated_cost_usd: float | None = None
+    model_name: str | None = None
+    is_regeneration: bool = False
+    parent_generation_id: int | None = None
     created_at: datetime
     # Enrichment fields set by the route
     user_name: str | None = None
@@ -81,6 +88,13 @@ class AIUsageHistoryResponse(BaseModel):
     course_material_title: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AICostSummaryResponse(BaseModel):
+    total_cost_usd: float
+    total_tokens: int
+    by_type: list[dict]
+    by_user: list[dict]
 
 
 class AIUsageHistoryList(BaseModel):

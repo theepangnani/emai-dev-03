@@ -42,7 +42,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe
+from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, get_last_ai_usage
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -598,7 +598,11 @@ async def generate_study_guide_endpoint(
         return existing
 
     # Increment AI usage only when creating NEW content
-    increment_ai_usage(current_user, db, generation_type="study_guide", course_material_id=body.course_content_id)
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type="study_guide", course_material_id=body.course_content_id,
+        is_regeneration=bool(body.regenerate_from_id), **_usage,
+    )
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -693,7 +697,8 @@ Continue the study guide from here:"""
     guide.content = guide.content + "\n\n" + continuation
     guide.is_truncated = stop_reason == "max_tokens"
 
-    increment_ai_usage(current_user, db, generation_type="study_guide")
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(current_user, db, generation_type="study_guide", **_usage)
     log_action(db, user_id=current_user.id, action="update", resource_type="study_guide", resource_id=guide.id, details={"action": "continue"})
     db.commit()
     db.refresh(guide)
@@ -806,7 +811,11 @@ async def generate_quiz_endpoint(
         )
 
     # Increment AI usage only when creating NEW content
-    increment_ai_usage(current_user, db, generation_type="quiz", course_material_id=body.course_content_id)
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type="quiz", course_material_id=body.course_content_id,
+        is_regeneration=bool(body.regenerate_from_id), **_usage,
+    )
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -957,7 +966,11 @@ async def generate_flashcards_endpoint(
         )
 
     # Increment AI usage only when creating NEW content
-    increment_ai_usage(current_user, db, generation_type="flashcards", course_material_id=body.course_content_id)
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type="flashcards", course_material_id=body.course_content_id,
+        is_regeneration=bool(body.regenerate_from_id), **_usage,
+    )
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -1101,7 +1114,11 @@ async def generate_mind_map_endpoint(
         )
 
     # Increment AI usage only when creating NEW content
-    increment_ai_usage(current_user, db, generation_type="mind_map", course_material_id=body.course_content_id)
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type="mind_map", course_material_id=body.course_content_id,
+        is_regeneration=bool(body.regenerate_from_id), **_usage,
+    )
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -1577,7 +1594,8 @@ async def generate_from_text_and_images(
             return existing
 
     # Increment AI usage only when creating NEW content
-    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id, **_usage)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(
@@ -1778,7 +1796,8 @@ async def generate_from_file_upload(
             return existing
 
     # Increment AI usage only when creating NEW content
-    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id)
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(current_user, db, generation_type=guide_type, course_material_id=course_content_id, **_usage)
 
     # Auto-create course + course_content if needed
     resolved_course_id, resolved_cc_id = ensure_course_and_content(

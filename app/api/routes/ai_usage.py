@@ -29,6 +29,7 @@ from app.schemas.ai_usage import (
     AIUsageHistoryResponse,
     AIUsageHistoryList,
     AIUsageSummaryResponse,
+    AICostSummaryResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -396,12 +397,69 @@ def bulk_set_limit(
     return AIBulkSetLimitResponse(updated_count=updated, new_limit=body.ai_usage_limit)
 
 
+@admin_router.get("/cost-summary", response_model=AICostSummaryResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_cost_summary(
+    request: Request,
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Get AI cost summary: total spend, breakdown by type and user."""
+    query = db.query(AIUsageHistory)
+    if date_from:
+        query = query.filter(AIUsageHistory.created_at >= date_from)
+    if date_to:
+        query = query.filter(AIUsageHistory.created_at <= date_to)
+
+    total_cost = db.query(func.coalesce(func.sum(AIUsageHistory.estimated_cost_usd), 0.0)).filter(
+        AIUsageHistory.estimated_cost_usd.isnot(None),
+        *([AIUsageHistory.created_at >= date_from] if date_from else []),
+        *([AIUsageHistory.created_at <= date_to] if date_to else []),
+    ).scalar()
+
+    total_tokens = db.query(func.coalesce(func.sum(AIUsageHistory.total_tokens), 0)).filter(
+        AIUsageHistory.total_tokens.isnot(None),
+        *([AIUsageHistory.created_at >= date_from] if date_from else []),
+        *([AIUsageHistory.created_at <= date_to] if date_to else []),
+    ).scalar()
+
+    by_type_rows = db.query(
+        AIUsageHistory.generation_type,
+        func.count().label("count"),
+        func.coalesce(func.sum(AIUsageHistory.estimated_cost_usd), 0.0).label("cost"),
+        func.coalesce(func.sum(AIUsageHistory.total_tokens), 0).label("tokens"),
+    ).filter(
+        *([AIUsageHistory.created_at >= date_from] if date_from else []),
+        *([AIUsageHistory.created_at <= date_to] if date_to else []),
+    ).group_by(AIUsageHistory.generation_type).all()
+
+    by_user_rows = db.query(
+        AIUsageHistory.user_id,
+        User.full_name,
+        func.count().label("count"),
+        func.coalesce(func.sum(AIUsageHistory.estimated_cost_usd), 0.0).label("cost"),
+    ).join(User, AIUsageHistory.user_id == User.id).filter(
+        *([AIUsageHistory.created_at >= date_from] if date_from else []),
+        *([AIUsageHistory.created_at <= date_to] if date_to else []),
+    ).group_by(AIUsageHistory.user_id, User.full_name).order_by(desc("cost")).limit(10).all()
+
+    return AICostSummaryResponse(
+        total_cost_usd=float(total_cost),
+        total_tokens=int(total_tokens),
+        by_type=[{"type": r.generation_type, "count": r.count, "cost_usd": float(r.cost), "tokens": int(r.tokens)} for r in by_type_rows],
+        by_user=[{"user_id": r.user_id, "name": r.full_name, "count": r.count, "cost_usd": float(r.cost)} for r in by_user_rows],
+    )
+
+
 @admin_router.get("/history", response_model=AIUsageHistoryList)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def admin_list_usage_history(
     request: Request,
     user_id: int | None = Query(None),
     generation_type: str | None = Query(None),
+    entry_type: str | None = Query(None, alias="type"),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
     search: str | None = Query(None),
@@ -417,6 +475,10 @@ def admin_list_usage_history(
         query = query.filter(AIUsageHistory.user_id == user_id)
     if generation_type:
         query = query.filter(AIUsageHistory.generation_type == generation_type)
+    if entry_type == "original":
+        query = query.filter(AIUsageHistory.is_regeneration == False)  # noqa: E712
+    elif entry_type == "regeneration":
+        query = query.filter(AIUsageHistory.is_regeneration == True)  # noqa: E712
     if date_from:
         query = query.filter(AIUsageHistory.created_at >= date_from)
     if date_to:
