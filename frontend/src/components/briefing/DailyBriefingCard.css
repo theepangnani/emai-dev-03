@@ -306,3 +306,117 @@
   height: 14px;
   margin-bottom: 8px;
 }
+
+/* Tablet breakpoint */
+@media (max-width: 768px) {
+  .briefing-card {
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+
+  .briefing-greeting {
+    font-size: 1.1rem;
+  }
+
+  .briefing-child-section {
+    padding: 12px 14px;
+  }
+
+  .briefing-child-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .briefing-help-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+  }
+
+  .help-my-kid-item {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 480px) {
+  .briefing-card {
+    padding: 14px 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  .briefing-greeting {
+    font-size: 1rem;
+  }
+
+  .briefing-date {
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+  }
+
+  .briefing-all-clear {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    gap: 6px;
+  }
+
+  .briefing-attention-banner {
+    font-size: 0.8rem;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .briefing-child-section {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .briefing-child-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .briefing-child-name {
+    font-size: 0.92rem;
+  }
+
+  .briefing-help-btn {
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.82rem;
+  }
+
+  .help-my-kid-menu {
+    min-width: 200px;
+    left: 0;
+    right: 0;
+  }
+
+  .help-my-kid-item {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  .briefing-task-label {
+    font-size: 0.78rem;
+  }
+
+  .briefing-task-item {
+    font-size: 0.78rem;
+    padding-left: 20px;
+  }
+
+  .briefing-study-activity {
+    font-size: 0.78rem;
+  }
+
+  .briefing-skeleton {
+    padding: 14px 14px;
+  }
+}
