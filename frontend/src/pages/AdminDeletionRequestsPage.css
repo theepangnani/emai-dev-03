@@ -147,3 +147,80 @@
   font-size: 0.85rem;
   margin-top: 12px;
 }
+
+/* Tablet */
+@media (max-width: 768px) {
+  .admin-deletion-requests {
+    padding: 16px;
+  }
+
+  .admin-deletion-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .admin-deletion-card-meta {
+    gap: 8px;
+  }
+
+  .admin-deletion-filter-select {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .admin-deletion-btn-process {
+    min-height: 44px;
+    width: 100%;
+    text-align: center;
+    padding: 10px 16px;
+  }
+
+  .admin-deletion-card-actions {
+    width: 100%;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .admin-deletion-requests {
+    padding: 12px;
+  }
+
+  .admin-deletion-title {
+    font-size: 1.25rem;
+  }
+
+  .admin-deletion-desc {
+    font-size: 0.8rem;
+  }
+
+  .admin-deletion-header {
+    margin-bottom: 16px;
+  }
+
+  .admin-deletion-card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .admin-deletion-card-name {
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .admin-deletion-card-meta {
+    font-size: 0.75rem;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .admin-deletion-badge {
+    font-size: 0.65rem;
+  }
+
+  .admin-deletion-empty {
+    padding: 32px 16px;
+  }
+}
