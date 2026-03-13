@@ -712,10 +712,91 @@
   flex-shrink: 0;
 }
 
+/* ── Tablet / Mobile ── */
+@media (max-width: 768px) {
+  .course-detail-header {
+    flex-direction: column;
+    padding: 20px;
+    gap: 12px;
+  }
+
+  .course-detail-info h2 {
+    font-size: 20px;
+  }
+
+  .course-section-panel {
+    padding: 18px;
+    margin-top: 16px;
+  }
+
+  .course-section-header h3 {
+    font-size: 15px;
+  }
+
+  .cd-content-item {
+    gap: 12px;
+  }
+
+  .cd-content-item-title {
+    font-size: 14px;
+  }
+
+  .course-assignment-row {
+    gap: 8px;
+  }
+
+  .course-assignment-meta {
+    flex-wrap: wrap;
+  }
+
+  .upload-drop-zone {
+    padding: 24px 16px;
+  }
+
+  .course-detail-empty,
+  .course-detail-empty-content {
+    padding: 32px 16px;
+  }
+
+  .courses-btn {
+    min-height: 44px;
+  }
+
+  .content-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .course-roster-remove {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .class-code-copy-btn {
+    min-height: 44px;
+    padding: 4px 14px;
+  }
+}
+
+/* ── Small phones ── */
 @media (max-width: 480px) {
   .course-detail-header {
     flex-direction: column;
-    padding: 16px;
+    padding: 14px;
+  }
+
+  .course-detail-info h2 {
+    font-size: 18px;
+  }
+
+  .course-detail-meta {
+    gap: 6px;
   }
 
   .course-section-header {
@@ -725,21 +806,94 @@
   }
 
   .course-section-panel {
-    padding: 16px;
+    padding: 14px;
     border-radius: 12px;
+    margin-top: 12px;
+  }
+
+  .course-section-header h3 {
+    font-size: 14px;
   }
 
   .course-detail-action-btns {
     flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .course-detail-action-btns .courses-btn {
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
   }
 
   .cd-content-item {
     flex-direction: column;
+    gap: 8px;
+    padding: 10px 8px;
   }
 
   .cd-content-item-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .cd-content-item-title {
+    font-size: 13px;
+  }
+
+  .cd-content-item-desc {
+    font-size: 12px;
+  }
+
+  .course-assignment-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .course-assignment-meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .course-assignment-actions {
+    align-self: flex-end;
+  }
+
+  .course-roster-row {
+    gap: 8px;
+    padding: 8px 6px;
+  }
+
+  .course-detail-class-code {
+    flex-wrap: wrap;
+  }
+
+  .class-code-value {
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+
+  .upload-drop-zone {
+    padding: 20px 12px;
+  }
+
+  .upload-drop-text {
+    font-size: 13px;
+  }
+
+  .course-detail-empty,
+  .course-detail-empty-content {
+    padding: 24px 12px;
+  }
+
+  .dtap-disclaimer {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .enrollment-req-actions {
+    flex-wrap: wrap;
   }
 }
 
