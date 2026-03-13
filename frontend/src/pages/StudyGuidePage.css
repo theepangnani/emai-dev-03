@@ -179,26 +179,82 @@
 
 /* ── Mobile responsive ───────────────────────────────────── */
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .study-guide-page {
     max-width: 100%;
     padding: 1rem;
   }
   .sg-detail-header {
-    padding: 16px 12px;
+    padding: 18px 14px;
   }
   .sg-title-row {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.5rem;
   }
   .sg-title-row h2 {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
   }
   .sg-meta-row {
     flex-wrap: wrap;
+    gap: 0.5rem;
   }
   .sg-icon-actions {
     margin-left: 0;
     margin-top: 4px;
+  }
+  .sg-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    font-size: 18px;
+  }
+  .task-prompt-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    text-align: center;
+  }
+  .task-prompt-banner button {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .study-guide-page {
+    padding: 0.75rem;
+  }
+  .sg-detail-header {
+    padding: 14px 10px;
+    margin-bottom: 1rem;
+  }
+  .sg-title-icon {
+    font-size: 1.4rem;
+  }
+  .sg-title-row h2 {
+    font-size: 1.1rem;
+  }
+  .sg-meta-row {
+    font-size: 0.7rem;
+    gap: 0.4rem;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .sg-type-badge,
+  .sg-version-badge {
+    font-size: 0.65rem;
+  }
+  .sg-icon-actions {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .loading, .error {
+    padding: 1.5rem;
+    font-size: 1rem;
+  }
+  .task-prompt-banner {
+    padding: 10px 12px;
+    font-size: 13px;
   }
 }

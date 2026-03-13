@@ -731,9 +731,56 @@
 }
 
 /* ── Responsive ─────────────────────────────── */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .guides-list {
     grid-template-columns: 1fr;
+  }
+
+  .guides-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .guides-course-search {
+    max-width: none;
+  }
+
+  .guides-child-selector .child-tab {
+    min-height: 44px;
+  }
+
+  .guides-filter-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .guide-delete-btn,
+  .guide-convert-btn,
+  .guide-assign-btn,
+  .guide-share-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 10px;
+  }
+
+  .guides-section {
+    margin-bottom: 24px;
+  }
+
+  .guides-section h3 {
+    font-size: 16px;
+  }
+
+  .bulk-category-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  /* Modal responsive */
+  .assign-children-list {
+    max-height: 60vh;
+    overflow-y: auto;
   }
 }
 
@@ -747,8 +794,8 @@
     font-size: 13px;
   }
 
-  .guides-course-search {
-    max-width: none;
+  .guides-filters-row {
+    gap: 6px;
   }
 
   .guides-filter {
@@ -758,10 +805,33 @@
   .guides-filter-btn {
     flex: 1;
     text-align: center;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .guide-row-main {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .guide-row-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+  }
+
+  .guide-row-title {
+    font-size: 14px;
+  }
+
+  .guide-row-meta {
+    font-size: 11px;
   }
 
   .guide-row-actions {
+    padding: 6px 12px 10px;
     justify-content: flex-end;
+    gap: 4px;
   }
 
   .guides-assign-filter {
@@ -771,6 +841,7 @@
   .guides-assign-filter-btn {
     padding: 4px 8px;
     font-size: 11px;
+    min-height: 44px;
   }
 
   .guides-batch-assign-btn {
@@ -778,15 +849,42 @@
     text-align: center;
     margin-left: 0;
     margin-top: 4px;
+    min-height: 44px;
   }
 
   .guides-section-header-row {
     flex-wrap: wrap;
   }
 
+  .guides-empty {
+    padding: 32px 16px;
+  }
+
+  .guides-empty p:first-child {
+    font-size: 24px;
+  }
+
+  .guides-empty p {
+    font-size: 13px;
+  }
+
   .guide-assign-dropdown-content {
     right: auto;
     left: 0;
+    min-width: calc(100vw - 32px);
+  }
+
+  .toast-notification {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    text-align: center;
+  }
+
+  .archive-toggle-btn {
+    min-height: 44px;
+    width: 100%;
+    text-align: center;
   }
 }
 
