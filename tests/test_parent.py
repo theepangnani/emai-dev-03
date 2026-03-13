@@ -388,18 +388,44 @@ class TestAssignCourses:
 # ── Link / unlink teachers ───────────────────────────────────
 
 class TestLinkTeacher:
-    def test_link_teacher_by_email(self, client, users):
+    def test_link_teacher_by_email(self, client, users, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.teacher import Teacher
+
+        # Use a teacher NOT in any of the student's courses
+        email = "par_manual_teacher@test.com"
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name="Manual Teacher", role=UserRole.TEACHER,
+                     hashed_password=get_password_hash(PASSWORD))
+            db_session.add(u)
+            db_session.flush()
+            db_session.add(Teacher(user_id=u.id))
+            db_session.commit()
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": email},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["teacher_email"] == email
+        assert data["teacher_user_id"] == u.id
+        assert data["teacher_name"] == "Manual Teacher"
+
+    def test_link_teacher_via_class_rejected(self, client, users):
+        """Cannot manually link a teacher who is already linked via a course."""
         headers = _auth(client, users["parent"].email)
         resp = client.post(
             f"/api/parent/children/{users['student_rec'].id}/teachers",
             json={"teacher_email": users["teacher"].email},
             headers=headers,
         )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["teacher_email"] == users["teacher"].email
-        assert data["teacher_user_id"] == users["teacher"].id
-        assert data["teacher_name"] == "Par Teacher"
+        assert resp.status_code == 400
+        assert "via a class" in resp.json()["detail"].lower()
 
     def test_link_teacher_with_custom_name(self, client, users, db_session):
         from app.core.security import get_password_hash
@@ -425,12 +451,33 @@ class TestLinkTeacher:
         assert resp.status_code == 200
         assert resp.json()["teacher_name"] == "My Custom Name"
 
-    def test_duplicate_link_rejected(self, client, users):
+    def test_duplicate_link_rejected(self, client, users, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.teacher import Teacher
+
+        # Use a teacher not in courses, link them, then try again
+        email = "par_dup_teacher@test.com"
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name="Dup Teacher", role=UserRole.TEACHER,
+                     hashed_password=get_password_hash(PASSWORD))
+            db_session.add(u)
+            db_session.flush()
+            db_session.add(Teacher(user_id=u.id))
+            db_session.commit()
+
         headers = _auth(client, users["parent"].email)
-        # Ensure teacher is already linked (from test_link_teacher_by_email)
+        # First link succeeds
+        client.post(
+            f"/api/parent/children/{users['student_rec'].id}/teachers",
+            json={"teacher_email": email},
+            headers=headers,
+        )
+        # Second link fails
         resp = client.post(
             f"/api/parent/children/{users['student_rec'].id}/teachers",
-            json={"teacher_email": users["teacher"].email},
+            json={"teacher_email": email},
             headers=headers,
         )
         assert resp.status_code == 400
@@ -446,7 +493,37 @@ class TestLinkTeacher:
         assert resp.status_code == 400
         assert "not a teacher" in resp.json()["detail"].lower()
 
-    def test_list_linked_teachers(self, client, users):
+    def test_list_linked_teachers(self, client, users, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.teacher import Teacher
+        from app.models.student import student_teachers
+        from sqlalchemy import insert
+
+        # Ensure a manually-linked teacher exists
+        email = "par_list_teacher@test.com"
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name="List Teacher", role=UserRole.TEACHER,
+                     hashed_password=get_password_hash(PASSWORD))
+            db_session.add(u)
+            db_session.flush()
+            db_session.add(Teacher(user_id=u.id))
+            db_session.commit()
+
+        # Link directly via table to avoid endpoint dependency
+        existing = db_session.query(student_teachers).filter(
+            student_teachers.c.student_id == users["student_rec"].id,
+            student_teachers.c.teacher_email == email,
+        ).first()
+        if not existing:
+            db_session.execute(insert(student_teachers).values(
+                student_id=users["student_rec"].id, teacher_user_id=u.id,
+                teacher_name="List Teacher", teacher_email=email,
+                added_by_user_id=users["parent"].id,
+            ))
+            db_session.commit()
+
         headers = _auth(client, users["parent"].email)
         resp = client.get(
             f"/api/parent/children/{users['student_rec'].id}/teachers",
@@ -455,9 +532,38 @@ class TestLinkTeacher:
         assert resp.status_code == 200
         teachers = resp.json()
         assert isinstance(teachers, list)
-        assert any(t["teacher_email"] == users["teacher"].email for t in teachers)
+        assert any(t["teacher_email"] == email for t in teachers)
 
-    def test_unlink_teacher(self, client, users):
+    def test_unlink_teacher(self, client, users, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.teacher import Teacher
+        from app.models.student import student_teachers
+        from sqlalchemy import insert
+
+        # Ensure a manually-linked teacher exists
+        email = "par_unlink_teacher@test.com"
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name="Unlink Teacher", role=UserRole.TEACHER,
+                     hashed_password=get_password_hash(PASSWORD))
+            db_session.add(u)
+            db_session.flush()
+            db_session.add(Teacher(user_id=u.id))
+            db_session.commit()
+
+        existing = db_session.query(student_teachers).filter(
+            student_teachers.c.student_id == users["student_rec"].id,
+            student_teachers.c.teacher_email == email,
+        ).first()
+        if not existing:
+            db_session.execute(insert(student_teachers).values(
+                student_id=users["student_rec"].id, teacher_user_id=u.id,
+                teacher_name="Unlink Teacher", teacher_email=email,
+                added_by_user_id=users["parent"].id,
+            ))
+            db_session.commit()
+
         headers = _auth(client, users["parent"].email)
         # Get the link ID
         resp = client.get(
@@ -465,7 +571,7 @@ class TestLinkTeacher:
             headers=headers,
         )
         teachers = resp.json()
-        link = next(t for t in teachers if t["teacher_email"] == users["teacher"].email)
+        link = next(t for t in teachers if t["teacher_email"] == email)
 
         resp = client.delete(
             f"/api/parent/children/{users['student_rec'].id}/teachers/{link['id']}",

@@ -1365,6 +1365,25 @@ def link_teacher_to_child(
         if not teacher_user.has_role(UserRole.TEACHER):
             raise HTTPException(status_code=400, detail="This user is not a teacher")
 
+    # Check if teacher already linked via a class (course)
+    from app.models.course import Course, student_courses
+    course_teacher_exists = (
+        db.query(Course)
+        .join(student_courses, student_courses.c.course_id == Course.id)
+        .join(Teacher, Teacher.id == Course.teacher_id)
+        .outerjoin(User, User.id == Teacher.user_id)
+        .filter(
+            student_courses.c.student_id == student_id,
+            Course.teacher_id.isnot(None),
+        )
+        .filter(
+            (Teacher.google_email == data.teacher_email) | (User.email == data.teacher_email)
+        )
+        .first()
+    )
+    if course_teacher_exists:
+        raise HTTPException(status_code=400, detail="This teacher is already linked to this child via a class")
+
     # Check if already linked
     existing = (
         db.query(student_teachers)
