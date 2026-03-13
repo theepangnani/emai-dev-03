@@ -114,6 +114,7 @@ export function AdminAuditLog() {
           <ListSkeleton rows={8} />
         ) : (
           <>
+            <div className="audit-table-wrapper">
             <table className="audit-table">
               <thead>
                 <tr>
@@ -159,6 +160,7 @@ export function AdminAuditLog() {
                 )}
               </tbody>
             </table>
+            </div>
 
             {totalPages > 1 && (
               <div className="audit-pagination">
