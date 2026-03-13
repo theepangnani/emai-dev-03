@@ -145,18 +145,115 @@
   background: #fef2f2;
 }
 
-@media (max-width: 640px) {
+/* ================================================
+   Responsive – Tablet (768px)
+   ================================================ */
+@media (max-width: 768px) {
+  .calendar-import {
+    padding: 1rem;
+  }
+
+  .calendar-import-title {
+    font-size: 1.5rem;
+  }
+
   .calendar-import-form {
     flex-direction: column;
+  }
+
+  .calendar-import-btn {
+    min-height: 44px;
+    padding: 0.625rem 1rem;
+  }
+
+  .calendar-import-input {
+    min-height: 44px;
   }
 
   .calendar-feed-card {
     flex-direction: column;
     gap: 0.75rem;
+    padding: 0.875rem 1rem;
   }
 
   .calendar-feed-actions {
     margin-left: 0;
     align-self: flex-end;
+  }
+
+  .calendar-feed-sync-btn,
+  .calendar-feed-delete-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 0.875rem;
+  }
+
+  .calendar-feed-meta {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+/* ================================================
+   Responsive – Phone (480px)
+   ================================================ */
+@media (max-width: 480px) {
+  .calendar-import {
+    padding: 0.75rem;
+  }
+
+  .calendar-import-title {
+    font-size: 1.25rem;
+  }
+
+  .calendar-import-subtitle {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .calendar-import-form {
+    gap: 0.5rem;
+  }
+
+  .calendar-import-input {
+    font-size: 0.85rem;
+  }
+
+  .calendar-import-btn {
+    font-size: 0.85rem;
+  }
+
+  .calendar-import-error {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .calendar-feeds-section {
+    margin-top: 1.25rem;
+  }
+
+  .calendar-feeds-section h2 {
+    font-size: 1.1rem;
+  }
+
+  .calendar-feed-card {
+    padding: 0.75rem;
+  }
+
+  .calendar-feed-name {
+    font-size: 0.9rem;
+  }
+
+  .calendar-feed-url {
+    font-size: 0.75rem;
+  }
+
+  .calendar-feed-meta {
+    font-size: 0.75rem;
+  }
+
+  .calendar-feed-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
