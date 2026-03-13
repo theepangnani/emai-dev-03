@@ -836,7 +836,113 @@
   color: var(--color-accent-strong);
 }
 
-/* Responsive — tablet */
+/* Responsive — tablet/mobile */
+@media (max-width: 768px) {
+  .messages-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .conversation-list {
+    width: 100%;
+    border-radius: 12px;
+  }
+
+  .message-thread {
+    border-radius: 12px;
+  }
+
+  .list-header {
+    padding: 16px;
+  }
+
+  .list-header h2 {
+    font-size: 16px;
+  }
+
+  .conversation-item {
+    padding: 12px 16px;
+  }
+
+  .thread-header {
+    padding: 14px 16px;
+  }
+
+  .thread-header h2 {
+    font-size: 16px;
+  }
+
+  .messages-list {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .message {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .message-input {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .message-input textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .send-button {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .error-banner {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .modal {
+    max-width: calc(100vw - 32px);
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+  }
+
+  .cancel-button,
+  .modal-footer .send-button {
+    min-height: 44px;
+  }
+
+  .form-group select,
+  .form-group input,
+  .form-group textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .recipient-dropdown-item {
+    padding: 12px 16px;
+    min-height: 44px;
+  }
+}
+
+/* Responsive — large tablet */
 @media (max-width: 1024px) {
   .messages-container {
     flex-direction: column;
@@ -901,5 +1007,82 @@
   .send-button {
     padding: 10px 16px;
     font-size: 14px;
+  }
+
+  .list-header {
+    padding: 12px;
+  }
+
+  .list-header h2 {
+    font-size: 15px;
+  }
+
+  .thread-header {
+    padding: 12px;
+  }
+
+  .thread-header h2 {
+    font-size: 15px;
+  }
+
+  .messages-list {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .message {
+    max-width: 90%;
+    font-size: 14px;
+  }
+
+  .message-content {
+    font-size: 14px;
+  }
+
+  .modal {
+    max-width: calc(100vw - 24px);
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 14px;
+  }
+
+  .modal-body {
+    padding: 14px;
+  }
+
+  .modal-footer {
+    padding: 10px 14px;
+    flex-direction: column;
+  }
+
+  .cancel-button,
+  .modal-footer .send-button {
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+  }
+
+  .conv-name {
+    font-size: 14px;
+  }
+
+  .conv-preview {
+    font-size: 12px;
+  }
+
+  .conv-time {
+    font-size: 10px;
+  }
+
+  .thread-search-bar {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .error-banner {
+    padding: 8px 12px;
+    font-size: 12px;
   }
 }
