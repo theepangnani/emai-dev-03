@@ -338,32 +338,152 @@
   opacity: 0.85;
 }
 
-@media (max-width: 480px) {
+/* ── Tablet breakpoint ── */
+@media (max-width: 768px) {
+  .flashcards-page {
+    padding: 1.25rem;
+  }
+
   .flashcard {
-    height: 250px;
+    height: 260px;
   }
 
   .flashcard-front p,
   .flashcard-back p {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
   }
 
-  .flashcard-controls {
-    flex-direction: column;
+  .flashcard-front,
+  .flashcard-back {
+    padding: 1.5rem;
+  }
+
+  .fc-summary-card {
+    padding: 1.75rem;
+    max-width: calc(100vw - 32px);
+  }
+
+  .fc-summary-card h2 {
+    font-size: 1.5rem;
+  }
+
+  .fc-summary-stats {
+    gap: 2rem;
+  }
+
+  .fc-stat-value {
+    font-size: 2rem;
   }
 
   .keyboard-hints {
     display: none;
   }
 
-  .mastery-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .fc-summary-stats {
-    gap: 2rem;
+  .control-btn,
+  .shuffle-btn,
+  .mastery-btn,
+  .fc-review-btn,
+  .fc-restart-btn,
+  .fc-done-btn {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 
+/* ── Phone breakpoint ── */
+@media (max-width: 480px) {
+  .flashcards-page {
+    padding: 1rem;
+  }
 
+  .flashcards-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .flashcards-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .flashcard {
+    height: 220px;
+    border-radius: 12px;
+  }
+
+  .flashcard-front,
+  .flashcard-back {
+    padding: 1.25rem;
+    border-radius: 12px;
+  }
+
+  .flashcard-front p,
+  .flashcard-back p {
+    font-size: 1.1rem;
+    line-height: 1.4;
+  }
+
+  .flashcard-container {
+    margin-bottom: 1.25rem;
+  }
+
+  .flashcard-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .control-btn,
+  .shuffle-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .mastery-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .mastery-btn {
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+
+  .fc-summary-card {
+    padding: 1.5rem;
+    max-width: calc(100vw - 32px);
+    border-radius: 12px;
+  }
+
+  .fc-summary-card h2 {
+    font-size: 1.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .fc-summary-stats {
+    gap: 1.5rem;
+  }
+
+  .fc-stat-value {
+    font-size: 1.75rem;
+  }
+
+  .fc-summary-pct {
+    font-size: 1.1rem;
+  }
+
+  .fc-summary-encouragement {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .fc-summary-actions {
+    flex-direction: column;
+  }
+
+  .fc-review-btn,
+  .fc-restart-btn,
+  .fc-done-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
