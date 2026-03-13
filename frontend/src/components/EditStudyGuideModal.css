@@ -34,3 +34,28 @@
 .edit-sg-course-item.current {
   border-left: 3px solid var(--color-accent);
 }
+
+/* ── Mobile responsive ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .edit-sg-modal {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-sg-modal {
+    max-width: calc(100vw - 32px);
+  }
+
+  .edit-sg-course-item {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .edit-sg-form button,
+  .edit-sg-form select,
+  .edit-sg-form input {
+    min-height: 44px;
+  }
+}

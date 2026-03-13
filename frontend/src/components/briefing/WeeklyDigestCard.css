@@ -197,3 +197,131 @@
   margin: 8px 0 0;
   text-align: right;
 }
+
+/* Tablet breakpoint */
+@media (max-width: 768px) {
+  .wd-card {
+    padding: 16px 18px;
+    border-radius: 12px;
+  }
+
+  .wd-card-title {
+    font-size: 16px;
+  }
+
+  .wd-child {
+    padding: 12px 14px;
+  }
+
+  .wd-child-stats {
+    gap: 10px;
+  }
+
+  .wd-trigger-btn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .wd-send-btn {
+    min-height: 44px;
+    padding: 10px 18px;
+  }
+
+  .wd-close-btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 480px) {
+  .wd-card {
+    padding: 14px 14px;
+    border-radius: 10px;
+    margin-top: 8px;
+  }
+
+  .wd-card-header {
+    margin-bottom: 10px;
+  }
+
+  .wd-card-title {
+    font-size: 15px;
+  }
+
+  .wd-period {
+    font-size: 12px;
+  }
+
+  .wd-greeting {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .wd-children {
+    gap: 12px;
+  }
+
+  .wd-child {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .wd-child-name {
+    font-size: 14px;
+  }
+
+  .wd-child-highlight {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .wd-child-stats {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .wd-stat {
+    font-size: 12px;
+  }
+
+  .wd-overdue {
+    font-size: 12px;
+  }
+
+  .wd-overdue-list {
+    margin-left: 14px;
+  }
+
+  .wd-summary {
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+
+  .wd-actions {
+    margin-top: 12px;
+  }
+
+  .wd-send-btn {
+    min-height: 44px;
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .wd-trigger-btn {
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .wd-close-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

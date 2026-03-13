@@ -113,21 +113,54 @@
   }
 }
 
-/* Responsive: stack actions on narrow screens */
+/* ── Tablet breakpoint ── */
+@media (max-width: 768px) {
+  .gc-prompt {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .gc-prompt-text {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .gc-prompt-btn {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+  .gc-prompt-dismiss {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    top: 4px;
+    right: 4px;
+  }
+}
+
+/* ── Mobile breakpoint ── */
 @media (max-width: 480px) {
   .gc-prompt {
     flex-direction: column;
-    gap: 10px;
-    padding: 14px 16px;
+    gap: 8px;
+    padding: 12px 14px;
   }
   .gc-prompt-icon {
     display: none;
   }
+  .gc-prompt-text {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
   .gc-prompt-actions {
     flex-direction: column;
+    gap: 6px;
   }
   .gc-prompt-btn {
     width: 100%;
     text-align: center;
+    min-height: 44px;
+    font-size: 14px;
   }
 }

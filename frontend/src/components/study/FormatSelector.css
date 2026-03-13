@@ -109,16 +109,59 @@
   border-radius: 8px;
 }
 
-/* ── Responsive: 2x2 on tablet, stack on mobile ── */
-@media (max-width: 720px) {
+/* ── Responsive: tablet ── */
+@media (max-width: 768px) {
   .format-selector-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .format-selector-title {
+    font-size: 1rem;
+  }
+
+  .format-selector-subtitle {
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+  }
+
+  .format-card {
+    padding: 14px 8px 12px;
+    gap: 5px;
+  }
+
+  .format-card-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .format-card-label {
+    font-size: 0.85rem;
+  }
+
+  .format-card-desc {
+    font-size: 0.7rem;
   }
 }
 
-@media (max-width: 400px) {
+/* ── Responsive: mobile — stack to single column ── */
+@media (max-width: 480px) {
+  .format-selector {
+    margin-bottom: 14px;
+  }
+
+  .format-selector-title {
+    font-size: 0.95rem;
+  }
+
+  .format-selector-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 10px;
+  }
+
   .format-selector-grid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .format-card {
@@ -126,11 +169,12 @@
     text-align: left;
     padding: 12px 14px;
     gap: 12px;
+    min-height: 44px;
   }
 
   .format-card-icon {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
   }
 

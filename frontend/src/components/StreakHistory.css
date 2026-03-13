@@ -43,10 +43,34 @@
   line-height: 1;
 }
 
-/* ── Responsive ──────────────────────────── */
-@media (max-width: 480px) {
+/* ── Responsive: tablet ─────────────────── */
+@media (max-width: 768px) {
+  .streak-history {
+    padding: 5px 10px;
+  }
+
   .streak-history-dots {
     gap: 6px;
+  }
+
+  .streak-history-dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .streak-history-label {
+    font-size: 8px;
+  }
+}
+
+/* ── Responsive: phone ──────────────────── */
+@media (max-width: 480px) {
+  .streak-history {
+    padding: 4px 8px;
+  }
+
+  .streak-history-dots {
+    gap: 5px;
   }
 
   .streak-history-dot {
@@ -55,6 +79,6 @@
   }
 
   .streak-history-label {
-    font-size: 8px;
+    font-size: 7px;
   }
 }

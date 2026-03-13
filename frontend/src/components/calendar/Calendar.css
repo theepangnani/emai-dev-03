@@ -589,6 +589,8 @@
   .cal-header {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .cal-nav {
@@ -597,10 +599,20 @@
 
   .cal-title {
     text-align: center;
+    font-size: 16px;
   }
 
   .cal-view-toggle {
     justify-content: center;
+  }
+
+  .cal-view-btn {
+    min-height: 44px;
+    padding: 6px 12px;
+  }
+
+  .cal-today-btn {
+    min-height: 44px;
   }
 
   .cal-day-cell {
@@ -609,6 +621,44 @@
 
   .cal-entry-chip {
     font-size: 10px;
+  }
+
+  .cal-entry-card {
+    padding: 6px 10px;
+  }
+
+  .cal-entry-title {
+    font-size: 12px;
+  }
+
+  .cal-entry-meta {
+    font-size: 11px;
+  }
+
+  .cal-week-column {
+    min-height: 300px;
+  }
+
+  .cal-week-column-body {
+    padding: 6px;
+  }
+
+  .cal-week-day-num {
+    font-size: 17px;
+  }
+
+  /* Popover – constrain to viewport */
+  .cal-popover {
+    width: calc(100vw - 32px);
+    max-width: 300px;
+  }
+
+  .cal-popover-title {
+    font-size: 15px;
+  }
+
+  .cal-popover-actions {
+    flex-wrap: wrap;
   }
 
   /* Swipe transition hint */
@@ -627,6 +677,7 @@
   .cal-day-header {
     padding: 4px 2px;
     font-size: 10px;
+    letter-spacing: 0;
   }
 
   .cal-day-cell {
@@ -634,8 +685,78 @@
     padding: 2px;
   }
 
+  .cal-day-number {
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+  }
+
   .cal-entry-chip {
-    font-size: 10px;
+    font-size: 9px;
     padding: 1px 3px;
+    gap: 2px;
+  }
+
+  .cal-entry-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .cal-entry-chip-child {
+    display: none;
+  }
+
+  .cal-day-more {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+
+  .cal-week-column-header {
+    padding: 6px 0;
+    font-size: 11px;
+  }
+
+  .cal-week-day-name {
+    font-size: 9px;
+  }
+
+  .cal-week-day-num {
+    font-size: 15px;
+  }
+
+  .cal-week-column-body {
+    padding: 4px;
+  }
+
+  .cal-day-view-header {
+    font-size: 14px;
+  }
+
+  .cal-day-empty {
+    padding: 32px 16px;
+    font-size: 13px;
+  }
+
+  /* Popover – near fullscreen */
+  .cal-popover {
+    width: calc(100vw - 32px);
+    max-width: none;
+    padding: 12px;
+  }
+
+  .cal-popover-title {
+    font-size: 14px;
+  }
+
+  .cal-popover-desc {
+    font-size: 12px;
+    padding: 6px;
+  }
+
+  .cal-popover-course,
+  .cal-popover-due,
+  .cal-popover-points,
+  .cal-popover-child {
+    font-size: 11px;
   }
 }

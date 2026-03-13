@@ -233,22 +233,52 @@
 /* ── Tablet (768px) ───────────────────── */
 
 @media (max-width: 768px) {
-  .launch-features-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .launch-nav {
+    padding: 4px 16px;
   }
 
   .launch-hero {
     min-height: auto;
-    padding: 36px 24px 56px;
+    padding: 36px 20px 56px;
+  }
+
+  .launch-hero-logo {
+    height: 220px;
   }
 
   .launch-hero h1 {
     font-size: 2.2rem;
   }
 
-  .launch-hero-logo {
-    height: 220px;
+  .launch-hero-sub {
+    font-size: 1.05rem;
+    margin: 0 0 32px;
+  }
+
+  .launch-features {
+    padding: 56px 20px;
+  }
+
+  .launch-features h2 {
+    font-size: 1.7rem;
+    margin: 0 0 36px;
+  }
+
+  .launch-features-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .launch-btn-primary,
+  .launch-btn-secondary {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .launch-footer-links a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }
 
@@ -310,6 +340,23 @@
   .launch-footer-links {
     gap: 16px;
     flex-wrap: wrap;
+  }
+
+  .launch-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .launch-btn-primary,
+  .launch-btn-secondary {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .launch-footer-links a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }
 
