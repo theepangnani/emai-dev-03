@@ -551,12 +551,181 @@
   font-size: 14px;
 }
 
-@media (max-width: 480px) {
+/* ============================================
+   Responsive — tablet
+   ============================================ */
+@media (max-width: 768px) {
+  .td-card {
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+
+  .td-title-row h2 {
+    font-size: 20px;
+  }
+
   .td-meta {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
   }
 
   .td-actions {
     flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .td-action-btn {
+    min-height: 44px;
+  }
+
+  .td-resource-card {
+    padding: 12px 14px;
+  }
+
+  .td-section {
+    margin-bottom: 18px;
+  }
+
+  .td-link-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .td-unlink-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .td-empty-link-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Modal sizing */
+  .dashboard-modal-content {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* ============================================
+   Responsive — mobile
+   ============================================ */
+@media (max-width: 480px) {
+  .td-card {
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+
+  .td-title-row {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .td-title-row h2 {
+    font-size: 18px;
+  }
+
+  .td-check {
+    font-size: 20px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .td-description {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .td-meta {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .td-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .td-action-btn {
+    min-height: 44px;
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+  }
+
+  .td-edit-row {
+    flex-direction: column;
+  }
+
+  .td-edit-datetime-row {
+    flex-direction: column;
+  }
+
+  .td-edit-input,
+  .td-edit-textarea {
+    font-size: 16px; /* prevent iOS zoom */
+  }
+
+  .td-section h3 {
+    font-size: 15px;
+  }
+
+  .td-resource-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .td-resource-icon {
+    font-size: 20px;
+  }
+
+  .td-resource-title {
+    font-size: 13px;
+  }
+
+  .td-link-tabs {
+    gap: 3px;
+  }
+
+  .td-link-tab {
+    padding: 8px 4px;
+    font-size: 11px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .td-link-item {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+
+  .td-link-search {
+    font-size: 16px; /* prevent iOS zoom */
+  }
+
+  .td-section-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .td-empty-resources {
+    padding: 18px;
+  }
+
+  .td-empty-link-actions {
+    gap: 6px;
+  }
+
+  /* Modal sizing */
+  .dashboard-modal-content {
+    max-width: calc(100vw - 32px);
   }
 }
