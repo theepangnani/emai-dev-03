@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,6 +15,15 @@ class AIUsageHistory(Base):
     generation_type = Column(String(50), nullable=False)  # study_guide, quiz, flashcard, conversation_starters, etc.
     course_material_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
     credits_used = Column(Integer, nullable=False, default=1)
+    # Token / cost tracking (#1650)
+    prompt_tokens = Column(Integer, nullable=True)
+    completion_tokens = Column(Integer, nullable=True)
+    total_tokens = Column(Integer, nullable=True)
+    estimated_cost_usd = Column(Float, nullable=True)
+    model_name = Column(String(50), nullable=True)
+    # Regeneration tracking (#1651)
+    is_regeneration = Column(Boolean, nullable=False, server_default="FALSE")
+    parent_generation_id = Column(Integer, ForeignKey("ai_usage_history.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", foreign_keys=[user_id], lazy="joined")

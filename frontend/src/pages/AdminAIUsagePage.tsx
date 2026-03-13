@@ -7,6 +7,7 @@ import {
   adminAIUsageApi,
   type AIUsageUser,
   type AIUsageSummary,
+  type AICostSummary,
   type AILimitRequest,
   type AIUsageHistoryEntry,
 } from '../api/adminAIUsage';
@@ -21,6 +22,7 @@ export function AdminAIUsagePage() {
 
   // Summary
   const [summary, setSummary] = useState<AIUsageSummary | null>(null);
+  const [costSummary, setCostSummary] = useState<AICostSummary | null>(null);
 
   // Users
   const [users, setUsers] = useState<AIUsageUser[]>([]);
@@ -37,6 +39,7 @@ export function AdminAIUsagePage() {
   const [historyPage, setHistoryPage] = useState(0);
   const [historySearch, setHistorySearch] = useState('');
   const [historyType, setHistoryType] = useState<string>('');
+  const [historyEntryType, setHistoryEntryType] = useState<string>('');
   const [historyDateFrom, setHistoryDateFrom] = useState('');
   const [historyDateTo, setHistoryDateTo] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -72,6 +75,7 @@ export function AdminAIUsagePage() {
   // Load summary + request count on mount
   useEffect(() => {
     adminAIUsageApi.getSummary().then(setSummary).catch(() => {});
+    adminAIUsageApi.getCostSummary().then(setCostSummary).catch(() => {});
     // Pre-fetch pending request count for badge
     adminAIUsageApi.listRequests({ status: 'pending', skip: 0, limit: 1 })
       .then((data) => setRequestsTotal(data.total))
@@ -109,6 +113,7 @@ export function AdminAIUsagePage() {
       const data = await adminAIUsageApi.listHistory({
         search: debouncedHistorySearch || undefined,
         generation_type: historyType || undefined,
+        type: historyEntryType || undefined,
         date_from: historyDateFrom || undefined,
         date_to: historyDateTo || undefined,
         skip: historyPage * PAGE_SIZE,
@@ -121,7 +126,7 @@ export function AdminAIUsagePage() {
     } finally {
       setHistoryLoading(false);
     }
-  }, [debouncedHistorySearch, historyType, historyDateFrom, historyDateTo, historyPage]);
+  }, [debouncedHistorySearch, historyType, historyEntryType, historyDateFrom, historyDateTo, historyPage]);
 
   useEffect(() => {
     if (tab === 'history') loadHistory();
@@ -303,6 +308,17 @@ export function AdminAIUsagePage() {
             <div className="ai-usage-summary-value">
               {summary ? summary.total_ai_calls.toLocaleString() : '--'}
             </div>
+          </div>
+          <div className="ai-usage-summary-card">
+            <h3>Total Estimated Cost</h3>
+            <div className="ai-usage-summary-value">
+              {costSummary ? `$${costSummary.total_cost_usd.toFixed(4)}` : '--'}
+            </div>
+            {costSummary && (
+              <p style={{ fontSize: 12, color: 'var(--color-ink-muted)', margin: '4px 0 0' }}>
+                {costSummary.total_tokens.toLocaleString()} tokens
+              </p>
+            )}
           </div>
           <div className="ai-usage-summary-card">
             <h3>Top Users by Usage</h3>
@@ -525,6 +541,18 @@ export function AdminAIUsagePage() {
                 <option value="quiz">Quiz</option>
                 <option value="flashcards">Flashcards</option>
               </select>
+              <select
+                value={historyEntryType}
+                onChange={(e) => {
+                  setHistoryEntryType(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="ai-usage-filter-select"
+              >
+                <option value="">All</option>
+                <option value="original">Original</option>
+                <option value="regeneration">Regenerations</option>
+              </select>
               <input
                 type="date"
                 value={historyDateFrom}
@@ -559,7 +587,8 @@ export function AdminAIUsagePage() {
                       <th>User</th>
                       <th>Type</th>
                       <th>Material</th>
-                      <th>Credits</th>
+                      <th>Tokens</th>
+                      <th>Cost (USD)</th>
                       <th>Date</th>
                     </tr>
                   </thead>
@@ -573,20 +602,30 @@ export function AdminAIUsagePage() {
                           </div>
                         </td>
                         <td>
-                          <span className={`ai-usage-type-badge ${entry.generation_type}`}>
-                            {formatGenerationType(entry.generation_type)}
-                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span className={`ai-usage-type-badge ${entry.generation_type}`}>
+                              {formatGenerationType(entry.generation_type)}
+                            </span>
+                            {entry.is_regeneration && (
+                              <span className="ai-usage-regen-badge">Regen</span>
+                            )}
+                          </div>
                         </td>
                         <td className="ai-usage-reason" title={entry.course_material_title || ''}>
                           {entry.course_material_title || '--'}
                         </td>
-                        <td>{entry.credits_used}</td>
+                        <td style={{ fontSize: 12 }}>
+                          {entry.total_tokens != null ? entry.total_tokens.toLocaleString() : '--'}
+                        </td>
+                        <td style={{ fontSize: 12 }}>
+                          {entry.estimated_cost_usd != null ? `$${entry.estimated_cost_usd.toFixed(5)}` : '--'}
+                        </td>
                         <td className="ai-usage-date">{formatDate(entry.created_at)}</td>
                       </tr>
                     ))}
                     {history.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="ai-usage-empty">
+                        <td colSpan={6} className="ai-usage-empty">
                           No usage history found
                         </td>
                       </tr>

@@ -45,6 +45,13 @@ def log_ai_usage(
     generation_type: str,
     course_material_id: int | None = None,
     credits_used: int = 1,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    total_tokens: int | None = None,
+    estimated_cost_usd: float | None = None,
+    model_name: str | None = None,
+    is_regeneration: bool = False,
+    parent_generation_id: int | None = None,
 ) -> None:
     """Insert a row into ai_usage_history for audit trail."""
     from app.models.ai_usage_history import AIUsageHistory
@@ -54,11 +61,19 @@ def log_ai_usage(
         generation_type=generation_type,
         course_material_id=course_material_id,
         credits_used=credits_used,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        estimated_cost_usd=estimated_cost_usd,
+        model_name=model_name,
+        is_regeneration=is_regeneration,
+        parent_generation_id=parent_generation_id,
     )
     db.add(entry)
     logger.debug(
-        "AI usage history logged | user_id=%s | type=%s | material=%s",
-        user.id, generation_type, course_material_id,
+        "AI usage history logged | user_id=%s | type=%s | material=%s | regen=%s | tokens=%s | cost=$%.6f",
+        user.id, generation_type, course_material_id, is_regeneration,
+        total_tokens, estimated_cost_usd or 0,
     )
 
 
@@ -67,13 +82,28 @@ def increment_ai_usage(
     db: Session,
     generation_type: str = "unknown",
     course_material_id: int | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    total_tokens: int | None = None,
+    estimated_cost_usd: float | None = None,
+    model_name: str | None = None,
+    is_regeneration: bool = False,
+    parent_generation_id: int | None = None,
 ) -> None:
     """Increment user's AI usage count after successful generation.
 
     Also logs an entry to ai_usage_history for the audit trail.
     """
-    # Always log to history, even if limits are not active
-    log_ai_usage(user, db, generation_type, course_material_id)
+    log_ai_usage(
+        user, db, generation_type, course_material_id,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        estimated_cost_usd=estimated_cost_usd,
+        model_name=model_name,
+        is_regeneration=is_regeneration,
+        parent_generation_id=parent_generation_id,
+    )
 
     limit = getattr(user, "ai_usage_limit", None)
 

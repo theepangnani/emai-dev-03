@@ -3,12 +3,33 @@ AI Service for generating educational content using Anthropic Claude.
 """
 import asyncio
 import time
+from contextvars import ContextVar
 from datetime import datetime
 import anthropic
 from app.core.config import settings
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# Per-request token usage captured after each generate_content call (#1650)
+_last_ai_usage: ContextVar[dict | None] = ContextVar("_last_ai_usage", default=None)
+
+# Model pricing (USD per 1M tokens)
+_MODEL_PRICING: dict[str, tuple[float, float]] = {
+    "claude-haiku-4-5-20251001": (0.25, 1.25),
+    "claude-sonnet-4-6": (3.00, 15.00),
+    "claude-opus-4-6": (15.00, 75.00),
+}
+
+
+def get_last_ai_usage() -> dict | None:
+    """Return token usage dict from the most recent generate_content call in this context."""
+    return _last_ai_usage.get()
+
+
+def _calc_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    input_price, output_price = _MODEL_PRICING.get(model, (3.00, 15.00))
+    return (input_tokens * input_price + output_tokens * output_price) / 1_000_000
 
 
 def get_anthropic_client() -> anthropic.Anthropic:
@@ -90,11 +111,22 @@ async def generate_content(
         duration_ms = (time.time() - start_time) * 1000
         content = message.content[0].text
         stop_reason = message.stop_reason
+        input_tok = message.usage.input_tokens
+        output_tok = message.usage.output_tokens
 
-        # Log usage stats
+        # Capture token usage for logging (#1650)
+        model = settings.claude_model
+        _last_ai_usage.set({
+            "prompt_tokens": input_tok,
+            "completion_tokens": output_tok,
+            "total_tokens": input_tok + output_tok,
+            "model_name": model,
+            "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
+        })
+
         logger.info(
             f"AI generation completed | duration={duration_ms:.2f}ms | "
-            f"input_tokens={message.usage.input_tokens} | output_tokens={message.usage.output_tokens} | "
+            f"input_tokens={input_tok} | output_tokens={output_tok} | "
             f"stop_reason={stop_reason}"
         )
 
