@@ -273,11 +273,108 @@
     gap: 8px;
   }
 
+  .notif-page-header h3 {
+    font-size: 16px;
+  }
+
+  .notif-tabs {
+    gap: 2px;
+    margin-bottom: 16px;
+  }
+
+  .notif-tab {
+    padding: 8px 10px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .notif-mark-all {
+    min-height: 44px;
+    padding: 8px 14px;
+  }
+
   .notif-card {
     padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .notif-card-title {
+    font-size: 13px;
+  }
+
+  .notif-card-text {
+    font-size: 12px;
+  }
+
+  .notif-card-time {
+    font-size: 11px;
   }
 
   .notif-action-btns {
     opacity: 1;
+  }
+
+  .notif-action-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .notif-empty {
+    padding: 32px 16px;
+  }
+
+  .notif-group {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .notif-page-header h3 {
+    font-size: 15px;
+  }
+
+  .notif-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .notif-tab {
+    padding: 8px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .notif-card {
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .notif-card-actions {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 4px;
+    border-top: 1px solid var(--color-border);
+    margin-top: 4px;
+  }
+
+  .notif-card-icon {
+    font-size: 18px;
+  }
+
+  .notif-card-title {
+    font-size: 13px;
+  }
+
+  .notif-card-text {
+    font-size: 12px;
+    -webkit-line-clamp: 1;
+  }
+
+  .notif-empty {
+    padding: 24px 12px;
   }
 }

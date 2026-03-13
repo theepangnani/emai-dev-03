@@ -286,3 +286,121 @@
   background: var(--color-accent);
   color: white;
 }
+
+/* ── Tablet ── */
+@media (max-width: 768px) {
+  .account-settings {
+    padding: 16px 12px;
+  }
+
+  .account-settings-title {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .account-section {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .account-section h2 {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  .account-btn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .interest-tag-remove {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .deletion-confirm-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .deletion-confirm-actions .account-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .deletion-confirm-input {
+    max-width: 100%;
+  }
+
+  .deletion-confirm-form {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* ── Phone ── */
+@media (max-width: 480px) {
+  .account-settings {
+    padding: 12px 8px;
+  }
+
+  .account-settings-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .account-section {
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: var(--radius-sm, 8px);
+  }
+
+  .account-section h2 {
+    font-size: 14px;
+  }
+
+  .account-info-label {
+    font-size: 11px;
+  }
+
+  .account-info-value {
+    font-size: 13px;
+  }
+
+  .account-interests-desc {
+    font-size: 13px;
+  }
+
+  .interests-actions {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .interests-actions .account-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .danger-zone-info h3 {
+    font-size: 14px;
+  }
+
+  .danger-zone-info p {
+    font-size: 13px;
+  }
+
+  .deletion-confirm-warning {
+    font-size: 13px;
+  }
+
+  .deletion-status p {
+    font-size: 13px;
+  }
+
+  .account-btn {
+    font-size: 13px;
+  }
+}
