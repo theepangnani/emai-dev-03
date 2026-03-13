@@ -257,18 +257,138 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .quiz-history-page {
+    padding: 0 0.5rem;
+  }
+
+  .quiz-history-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .quiz-history-header h2 {
+    font-size: 1.25rem;
+  }
+
   .qh-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
+
+  .qh-stat-card {
+    padding: 12px;
+  }
+
+  .qh-stat-value {
+    font-size: 1.25rem;
+  }
+
   .qh-attempt-row {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    padding: 10px 12px;
   }
+
   .qh-attempt-score {
     min-width: 0;
   }
+
   .qh-attempt-actions {
     justify-content: flex-end;
+  }
+
+  .qh-retry-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 16px;
+  }
+
+  .qh-delete-btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qh-child-select {
+    min-height: 44px;
+  }
+
+  .qh-chart-card {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .quiz-history-page {
+    padding: 0;
+  }
+
+  .quiz-history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .quiz-history-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .qh-child-select {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .qh-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .qh-stat-card {
+    padding: 10px;
+  }
+
+  .qh-stat-value {
+    font-size: 1.1rem;
+  }
+
+  .qh-stat-label {
+    font-size: 0.7rem;
+  }
+
+  .qh-attempt-row {
+    padding: 8px 10px;
+  }
+
+  .qh-attempt-title {
+    font-size: 0.85rem;
+    white-space: normal;
+  }
+
+  .qh-attempt-meta {
+    font-size: 0.7rem;
+  }
+
+  .qh-attempt-actions {
+    justify-content: stretch;
+  }
+
+  .qh-retry-btn {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .qh-empty-state {
+    padding: 24px 16px;
+  }
+
+  .qh-cta-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }
