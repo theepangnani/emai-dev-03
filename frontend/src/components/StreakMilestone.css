@@ -52,3 +52,50 @@
     animation: none;
   }
 }
+
+/* ── Responsive: tablet ─────────────────── */
+@media (max-width: 768px) {
+  .streak-milestone {
+    padding: 5px 10px;
+    gap: 5px;
+  }
+
+  .streak-milestone-icon {
+    font-size: 15px;
+  }
+
+  .streak-milestone-text {
+    font-size: 12px;
+  }
+
+  .streak-milestone-dismiss {
+    font-size: 15px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ── Responsive: phone ──────────────────── */
+@media (max-width: 480px) {
+  .streak-milestone {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .streak-milestone-icon {
+    font-size: 14px;
+  }
+
+  .streak-milestone-text {
+    font-size: 11px;
+  }
+
+  .streak-milestone-dismiss {
+    font-size: 14px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
