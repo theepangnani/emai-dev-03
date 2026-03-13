@@ -53,40 +53,19 @@ interface BranchNodeProps {
   branch: MindMapBranchGroup;
   index: number;
   total: number;
+  side: 'left' | 'right';
 }
 
-function BranchNode({ branch, index, total }: BranchNodeProps) {
+function BranchNode({ branch, index, side }: BranchNodeProps) {
   const [expanded, setExpanded] = useState(true);
   const color = BRANCH_COLORS[index % BRANCH_COLORS.length];
 
-  // Calculate angle for radial layout (desktop)
-  const angleStep = 360 / total;
-  const angle = angleStep * index - 90; // start from top
-  const radians = (angle * Math.PI) / 180;
-  const radius = 180;
-  const x = Math.cos(radians) * radius;
-  const y = Math.sin(radians) * radius;
-
   return (
     <div
-      className="mm-branch"
-      style={{
-        '--branch-x': `${x}px`,
-        '--branch-y': `${y}px`,
-        '--branch-color': color,
-      } as React.CSSProperties}
+      className={`mm-branch mm-branch-${side}`}
+      style={{ '--branch-color': color } as React.CSSProperties}
     >
-      {/* SVG line from center to branch (desktop only) */}
-      <svg className="mm-connector" aria-hidden="true">
-        <line
-          x1="0" y1="0"
-          x2={x} y2={y}
-          stroke={color}
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-
+      <div className="mm-branch-connector" style={{ background: color }} />
       <button
         className={`mm-branch-label${expanded ? ' expanded' : ''}`}
         onClick={() => setExpanded(!expanded)}
@@ -130,6 +109,19 @@ export function MindMapTab({
     try { return JSON.parse(mindMap.content) as MindMapData; } catch { return null; }
   })() : null;
 
+  // Split branches into left and right halves
+  const leftBranches: { branch: MindMapBranchGroup; index: number }[] = [];
+  const rightBranches: { branch: MindMapBranchGroup; index: number }[] = [];
+  if (parsedMindMap) {
+    parsedMindMap.branches.forEach((branch, i) => {
+      if (i % 2 === 0) {
+        rightBranches.push({ branch, index: i });
+      } else {
+        leftBranches.push({ branch, index: i });
+      }
+    });
+  }
+
   return (
     <div className="cm-mindmap-tab">
       <div className="cm-focus-prompt">
@@ -164,17 +156,31 @@ export function MindMapTab({
           )}
           <div className="mm-container">
             <div className="mm-canvas">
+              <div className="mm-side mm-side-left">
+                {leftBranches.map(({ branch, index }) => (
+                  <BranchNode
+                    key={index}
+                    branch={branch}
+                    index={index}
+                    total={parsedMindMap.branches.length}
+                    side="left"
+                  />
+                ))}
+              </div>
               <div className="mm-center-node">
                 {parsedMindMap.central_topic}
               </div>
-              {parsedMindMap.branches.map((branch, i) => (
-                <BranchNode
-                  key={i}
-                  branch={branch}
-                  index={i}
-                  total={parsedMindMap.branches.length}
-                />
-              ))}
+              <div className="mm-side mm-side-right">
+                {rightBranches.map(({ branch, index }) => (
+                  <BranchNode
+                    key={index}
+                    branch={branch}
+                    index={index}
+                    total={parsedMindMap.branches.length}
+                    side="right"
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
