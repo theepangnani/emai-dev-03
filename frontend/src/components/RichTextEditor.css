@@ -160,3 +160,60 @@
   border-top: 1px solid var(--color-border, #e2e8f0);
   margin: 1em 0;
 }
+
+/* ── Mobile Responsive ───────────────────────────── */
+
+@media (max-width: 768px) {
+  .rte-toolbar {
+    gap: 4px;
+    padding: 8px;
+    flex-wrap: wrap;
+  }
+
+  .rte-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+    border-radius: 6px;
+  }
+
+  .rte-toolbar-divider {
+    height: 24px;
+    margin: 0 4px;
+  }
+
+  .rte-content {
+    min-height: 160px;
+  }
+
+  .rte-content .tiptap {
+    padding: 12px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rte-toolbar {
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .rte-toolbar-divider {
+    display: none;
+  }
+
+  .rte-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .rte-content {
+    min-height: 140px;
+    max-height: 350px;
+  }
+
+  .rte-content .tiptap {
+    padding: 10px;
+  }
+}
