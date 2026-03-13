@@ -399,9 +399,21 @@ Located in `frontend/src/components/calendar/`:
 ### 7.3 CSS Architecture
 
 - CSS custom properties for all visual values
-- `@media (max-width: Xpx)` breakpoints in per-page CSS files
-- 15/20 CSS files have responsive breakpoints
+- Breakpoints: 768px (tablet), 480px (phone) — primary `max-width` values for all new work
+- 75 CSS files have `@media` breakpoints; ~55+ files still need 768px/480px breakpoints (audit March 2026, #1641)
+- High-priority gaps: CourseDetailPage, TeacherCommsPage, MessagesPage, FlashcardsPage, StudyGuidePage, QuizPage, TasksPage, AdminDashboard
 - CSS-only solutions preferred over JavaScript
+
+### 7.4 Mind Map Layout
+
+| Viewport | Layout |
+|----------|--------|
+| Desktop (≥768px) | Horizontal — center node in middle, branches split left/right with vertical stacking to prevent overlap (#1653) |
+| Mobile (<768px) | Vertical stacked list layout |
+
+- Connector lines from center node to each branch label
+- Branches must not overlap when child items are expanded
+- Available via "Learn Your Way" format selector and Help Study menu
 
 ---
 
