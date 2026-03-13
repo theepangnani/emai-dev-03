@@ -207,6 +207,7 @@ frontend/src/
 | **Flashcards** | Front/back card pairs with mastery tracking |
 | **Content Extraction** | PDF, Word, PPTX, image OCR (Tesseract) support up to 100MB |
 | **Non-blocking Generation** | Modal closes immediately, pulsing placeholder appears while generating |
+| **Truncation Detection** | Detects token limit cutoffs, stores is_truncated flag; Free users see Upgrade CTA, Plus/Unlimited get Continue generating button at 0 credits (#1645) |
 | **Duplicate Detection** | Content hash checking prevents redundant AI API calls |
 | **Version Control** | Regeneration creates linked versions preserving history |
 | **Storage Limits** | 100 guides/student, 200/parent (configurable) with soft-delete archival |
@@ -929,7 +930,7 @@ Administrators manage the platform, users, content, and system health. Admin acc
 - [ ] Upload with AI tool selection (#552)
 
 ### Phase 1.5 (Calendar Extension, Mobile & School Integration)
-- [x] Mobile-responsive web (CSS breakpoints, touch support) - IMPLEMENTED
+- [x] Mobile-responsive web (CSS breakpoints, touch support) - IN PROGRESS — 75 CSS files have breakpoints; ~55+ files still need 768px/480px breakpoints (#1641)
 - [x] Extend calendar to Student and Teacher dashboards - IMPLEMENTED
 - [x] Background periodic Google Classroom sync for teachers - IMPLEMENTED
 - [ ] Student email identity merging (personal + school email)
@@ -971,6 +972,12 @@ Features that answer pilot feedback: *"Why should I use ClassBridge?"* — trans
 - [x] Performance Analytics Dashboard - IMPLEMENTED (#469-#474)
 - [x] Quiz Results History - IMPLEMENTED (#574, #621)
 - [x] FAQ / Knowledge Base - IMPLEMENTED (#437-#444)
+- [x] AI Usage Limits and Quota Management - IMPLEMENTED (#1121-#1130)
+- [ ] AI Token/Cost Tracking — prompt_tokens, completion_tokens, estimated_cost_usd per generation (#1650)
+- [ ] AI Regeneration/Continuation Tracking — is_regeneration, is_continuation flags; admin filter by type (#1651)
+- [ ] Continuation as Premium Perk — Free tier sees Upgrade CTA on truncated guides; Plus/Unlimited get free continuation (#1645)
+- [ ] Admin cost-summary endpoint — total cost by user/type/date range (#1650)
+- [ ] Mind Map desktop layout — horizontal, center node with left/right branches, no overlap (#1653)
 - [ ] Course Materials Storage (GCS) (#572)
 - [ ] User-Provided AI API Key (BYOK) (#578)
 - [ ] Study Guide Repository & Reuse (#573)
