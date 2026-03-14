@@ -199,6 +199,7 @@ export function CourseMaterialDetailPage() {
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(contentAreaRef);
   const handleHighlightClick = useCallback((text: string) => {
@@ -242,12 +243,21 @@ export function CourseMaterialDetailPage() {
   useRegisterNotesFAB(contentId ? { courseContentId: contentId, isOpen: showNotesPanel, onToggle: toggleNotes } : null);
 
   useEffect(() => {
-    const onScroll = () => setShowScrollTop(window.scrollY > 300);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    const sentinel = topSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowScrollTop(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
   }, []);
 
-  const handleScrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Fetch resource links count for tab badge
   const { data: resourceLinkGroups = [] } = useQuery<ResourceLinkGroup[]>({
@@ -565,6 +575,7 @@ export function CourseMaterialDetailPage() {
   return (
     <DashboardLayout showBackButton headerSlot={() => null}>
       <div className="cm-detail-page">
+        <div ref={topSentinelRef} />
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Class Materials', to: '/course-materials' },
