@@ -566,7 +566,8 @@ export function HelpPage() {
     try {
       const { data } = await api.get<HelpArticle[]>('/api/help/search', { params: { q: q.trim() } });
       setSearchResults(data);
-    } catch {
+    } catch (err) {
+      console.error('Help search failed:', err);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
