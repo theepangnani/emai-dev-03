@@ -2,7 +2,7 @@ import re
 import re as _re
 from dataclasses import dataclass, field
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.utils import escape_like
@@ -593,6 +593,21 @@ class SearchService:
             if remaining <= 0:
                 return results
 
+        # Collect enrolled course_ids for matched children
+        matched_child_course_ids: list[int] = []
+        if matched_child_user_ids:
+            matched_student_ids = [
+                row[0] for row in db.query(Student.id)
+                .filter(Student.user_id.in_(matched_child_user_ids))
+                .all()
+            ]
+            if matched_student_ids:
+                matched_child_course_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id)
+                    .filter(student_courses.c.student_id.in_(matched_student_ids))
+                    .all()
+                ]
+
         # Courses
         course_q = db.query(Course).filter(
             (Course.name.ilike(term)) | (Course.description.ilike(term))
@@ -699,6 +714,8 @@ class SearchService:
             title_filter = StudyGuide.title.ilike(term)
             if matched_child_user_ids:
                 title_filter = or_(title_filter, StudyGuide.user_id.in_(matched_child_user_ids))
+            if matched_child_course_ids:
+                title_filter = or_(title_filter, StudyGuide.course_id.in_(matched_child_course_ids))
             guide_q = db.query(StudyGuide).filter(
                 title_filter,
                 StudyGuide.user_id.in_(accessible_ids),
@@ -774,51 +791,75 @@ class SearchService:
             return results
 
         # CourseContent
-        content_q = db.query(CourseContent).filter(
-            (CourseContent.title.ilike(term)) | (CourseContent.description.ilike(term)),
-            CourseContent.archived_at.is_(None),
-        )
-        # Filter by course access (same logic as courses)
-        if user_role == "student":
-            student_row = db.query(Student).filter(Student.user_id == user_id).first()
-            if student_row:
-                enrolled_course_ids = [
-                    row[0] for row in db.query(student_courses.c.course_id).filter(
-                        student_courses.c.student_id == student_row.id
-                    ).all()
-                ]
-                content_q = content_q.filter(CourseContent.course_id.in_(enrolled_course_ids))
-            else:
-                content_q = content_q.filter(False)
-        elif user_role == "parent":
+        if user_role == "parent" and matched_child_course_ids:
+            # Child matched: include ALL content from child's courses + title matches from other enrolled courses
             student_ids = [
                 row[0] for row in db.query(parent_students.c.student_id).filter(
                     parent_students.c.parent_id == user_id
                 ).all()
             ]
-            if student_ids:
-                enrolled_course_ids = [
-                    row[0] for row in db.query(student_courses.c.course_id).filter(
-                        student_courses.c.student_id.in_(student_ids)
+            enrolled_course_ids = [
+                row[0] for row in db.query(student_courses.c.course_id).filter(
+                    student_courses.c.student_id.in_(student_ids)
+                ).all()
+            ] if student_ids else []
+            content_q = db.query(CourseContent).filter(
+                or_(
+                    CourseContent.course_id.in_(matched_child_course_ids),
+                    and_(
+                        (CourseContent.title.ilike(term)) | (CourseContent.description.ilike(term)),
+                        CourseContent.course_id.in_(enrolled_course_ids),
+                    ),
+                ),
+                CourseContent.archived_at.is_(None),
+            )
+        else:
+            content_q = db.query(CourseContent).filter(
+                (CourseContent.title.ilike(term)) | (CourseContent.description.ilike(term)),
+                CourseContent.archived_at.is_(None),
+            )
+            # Filter by course access (same logic as courses)
+            if user_role == "student":
+                student_row = db.query(Student).filter(Student.user_id == user_id).first()
+                if student_row:
+                    enrolled_course_ids = [
+                        row[0] for row in db.query(student_courses.c.course_id).filter(
+                            student_courses.c.student_id == student_row.id
+                        ).all()
+                    ]
+                    content_q = content_q.filter(CourseContent.course_id.in_(enrolled_course_ids))
+                else:
+                    content_q = content_q.filter(False)
+            elif user_role == "parent":
+                student_ids = [
+                    row[0] for row in db.query(parent_students.c.student_id).filter(
+                        parent_students.c.parent_id == user_id
                     ).all()
                 ]
-                content_q = content_q.filter(CourseContent.course_id.in_(enrolled_course_ids))
-            else:
-                content_q = content_q.filter(False)
-        elif user_role == "teacher":
-            from app.models.teacher import Teacher
-            teacher_row = db.query(Teacher).filter(Teacher.user_id == user_id).first()
-            if teacher_row:
-                teacher_course_ids = [
-                    row[0] for row in db.query(Course.id).filter(
-                        Course.teacher_id == teacher_row.id
-                    ).all()
-                ]
-                content_q = content_q.filter(CourseContent.course_id.in_(teacher_course_ids))
-            else:
-                content_q = content_q.filter(False)
-        # ADMIN: no extra filter
+                if student_ids:
+                    enrolled_course_ids = [
+                        row[0] for row in db.query(student_courses.c.course_id).filter(
+                            student_courses.c.student_id.in_(student_ids)
+                        ).all()
+                    ]
+                    content_q = content_q.filter(CourseContent.course_id.in_(enrolled_course_ids))
+                else:
+                    content_q = content_q.filter(False)
+            elif user_role == "teacher":
+                from app.models.teacher import Teacher
+                teacher_row = db.query(Teacher).filter(Teacher.user_id == user_id).first()
+                if teacher_row:
+                    teacher_course_ids = [
+                        row[0] for row in db.query(Course.id).filter(
+                            Course.teacher_id == teacher_row.id
+                        ).all()
+                    ]
+                    content_q = content_q.filter(CourseContent.course_id.in_(teacher_course_ids))
+                else:
+                    content_q = content_q.filter(False)
+            # ADMIN: no extra filter
 
+        total_content_count = content_q.count()
         for cc in content_q.limit(min(5, remaining)).all():
             results.append(SearchResult(
                 entity_type="course_content",
@@ -826,6 +867,14 @@ class SearchService:
                 title=cc.title,
                 description=cc.description,
                 actions=[{"label": "View", "route": f"/course-materials/{cc.id}"}],
+            ))
+        if total_content_count > 5:
+            results.append(SearchResult(
+                entity_type="summary",
+                id=None,
+                title=f"Showing 5 of {total_content_count} materials",
+                description=None,
+                actions=[{"label": "See all materials", "route": "/course-materials"}],
             ))
         remaining = 8 - len(results)
         if remaining <= 0:
