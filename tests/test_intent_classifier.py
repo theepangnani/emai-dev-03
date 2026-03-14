@@ -47,7 +47,15 @@ def test_keyword_defaults_to_help_without_api_key():
     """Unknown messages with no API key must default to 'help'."""
     assert classify_intent("") == "help"
     assert classify_intent("some completely ambiguous phrase") == "help"
-    assert classify_intent("Noah") == "help"
+    assert classify_intent("hello there") == "help"
+
+
+def test_single_word_no_api_key_routes_to_search():
+    """Single bare-word queries with no help keywords route to search (regression #1733)."""
+    assert classify_intent("Haashini") == "search"
+    assert classify_intent("Thanushan") == "search"
+    assert classify_intent("math") == "search"
+    assert classify_intent("Noah") == "search"
 
 
 def test_keyword_defaults_to_help_with_none_api_key():
