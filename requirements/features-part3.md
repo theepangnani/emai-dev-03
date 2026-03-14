@@ -1994,14 +1994,29 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [x] Frontend: smart preset detection + shortcuts
 - [x] Tests
 - [x] Fix: add Assignments + Children search; fix Study Guide URLs, FAQ model, Notes display (#1696, PR #1700)
-- [ ] Bug fix: intent classifier defaults to "help" for bare search terms (names, short queries) — should route to search (#1706)
-- [ ] Bug fix: chatbot search uses narrower access scope than global search for parents — misses children's study guides and tasks (#1734)
+- [x] Bug fix: intent classifier defaults to "help" for bare search terms (names, short queries) — should route to search (#1706, #1733, PR #1742)
+- [x] Bug fix: chatbot search uses narrower access scope than global search for parents — misses children's study guides and tasks (#1734, PR #1742)
+- [x] Bug fix: greeting/command words route to search instead of showing chips (#1743, PR #1745)
+- [ ] Bug fix: "show tasks for [name]" bypasses person filter (#1746)
+- [ ] Bug fix: 0 search results show no guidance chips (#1747)
+- [ ] Feat: streaming LLM response — token-by-token typewriter effect (#1748)
+- [ ] Feat: search result limits raised + count display (#1749)
+- [ ] Feat: chat command interception (clear/reset) (#1750)
 
 **Search Scope Parity (Parent Role):** Chatbot search MUST use the same access scope as global search. For parent users, `search_service.py` must build `accessible_user_ids = [parent_id] + child_user_ids` and apply it to both study guide filters (`StudyGuide.user_id.in_(accessible_user_ids)`) and task filters (`created_by.in_(accessible_user_ids) OR assigned_to.in_(accessible_user_ids)`). This applies to `_list_tasks()`, `_list_tasks_for_person()`, and the main `search()` method. Using only `parent_id` or only `child_user_ids` is a defect.
 
 #### 6.59.10 GlobalSearch Deprecation (#1698)
 
-**Blocked by:** #1696 (chatbot must have full entity parity first)
+**Status:** BLOCKED — do not start until ≥ 90% chatbot search confidence (see gate below)
+
+**Execution Gate — ALL must be true before starting:**
+- Chatbot NLQ bugs resolved (bare names, action words, person filter, scope parity) ✅
+- Streaming LLM response live (#1748)
+- Result limits raised to 20 (#1749)
+- Chat commands working (#1750)
+- ≥ 2 weeks production use with no critical search regressions
+- Manual QA: parent/student/teacher confirm chatbot matches or beats GlobalSearch
+- 0-result rate in Cloud Run logs < 10%
 
 Remove the standalone `GlobalSearch` component and `/api/search` endpoint now that the Help Chatbot serves as the unified search surface with full entity parity.
 
@@ -2073,12 +2088,70 @@ Full LLM intent routing rejected because:
 
 ##### Sub-tasks
 
-- [ ] Pre-compute anchor embeddings at startup in `intent_embedding_service.py`
-- [ ] Add `classify_intent_embedding(message)` fallback in `intent_classifier.py`
-- [ ] Update `app/api/routes/help.py` to await embedding fallback when needed
-- [ ] Add confidence threshold (cosine similarity < 0.6 → stay with default)
-- [ ] Tests: unit tests with mock embeddings
+- [x] Pre-compute anchor embeddings at startup in `intent_embedding_service.py` (#1713)
+- [x] Add `classify_intent_embedding(message)` fallback in `intent_classifier.py` (#1713)
+- [x] Add confidence threshold — use max cosine similarity, not avg (#1717, PR #1724)
+- [x] Greeting/command words (hi, hello, help, menu) → route to help, show chips (#1743, PR #1745)
+- [x] Short bare-word fallback — single-word queries route to search (#1733, PR #1742)
 - [ ] Monitor: log classification path (keyword vs embedding) for tuning
+- [ ] LLM fallback for ambiguous messages (optional Phase 2, see #1744)
+
+---
+
+#### 6.59.12 Streaming LLM Response — Token-by-Token Typewriter Effect (#1748)
+
+**Status:** Planned | **Priority:** Medium
+
+Replace the blocking HTTP round-trip for the help/LLM path with a **Server-Sent Events (SSE) stream**, so tokens appear word-by-word as Claude generates them.
+
+**Why:** Users currently wait 2–5 seconds with a static typing indicator. Token streaming delivers time-to-first-token in ~200–400ms, matching the feel of ChatGPT/Claude.ai.
+
+**Scope:** Only the help/LLM path streams. Search/action results continue to return as a single instant payload.
+
+##### Design
+
+- New endpoint: `POST /api/help/chat/stream` → `StreamingResponse(media_type="text/event-stream")`
+- Event types: `token` (text delta), `search` (full search results), `done` (metadata: sources, videos)
+- Frontend: `fetch` with `ReadableStream` reader in `useHelpChat.ts`
+- Fallback: if SSE not supported, fall back to `POST /api/help/chat`
+- Keep existing `/api/help/chat` endpoint for backwards compatibility
+
+##### Sub-tasks
+
+- [ ] Backend: `POST /api/help/chat/stream` with SSE `StreamingResponse` (#1748)
+- [ ] Backend: Anthropic `client.messages.stream()` async context manager
+- [ ] Backend: search/action intents emit single `search` event then close
+- [ ] Frontend: `useHelpChatStream` hook using `ReadableStream`
+- [ ] Frontend: accumulate tokens into live assistant message bubble
+- [ ] Frontend: show sources/videos after `done` event
+- [ ] Tests: mock streaming reader in `useHelpChat.test.tsx`
+
+---
+
+#### 6.59.13 Search Result Limits and Count Display (#1749)
+
+**Status:** Planned | **Priority:** Low
+
+- Raise per-entity limits from 8 → 20 in `_list_*` methods
+- Return `total` count alongside results
+- Frontend: show "Showing N of M" + "See all →" link when M > N
+
+---
+
+#### 6.59.14 Chat Command Interception (#1750)
+
+**Status:** Planned | **Priority:** Low
+
+Intercept known command words (`clear`, `reset`) in the frontend before sending to the API. Typing "clear" should clear the chat, not search for "clear".
+
+---
+
+#### 6.59.15 Chatbot Search Bug Fixes (Batch 3)
+
+**Status:** In Progress
+
+- [x] Person filter bypassed by detect_preset for "show tasks for [name]" — fix: move person filter before detect_preset (#1746)
+- [x] 0 search results show "No results found" with no guidance — fix: return intent="help" on empty results, chips appear (#1747)
 
 ---
 

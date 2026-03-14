@@ -1,4 +1,6 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse as _StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -149,3 +151,110 @@ async def help_chat(
         search_results=[],
         intent="help",
     )
+
+
+@router.post("/chat/stream")
+async def help_chat_stream(
+    request: HelpChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Streaming version of /chat — returns SSE token stream for help responses."""
+    from app.services.intent_classifier import classify_intent
+    from app.services.search_service import search_service
+    from app.services.help_chat_service import help_chat_service, SYSTEM_PROMPT
+    from app.core.config import settings
+    import anthropic
+
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    intent = classify_intent(request.message, openai_api_key=settings.openai_api_key)
+
+    async def event_stream():
+        # Search/action: emit single event with full results
+        if intent in ("search", "action"):
+            results = search_service.search(
+                query=request.message,
+                user_id=current_user.id,
+                user_role=user_role,
+                db=db,
+            )
+            if results:
+                reply = f"Here's what I found for **\"{request.message}\"**:"
+                return_intent = intent
+            else:
+                reply = f"No results found for **\"{request.message}\"**. Try asking me a question about ClassBridge instead."
+                return_intent = "help"
+
+            payload = {
+                "type": "search",
+                "reply": reply,
+                "intent": return_intent,
+                "search_results": [
+                    {
+                        "entity_type": r.entity_type,
+                        "id": r.id,
+                        "title": r.title,
+                        "description": r.description,
+                        "actions": r.actions,
+                    }
+                    for r in results
+                ],
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
+            return
+
+        # Help flow: stream tokens from Claude
+        try:
+            from app.services.help_embedding_service import help_embedding_service
+            chunks = await help_embedding_service.search(
+                query=request.message,
+                top_k=5,
+                role_filter=user_role,
+            )
+            context_text = help_chat_service._format_chunks_for_prompt(chunks)
+            system_prompt = SYSTEM_PROMPT.format(
+                user_role=user_role,
+                current_page=request.page_context or "unknown",
+                retrieved_chunks=context_text,
+            )
+
+            conversation_history = [
+                {"role": msg.role, "content": msg.content}
+                for msg in request.conversation
+            ]
+            messages = []
+            for msg in conversation_history[-10:]:
+                if msg.get("role") in ("user", "assistant"):
+                    messages.append({"role": msg["role"], "content": msg["content"][:500]})
+            messages.append({"role": "user", "content": request.message})
+
+            client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.strip())
+            async with client.messages.stream(
+                model=settings.claude_model,
+                system=system_prompt,
+                messages=messages,
+                max_tokens=800,
+                temperature=0.3,
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
+
+            # Done event: send sources and videos
+            sources = [chunk.source_id for chunk in chunks if chunk.score > 0.3]
+            videos = help_chat_service._extract_videos(chunks)
+            done_payload = {
+                "type": "done",
+                "sources": sources,
+                "videos": [
+                    {"title": v.title, "url": v.url, "provider": v.provider}
+                    for v in videos
+                ],
+            }
+            yield f"data: {json.dumps(done_payload)}\n\n"
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Streaming chat failed: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'text': 'Something went wrong. Please try again.'})}\n\n"
+
+    return _StreamingResponse(event_stream(), media_type="text/event-stream")
