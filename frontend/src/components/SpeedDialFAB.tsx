@@ -7,6 +7,7 @@ import { SuggestionChips } from './HelpChatbot/SuggestionChips';
 import './HelpChatbot/HelpChatbot.css';
 import './SpeedDialFAB.css';
 
+const CHAT_COMMANDS = new Set(['clear', 'reset']);
 
 export function SpeedDialFAB() {
   const { notesFAB } = useFABContext();
@@ -15,7 +16,7 @@ export function SpeedDialFAB() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Help chat state
-  const { messages, sendMessage, isLoading, error } = useHelpChat();
+  const { messages, sendMessage, isLoading, error, clearMessages } = useHelpChat();
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -48,9 +49,16 @@ export function SpeedDialFAB() {
   const handleSend = useCallback(() => {
     const text = inputValue.trim();
     if (!text || isLoading) return;
+
+    if (CHAT_COMMANDS.has(text.toLowerCase())) {
+      clearMessages();
+      setInputValue('');
+      return;
+    }
+
     setInputValue('');
     sendMessage(text);
-  }, [inputValue, isLoading, sendMessage]);
+  }, [inputValue, isLoading, sendMessage, clearMessages]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -74,7 +82,8 @@ export function SpeedDialFAB() {
   };
 
   const showWelcome = messages.length === 0;
-  const showChips = showWelcome || (!isLoading && error);
+  const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
+  const showChips = showWelcome || (!isLoading && error) || (!isLoading && lastAssistantMessage?.intent === 'help');
 
   // If no notes action registered, render the chat FAB directly (no speed dial)
   const hasMultipleActions = !!notesFAB;
@@ -89,6 +98,16 @@ export function SpeedDialFAB() {
               <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
               <h3>ClassBridge Help</h3>
             </div>
+            {messages.length > 0 && (
+              <button
+                className="help-chatbot-clear"
+                onClick={clearMessages}
+                aria-label="Clear chat history"
+                title="Clear chat"
+              >
+                Clear
+              </button>
+            )}
             <button
               className="help-chatbot-close"
               onClick={() => setChatOpen(false)}
@@ -113,6 +132,7 @@ export function SpeedDialFAB() {
                 content={msg.content}
                 videos={msg.videos}
                 sources={msg.sources}
+                search_results={msg.search_results}
               />
             ))}
             {isLoading && (
