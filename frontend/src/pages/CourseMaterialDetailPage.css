@@ -1958,8 +1958,8 @@
 /* Scroll to top button */
 .cm-scroll-top-btn {
   position: fixed;
-  bottom: 24px;
-  left: 24px;
+  bottom: 80px;
+  right: 24px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
