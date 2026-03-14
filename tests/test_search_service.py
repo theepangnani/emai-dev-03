@@ -40,9 +40,9 @@ def test_detect_preset_overdue():
 
 def test_detect_preset_none():
     svc = SearchService()
-    assert svc.detect_preset("find my courses") is None
     assert svc.detect_preset("show me math class") is None
     assert svc.detect_preset("how do I login") is None
+    assert svc.detect_preset("algebra") is None
 
 
 # --- Action card tests ---
