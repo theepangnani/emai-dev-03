@@ -2100,7 +2100,7 @@ Full LLM intent routing rejected because:
 
 #### 6.59.12 Streaming LLM Response — Token-by-Token Typewriter Effect (#1748)
 
-**Status:** Planned | **Priority:** Medium
+**Status:** IMPLEMENTED | **Priority:** Medium | **PR:** #1760 (merged 2026-03-14)
 
 Replace the blocking HTTP round-trip for the help/LLM path with a **Server-Sent Events (SSE) stream**, so tokens appear word-by-word as Claude generates them.
 
@@ -2118,37 +2118,40 @@ Replace the blocking HTTP round-trip for the help/LLM path with a **Server-Sent 
 
 ##### Sub-tasks
 
-- [ ] Backend: `POST /api/help/chat/stream` with SSE `StreamingResponse` (#1748)
-- [ ] Backend: Anthropic `client.messages.stream()` async context manager
-- [ ] Backend: search/action intents emit single `search` event then close
-- [ ] Frontend: `useHelpChatStream` hook using `ReadableStream`
-- [ ] Frontend: accumulate tokens into live assistant message bubble
-- [ ] Frontend: show sources/videos after `done` event
-- [ ] Tests: mock streaming reader in `useHelpChat.test.tsx`
+- [x] Backend: `POST /api/help/chat/stream` with SSE `StreamingResponse` (#1748)
+- [x] Backend: Anthropic `client.messages.stream()` async context manager
+- [x] Backend: search/action intents emit single `search` event then close
+- [x] Frontend: `useHelpChatStream` hook using `ReadableStream`
+- [x] Frontend: accumulate tokens into live assistant message bubble
+- [x] Frontend: show sources/videos after `done` event
+- [x] Tests: mock streaming reader in `useHelpChat.test.tsx`
 
 ---
 
 #### 6.59.13 Search Result Limits and Count Display (#1749)
 
-**Status:** Planned | **Priority:** Low
+**Status:** IMPLEMENTED | **Priority:** Low | **PR:** #1760 (merged 2026-03-14)
 
-- Raise per-entity limits from 8 → 20 in `_list_*` methods
-- Return `total` count alongside results
-- Frontend: show "Showing N of M" + "See all →" link when M > N
+- [x] Raise per-entity limits from 8 → 20 in `_list_*` methods
+- [x] Return `total` count alongside results
+- [x] Frontend: show "Showing N of M" + "See all →" link when M > N
 
 ---
 
 #### 6.59.14 Chat Command Interception (#1750)
 
-**Status:** Planned | **Priority:** Low
+**Status:** IMPLEMENTED | **Priority:** Low | **PR:** #1760 (merged 2026-03-14)
 
 Intercept known command words (`clear`, `reset`) in the frontend before sending to the API. Typing "clear" should clear the chat, not search for "clear".
+
+- [x] Frontend intercepts `/clear` and `/reset` commands before API call
+- [x] `/clear` clears chat history; `/reset` resets to initial state
 
 ---
 
 #### 6.59.15 Chatbot Search Bug Fixes (Batch 3)
 
-**Status:** In Progress
+**Status:** COMPLETE | **PR:** #1754 (merged 2026-03-14)
 
 - [x] Person filter bypassed by detect_preset for "show tasks for [name]" — fix: move person filter before detect_preset (#1746)
 - [x] 0 search results show "No results found" with no guidance — fix: return intent="help" on empty results, chips appear (#1747)
@@ -3028,5 +3031,50 @@ A floating scroll-to-top button on the Course Material Detail page (`/course-mat
 - [x] Button is visible on all tabs (Guide, Quiz, Flashcards, Mind Map, Videos, Briefing, Document)
 - [x] Button does not conflict with Chat/Notes FABs (positioned bottom-left, FABs are bottom-right)
 - [x] Uses IntersectionObserver on a sentinel element (robust — works regardless of scroll container)
+
+**Status:** COMPLETE
+
+---
+
+### 6.95 SpeedDialFAB Batch 4 Feature Parity (#1761) - COMPLETE
+
+Port chatbot batch 4 features (streaming SSE, search result limits, chat commands) to the SpeedDialFAB component to maintain parity with the standalone chatbot panel.
+
+**GitHub:** #1761 (closed), PR #1762 (merged 2026-03-14)
+
+**Acceptance Criteria:**
+- [x] SpeedDialFAB supports streaming SSE responses
+- [x] SpeedDialFAB shows search result limits and counts
+- [x] SpeedDialFAB intercepts `/clear` and `/reset` commands
+
+**Status:** COMPLETE
+
+---
+
+### 6.96 course_content_id Navigation from Tasks Page (#1763) - COMPLETE
+
+CLASS MATERIAL linked resources on the Tasks page were not navigable. Add click-through navigation using `course_content_id` so users can jump from a task's linked class material directly to the course material detail page.
+
+**GitHub:** #1763 (closed), PR #1766 (merged 2026-03-14)
+
+**Acceptance Criteria:**
+- [x] CLASS MATERIAL chip on Tasks page is clickable
+- [x] Clicking navigates to `/course-materials/:course_content_id`
+- [x] Works for all linked resource types (study guides, quizzes, flashcards)
+
+**Status:** COMPLETE
+
+---
+
+### 6.97 Scroll-to-Top Button on StudyGuidePage (#1767) - COMPLETE
+
+Add a floating scroll-to-top button on the dedicated StudyGuidePage (`/study/guide/:id`), matching the existing scroll-to-top button on the Course Material Detail page (§6.94).
+
+**GitHub:** #1767 (closed), PR #1770 (merged 2026-03-14)
+
+**Acceptance Criteria:**
+- [x] Floating circular button appears after scrolling down on StudyGuidePage
+- [x] Clicking smoothly scrolls back to top
+- [x] Consistent styling with §6.94 scroll-to-top button
 
 **Status:** COMPLETE
