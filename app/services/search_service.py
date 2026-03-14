@@ -710,7 +710,8 @@ class SearchService:
                 StudyGuide.user_id == user_id,
                 StudyGuide.archived_at.is_(None),
             )
-        for g in guide_q.limit(min(5, remaining)).all():
+        total_guide_count = guide_q.count()
+        for g in guide_q.order_by(StudyGuide.created_at.desc()).limit(min(5, remaining)).all():
             guide_type = g.guide_type or "study_guide"
             tab_map = {"quiz": "quiz", "flashcards": "flashcards"}
             tab = tab_map.get(guide_type, "guide")
@@ -729,6 +730,14 @@ class SearchService:
                 title=g.title,
                 description=None,
                 actions=[{"label": "View", "route": route}],
+            ))
+        if total_guide_count > 5:
+            results.append(SearchResult(
+                entity_type="summary",
+                id=None,
+                title=f"Showing 5 of {total_guide_count} study guides",
+                description=None,
+                actions=[{"label": "See all study guides", "route": "/course-materials"}],
             ))
         remaining = 8 - len(results)
         if remaining <= 0:
