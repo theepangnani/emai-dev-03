@@ -9,12 +9,27 @@ export interface VideoInfo {
   provider: string;
 }
 
+export interface SearchAction {
+  label: string;
+  route: string;
+}
+
+export interface SearchResult {
+  entity_type: string;
+  id?: number;
+  title: string;
+  description?: string;
+  actions: SearchAction[];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   videos?: VideoInfo[];
   sources?: string[];
+  search_results?: SearchResult[];
+  intent?: string;
   timestamp: Date;
 }
 
@@ -22,6 +37,8 @@ interface HelpChatResponse {
   reply: string;
   videos?: VideoInfo[];
   sources?: string[];
+  search_results?: SearchResult[];
+  intent?: string;
 }
 
 export function useHelpChat() {
@@ -73,6 +90,8 @@ export function useHelpChat() {
         content: data.reply,
         videos: data.videos,
         sources: data.sources,
+        search_results: data.search_results,
+        intent: data.intent,
         timestamp: new Date(),
       };
 

@@ -8,7 +8,7 @@ from app.core.utils import escape_like
 from app.db.database import get_db
 from app.models.help_article import HelpArticle
 from app.models.user import User
-from app.schemas.help import HelpArticleResponse, HelpChatRequest, HelpChatResponse, VideoResponse
+from app.schemas.help import HelpArticleResponse, HelpChatRequest, HelpChatResponse, VideoResponse, SearchResultItem, SearchResultAction
 
 router = APIRouter(prefix="/help", tags=["help"])
 
@@ -78,13 +78,47 @@ def search_articles(
 @router.post("/chat", response_model=HelpChatResponse)
 async def help_chat(
     request: HelpChatRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Send a message to the ClassBridge Help Assistant."""
+    from app.services.intent_classifier import classify_intent
+    from app.services.search_service import search_service
     from app.services.help_chat_service import help_chat_service
 
     user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    intent = classify_intent(request.message)
 
+    if intent in ("search", "action"):
+        results = search_service.search(
+            query=request.message,
+            user_id=current_user.id,
+            user_role=user_role,
+            db=db,
+        )
+        if results:
+            reply = f"Here's what I found for **\"{request.message}\"**:"
+        else:
+            reply = f"No results found for **\"{request.message}\"**. Try a different search term or ask me a question about ClassBridge."
+
+        return HelpChatResponse(
+            reply=reply,
+            sources=[],
+            videos=[],
+            search_results=[
+                SearchResultItem(
+                    entity_type=r.entity_type,
+                    id=r.id,
+                    title=r.title,
+                    description=r.description,
+                    actions=[SearchResultAction(label=a["label"], route=a["route"]) for a in r.actions],
+                )
+                for r in results
+            ],
+            intent=intent,
+        )
+
+    # Help flow (existing)
     conversation_history = [
         {"role": msg.role, "content": msg.content}
         for msg in request.conversation
@@ -109,4 +143,6 @@ async def help_chat(
             )
             for v in result.videos
         ],
+        search_results=[],
+        intent="help",
     )

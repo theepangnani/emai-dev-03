@@ -1,4 +1,4 @@
-"""Tests for help chat service error handling."""
+"""Tests for help chat service error handling and intent classification."""
 
 import sys
 import pytest
@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 from types import ModuleType
 
 from app.services.help_chat_service import HelpChatService
+from app.services.intent_classifier import classify_intent
 
 
 def _make_mock_embedding_module(side_effect):
@@ -93,6 +94,39 @@ async def test_rate_limit_error_returns_overloaded_message():
 
     assert "/help" in result.reply
     assert "overloaded" in result.reply.lower()
+
+
+# --- Intent classifier tests ---
+
+
+def test_classify_intent_search():
+    assert classify_intent("find my courses") == "search"
+    assert classify_intent("show me my tasks") == "search"
+    assert classify_intent("list my study guides") == "search"
+    assert classify_intent("where is my assignment") == "search"
+
+
+def test_classify_intent_action():
+    assert classify_intent("upload a file") == "action"
+    assert classify_intent("create a new task") == "action"
+    assert classify_intent("add a course") == "action"
+    assert classify_intent("generate study guide") == "action"
+
+
+def test_classify_intent_help():
+    assert classify_intent("how do I connect Google Classroom") == "help"
+    assert classify_intent("what is ClassBridge") == "help"
+    assert classify_intent("explain the dashboard") == "help"
+    assert classify_intent("how to create a task") == "help"
+    assert classify_intent("how to find my courses") == "help"
+
+
+def test_classify_intent_defaults_to_help():
+    assert classify_intent("hello there") == "help"
+    assert classify_intent("") == "help"
+
+
+# --- Existing help chat service tests ---
 
 
 @pytest.mark.asyncio
