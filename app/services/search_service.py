@@ -201,7 +201,7 @@ class SearchService:
         else:
             task_q = task_q.filter(Task.created_by_user_id == user_id)
 
-        tasks = task_q.order_by(Task.due_date.asc().nullslast()).limit(20).all()
+        tasks = task_q.order_by(Task.due_date.asc().nullslast()).limit(5).all()
         results = []
         for t in tasks:
             due_str = t.due_date.strftime("%b %d") if t.due_date else None
@@ -215,7 +215,7 @@ class SearchService:
         return results
 
     def _list_tasks(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
-        """Return up to 20 most recent non-archived tasks for the user."""
+        """Return up to 5 most recent non-archived tasks for the user."""
         q = db.query(Task).filter(Task.archived_at.is_(None))
         if user_role == "student":
             q = q.filter(
@@ -230,7 +230,7 @@ class SearchService:
         else:
             q = q.filter(Task.created_by_user_id == user_id)
         total_count = q.count()
-        tasks = q.order_by(Task.created_at.desc()).limit(20).all()
+        tasks = q.order_by(Task.created_at.desc()).limit(5).all()
         results = [
             SearchResult(
                 entity_type="task",
@@ -241,11 +241,11 @@ class SearchService:
             )
             for t in tasks
         ]
-        if total_count > 20:
+        if total_count > 5:
             results.append(SearchResult(
                 entity_type="summary",
                 id=None,
-                title=f"Showing 20 of {total_count} tasks",
+                title=f"Showing 5 of {total_count} tasks",
                 description=None,
                 actions=[{"label": "See all tasks", "route": "/tasks"}],
             ))
@@ -277,8 +277,9 @@ class SearchService:
                 q = q.filter(Course.teacher_id == teacher_row.id)
             else:
                 return []
-        courses = q.order_by(Course.name).limit(20).all()
-        return [
+        total_count = q.count()
+        courses = q.order_by(Course.name).limit(5).all()
+        results = [
             SearchResult(
                 entity_type="course",
                 id=c.id,
@@ -288,6 +289,15 @@ class SearchService:
             )
             for c in courses
         ]
+        if total_count > 5:
+            results.append(SearchResult(
+                entity_type="summary",
+                id=None,
+                title=f"Showing 5 of {total_count} courses",
+                description=None,
+                actions=[{"label": "See all courses", "route": "/courses"}],
+            ))
+        return results
 
     def _list_assignments(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
         """Return up to 8 recent assignments accessible to the user."""
@@ -331,8 +341,9 @@ class SearchService:
                 q = q.filter(Assignment.course_id.in_(course_ids))
             else:
                 return []
-        rows = q.order_by(Assignment.due_date.desc().nullslast()).limit(20).all()
-        return [
+        total_count = q.count()
+        rows = q.order_by(Assignment.due_date.desc().nullslast()).limit(5).all()
+        results = [
             SearchResult(
                 entity_type="assignment",
                 id=a.id,
@@ -342,9 +353,18 @@ class SearchService:
             )
             for a, c in rows
         ]
+        if total_count > 5:
+            results.append(SearchResult(
+                entity_type="summary",
+                id=None,
+                title=f"Showing 5 of {total_count} assignments",
+                description=None,
+                actions=[{"label": "See all assignments", "route": "/courses"}],
+            ))
+        return results
 
     def _list_study_guides(self, user_id: int, db: Session, user_role: str = "") -> list[SearchResult]:
-        """Return up to 20 most recent study guides for the user (and children for parents)."""
+        """Return up to 5 most recent study guides for the user (and children for parents)."""
         if user_role == "parent":
             accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
             guide_q = db.query(StudyGuide).filter(
@@ -357,7 +377,7 @@ class SearchService:
                 StudyGuide.archived_at.is_(None),
             )
         total_count = guide_q.count()
-        guides = guide_q.order_by(StudyGuide.created_at.desc()).limit(20).all()
+        guides = guide_q.order_by(StudyGuide.created_at.desc()).limit(5).all()
         results = []
         for g in guides:
             guide_type = g.guide_type or "study_guide"
@@ -369,11 +389,11 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": route}],
             ))
-        if total_count > 20:
+        if total_count > 5:
             results.append(SearchResult(
                 entity_type="summary",
                 id=None,
-                title=f"Showing 20 of {total_count} study guides",
+                title=f"Showing 5 of {total_count} study guides",
                 description=None,
                 actions=[{"label": "See all study guides", "route": "/study-tools"}],
             ))
@@ -382,7 +402,9 @@ class SearchService:
     def _list_notes(self, user_id: int, db: Session) -> list[SearchResult]:
         """Return up to 8 most recent notes for the user."""
         from app.models.course_content import CourseContent as _CC
-        notes = db.query(Note).filter(Note.user_id == user_id).order_by(Note.updated_at.desc()).limit(20).all()
+        note_q = db.query(Note).filter(Note.user_id == user_id)
+        total_count = note_q.count()
+        notes = note_q.order_by(Note.updated_at.desc()).limit(5).all()
         results = []
         for n in notes:
             cc = db.query(_CC).filter(_CC.id == n.course_content_id).first()
@@ -395,6 +417,14 @@ class SearchService:
                 title=f"Note on {cc_title}",
                 description=snippet,
                 actions=[{"label": "View", "route": f"/course-materials/{n.course_content_id}?notes=1"}],
+            ))
+        if total_count > 5:
+            results.append(SearchResult(
+                entity_type="summary",
+                id=None,
+                title=f"Showing 5 of {total_count} notes",
+                description=None,
+                actions=[{"label": "See all notes", "route": "/course-materials"}],
             ))
         return results
 
@@ -439,8 +469,9 @@ class SearchService:
                 q = q.filter(CourseContent.course_id.in_(course_ids))
             else:
                 return []
-        items = q.order_by(CourseContent.created_at.desc()).limit(20).all()
-        return [
+        total_count = q.count()
+        items = q.order_by(CourseContent.created_at.desc()).limit(5).all()
+        results = [
             SearchResult(
                 entity_type="course_content",
                 id=cc.id,
@@ -450,6 +481,15 @@ class SearchService:
             )
             for cc in items
         ]
+        if total_count > 5:
+            results.append(SearchResult(
+                entity_type="summary",
+                id=None,
+                title=f"Showing 5 of {total_count} materials",
+                description=None,
+                actions=[{"label": "See all materials", "route": "/course-materials"}],
+            ))
+        return results
 
     def search(self, query: str, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
         """Search across platform entities and return up to 10 results total."""
@@ -519,7 +559,7 @@ class SearchService:
         raw = _extract_search_term(query)
         term = f"%{escape_like(raw)}%"
         results: list[SearchResult] = []
-        remaining = 25
+        remaining = 8
 
         # Children (parent-only — search by full name)
         if user_role == "parent":
@@ -533,7 +573,7 @@ class SearchService:
                     _User.full_name.ilike(term),
                 )
             )
-            for student, user in child_q.limit(remaining).all():
+            for student, user in child_q.limit(min(5, remaining)).all():
                 results.append(SearchResult(
                     entity_type="child",
                     id=student.id,
@@ -541,7 +581,7 @@ class SearchService:
                     description="Child",
                     actions=[{"label": "View Profile", "route": "/my-kids"}],
                 ))
-            remaining = 25 - len(results)
+            remaining = 8 - len(results)
             if remaining <= 0:
                 return results
 
@@ -578,7 +618,7 @@ class SearchService:
                 course_q = course_q.filter(False)
         # ADMIN: no extra filter
 
-        for c in course_q.limit(remaining).all():
+        for c in course_q.limit(min(5, remaining)).all():
             results.append(SearchResult(
                 entity_type="course",
                 id=c.id,
@@ -586,7 +626,7 @@ class SearchService:
                 description=c.description,
                 actions=[{"label": "View", "route": f"/courses/{c.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 8 - len(results)
         if remaining <= 0:
             return results
 
@@ -633,7 +673,7 @@ class SearchService:
                 asgn_q = asgn_q.filter(False)
         # ADMIN: no extra filter
 
-        for a in asgn_q.order_by(Assignment.due_date.desc().nullslast()).limit(remaining).all():
+        for a in asgn_q.order_by(Assignment.due_date.desc().nullslast()).limit(min(5, remaining)).all():
             results.append(SearchResult(
                 entity_type="assignment",
                 id=a.id,
@@ -641,7 +681,7 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": f"/courses/{a.course_id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 8 - len(results)
         if remaining <= 0:
             return results
 
@@ -659,7 +699,7 @@ class SearchService:
                 StudyGuide.user_id == user_id,
                 StudyGuide.archived_at.is_(None),
             )
-        for g in guide_q.limit(remaining).all():
+        for g in guide_q.limit(min(5, remaining)).all():
             guide_type = g.guide_type or "study_guide"
             if guide_type == "quiz":
                 route = f"/study/quiz/{g.id}"
@@ -674,7 +714,7 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": route}],
             ))
-        remaining = 25 - len(results)
+        remaining = 8 - len(results)
         if remaining <= 0:
             return results
 
@@ -696,7 +736,7 @@ class SearchService:
         else:
             task_q = task_q.filter(Task.created_by_user_id == user_id)
 
-        for t in task_q.limit(remaining).all():
+        for t in task_q.limit(min(5, remaining)).all():
             results.append(SearchResult(
                 entity_type="task",
                 id=t.id,
@@ -704,7 +744,7 @@ class SearchService:
                 description=t.description,
                 actions=[{"label": "View", "route": f"/tasks/{t.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 8 - len(results)
         if remaining <= 0:
             return results
 
@@ -754,7 +794,7 @@ class SearchService:
                 content_q = content_q.filter(False)
         # ADMIN: no extra filter
 
-        for cc in content_q.limit(remaining).all():
+        for cc in content_q.limit(min(5, remaining)).all():
             results.append(SearchResult(
                 entity_type="course_content",
                 id=cc.id,
@@ -762,7 +802,7 @@ class SearchService:
                 description=cc.description,
                 actions=[{"label": "View", "route": f"/course-materials/{cc.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 8 - len(results)
         if remaining <= 0:
             return results
 
@@ -775,7 +815,7 @@ class SearchService:
             )),
             FAQQuestion.archived_at.is_(None),
         )
-        for fa in faq_q.order_by(FAQQuestion.is_pinned.desc(), FAQQuestion.view_count.desc()).limit(remaining).all():
+        for fa in faq_q.order_by(FAQQuestion.is_pinned.desc(), FAQQuestion.view_count.desc()).limit(min(5, remaining)).all():
             results.append(SearchResult(
                 entity_type="faq",
                 id=fa.id,
@@ -783,7 +823,7 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": f"/faq/{fa.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 8 - len(results)
         if remaining <= 0:
             return results
 
@@ -796,7 +836,7 @@ class SearchService:
             (Note.plain_text.ilike(term)) | (Note.content.ilike(term))
         )
         from app.models.course_content import CourseContent as _CC
-        for n in note_q.limit(remaining).all():
+        for n in note_q.limit(min(5, remaining)).all():
             raw = n.plain_text or _strip_html(n.content or "")
             snippet = raw[:100].strip() if raw else None
             cc = db.query(_CC).filter(_CC.id == n.course_content_id).first()
