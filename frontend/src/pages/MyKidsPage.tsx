@@ -896,14 +896,6 @@ export function MyKidsPage() {
               </div>
           </SectionPanel>
 
-          {/* ── Grades ────────────────────────────── */}
-          <SectionPanel title="Grades" icon="&#128202;" collapsed={!showGrades} onToggle={() => setShowGrades(p => !p)}>
-              <GradesSummaryCard
-                selectedChildId={selectedChild ?? undefined}
-                onViewDetails={() => navigate('/grades')}
-              />
-          </SectionPanel>
-
           {/* ── Courses ───────────────────────────── */}
           <SectionPanel title="Classes" icon="&#128218;" count={overview?.courses.length ?? 0} collapsed={!showCourses} onToggle={() => setShowCourses(p => !p)}>
             {overview && (
@@ -933,6 +925,14 @@ export function MyKidsPage() {
           {/* ── Dinner Table Talk ──────────────────── */}
           <SectionPanel title="Dinner Table Talk" icon="&#128172;" collapsed={!showConversation} onToggle={() => setShowConversation(p => !p)}>
                 <ConversationStartersCard studentId={selectedChild} />
+          </SectionPanel>
+
+          {/* ── Grades ────────────────────────────── */}
+          <SectionPanel title="Grades" icon="&#128202;" collapsed={!showGrades} onToggle={() => setShowGrades(p => !p)}>
+              <GradesSummaryCard
+                selectedChildId={selectedChild ?? undefined}
+                onViewDetails={() => navigate('/grades')}
+              />
           </SectionPanel>
 
           {/* ── Linked Teachers ────────────────────── */}
