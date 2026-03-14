@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
@@ -556,22 +556,28 @@ export function HelpPage() {
     }
   };
 
-  const handleSearch = useCallback(async (q: string) => {
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = useCallback((q: string) => {
     setSearchQuery(q);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     if (!q.trim()) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
     setIsSearching(true);
-    try {
-      const { data } = await api.get<HelpArticle[]>('/api/help/search', { params: { q: q.trim() } });
-      setSearchResults(data);
-    } catch (err) {
-      console.error('Help search failed:', err);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get<HelpArticle[]>('/api/help/search', { params: { q: q.trim() } });
+        setSearchResults(data);
+      } catch (err) {
+        console.error('Help search failed:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
   }, []);
 
   const toggleFaq = (key: string) => {
