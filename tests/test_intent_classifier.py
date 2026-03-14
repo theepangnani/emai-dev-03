@@ -146,9 +146,9 @@ def test_classify_below_threshold_returns_none():
     with patch("openai.OpenAI", return_value=mock_client):
         result = svc.classify("ambiguous query", openai_api_key="test-key")
 
-    # avg per-intent score: each intent has one anchor that is orthogonal to the others.
+    # max per-intent score: each intent has one anchor.
     # score for "search" anchor [1,0,0] vs [1/√3, 1/√3, 1/√3] = 1/√3 ≈ 0.577
-    # All three intents get 0.577 average — but CONFIDENCE_THRESHOLD is 0.60, so None expected.
+    # All three intents get max score 0.577 — below CONFIDENCE_THRESHOLD (0.60), so None expected.
     assert result is None
 
 
