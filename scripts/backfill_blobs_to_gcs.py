@@ -55,12 +55,13 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
 
     migrated = 0
     failed = 0
-    offset = 0
+    processed_ids: set = set()
 
     while True:
         records = (
             session.query(SourceFile)
             .filter(SourceFile.gcs_path == None, SourceFile.file_data != None)
+            .filter(~SourceFile.id.in_(processed_ids) if processed_ids else True)
             .limit(batch_size)
             .all()
         )
@@ -68,6 +69,7 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
             break
 
         for record in records:
+            processed_ids.add(record.id)
             gcs_path = f"source-files/{record.course_content_id}/{record.id}/{record.filename}"
             try:
                 if not dry_run:
@@ -83,8 +85,7 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
         if not dry_run:
             session.commit()
 
-        offset += len(records)
-        logger.info(f"Progress: {offset}/{total} processed ({failed} failed)")
+        logger.info(f"Progress: {len(processed_ids)}/{total} processed ({failed} failed)")
 
     return migrated, failed
 
@@ -99,12 +100,13 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
 
     migrated = 0
     failed = 0
-    offset = 0
+    processed_ids: set = set()
 
     while True:
         records = (
             session.query(ContentImage)
             .filter(ContentImage.gcs_path == None, ContentImage.image_data != None)
+            .filter(~ContentImage.id.in_(processed_ids) if processed_ids else True)
             .limit(batch_size)
             .all()
         )
@@ -112,6 +114,7 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
             break
 
         for record in records:
+            processed_ids.add(record.id)
             ext = _image_ext(record.media_type)
             gcs_path = f"content-images/{record.course_content_id}/{record.id}.{ext}"
             try:
@@ -128,8 +131,7 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
         if not dry_run:
             session.commit()
 
-        offset += len(records)
-        logger.info(f"Progress: {offset}/{total} processed ({failed} failed)")
+        logger.info(f"Progress: {len(processed_ids)}/{total} processed ({failed} failed)")
 
     return migrated, failed
 
