@@ -120,3 +120,17 @@ class BulkCategorizeRequest(BaseModel):
 class CourseContentUpdateResponse(CourseContentResponse):
     """Extended response returned from PATCH that includes side-effect counts."""
     archived_guides_count: int = 0
+
+
+class LinkedMaterialResponse(BaseModel):
+    """A material linked via master/sub hierarchy (#1740)."""
+    id: int
+    title: str
+    is_master: bool = False
+    content_type: str
+    has_file: bool = False
+    original_filename: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
