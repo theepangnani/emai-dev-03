@@ -1993,7 +1993,8 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [x] Frontend: action buttons on search result cards
 - [x] Frontend: smart preset detection + shortcuts
 - [x] Tests
-- [ ] Fix: add Assignments + Children search; fix Study Guide URLs, FAQ model, Notes display (#1696)
+- [x] Fix: add Assignments + Children search; fix Study Guide URLs, FAQ model, Notes display (#1696, PR #1700)
+- [ ] Bug fix: intent classifier defaults to "help" for bare search terms (names, short queries) — should route to search (#1706)
 
 #### 6.59.10 GlobalSearch Deprecation (#1698)
 
