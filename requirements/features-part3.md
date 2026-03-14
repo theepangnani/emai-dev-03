@@ -2842,3 +2842,21 @@ Migrate source file and image blobs from PostgreSQL (`LargeBinary`) to Google Cl
 - [ ] After backfill confirmed: drop `file_data` / `image_data` columns
 
 **Status:** IN PROGRESS — both PRs merged and deployed; backfill script pending production run
+
+---
+
+### 6.94 Scroll-to-Top Button on Course Material Detail Page - COMPLETE
+
+A floating scroll-to-top button on the Course Material Detail page (`/course-materials/:id`) so users can quickly return to the top after scrolling through long content (study guides, documents, quizzes, etc.).
+
+**GitHub:** #1686 (issue), #1687 (initial PR ✅ merged), #1692 (fix: IntersectionObserver approach ✅ merged)
+
+**Acceptance Criteria:**
+- [x] Floating circular button appears at bottom-left of viewport after scrolling down
+- [x] Button does not appear on initial page load (before any scroll)
+- [x] Clicking the button smoothly scrolls the user back to the top
+- [x] Button is visible on all tabs (Guide, Quiz, Flashcards, Mind Map, Videos, Briefing, Document)
+- [x] Button does not conflict with Chat/Notes FABs (positioned bottom-left, FABs are bottom-right)
+- [x] Uses IntersectionObserver on a sentinel element (robust — works regardless of scroll container)
+
+**Status:** COMPLETE
