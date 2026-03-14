@@ -1954,3 +1954,29 @@
     font-size: 0.82rem;
   }
 }
+
+/* Scroll to top button */
+.cm-scroll-top-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-surface-raised, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  color: var(--color-muted, #888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  z-index: 100;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.cm-scroll-top-btn:hover {
+  color: var(--color-accent, #2a9fa8);
+  border-color: var(--color-accent, #2a9fa8);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  transform: translateY(-2px);
+}
