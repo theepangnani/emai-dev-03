@@ -121,8 +121,8 @@ def test_search_tasks_for_noah_routes_to_person_filter(monkeypatch):
 
 # --- Result limit and summary card tests (#1749) ---
 
-def test_list_tasks_returns_max_20_plus_summary_when_over_limit():
-    """_list_tasks with 25 tasks returns 20 task cards + 1 summary card."""
+def test_list_tasks_returns_max_5_plus_summary_when_over_limit():
+    """_list_tasks with 25 tasks returns 5 task cards + 1 summary card."""
     from unittest.mock import MagicMock, patch
     from app.models.task import Task as _Task
 
@@ -139,13 +139,13 @@ def test_list_tasks_returns_max_20_plus_summary_when_over_limit():
         t.archived_at = None
         fake_tasks.append(t)
 
-    # Simulate: q.count() returns 25, q.order_by(...).limit(20).all() returns first 20
+    # Simulate: q.count() returns 25, q.order_by(...).limit(5).all() returns first 5
     mock_q = MagicMock()
     mock_q.filter.return_value = mock_q
     mock_q.count.return_value = 25
     mock_q.order_by.return_value = mock_q
     mock_q.limit.return_value = mock_q
-    mock_q.all.return_value = fake_tasks[:20]
+    mock_q.all.return_value = fake_tasks[:5]
 
     db.query.return_value = mock_q
 
@@ -154,7 +154,7 @@ def test_list_tasks_returns_max_20_plus_summary_when_over_limit():
     task_results = [r for r in results if r.entity_type == "task"]
     summary_results = [r for r in results if r.entity_type == "summary"]
 
-    assert len(task_results) <= 20
+    assert len(task_results) <= 5
     assert len(summary_results) == 1
-    assert "20 of 25" in summary_results[0].title
+    assert "5 of 25" in summary_results[0].title
     assert summary_results[0].actions[0]["route"] == "/tasks"
