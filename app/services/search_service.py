@@ -3,9 +3,10 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
+from app.core.utils import escape_like
 from app.models.course import Course, student_courses
 from app.models.course_content import CourseContent
-from app.models.help_article import HelpArticle
+from app.models.faq import FAQQuestion
 from app.models.note import Note
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
@@ -126,9 +127,34 @@ class SearchService:
         if preset in ("due", "overdue"):
             return self.get_due_tasks(user_id, user_role, db)
 
-        term = f"%{query.strip()}%"
+        raw = query.strip()
+        term = f"%{escape_like(raw)}%"
         results: list[SearchResult] = []
         remaining = 10
+
+        # Children (parent-only — search by full name)
+        if user_role == "parent":
+            from app.models.user import User as _User
+            child_q = (
+                db.query(Student, _User)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .join(_User, Student.user_id == _User.id)
+                .filter(
+                    parent_students.c.parent_id == user_id,
+                    _User.full_name.ilike(term),
+                )
+            )
+            for student, user in child_q.limit(remaining).all():
+                results.append(SearchResult(
+                    entity_type="child",
+                    id=student.id,
+                    title=user.full_name,
+                    description="Child",
+                    actions=[{"label": "View Profile", "route": f"/my-kids/{student.id}"}],
+                ))
+            remaining = 10 - len(results)
+            if remaining <= 0:
+                return results
 
         # Courses
         course_q = db.query(Course).filter(
@@ -175,6 +201,61 @@ class SearchService:
         if remaining <= 0:
             return results
 
+        # Assignments (scoped to accessible courses)
+        from app.models.assignment import Assignment
+        asgn_q = db.query(Assignment).filter(Assignment.title.ilike(term))
+        if user_role == "student":
+            student_row = db.query(Student).filter(Student.user_id == user_id).first()
+            if student_row:
+                enrolled_course_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id).filter(
+                        student_courses.c.student_id == student_row.id
+                    ).all()
+                ]
+                asgn_q = asgn_q.filter(Assignment.course_id.in_(enrolled_course_ids))
+            else:
+                asgn_q = asgn_q.filter(False)
+        elif user_role == "parent":
+            student_ids = [
+                row[0] for row in db.query(parent_students.c.student_id).filter(
+                    parent_students.c.parent_id == user_id
+                ).all()
+            ]
+            if student_ids:
+                enrolled_course_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id).filter(
+                        student_courses.c.student_id.in_(student_ids)
+                    ).all()
+                ]
+                asgn_q = asgn_q.filter(Assignment.course_id.in_(enrolled_course_ids))
+            else:
+                asgn_q = asgn_q.filter(False)
+        elif user_role == "teacher":
+            from app.models.teacher import Teacher
+            teacher_row = db.query(Teacher).filter(Teacher.user_id == user_id).first()
+            if teacher_row:
+                teacher_course_ids = [
+                    row[0] for row in db.query(Course.id).filter(
+                        Course.teacher_id == teacher_row.id
+                    ).all()
+                ]
+                asgn_q = asgn_q.filter(Assignment.course_id.in_(teacher_course_ids))
+            else:
+                asgn_q = asgn_q.filter(False)
+        # ADMIN: no extra filter
+
+        for a in asgn_q.order_by(Assignment.due_date.desc().nullslast()).limit(remaining).all():
+            results.append(SearchResult(
+                entity_type="assignment",
+                id=a.id,
+                title=a.title,
+                description=None,
+                actions=[{"label": "View", "route": f"/courses/{a.course_id}/assignments/{a.id}"}],
+            ))
+        remaining = 10 - len(results)
+        if remaining <= 0:
+            return results
+
         # Study Guides (filter by owner)
         guide_q = db.query(StudyGuide).filter(
             StudyGuide.title.ilike(term),
@@ -182,12 +263,19 @@ class SearchService:
             StudyGuide.archived_at.is_(None),
         )
         for g in guide_q.limit(remaining).all():
+            guide_type = g.guide_type or "study_guide"
+            if guide_type == "quiz":
+                route = f"/study/quiz/{g.id}"
+            elif guide_type == "flashcards":
+                route = f"/study/flashcards/{g.id}"
+            else:
+                route = f"/study/guide/{g.id}"
             results.append(SearchResult(
                 entity_type="study_guide",
                 id=g.id,
                 title=g.title,
                 description=None,
-                actions=[{"label": "View", "route": f"/study-tools?guide={g.id}"}],
+                actions=[{"label": "View", "route": route}],
             ))
         remaining = 10 - len(results)
         if remaining <= 0:
@@ -287,27 +375,22 @@ class SearchService:
         if remaining <= 0:
             return results
 
-        # FAQ (HelpArticle)
-        faq_q = db.query(HelpArticle).filter(
-            (HelpArticle.title.ilike(term)) | (HelpArticle.content.ilike(term))
+        # FAQ (FAQQuestion — database FAQ, same model as main search)
+        from sqlalchemy import or_ as _or
+        faq_q = db.query(FAQQuestion).filter(
+            (_or(
+                FAQQuestion.title.ilike(term),
+                FAQQuestion.description.ilike(term),
+            )),
+            FAQQuestion.archived_at.is_(None),
         )
-        # Role filter: role is NULL/empty means all roles
-        if user_role:
-            from sqlalchemy import or_
-            faq_q = faq_q.filter(
-                or_(
-                    HelpArticle.role.is_(None),
-                    HelpArticle.role == "",
-                    HelpArticle.role.contains(user_role),
-                )
-            )
-        for fa in faq_q.limit(remaining).all():
+        for fa in faq_q.order_by(FAQQuestion.is_pinned.desc(), FAQQuestion.view_count.desc()).limit(remaining).all():
             results.append(SearchResult(
                 entity_type="faq",
                 id=fa.id,
                 title=fa.title,
                 description=None,
-                actions=[{"label": "View", "route": "/help"}],
+                actions=[{"label": "View", "route": f"/faq/{fa.id}"}],
             ))
         remaining = 10 - len(results)
         if remaining <= 0:
@@ -321,15 +404,18 @@ class SearchService:
         note_q = note_q.filter(
             (Note.plain_text.ilike(term)) | (Note.content.ilike(term))
         )
+        from app.models.course_content import CourseContent as _CC
         for n in note_q.limit(remaining).all():
             raw = n.plain_text or _strip_html(n.content or "")
             snippet = raw[:100].strip() if raw else None
+            cc = db.query(_CC).filter(_CC.id == n.course_content_id).first()
+            cc_title = cc.title if cc else f"material {n.course_content_id}"
             results.append(SearchResult(
                 entity_type="note",
                 id=n.id,
-                title=f"Note on material {n.course_content_id}",
+                title=f"Note on {cc_title}",
                 description=snippet,
-                actions=[{"label": "View Material", "route": "/study-tools"}],
+                actions=[{"label": "View Material", "route": f"/course-materials/{n.course_content_id}?notes=1"}],
             ))
 
         return results
