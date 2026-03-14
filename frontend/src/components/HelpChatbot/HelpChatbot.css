@@ -471,6 +471,13 @@
   text-decoration: underline;
 }
 
+.help-chatbot-helper-message {
+  padding: 4px 16px 0;
+  font-size: 0.8rem;
+  color: #e67e22;
+  text-align: center;
+}
+
 /* Mobile responsive: full-width bottom sheet below 768px */
 @media (max-width: 767px) {
   .help-chatbot-fab {
