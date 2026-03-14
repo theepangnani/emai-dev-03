@@ -341,6 +341,27 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         conn.commit()
+        # Material hierarchy columns (#1740)
+        existing_cols = {c["name"] for c in inspector.get_columns("course_contents")}
+        if "parent_content_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN parent_content_id INTEGER REFERENCES course_contents(id)"))
+                logger.info("Added 'parent_content_id' column to course_contents")
+            except Exception:
+                conn.rollback()
+        if "is_master" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master BOOLEAN DEFAULT FALSE"))
+                logger.info("Added 'is_master' column to course_contents")
+            except Exception:
+                conn.rollback()
+        if "material_group_id" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN material_group_id INTEGER"))
+                logger.info("Added 'material_group_id' column to course_contents")
+            except Exception:
+                conn.rollback()
+        conn.commit()
     if "study_guides" in inspector.get_table_names():
         existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
         if "archived_at" not in existing_cols:
