@@ -1,4 +1,5 @@
 import re
+import re as _re
 from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
@@ -11,6 +12,18 @@ from app.models.note import Note
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.task import Task
+
+
+_ENTITY_LIST_TRIGGERS = {"my", "show", "list", "all", "view", "see", "get"}
+
+_ENTITY_LIST_PATTERNS = [
+    ("list_tasks",        _re.compile(r'\btasks?\b', _re.IGNORECASE)),
+    ("list_courses",      _re.compile(r'\bcourses?\b', _re.IGNORECASE)),
+    ("list_assignments",  _re.compile(r'\bassignments?\b', _re.IGNORECASE)),
+    ("list_study_guides", _re.compile(r'\bstudy[\s\-]guides?\b', _re.IGNORECASE)),
+    ("list_notes",        _re.compile(r'\bnotes?\b', _re.IGNORECASE)),
+    ("list_materials",    _re.compile(r'\bmaterials?\b|\bcontent\b', _re.IGNORECASE)),
+]
 
 
 @dataclass
@@ -39,6 +52,13 @@ class SearchService:
             return "upload"
         if msg.startswith("create") or msg.startswith("new ") or "add a course" in msg or "add a task" in msg:
             return "create"
+        # "show my tasks", "list my courses", "my assignments" → list all entities of that type
+        words = set(msg.split())
+        has_trigger = bool(words & _ENTITY_LIST_TRIGGERS) or msg.startswith("my ")
+        if has_trigger:
+            for preset_name, pattern in _ENTITY_LIST_PATTERNS:
+                if pattern.search(msg):
+                    return preset_name
         return None
 
     def get_due_tasks(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
@@ -86,6 +106,222 @@ class SearchService:
             ))
         return results
 
+    def _list_tasks(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
+        """Return up to 8 most recent non-archived tasks for the user."""
+        q = db.query(Task).filter(Task.archived_at.is_(None))
+        if user_role == "student":
+            q = q.filter(
+                (Task.assigned_to_user_id == user_id) | (Task.created_by_user_id == user_id)
+            )
+        elif user_role == "parent":
+            student_ids = [
+                row[0] for row in db.query(parent_students.c.student_id).filter(
+                    parent_students.c.parent_id == user_id
+                ).all()
+            ]
+            child_user_ids = [
+                row[0] for row in db.query(Student.user_id).filter(
+                    Student.id.in_(student_ids)
+                ).all()
+            ]
+            q = q.filter(Task.assigned_to_user_id.in_(child_user_ids))
+        else:
+            q = q.filter(Task.created_by_user_id == user_id)
+        tasks = q.order_by(Task.created_at.desc()).limit(8).all()
+        return [
+            SearchResult(
+                entity_type="task",
+                id=t.id,
+                title=t.title,
+                description=t.description,
+                actions=[{"label": "View", "route": f"/tasks/{t.id}"}],
+            )
+            for t in tasks
+        ]
+
+    def _list_courses(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
+        """Return up to 8 courses accessible to the user."""
+        q = db.query(Course)
+        if user_role == "student":
+            student_row = db.query(Student).filter(Student.user_id == user_id).first()
+            if student_row:
+                q = q.filter(Course.students.any(Student.id == student_row.id))
+            else:
+                return []
+        elif user_role == "parent":
+            student_ids = [
+                row[0] for row in db.query(parent_students.c.student_id).filter(
+                    parent_students.c.parent_id == user_id
+                ).all()
+            ]
+            if student_ids:
+                q = q.filter(Course.students.any(Student.id.in_(student_ids)))
+            else:
+                return []
+        elif user_role == "teacher":
+            from app.models.teacher import Teacher
+            teacher_row = db.query(Teacher).filter(Teacher.user_id == user_id).first()
+            if teacher_row:
+                q = q.filter(Course.teacher_id == teacher_row.id)
+            else:
+                return []
+        courses = q.order_by(Course.name).limit(8).all()
+        return [
+            SearchResult(
+                entity_type="course",
+                id=c.id,
+                title=c.name,
+                description=c.description,
+                actions=[{"label": "View", "route": f"/classes/{c.id}"}],
+            )
+            for c in courses
+        ]
+
+    def _list_assignments(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
+        """Return up to 8 recent assignments accessible to the user."""
+        from app.models.assignment import Assignment
+        q = db.query(Assignment, Course).join(Course, Assignment.course_id == Course.id)
+        if user_role == "student":
+            student_row = db.query(Student).filter(Student.user_id == user_id).first()
+            if student_row:
+                enrolled_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id).filter(
+                        student_courses.c.student_id == student_row.id
+                    ).all()
+                ]
+                q = q.filter(Assignment.course_id.in_(enrolled_ids))
+            else:
+                return []
+        elif user_role == "parent":
+            student_ids = [
+                row[0] for row in db.query(parent_students.c.student_id).filter(
+                    parent_students.c.parent_id == user_id
+                ).all()
+            ]
+            if student_ids:
+                enrolled_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id).filter(
+                        student_courses.c.student_id.in_(student_ids)
+                    ).all()
+                ]
+                q = q.filter(Assignment.course_id.in_(enrolled_ids))
+            else:
+                return []
+        elif user_role == "teacher":
+            from app.models.teacher import Teacher
+            teacher_row = db.query(Teacher).filter(Teacher.user_id == user_id).first()
+            if teacher_row:
+                course_ids = [
+                    row[0] for row in db.query(Course.id).filter(
+                        Course.teacher_id == teacher_row.id
+                    ).all()
+                ]
+                q = q.filter(Assignment.course_id.in_(course_ids))
+            else:
+                return []
+        rows = q.order_by(Assignment.due_date.desc().nullslast()).limit(8).all()
+        return [
+            SearchResult(
+                entity_type="assignment",
+                id=a.id,
+                title=a.title,
+                description=c.name,
+                actions=[{"label": "View", "route": f"/courses/{c.id}/assignments/{a.id}"}],
+            )
+            for a, c in rows
+        ]
+
+    def _list_study_guides(self, user_id: int, db: Session) -> list[SearchResult]:
+        """Return up to 8 most recent study guides for the user."""
+        guides = db.query(StudyGuide).filter(
+            StudyGuide.user_id == user_id,
+            StudyGuide.archived_at.is_(None),
+        ).order_by(StudyGuide.created_at.desc()).limit(8).all()
+        results = []
+        for g in guides:
+            guide_type = g.guide_type or "study_guide"
+            route = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
+            results.append(SearchResult(
+                entity_type="study_guide",
+                id=g.id,
+                title=g.title,
+                description=None,
+                actions=[{"label": "View", "route": route}],
+            ))
+        return results
+
+    def _list_notes(self, user_id: int, db: Session) -> list[SearchResult]:
+        """Return up to 8 most recent notes for the user."""
+        from app.models.course_content import CourseContent as _CC
+        notes = db.query(Note).filter(Note.user_id == user_id).order_by(Note.updated_at.desc()).limit(8).all()
+        results = []
+        for n in notes:
+            cc = db.query(_CC).filter(_CC.id == n.course_content_id).first()
+            cc_title = cc.title if cc else f"material {n.course_content_id}"
+            raw = n.plain_text or _strip_html(n.content or "")
+            snippet = raw[:80].strip() if raw else None
+            results.append(SearchResult(
+                entity_type="note",
+                id=n.id,
+                title=f"Note on {cc_title}",
+                description=snippet,
+                actions=[{"label": "View", "route": f"/course-materials/{n.course_content_id}?notes=1"}],
+            ))
+        return results
+
+    def _list_materials(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
+        """Return up to 8 course materials accessible to the user."""
+        q = db.query(CourseContent).filter(CourseContent.archived_at.is_(None))
+        if user_role == "student":
+            student_row = db.query(Student).filter(Student.user_id == user_id).first()
+            if student_row:
+                enrolled_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id).filter(
+                        student_courses.c.student_id == student_row.id
+                    ).all()
+                ]
+                q = q.filter(CourseContent.course_id.in_(enrolled_ids))
+            else:
+                return []
+        elif user_role == "parent":
+            student_ids = [
+                row[0] for row in db.query(parent_students.c.student_id).filter(
+                    parent_students.c.parent_id == user_id
+                ).all()
+            ]
+            if student_ids:
+                enrolled_ids = [
+                    row[0] for row in db.query(student_courses.c.course_id).filter(
+                        student_courses.c.student_id.in_(student_ids)
+                    ).all()
+                ]
+                q = q.filter(CourseContent.course_id.in_(enrolled_ids))
+            else:
+                return []
+        elif user_role == "teacher":
+            from app.models.teacher import Teacher
+            teacher_row = db.query(Teacher).filter(Teacher.user_id == user_id).first()
+            if teacher_row:
+                course_ids = [
+                    row[0] for row in db.query(Course.id).filter(
+                        Course.teacher_id == teacher_row.id
+                    ).all()
+                ]
+                q = q.filter(CourseContent.course_id.in_(course_ids))
+            else:
+                return []
+        items = q.order_by(CourseContent.created_at.desc()).limit(8).all()
+        return [
+            SearchResult(
+                entity_type="course_content",
+                id=cc.id,
+                title=cc.title,
+                description=cc.description,
+                actions=[{"label": "View", "route": f"/course-materials/{cc.id}"}],
+            )
+            for cc in items
+        ]
+
     def search(self, query: str, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
         """Search across platform entities and return up to 10 results total."""
         preset = self.detect_preset(query)
@@ -126,6 +362,24 @@ class SearchService:
 
         if preset in ("due", "overdue"):
             return self.get_due_tasks(user_id, user_role, db)
+
+        if preset == "list_tasks":
+            return self._list_tasks(user_id, user_role, db)
+
+        if preset == "list_courses":
+            return self._list_courses(user_id, user_role, db)
+
+        if preset == "list_assignments":
+            return self._list_assignments(user_id, user_role, db)
+
+        if preset == "list_study_guides":
+            return self._list_study_guides(user_id, db)
+
+        if preset == "list_notes":
+            return self._list_notes(user_id, db)
+
+        if preset == "list_materials":
+            return self._list_materials(user_id, user_role, db)
 
         raw = query.strip()
         term = f"%{escape_like(raw)}%"
