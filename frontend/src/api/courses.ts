@@ -20,6 +20,9 @@ export interface CourseContentItem {
   source_files_count: number;
   category: string | null;
   display_order: number;
+  parent_content_id: number | null;
+  is_master: string;  // "true" or "false"
+  material_group_id: number | null;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -37,6 +40,16 @@ export interface SourceFileItem {
 
 export interface CourseContentUpdateResponse extends CourseContentItem {
   archived_guides_count: number;
+}
+
+export interface LinkedMaterialItem {
+  id: number;
+  title: string;
+  is_master: string;
+  content_type: string;
+  has_file: boolean;
+  original_filename: string | null;
+  created_at: string;
 }
 
 export interface LinkedCourseChild {
@@ -300,6 +313,11 @@ export const courseContentsApi = {
   restore: async (id: number) => {
     const response = await api.patch(`/api/course-contents/${id}/restore`);
     return response.data as CourseContentItem;
+  },
+
+  getLinkedMaterials: async (contentId: number) => {
+    const response = await api.get(`/api/course-contents/${contentId}/linked-materials`);
+    return response.data as LinkedMaterialItem[];
   },
 
   permanentDelete: async (id: number) => {
