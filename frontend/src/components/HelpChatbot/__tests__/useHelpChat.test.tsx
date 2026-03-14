@@ -1,30 +1,55 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useHelpChat } from '../useHelpChat'
-import { api } from '../../../api/client'
 
-vi.mock('../../../api/client', () => ({
-  api: {
-    post: vi.fn(),
-  },
-}))
+// Helper to build a ReadableStream from SSE lines
+function makeSSEStream(lines: string[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder()
+  return new ReadableStream({
+    start(controller) {
+      for (const line of lines) {
+        controller.enqueue(encoder.encode(line))
+      }
+      controller.close()
+    },
+  })
+}
 
-const mockedApi = vi.mocked(api)
+function mockFetchOk(lines: string[]) {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    body: makeSSEStream(lines),
+  }))
+}
+
+function mockFetchStatus(status: number) {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
+    status,
+    body: null,
+  }))
+}
+
+function mockFetchReject(err: unknown) {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(err))
+}
 
 describe('useHelpChat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionStorage.clear()
+    localStorage.setItem('token', 'test-token')
   })
 
-  it('sends correct field names and reads response correctly', async () => {
-    // Backend returns "reply", not "answer"
-    mockedApi.post.mockResolvedValueOnce({
-      data: {
-        reply: 'ClassBridge helps parents and students manage education.',
-        sources: ['features'],
-        videos: [],
-      },
-    })
+  afterEach(() => {
+    localStorage.removeItem('token')
+  })
+
+  it('sends correct fields and reads streamed help response', async () => {
+    mockFetchOk([
+      'data: {"type":"token","text":"ClassBridge "}\n\n',
+      'data: {"type":"token","text":"helps."}\n\n',
+      'data: {"type":"done","sources":["features"],"videos":[]}\n\n',
+    ])
 
     const { result } = renderHook(() => useHelpChat())
 
@@ -36,50 +61,54 @@ describe('useHelpChat', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    // Verify request uses "conversation" (not "conversation_history")
-    expect(mockedApi.post).toHaveBeenCalledWith('/api/help/chat', {
-      message: 'What can ClassBridge do?',
-      conversation: expect.any(Array),
-    })
-
-    // Verify assistant message content comes from "reply" field
     const assistantMsg = result.current.messages.find(m => m.role === 'assistant')
     expect(assistantMsg).toBeDefined()
-    expect(assistantMsg!.content).toBe('ClassBridge helps parents and students manage education.')
+    expect(assistantMsg!.content).toBe('ClassBridge helps.')
     expect(assistantMsg!.sources).toEqual(['features'])
+
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      expect.stringContaining('/api/help/chat/stream'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: expect.stringContaining('"message":"What can ClassBridge do?"'),
+      })
+    )
   })
 
-  it('fails if backend response uses "answer" instead of "reply"', async () => {
-    // Simulate old mismatched response shape
-    mockedApi.post.mockResolvedValueOnce({
-      data: {
-        answer: 'This should not work',
-        reply: undefined,
-        sources: [],
-        videos: [],
-      },
-    })
+  it('handles search event correctly', async () => {
+    const searchPayload = {
+      type: 'search',
+      reply: 'Here\'s what I found for **"find courses"**:',
+      intent: 'search',
+      search_results: [
+        { entity_type: 'course', id: 1, title: 'Math 101', description: null, actions: [] },
+      ],
+    }
+    mockFetchOk([`data: ${JSON.stringify(searchPayload)}\n\n`])
 
     const { result } = renderHook(() => useHelpChat())
 
     act(() => {
-      result.current.sendMessage('test')
+      result.current.sendMessage('find courses')
     })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    // With the fix, content reads from "reply" which is undefined here
-    // This proves the old "answer" field is NOT used
     const assistantMsg = result.current.messages.find(m => m.role === 'assistant')
-    expect(assistantMsg?.content).toBeUndefined()
+    expect(assistantMsg).toBeDefined()
+    expect(assistantMsg!.intent).toBe('search')
+    expect(assistantMsg!.search_results).toHaveLength(1)
+    expect(assistantMsg!.content).toContain('find courses')
   })
 
   it('includes conversation history from previous messages', async () => {
-    mockedApi.post.mockResolvedValue({
-      data: { reply: 'Response', sources: [], videos: [] },
-    })
+    mockFetchOk([
+      'data: {"type":"token","text":"Response"}\n\n',
+      'data: {"type":"done","sources":[],"videos":[]}\n\n',
+    ])
 
     const { result } = renderHook(() => useHelpChat())
 
@@ -92,7 +121,12 @@ describe('useHelpChat', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    // Send second message
+    // Re-mock for second call
+    mockFetchOk([
+      'data: {"type":"token","text":"Follow-up response"}\n\n',
+      'data: {"type":"done","sources":[],"videos":[]}\n\n',
+    ])
+
     act(() => {
       result.current.sendMessage('Follow up')
     })
@@ -101,14 +135,15 @@ describe('useHelpChat', () => {
       expect(result.current.messages).toHaveLength(4)
     })
 
-    // Second call should include conversation history with "conversation" key
-    const secondCall = mockedApi.post.mock.calls[1]
-    expect(secondCall[1]).toHaveProperty('conversation')
-    expect(secondCall[1]).not.toHaveProperty('conversation_history')
+    // Second call body should include conversation
+    const secondCall = vi.mocked(fetch).mock.calls[1]
+    const body = JSON.parse(secondCall[1]!.body as string)
+    expect(body).toHaveProperty('conversation')
+    expect(body).not.toHaveProperty('conversation_history')
   })
 
   it('shows rate limit error for 429 responses', async () => {
-    mockedApi.post.mockRejectedValueOnce({ response: { status: 429 } })
+    mockFetchStatus(429)
 
     const { result } = renderHook(() => useHelpChat())
 
@@ -124,7 +159,7 @@ describe('useHelpChat', () => {
   })
 
   it('shows auth error for 401 responses', async () => {
-    mockedApi.post.mockRejectedValueOnce({ response: { status: 401 } })
+    mockFetchStatus(401)
 
     const { result } = renderHook(() => useHelpChat())
 
@@ -140,7 +175,7 @@ describe('useHelpChat', () => {
   })
 
   it('shows help page link for generic network errors', async () => {
-    mockedApi.post.mockRejectedValueOnce(new Error('Network Error'))
+    mockFetchReject(new Error('Network Error'))
 
     const { result } = renderHook(() => useHelpChat())
 
@@ -153,5 +188,22 @@ describe('useHelpChat', () => {
     })
 
     expect(result.current.error).toContain('/help')
+  })
+
+  it('removes placeholder on error', async () => {
+    mockFetchReject(new Error('Network Error'))
+
+    const { result } = renderHook(() => useHelpChat())
+
+    act(() => {
+      result.current.sendMessage('test')
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    // Only the user message should remain; the placeholder assistant message is removed
+    expect(result.current.messages.every(m => m.role !== 'assistant')).toBe(true)
   })
 })
