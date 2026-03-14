@@ -14,6 +14,21 @@ HELP_KEYWORDS = [
 
 ACTION_KEYWORDS = ["upload", "create", "add", "new course", "new task", "generate"]
 
+TOPIC_KEYWORDS = [
+    "message", "messages", "messaging",
+    "google classroom", "classroom",
+    "study tools", "study tool",
+    "getting started",
+    "chatbot", "help bot",
+    "grades", "grade", "analytics",
+    "assignment", "assignments",
+    "calendar", "digest", "briefing",
+    "notification", "notifications",
+    "storage", "export",
+    "mind map", "mindmap",
+    "readiness", "readiness check",
+]
+
 
 def classify_intent(message: str, openai_api_key: str | None = None) -> str:
     """
@@ -50,6 +65,10 @@ def classify_intent(message: str, openai_api_key: str | None = None) -> str:
         result = intent_embedding_service.classify(message, openai_api_key)
         if result is not None:
             return result
+
+    # Known help topics — route to help knowledge base
+    if any(kw in msg for kw in TOPIC_KEYWORDS):
+        return "help"
 
     # Single bare-word queries with no keywords are almost always search intent (e.g. a name)
     words = msg.split()
