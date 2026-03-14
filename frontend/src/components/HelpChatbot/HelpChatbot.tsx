@@ -125,6 +125,7 @@ export function HelpChatbot() {
                 content={msg.content}
                 videos={msg.videos}
                 sources={msg.sources}
+                search_results={msg.search_results}
               />
             ))}
 

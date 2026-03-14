@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import type { VideoInfo } from './useHelpChat';
+import type { VideoInfo, SearchResult } from './useHelpChat';
+import { SearchResultCards } from './SearchResultCard';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
   videos?: VideoInfo[];
   sources?: string[];
+  search_results?: SearchResult[];
 }
 
 function VideoEmbed({ video }: { video: VideoInfo }) {
@@ -65,7 +67,7 @@ function FeedbackButtons() {
   );
 }
 
-export function ChatMessage({ role, content, videos, sources }: ChatMessageProps) {
+export function ChatMessage({ role, content, videos, sources, search_results }: ChatMessageProps) {
   const navigate = useNavigate();
 
   return (
@@ -114,6 +116,11 @@ export function ChatMessage({ role, content, videos, sources }: ChatMessageProps
             ))}
           </div>
         )}
+
+        {search_results && search_results.length > 0 && (
+          <SearchResultCards results={search_results} />
+        )}
+
         {role === 'assistant' && <FeedbackButtons />}
       </div>
     </div>

@@ -34,7 +34,22 @@ class VideoResponse(BaseModel):
     provider: str
 
 
+class SearchResultAction(BaseModel):
+    label: str
+    route: str
+
+
+class SearchResultItem(BaseModel):
+    entity_type: str
+    id: int | None = None
+    title: str
+    description: str | None = None
+    actions: list[SearchResultAction] = []
+
+
 class HelpChatResponse(BaseModel):
     reply: str
     sources: list[str]
     videos: list[VideoResponse]
+    search_results: list[SearchResultItem] = []
+    intent: str = "help"  # "help" | "search" | "action"
