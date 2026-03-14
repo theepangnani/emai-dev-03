@@ -1,0 +1,393 @@
+"""Tests for material hierarchy feature (#1740).
+
+Tests cover:
+- generate_sub_title() utility
+- create_material_hierarchy() service function
+- get_linked_materials() service function
+- POST /upload-multi hierarchy creation (integration)
+- GET /linked-materials endpoint (integration)
+"""
+import pytest
+from conftest import PASSWORD, _auth
+
+from app.services.material_hierarchy import (
+    create_material_hierarchy,
+    get_linked_materials,
+    generate_sub_title,
+)
+
+
+# ── Fixtures ─────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def hierarchy_users(db_session):
+    """Create teacher + course for hierarchy tests (idempotent)."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.teacher import Teacher
+    from app.models.course import Course
+
+    teacher = db_session.query(User).filter(User.email == "mh_teacher@test.com").first()
+    if teacher:
+        course = db_session.query(Course).filter(Course.name == "MH Test Course").first()
+        return {"teacher": teacher, "course": course}
+
+    hashed = get_password_hash(PASSWORD)
+    teacher = User(
+        email="mh_teacher@test.com",
+        full_name="MH Teacher",
+        role=UserRole.TEACHER,
+        hashed_password=hashed,
+    )
+    db_session.add(teacher)
+    db_session.flush()
+
+    teacher_rec = Teacher(user_id=teacher.id)
+    db_session.add(teacher_rec)
+    db_session.flush()
+
+    course = Course(
+        name="MH Test Course",
+        teacher_id=teacher_rec.id,
+        created_by_user_id=teacher.id,
+    )
+    db_session.add(course)
+    db_session.commit()
+
+    db_session.refresh(teacher)
+    db_session.refresh(course)
+    return {"teacher": teacher, "course": course}
+
+
+# ── Unit tests: generate_sub_title ───────────────────────────
+
+
+class TestGenerateSubTitle:
+    def test_basic(self):
+        assert generate_sub_title("Math Notes", 1) == "Math Notes \u2014 Part 1"
+        assert generate_sub_title("Math Notes", 3) == "Math Notes \u2014 Part 3"
+
+    def test_with_large_index(self):
+        assert generate_sub_title("Lecture", 10) == "Lecture \u2014 Part 10"
+
+    def test_preserves_title(self):
+        title = "  Physics Lab Report  "
+        result = generate_sub_title(title, 2)
+        # The function should use the title as-is (or stripped)
+        assert "Part 2" in result
+
+
+# ── Unit tests: hierarchy service ────────────────────────────
+
+
+class TestMaterialHierarchyService:
+    def test_create_hierarchy(self, db_session, hierarchy_users):
+        """create_material_hierarchy should return master + N sub-materials."""
+        from app.models.course_content import CourseContent
+
+        course = hierarchy_users["course"]
+        teacher = hierarchy_users["teacher"]
+
+        # Create 3 sub-materials to group
+        subs = []
+        for i in range(1, 4):
+            cc = CourseContent(
+                course_id=course.id,
+                title=f"File {i}",
+                content_type="notes",
+                created_by_user_id=teacher.id,
+            )
+            db_session.add(cc)
+            db_session.flush()
+            subs.append(cc)
+
+        master = create_material_hierarchy(
+            db=db_session,
+            sub_materials=subs,
+            master_title="Combined Notes",
+            course_id=course.id,
+            created_by_user_id=teacher.id,
+        )
+
+        db_session.refresh(master)
+        assert master.title == "Combined Notes"
+        assert master.material_group_id is not None
+
+        # All subs should share the same group
+        for sub in subs:
+            db_session.refresh(sub)
+            assert sub.material_group_id == master.material_group_id
+
+    def test_get_linked_from_master(self, db_session, hierarchy_users):
+        """get_linked_materials from master returns sub-materials."""
+        from app.models.course_content import CourseContent
+
+        course = hierarchy_users["course"]
+        teacher = hierarchy_users["teacher"]
+
+        subs = []
+        for i in range(1, 3):
+            cc = CourseContent(
+                course_id=course.id,
+                title=f"Linked Sub {i}",
+                content_type="notes",
+                created_by_user_id=teacher.id,
+            )
+            db_session.add(cc)
+            db_session.flush()
+            subs.append(cc)
+
+        master = create_material_hierarchy(
+            db=db_session,
+            sub_materials=subs,
+            master_title="Linked Master",
+            course_id=course.id,
+            created_by_user_id=teacher.id,
+        )
+        db_session.commit()
+
+        linked = get_linked_materials(db=db_session, material_id=master.id)
+        linked_ids = {m.id for m in linked}
+        for sub in subs:
+            assert sub.id in linked_ids
+
+    def test_get_linked_from_sub(self, db_session, hierarchy_users):
+        """get_linked_materials from a sub returns master + siblings."""
+        from app.models.course_content import CourseContent
+
+        course = hierarchy_users["course"]
+        teacher = hierarchy_users["teacher"]
+
+        subs = []
+        for i in range(1, 4):
+            cc = CourseContent(
+                course_id=course.id,
+                title=f"Sibling {i}",
+                content_type="notes",
+                created_by_user_id=teacher.id,
+            )
+            db_session.add(cc)
+            db_session.flush()
+            subs.append(cc)
+
+        master = create_material_hierarchy(
+            db=db_session,
+            sub_materials=subs,
+            master_title="Sibling Master",
+            course_id=course.id,
+            created_by_user_id=teacher.id,
+        )
+        db_session.commit()
+
+        # Query from sub[0] — should get master + other subs
+        linked = get_linked_materials(db=db_session, material_id=subs[0].id)
+        linked_ids = {m.id for m in linked}
+        assert master.id in linked_ids
+        assert subs[1].id in linked_ids
+        assert subs[2].id in linked_ids
+        # Should NOT include the queried material itself
+        assert subs[0].id not in linked_ids
+
+    def test_get_linked_standalone(self, db_session, hierarchy_users):
+        """get_linked_materials on non-grouped material returns empty list."""
+        from app.models.course_content import CourseContent
+
+        course = hierarchy_users["course"]
+        teacher = hierarchy_users["teacher"]
+
+        standalone = CourseContent(
+            course_id=course.id,
+            title="Standalone Material",
+            content_type="notes",
+            created_by_user_id=teacher.id,
+        )
+        db_session.add(standalone)
+        db_session.commit()
+        db_session.refresh(standalone)
+
+        linked = get_linked_materials(db=db_session, material_id=standalone.id)
+        assert linked == []
+
+
+# ── Integration tests: upload-multi hierarchy ────────────────
+
+
+class TestUploadMultiHierarchy:
+    def _make_files(self, count: int):
+        """Create list of (field_name, (filename, content, mime)) tuples."""
+        return [
+            ("files", (f"file{i}.txt", f"Content of file {i}".encode(), "text/plain"))
+            for i in range(1, count + 1)
+        ]
+
+    def test_upload_multi_creates_hierarchy(self, client, hierarchy_users):
+        """Upload 3 files => 1 master + 3 sub-materials with hierarchy."""
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            data={
+                "course_id": str(hierarchy_users["course"].id),
+                "title": "Multi Upload Test",
+            },
+            files=self._make_files(3),
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+
+        # Response should be the master material
+        assert data["title"] == "Multi Upload Test"
+        assert data.get("material_group_id") is not None
+
+    def test_upload_multi_single_file_no_hierarchy(self, client, hierarchy_users):
+        """Upload 1 file => no hierarchy created (backward compatible)."""
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            data={
+                "course_id": str(hierarchy_users["course"].id),
+                "title": "Single File Upload",
+            },
+            files=self._make_files(1),
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        # Single file should not create a hierarchy group
+        assert data.get("material_group_id") is None
+
+    def test_upload_multi_max_10_files(self, client, hierarchy_users):
+        """Upload 11 files => 400 error (max 10 enforced)."""
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            data={
+                "course_id": str(hierarchy_users["course"].id),
+                "title": "Too Many Files",
+            },
+            files=self._make_files(11),
+            headers=headers,
+        )
+        assert resp.status_code == 400
+
+    def test_sub_material_naming(self, client, db_session, hierarchy_users):
+        """Sub-materials should be named 'Master Title \u2014 Part N'."""
+        from app.models.course_content import CourseContent
+
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            data={
+                "course_id": str(hierarchy_users["course"].id),
+                "title": "Naming Test",
+            },
+            files=self._make_files(3),
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        group_id = data.get("material_group_id")
+        assert group_id is not None
+
+        # Query all materials in the group
+        materials = (
+            db_session.query(CourseContent)
+            .filter(CourseContent.material_group_id == group_id)
+            .order_by(CourseContent.id)
+            .all()
+        )
+        # Should have master + 3 subs = 4 total, or just 3 subs tagged
+        sub_titles = [m.title for m in materials if m.id != data["id"]]
+        for i, title in enumerate(sub_titles, start=1):
+            assert title == f"Naming Test \u2014 Part {i}"
+
+
+# ── Integration tests: linked-materials endpoint ─────────────
+
+
+class TestLinkedMaterialsEndpoint:
+    def _create_hierarchy_via_api(self, client, hierarchy_users):
+        """Helper: upload 3 files to create hierarchy, return master response."""
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        files = [
+            ("files", (f"linked{i}.txt", f"Linked content {i}".encode(), "text/plain"))
+            for i in range(1, 4)
+        ]
+        resp = client.post(
+            "/api/course-contents/upload-multi",
+            data={
+                "course_id": str(hierarchy_users["course"].id),
+                "title": "Linked Test",
+            },
+            files=files,
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        return resp.json()
+
+    def test_linked_materials_from_master(self, client, hierarchy_users):
+        """GET /linked-materials from master returns sub-materials."""
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        master = self._create_hierarchy_via_api(client, hierarchy_users)
+
+        resp = client.get(
+            f"/api/course-contents/{master['id']}/linked-materials",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        linked = resp.json()
+        assert len(linked) >= 3  # at least the 3 sub-materials
+
+    def test_linked_materials_from_sub(self, client, db_session, hierarchy_users):
+        """GET /linked-materials from sub returns master + siblings."""
+        from app.models.course_content import CourseContent
+
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        master = self._create_hierarchy_via_api(client, hierarchy_users)
+        group_id = master["material_group_id"]
+
+        # Find a sub-material
+        sub = (
+            db_session.query(CourseContent)
+            .filter(
+                CourseContent.material_group_id == group_id,
+                CourseContent.id != master["id"],
+            )
+            .first()
+        )
+        assert sub is not None
+
+        resp = client.get(
+            f"/api/course-contents/{sub.id}/linked-materials",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        linked = resp.json()
+        linked_ids = {item["id"] for item in linked}
+        # Master should be in the linked list
+        assert master["id"] in linked_ids
+        # The queried sub should NOT be in its own linked list
+        assert sub.id not in linked_ids
+
+    def test_linked_materials_standalone(self, client, hierarchy_users):
+        """GET /linked-materials on non-grouped material returns empty list."""
+        headers = _auth(client, hierarchy_users["teacher"].email)
+        # Create a standalone material
+        resp = client.post(
+            "/api/course-contents/",
+            json={
+                "course_id": hierarchy_users["course"].id,
+                "title": "Standalone Item",
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        cid = resp.json()["id"]
+
+        resp = client.get(
+            f"/api/course-contents/{cid}/linked-materials",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
