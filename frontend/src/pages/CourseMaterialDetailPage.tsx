@@ -194,8 +194,6 @@ export function CourseMaterialDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [btnRight, setBtnRight] = useState(24);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
@@ -251,18 +249,6 @@ export function CourseMaterialDetailPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll(); // sync initial state
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const update = () => {
-      const rect = container.getBoundingClientRect();
-      setBtnRight(Math.max(16, window.innerWidth - rect.right + 16));
-    };
-    update();
-    window.addEventListener('resize', update, { passive: true });
-    return () => window.removeEventListener('resize', update);
   }, []);
 
   const handleScrollTop = () => {
@@ -584,7 +570,7 @@ export function CourseMaterialDetailPage() {
 
   return (
     <DashboardLayout showBackButton headerSlot={() => null}>
-      <div ref={containerRef} className="cm-detail-page">
+      <div className="cm-detail-page">
         <PageNav items={[
           { label: 'Home', to: '/dashboard' },
           { label: 'Class Materials', to: '/course-materials' },
@@ -880,7 +866,6 @@ export function CourseMaterialDetailPage() {
       {showScrollTop && (
         <button
           className="cm-scroll-top-btn"
-          style={{ right: btnRight }}
           onClick={handleScrollTop}
           aria-label="Scroll to top"
           title="Scroll to top"
