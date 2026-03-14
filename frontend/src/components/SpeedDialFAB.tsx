@@ -83,7 +83,7 @@ export function SpeedDialFAB() {
 
   const showWelcome = messages.length === 0;
   const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
-  const showChips = showWelcome || (!isLoading && error) || (!isLoading && lastAssistantMessage?.intent === 'help');
+  const showChips = showWelcome || (!isLoading && error) || (!isLoading && lastAssistantMessage && ['help', 'search'].includes(lastAssistantMessage.intent || ''));
 
   // If no notes action registered, render the chat FAB directly (no speed dial)
   const hasMultipleActions = !!notesFAB;
