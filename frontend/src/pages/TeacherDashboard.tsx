@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
 import { useFeature } from '../hooks/useFeatureToggle';
-import type { GoogleAccount, InviteResponse, ConversationSummary, AssignmentItem } from '../api/client';
+import type { GoogleAccount, InviteResponse, AssignmentItem } from '../api/client';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
@@ -40,9 +40,7 @@ export function TeacherDashboard() {
 
   // Activity summary state
   const [unreadCount, setUnreadCount] = useState(0);
-  const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
-  const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentItem[]>([]);
-  const [focusDismissed, setFocusDismissed] = useState(false);
+  const [overdueCount, setOverdueCount] = useState(0);
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -70,11 +68,7 @@ export function TeacherDashboard() {
 
   // Sent invites state
   const [sentInvites, setSentInvites] = useState<InviteResponse[]>([]);
-  const [resendingId, setResendingId] = useState<number | null>(null);
-  const [, setResentToastId] = useState<number | null>(null);
-  const [invitesExpanded, setInvitesExpanded] = useState(true);
   const [googleAccountsExpanded, setGoogleAccountsExpanded] = useState(true);
-  const [resendError, setResendError] = useState<string | null>(null);
   // Announcement modal state
   const [showAnnounceModal, setShowAnnounceModal] = useState(false);
   const [announceCourseId, setAnnounceCourseId] = useState<number | ''>('');
@@ -99,13 +93,12 @@ export function TeacherDashboard() {
 
   const loadData = async () => {
     try {
-      const [coursesData, googleStatus, accountsData, invitesData, unreadData, conversationsData, assignmentsData] = await Promise.allSettled([
+      const [coursesData, googleStatus, accountsData, invitesData, unreadData, assignmentsData] = await Promise.allSettled([
         coursesApi.teachingList(),
         googleApi.getStatus(),
         googleApi.getTeacherAccounts(),
         invitesApi.listSent(),
         messagesApi.getUnreadCount(),
-        messagesApi.listConversations({ limit: 3 }),
         assignmentsApi.list(),
       ]);
 
@@ -124,16 +117,10 @@ export function TeacherDashboard() {
       if (unreadData.status === 'fulfilled') {
         setUnreadCount(unreadData.value.total_unread);
       }
-      if (conversationsData.status === 'fulfilled') {
-        setRecentConversations(conversationsData.value.slice(0, 3));
-      }
       if (assignmentsData.status === 'fulfilled') {
         const now = new Date();
-        const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const upcoming = assignmentsData.value
-          .filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) >= now && new Date(a.due_date) <= sevenDays)
-          .sort((a: AssignmentItem, b: AssignmentItem) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
-        setUpcomingAssignments(upcoming);
+        const overdue = assignmentsData.value.filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) < now);
+        setOverdueCount(overdue.length);
       }
     } finally {
       setLoading(false);
@@ -254,39 +241,6 @@ export function TeacherDashboard() {
     }
   };
 
-  const handleResendInvite = async (inviteId: number) => {
-    setResendingId(inviteId);
-    setResendError(null);
-    try {
-      const updated = await invitesApi.resend(inviteId);
-      setSentInvites(prev => prev.map(i => i.id === inviteId ? updated : i));
-      setResentToastId(inviteId);
-      setTimeout(() => setResentToastId(null), 3000);
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (err.response?.status === 429 && detail) {
-        setResendError(detail);
-        setTimeout(() => setResendError(null), 5000);
-      }
-    }
-    setResendingId(null);
-  };
-
-  const isResendCoolingDown = (invite: InviteResponse): boolean => {
-    if (!invite.last_resent_at) return false;
-    const lastResent = new Date(invite.last_resent_at).getTime();
-    const oneHour = 60 * 60 * 1000;
-    return Date.now() - lastResent < oneHour;
-  };
-
-  const getResendCooldownMinutes = (invite: InviteResponse): number => {
-    if (!invite.last_resent_at) return 0;
-    const lastResent = new Date(invite.last_resent_at).getTime();
-    const oneHour = 60 * 60 * 1000;
-    const remaining = oneHour - (Date.now() - lastResent);
-    return Math.max(0, Math.ceil(remaining / 60000));
-  };
-
   const closeInviteParentModal = () => {
     setShowInviteParentModal(false);
     setInviteParentEmail('');
@@ -348,9 +302,8 @@ export function TeacherDashboard() {
   const firstName = user?.full_name?.split(' ')[0] ?? '';
 
   const renderHeaderSlot = (inspiration: InspirationData | null) => {
-    if (focusDismissed) return null;
-
     const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+    const totalStudents = courses.reduce((sum, c) => sum + c.student_count, 0);
 
     return (
       <div className="teacher-focus-header">
@@ -363,25 +316,11 @@ export function TeacherDashboard() {
           <div>
             <div className="teacher-focus-title">
               {greeting}, {firstName}!
-              {unreadCount > 0 && ` You have ${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}.`}
-              {unreadCount === 0 && ' Your inbox is clear.'}
             </div>
             <div className="teacher-focus-badges">
-              {unreadCount > 0 && (
-                <button type="button" className="teacher-focus-badge messages" onClick={() => navigate('/messages')}>
-                  {unreadCount} unread
-                </button>
-              )}
-              {upcomingAssignments.length > 0 && (
-                <button type="button" className="teacher-focus-badge deadlines" onClick={() => navigate('/courses')}>
-                  {upcomingAssignments.length} deadline{upcomingAssignments.length !== 1 ? 's' : ''} this week
-                </button>
-              )}
-              {courses.length > 0 && (
-                <span className="teacher-focus-badge classes">
-                  {courses.reduce((sum, c) => sum + c.student_count, 0)} students
-                </span>
-              )}
+              <span className="teacher-focus-badge classes">
+                {courses.length} classes · {totalStudents} students · {unreadCount} messages
+              </span>
             </div>
           </div>
         </div>
@@ -391,7 +330,6 @@ export function TeacherDashboard() {
             {inspiration.author && <span className="teacher-focus-author"> — {inspiration.author}</span>}
           </div>
         )}
-        <button className="teacher-focus-close" onClick={() => setFocusDismissed(true)} aria-label="Dismiss">{'\u00D7'}</button>
       </div>
     );
   };
@@ -412,10 +350,46 @@ export function TeacherDashboard() {
 
       {/* ── 3-Section Dashboard Grid (#1417) ────────────── */}
       <div className="dashboard-redesign">
-        {/* Section 1: Class Overview */}
+        {/* Section 1: Student Alerts */}
         <section className="dash-section dash-section--primary">
           <div className="dash-section-header">
-            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128218;</span> Class Overview</h3>
+            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128680;</span> Student Alerts</h3>
+          </div>
+          <div className="dash-section-body">
+            {overdueCount === 0 && unreadCount === 0 && sentInvites.filter(i => i.status === 'pending').length === 0 ? (
+              <EmptyState icon="&#10003;" title="All clear! No urgent items." description="" />
+            ) : (
+              <div className="teacher-activity-list">
+                {overdueCount > 0 && (
+                  <div className="teacher-activity-item" onClick={() => navigate('/courses')} style={{ cursor: 'pointer' }}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{overdueCount} overdue assignment{overdueCount !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                )}
+                {unreadCount > 0 && (
+                  <div className="teacher-activity-item" onClick={() => navigate('/messages')} style={{ cursor: 'pointer' }}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{unreadCount} new parent message{unreadCount !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                )}
+                {sentInvites.filter(i => i.status === 'pending').length > 0 && (
+                  <div className="teacher-activity-item" onClick={() => navigate('/messages')} style={{ cursor: 'pointer' }}>
+                    <div className="teacher-activity-item-info">
+                      <span className="teacher-activity-item-name">{sentInvites.filter(i => i.status === 'pending').length} pending invite{sentInvites.filter(i => i.status === 'pending').length !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Section 2: My Classes */}
+        <section className="dash-section dash-section--secondary">
+          <div className="dash-section-header">
+            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128218;</span> My Classes</h3>
           </div>
           <div className="dash-section-body">
             <TeacherCourseManagement key={courses.length} googleConnected={gcEnabled && googleConnected} onSync={handleSyncCourses} syncing={syncing} onCreateCourse={() => setShowCreateModal(true)} />
@@ -445,89 +419,17 @@ export function TeacherDashboard() {
           </div>
         </section>
 
-        {/* Section 2: Pending Items */}
-        <section className="dash-section dash-section--secondary">
-          <div className="dash-section-header">
-            <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128172;</span> Pending Items</h3>
-            {unreadCount > 0 && <button className="dash-section-link" onClick={() => navigate('/messages')} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>{unreadCount} unread</button>}
-          </div>
-          <div className="dash-section-body">
-            {recentConversations.length > 0 ? (
-              <div className="teacher-activity-list">
-                {recentConversations.map((conv) => (
-                  <div key={conv.id} className="teacher-activity-item" onClick={() => navigate('/messages')}>
-                    <div className="teacher-activity-item-info">
-                      <span className="teacher-activity-item-name">{conv.other_participant_name}</span>
-                      <span className="teacher-activity-item-preview">{conv.last_message_preview || 'No messages yet'}</span>
-                    </div>
-                    {conv.unread_count > 0 && <span className="teacher-activity-unread-badge">{conv.unread_count}</span>}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon="&#128172;" title="No recent messages" description="Messages from parents will appear here." />
-            )}
-            {upcomingAssignments.length > 0 && (
-              <>
-                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
-                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Upcoming Deadlines</h4>
-                <div className="teacher-activity-list">
-                  {upcomingAssignments.slice(0, 5).map((assignment) => (
-                    <div key={assignment.id} className="teacher-activity-item" onClick={() => navigate('/courses')}>
-                      <div className="teacher-activity-item-info">
-                        <span className="teacher-activity-item-name">{assignment.title}</span>
-                        <span className="teacher-activity-item-preview">{assignment.course_name}</span>
-                      </div>
-                      <span className="teacher-activity-item-time">{new Date(assignment.due_date!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {sentInvites.length > 0 && (
-              <>
-                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
-                <button className="collapse-toggle" onClick={() => setInvitesExpanded(!invitesExpanded)} style={{ fontSize: 13 }}>
-                  <span className={`section-chevron${invitesExpanded ? ' expanded' : ''}`}>&#9654;</span> Sent Invites ({sentInvites.length})
-                </button>
-                {resendError && <div className="resend-error-toast">{resendError}</div>}
-                {invitesExpanded && (
-                  <div className="sent-invites-list" style={{ marginTop: 8 }}>
-                    {sentInvites.map(inv => {
-                      const cooling = isResendCoolingDown(inv);
-                      const cooldownMins = cooling ? getResendCooldownMinutes(inv) : 0;
-                      return (
-                        <div key={inv.id} className="sent-invite-row">
-                          <div className="sent-invite-info">
-                            <span className="sent-invite-email">{inv.email}</span>
-                            <span className={`sent-invite-status-badge status-${inv.status}`}>{inv.status}</span>
-                          </div>
-                          {inv.status === 'pending' && (
-                            <button className="text-btn" disabled={resendingId === inv.id || !(!cooling)} onClick={() => handleResendInvite(inv.id)}>
-                              {resendingId === inv.id ? '...' : cooling ? `${cooldownMins}m` : 'Resend'}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
-
         {/* Section 3: Quick Actions */}
         <section className="dash-section dash-section--actions">
           <div className="dash-section-header">
             <h3 className="dash-section-title">Quick Actions</h3>
           </div>
           <div className="dash-quick-actions">
-            <button className="dash-quick-action" onClick={() => setShowCreateModal(true)}><span className="dash-quick-action-icon">&#10133;</span> Create Class</button>
-            <button className="dash-quick-action" onClick={() => navigate('/messages')}><span className="dash-quick-action-icon">&#128172;</span> Message Parents</button>
-            <button className="dash-quick-action" onClick={() => setShowAnnounceModal(true)}><span className="dash-quick-action-icon">&#128227;</span> Announcements</button>
-            <button className="dash-quick-action" onClick={() => setShowInviteParentModal(true)}><span className="dash-quick-action-icon">&#128101;</span> Invite Parents</button>
+            <button className="dash-quick-action" onClick={() => navigate('/courses')}><span className="dash-quick-action-icon">&#10133;</span> Create Assignment</button>
+            <button className="dash-quick-action" onClick={() => navigate('/messages')}><span className="dash-quick-action-icon">&#128172;</span> Send Message</button>
             <button className="dash-quick-action" onClick={() => studyTools.setShowStudyModal(true)}><span className="dash-quick-action-icon">&#128228;</span> Upload Material</button>
+            <button className="dash-quick-action" onClick={() => handleSyncCourses()}><span className="dash-quick-action-icon">&#128259;</span> Sync Classroom</button>
+            <button className="dash-quick-action" onClick={() => setShowInviteParentModal(true)}><span className="dash-quick-action-icon">&#128101;</span> Invite Parents</button>
           </div>
         </section>
       </div>

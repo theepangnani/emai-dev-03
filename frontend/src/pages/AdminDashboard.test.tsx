@@ -531,6 +531,7 @@ describe.skip('AdminDashboard', () => {
       expect(screen.getByText('Users')).toBeInTheDocument()
     })
 
+    expect(screen.getByText(/Manage Users/)).toBeInTheDocument()
     expect(screen.getByText(/View Logs/)).toBeInTheDocument()
     expect(screen.getByText(/AI Settings/)).toBeInTheDocument()
   })

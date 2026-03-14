@@ -15,6 +15,10 @@ class AdminStats(BaseModel):
     users_by_role: dict[str, int]
     total_courses: int
     total_assignments: int
+    # New fields for v2:
+    total_materials: int = 0
+    new_registrations_today: int = 0
+    ai_generations_last_hour: int = 0
 
 
 class BroadcastCreate(BaseModel):

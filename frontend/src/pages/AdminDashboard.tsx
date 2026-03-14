@@ -231,7 +231,7 @@ export function AdminDashboard() {
   const totalPages = Math.ceil(totalUsers / PAGE_SIZE);
 
   return (
-    <DashboardLayout welcomeSubtitle="Platform administration">
+    <DashboardLayout welcomeSubtitle="Platform Overview">
       {/* ── 3-Section Dashboard Grid ── */}
       <div className="dashboard-redesign">
         {/* Section 1: Platform Health */}
@@ -260,6 +260,14 @@ export function AdminDashboard() {
                 <span className="dash-metric-value">{stats?.total_courses ?? 0}</span>
                 <span className="dash-metric-label">Classes</span>
               </div>
+              <div className="dash-metric-card">
+                <span className="dash-metric-value">{stats?.total_materials ?? 0}</span>
+                <span className="dash-metric-label">Materials</span>
+              </div>
+              <div className="dash-metric-card">
+                <span className="dash-metric-value">{stats?.new_registrations_today ?? 0}</span>
+                <span className="dash-metric-label">New Today</span>
+              </div>
             </div>
 
             {/* Feature Toggles */}
@@ -287,6 +295,17 @@ export function AdminDashboard() {
             <Link to="/admin/audit-log" className="dash-section-link">Full log</Link>
           </div>
           <div className="dash-section-body">
+            <div className="admin-activity-summary">
+              <div className="admin-activity-summary-row">
+                <span className="admin-activity-summary-icon">👤</span>
+                <span>{stats?.new_registrations_today ?? 0} new registrations today</span>
+              </div>
+              <div className="admin-activity-summary-row">
+                <span className="admin-activity-summary-icon">🤖</span>
+                <span>{stats?.ai_generations_last_hour ?? 0} AI generations in last hour</span>
+              </div>
+            </div>
+            <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
             {recentActivity.length > 0 ? (
               <div className="admin-recent-activity-list">
                 {recentActivity.map((entry) => (
@@ -331,6 +350,7 @@ export function AdminDashboard() {
             <h3 className="dash-section-title">Quick Actions</h3>
           </div>
           <div className="dash-quick-actions">
+            <button className="dash-quick-action" onClick={() => { setUsersExpanded(true); document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }); }}><span className="dash-quick-action-icon">👥</span> Manage Users</button>
             <Link to="/admin/audit-log" className="dash-quick-action"><span className="dash-quick-action-icon">&#128203;</span> View Logs</Link>
             <Link to="/admin/ai-usage" className="dash-quick-action"><span className="dash-quick-action-icon">&#129302;</span> AI Settings</Link>
             <Link to="/admin/faq" className="dash-quick-action"><span className="dash-quick-action-icon">&#10067;</span> Manage FAQ</Link>
@@ -339,7 +359,7 @@ export function AdminDashboard() {
         </section>
 
         {/* Section 4: User Management (full-width) */}
-        <section className="dash-section dash-section--full">
+        <section className="dash-section dash-section--full" id="admin-user-management">
           <div className="dash-section-header">
             <button className="collapse-toggle" onClick={() => setUsersExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               <span className={`section-chevron${usersExpanded ? ' expanded' : ''}`}>&#9654;</span>
