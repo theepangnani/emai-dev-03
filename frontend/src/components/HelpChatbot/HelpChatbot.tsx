@@ -62,7 +62,8 @@ export function HelpChatbot() {
   }, [sendMessage]);
 
   const showWelcome = messages.length === 0;
-  const showChips = showWelcome || (!isLoading && error);
+  const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
+  const showChips = showWelcome || (!isLoading && error) || (!isLoading && lastAssistantMessage?.intent === 'help');
 
   return (
     <>

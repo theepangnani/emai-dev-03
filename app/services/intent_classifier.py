@@ -1,3 +1,5 @@
+GREETING_KEYWORDS = {"hi", "hello", "hey", "help", "menu", "start", "options"}
+
 SEARCH_KEYWORDS = [
     "find", "search", "show me", "list", "where is", "where are",
     "my courses", "my tasks", "my study", "my notes", "my materials",
@@ -21,6 +23,10 @@ def classify_intent(message: str, openai_api_key: str | None = None) -> str:
     for ambiguous messages when openai_api_key is provided.
     """
     msg = message.lower().strip()
+
+    # Greetings and menu commands always go to help (show suggestion chips)
+    if msg in GREETING_KEYWORDS:
+        return "help"
 
     # Check action first (most specific)
     if any(kw in msg for kw in ACTION_KEYWORDS):
