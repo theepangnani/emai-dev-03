@@ -451,6 +451,26 @@
   opacity: 0.85;
 }
 
+.search-result-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  padding: 6px 4px 2px;
+}
+
+.search-result-see-all {
+  color: var(--color-accent-strong);
+  text-decoration: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.search-result-see-all:hover {
+  text-decoration: underline;
+}
+
 /* Mobile responsive: full-width bottom sheet below 768px */
 @media (max-width: 767px) {
   .help-chatbot-fab {
