@@ -134,6 +134,8 @@ GitHub Issues: #198, #199, #200, #557
 
 ### 6.17 Global Search (Phase 1.5) - IMPLEMENTED
 
+**Status: DEPRECATED — Superseded by §6.59.9 (#1630). Removal tracked in #1698.**
+
 A unified search field in the DashboardLayout header that searches across the entire ClassBridge platform. Available to all roles (parent, student, teacher, admin).
 
 **Searchable Entities:**

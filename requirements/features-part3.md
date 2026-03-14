@@ -1806,7 +1806,7 @@ A persistent floating chatbot widget available on all authenticated pages that h
 - **User-first** — Context-aware suggestions, role-tailored answers, video tutorials inline.
 - **Cost-controlled** — Rate limited to 30 requests/hour per user. Static knowledge base for help; SQL ILIKE for data search ($0 AI cost).
 - **Non-intrusive** — FAB in bottom-right, never auto-opens (subtle tooltip on first visit only).
-- **Unified search** — Also serves as global search across platform data (§6.59.9, #1630). Replaces standalone Global Search (#1410).
+- **Unified search** — Also serves as global search across platform data (§6.59.9, #1630). Replaces standalone Global Search (#1410). GlobalSearch component to be removed post-parity (#1698).
 
 #### Widget UX
 
@@ -1944,6 +1944,7 @@ components/HelpChatbot/
 - [x] Backend + frontend tests (#1362)
 - [x] NotesFAB z-index coordination + mobile bottom sheet (#1363)
 - [x] Global Search integration — search across platform data (#1630)
+- [ ] Remove GlobalSearch component — delete GlobalSearch.tsx/css, /api/search endpoint, wire Ctrl+K to chatbot (#1698)
 
 #### 6.59.9 Global Search Integration (#1630)
 
@@ -1989,6 +1990,32 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [x] Frontend: action buttons on search result cards
 - [x] Frontend: smart preset detection + shortcuts
 - [x] Tests
+
+#### 6.59.10 GlobalSearch Deprecation (#1698)
+
+**Blocked by:** #1696 (chatbot must have full entity parity first)
+
+Remove the standalone `GlobalSearch` component and `/api/search` endpoint now that the Help Chatbot serves as the unified search surface with full entity parity.
+
+**Files to delete:**
+- `frontend/src/components/GlobalSearch.tsx`
+- `frontend/src/components/GlobalSearch.css`
+- `frontend/src/api/search.ts`
+- `app/api/routes/search.py`
+
+**Files to update:**
+- `frontend/src/components/DashboardLayout.tsx` — remove GlobalSearch; wire **Ctrl+K / Cmd+K** to open/focus the HelpChatbot panel
+- `frontend/src/components/HelpChatbot/HelpChatbot.tsx` — accept programmatic open trigger for Ctrl+K
+- 12 test files — replace GlobalSearch mock with HelpChatbot mock
+
+**UX requirement:** Ctrl+K / Cmd+K must open/focus the chatbot panel to maintain keyboard power-user experience.
+
+**Sub-tasks:**
+- [ ] Backend: delete `app/api/routes/search.py` and unregister router
+- [ ] Frontend: delete `GlobalSearch.tsx`, `GlobalSearch.css`, `frontend/src/api/search.ts`
+- [ ] Frontend: wire Ctrl+K → open chatbot panel in `DashboardLayout.tsx`
+- [ ] Frontend: update 12 test files (swap GlobalSearch mock for HelpChatbot mock)
+- [ ] Tests: confirm all tests pass after removal
 
 ---
 
