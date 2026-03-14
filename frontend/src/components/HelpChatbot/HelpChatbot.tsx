@@ -7,6 +7,8 @@ import './HelpChatbot.css';
 
 const STORAGE_KEY = 'classbridge-help-open';
 
+const CHAT_COMMANDS = new Set(['clear', 'reset']);
+
 export function HelpChatbot() {
   const [isOpen, setIsOpen] = useState(() => {
     try {
@@ -46,9 +48,16 @@ export function HelpChatbot() {
   const handleSend = useCallback(() => {
     const text = inputValue.trim();
     if (!text || isLoading) return;
+
+    if (CHAT_COMMANDS.has(text.toLowerCase())) {
+      clearMessages();
+      setInputValue('');
+      return;
+    }
+
     setInputValue('');
     sendMessage(text);
-  }, [inputValue, isLoading, sendMessage]);
+  }, [inputValue, isLoading, sendMessage, clearMessages]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
