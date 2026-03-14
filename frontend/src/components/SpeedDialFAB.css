@@ -203,7 +203,7 @@
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .speed-dial {
-    bottom: 16px;
+    bottom: 80px;
     right: 16px;
   }
 
