@@ -28,6 +28,7 @@ COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 # Copy backend application
 COPY app/ ./app/
 COPY data/ ./data/
+COPY scripts/ ./scripts/
 COPY main.py .
 COPY alembic.ini .
 COPY alembic/ ./alembic/
