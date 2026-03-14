@@ -43,6 +43,23 @@ def test_keyword_help_intents():
     assert classify_intent("how to find my courses") == "help"
 
 
+def test_greeting_keywords_route_to_help():
+    """Greeting/menu words must route to 'help' (regression #1743)."""
+    assert classify_intent("hi") == "help"
+    assert classify_intent("hello") == "help"
+    assert classify_intent("hey") == "help"
+    assert classify_intent("help") == "help"
+    assert classify_intent("menu") == "help"
+    assert classify_intent("start") == "help"
+    assert classify_intent("options") == "help"
+    # Case-insensitive
+    assert classify_intent("Hi") == "help"
+    assert classify_intent("HELLO") == "help"
+    assert classify_intent("HEY") == "help"
+    assert classify_intent("HELP") == "help"
+    assert classify_intent("MENU") == "help"
+
+
 def test_keyword_defaults_to_help_without_api_key():
     """Unknown messages with no API key must default to 'help'."""
     assert classify_intent("") == "help"
