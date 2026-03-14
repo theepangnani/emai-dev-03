@@ -2856,11 +2856,11 @@ Dedicated `/activity` page for parents to view full paginated activity history w
 
 **Status:** IMPLEMENTED
 
-### 6.93 GCS File Storage Migration - IN PROGRESS
+### 6.93 GCS File Storage Migration - COMPLETE
 
 Migrate source file and image blobs from PostgreSQL (`LargeBinary`) to Google Cloud Storage to reduce DB size, improve download performance, and lower storage costs (~8-9x cheaper than Cloud SQL per GB).
 
-**GitHub:** #1643 (issue), #1689 (migration PR ✅ merged), #1690 (backfill issue), #1691 (backfill PR ✅ merged)
+**GitHub:** #1643 (issue), #1689 (migration PR ✅ merged), #1690 (backfill issue), #1691 (backfill PR ✅ merged), #1697 (column drop ✅ merged), #1704 (test fixes ✅ merged)
 
 **Infrastructure:**
 - GCS bucket `gs://classbridge-files` created (us-central1, uniform access)
@@ -2875,10 +2875,10 @@ Migrate source file and image blobs from PostgreSQL (`LargeBinary`) to Google Cl
 - [x] Delete routes clean up GCS objects
 - [x] DB migrations for new columns
 - [x] Backfill script `scripts/backfill_blobs_to_gcs.py` — idempotent, `--dry-run` support, handles all MIME types (#1691)
-- [ ] Run backfill script in production to migrate existing blobs
-- [ ] After backfill confirmed: drop `file_data` / `image_data` columns
+- [x] Run backfill script in production — 9 SourceFiles + 9 ContentImages migrated, 0 failed (2026-03-14)
+- [x] Drop `file_data` / `image_data` columns (#1697/#1704 ✅ deployed 2026-03-14)
 
-**Status:** IN PROGRESS — both PRs merged and deployed; backfill script pending production run
+**Status:** COMPLETE — all blobs migrated to GCS; `file_data`/`image_data` columns dropped from DB
 
 ---
 
