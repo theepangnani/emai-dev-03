@@ -1998,10 +1998,13 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [x] Bug fix: chatbot search uses narrower access scope than global search for parents — misses children's study guides and tasks (#1734, PR #1742)
 - [x] Bug fix: greeting/command words route to search instead of showing chips (#1743, PR #1745)
 - [ ] Bug fix: "show tasks for [name]" bypasses person filter (#1746)
-- [ ] Bug fix: 0 search results show no guidance chips (#1747)
+- [ ] Bug fix: 0 search results show no guidance chips (#1747, updated #1778)
 - [ ] Feat: streaming LLM response — token-by-token typewriter effect (#1748)
 - [ ] Feat: search result limits raised + count display (#1749)
 - [ ] Feat: chat command interception (clear/reset) (#1750)
+- [ ] Fix: add topic keywords to intent classifier for help routing (#1778)
+- [ ] Feat: "What can the chatbot do?" FAQ entry + suggestion chip (#1778)
+- [ ] Feat: comprehensive FAQ knowledge base expansion (#1779)
 
 **Search Scope Parity (Parent Role):** Chatbot search MUST use the same access scope as global search. For parent users, `search_service.py` must build `accessible_user_ids = [parent_id] + child_user_ids` and apply it to both study guide filters (`StudyGuide.user_id.in_(accessible_user_ids)`) and task filters (`created_by.in_(accessible_user_ids) OR assigned_to.in_(accessible_user_ids)`). This applies to `_list_tasks()`, `_list_tasks_for_person()`, and the main `search()` method. Using only `parent_id` or only `child_user_ids` is a defect.
 
@@ -2155,6 +2158,35 @@ Intercept known command words (`clear`, `reset`) in the frontend before sending 
 
 - [x] Person filter bypassed by detect_preset for "show tasks for [name]" — fix: move person filter before detect_preset (#1746)
 - [x] 0 search results show "No results found" with no guidance — fix: return intent="help" on empty results, chips appear (#1747)
+
+---
+
+#### 6.59.16 Help Knowledge Base Expansion (#1779)
+
+**Status:** IN PROGRESS | **Priority:** Medium
+
+Expand the FAQ knowledge base to provide comprehensive coverage for all platform features. Users asking about features not covered in the FAQ receive generic fallback answers, reducing chatbot usefulness.
+
+**Gap Areas Addressed:**
+- Grades & Analytics (view grades, AI insights, sync, trends, weekly progress)
+- Assignments — student workflow (submit, resubmit, feedback, late submissions)
+- Daily Digest & Briefings (digest config, "Help My Kid" feature, child briefing)
+- Conversation Starters (what they are, how to get them)
+- Data Export (request export, what's included)
+- Mind Maps (generate, customize)
+- Calendar Import (import external calendar, supported formats)
+- Study Sharing (teacher sharing, student limitations)
+- Resource Links (what they are, how to add)
+- Readiness Check (what it is, how to run)
+- Student Email Management (secondary email, change primary)
+- Storage Limits (usage, what happens at limit)
+- Chatbot Capabilities (enhanced "What can the chatbot do?" entry)
+
+**Sub-tasks:**
+- [ ] Add 32 new FAQ entries to `app/data/help_knowledge/faq.yaml`
+- [ ] Update existing `faq-help-2` with comprehensive chatbot capabilities answer
+- [ ] Add TOPIC_KEYWORDS to intent classifier for bare topic routing (#1778)
+- [ ] Add "What can this chatbot do?" suggestion chip (#1778)
 
 ---
 

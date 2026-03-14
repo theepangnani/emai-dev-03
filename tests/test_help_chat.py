@@ -121,6 +121,13 @@ def test_classify_intent_help():
     assert classify_intent("how to find my courses") == "help"
 
 
+def test_classify_intent_topic_keywords():
+    assert classify_intent("messages") == "help"
+    assert classify_intent("google classroom") == "help"
+    assert classify_intent("grades") == "help"
+    assert classify_intent("mind map") == "help"
+
+
 def test_classify_intent_defaults_to_help():
     assert classify_intent("") == "help"
     assert classify_intent("how does this platform work for teachers") == "help"

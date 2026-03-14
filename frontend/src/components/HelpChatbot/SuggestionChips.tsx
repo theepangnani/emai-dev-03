@@ -4,6 +4,7 @@ interface SuggestionChipsProps {
 }
 
 const DEFAULT_CHIPS = [
+  'What can this chatbot do?',
   'Getting Started',
   'How do I use Google Classroom?',
   'What are AI Study Tools?',
@@ -19,7 +20,7 @@ const PAGE_CHIPS: Record<string, string[]> = {
   '/course-materials': ['Upload a file', 'Supported file formats', 'Generate study guide'],
   '/my-kids': ['How do I add a child?', 'Link to Google Classroom', 'View grades'],
   '/dashboard': ['Getting Started', 'What can ClassBridge do?', 'Connect Google Classroom'],
-  '/help': ['Getting Started', 'How do I use Google Classroom?', 'What are AI Study Tools?'],
+  '/help': ['What can this chatbot do?', 'Getting Started', 'How do I use Google Classroom?', 'What are AI Study Tools?'],
 };
 
 export function SuggestionChips({ onChipClick, currentPage }: SuggestionChipsProps) {
