@@ -28,12 +28,11 @@ _ENTITY_LIST_PATTERNS = [
 
 @dataclass
 class SearchResult:
-    entity_type: str  # "course" | "study_guide" | "task" | "course_content" | "faq" | "note" | "action" | "summary"
+    entity_type: str  # "course" | "study_guide" | "task" | "course_content" | "faq" | "note" | "action"
     id: int | None
     title: str
     description: str | None
     actions: list[dict] = field(default_factory=list)
-    total: int | None = None  # total available (for pagination hint)
 
 
 _ACTION_PREFIX_RE = _re.compile(
@@ -201,7 +200,7 @@ class SearchService:
         else:
             task_q = task_q.filter(Task.created_by_user_id == user_id)
 
-        tasks = task_q.order_by(Task.due_date.asc().nullslast()).limit(20).all()
+        tasks = task_q.order_by(Task.due_date.asc().nullslast()).limit(8).all()
         results = []
         for t in tasks:
             due_str = t.due_date.strftime("%b %d") if t.due_date else None
@@ -215,7 +214,7 @@ class SearchService:
         return results
 
     def _list_tasks(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
-        """Return up to 20 most recent non-archived tasks for the user."""
+        """Return up to 8 most recent non-archived tasks for the user."""
         q = db.query(Task).filter(Task.archived_at.is_(None))
         if user_role == "student":
             q = q.filter(
@@ -229,9 +228,8 @@ class SearchService:
             )
         else:
             q = q.filter(Task.created_by_user_id == user_id)
-        total_count = q.count()
-        tasks = q.order_by(Task.created_at.desc()).limit(20).all()
-        results = [
+        tasks = q.order_by(Task.created_at.desc()).limit(8).all()
+        return [
             SearchResult(
                 entity_type="task",
                 id=t.id,
@@ -241,15 +239,6 @@ class SearchService:
             )
             for t in tasks
         ]
-        if total_count > 20:
-            results.append(SearchResult(
-                entity_type="summary",
-                id=None,
-                title=f"Showing 20 of {total_count} tasks",
-                description=None,
-                actions=[{"label": "See all tasks", "route": "/tasks"}],
-            ))
-        return results
 
     def _list_courses(self, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
         """Return up to 8 courses accessible to the user."""
@@ -277,7 +266,7 @@ class SearchService:
                 q = q.filter(Course.teacher_id == teacher_row.id)
             else:
                 return []
-        courses = q.order_by(Course.name).limit(20).all()
+        courses = q.order_by(Course.name).limit(8).all()
         return [
             SearchResult(
                 entity_type="course",
@@ -331,7 +320,7 @@ class SearchService:
                 q = q.filter(Assignment.course_id.in_(course_ids))
             else:
                 return []
-        rows = q.order_by(Assignment.due_date.desc().nullslast()).limit(20).all()
+        rows = q.order_by(Assignment.due_date.desc().nullslast()).limit(8).all()
         return [
             SearchResult(
                 entity_type="assignment",
@@ -344,20 +333,18 @@ class SearchService:
         ]
 
     def _list_study_guides(self, user_id: int, db: Session, user_role: str = "") -> list[SearchResult]:
-        """Return up to 20 most recent study guides for the user (and children for parents)."""
+        """Return up to 8 most recent study guides for the user (and children for parents)."""
         if user_role == "parent":
             accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
-            guide_q = db.query(StudyGuide).filter(
+            guides = db.query(StudyGuide).filter(
                 StudyGuide.user_id.in_(accessible_ids),
                 StudyGuide.archived_at.is_(None),
-            )
+            ).order_by(StudyGuide.created_at.desc()).limit(8).all()
         else:
-            guide_q = db.query(StudyGuide).filter(
+            guides = db.query(StudyGuide).filter(
                 StudyGuide.user_id == user_id,
                 StudyGuide.archived_at.is_(None),
-            )
-        total_count = guide_q.count()
-        guides = guide_q.order_by(StudyGuide.created_at.desc()).limit(20).all()
+            ).order_by(StudyGuide.created_at.desc()).limit(8).all()
         results = []
         for g in guides:
             guide_type = g.guide_type or "study_guide"
@@ -369,20 +356,12 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": route}],
             ))
-        if total_count > 20:
-            results.append(SearchResult(
-                entity_type="summary",
-                id=None,
-                title=f"Showing 20 of {total_count} study guides",
-                description=None,
-                actions=[{"label": "See all study guides", "route": "/study-tools"}],
-            ))
         return results
 
     def _list_notes(self, user_id: int, db: Session) -> list[SearchResult]:
         """Return up to 8 most recent notes for the user."""
         from app.models.course_content import CourseContent as _CC
-        notes = db.query(Note).filter(Note.user_id == user_id).order_by(Note.updated_at.desc()).limit(20).all()
+        notes = db.query(Note).filter(Note.user_id == user_id).order_by(Note.updated_at.desc()).limit(8).all()
         results = []
         for n in notes:
             cc = db.query(_CC).filter(_CC.id == n.course_content_id).first()
@@ -439,7 +418,7 @@ class SearchService:
                 q = q.filter(CourseContent.course_id.in_(course_ids))
             else:
                 return []
-        items = q.order_by(CourseContent.created_at.desc()).limit(20).all()
+        items = q.order_by(CourseContent.created_at.desc()).limit(8).all()
         return [
             SearchResult(
                 entity_type="course_content",
@@ -519,7 +498,7 @@ class SearchService:
         raw = _extract_search_term(query)
         term = f"%{escape_like(raw)}%"
         results: list[SearchResult] = []
-        remaining = 25
+        remaining = 10
 
         # Children (parent-only — search by full name)
         if user_role == "parent":
@@ -541,7 +520,7 @@ class SearchService:
                     description="Child",
                     actions=[{"label": "View Profile", "route": f"/my-kids/{student.id}"}],
                 ))
-            remaining = 25 - len(results)
+            remaining = 10 - len(results)
             if remaining <= 0:
                 return results
 
@@ -586,7 +565,7 @@ class SearchService:
                 description=c.description,
                 actions=[{"label": "View", "route": f"/classes/{c.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 10 - len(results)
         if remaining <= 0:
             return results
 
@@ -641,7 +620,7 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": f"/courses/{a.course_id}/assignments/{a.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 10 - len(results)
         if remaining <= 0:
             return results
 
@@ -674,7 +653,7 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": route}],
             ))
-        remaining = 25 - len(results)
+        remaining = 10 - len(results)
         if remaining <= 0:
             return results
 
@@ -704,7 +683,7 @@ class SearchService:
                 description=t.description,
                 actions=[{"label": "View", "route": f"/tasks/{t.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 10 - len(results)
         if remaining <= 0:
             return results
 
@@ -762,7 +741,7 @@ class SearchService:
                 description=cc.description,
                 actions=[{"label": "View", "route": f"/classes/{cc.course_id}/content/{cc.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 10 - len(results)
         if remaining <= 0:
             return results
 
@@ -783,7 +762,7 @@ class SearchService:
                 description=None,
                 actions=[{"label": "View", "route": f"/faq/{fa.id}"}],
             ))
-        remaining = 25 - len(results)
+        remaining = 10 - len(results)
         if remaining <= 0:
             return results
 
