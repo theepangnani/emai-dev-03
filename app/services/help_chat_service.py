@@ -35,13 +35,12 @@ RULES:
 13. When mentioning a ClassBridge feature or page, include a markdown link to the relevant in-app route. Use these route mappings:
    - Dashboard: /dashboard
    - Messages: /messages
-   - Classes: /classes
-   - AI Study Tools: /study-tools
+   - Courses: /courses
+   - AI Study Tools: /study
    - Help page: /help
-   - Settings: /settings
-   - Students: /students
-   - Teachers: /teachers
-   - Admin Management: /admin
+   - Settings: /settings/account
+   - Tasks: /tasks
+   - FAQ: /faq
    For example: "You can view your conversations on the [Messages page](/messages)."
 
 CONTEXT DOCUMENTS:

@@ -273,7 +273,7 @@ class SearchService:
                 id=c.id,
                 title=c.name,
                 description=c.description,
-                actions=[{"label": "View", "route": f"/classes/{c.id}"}],
+                actions=[{"label": "View", "route": f"/courses/{c.id}"}],
             )
             for c in courses
         ]
@@ -327,7 +327,7 @@ class SearchService:
                 id=a.id,
                 title=a.title,
                 description=c.name,
-                actions=[{"label": "View", "route": f"/courses/{c.id}/assignments/{a.id}"}],
+                actions=[{"label": "View", "route": f"/courses/{c.id}"}],
             )
             for a, c in rows
         ]
@@ -446,7 +446,7 @@ class SearchService:
                 id=None,
                 title="Upload Material",
                 description="Upload course materials or study resources",
-                actions=[{"label": "Go to Study Tools", "route": "/study-tools"}],
+                actions=[{"label": "Go to Study Tools", "route": "/study"}],
             )]
 
         if preset == "create":
@@ -456,21 +456,21 @@ class SearchService:
                     id=None,
                     title="New Course",
                     description="Create a new course",
-                    actions=[{"label": "Create", "route": "/classes/new"}],
+                    actions=[{"label": "Create", "route": "/courses"}],
                 ),
                 SearchResult(
                     entity_type="action",
                     id=None,
                     title="New Task",
                     description="Create a new task",
-                    actions=[{"label": "Create", "route": "/tasks/new"}],
+                    actions=[{"label": "Create", "route": "/tasks"}],
                 ),
                 SearchResult(
                     entity_type="action",
                     id=None,
                     title="Generate Study Guide",
                     description="Generate an AI study guide",
-                    actions=[{"label": "Go to Study Tools", "route": "/study-tools"}],
+                    actions=[{"label": "Go to Study Tools", "route": "/study"}],
                 ),
             ]
 
@@ -518,7 +518,7 @@ class SearchService:
                     id=student.id,
                     title=user.full_name,
                     description="Child",
-                    actions=[{"label": "View Profile", "route": f"/my-kids/{student.id}"}],
+                    actions=[{"label": "View Profile", "route": "/my-kids"}],
                 ))
             remaining = 10 - len(results)
             if remaining <= 0:
@@ -563,7 +563,7 @@ class SearchService:
                 id=c.id,
                 title=c.name,
                 description=c.description,
-                actions=[{"label": "View", "route": f"/classes/{c.id}"}],
+                actions=[{"label": "View", "route": f"/courses/{c.id}"}],
             ))
         remaining = 10 - len(results)
         if remaining <= 0:
@@ -618,7 +618,7 @@ class SearchService:
                 id=a.id,
                 title=a.title,
                 description=None,
-                actions=[{"label": "View", "route": f"/courses/{a.course_id}/assignments/{a.id}"}],
+                actions=[{"label": "View", "route": f"/courses/{a.course_id}"}],
             ))
         remaining = 10 - len(results)
         if remaining <= 0:
@@ -739,7 +739,7 @@ class SearchService:
                 id=cc.id,
                 title=cc.title,
                 description=cc.description,
-                actions=[{"label": "View", "route": f"/classes/{cc.course_id}/content/{cc.id}"}],
+                actions=[{"label": "View", "route": f"/course-materials/{cc.id}"}],
             ))
         remaining = 10 - len(results)
         if remaining <= 0:

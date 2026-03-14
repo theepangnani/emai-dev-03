@@ -54,7 +54,7 @@ def test_search_returns_upload_action_card():
     assert len(results) == 1
     assert results[0].entity_type == "action"
     assert results[0].title == "Upload Material"
-    assert results[0].actions[0]["route"] == "/study-tools"
+    assert results[0].actions[0]["route"] == "/study"
 
 
 def test_search_returns_create_action_cards():
