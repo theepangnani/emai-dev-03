@@ -52,6 +52,7 @@ export function StudyGuidePage() {
   const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
   useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
   const [appendText, setAppendText] = useState<string | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
@@ -63,6 +64,18 @@ export function StudyGuidePage() {
     setRemoveHighlightText(text);
   }, []);
   useHighlightRenderer(contentRef, highlights, handleHighlightClick);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY ?? document.documentElement.scrollTop ?? 0;
+      setShowScrollTop(y > 200);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const handleScrollTop = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   const handleAddToNotes = () => {
     if (!selection) return;
@@ -286,6 +299,13 @@ export function StudyGuidePage() {
             onRemoveHighlightConsumed={() => setRemoveHighlightText(null)}
           />
         </>
+      )}
+      {showScrollTop && (
+        <button className="cm-scroll-top-btn" onClick={handleScrollTop} aria-label="Scroll to top" title="Scroll to top">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M9 14V4M4 9l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       )}
     </div>
     </DashboardLayout>
