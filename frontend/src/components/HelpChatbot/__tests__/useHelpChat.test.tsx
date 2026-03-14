@@ -105,10 +105,23 @@ describe('useHelpChat', () => {
   })
 
   it('includes conversation history from previous messages', async () => {
-    mockFetchOk([
-      'data: {"type":"token","text":"Response"}\n\n',
-      'data: {"type":"done","sources":[],"videos":[]}\n\n',
-    ])
+    // Set up both calls on a single mock so calls[1] is available
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        body: makeSSEStream([
+          'data: {"type":"token","text":"Response"}\n\n',
+          'data: {"type":"done","sources":[],"videos":[]}\n\n',
+        ]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: makeSSEStream([
+          'data: {"type":"token","text":"Follow-up response"}\n\n',
+          'data: {"type":"done","sources":[],"videos":[]}\n\n',
+        ]),
+      })
+    )
 
     const { result } = renderHook(() => useHelpChat())
 
@@ -120,12 +133,6 @@ describe('useHelpChat', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
-
-    // Re-mock for second call
-    mockFetchOk([
-      'data: {"type":"token","text":"Follow-up response"}\n\n',
-      'data: {"type":"done","sources":[],"videos":[]}\n\n',
-    ])
 
     act(() => {
       result.current.sendMessage('Follow up')
