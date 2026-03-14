@@ -272,9 +272,12 @@
 /* ===== Mobile responsive ===== */
 @media (max-width: 768px) {
   .global-search-trigger {
+    order: 10;
+    flex: 0 0 100%;
+    width: 100%;
+    margin: 4px 0 0 0;
     min-width: 0;
     max-width: none;
-    margin: 0 8px;
   }
 
   .global-search-trigger-text {
