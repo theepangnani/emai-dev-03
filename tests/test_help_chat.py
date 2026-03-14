@@ -126,6 +126,52 @@ def test_classify_intent_defaults_to_help():
     assert classify_intent("how does this platform work for teachers") == "help"
 
 
+# --- Streaming endpoint tests ---
+
+
+@pytest.fixture()
+def stream_user(db_session):
+    """Create a user for streaming endpoint tests."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    user = db_session.query(User).filter(User.email == "streamuser@test.com").first()
+    if user:
+        return user
+    hashed = get_password_hash("Password123!")
+    user = User(email="streamuser@test.com", full_name="Stream User", role=UserRole.PARENT, hashed_password=hashed)
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+def test_stream_endpoint_returns_sse_for_search_intent(client, stream_user):
+    """POST /api/help/chat/stream returns 200 text/event-stream for a search intent."""
+    from conftest import _auth
+
+    mock_result = MagicMock()
+    mock_result.entity_type = "course"
+    mock_result.id = 1
+    mock_result.title = "Math 101"
+    mock_result.description = "A math course"
+    mock_result.actions = []
+
+    with patch("app.services.intent_classifier.classify_intent", return_value="search"), \
+         patch("app.services.search_service.search_service.search", return_value=[mock_result]):
+        headers = _auth(client, "streamuser@test.com")
+        resp = client.post(
+            "/api/help/chat/stream",
+            json={"message": "find my courses", "conversation": [], "page_context": ""},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    assert "text/event-stream" in resp.headers.get("content-type", "")
+    body = resp.text
+    assert "data:" in body
+    assert "search" in body
+
+
 # --- Existing help chat service tests ---
 
 
