@@ -4,7 +4,35 @@ Covers: multi-file upload, source files listing, source file download,
 permanent delete cascade, and access control.
 """
 import pytest
+from unittest.mock import patch, MagicMock
 from conftest import PASSWORD, _auth
+
+_FILE_STORE: dict = {}  # in-memory fake GCS store keyed by gcs_path
+
+
+def _fake_upload(gcs_path, data, content_type):
+    _FILE_STORE[gcs_path] = data
+
+
+def _fake_download(gcs_path):
+    return _FILE_STORE.get(gcs_path, b"")
+
+
+def _fake_delete(gcs_path):
+    _FILE_STORE.pop(gcs_path, None)
+
+
+@pytest.fixture(autouse=True)
+def mock_gcs(monkeypatch):
+    """Enable GCS path and stub out actual GCS calls for all tests in this module."""
+    _FILE_STORE.clear()
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "use_gcs", True)
+    with patch("app.api.routes.course_contents.gcs_service") as mock:
+        mock.upload_file.side_effect = _fake_upload
+        mock.download_file.side_effect = _fake_download
+        mock.delete_file.side_effect = _fake_delete
+        yield mock
 
 
 @pytest.fixture()
