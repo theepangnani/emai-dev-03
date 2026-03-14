@@ -442,7 +442,7 @@ export function TaskDetailPage() {
               )}
               {task.course_content_id && (
                 <div className="td-resource-row">
-                  <Link to={`/course-materials/${task.course_content_id}`} className="td-resource-card">
+                  <Link to={`/course-materials/${task.course_content_id}?tab=document`} className="td-resource-card">
                     <span className="td-resource-icon" aria-hidden="true">{'\uD83D\uDCC4'}</span>
                     <div className="td-resource-info">
                       <span className="td-resource-type">Class Material</span>
