@@ -247,6 +247,7 @@ export function CourseMaterialDetailPage() {
       setShowScrollTop(y > 200);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // sync initial state
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
