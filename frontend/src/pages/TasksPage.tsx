@@ -441,7 +441,7 @@ export function TasksPage() {
       if (guideType === 'flashcards') return `/study/flashcards/${task.study_guide_id}`;
       return `/study/guide/${task.study_guide_id}`;
     }
-    if (task.course_content_id) return `/course-materials/${task.course_content_id}`;
+    if (task.course_content_id) return `/course-materials/${task.course_content_id}?tab=document`;
     if (task.course_id) return `/courses/${task.course_id}`;
     return null;
   };
