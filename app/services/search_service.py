@@ -2,6 +2,7 @@ import re
 import re as _re
 from dataclasses import dataclass, field
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.utils import escape_like
@@ -381,7 +382,12 @@ class SearchService:
         results = []
         for g in guides:
             guide_type = g.guide_type or "study_guide"
-            route = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
+            tab_map = {"quiz": "quiz", "flashcards": "flashcards"}
+            tab = tab_map.get(guide_type, "guide")
+            if g.course_content_id:
+                route = f"/course-materials/{g.course_content_id}?tab={tab}"
+            else:
+                route = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
             results.append(SearchResult(
                 entity_type="study_guide",
                 id=g.id,
@@ -560,6 +566,7 @@ class SearchService:
         term = f"%{escape_like(raw)}%"
         results: list[SearchResult] = []
         remaining = 8
+        matched_child_user_ids: list[int] = []
 
         # Children (parent-only — search by full name)
         if user_role == "parent":
@@ -574,6 +581,7 @@ class SearchService:
                 )
             )
             for student, user in child_q.limit(min(5, remaining)).all():
+                matched_child_user_ids.append(user.id)
                 results.append(SearchResult(
                     entity_type="child",
                     id=student.id,
@@ -688,8 +696,11 @@ class SearchService:
         # Study Guides (filter by owner; parents also see children's guides)
         if user_role == "parent":
             accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            title_filter = StudyGuide.title.ilike(term)
+            if matched_child_user_ids:
+                title_filter = or_(title_filter, StudyGuide.user_id.in_(matched_child_user_ids))
             guide_q = db.query(StudyGuide).filter(
-                StudyGuide.title.ilike(term),
+                title_filter,
                 StudyGuide.user_id.in_(accessible_ids),
                 StudyGuide.archived_at.is_(None),
             )
@@ -701,12 +712,17 @@ class SearchService:
             )
         for g in guide_q.limit(min(5, remaining)).all():
             guide_type = g.guide_type or "study_guide"
-            if guide_type == "quiz":
-                route = f"/study/quiz/{g.id}"
-            elif guide_type == "flashcards":
-                route = f"/study/flashcards/{g.id}"
+            tab_map = {"quiz": "quiz", "flashcards": "flashcards"}
+            tab = tab_map.get(guide_type, "guide")
+            if g.course_content_id:
+                route = f"/course-materials/{g.course_content_id}?tab={tab}"
             else:
-                route = f"/study/guide/{g.id}"
+                if guide_type == "quiz":
+                    route = f"/study/quiz/{g.id}"
+                elif guide_type == "flashcards":
+                    route = f"/study/flashcards/{g.id}"
+                else:
+                    route = f"/study/guide/{g.id}"
             results.append(SearchResult(
                 entity_type="study_guide",
                 id=g.id,
@@ -807,9 +823,8 @@ class SearchService:
             return results
 
         # FAQ (FAQQuestion — database FAQ, same model as main search)
-        from sqlalchemy import or_ as _or
         faq_q = db.query(FAQQuestion).filter(
-            (_or(
+            (or_(
                 FAQQuestion.title.ilike(term),
                 FAQQuestion.description.ilike(term),
             )),
