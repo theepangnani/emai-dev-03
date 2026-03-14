@@ -2001,7 +2001,16 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 
 #### 6.59.10 GlobalSearch Deprecation (#1698)
 
-**Blocked by:** #1696 (chatbot must have full entity parity first)
+**Status:** BLOCKED — do not start until ≥ 90% chatbot search confidence (see gate below)
+
+**Execution Gate — ALL must be true before starting:**
+- Chatbot NLQ bugs resolved (bare names, action words, person filter, scope parity) ✅
+- Streaming LLM response live (#1748)
+- Result limits raised to 20 (#1749)
+- Chat commands working (#1750)
+- ≥ 2 weeks production use with no critical search regressions
+- Manual QA: parent/student/teacher confirm chatbot matches or beats GlobalSearch
+- 0-result rate in Cloud Run logs < 10%
 
 Remove the standalone `GlobalSearch` component and `/api/search` endpoint now that the Help Chatbot serves as the unified search surface with full entity parity.
 
