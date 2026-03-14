@@ -520,6 +520,7 @@ class SearchService:
         term = f"%{escape_like(raw)}%"
         results: list[SearchResult] = []
         remaining = 25
+        matched_child_user_ids: list[int] = []
 
         # Children (parent-only — search by full name)
         if user_role == "parent":
@@ -534,6 +535,7 @@ class SearchService:
                 )
             )
             for student, user in child_q.limit(remaining).all():
+                matched_child_user_ids.append(student.user_id)
                 results.append(SearchResult(
                     entity_type="child",
                     id=student.id,
@@ -647,9 +649,14 @@ class SearchService:
 
         # Study Guides (filter by owner; parents also see children's guides)
         if user_role == "parent":
+            from sqlalchemy import or_
             accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
-            guide_q = db.query(StudyGuide).filter(
+            title_filter = or_(
                 StudyGuide.title.ilike(term),
+                StudyGuide.user_id.in_(matched_child_user_ids) if matched_child_user_ids else False,
+            )
+            guide_q = db.query(StudyGuide).filter(
+                title_filter,
                 StudyGuide.user_id.in_(accessible_ids),
                 StudyGuide.archived_at.is_(None),
             )
