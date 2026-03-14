@@ -193,6 +193,7 @@ export function CourseMaterialDetailPage() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
@@ -239,6 +240,14 @@ export function CourseMaterialDetailPage() {
 
   const toggleNotes = useCallback(() => setShowNotesPanel(v => !v), []);
   useRegisterNotesFAB(contentId ? { courseContentId: contentId, isOpen: showNotesPanel, onToggle: toggleNotes } : null);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const handleScrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // Fetch resource links count for tab badge
   const { data: resourceLinkGroups = [] } = useQuery<ResourceLinkGroup[]>({
@@ -847,6 +856,18 @@ export function CourseMaterialDetailPage() {
             handleGenerate(type);
           }}
         />
+      )}
+      {showScrollTop && (
+        <button
+          className="cm-scroll-top-btn"
+          onClick={handleScrollTop}
+          aria-label="Scroll to top"
+          title="Scroll to top"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M9 14V4M4 9l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       )}
     </DashboardLayout>
   );
