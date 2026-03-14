@@ -122,8 +122,8 @@ def test_classify_intent_help():
 
 
 def test_classify_intent_defaults_to_help():
-    assert classify_intent("hello there") == "help"
     assert classify_intent("") == "help"
+    assert classify_intent("how does this platform work for teachers") == "help"
 
 
 # --- Existing help chat service tests ---
