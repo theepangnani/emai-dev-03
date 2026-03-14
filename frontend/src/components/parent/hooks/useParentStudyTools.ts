@@ -142,7 +142,7 @@ export function useParentStudyTools({
           });
         }
 
-        const resultId = result?.id || result?.course_content_id;
+        const resultId = result?.course_content_id ?? undefined;
         setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
         refreshAIUsage();
       } catch (err: any) {
