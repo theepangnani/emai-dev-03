@@ -15,7 +15,7 @@ router = APIRouter(prefix="/activity", tags=["activity"])
 @router.get("/recent", response_model=list[ActivityItem])
 def recent_activity(
     student_id: int | None = None,
-    limit: int = Query(default=10, le=50),
+    limit: int = Query(default=10, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):

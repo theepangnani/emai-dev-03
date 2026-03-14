@@ -169,6 +169,13 @@ export function RecentActivityPanel({ selectedChild, navigate, viewMode }: Recen
           {activities && activities.length > 0 && (
             <span className="pd-activity-count-badge">{activities.length}</span>
           )}
+          <button
+            className="pd-activity-view-all-btn"
+            onClick={e => { e.stopPropagation(); navigate('/activity'); }}
+            aria-label="View all activity"
+          >
+            View All
+          </button>
         </div>
         <svg
           className={`pd-activity-chevron${collapsed ? ' pd-activity-collapsed' : ''}`}
