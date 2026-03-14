@@ -1958,14 +1958,16 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 
 **Searchable Entities:**
 
-| Entity | Searchable Fields | Result Actions |
-|--------|-------------------|----------------|
-| Courses | name, description | View, Generate Study Guide |
-| Study Guides | title | View, Generate Quiz |
-| Tasks | title, description | View, Help Study |
-| Course Content | title, description | View, Generate Quiz |
-| FAQ | question text | View |
-| Notes | content (HTML-stripped) | View Material |
+| Entity | Searchable Fields | Notes | Result Actions |
+|--------|-------------------|-------|----------------|
+| Assignments | title | Scoped to accessible courses | View |
+| Children | full_name | Parent role only | View Profile |
+| Courses | name, description | | View, Generate Study Guide |
+| Study Guides | title | | View, Generate Quiz |
+| Tasks | title, description | | View, Help Study |
+| Course Content | title, description | | View, Generate Quiz |
+| FAQ | question text | Database FAQ (FAQQuestion model) | View |
+| Notes | content (HTML-stripped) | | View Material |
 
 **Smart Presets:**
 
@@ -1989,6 +1991,7 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [x] Frontend: action buttons on search result cards
 - [x] Frontend: smart preset detection + shortcuts
 - [x] Tests
+- [ ] Fix: add Assignments + Children search; fix Study Guide URLs, FAQ model, Notes display (#1696)
 
 ---
 
