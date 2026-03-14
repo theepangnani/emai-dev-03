@@ -986,7 +986,7 @@ export function TasksPage() {
               <button className="modal-close" onClick={() => { setRequestCompletionTask(null); setRequestCompletionMessage(''); }}>&times;</button>
             </div>
             <div className="modal-body">
-              <p style={{ margin: '0 0 12px', color: 'var(--text-secondary, #6b7280)', fontSize: '14px' }}>
+              <p style={{ margin: '0 0 12px', color: 'var(--color-text-secondary, #6b7280)', fontSize: '14px' }}>
                 Send a notification to <strong>{requestCompletionTask.assignee_name}</strong> asking them to complete:
               </p>
               <p style={{ margin: '0 0 16px', fontWeight: 600 }}>{requestCompletionTask.title}</p>

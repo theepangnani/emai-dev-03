@@ -606,6 +606,94 @@
   margin: 4px auto;
 }
 
+/* ============================================
+   Modal inner layout — header, body, close, cancel
+   ============================================ */
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--color-ink);
+  padding: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  color: var(--color-ink);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modal-cancel {
+  background: none;
+  border: 1px solid var(--color-border);
+  padding: 10px 22px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-ink);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.modal-cancel:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-ink-muted);
+}
+
+/* ============================================
+   Form field styles — label, input, textarea
+   ============================================ */
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
 /* Edit modal danger zone */
 .task-modal-danger-zone {
   margin-top: 8px;
