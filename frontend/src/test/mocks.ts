@@ -181,6 +181,9 @@ export function createMockAdminStats(
     users_by_role: { parent: 20, student: 20, teacher: 8, admin: 2 },
     total_courses: 10,
     total_assignments: 30,
+    total_materials: 0,
+    new_registrations_today: 0,
+    ai_generations_last_hour: 0,
     ...overrides,
   }
 }
