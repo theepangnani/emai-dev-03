@@ -14,7 +14,7 @@ node_modules
 frontend/node_modules
 frontend/dist
 design/
-scripts/
+# scripts/ intentionally included for Cloud Run Jobs (backfill etc.)
 tests/
 *.md
 !requirements.txt
