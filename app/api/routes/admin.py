@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -19,6 +19,8 @@ from app.models.course import Course
 from app.models.assignment import Assignment
 from app.models.audit_log import AuditLog
 from app.models.broadcast import Broadcast
+from app.models.course_content import CourseContent
+from app.models.ai_usage_history import AIUsageHistory
 from app.models.message import Conversation, Message
 from app.models.notification import Notification, NotificationType
 from app.api.deps import require_role
@@ -95,11 +97,26 @@ def get_stats(
     total_courses = db.query(Course).count()
     total_assignments = db.query(Assignment).count()
 
+    total_materials = db.query(CourseContent).count()
+
+    today = date.today()
+    new_registrations_today = db.query(User).filter(
+        func.date(User.created_at) == today
+    ).count()
+
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    ai_generations_last_hour = db.query(AIUsageHistory).filter(
+        AIUsageHistory.created_at >= one_hour_ago
+    ).count()
+
     return AdminStats(
         total_users=total_users,
         users_by_role=users_by_role,
         total_courses=total_courses,
         total_assignments=total_assignments,
+        total_materials=total_materials,
+        new_registrations_today=new_registrations_today,
+        ai_generations_last_hour=ai_generations_last_hour,
     )
 
 

@@ -21,6 +21,10 @@ export interface AdminStats {
   users_by_role: Record<string, number>;
   total_courses: number;
   total_assignments: number;
+  // New v2 fields:
+  total_materials: number;
+  new_registrations_today: number;
+  ai_generations_last_hour: number;
 }
 
 // Audit Log Types
