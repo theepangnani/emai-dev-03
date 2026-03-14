@@ -251,7 +251,7 @@ export function CourseMaterialDetailPage() {
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, []);
+  }, [loading]);
 
   const handleScrollTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
