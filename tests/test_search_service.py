@@ -83,3 +83,37 @@ def test_search_returns_due_tasks(monkeypatch):
     assert called
     assert results[0].entity_type == "task"
     assert results[0].title == "Math HW"
+
+
+# --- Person filter priority tests (#1746) ---
+
+def test_search_person_filter_takes_priority_over_list_tasks(monkeypatch):
+    """'show tasks for Thanushan' must route to _list_tasks_for_person, not _list_tasks."""
+    svc = SearchService()
+    db = MagicMock()
+    called_with = []
+
+    def fake_list_tasks_for_person(user_id, user_role, db, person_name):
+        called_with.append(person_name)
+        return [SearchResult(entity_type="task", id=1, title="Task", description="", actions=[])]
+
+    monkeypatch.setattr(svc, "_list_tasks_for_person", fake_list_tasks_for_person)
+    results = svc.search("show tasks for Thanushan", user_id=1, user_role="teacher", db=db)
+    assert called_with == ["Thanushan"]
+    assert len(results) == 1
+
+
+def test_search_tasks_for_noah_routes_to_person_filter(monkeypatch):
+    """'tasks for noah' must route to _list_tasks_for_person, not list_tasks preset."""
+    svc = SearchService()
+    db = MagicMock()
+    called_with = []
+
+    def fake_list_tasks_for_person(user_id, user_role, db, person_name):
+        called_with.append(person_name)
+        return [SearchResult(entity_type="task", id=2, title="Noah Task", description="", actions=[])]
+
+    monkeypatch.setattr(svc, "_list_tasks_for_person", fake_list_tasks_for_person)
+    results = svc.search("tasks for noah", user_id=1, user_role="teacher", db=db)
+    assert called_with == ["noah"]
+    assert len(results) == 1
