@@ -9,6 +9,8 @@ const STORAGE_KEY = 'classbridge-help-open';
 
 const CHAT_COMMANDS = new Set(['clear', 'reset']);
 
+const MIN_QUERY_LENGTH = 3;
+
 export function HelpChatbot() {
   const [isOpen, setIsOpen] = useState(() => {
     try {
@@ -20,6 +22,7 @@ export function HelpChatbot() {
 
   const { messages, sendMessage, isLoading, error, clearMessages } = useHelpChat();
   const [inputValue, setInputValue] = useState('');
+  const [helperMessage, setHelperMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
@@ -48,6 +51,13 @@ export function HelpChatbot() {
   const handleSend = useCallback(() => {
     const text = inputValue.trim();
     if (!text || isLoading) return;
+
+    if (text.length < MIN_QUERY_LENGTH) {
+      setHelperMessage('Please type at least 3 characters so I can help you better.');
+      return;
+    }
+
+    setHelperMessage('');
 
     if (CHAT_COMMANDS.has(text.toLowerCase())) {
       clearMessages();
@@ -162,20 +172,26 @@ export function HelpChatbot() {
             <div ref={messagesEndRef} />
           </div>
 
+          {helperMessage && (
+              <div className="help-chatbot-helper-message">
+                {helperMessage}
+              </div>
+            )}
+
           <div className="help-chatbot-input">
             <input
               ref={inputRef}
               type="text"
               placeholder="Type your question..."
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => { setInputValue(e.target.value); setHelperMessage(''); }}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
             />
             <button
               className="help-chatbot-send"
               onClick={handleSend}
-              disabled={isLoading || !inputValue.trim()}
+              disabled={isLoading || inputValue.trim().length < MIN_QUERY_LENGTH}
             >
               Send
             </button>

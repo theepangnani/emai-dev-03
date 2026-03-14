@@ -2005,6 +2005,7 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [ ] Fix: add topic keywords to intent classifier for help routing (#1778)
 - [ ] Feat: "What can the chatbot do?" FAQ entry + suggestion chip (#1778)
 - [ ] Feat: comprehensive FAQ knowledge base expansion (#1779)
+- [x] Fix: enforce minimum 3-character search query in chatbot (#1786)
 
 **Search Scope Parity (Parent Role):** Chatbot search MUST use the same access scope as global search. For parent users, `search_service.py` must build `accessible_user_ids = [parent_id] + child_user_ids` and apply it to both study guide filters (`StudyGuide.user_id.in_(accessible_user_ids)`) and task filters (`created_by.in_(accessible_user_ids) OR assigned_to.in_(accessible_user_ids)`). This applies to `_list_tasks()`, `_list_tasks_for_person()`, and the main `search()` method. Using only `parent_id` or only `child_user_ids` is a defect.
 
