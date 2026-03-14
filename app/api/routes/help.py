@@ -86,8 +86,9 @@ async def help_chat(
     from app.services.search_service import search_service
     from app.services.help_chat_service import help_chat_service
 
+    from app.core.config import settings
     user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
-    intent = classify_intent(request.message)
+    intent = classify_intent(request.message, openai_api_key=settings.openai_api_key)
 
     if intent in ("search", "action"):
         results = search_service.search(

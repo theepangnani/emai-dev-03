@@ -1610,6 +1610,15 @@ async def startup_event():
     from app.services.help_embedding_service import help_embedding_service
     asyncio.create_task(help_embedding_service.initialize())
 
+    # Initialize intent embedding service (anchor phrase embeddings)
+    try:
+        from app.services.intent_embedding_service import intent_embedding_service
+        from app.core.config import settings
+        if settings.openai_api_key:
+            intent_embedding_service.initialize(settings.openai_api_key)
+    except Exception as e:
+        logger.warning("Could not initialize intent embedding service: %s", e)
+
     logger.info("EMAI application started successfully")
 
 
