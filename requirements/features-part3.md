@@ -1317,8 +1317,8 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 
 ### 6.54 AI Usage Limits — Configurable Per-User AI Interaction Quota (Phase 1) — IMPLEMENTED
 
-**Issues:** #1116-#1121 (closed), #1125 (audit log — open, future)
-**PRs:** #1127 (main implementation), #1130 (test fixes)
+**Issues:** #1116-#1121 (closed), #1125 (audit log — closed), #1650 (token costs — closed), #1651 (regen flag — closed)
+**PRs:** #1127 (main implementation), #1130 (test fixes), #1682 (token costs + regen flag)
 
 **Sub-tasks:**
 - [x] Data model + migrations — `ai_usage_count`, `ai_usage_limit` on users, `ai_limit_requests` table (#1117)
@@ -1328,6 +1328,8 @@ ClassBridge launches with a waitlist-gated flow. The current open registration i
 - [x] Admin AI Usage Management Panel (#1121)
 - [x] Backend + frontend tests (#1122, #1123, #1130)
 - [x] Usage history audit log — `ai_usage_history` table + admin views (#1125) (IMPLEMENTED)
+- [x] Track token counts (prompt + completion) and cost per AI generation — `prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated_cost_usd` on `ai_usage_history` (#1650, PR #1682)
+- [x] Track regeneration flag — `is_regeneration` boolean on `ai_usage_history` to distinguish original vs regenerated content (#1651, PR #1682)
 
 Control AI API costs by limiting the number of AI interactions per user. Default quota is 10 AI generations. Users can request more; admin approves via admin panel.
 
@@ -1361,9 +1363,14 @@ Control AI API costs by limiting the number of AI interactions per user. Default
 | generation_type | VARCHAR(20) | `study_guide` / `quiz` / `flashcard` |
 | course_material_id | INTEGER FK | Related course material (nullable) |
 | credits_used | INTEGER | Always 1 for now (future: variable cost) |
+| prompt_tokens | INTEGER | Tokens in the prompt (nullable) — added #1650 |
+| completion_tokens | INTEGER | Tokens in the completion (nullable) — added #1650 |
+| total_tokens | INTEGER | Total tokens used (nullable) — added #1650 |
+| estimated_cost_usd | FLOAT | Estimated API cost in USD (nullable) — added #1650 |
+| is_regeneration | BOOLEAN | True if user regenerated existing content (vs original generation) — added #1651 |
 | created_at | DATETIME | Timestamp of generation |
 
-This table provides a complete audit trail of every AI credit consumed, enabling admin to view per-user generation history, filter by type, and see usage patterns over time.
+This table provides a complete audit trail of every AI credit consumed, enabling admin to view per-user generation history, filter by type, see usage patterns, and track API cost over time.
 
 #### Counting Logic
 
@@ -1928,15 +1935,15 @@ components/HelpChatbot/
 
 #### Sub-tasks
 
-- [ ] Knowledge base YAML files — FAQ, features, videos, pages (#1356)
-- [ ] Embedding service + in-memory vector store (#1357)
-- [ ] RAG chat service + system prompt (#1358)
-- [ ] API endpoint `POST /api/help/chat` (#1359)
-- [ ] Frontend widget — FAB, chat panel, message bubbles (#1360)
-- [ ] Video embed component — YouTube + Loom inline players (#1361)
-- [ ] Backend + frontend tests (#1362)
-- [ ] NotesFAB z-index coordination + mobile bottom sheet (#1363)
-- [ ] Global Search integration — search across platform data (#1630)
+- [x] Knowledge base YAML files — FAQ, features, videos, pages (#1356)
+- [x] Embedding service + in-memory vector store (#1357)
+- [x] RAG chat service + system prompt (#1358)
+- [x] API endpoint `POST /api/help/chat` (#1359)
+- [x] Frontend widget — FAB, chat panel, message bubbles (#1360)
+- [x] Video embed component — YouTube + Loom inline players (#1361)
+- [x] Backend + frontend tests (#1362)
+- [x] NotesFAB z-index coordination + mobile bottom sheet (#1363)
+- [x] Global Search integration — search across platform data (#1630)
 
 #### 6.59.9 Global Search Integration (#1630)
 
@@ -1975,13 +1982,13 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - Action buttons on search results for quick actions
 
 **Sub-tasks:**
-- [ ] Backend: `search_service` — unified SQL search across entities
-- [ ] Backend: intent classifier (help vs search vs action)
-- [ ] Backend: integrate search into `/api/help/chat` response pipeline
-- [ ] Frontend: render search results as structured cards in chat
-- [ ] Frontend: action buttons on search result cards
-- [ ] Frontend: smart preset detection + shortcuts
-- [ ] Tests
+- [x] Backend: `search_service` — unified SQL search across entities
+- [x] Backend: intent classifier (help vs search vs action)
+- [x] Backend: integrate search into `/api/help/chat` response pipeline
+- [x] Frontend: render search results as structured cards in chat
+- [x] Frontend: action buttons on search result cards
+- [x] Frontend: smart preset detection + shortcuts
+- [x] Tests
 
 ---
 
@@ -2802,22 +2809,22 @@ Add a "Source Files" button in the document tab action bar (next to Upload/Repla
 
 ---
 
-### 6.92 Activity History Page (Phase 2) - PLANNED
+### 6.92 Activity History Page (Phase 2) - IMPLEMENTED
 
 Dedicated `/activity` page for parents to view full paginated activity history with filtering.
 
-**GitHub:** #1547
+**GitHub:** #1547 (closed), #1683 (PR ✅ merged)
 
 **Acceptance Criteria:**
-- [ ] "View All" link in Recent Activity panel navigates to `/activity`
-- [ ] Activity History page shows all activity types
-- [ ] Child filter chips (same as dashboard)
-- [ ] Activity type filter
-- [ ] Pagination (load more)
-- [ ] Responsive design
-- [ ] Back navigation to dashboard
+- [x] "View All" link in Recent Activity panel navigates to `/activity`
+- [x] Activity History page shows all activity types
+- [x] Child filter chips (same as dashboard)
+- [x] Activity type filter
+- [x] Pagination (load more)
+- [x] Responsive design
+- [x] Back navigation to dashboard
 
-**Status:** PLANNED
+**Status:** IMPLEMENTED
 
 ### 6.93 GCS File Storage Migration - IN PROGRESS
 

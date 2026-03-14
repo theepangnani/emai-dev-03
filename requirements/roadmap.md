@@ -152,6 +152,14 @@
 - [x] **Teacher Resource Links** — Auto-extract YouTube videos and URLs from uploaded documents and teacher communications; Videos & Links tab on Course Material Detail; YouTube embed player with topic grouping; CRUD API; link extraction service (§6.57, #1319-#1326) (IMPLEMENTED)
 - [x] **Image Retention in Study Guides** — Extract, store, and re-embed images from uploaded PDF/DOCX/PPTX into AI-generated study guides; ContentImage model; image serving endpoint; AI prompt integration with `{{IMG-N}}` markers; authenticated frontend rendering; fallback "Additional Figures" section; +5-10% cost per generation (§6.58, #1308-#1313) (IMPLEMENTED)
 - [x] **AI Help Chatbot** — RAG-powered floating chatbot on all pages; searches FAQ/help/video knowledge base; role-aware + context-aware responses; inline YouTube/Loom video embeds; 30 req/hr rate limit; in-memory vector store; gpt-4o-mini + text-embedding-3-small (§6.59, #1355-#1363) (IMPLEMENTED — #1355-#1363)
+- [x] **Help Chatbot: Global Search integration** — Unified chatbot handles both help queries and platform data search (courses, materials, tasks, FAQ); SQL ILIKE search; intent routing; action cards (§6.59.9, #1630, PR #1684) (IMPLEMENTED)
+- [x] **Activity History page** — `/activity` page for parents with full paginated activity log, child filter, type filter, load more (§6.92, #1547, PR #1683) (IMPLEMENTED)
+- [x] **AI token cost + regeneration tracking** — `prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated_cost_usd`, `is_regeneration` added to `ai_usage_history`; admin panel shows cost breakdown (#1650, #1651, PR #1682) (IMPLEMENTED)
+- [x] **GCS file storage migration** — Source files and content images migrated from PostgreSQL blobs to Google Cloud Storage (`gs://classbridge-files`); `gcs_service.py`; backfill script; DB fallback chain (§6.93, #1643, PRs #1689 #1691) (IMPLEMENTED — backfill pending prod run)
+- [x] **Teacher Dashboard v2** — Student Alerts + My Classes layout with SVG icons and dynamic counts (§6.65.3, #1418) (IMPLEMENTED)
+- [x] **Admin Dashboard v2** — Platform Health + Recent Activity + Quick Actions with trend indicators (§6.65.4, #1419) (IMPLEMENTED)
+- [x] **Upload wizard cleanup + tests** — ReplaceDocumentModal updated, old upload modal removed, wizard frontend tests added (§6.28, #1272, #1273, PR #1685) (IMPLEMENTED)
+- [x] **Scroll-to-top button** — Floating button on Course Material Detail page using IntersectionObserver; bottom-left, no conflict with FABs (§6.94, #1686, PRs #1687 #1692) (IMPLEMENTED)
 
 #### Waitlist System & AI Usage Limits (§6.53, §6.54) — Pre-Launch — #1106-#1124
 - [x] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation (IMPLEMENTED — #1107)
