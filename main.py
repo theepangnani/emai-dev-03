@@ -1016,9 +1016,7 @@ with engine.connect() as conn:
     # ── help_articles: seed data (#1420) ──────────────────────────
     try:
         if "help_articles" in inspector.get_table_names():
-            row = conn.execute(text("SELECT COUNT(*) FROM help_articles")).scalar()
-            if row == 0:
-                seed_articles = [
+            seed_articles = [
                     ("getting-started", "Getting Started with ClassBridge", "getting-started",
                      "## Welcome to ClassBridge\n\nClassBridge is an AI-powered education platform that connects parents, students, teachers, and administrators.\n\n### First Steps\n\n1. **Create your account** -- Sign up with your email or Google account\n2. **Complete onboarding** -- Select your role and fill in your profile\n3. **Connect Google Classroom** (optional) -- Import your classes and assignments automatically\n4. **Explore the dashboard** -- See your courses, tasks, and upcoming assignments\n\n### Key Features\n\n- **AI Study Tools** -- Generate study guides, quizzes, and flashcards from your course materials\n- **Task Management** -- Create and track tasks with due dates and reminders\n- **Messaging** -- Communicate with teachers and parents directly\n- **Google Classroom Sync** -- Automatically import courses, assignments, and grades",
                      None, 1),
@@ -1047,13 +1045,18 @@ with engine.connect() as conn:
                      "## Tasks & Calendar\n\n### Creating Tasks\n\n1. Go to **Tasks** in the sidebar\n2. Click the **+** button to create a new task\n3. Set a title, description, due date, and priority\n4. Optionally assign tasks to children (parents) or link to courses\n\n### Task Views\n\nTasks are grouped by urgency: Overdue, Due Today, This Week, and Later.\n\n### Calendar\n\nThe calendar shows all assignments and tasks. Switch between Month, Week, 3-Day, and Day views. Drag tasks to reschedule them.\n\n### Reminders\n\nClassBridge sends automatic reminders before task due dates. Configure reminder timing in your account settings.",
                      None, 9),
                 ]
-                for slug, title, category, content, role, order in seed_articles:
+            inserted = 0
+            for slug, title, category, content, role, order in seed_articles:
+                exists = conn.execute(text("SELECT 1 FROM help_articles WHERE slug = :slug"), {"slug": slug}).fetchone()
+                if not exists:
                     conn.execute(text(
                         "INSERT INTO help_articles (slug, title, category, content, role, display_order) "
                         "VALUES (:slug, :title, :category, :content, :role, :order)"
                     ), {"slug": slug, "title": title, "category": category, "content": content, "role": role, "order": order})
+                    inserted += 1
+            if inserted:
                 conn.commit()
-                logger.info("Seeded help_articles with %d articles (#1420)", len(seed_articles))
+                logger.info("Seeded %d missing help_articles (#1420)", inserted)
     except Exception as e:
         conn.rollback()
         logger.error("Failed to seed help_articles: %s", e)
