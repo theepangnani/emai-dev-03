@@ -8,8 +8,8 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 |-----------|--------------|--------|
 | **Parent Dashboard** | Icon-only sidebar, child filter pills (no "All Kids" — toggle-deselect instead), Today's Focus header, simplified alert banner, collapsible student detail panel, + icon popover for quick actions (replaces action bar) | Implemented (v3 simplification — #540, PR #545; v3.1 UX polish — #557; v3.2 + popover — #692, PR #693) |
 | **Student Dashboard** | "Focused Command Center" — hero greeting with urgency pills + stat chips, notification alerts for parent/teacher requests, quick action cards (Upload/Course/Study Guide/Sync), Coming Up timeline (assignments + tasks unified), recent materials, course chips, create course modal | Implemented (v2 redesign — #708, PR #709) |
-| **Teacher Dashboard** | Courses teaching, manual course creation, multi-Google account management, messages, teacher communications | Implemented (partial) |
-| **Admin Dashboard** | Platform stats, user management table (search, filter, pagination), role management, broadcast messaging, individual user messaging | Implemented (messaging planned) |
+| **Teacher Dashboard** | Student Alerts (overdue assignments, unread messages, pending invites), My Classes with enrollment counts, Quick Actions (Create Assignment, Send Message, Upload Material, Sync Classroom, Invite Parents), always-visible header stats | Implemented (v2 redesign — #1418, PR #1688) |
+| **Admin Dashboard** | Platform Health (users, students, teachers, classes, materials, new today), Recent Activity summary (registrations today, AI generations last hour) + audit log, Quick Actions (Manage Users, Broadcast, AI Limits, Audit Log, FAQ Management), User Management table | Implemented (v2 redesign — #1419, PR #1688) |
 
 > **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
 

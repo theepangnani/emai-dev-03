@@ -2348,8 +2348,8 @@ Redesign all four dashboards to be clean, uncluttered, and persona-driven.
 **Sub-tasks:**
 - [x] Parent Dashboard v5 (#1416)
 - [x] Student Dashboard v4 (#1417)
-- [ ] Teacher Dashboard v2 (#1418)
-- [ ] Admin Dashboard v2 (#1419)
+- [x] Teacher Dashboard v2 (#1418)
+- [x] Admin Dashboard v2 (#1419)
 - [ ] DashboardLayout header cleanup
 - [ ] CSS dead code removal (v1-v4 remnants)
 
@@ -2818,3 +2818,27 @@ Dedicated `/activity` page for parents to view full paginated activity history w
 - [ ] Back navigation to dashboard
 
 **Status:** PLANNED
+
+### 6.93 GCS File Storage Migration - IN PROGRESS
+
+Migrate source file and image blobs from PostgreSQL (`LargeBinary`) to Google Cloud Storage to reduce DB size, improve download performance, and lower storage costs (~8-9x cheaper than Cloud SQL per GB).
+
+**GitHub:** #1643 (issue), #1689 (migration PR ✅ merged), #1690 (backfill issue), #1691 (backfill PR ✅ merged)
+
+**Infrastructure:**
+- GCS bucket `gs://classbridge-files` created (us-central1, uniform access)
+- Cloud Run service account granted `storage.objectAdmin` on bucket
+- `GCS_BUCKET_NAME=classbridge-files` and `USE_GCS=true` set on Cloud Run `classbridge` service
+
+**Acceptance Criteria:**
+- [x] `SourceFile` and `ContentImage` models gain nullable `gcs_path` column
+- [x] New `gcs_service.py` with upload/download/delete helpers
+- [x] Upload routes write to GCS when `USE_GCS=true`; store `gcs_path`, skip `file_data` blob
+- [x] Download routes: filesystem → GCS → DB blob fallback chain
+- [x] Delete routes clean up GCS objects
+- [x] DB migrations for new columns
+- [x] Backfill script `scripts/backfill_blobs_to_gcs.py` — idempotent, `--dry-run` support, handles all MIME types (#1691)
+- [ ] Run backfill script in production to migrate existing blobs
+- [ ] After backfill confirmed: drop `file_data` / `image_data` columns
+
+**Status:** IN PROGRESS — both PRs merged and deployed; backfill script pending production run
