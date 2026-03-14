@@ -109,6 +109,71 @@ class SearchService:
             ))
         return results
 
+    def _extract_person_filter(self, message: str) -> str | None:
+        """Detect 'for [name]' / 'for [name]'s' patterns and return the name, or None."""
+        msg = message.strip()
+        # Match "for <Name>" or "for <Name>'s"
+        m = re.search(r"\bfor\s+([A-Za-z]+)(?:'s)?\b", msg, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        # Match "<Name>'s tasks" / "<Name>s tasks"
+        m2 = re.search(r"\b([A-Za-z]+)'?s\s+(?:tasks?|assignments?)\b", msg, re.IGNORECASE)
+        if m2:
+            return m2.group(1)
+        return None
+
+    def _list_tasks_for_person(
+        self, user_id: int, user_role: str, db: Session, person_name: str | None = None
+    ) -> list[SearchResult]:
+        """Return up to 8 tasks, optionally filtered to a named child (parent role only)."""
+        from app.models.user import User as _User
+
+        task_q = db.query(Task).filter(Task.archived_at.is_(None))
+
+        if user_role == "parent":
+            student_ids = [
+                row[0] for row in db.query(parent_students.c.student_id).filter(
+                    parent_students.c.parent_id == user_id
+                ).all()
+            ]
+            child_user_ids = [
+                row[0] for row in db.query(Student.user_id).filter(
+                    Student.id.in_(student_ids)
+                ).all()
+            ]
+            if person_name:
+                matched_user_ids = [
+                    row[0] for row in db.query(_User.id).filter(
+                        _User.id.in_(child_user_ids),
+                        _User.full_name.ilike(f"%{person_name}%"),
+                    ).all()
+                ]
+                if matched_user_ids:
+                    task_q = task_q.filter(Task.assigned_to_user_id.in_(matched_user_ids))
+                else:
+                    return []
+            else:
+                task_q = task_q.filter(Task.assigned_to_user_id.in_(child_user_ids))
+        elif user_role == "student":
+            task_q = task_q.filter(
+                (Task.assigned_to_user_id == user_id) | (Task.created_by_user_id == user_id)
+            )
+        else:
+            task_q = task_q.filter(Task.created_by_user_id == user_id)
+
+        tasks = task_q.order_by(Task.due_date.asc().nullslast()).limit(8).all()
+        results = []
+        for t in tasks:
+            due_str = t.due_date.strftime("%b %d") if t.due_date else None
+            results.append(SearchResult(
+                entity_type="task",
+                id=t.id,
+                title=t.title,
+                description=f"Due: {due_str}" if due_str else t.description,
+                actions=[{"label": "View", "route": f"/tasks/{t.id}"}],
+            ))
+        return results
+
     def search(self, query: str, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
         """Search across platform entities and return up to 10 results total."""
         preset = self.detect_preset(query)
@@ -149,6 +214,17 @@ class SearchService:
 
         if preset in ("due", "overdue"):
             return self.get_due_tasks(user_id, user_role, db)
+
+        msg = query.lower().strip()
+        is_task_list_query = any(
+            w in msg for w in [
+                "show tasks", "list tasks", "get tasks", "my tasks",
+                "show assignments", "list assignments", "get assignments",
+            ]
+        )
+        person_name = self._extract_person_filter(query)
+        if is_task_list_query or (person_name and any(w in msg for w in ["task", "assignment"])):
+            return self._list_tasks_for_person(user_id, user_role, db, person_name=person_name)
 
         raw = _extract_search_term(query)
         term = f"%{escape_like(raw)}%"
