@@ -432,6 +432,12 @@ class SearchService:
 
     def search(self, query: str, user_id: int, user_role: str, db: Session) -> list[SearchResult]:
         """Search across platform entities and return up to 10 results total."""
+        # Person-scoped queries take priority over list presets
+        msg = query.lower().strip()
+        person_name = self._extract_person_filter(query)
+        if person_name and any(w in msg for w in ["task", "assignment"]):
+            return self._list_tasks_for_person(user_id, user_role, db, person_name=person_name)
+
         preset = self.detect_preset(query)
 
         if preset == "upload":
@@ -488,11 +494,6 @@ class SearchService:
 
         if preset == "list_materials":
             return self._list_materials(user_id, user_role, db)
-
-        msg = query.lower().strip()
-        person_name = self._extract_person_filter(query)
-        if person_name and any(w in msg for w in ["task", "assignment"]):
-            return self._list_tasks_for_person(user_id, user_role, db, person_name=person_name)
 
         raw = _extract_search_term(query)
         term = f"%{escape_like(raw)}%"

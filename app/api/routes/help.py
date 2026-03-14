@@ -99,8 +99,10 @@ async def help_chat(
         )
         if results:
             reply = f"Here's what I found for **\"{request.message}\"**:"
+            return_intent = intent
         else:
-            reply = f"No results found for **\"{request.message}\"**. Try a different search term or ask me a question about ClassBridge."
+            reply = f"No results found for **\"{request.message}\"**. Try asking me a question about ClassBridge instead."
+            return_intent = "help"
 
         return HelpChatResponse(
             reply=reply,
@@ -116,7 +118,7 @@ async def help_chat(
                 )
                 for r in results
             ],
-            intent=intent,
+            intent=return_intent,
         )
 
     # Help flow (existing)
