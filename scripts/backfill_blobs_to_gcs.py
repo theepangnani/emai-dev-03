@@ -26,6 +26,24 @@ from app.services import gcs_service
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+MIME_TO_EXT = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/tiff": "tiff",
+    "image/bmp": "bmp",
+    "image/svg+xml": "svg",
+    "image/heic": "heic",
+    "image/heif": "heif",
+}
+
+
+def _image_ext(media_type: str | None) -> str:
+    """Return file extension for a MIME type, defaulting to 'jpg'."""
+    return MIME_TO_EXT.get((media_type or "").lower(), "jpg")
+
 
 def backfill_source_files(session, dry_run: bool, batch_size: int):
     """Migrate SourceFile blobs to GCS."""
@@ -50,7 +68,7 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
             break
 
         for record in records:
-            gcs_path = f"source-files/{record.course_content_id}/{record.filename}"
+            gcs_path = f"source-files/{record.course_content_id}/{record.id}/{record.filename}"
             try:
                 if not dry_run:
                     gcs_service.upload_file(gcs_path, record.file_data, record.file_type or "application/octet-stream")
@@ -94,8 +112,8 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
             break
 
         for record in records:
-            ext = "jpg" if (record.media_type or "").endswith("jpeg") else (record.media_type or "image/jpeg").split("/")[-1]
-            gcs_path = f"content-images/{record.course_content_id}/{record.position_index}.{ext}"
+            ext = _image_ext(record.media_type)
+            gcs_path = f"content-images/{record.course_content_id}/{record.id}.{ext}"
             try:
                 if not dry_run:
                     gcs_service.upload_file(gcs_path, record.image_data, record.media_type or "image/jpeg")
