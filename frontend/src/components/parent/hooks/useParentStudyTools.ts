@@ -3,7 +3,7 @@ import { studyApi } from '../../../api/client';
 import { courseContentsApi, coursesApi } from '../../../api/courses';
 import { useAIUsage } from '../../../hooks/useAIUsage';
 import type { DuplicateCheckResponse } from '../../../api/client';
-import type { StudyMaterialGenerateParams } from '../../CreateStudyMaterialModal';
+import type { StudyMaterialGenerateParams } from '../../UploadMaterialWizard';
 import type { CalendarAssignment } from '../../calendar/types';
 
 interface UseParentStudyToolsParams {
