@@ -359,9 +359,14 @@ class SearchService:
         total_count = guide_q.count()
         guides = guide_q.order_by(StudyGuide.created_at.desc()).limit(20).all()
         results = []
+        tab_map = {"quiz": "quiz", "flashcards": "flashcards"}
         for g in guides:
             guide_type = g.guide_type or "study_guide"
-            route = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
+            if g.course_content_id:
+                tab = tab_map.get(guide_type, "guide")
+                route = f"/course-materials/{g.course_content_id}?tab={tab}"
+            else:
+                route = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
             results.append(SearchResult(
                 entity_type="study_guide",
                 id=g.id,
@@ -659,14 +664,19 @@ class SearchService:
                 StudyGuide.user_id == user_id,
                 StudyGuide.archived_at.is_(None),
             )
+        tab_map = {"quiz": "quiz", "flashcards": "flashcards"}
         for g in guide_q.limit(remaining).all():
             guide_type = g.guide_type or "study_guide"
-            if guide_type == "quiz":
-                route = f"/study/quiz/{g.id}"
-            elif guide_type == "flashcards":
-                route = f"/study/flashcards/{g.id}"
+            if g.course_content_id:
+                tab = tab_map.get(guide_type, "guide")
+                route = f"/course-materials/{g.course_content_id}?tab={tab}"
             else:
-                route = f"/study/guide/{g.id}"
+                if guide_type == "quiz":
+                    route = f"/study/quiz/{g.id}"
+                elif guide_type == "flashcards":
+                    route = f"/study/flashcards/{g.id}"
+                else:
+                    route = f"/study/guide/{g.id}"
             results.append(SearchResult(
                 entity_type="study_guide",
                 id=g.id,
