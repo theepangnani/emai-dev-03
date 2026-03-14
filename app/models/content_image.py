@@ -9,7 +9,8 @@ class ContentImage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="CASCADE"), nullable=False)
-    image_data = Column(LargeBinary, nullable=False)
+    image_data = Column(LargeBinary, nullable=True)
+    gcs_path = Column(String(500), nullable=True)
     media_type = Column(String(50), nullable=False)  # image/png, image/jpeg, etc.
     description = Column(Text, nullable=True)  # Vision OCR description
     position_context = Column(Text, nullable=True)  # Surrounding text from source doc

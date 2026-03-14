@@ -1241,6 +1241,21 @@ with engine.connect() as conn:
                     conn.rollback()
                 conn.commit()
 
+    # §6.55 — GCS path columns (#1643)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE source_files ADD COLUMN gcs_path VARCHAR(500)"))
+            conn.commit()
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE content_images ADD COLUMN gcs_path VARCHAR(500)"))
+            conn.commit()
+    except Exception:
+        pass
+
 
 _is_prod = "sqlite" not in settings.database_url
 
