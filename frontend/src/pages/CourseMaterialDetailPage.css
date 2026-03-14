@@ -1959,7 +1959,7 @@
 .cm-scroll-top-btn {
   position: fixed;
   bottom: 80px;
-  right: 24px;
+  right: max(24px, calc((100vw - 1200px) / 2 + 12px));
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -1982,7 +1982,7 @@
 }
 @media (max-width: 767px) {
   .cm-scroll-top-btn {
-    right: 16px;
+    right: max(16px, calc((100vw - 1200px) / 2 + 12px));
     bottom: 80px;
   }
 }
