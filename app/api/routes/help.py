@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse as _StreamingResponse
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -63,11 +63,16 @@ def search_articles(
     current_user: User = Depends(get_current_user),
 ):
     """Search help articles by title and content."""
-    term = f"%{escape_like(q.strip())}%"
     user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
 
+    words = q.strip().split()
+    word_filters = []
+    for word in words:
+        term = f"%{escape_like(word)}%"
+        word_filters.append(or_(HelpArticle.title.ilike(term), HelpArticle.content.ilike(term)))
+
     results = db.query(HelpArticle).filter(
-        or_(HelpArticle.title.ilike(term), HelpArticle.content.ilike(term)),
+        and_(*word_filters),
         or_(HelpArticle.role.is_(None), HelpArticle.role == "", HelpArticle.role.contains(user_role)),
     ).order_by(HelpArticle.display_order, HelpArticle.title).limit(20).all()
 
