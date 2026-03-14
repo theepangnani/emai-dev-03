@@ -63,6 +63,19 @@ def _strip_html(text: str) -> str:
 
 
 class SearchService:
+    def _get_accessible_user_ids(self, user_id: int, user_role: str, db: Session) -> list[int]:
+        """Get user IDs whose data the current user can see (self + children for parents)."""
+        ids = [user_id]
+        if user_role == "parent":
+            child_ids = [
+                row[0] for row in db.query(Student.user_id)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .filter(parent_students.c.parent_id == user_id)
+                .all()
+            ]
+            ids.extend(child_ids)
+        return ids
+
     def detect_preset(self, message: str) -> str | None:
         """Returns 'due' | 'overdue' | 'upload' | 'create' | None"""
         msg = message.lower().strip()
@@ -168,11 +181,18 @@ class SearchService:
                     ).all()
                 ]
                 if matched_user_ids:
-                    task_q = task_q.filter(Task.assigned_to_user_id.in_(matched_user_ids))
+                    task_q = task_q.filter(
+                        (Task.created_by_user_id.in_(matched_user_ids)) |
+                        (Task.assigned_to_user_id.in_(matched_user_ids))
+                    )
                 else:
                     return []
             else:
-                task_q = task_q.filter(Task.assigned_to_user_id.in_(child_user_ids))
+                accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+                task_q = task_q.filter(
+                    (Task.created_by_user_id.in_(accessible_ids)) |
+                    (Task.assigned_to_user_id.in_(accessible_ids))
+                )
         elif user_role == "student":
             task_q = task_q.filter(
                 (Task.assigned_to_user_id == user_id) | (Task.created_by_user_id == user_id)
@@ -201,17 +221,11 @@ class SearchService:
                 (Task.assigned_to_user_id == user_id) | (Task.created_by_user_id == user_id)
             )
         elif user_role == "parent":
-            student_ids = [
-                row[0] for row in db.query(parent_students.c.student_id).filter(
-                    parent_students.c.parent_id == user_id
-                ).all()
-            ]
-            child_user_ids = [
-                row[0] for row in db.query(Student.user_id).filter(
-                    Student.id.in_(student_ids)
-                ).all()
-            ]
-            q = q.filter(Task.assigned_to_user_id.in_(child_user_ids))
+            accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            q = q.filter(
+                (Task.created_by_user_id.in_(accessible_ids)) |
+                (Task.assigned_to_user_id.in_(accessible_ids))
+            )
         else:
             q = q.filter(Task.created_by_user_id == user_id)
         tasks = q.order_by(Task.created_at.desc()).limit(8).all()
@@ -318,12 +332,19 @@ class SearchService:
             for a, c in rows
         ]
 
-    def _list_study_guides(self, user_id: int, db: Session) -> list[SearchResult]:
-        """Return up to 8 most recent study guides for the user."""
-        guides = db.query(StudyGuide).filter(
-            StudyGuide.user_id == user_id,
-            StudyGuide.archived_at.is_(None),
-        ).order_by(StudyGuide.created_at.desc()).limit(8).all()
+    def _list_study_guides(self, user_id: int, db: Session, user_role: str = "") -> list[SearchResult]:
+        """Return up to 8 most recent study guides for the user (and children for parents)."""
+        if user_role == "parent":
+            accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            guides = db.query(StudyGuide).filter(
+                StudyGuide.user_id.in_(accessible_ids),
+                StudyGuide.archived_at.is_(None),
+            ).order_by(StudyGuide.created_at.desc()).limit(8).all()
+        else:
+            guides = db.query(StudyGuide).filter(
+                StudyGuide.user_id == user_id,
+                StudyGuide.archived_at.is_(None),
+            ).order_by(StudyGuide.created_at.desc()).limit(8).all()
         results = []
         for g in guides:
             guide_type = g.guide_type or "study_guide"
@@ -460,7 +481,7 @@ class SearchService:
             return self._list_assignments(user_id, user_role, db)
 
         if preset == "list_study_guides":
-            return self._list_study_guides(user_id, db)
+            return self._list_study_guides(user_id, db, user_role=user_role)
 
         if preset == "list_notes":
             return self._list_notes(user_id, db)
@@ -602,12 +623,20 @@ class SearchService:
         if remaining <= 0:
             return results
 
-        # Study Guides (filter by owner)
-        guide_q = db.query(StudyGuide).filter(
-            StudyGuide.title.ilike(term),
-            StudyGuide.user_id == user_id,
-            StudyGuide.archived_at.is_(None),
-        )
+        # Study Guides (filter by owner; parents also see children's guides)
+        if user_role == "parent":
+            accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            guide_q = db.query(StudyGuide).filter(
+                StudyGuide.title.ilike(term),
+                StudyGuide.user_id.in_(accessible_ids),
+                StudyGuide.archived_at.is_(None),
+            )
+        else:
+            guide_q = db.query(StudyGuide).filter(
+                StudyGuide.title.ilike(term),
+                StudyGuide.user_id == user_id,
+                StudyGuide.archived_at.is_(None),
+            )
         for g in guide_q.limit(remaining).all():
             guide_type = g.guide_type or "study_guide"
             if guide_type == "quiz":
@@ -637,17 +666,11 @@ class SearchService:
                 (Task.assigned_to_user_id == user_id) | (Task.created_by_user_id == user_id)
             )
         elif user_role == "parent":
-            student_ids = [
-                row[0] for row in db.query(parent_students.c.student_id).filter(
-                    parent_students.c.parent_id == user_id
-                ).all()
-            ]
-            child_user_ids = [
-                row[0] for row in db.query(Student.user_id).filter(
-                    Student.id.in_(student_ids)
-                ).all()
-            ]
-            task_q = task_q.filter(Task.assigned_to_user_id.in_(child_user_ids))
+            accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            task_q = task_q.filter(
+                (Task.created_by_user_id.in_(accessible_ids)) |
+                (Task.assigned_to_user_id.in_(accessible_ids))
+            )
         else:
             task_q = task_q.filter(Task.created_by_user_id == user_id)
 

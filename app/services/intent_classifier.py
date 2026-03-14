@@ -45,5 +45,10 @@ def classify_intent(message: str, openai_api_key: str | None = None) -> str:
         if result is not None:
             return result
 
+    # Single bare-word queries with no keywords are almost always search intent (e.g. a name)
+    words = msg.split()
+    if len(words) == 1 and not any(hkw in msg for hkw in HELP_KEYWORDS):
+        return "search"
+
     # Final default
     return "help"
