@@ -1,4 +1,5 @@
 import re
+import re as _re
 from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
@@ -20,6 +21,28 @@ class SearchResult:
     title: str
     description: str | None
     actions: list[dict] = field(default_factory=list)
+
+
+_ACTION_PREFIX_RE = _re.compile(
+    r'^(find|search\s+for|show\s+me|show|list|where\s+is|where\s+are|'
+    r'look\s+up|get\s+me|get|what\s+are\s+my|what\s+are\s+the)\s+',
+    _re.IGNORECASE,
+)
+_POSSESSIVE_RE = _re.compile(r'\bmy\s+|\bthe\s+', _re.IGNORECASE)
+
+
+def _extract_search_term(query: str) -> str:
+    """Strip leading action verbs and possessives to get the core search term.
+
+    Examples:
+        "Find my course"   -> "course"
+        "Show me my tasks" -> "tasks"
+        "list my notes"    -> "notes"
+        "math"             -> "math"  (unchanged)
+    """
+    q = _ACTION_PREFIX_RE.sub("", query.strip())
+    q = _POSSESSIVE_RE.sub("", q)
+    return q.strip() or query.strip()  # fallback to original if stripping empties it
 
 
 def _strip_html(text: str) -> str:
@@ -127,7 +150,7 @@ class SearchService:
         if preset in ("due", "overdue"):
             return self.get_due_tasks(user_id, user_role, db)
 
-        raw = query.strip()
+        raw = _extract_search_term(query)
         term = f"%{escape_like(raw)}%"
         results: list[SearchResult] = []
         remaining = 10
