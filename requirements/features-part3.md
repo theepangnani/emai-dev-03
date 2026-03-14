@@ -1945,6 +1945,7 @@ components/HelpChatbot/
 - [x] NotesFAB z-index coordination + mobile bottom sheet (#1363)
 - [x] Global Search integration — search across platform data (#1630)
 - [ ] Remove GlobalSearch component — delete GlobalSearch.tsx/css, /api/search endpoint, wire Ctrl+K to chatbot (#1698)
+- [ ] Upgrade intent classifier to hybrid keyword + embedding approach (#1711)
 
 #### 6.59.9 Global Search Integration (#1630)
 
@@ -2019,6 +2020,61 @@ Remove the standalone `GlobalSearch` component and `/api/search` endpoint now th
 - [ ] Frontend: wire Ctrl+K → open chatbot panel in `DashboardLayout.tsx`
 - [ ] Frontend: update 12 test files (swap GlobalSearch mock for HelpChatbot mock)
 - [ ] Tests: confirm all tests pass after removal
+
+#### 6.59.11 Embedding-Based Intent Classification (#1711)
+
+**Status:** Planned
+**Replaces:** Keyword heuristic workaround added in #1706
+
+##### Problem with Current Approach
+
+The keyword-based `classify_intent()` in `app/services/intent_classifier.py` uses three hardcoded lists and a short-message heuristic fallback. It fails on natural-language queries that don't contain expected keywords (e.g. a child's name, ambiguous phrasing, non-English terms).
+
+##### Recommended Solution: Hybrid Keyword + Embedding
+
+Keep keyword matching as a fast first pass. For messages that don't match, fall back to **cosine similarity against pre-embedded anchor phrases** using OpenAI `text-embedding-3-small` — the same model already used by `help_embedding_service`.
+
+```
+1. Keyword match → return immediately if confident ($0, <1ms)
+2. Embedding similarity → compare against anchor phrases per intent (~$0.0000004/call, +120ms)
+3. Confidence threshold → if max similarity < 0.6, default to "help"
+```
+
+##### Anchor Phrases (pre-embedded at startup)
+
+| Intent | Example Anchors |
+|--------|----------------|
+| search | "find my course", "show me Noah's assignments", "biology quiz", "Thanushan", "what tasks do I have", "my study guides" |
+| help | "how do I add a child", "why can't I upload", "explain study guides", "what is a flashcard", "how does messaging work" |
+| action | "create a new task", "upload a file", "generate a quiz", "add a course", "new assignment" |
+
+##### Cost Analysis
+
+| Approach | Accuracy | Cost/month (100 users) | Latency |
+|----------|----------|------------------------|---------|
+| Keyword only (current) | ~70% | $0 | <1ms |
+| **Hybrid keyword + embedding** | **~92%** | **~$1** | **+120ms on misses** |
+| Full LLM per message | ~98% | ~$43–67 | +500ms |
+| Local ML classifier | ~87% | $0 | 2ms |
+
+At 30 req/hr rate limit × 100 active users = 3,000 calls/hr max.
+Embedding cost: `$0.020/1M tokens × 20 tokens/msg × 3,000 calls/hr = $0.0012/hr ≈ $0.87/month`.
+
+##### Decision: Hybrid (not full LLM)
+
+Full LLM intent routing rejected because:
+- $43–67/month at 100 users → $430–670/month at 1,000 users (unsustainable)
+- +500ms per message degrades chatbot feel significantly
+- 3-class classification does not need full reasoning capability
+
+##### Sub-tasks
+
+- [ ] Pre-compute anchor embeddings at startup in `intent_embedding_service.py`
+- [ ] Add `classify_intent_embedding(message)` fallback in `intent_classifier.py`
+- [ ] Update `app/api/routes/help.py` to await embedding fallback when needed
+- [ ] Add confidence threshold (cosine similarity < 0.6 → stay with default)
+- [ ] Tests: unit tests with mock embeddings
+- [ ] Monitor: log classification path (keyword vs embedding) for tuning
 
 ---
 
