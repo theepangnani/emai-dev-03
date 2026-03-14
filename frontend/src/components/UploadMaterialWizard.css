@@ -537,6 +537,37 @@
   margin-top: 10px;
 }
 
+/* ===== Multi-file info banner ===== */
+
+.upload-wizard-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #e6f7f8;
+  border: 1px solid #b2e0e3;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: #1e293b;
+  margin-top: 0.75rem;
+}
+
+.upload-wizard-info-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #0e7490;
+}
+
+/* ===== Naming preview (Step 2) ===== */
+
+.upload-wizard-naming-preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-alt, #F8F9FA);
+  border: 1px solid var(--color-border, #E2E8F0);
+  border-radius: 8px;
+}
+
 /* ===== Step 2: AI Tool Cards ===== */
 
 .uw-summary-bar {
