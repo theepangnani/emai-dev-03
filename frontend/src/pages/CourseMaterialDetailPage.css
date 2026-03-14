@@ -1959,7 +1959,7 @@
 .cm-scroll-top-btn {
   position: fixed;
   bottom: 80px;
-  right: 24px;
+  right: max(24px, calc((100vw - 80px - 1200px) / 2 + 24px));
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -1979,4 +1979,10 @@
   border-color: var(--color-accent, #2a9fa8);
   box-shadow: 0 4px 12px rgba(0,0,0,0.18);
   transform: translateY(-2px);
+}
+@media (max-width: 767px) {
+  .cm-scroll-top-btn {
+    right: 16px;
+    bottom: 80px;
+  }
 }
