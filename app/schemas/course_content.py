@@ -93,6 +93,9 @@ class CourseContentResponse(BaseModel):
     source_files_count: int = 0
     category: Optional[str] = None
     display_order: int = 0
+    parent_content_id: Optional[int] = None
+    is_master: str = "false"
+    material_group_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
@@ -120,3 +123,17 @@ class BulkCategorizeRequest(BaseModel):
 class CourseContentUpdateResponse(CourseContentResponse):
     """Extended response returned from PATCH that includes side-effect counts."""
     archived_guides_count: int = 0
+
+
+class LinkedMaterialResponse(BaseModel):
+    """Lightweight representation of a linked material (master or sub)."""
+    id: int
+    title: str
+    is_master: str = "false"
+    content_type: str
+    has_file: bool = False
+    original_filename: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
