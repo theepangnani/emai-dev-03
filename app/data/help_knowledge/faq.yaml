@@ -710,10 +710,10 @@
   tags: [help, support, faq, chatbot]
 
 - id: faq-help-2
-  question: "How does the AI Help Chatbot work?"
-  answer: "The AI Help Chatbot uses knowledge about ClassBridge features and common questions to provide instant answers. Ask any question about how to use the platform and it will guide you. For complex issues, it can suggest contacting an admin."
+  question: "What can the ClassBridge Help Chatbot do?"
+  answer: "The ClassBridge Help Chatbot can help you with many things:\n\n• **Find answers** — Ask about any ClassBridge feature and get instant guidance\n• **Search your data** — Find your courses, tasks, study guides, assignments, and messages by typing what you're looking for\n• **Navigate the app** — Ask how to get to any page or feature\n• **Upload help** — Get guidance on uploading materials and supported file formats\n• **Google Classroom** — Learn how to connect, sync, and manage your Google Classroom integration\n• **AI Study Tools** — Learn how to generate study guides, quizzes, flashcards, and mind maps\n• **Account help** — Get help with settings, notifications, email, and privacy\n• **Role-specific guidance** — Answers are tailored to your role (Parent, Student, Teacher, or Admin)\n\nJust type your question or click a suggestion chip to get started!"
   roles: [parent, student, teacher, admin]
-  tags: [help, chatbot, ai, support]
+  tags: [help, chatbot, ai, support, features, capabilities]
 
 - id: faq-help-3
   question: "Where can I find the FAQ?"
@@ -780,3 +780,237 @@
   answer: "Visit /terms to read ClassBridge's terms of service. It covers acceptable use, account responsibilities, and platform rules."
   roles: [parent, student, teacher, admin]
   tags: [terms, legal, service]
+
+# ============================================================
+# GRADES & ANALYTICS
+# ============================================================
+
+- id: faq-grades-1
+  question: "How do I view my grades?"
+  answer: "Go to the Grades page from sidebar, view by course, see overall GPA and per-assignment grades."
+  roles: [student, parent]
+  tags: [grades, view, gpa, courses]
+
+- id: faq-grades-2
+  question: "What are AI grade insights?"
+  answer: "ClassBridge uses AI to analyze grade trends and suggest areas for improvement. Available on the Analytics page."
+  roles: [student, parent]
+  tags: [grades, ai, analytics, insights]
+
+- id: faq-grades-3
+  question: "How do I sync grades from Google Classroom?"
+  answer: "Grades sync automatically when you connect Google Classroom. Manual sync available on course detail page."
+  roles: [student, teacher]
+  tags: [grades, sync, google-classroom]
+
+- id: faq-grades-4
+  question: "Where can I see grade trends?"
+  answer: "Analytics page shows grade trends over time with charts. Parents can view trends for each linked child."
+  roles: [student, parent, teacher]
+  tags: [grades, analytics, trends, charts]
+
+- id: faq-grades-5
+  question: "What is the weekly progress report?"
+  answer: "A weekly summary of grades, completed tasks, and study activity. Available in Analytics."
+  roles: [student, parent]
+  tags: [grades, analytics, weekly, progress]
+
+# ============================================================
+# ASSIGNMENTS — STUDENT
+# ============================================================
+
+- id: faq-assignments-1
+  question: "How do I submit an assignment?"
+  answer: "Open the assignment from your Tasks or Course page, click Submit, attach your file or type your response, then confirm."
+  roles: [student]
+  tags: [assignments, submit, student, tasks]
+
+- id: faq-assignments-2
+  question: "Can I resubmit an assignment?"
+  answer: "Check with your teacher. Some assignments allow resubmission before the due date."
+  roles: [student]
+  tags: [assignments, resubmit, student]
+
+- id: faq-assignments-3
+  question: "How do I see feedback on my assignment?"
+  answer: "Go to the assignment detail page. Teacher feedback and grades appear below your submission."
+  roles: [student]
+  tags: [assignments, feedback, grades, student]
+
+- id: faq-assignments-4
+  question: "What happens if I submit late?"
+  answer: "Late submissions are marked as late. Your teacher can still grade them, but they may apply a late penalty per their policy."
+  roles: [student]
+  tags: [assignments, late, submission, student]
+
+# ============================================================
+# DAILY DIGEST & BRIEFINGS
+# ============================================================
+
+- id: faq-digest-1
+  question: "What is the daily digest?"
+  answer: "A morning email summary of your upcoming tasks, assignments due, and important notifications. Configure in Settings."
+  roles: [parent, student, teacher]
+  tags: [digest, email, notifications, daily]
+
+- id: faq-digest-2
+  question: "How do I configure my daily digest?"
+  answer: "Go to notification preferences in Settings. Toggle the daily digest on/off and choose delivery time."
+  roles: [parent, student, teacher]
+  tags: [digest, settings, notifications, configure]
+
+- id: faq-digest-3
+  question: "What is the 'Help My Kid' feature?"
+  answer: "An AI-powered briefing for parents that analyzes your child's upcoming tasks, recent grades, and activity to suggest how you can help them today."
+  roles: [parent]
+  tags: [help-my-kid, briefing, parent, ai]
+
+- id: faq-digest-4
+  question: "Where can I see my child's daily briefing?"
+  answer: "Go to the Parent Dashboard and select your child. The briefing card shows today's focus areas and AI-generated suggestions."
+  roles: [parent]
+  tags: [briefing, parent, dashboard, child]
+
+# ============================================================
+# CONVERSATION STARTERS
+# ============================================================
+
+- id: faq-conversation-1
+  question: "What are conversation starters?"
+  answer: "AI-generated discussion prompts to help parents talk with their children about school. Based on your child's current courses and assignments."
+  roles: [parent]
+  tags: [conversation-starters, parent, ai, discussion]
+
+- id: faq-conversation-2
+  question: "How do I get daily conversation starters?"
+  answer: "They appear on the Parent Dashboard. You can also generate new ones by clicking 'Get Conversation Starter' on your child's card."
+  roles: [parent]
+  tags: [conversation-starters, parent, dashboard]
+
+# ============================================================
+# DATA EXPORT
+# ============================================================
+
+- id: faq-export-1
+  question: "How do I export my data?"
+  answer: "Go to Account Settings and click 'Request Data Export'. ClassBridge will prepare a downloadable file with all your personal data."
+  roles: [parent, student, teacher]
+  tags: [export, data, account, privacy]
+
+- id: faq-export-2
+  question: "What data is included in the export?"
+  answer: "Your profile, courses, assignments, grades, messages, notes, tasks, and study guides. The export is in a standard format for portability."
+  roles: [parent, student, teacher]
+  tags: [export, data, privacy, portability]
+
+# ============================================================
+# MIND MAPS
+# ============================================================
+
+- id: faq-mindmap-1
+  question: "How do I generate a mind map?"
+  answer: "Open a course material or study guide and click 'Generate Mind Map' from the AI Study Tools menu. The AI creates a visual concept map of the key topics."
+  roles: [student, teacher, parent]
+  tags: [mind-map, ai, study-tools, visual]
+
+- id: faq-mindmap-2
+  question: "Can I customize a mind map?"
+  answer: "Mind maps are generated based on the source material. You can regenerate with different focus areas or choose a specific section of the material."
+  roles: [student, teacher]
+  tags: [mind-map, customize, ai, study-tools]
+
+# ============================================================
+# CALENDAR IMPORT
+# ============================================================
+
+- id: faq-calendar-import-1
+  question: "How do I import an external calendar?"
+  answer: "Go to Calendar settings and click 'Import Calendar'. Paste an iCal/ICS URL from Google Calendar, Outlook, or any calendar app. Events sync automatically."
+  roles: [parent, student, teacher]
+  tags: [calendar, import, ical, sync]
+
+- id: faq-calendar-import-2
+  question: "What calendar formats are supported?"
+  answer: "ClassBridge supports iCal (.ics) format, which is standard for Google Calendar, Apple Calendar, Outlook, and most calendar apps."
+  roles: [parent, student, teacher]
+  tags: [calendar, import, ical, formats]
+
+# ============================================================
+# STUDY SHARING
+# ============================================================
+
+- id: faq-sharing-1
+  question: "How do I share a study guide with students?"
+  answer: "Open the study guide and click 'Share'. Select the students or course to share with. Shared guides appear in the student's Study Hub."
+  roles: [teacher]
+  tags: [sharing, study-guide, teacher]
+
+- id: faq-sharing-2
+  question: "Can students share study guides with each other?"
+  answer: "Currently, only teachers can share study guides. Students can create their own guides from the same course materials."
+  roles: [student, teacher]
+  tags: [sharing, study-guide, student]
+
+# ============================================================
+# RESOURCE LINKS
+# ============================================================
+
+- id: faq-resources-1
+  question: "What are resource links?"
+  answer: "Teachers can attach external links (websites, videos, articles) to course materials as supplementary resources."
+  roles: [student, teacher]
+  tags: [resources, links, materials, teacher]
+
+- id: faq-resources-2
+  question: "How do I add a resource link?"
+  answer: "On the course material detail page, click 'Add Resource Link' and enter the URL and a description."
+  roles: [teacher]
+  tags: [resources, links, add, teacher]
+
+# ============================================================
+# READINESS CHECK
+# ============================================================
+
+- id: faq-readiness-1
+  question: "What is a readiness check?"
+  answer: "A quick pre-assessment that evaluates how prepared you are for an exam or assignment based on your study activity and quiz scores."
+  roles: [student, teacher]
+  tags: [readiness, assessment, quiz, study]
+
+- id: faq-readiness-2
+  question: "How do I run a readiness check?"
+  answer: "Open a course material and click 'Readiness Check'. The tool analyzes your study history and quiz performance to give you a readiness score."
+  roles: [student]
+  tags: [readiness, assessment, study, score]
+
+# ============================================================
+# STUDENT EMAIL MANAGEMENT
+# ============================================================
+
+- id: faq-emails-1
+  question: "How do I add a secondary email?"
+  answer: "Go to Settings > Email Settings. Click 'Add Email' and verify the new address. This helps teachers and parents find your account."
+  roles: [student]
+  tags: [email, settings, student, account]
+
+- id: faq-emails-2
+  question: "Can I change my primary email?"
+  answer: "Yes. Go to Email Settings, add your new email, verify it, then click 'Set as Primary'. Your login will use the new email."
+  roles: [student]
+  tags: [email, settings, primary, account]
+
+# ============================================================
+# STORAGE
+# ============================================================
+
+- id: faq-storage-1
+  question: "How much storage do I have?"
+  answer: "Your storage usage appears in Account Settings. Default limits vary by role. Contact an admin if you need more space."
+  roles: [parent, student, teacher]
+  tags: [storage, limits, account, settings]
+
+- id: faq-storage-2
+  question: "What happens when I run out of storage?"
+  answer: "You'll see a warning when approaching your limit. You won't be able to upload new files until you delete some materials or request a limit increase from an admin."
+  roles: [parent, student, teacher]
+  tags: [storage, limits, upload, warning]
