@@ -1256,6 +1256,20 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE source_files ALTER COLUMN file_data DROP NOT NULL"))
+            conn.commit()
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE content_images ALTER COLUMN image_data DROP NOT NULL"))
+            conn.commit()
+    except Exception:
+        pass
+
 
 _is_prod = "sqlite" not in settings.database_url
 
