@@ -27,6 +27,7 @@ from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
 from app.core.config import settings
 from app.services.link_extraction_service import extract_and_enrich_links
+from app.services import gcs_service
 from app.schemas.course_content import (
     BulkCategorizeRequest,
     CourseContentCreate,
@@ -452,13 +453,25 @@ async def upload_course_content_file(
 
     # Store file as SourceFile for Cloud Run persistence (#1557)
     try:
-        source = SourceFile(
-            course_content_id=content.id,
-            filename=filename,
-            file_type=file.content_type,
-            file_size=len(file_content),
-            file_data=file_content,
-        )
+        if settings.use_gcs:
+            _gcs_path = f"source-files/{content.id}/{filename}"
+            gcs_service.upload_file(_gcs_path, file_content, file.content_type or "application/octet-stream")
+            source = SourceFile(
+                course_content_id=content.id,
+                filename=filename,
+                file_type=file.content_type,
+                file_size=len(file_content),
+                file_data=None,
+                gcs_path=_gcs_path,
+            )
+        else:
+            source = SourceFile(
+                course_content_id=content.id,
+                filename=filename,
+                file_type=file.content_type,
+                file_size=len(file_content),
+                file_data=file_content,
+            )
         db.add(source)
         db.commit()
     except Exception as e:
@@ -469,15 +482,29 @@ async def upload_course_content_file(
     try:
         images = extract_images_from_file(file_content, filename)
         for img_data in images:
-            content_image = ContentImage(
-                course_content_id=content.id,
-                image_data=img_data['image_data'],
-                media_type=img_data['media_type'],
-                description=img_data['description'],
-                position_context=img_data['position_context'],
-                position_index=img_data['position_index'],
-                file_size=img_data['file_size'],
-            )
+            if settings.use_gcs:
+                _img_gcs_path = f"content-images/{content.id}/{img_data['position_index']}.jpg"
+                gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
+                content_image = ContentImage(
+                    course_content_id=content.id,
+                    image_data=None,
+                    gcs_path=_img_gcs_path,
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
+            else:
+                content_image = ContentImage(
+                    course_content_id=content.id,
+                    image_data=img_data['image_data'],
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
             db.add(content_image)
         if images:
             db.commit()
@@ -608,13 +635,25 @@ async def upload_multi_files(
 
     # Store each file as a SourceFile
     for fname, fbytes, fmime in file_entries:
-        source = SourceFile(
-            course_content_id=content.id,
-            filename=fname,
-            file_type=fmime,
-            file_size=len(fbytes),
-            file_data=fbytes,
-        )
+        if settings.use_gcs:
+            _gcs_path = f"source-files/{content.id}/{fname}"
+            gcs_service.upload_file(_gcs_path, fbytes, fmime or "application/octet-stream")
+            source = SourceFile(
+                course_content_id=content.id,
+                filename=fname,
+                file_type=fmime,
+                file_size=len(fbytes),
+                file_data=None,
+                gcs_path=_gcs_path,
+            )
+        else:
+            source = SourceFile(
+                course_content_id=content.id,
+                filename=fname,
+                file_type=fmime,
+                file_size=len(fbytes),
+                file_data=fbytes,
+            )
         db.add(source)
 
     record_upload(db, current_user, total_size)
@@ -630,15 +669,29 @@ async def upload_multi_files(
         # Re-index after merging images from multiple files
         for idx, img_data in enumerate(all_images):
             img_data['position_index'] = idx
-            content_image = ContentImage(
-                course_content_id=content.id,
-                image_data=img_data['image_data'],
-                media_type=img_data['media_type'],
-                description=img_data['description'],
-                position_context=img_data['position_context'],
-                position_index=img_data['position_index'],
-                file_size=img_data['file_size'],
-            )
+            if settings.use_gcs:
+                _img_gcs_path = f"content-images/{content.id}/{idx}.jpg"
+                gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
+                content_image = ContentImage(
+                    course_content_id=content.id,
+                    image_data=None,
+                    gcs_path=_img_gcs_path,
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
+            else:
+                content_image = ContentImage(
+                    course_content_id=content.id,
+                    image_data=img_data['image_data'],
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
             db.add(content_image)
         if all_images:
             db.commit()
@@ -1014,17 +1067,28 @@ def download_course_content_file(
         .order_by(SourceFile.id)
         .first()
     )
-    if source and source.file_data:
+    if source:
         filename = source.filename or content.original_filename or f"file-{content_id}"
         media_type = source.file_type or content.mime_type or "application/octet-stream"
-        return Response(
-            content=source.file_data,
-            media_type=media_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
-                "Content-Length": str(len(source.file_data)),
-            },
-        )
+        if source.gcs_path:
+            file_bytes = gcs_service.download_file(source.gcs_path)
+            return Response(
+                content=file_bytes,
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Length": str(len(file_bytes)),
+                },
+            )
+        if source.file_data:
+            return Response(
+                content=source.file_data,
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Length": str(len(source.file_data)),
+                },
+            )
 
     # File is gone and no SourceFile — clear stale file_path so has_file becomes false
     if content.file_path:
@@ -1163,15 +1227,29 @@ async def replace_course_content_file(
     try:
         images = extract_images_from_file(file_content, filename)
         for img_data in images:
-            content_image = ContentImage(
-                course_content_id=content.id,
-                image_data=img_data['image_data'],
-                media_type=img_data['media_type'],
-                description=img_data['description'],
-                position_context=img_data['position_context'],
-                position_index=img_data['position_index'],
-                file_size=img_data['file_size'],
-            )
+            if settings.use_gcs:
+                _img_gcs_path = f"content-images/{content.id}/{img_data['position_index']}.jpg"
+                gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
+                content_image = ContentImage(
+                    course_content_id=content.id,
+                    image_data=None,
+                    gcs_path=_img_gcs_path,
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
+            else:
+                content_image = ContentImage(
+                    course_content_id=content.id,
+                    image_data=img_data['image_data'],
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
             db.add(content_image)
         if images:
             db.commit()
@@ -1261,7 +1339,15 @@ def _permanent_delete_content(db: Session, content: CourseContent):
     """Hard-delete a content item, its stored file, source files, images, and all linked study guides."""
     if content.file_path:
         delete_file(content.file_path)
+    source_files = db.query(SourceFile).filter(SourceFile.course_content_id == content.id).all()
+    for sf in source_files:
+        if sf.gcs_path:
+            gcs_service.delete_file(sf.gcs_path)
     db.query(SourceFile).filter(SourceFile.course_content_id == content.id).delete()
+    content_images = db.query(ContentImage).filter(ContentImage.course_content_id == content.id).all()
+    for ci in content_images:
+        if ci.gcs_path:
+            gcs_service.delete_file(ci.gcs_path)
     db.query(ContentImage).filter(ContentImage.course_content_id == content.id).delete()
     db.query(StudyGuide).filter(StudyGuide.course_content_id == content.id).delete()
     db.delete(content)
@@ -1333,14 +1419,26 @@ def download_source_file(
         media_type = mimetypes.guess_type(source.filename or "")[0] or "application/octet-stream"
     filename = source.filename or f"file-{file_id}"
 
-    return Response(
-        content=source.file_data,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Content-Length": str(len(source.file_data)),
-        },
-    )
+    if source.gcs_path:
+        file_bytes = gcs_service.download_file(source.gcs_path)
+        return Response(
+            content=file_bytes,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(file_bytes)),
+            },
+        )
+    if source.file_data:
+        return Response(
+            content=source.file_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(source.file_data)),
+            },
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file data not available")
 
 
 # ── Content Images endpoints (#1311) ──────────────────────────────
@@ -1398,8 +1496,17 @@ def get_content_image(
     if not image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
 
-    return Response(
-        content=image.image_data,
-        media_type=image.media_type,
-        headers={"Cache-Control": "public, max-age=86400"},
-    )
+    if image.gcs_path:
+        image_bytes = gcs_service.download_file(image.gcs_path)
+        return Response(
+            content=image_bytes,
+            media_type=image.media_type,
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    if image.image_data:
+        return Response(
+            content=image.image_data,
+            media_type=image.media_type,
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image data not available")
