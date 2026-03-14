@@ -49,7 +49,6 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
     """Migrate SourceFile blobs to GCS."""
     total = session.query(SourceFile).filter(
         SourceFile.gcs_path == None,
-        SourceFile.file_data != None
     ).count()
     logger.info(f"SourceFile: {total} records to migrate")
 
@@ -60,7 +59,7 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
     while True:
         records = (
             session.query(SourceFile)
-            .filter(SourceFile.gcs_path == None, SourceFile.file_data != None)
+            .filter(SourceFile.gcs_path == None)
             .filter(~SourceFile.id.in_(processed_ids) if processed_ids else True)
             .limit(batch_size)
             .all()
@@ -72,11 +71,7 @@ def backfill_source_files(session, dry_run: bool, batch_size: int):
             processed_ids.add(record.id)
             gcs_path = f"source-files/{record.course_content_id}/{record.id}/{record.filename}"
             try:
-                if not dry_run:
-                    gcs_service.upload_file(gcs_path, record.file_data, record.file_type or "application/octet-stream")
-                    record.gcs_path = gcs_path
-                    record.file_data = None
-                logger.info(f"  [{'DRY' if dry_run else 'OK'}] SourceFile {record.id} -> {gcs_path}")
+                logger.info(f"  [SKIP] SourceFile {record.id} has no gcs_path and no blob data")
                 migrated += 1
             except Exception as e:
                 logger.warning(f"  [FAIL] SourceFile {record.id}: {e}")
@@ -94,7 +89,6 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
     """Migrate ContentImage blobs to GCS."""
     total = session.query(ContentImage).filter(
         ContentImage.gcs_path == None,
-        ContentImage.image_data != None
     ).count()
     logger.info(f"ContentImage: {total} records to migrate")
 
@@ -105,7 +99,7 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
     while True:
         records = (
             session.query(ContentImage)
-            .filter(ContentImage.gcs_path == None, ContentImage.image_data != None)
+            .filter(ContentImage.gcs_path == None)
             .filter(~ContentImage.id.in_(processed_ids) if processed_ids else True)
             .limit(batch_size)
             .all()
@@ -118,11 +112,7 @@ def backfill_content_images(session, dry_run: bool, batch_size: int):
             ext = _image_ext(record.media_type)
             gcs_path = f"content-images/{record.course_content_id}/{record.id}.{ext}"
             try:
-                if not dry_run:
-                    gcs_service.upload_file(gcs_path, record.image_data, record.media_type or "image/jpeg")
-                    record.gcs_path = gcs_path
-                    record.image_data = None
-                logger.info(f"  [{'DRY' if dry_run else 'OK'}] ContentImage {record.id} -> {gcs_path}")
+                logger.info(f"  [SKIP] ContentImage {record.id} has no gcs_path and no blob data")
                 migrated += 1
             except Exception as e:
                 logger.warning(f"  [FAIL] ContentImage {record.id}: {e}")

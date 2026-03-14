@@ -1270,6 +1270,21 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+    # §6.56 — Drop legacy blob columns after GCS migration (#1697)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE source_files DROP COLUMN IF EXISTS file_data"))
+            conn.commit()
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE content_images DROP COLUMN IF EXISTS image_data"))
+            conn.commit()
+    except Exception:
+        pass
+
 
 _is_prod = "sqlite" not in settings.database_url
 

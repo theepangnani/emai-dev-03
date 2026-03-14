@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, LargeBinary, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -9,7 +9,6 @@ class ContentImage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="CASCADE"), nullable=False)
-    image_data = Column(LargeBinary, nullable=True)
     gcs_path = Column(String(500), nullable=True)
     media_type = Column(String(50), nullable=False)  # image/png, image/jpeg, etc.
     description = Column(Text, nullable=True)  # Vision OCR description

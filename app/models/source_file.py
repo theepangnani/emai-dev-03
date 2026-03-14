@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, LargeBinary, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
@@ -22,7 +22,6 @@ class SourceFile(Base):
     filename = Column(String(500), nullable=False)
     file_type = Column(String(100), nullable=True)  # MIME type
     file_size = Column(Integer, nullable=True)  # bytes
-    file_data = Column(LargeBinary, nullable=True)  # raw binary content
     gcs_path = Column(String(500), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

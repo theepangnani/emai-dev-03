@@ -461,19 +461,10 @@ async def upload_course_content_file(
                 filename=filename,
                 file_type=file.content_type,
                 file_size=len(file_content),
-                file_data=None,
                 gcs_path=_gcs_path,
             )
-        else:
-            source = SourceFile(
-                course_content_id=content.id,
-                filename=filename,
-                file_type=file.content_type,
-                file_size=len(file_content),
-                file_data=file_content,
-            )
-        db.add(source)
-        db.commit()
+            db.add(source)
+            db.commit()
     except Exception as e:
         db.rollback()
         logger.warning("Failed to store SourceFile for single upload: %s", e)
@@ -487,7 +478,6 @@ async def upload_course_content_file(
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=content.id,
-                    image_data=None,
                     gcs_path=_img_gcs_path,
                     media_type=img_data['media_type'],
                     description=img_data['description'],
@@ -495,17 +485,7 @@ async def upload_course_content_file(
                     position_index=img_data['position_index'],
                     file_size=img_data['file_size'],
                 )
-            else:
-                content_image = ContentImage(
-                    course_content_id=content.id,
-                    image_data=img_data['image_data'],
-                    media_type=img_data['media_type'],
-                    description=img_data['description'],
-                    position_context=img_data['position_context'],
-                    position_index=img_data['position_index'],
-                    file_size=img_data['file_size'],
-                )
-            db.add(content_image)
+                db.add(content_image)
         if images:
             db.commit()
             logger.info("Stored %d images for content %d", len(images), content.id)
@@ -643,18 +623,9 @@ async def upload_multi_files(
                 filename=fname,
                 file_type=fmime,
                 file_size=len(fbytes),
-                file_data=None,
                 gcs_path=_gcs_path,
             )
-        else:
-            source = SourceFile(
-                course_content_id=content.id,
-                filename=fname,
-                file_type=fmime,
-                file_size=len(fbytes),
-                file_data=fbytes,
-            )
-        db.add(source)
+            db.add(source)
 
     record_upload(db, current_user, total_size)
     db.commit()
@@ -674,7 +645,6 @@ async def upload_multi_files(
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=content.id,
-                    image_data=None,
                     gcs_path=_img_gcs_path,
                     media_type=img_data['media_type'],
                     description=img_data['description'],
@@ -682,17 +652,7 @@ async def upload_multi_files(
                     position_index=img_data['position_index'],
                     file_size=img_data['file_size'],
                 )
-            else:
-                content_image = ContentImage(
-                    course_content_id=content.id,
-                    image_data=img_data['image_data'],
-                    media_type=img_data['media_type'],
-                    description=img_data['description'],
-                    position_context=img_data['position_context'],
-                    position_index=img_data['position_index'],
-                    file_size=img_data['file_size'],
-                )
-            db.add(content_image)
+                db.add(content_image)
         if all_images:
             db.commit()
             logger.info("Stored %d images for content %d (multi-upload)", len(all_images), content.id)
@@ -1080,15 +1040,6 @@ def download_course_content_file(
                     "Content-Length": str(len(file_bytes)),
                 },
             )
-        if source.file_data:
-            return Response(
-                content=source.file_data,
-                media_type=media_type,
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"',
-                    "Content-Length": str(len(source.file_data)),
-                },
-            )
 
     # File is gone and no SourceFile — clear stale file_path so has_file becomes false
     if content.file_path:
@@ -1232,7 +1183,6 @@ async def replace_course_content_file(
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=content.id,
-                    image_data=None,
                     gcs_path=_img_gcs_path,
                     media_type=img_data['media_type'],
                     description=img_data['description'],
@@ -1240,17 +1190,7 @@ async def replace_course_content_file(
                     position_index=img_data['position_index'],
                     file_size=img_data['file_size'],
                 )
-            else:
-                content_image = ContentImage(
-                    course_content_id=content.id,
-                    image_data=img_data['image_data'],
-                    media_type=img_data['media_type'],
-                    description=img_data['description'],
-                    position_context=img_data['position_context'],
-                    position_index=img_data['position_index'],
-                    file_size=img_data['file_size'],
-                )
-            db.add(content_image)
+                db.add(content_image)
         if images:
             db.commit()
             logger.info("Stored %d images for replaced content %d", len(images), content.id)
@@ -1429,15 +1369,6 @@ def download_source_file(
                 "Content-Length": str(len(file_bytes)),
             },
         )
-    if source.file_data:
-        return Response(
-            content=source.file_data,
-            media_type=media_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
-                "Content-Length": str(len(source.file_data)),
-            },
-        )
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file data not available")
 
 
@@ -1500,12 +1431,6 @@ def get_content_image(
         image_bytes = gcs_service.download_file(image.gcs_path)
         return Response(
             content=image_bytes,
-            media_type=image.media_type,
-            headers={"Cache-Control": "public, max-age=86400"},
-        )
-    if image.image_data:
-        return Response(
-            content=image.image_data,
             media_type=image.media_type,
             headers={"Cache-Control": "public, max-age=86400"},
         )
