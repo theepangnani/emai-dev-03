@@ -186,9 +186,6 @@ import { CourseMaterialDetailPage } from './CourseMaterialDetailPage'
 describe('CourseMaterialDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('IntersectionObserver', vi.fn(function() {
-      return { observe: vi.fn(), disconnect: vi.fn(), unobserve: vi.fn() }
-    }))
   })
 
   it('does NOT render course_name badge next to the title (no duplicate label)', async () => {
