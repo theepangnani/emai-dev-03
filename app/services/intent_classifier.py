@@ -31,5 +31,10 @@ def classify_intent(message: str) -> str:
             return "help"
         return "search"
 
+    # Short bare-term queries (≤ 3 words, no help/action keywords) are likely searches
+    words = msg.split()
+    if 1 <= len(words) <= 3 and not any(hkw in msg for hkw in HELP_KEYWORDS):
+        return "search"
+
     # Default to help
     return "help"
