@@ -5,10 +5,10 @@ interface SuggestionChipsProps {
 
 const DEFAULT_CHIPS = [
   'Getting Started',
-  'Google Classroom',
-  'AI Study Tools',
-  'Upload Materials',
-  'Messages',
+  'How do I use Google Classroom?',
+  'What are AI Study Tools?',
+  'How do I upload materials?',
+  'How do I send messages?',
 ];
 
 const PAGE_CHIPS: Record<string, string[]> = {
@@ -19,7 +19,7 @@ const PAGE_CHIPS: Record<string, string[]> = {
   '/course-materials': ['Upload a file', 'Supported file formats', 'Generate study guide'],
   '/my-kids': ['How do I add a child?', 'Link to Google Classroom', 'View grades'],
   '/dashboard': ['Getting Started', 'What can ClassBridge do?', 'Connect Google Classroom'],
-  '/help': ['Getting Started', 'Google Classroom', 'AI Study Tools'],
+  '/help': ['Getting Started', 'How do I use Google Classroom?', 'What are AI Study Tools?'],
 };
 
 export function SuggestionChips({ onChipClick, currentPage }: SuggestionChipsProps) {
