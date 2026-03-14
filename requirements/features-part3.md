@@ -2799,3 +2799,22 @@ Add a "Source Files" button in the document tab action bar (next to Upload/Repla
 - [ ] Clicking scrolls to and expands the Source Files section
 
 **Status:** PLANNED
+
+---
+
+### 6.92 Activity History Page (Phase 2) - PLANNED
+
+Dedicated `/activity` page for parents to view full paginated activity history with filtering.
+
+**GitHub:** #1547
+
+**Acceptance Criteria:**
+- [ ] "View All" link in Recent Activity panel navigates to `/activity`
+- [ ] Activity History page shows all activity types
+- [ ] Child filter chips (same as dashboard)
+- [ ] Activity type filter
+- [ ] Pagination (load more)
+- [ ] Responsive design
+- [ ] Back navigation to dashboard
+
+**Status:** PLANNED
