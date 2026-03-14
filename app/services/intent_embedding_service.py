@@ -121,11 +121,11 @@ class IntentEmbeddingService:
             best_intent = None
             best_score = -1.0
             for intent, anchors in self._anchor_embeddings.items():
-                # Average similarity across all anchor phrases for this intent
+                # Max similarity — best single anchor match wins
                 scores = [_cosine_similarity(msg_embedding, anchor) for anchor in anchors]
-                avg_score = sum(scores) / len(scores) if scores else 0.0
-                if avg_score > best_score:
-                    best_score = avg_score
+                max_score = max(scores) if scores else 0.0
+                if max_score > best_score:
+                    best_score = max_score
                     best_intent = intent
 
             if best_score >= CONFIDENCE_THRESHOLD:
