@@ -1945,7 +1945,7 @@ components/HelpChatbot/
 - [x] NotesFAB z-index coordination + mobile bottom sheet (#1363)
 - [x] Global Search integration — search across platform data (#1630)
 - [ ] Remove GlobalSearch component — delete GlobalSearch.tsx/css, /api/search endpoint, wire Ctrl+K to chatbot (#1698)
-- [ ] Upgrade intent classifier to hybrid keyword + embedding approach (#1711)
+- [x] Upgrade intent classifier to hybrid keyword + embedding approach (#1711) (IMPLEMENTED — PR #1711)
 
 #### 6.59.9 Global Search Integration (#1630)
 
@@ -1997,11 +1997,11 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 - [x] Bug fix: intent classifier defaults to "help" for bare search terms (names, short queries) — should route to search (#1706, #1733, PR #1742)
 - [x] Bug fix: chatbot search uses narrower access scope than global search for parents — misses children's study guides and tasks (#1734, PR #1742)
 - [x] Bug fix: greeting/command words route to search instead of showing chips (#1743, PR #1745)
-- [ ] Bug fix: "show tasks for [name]" bypasses person filter (#1746)
-- [ ] Bug fix: 0 search results show no guidance chips (#1747, updated #1778)
-- [ ] Feat: streaming LLM response — token-by-token typewriter effect (#1748)
-- [ ] Feat: search result limits raised + count display (#1749)
-- [ ] Feat: chat command interception (clear/reset) (#1750)
+- [x] Bug fix: "show tasks for [name]" bypasses person filter (#1746) (IMPLEMENTED)
+- [x] Bug fix: 0 search results show no guidance chips (#1747) (IMPLEMENTED)
+- [x] Feat: streaming LLM response — token-by-token typewriter effect (#1748) (IMPLEMENTED)
+- [x] Feat: search result limits raised + count display (#1749) (IMPLEMENTED)
+- [x] Feat: chat command interception (clear/reset) (#1750) (IMPLEMENTED)
 - [ ] Fix: add topic keywords to intent classifier for help routing (#1778)
 - [ ] Feat: "What can the chatbot do?" FAQ entry + suggestion chip (#1778)
 - [ ] Feat: comprehensive FAQ knowledge base expansion (#1779)
@@ -2015,10 +2015,10 @@ Extend the Help Chatbot to also function as the **unified global search** for Cl
 
 **Execution Gate — ALL must be true before starting:**
 - Chatbot NLQ bugs resolved (bare names, action words, person filter, scope parity) ✅
-- Streaming LLM response live (#1748)
-- Result limits raised to 20 (#1749)
-- Chat commands working (#1750)
-- ≥ 2 weeks production use with no critical search regressions
+- Streaming LLM response live (#1748) ✅
+- Result limits raised to 20 (#1749) ✅
+- Chat commands working (#1750) ✅
+- ≥ 2 weeks production use with no critical search regressions (tracking from 2026-03-14)
 - Manual QA: parent/student/teacher confirm chatbot matches or beats GlobalSearch
 - 0-result rate in Cloud Run logs < 10%
 
@@ -2473,8 +2473,8 @@ study_guides table (existing — add 3 nullable FK columns):
 - "Generate More" dropdown on any material: Quiz / Flashcards / Word Problems / Summary — creates a new `study_guide` with `source_study_guide_id` pointing to current
 
 **Sub-tasks:**
-- [ ] Backend: one-tap generation with auto-notify (#1408)
-- [ ] Frontend: Help Study buttons + generation modal (#1409)
+- [x] Backend: one-tap generation with auto-notify (#1408) (IMPLEMENTED)
+- [x] Frontend: Help Study buttons + generation modal (#1409) (IMPLEMENTED)
 
 ### 6.63 Weekly Progress Pulse — Email Digest (Phase 2)
 
@@ -3111,3 +3111,87 @@ Add a floating scroll-to-top button on the dedicated StudyGuidePage (`/study/gui
 - [x] Consistent styling with §6.94 scroll-to-top button
 
 **Status:** COMPLETE
+
+---
+
+### 6.98 Master/Sub Class Material Hierarchy for Multi-Document Uploads (#1740)
+
+When a user uploads multiple documents (with or without pasted text content), the system creates a **master Class Material** and one **sub Class Material per attachment**, forming a parent-child hierarchy. This enables users to work with large source documents by generating study tools on demand per sub-material rather than failing on oversized combined content.
+
+**Motivation:** Large uploaded documents can exceed AI context limits, making it impossible to generate a single comprehensive study guide. By splitting into master + sub-materials, users can generate study guides per section/file on demand.
+
+**Related:** #993 (multi-document support — separate concept, stays open), #1594 (hierarchical study guides)
+
+#### Rules
+
+1. **Master + Sub Creation on Multi-File Upload**
+   - Create 1 master Class Material + 1 sub Class Material per attachment (e.g., 3 files → 3 subs)
+   - Maximum **10 files** per upload — reject with validation error if user selects more than 10
+
+2. **Master Material Content (with pasted text)**
+   - Master holds the pasted text content and is a valid Class Material eligible for study guide generation
+   - Master title is **auto-derived from pasted text content** — user can modify afterward
+
+3. **Master Material (no pasted text)**
+   - First uploaded document becomes the master Class Material
+   - Remaining documents become sub-materials
+
+4. **Study Guide Auto-Generation at Upload Time**
+   - If study guide generation is requested (Step 2 of wizard), generation is **only triggered for the master**
+   - Sub-materials do not auto-generate at upload time
+
+5. **Linked Materials Panel — Master View**
+   - All tabs (Original Document, Study Guide, Quiz, Flashcards) show a **collapsible "Linked Materials" panel at the top**
+   - Lists all sub-materials as clickable links
+   - Clicking navigates to that material's detail page; supports back-and-forth navigation
+
+6. **On-Demand Generation for All Materials**
+   - After upload, any material (master or sub) can generate study guides, quizzes, flashcards on demand
+   - No restrictions on sub-material generation — business as usual
+
+7. **Linked Materials Panel — Sub-Material View**
+   - All tabs show the same collapsible "Linked Materials" panel at the top
+   - Lists master + all sibling sub-materials as clickable links
+
+#### Sub-Material Naming
+
+Auto-named with suffix pattern: `"Master Title — Part 1"`, `"Master Title — Part 2"`, etc. User can edit the name later.
+
+#### Data Model
+
+```sql
+ALTER TABLE course_contents ADD COLUMN parent_content_id INTEGER REFERENCES course_contents(id);
+ALTER TABLE course_contents ADD COLUMN is_master BOOLEAN DEFAULT FALSE;
+ALTER TABLE course_contents ADD COLUMN material_group_id INTEGER;
+```
+
+Self-referencing FK: `parent_content_id` on `course_contents` (master has NULL, subs point to master). `material_group_id` groups master + subs for efficient querying.
+
+#### UI Changes
+
+**Upload Wizard (Step 1 / Step 2):**
+- When multiple files detected: show info message explaining master/sub structure
+- Master title input applies to master material
+- Sub-materials auto-named with suffix (editable later)
+
+**Course Material Detail Page — All Tabs:**
+- Collapsible "Linked Materials" panel at the top of every tab
+- Master view: lists sub-materials with links
+- Sub view: lists master + all sibling subs with links
+- Clicking a link navigates to that material; back/forth navigation supported
+
+#### Acceptance Criteria
+
+- [ ] Uploading 3 files + pasted text → 1 master (pasted text) + 3 sub-materials
+- [ ] Uploading 3 files without pasted text → 1 master (first file) + 2 sub-materials
+- [ ] More than 10 files → validation error, upload rejected
+- [ ] Auto study guide generation at upload only triggers for master
+- [ ] Master detail page: all tabs show collapsible "Linked Materials" panel at top with sub-material links
+- [ ] Sub detail page: all tabs show collapsible "Linked Materials" panel at top with master + sibling links
+- [ ] On-demand study guide/quiz/flashcard generation works for all materials (master and sub)
+- [ ] Sub-materials auto-named as "Master Title — Part N", editable by user
+- [ ] DB migration: `parent_content_id`, `is_master`, `material_group_id` added in `main.py` startup
+
+**GitHub:** #1740
+
+**Status:** PENDING
