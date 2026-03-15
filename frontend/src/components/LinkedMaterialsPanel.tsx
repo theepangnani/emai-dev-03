@@ -19,8 +19,7 @@ interface LinkedMaterialsPanelProps {
   loading?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster: _isCurrentMaster, loading }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading) return null;

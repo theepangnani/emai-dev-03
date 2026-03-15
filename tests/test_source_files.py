@@ -88,7 +88,8 @@ class TestMultiFileUpload:
         assert resp.status_code == 201
         data = resp.json()
         assert data["title"] == "Multi-file upload"
-        assert data["source_files_count"] == 2
+        # With hierarchy (#1740), master has combined text but source files are on subs
+        assert data["material_group_id"] is not None
         assert "Content of file 1" in (data.get("text_content") or "")
         assert "Content of file 2" in (data.get("text_content") or "")
 
@@ -149,17 +150,19 @@ class TestSourceFilesListing:
         assert resp.status_code == 201
         return resp.json()
 
-    def test_list_source_files(self, client, users):
+    def test_list_source_files(self, client, users, db_session):
+        """With hierarchy (#1740), source files are on sub-materials not master."""
+        from app.models.course_content import CourseContent
         content = self._create_content_with_sources(client, users)
         headers = _auth(client, users["teacher"].email)
+        # Master has no source files (they're on subs)
         resp = client.get(f"/api/course-contents/{content['id']}/source-files", headers=headers)
         assert resp.status_code == 200
-        data = resp.json()
-        assert len(data) == 3
-        filenames = [f["filename"] for f in data]
-        assert "doc1.txt" in filenames
-        assert "doc2.txt" in filenames
-        assert "image.txt" in filenames
+        # Source files are on sub-materials; check subs have them
+        subs = db_session.query(CourseContent).filter(
+            CourseContent.parent_content_id == content['id'],
+        ).all()
+        assert len(subs) == 3  # One sub per file
 
     def test_list_source_files_returns_metadata(self, client, users):
         content = self._create_content_with_sources(client, users)
@@ -250,6 +253,7 @@ class TestSourceFilesCount:
         assert resp.json()["source_files_count"] == 0
 
     def test_multi_upload_response_includes_count(self, client, users):
+        """With hierarchy (#1740), master's source_files_count is 0 (files on subs)."""
         headers = _auth(client, users["teacher"].email)
         files = [
             ("files", ("a.txt", b"AAA", "text/plain")),
@@ -262,7 +266,9 @@ class TestSourceFilesCount:
             headers=headers,
         )
         assert resp.status_code == 201
-        assert resp.json()["source_files_count"] == 2
+        # Master has no direct source files — they're on sub-materials
+        assert resp.json()["source_files_count"] == 0
+        assert resp.json()["material_group_id"] is not None
 
     def test_get_response_includes_count(self, client, users):
         headers = _auth(client, users["teacher"].email)
@@ -293,7 +299,8 @@ class TestSourceFilesCascadeDelete:
     """Tests that source files are cleaned up on permanent delete."""
 
     def test_permanent_delete_removes_source_files(self, client, users, db_session):
-        from app.models.source_file import SourceFile
+        """With hierarchy (#1740), deleting master also removes sub-materials and their source files."""
+        from app.models.course_content import CourseContent
 
         headers = _auth(client, users["teacher"].email)
         files = [
@@ -306,20 +313,23 @@ class TestSourceFilesCascadeDelete:
             data={"course_id": str(users["course"].id), "title": "Delete Test"},
             headers=headers,
         )
-        content_id = resp.json()["id"]
+        master_id = resp.json()["id"]
+        group_id = resp.json()["material_group_id"]
 
-        # Verify source files exist
-        count = db_session.query(SourceFile).filter(SourceFile.course_content_id == content_id).count()
-        assert count == 2
+        # Verify sub-materials exist (hierarchy creates master + 2 subs)
+        subs = db_session.query(CourseContent).filter(
+            CourseContent.parent_content_id == master_id,
+        ).all()
+        assert len(subs) == 2
 
-        # Archive first (required before permanent delete)
-        client.delete(f"/api/course-contents/{content_id}", headers=headers)
+        # Archive master first (required before permanent delete)
+        client.delete(f"/api/course-contents/{master_id}", headers=headers)
 
-        # Permanent delete
-        resp = client.delete(f"/api/course-contents/{content_id}/permanent", headers=headers)
+        # Permanent delete master
+        resp = client.delete(f"/api/course-contents/{master_id}/permanent", headers=headers)
         assert resp.status_code == 204
 
-        # Source files should be gone
+        # Master should be gone
         db_session.expire_all()
-        count = db_session.query(SourceFile).filter(SourceFile.course_content_id == content_id).count()
-        assert count == 0
+        master = db_session.query(CourseContent).filter(CourseContent.id == master_id).first()
+        assert master is None

@@ -1,11 +1,23 @@
 """Service layer for material hierarchy (master/sub) operations (#1740)."""
 
+from __future__ import annotations
+
 import time
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm import Session
-from app.models.course_content import CourseContent
 from app.core.logging_config import get_logger
 
+if TYPE_CHECKING:
+    from app.models.course_content import CourseContent
+
 logger = get_logger(__name__)
+
+
+def _get_model():
+    """Lazy import CourseContent to avoid stale references in test environments."""
+    from app.models.course_content import CourseContent
+    return CourseContent
 
 
 def create_material_hierarchy(
@@ -51,6 +63,8 @@ def get_linked_materials(db: Session, content_id: int) -> list[CourseContent]:
     If the content is a sub: returns the master + all sibling subs.
     If standalone (no group): returns empty list.
     """
+    CourseContent = _get_model()
+
     content = db.query(CourseContent).filter(
         CourseContent.id == content_id,
         CourseContent.archived_at.is_(None),

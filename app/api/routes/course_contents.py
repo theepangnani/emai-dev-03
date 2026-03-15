@@ -1462,7 +1462,7 @@ def get_linked_materials_endpoint(
         results.append(LinkedMaterialResponse(
             id=m.id,
             title=m.title,
-            is_master=bool(m.is_master),
+            is_master=m.is_master or "false",
             content_type=m.content_type,
             has_file=m.file_path is not None,
             original_filename=m.original_filename,
