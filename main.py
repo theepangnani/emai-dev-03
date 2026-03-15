@@ -351,10 +351,25 @@ with engine.connect() as conn:
                 conn.rollback()
         if "is_master" not in existing_cols:
             try:
-                conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master BOOLEAN DEFAULT FALSE"))
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master VARCHAR(5) DEFAULT 'false'"))
                 logger.info("Added 'is_master' column to course_contents")
             except Exception:
                 conn.rollback()
+        # Fix is_master column type: BOOLEAN → VARCHAR(5) for cross-DB compatibility (#1804)
+        if "is_master" in existing_cols:
+            try:
+                if "sqlite" not in settings.database_url:
+                    conn.execute(text(
+                        "ALTER TABLE course_contents ALTER COLUMN is_master TYPE VARCHAR(5) "
+                        "USING CASE WHEN is_master THEN 'true' ELSE 'false' END"
+                    ))
+                    conn.execute(text(
+                        "ALTER TABLE course_contents ALTER COLUMN is_master SET DEFAULT 'false'"
+                    ))
+                    logger.info("Converted 'is_master' column from BOOLEAN to VARCHAR(5)")
+            except Exception:
+                conn.rollback()
+        conn.commit()
         if "material_group_id" not in existing_cols:
             try:
                 conn.execute(text("ALTER TABLE course_contents ADD COLUMN material_group_id INTEGER"))
