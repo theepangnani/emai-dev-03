@@ -15,11 +15,11 @@ export interface LinkedMaterialDisplay {
 interface LinkedMaterialsPanelProps {
   materials: LinkedMaterialDisplay[];
   currentMaterialId: number;
-  isCurrentMaster: boolean;
+  isCurrentMaster?: boolean;
   loading?: boolean;
 }
 
-export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster: _isCurrentMaster, loading }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading) return null;
