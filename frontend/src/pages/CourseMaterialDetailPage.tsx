@@ -33,6 +33,8 @@ import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
 import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
+import { LinkedMaterialsPanel } from '../components/LinkedMaterialsPanel';
+import { useLinkedMaterials } from '../hooks/useLinkedMaterials';
 import './CourseMaterialDetailPage.css';
 
 type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos' | 'briefing';
@@ -235,6 +237,12 @@ export function CourseMaterialDetailPage() {
   // Unlinked material state (#623)
   const [isUnlinked, setIsUnlinked] = useState(false);
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
+
+  // Linked materials for hierarchy (#1740)
+  const { data: linkedMaterials = [], isLoading: linkedLoading } = useLinkedMaterials(
+    content?.id,
+    content?.material_group_id
+  );
 
   const contentId = parseInt(id || '0');
 
@@ -676,6 +684,16 @@ export function CourseMaterialDetailPage() {
 
         {/* ── Tab content ──────────────────────────── */}
         <div className="cm-tab-content" role="tabpanel" ref={contentAreaRef}>
+          {/* Linked Materials Panel (#1740) */}
+          {content && content.material_group_id && (
+            <LinkedMaterialsPanel
+              materials={linkedMaterials}
+              currentMaterialId={content.id}
+              isCurrentMaster={content.is_master === 'true'}
+              loading={linkedLoading}
+            />
+          )}
+
           {activeTab === 'document' && (
             <DocumentTab
               content={content}

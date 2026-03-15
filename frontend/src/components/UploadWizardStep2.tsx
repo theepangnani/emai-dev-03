@@ -97,6 +97,21 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
         />
       </div>
 
+      {/* Naming preview for multi-file uploads */}
+      {selectedFiles.length >= 2 && studyTitle && (
+        <div className="upload-wizard-naming-preview">
+          <p style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.375rem' }}>
+            Materials that will be created:
+          </p>
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
+            <li><strong>{studyTitle}</strong> (master)</li>
+            {Array.from({ length: selectedFiles.length }, (_, i) => (
+              <li key={i}>{studyTitle} — Part {i + 1}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Focus prompt — visible only when at least one tool is selected */}
       {hasSelection && (
         <div className="uw-field">

@@ -155,6 +155,19 @@ function UploadWizardStep1({
         )}
       </div>
 
+      {/* Multi-file info banner */}
+      {selectedFiles.length >= 2 && (
+        <div className="upload-wizard-info-banner">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M8 5v1M8 7.5v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          <span>
+            Uploading {selectedFiles.length} files will create a <strong>master material</strong> with {selectedFiles.length} <strong>linked sub-materials</strong>, one per file.
+          </span>
+        </div>
+      )}
+
       {/* Divider */}
       <div className="uw-divider"><span>or paste content below</span></div>
 
