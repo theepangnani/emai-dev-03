@@ -43,6 +43,11 @@ class CourseContent(Base):
     category = Column(String(100), nullable=True)
     display_order = Column(Integer, default=0, server_default="0")
 
+    # Material hierarchy (#1740)
+    parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
+    is_master = Column(String(5), nullable=False, default="false", server_default="false")  # "true"/"false" for cross-DB compat
+    material_group_id = Column(Integer, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
@@ -52,11 +57,19 @@ class CourseContent(Base):
     created_by = relationship("User", foreign_keys=[created_by_user_id])
     resource_links = relationship("ResourceLink", back_populates="course_content", cascade="all, delete-orphan")
 
+    # Material hierarchy relationships
+    parent_material = relationship("CourseContent", remote_side=[id], backref=backref("sub_materials", lazy="dynamic"))
+
     @property
     def course_name(self) -> str | None:
         return self.course.name if self.course else None
 
+    @property
+    def is_master_material(self) -> bool:
+        return self.is_master == "true"
+
     __table_args__ = (
         Index("ix_course_contents_course", "course_id"),
         Index("ix_course_contents_type", "course_id", "content_type"),
+        Index("ix_course_contents_material_group", "material_group_id"),
     )
