@@ -28,12 +28,14 @@ from app.models.resource_link import ResourceLink
 from app.core.config import settings
 from app.services.link_extraction_service import extract_and_enrich_links
 from app.services import gcs_service
+from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials, generate_sub_title
 from app.schemas.course_content import (
     BulkCategorizeRequest,
     CourseContentCreate,
     CourseContentUpdate,
     CourseContentResponse,
     CourseContentUpdateResponse,
+    LinkedMaterialResponse,
 )
 from app.schemas.content_image import ContentImageResponse
 from app.schemas.source_file import SourceFileResponse
@@ -556,6 +558,13 @@ async def upload_multi_files(
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
 
+    # Max 10 files per upload (#1740)
+    if len(files) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 10 files per upload. Please reduce the number of files.",
+        )
+
     # Validate ai_tool
     ai_tool_normalized = ai_tool.strip().lower()
     if ai_tool_normalized not in VALID_AI_TOOLS:
@@ -598,24 +607,27 @@ async def upload_multi_files(
 
     combined_text = "\n\n".join(text_parts) if text_parts else None
 
-    # Create the CourseContent record
+    # === Material Hierarchy (#1740) ===
     content_title = title or ", ".join(fname for fname, _, _ in file_entries)
-    content = CourseContent(
-        course_id=course_id,
-        title=content_title,
-        content_type=content_type,
-        text_content=combined_text,
-        original_filename=file_entries[0][0] if len(file_entries) == 1 else None,
-        file_size=total_size,
-        mime_type=file_entries[0][2] if len(file_entries) == 1 else "multipart/mixed",
-        created_by_user_id=current_user.id,
-    )
-    db.add(content)
-    db.flush()  # get content.id for FK
 
-    # Store each file as a SourceFile
-    for fname, fbytes, fmime in file_entries:
+    if len(file_entries) == 1:
+        # Single file: no hierarchy, create as before
+        content = CourseContent(
+            course_id=course_id,
+            title=content_title,
+            content_type=content_type,
+            text_content=combined_text,
+            original_filename=file_entries[0][0],
+            file_size=total_size,
+            mime_type=file_entries[0][2],
+            created_by_user_id=current_user.id,
+        )
+        db.add(content)
+        db.flush()
+
+        # Store as SourceFile
         if settings.use_gcs:
+            fname, fbytes, fmime = file_entries[0]
             _gcs_path = f"source-files/{content.id}/{fname}"
             gcs_service.upload_file(_gcs_path, fbytes, fmime or "application/octet-stream")
             source = SourceFile(
@@ -626,6 +638,59 @@ async def upload_multi_files(
                 gcs_path=_gcs_path,
             )
             db.add(source)
+    else:
+        # Multiple files: create master + sub-materials
+        master_text = combined_text  # Master gets overview of all content
+        master = CourseContent(
+            course_id=course_id,
+            title=content_title,
+            content_type=content_type,
+            text_content=master_text,
+            file_size=total_size,
+            mime_type="multipart/mixed",
+            created_by_user_id=current_user.id,
+        )
+        db.add(master)
+        db.flush()  # Get master.id
+
+        # Create sub-materials, one per file
+        sub_materials = []
+        for idx, (fname, fbytes, fmime) in enumerate(file_entries, 1):
+            sub_title = generate_sub_title(content_title, idx)
+            # Extract text for this specific file
+            sub_text = text_parts[idx - 1] if idx - 1 < len(text_parts) else None
+
+            sub = CourseContent(
+                course_id=course_id,
+                title=sub_title,
+                content_type=content_type,
+                text_content=sub_text,
+                original_filename=fname,
+                file_size=len(fbytes),
+                mime_type=fmime,
+                created_by_user_id=current_user.id,
+            )
+            db.add(sub)
+            db.flush()  # Get sub.id
+
+            # Store file as SourceFile on the sub-material
+            if settings.use_gcs:
+                _gcs_path = f"source-files/{sub.id}/{fname}"
+                gcs_service.upload_file(_gcs_path, fbytes, fmime or "application/octet-stream")
+                source = SourceFile(
+                    course_content_id=sub.id,
+                    filename=fname,
+                    file_type=fmime,
+                    file_size=len(fbytes),
+                    gcs_path=_gcs_path,
+                )
+                db.add(source)
+
+            sub_materials.append(sub)
+
+        # Link master + subs
+        create_material_hierarchy(db, master, sub_materials)
+        content = master  # Return master as the response
 
     record_upload(db, current_user, total_size)
     db.commit()
@@ -1370,6 +1435,40 @@ def download_source_file(
             },
         )
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file data not available")
+
+
+# ── Linked Materials endpoints (#1740) ────────────────────────────
+
+@router.get("/{content_id}/linked-materials", response_model=list[LinkedMaterialResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_linked_materials_endpoint(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all materials linked to this content (master + siblings in the same group)."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    linked = get_linked_materials(db, content_id)
+    # Convert to response with has_file computed
+    results = []
+    for m in linked:
+        results.append(LinkedMaterialResponse(
+            id=m.id,
+            title=m.title,
+            is_master=bool(m.is_master),
+            content_type=m.content_type,
+            has_file=m.file_path is not None,
+            original_filename=m.original_filename,
+            created_at=m.created_at,
+        ))
+    return results
 
 
 # ── Content Images endpoints (#1311) ──────────────────────────────
