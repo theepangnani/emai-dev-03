@@ -120,6 +120,16 @@ export default function UploadMaterialWizard({
     }
   }, [open, initialTitle, initialContent, courses, selectedCourseId]);
 
+  // Sync managedCourses when courses prop changes while modal is already open
+  // (e.g., parent switches child context)
+  useEffect(() => {
+    if (!open || !courses || courses.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setManagedCourses(courses);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInternalCourseId(courses.length === 1 ? courses[0].id : (selectedCourseId ?? ''));
+  }, [open, courses, selectedCourseId]);
+
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const toAdd = Array.from(incoming);
     const oversized = toAdd.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
