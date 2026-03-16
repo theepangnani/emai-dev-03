@@ -258,6 +258,93 @@
   color: var(--color-text-muted, #64748b);
 }
 
+/* ── Sub-guide generation status banner (#1838) ──────────── */
+
+.sg-subguide-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  animation: sgStatusSlideIn 0.2s ease-out;
+}
+
+@keyframes sgStatusSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sg-subguide-status.generating {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.sg-subguide-status.ready {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  color: #065f46;
+}
+
+.sg-subguide-status-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f59e0b;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sgSpin 0.8s linear infinite;
+}
+
+@keyframes sgSpin {
+  to { transform: rotate(360deg); }
+}
+
+.sg-subguide-status-link {
+  color: #065f46;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sg-subguide-status-dismiss {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 1.125rem;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0 0.25rem;
+}
+
+.sg-subguide-status-dismiss:hover {
+  opacity: 1;
+}
+
+/* Sub-guides badge in header (#1838) */
+.sg-sub-guides-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--color-accent, #2a9fa8);
+  border-radius: 12px;
+  background: var(--color-accent-bg, #e6f7f8);
+  color: var(--color-accent-strong, #2a9fa8);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sg-sub-guides-badge:hover {
+  background: var(--color-accent, #2a9fa8);
+  color: #fff;
+}
+
 /* ── Print ───────────────────────────────────────────────── */
 
 @media print {
