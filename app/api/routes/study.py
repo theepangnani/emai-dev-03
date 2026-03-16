@@ -1357,6 +1357,7 @@ def list_child_guides(
     return result
 
 
+
 @router.post("/guides/{guide_id}/generate-child", response_model=StudyGuideResponse)
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def generate_child_guide(
