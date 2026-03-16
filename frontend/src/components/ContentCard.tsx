@@ -89,6 +89,20 @@ function resolveImageMarkers(
   return result;
 }
 
+/**
+ * Strip \hline from LaTeX math blocks that are NOT inside
+ * \begin{array} or \begin{tabular} environments.
+ * These are common AI-generation artifacts that cause KaTeX parse errors.
+ */
+function sanitizeLatex(content: string): string {
+  return content.replace(/\$\$([\s\S]*?)\$\$/g, (_match, inner: string) => {
+    if (/\\begin\{(array|tabular)\}/.test(inner)) return _match;
+    const cleaned = inner.replace(/\\hline\s*/g, '');
+    if (cleaned !== inner) return `$$${cleaned}$$`;
+    return _match;
+  });
+}
+
 const loadMarkdown = () =>
   Promise.all([
     import('react-markdown'),
@@ -130,6 +144,7 @@ const loadMarkdown = () =>
           if (courseContentId && images.length > 0) {
             text = resolveImageMarkers(text, courseContentId, images);
           }
+          text = sanitizeLatex(text);
           return text;
         }, [content, courseContentId, images]);
 
@@ -149,7 +164,7 @@ const loadMarkdown = () =>
         return (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex]}
+            rehypePlugins={[[rehypeKatex, { throwOnError: false }]]}
             components={{ img: imgComponent }}
           >
             {resolved}
