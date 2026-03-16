@@ -1,0 +1,391 @@
+/* ============================================
+   GenerateSubGuideModal — §6.100.2
+   Premium editorial design for sub-guide generation
+   ============================================ */
+
+/* Overlay */
+.subguide-overlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Modal card */
+.subguide-modal {
+  background: var(--color-surface);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: subguideSlideIn 0.2s ease-out;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--color-border);
+}
+
+@keyframes subguideSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header */
+.subguide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.subguide-header h2 {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+}
+
+.subguide-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.subguide-close:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+/* Body */
+.subguide-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.subguide-section {
+  margin-bottom: 20px;
+}
+
+.subguide-section:last-child {
+  margin-bottom: 0;
+}
+
+.subguide-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+  margin-bottom: 8px;
+}
+
+.subguide-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-ink-muted);
+  opacity: 0.7;
+}
+
+/* Selected text preview */
+.subguide-preview {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-surface-alt);
+  border-radius: 0 8px 8px 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-ink);
+  font-style: italic;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Type cards grid */
+.subguide-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.subguide-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  text-align: center;
+}
+
+.subguide-type-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: var(--color-ink-muted);
+}
+
+.subguide-type-card.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.subguide-type-card.selected .subguide-type-icon {
+  color: var(--color-accent-strong, var(--color-accent));
+}
+
+.subguide-type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+  transition: color 0.15s, background 0.15s;
+}
+
+.subguide-type-card.selected .subguide-type-icon {
+  background: var(--color-accent-light, rgba(74, 144, 217, 0.12));
+}
+
+.subguide-type-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+.subguide-type-desc {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  line-height: 1.35;
+}
+
+/* Focus prompt input */
+.subguide-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.subguide-input::placeholder {
+  color: var(--color-ink-muted);
+  opacity: 0.6;
+}
+
+.subguide-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.subguide-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error */
+.subguide-error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Footer */
+.subguide-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid var(--color-border);
+  gap: 12px;
+}
+
+.subguide-credits {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.subguide-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.subguide-cancel {
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.subguide-cancel:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+  border-color: var(--color-ink-muted);
+}
+
+.subguide-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.subguide-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-accent-strong, var(--color-accent));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+}
+
+.subguide-generate:hover:not(:disabled) {
+  background: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.subguide-generate:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.subguide-generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+.subguide-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: subguideSpin 0.6s linear infinite;
+}
+
+@keyframes subguideSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   Dark theme
+   ============================================ */
+[data-theme="dark"] .subguide-modal {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-border);
+}
+
+[data-theme="dark"] .subguide-type-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .subguide-preview {
+  --subguide-card-bg: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .subguide-generate {
+  color: #1a1a2e;
+}
+
+/* ============================================
+   Responsive — stack cards vertically on small screens
+   ============================================ */
+@media (max-width: 480px) {
+  .subguide-modal {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    border-radius: 12px;
+  }
+
+  .subguide-types {
+    grid-template-columns: 1fr;
+  }
+
+  .subguide-type-card {
+    flex-direction: row;
+    text-align: left;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .subguide-type-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .subguide-type-card .subguide-type-title,
+  .subguide-type-card .subguide-type-desc {
+    text-align: left;
+  }
+
+  .subguide-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .subguide-credits {
+    text-align: center;
+  }
+
+  .subguide-actions {
+    justify-content: stretch;
+  }
+
+  .subguide-cancel,
+  .subguide-generate {
+    flex: 1;
+    justify-content: center;
+  }
+}
