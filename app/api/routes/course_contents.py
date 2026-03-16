@@ -1471,6 +1471,77 @@ def get_linked_materials_endpoint(
     return results
 
 
+# ── Delete Sub-Material endpoint (#993) ───────────────────────────
+
+@router.delete("/{content_id}/sub-materials/{sub_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_sub_material(
+    request: Request,
+    content_id: int,
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a sub-material from a master material group."""
+    # Validate master exists
+    master = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not master:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    # Validate it's a master material
+    if master.is_master != "true":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not a master material")
+
+    # Permission check
+    if not _can_modify_content(db, current_user, master):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this content")
+
+    # Validate sub-material exists and belongs to this master's group
+    sub = db.query(CourseContent).filter(CourseContent.id == sub_id).first()
+    if not sub:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sub-material not found")
+
+    group_id = master.material_group_id
+    if not group_id or sub.material_group_id != group_id or sub.is_master == "true":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sub-material not found in this group")
+
+    # Track file size for storage quota
+    if sub.file_size and sub.created_by_user_id:
+        creator = db.query(User).filter(User.id == sub.created_by_user_id).first()
+        if creator:
+            record_deletion(db, creator, sub.file_size)
+
+    # Permanently delete the sub-material (handles files, images, study guides)
+    _permanent_delete_content(db, sub)
+    db.commit()
+
+    # Check remaining subs in the group
+    remaining_subs = (
+        db.query(CourseContent)
+        .filter(
+            CourseContent.material_group_id == group_id,
+            CourseContent.is_master != "true",
+            CourseContent.archived_at.is_(None),
+        )
+        .all()
+    )
+
+    if not remaining_subs:
+        # Last sub deleted — demote master to standalone
+        master.is_master = "false"
+        master.material_group_id = None
+        master.parent_content_id = None
+    else:
+        # Rebuild master's combined text_content from remaining subs
+        combined_parts = []
+        for s in remaining_subs:
+            if s.text_content:
+                combined_parts.append(s.text_content)
+        master.text_content = "\n\n".join(combined_parts) if combined_parts else None
+
+    db.commit()
+
+
 # ── Content Images endpoints (#1311) ──────────────────────────────
 
 @router.get("/{content_id}/images", response_model=list[ContentImageResponse])
