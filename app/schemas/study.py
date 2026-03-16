@@ -50,6 +50,9 @@ class StudyGuideResponse(BaseModel):
     archived_at: datetime | None = None
     auto_created_tasks: list[AutoCreatedTask] = []
 
+    relationship_type: str = "version"
+    generation_context: str | None = None
+
     # Sharing fields
     shared_with_user_id: int | None = None
     shared_at: datetime | None = None
@@ -206,6 +209,25 @@ class StudyGuideUpdate(BaseModel):
     course_content_id: int | None = None
 
     @field_validator('title', mode='before')
+    @classmethod
+    def _strip_whitespace(cls, v: object) -> object:
+        return strip_whitespace(v)
+
+
+class GenerateChildRequest(BaseModel):
+    """Request to generate a child sub-guide from selected text."""
+    topic: str = Field(min_length=3, max_length=5000)  # The selected text
+    guide_type: str = Field(default="study_guide", max_length=50)  # study_guide, quiz, flashcards
+    custom_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus (e.g., "make it harder")
+
+    @field_validator('guide_type')
+    @classmethod
+    def validate_guide_type(cls, v: str) -> str:
+        if v not in ('study_guide', 'quiz', 'flashcards'):
+            raise ValueError('guide_type must be study_guide, quiz, or flashcards')
+        return v
+
+    @field_validator('topic', 'custom_prompt', mode='before')
     @classmethod
     def _strip_whitespace(cls, v: object) -> object:
         return strip_whitespace(v)
