@@ -42,6 +42,8 @@ class StudyGuideResponse(BaseModel):
     guide_type: str
     version: int = 1
     parent_guide_id: int | None = None
+    relationship_type: str = "version"
+    generation_context: str | None = None
     focus_prompt: str | None = None
     is_truncated: bool = False
     created_at: datetime
