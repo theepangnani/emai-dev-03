@@ -183,7 +183,7 @@ export function TaskDetailPage() {
     const guideType = task.study_guide_type || 'study_guide';
     if (guideType === 'quiz') return `/study/quiz/${task.study_guide_id}`;
     if (guideType === 'flashcards') return `/study/flashcards/${task.study_guide_id}`;
-    return `/study/guide/${task.study_guide_id}`;
+    return task.course_content_id ? `/course-materials/${task.course_content_id}?tab=guide` : `/study/guide/${task.study_guide_id}`;
   };
 
   const guideTypeIcon = (type: string | null) => {

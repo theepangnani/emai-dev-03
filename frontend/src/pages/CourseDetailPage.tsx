@@ -494,7 +494,7 @@ export function CourseDetailPage() {
           confirmLabel: 'View Existing',
           cancelLabel: 'Stay Here',
         });
-        if (goToExisting) navigate(`/study/guide/${existing.id}`);
+        if (goToExisting) navigate(existing.course_content_id ? `/course-materials/${existing.course_content_id}?tab=guide` : `/study/guide/${existing.id}`);
         return;
       }
     } catch { /* continue */ }
@@ -520,7 +520,7 @@ export function CourseDetailPage() {
         course_id: courseId,
       });
       refreshAIUsage();
-      navigate(`/study/guide/${result.id}`);
+      navigate(result.course_content_id ? `/course-materials/${result.course_content_id}?tab=guide` : `/study/guide/${result.id}`);
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to generate study guide');
     } finally {

@@ -481,7 +481,7 @@ export function StudyGuidesPage() {
   const navigateToLegacyGuide = (guide: StudyGuide) => {
     if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
     else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
-    else navigate(`/study/guide/${guide.id}`);
+    else navigate(guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`);
   };
 
   const handleDeleteLegacyGuide = async (id: number) => {

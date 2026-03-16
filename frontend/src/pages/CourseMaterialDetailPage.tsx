@@ -326,7 +326,7 @@ export function CourseMaterialDetailPage() {
         });
         refreshAIUsage();
         setShowGenerateModal(false);
-        navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
+        navigate(result.course_content_id ? `/course-materials/${result.course_content_id}?tab=guide` : `/study/guide/${result.id}`);
       } catch {
         setError('Failed to generate sub-guide');
         setShowGenerateModal(false);

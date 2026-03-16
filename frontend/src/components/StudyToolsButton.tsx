@@ -26,7 +26,7 @@ export function StudyToolsButton({ assignmentId }: StudyToolsButtonProps) {
     setError(null);
     try {
       const guide = await studyApi.generateGuide({ assignment_id: assignmentId });
-      navigate(`/study/guide/${guide.id}`);
+      navigate(guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`);
     } catch (err) {
       setError('Failed to generate study guide');
       console.error(err);
