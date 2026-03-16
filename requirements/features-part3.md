@@ -3265,3 +3265,81 @@ Extend the material hierarchy (§6.98) to support **post-creation management** o
 **GitHub:** #993
 
 **Status:** PLANNED
+
+### 6.100 Sub-Study Guide Generation from Text Selection (#1594)
+
+Generate **child study guides** (study guides, quizzes, flashcards) from selected text within an existing study guide. The child guide is contextually linked to its source, enabling deeper topic exploration.
+
+**Motivation:** Students reviewing a study guide often need to drill deeper into a specific section — more practice questions on one topic, flashcards for key terms, or a deeper explanation. This feature lets them select text, right-click, and instantly generate focused sub-guides.
+
+**Related:** §6.98 (material hierarchy), #993 (multi-document management)
+
+#### 6.100.1 Wire Up TextSelectionContextMenu in StudyGuidePage
+
+- `TextSelectionContextMenu` already has "Generate Study Guide" and "Generate Sample Test" items — currently NOT used in StudyGuidePage
+- Wire up the right-click context menu alongside the existing `SelectionTooltip` (which stays as-is, "Add to Notes" only)
+- Right-click "Generate Study Guide" or "Generate Sample Test" opens the type selection modal
+- Keep `SelectionTooltip` unchanged (single "Add to Notes" button)
+
+#### 6.100.2 Generate Sub-Guide Modal
+
+- Triggered by context menu "Generate Study Guide" or "Generate Sample Test"
+- Modal displays the selected text as context preview (truncated to ~200 chars)
+- Three type cards to choose from:
+  - **Study Guide** — deeper explanation of the selected topic
+  - **Quiz** — practice questions from the selected content
+  - **Flashcards** — key terms and definitions from the selection
+- Optional "Focus prompt" input (e.g., "make it harder", "explain for grade 4")
+- "Generate" button (disabled when AI limit reached)
+- Shows AI credit info: "Uses 1 AI credit. X remaining."
+- Designed with /frontend-design skill — distinctive, polished UI
+
+#### 6.100.3 Backend — Sub-Guide Generation
+
+- **Data model:** Add `relationship_type` (VARCHAR(20), DEFAULT 'version') and `generation_context` (Text) columns
+  - Reuse existing `parent_guide_id` for BOTH version chains and sub-guide hierarchy
+  - `relationship_type`: `"version"` (regeneration, existing behavior) or `"sub_guide"` (topic child)
+  - `generation_context`: the selected text that triggered generation
+- **Endpoint:** `POST /api/study/guides/{guide_id}/generate-child`
+  - Input: `{ topic: string, guide_type: string, custom_prompt?: string }`
+  - AI prompt: parent guide content (truncated intelligently) + selected text as focus
+  - Inherits `course_id`, `course_content_id` from parent
+  - Sets `parent_guide_id` = source guide, `relationship_type` = "sub_guide"
+  - Sets `generation_context` = selected text
+  - Returns `StudyGuideResponse`
+- **Endpoint:** `GET /api/study/guides/{guide_id}/children` — list sub-guides (where `parent_guide_id = id AND relationship_type = 'sub_guide'`)
+- **Migration:** `ALTER TABLE study_guides ADD COLUMN relationship_type ...` and `generation_context` in `main.py`
+- Existing version chain behavior unchanged (defaults to `relationship_type = 'version'`)
+
+#### 6.100.4 Sub-Guide Navigation (v1 — Minimal)
+
+- **Child guide page:** "Generated from: [Parent Title]" link at top for back-navigation
+- **Parent guide page:** children count in response (defer collapsible section to v2)
+
+#### Deferred to v2
+
+- SelectionTooltip redesign (add generate button alongside "Add to Notes")
+- Breadcrumb navigation for multi-level hierarchies
+- "Sub-Guides" collapsible section on parent guide page
+- Full tree hierarchy endpoint (`/tree`)
+
+#### Acceptance Criteria
+
+- [ ] Right-click on selected text in study guide shows context menu with generate options
+- [ ] Type selection modal opens with Study Guide / Quiz / Flashcards cards
+- [ ] Selected text displayed as context preview in modal
+- [ ] Can generate a child study guide from selected text
+- [ ] Child guide's `parent_guide_id` set to source guide, `relationship_type = 'sub_guide'`
+- [ ] Child guide page shows "Generated from: [Parent Title]" link
+- [ ] `GET /guides/{id}/children` returns sub-guides
+- [ ] Existing version chain behavior unchanged (`relationship_type = 'version'`)
+- [ ] DB migration adds `relationship_type` and `generation_context` columns
+- [ ] AI uses parent content as context (truncated intelligently)
+- [ ] AI credit check and decrement works
+- [ ] Backend tests cover generate-child and list-children endpoints
+- [ ] Frontend tests cover context menu, modal, and navigation
+- [ ] Build and lint pass
+
+**GitHub:** #1594
+
+**Status:** PLANNED
