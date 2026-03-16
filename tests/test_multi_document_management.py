@@ -186,9 +186,10 @@ class TestReorderSubs:
         return master
 
     def test_reorder_subs_success(self, client, db_session, users):
-        """Create master with 3 subs, reorder, verify display_order."""
+        """Create master with subs, reorder, verify display_order."""
         headers = _auth(client, users["teacher"].email)
-        master = self._create_master_with_subs(client, headers, users["course"].id, 3)
+        # 4 files => 1 master + 3 subs (per §6.98 Rule 3)
+        master = self._create_master_with_subs(client, headers, users["course"].id, 4)
         master_id = master["id"]
 
         # Get sub IDs
@@ -272,10 +273,11 @@ class TestDeleteSubMaterial:
         return master_id, sub_ids
 
     def test_delete_sub_material_success(self, client, users):
-        """Delete one sub from a group of 3, verify it's gone."""
+        """Delete one sub from a group, verify it's gone."""
         headers = _auth(client, users["teacher"].email)
+        # 4 files => 1 master + 3 subs (per §6.98 Rule 3)
         master_id, sub_ids = self._create_master_with_subs(
-            client, headers, users["course"].id, 3,
+            client, headers, users["course"].id, 4,
         )
         assert len(sub_ids) == 3
         to_delete = sub_ids[0]
@@ -301,8 +303,6 @@ class TestDeleteSubMaterial:
     def test_delete_last_sub_demotes_master(self, client, users):
         """Delete the only sub in a group → master demotes to standalone."""
         headers = _auth(client, users["teacher"].email)
-        # Create master with 1 sub (upload-multi with 2 files: 1 master + 1 sub... wait,
-        # upload-multi with 2 files creates master + 2 subs)
         # Use add-files to a standalone to get exactly 1 sub
         standalone = _upload_single(client, headers, users["course"].id, "Demote Test")
         standalone_id = standalone["id"]
