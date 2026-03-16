@@ -75,6 +75,7 @@ export default function UploadMaterialWizard({
   const [error, setError] = useState('');
   const [managedCourses, setManagedCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
   const [internalCourseId, setInternalCourseId] = useState<number | ''>(selectedCourseId ?? '');
+  const [internalChildId, setInternalChildId] = useState<number | ''>('');
 
   const selectedFilesRef = useRef<File[]>([]);
   const prevOpenRef = useRef(false);
@@ -103,6 +104,8 @@ export default function UploadMaterialWizard({
     setIsDragging(false);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setError('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInternalChildId('');
 
     // Use provided courses, or fetch them if not provided
     if (courses && courses.length > 0) {
@@ -218,6 +221,7 @@ export default function UploadMaterialWizard({
 
   const hasNoContent = selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
   const needsCourse = !!(managedCourses && managedCourses.length > 0 && !internalCourseId);
+  const needsChild = !!(children && children.length > 1 && !internalChildId);
 
   const handleSubmit = (withAITools: boolean) => {
     const hasFiles = selectedFiles.length > 0;
@@ -230,6 +234,11 @@ export default function UploadMaterialWizard({
 
     if (managedCourses && managedCourses.length > 0 && !internalCourseId) {
       setError('Please select a class');
+      return;
+    }
+
+    if (children && children.length > 1 && !internalChildId) {
+      setError('Please select a child');
       return;
     }
 
@@ -265,9 +274,14 @@ export default function UploadMaterialWizard({
             {children && children.length > 1 && onChildChange && (
               <select
                 className="uw-child-select"
-                value={children.find(c => c.name === childName)?.id ?? ''}
-                onChange={(e) => onChildChange(Number(e.target.value))}
+                value={internalChildId}
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  setInternalChildId(id);
+                  onChildChange(id);
+                }}
               >
+                <option value="">Select a child</option>
                 {children.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -342,8 +356,8 @@ export default function UploadMaterialWizard({
           {step === 1 ? (
             <>
               <button className="btn-secondary" onClick={onClose} disabled={isGenerating}>Cancel</button>
-              <button className="btn-link" onClick={() => handleSubmit(false)} disabled={isGenerating || hasNoContent || needsCourse}>Just Upload</button>
-              <button className="btn-primary" onClick={() => setStep(2)} disabled={hasNoContent || needsCourse}>Next &rarr;</button>
+              <button className="btn-link" onClick={() => handleSubmit(false)} disabled={isGenerating || hasNoContent || needsCourse || needsChild}>Just Upload</button>
+              <button className="btn-primary" onClick={() => setStep(2)} disabled={hasNoContent || needsCourse || needsChild}>Next &rarr;</button>
             </>
           ) : (
             <>
