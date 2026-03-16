@@ -162,6 +162,31 @@
   color: var(--color-ink-muted);
 }
 
+/* ── Sub-guide parent link banner (#1594) ────────────────── */
+
+.sg-parent-link-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--color-surface-alt, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.sg-parent-link {
+  color: var(--color-accent, #2a9fa8);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.sg-parent-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Print ───────────────────────────────────────────────── */
 
 @media print {
