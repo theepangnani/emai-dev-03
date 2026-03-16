@@ -19,6 +19,8 @@ export interface StudyGuide {
   guide_type: string;
   version: number;
   parent_guide_id: number | null;
+  relationship_type?: string;
+  generation_context?: string | null;
   focus_prompt: string | null;
   is_truncated?: boolean;
   created_at: string;
@@ -351,6 +353,16 @@ export const studyApi = {
 
   deleteQuizResult: async (id: number) => {
     await api.delete(`/api/quiz-results/${id}`);
+  },
+
+  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string }) => {
+    const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params);
+    return response.data as StudyGuide;
+  },
+
+  listChildGuides: async (guideId: number) => {
+    const response = await api.get(`/api/study/guides/${guideId}/children`);
+    return response.data as StudyGuide[];
   },
 
   resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
