@@ -46,23 +46,6 @@ export function useParentStudyTools({
 
   const dismissBackgroundGeneration = () => setBackgroundGeneration(null);
 
-  const extractCombinedText = async (files: File[]): Promise<string> => {
-    const parts: string[] = [];
-    for (const f of files) {
-      try {
-        const result = await studyApi.extractTextFromFile(f);
-        parts.push(`--- [${f.name}] ---\n${result.text}`);
-      } catch (err: any) {
-        const status = err?.response?.status;
-        const detail = status === 429
-          ? 'rate limit exceeded — try again in a moment'
-          : 'text extraction failed';
-        parts.push(`--- [${f.name}] ---\n(${detail})`);
-      }
-    }
-    return parts.join('\n\n');
-  };
-
   const runGenerationInBackground = (params: {
     title: string;
     content: string;
@@ -81,10 +64,18 @@ export function useParentStudyTools({
 
     (async () => {
       try {
-        // Multi-file: extract combined text now that we're running in the background
+        // Multi-file: upload via upload-multi to create SourceFile records + hierarchy
         let content = params.content;
         if (params.files && params.files.length > 1) {
-          content = await extractCombinedText(params.files);
+          const targetCourseId = await resolveTargetCourseId(params.courseId);
+          const cc = await courseContentsApi.uploadMultiFiles(
+            params.files,
+            targetCourseId,
+            params.title || undefined,
+            'notes',
+          );
+          params.courseContentId = cc.id;
+          content = cc.text_content || '';
         }
 
         let result: any;
