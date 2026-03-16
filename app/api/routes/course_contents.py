@@ -1647,50 +1647,50 @@ def get_linked_materials_endpoint(
 def reorder_sub_materials(
     request: Request,
     content_id: int,
-    body: ReorderSubsRequest,
+    data: ReorderSubsRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Reorder sub-materials under a master material."""
-    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    """Reorder sub-materials within a master material group."""
+    content = db.query(CourseContent).filter(
+        CourseContent.id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
     if content.is_master != "true":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not a master material")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials reordered")
 
     if not can_access_course(db, current_user, content.course_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
 
-    if not _can_modify_content(db, current_user, content):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this content")
-
-    # Fetch all sub-materials in this group
+    # Validate all sub_ids belong to this master's group
     subs = db.query(CourseContent).filter(
-        CourseContent.material_group_id == content.material_group_id,
-        CourseContent.is_master != "true",
+        CourseContent.parent_content_id == content.id,
+        CourseContent.archived_at.is_(None),
     ).all()
-    sub_map = {s.id: s for s in subs}
+    sub_id_set = {s.id for s in subs}
 
-    # Validate all provided IDs belong to this group
-    for sid in body.sub_ids:
-        if sid not in sub_map:
+    for sid in data.sub_ids:
+        if sid not in sub_id_set:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Sub-material {sid} is not in this master's group",
+                detail=f"Sub-material {sid} does not belong to this master group",
             )
 
     # Update display_order
-    for idx, sid in enumerate(body.sub_ids):
-        sub_map[sid].display_order = idx
+    sub_map = {s.id: s for s in subs}
+    for order, sid in enumerate(data.sub_ids, 1):
+        sub_map[sid].display_order = order
 
     db.commit()
-    return {"updated": len(body.sub_ids)}
+    return {"status": "ok", "reordered": len(data.sub_ids)}
 
 
 # ── Delete Sub-Material endpoint (#993) ───────────────────────────
 
-@router.delete("/{content_id}/sub-materials/{sub_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{content_id}/sub-materials/{sub_id}", status_code=status.HTTP_200_OK)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def delete_sub_material(
     request: Request,
@@ -1699,27 +1699,26 @@ def delete_sub_material(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a sub-material from a master material group."""
-    # Validate master exists
-    master = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    """Delete a sub-material from a master group. Demotes master if last sub removed."""
+    master = db.query(CourseContent).filter(
+        CourseContent.id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
     if not master:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    # Validate it's a master material
     if master.is_master != "true":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not a master material")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials deleted")
 
-    # Permission check
-    if not _can_modify_content(db, current_user, master):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this content")
+    if not can_access_course(db, current_user, master.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
 
-    # Validate sub-material exists and belongs to this master's group
-    sub = db.query(CourseContent).filter(CourseContent.id == sub_id).first()
+    sub = db.query(CourseContent).filter(
+        CourseContent.id == sub_id,
+        CourseContent.parent_content_id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
     if not sub:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sub-material not found")
-
-    group_id = master.material_group_id
-    if not group_id or sub.material_group_id != group_id or sub.is_master == "true":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sub-material not found in this group")
 
     # Track file size for storage quota
@@ -1728,35 +1727,28 @@ def delete_sub_material(
         if creator:
             record_deletion(db, creator, sub.file_size)
 
-    # Permanently delete the sub-material (handles files, images, study guides)
-    _permanent_delete_content(db, sub)
-    db.commit()
+    # Delete sub's source files, images, study guides
+    db.query(SourceFile).filter(SourceFile.course_content_id == sub_id).delete()
+    db.query(ContentImage).filter(ContentImage.course_content_id == sub_id).delete()
+    db.query(StudyGuide).filter(StudyGuide.course_content_id == sub_id).delete()
+    db.query(ResourceLink).filter(ResourceLink.course_content_id == sub_id).delete()
+    db.delete(sub)
+    db.flush()
 
-    # Check remaining subs in the group
-    remaining_subs = (
-        db.query(CourseContent)
-        .filter(
-            CourseContent.material_group_id == group_id,
-            CourseContent.is_master != "true",
-            CourseContent.archived_at.is_(None),
-        )
-        .all()
-    )
+    # Check remaining subs
+    remaining = db.query(CourseContent).filter(
+        CourseContent.parent_content_id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).count()
 
-    if not remaining_subs:
-        # Last sub deleted — demote master to standalone
+    if remaining == 0:
+        # Demote master back to standalone
         master.is_master = "false"
         master.material_group_id = None
-        master.parent_content_id = None
-    else:
-        # Rebuild master's combined text_content from remaining subs
-        combined_parts = []
-        for s in remaining_subs:
-            if s.text_content:
-                combined_parts.append(s.text_content)
-        master.text_content = "\n\n".join(combined_parts) if combined_parts else None
 
     db.commit()
+    db.refresh(master)
+    return {"status": "ok", "remaining_subs": remaining, "is_master": master.is_master}
 
 
 # ── Content Images endpoints (#1311) ──────────────────────────────
