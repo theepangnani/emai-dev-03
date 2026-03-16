@@ -84,7 +84,7 @@ export function GenerateSubGuideModal({
 
   const truncatedText =
     selectedText.length > 200
-      ? selectedText.slice(0, 200) + '\u2026'
+      ? selectedText.slice(0, 200) + '...'
       : selectedText;
 
   const handleGenerate = async () => {
@@ -102,7 +102,7 @@ export function GenerateSubGuideModal({
   };
 
   return (
-    <div className="modal-overlay subguide-overlay" onClick={onClose}>
+    <div className="modal-overlay subguide-overlay" onClick={onClose} data-testid="generate-sub-guide-modal">
       <div
         ref={trapRef}
         className="subguide-modal"
@@ -138,14 +138,15 @@ export function GenerateSubGuideModal({
           {/* Type selection */}
           <div className="subguide-section">
             <label className="subguide-label">Guide Type</label>
-            <div className="subguide-types">
+            <div className="subguide-types" role="radiogroup" aria-label="Guide type">
               {GUIDE_TYPES.map((type) => (
                 <button
                   key={type.id}
                   type="button"
+                  role="radio"
                   className={`subguide-type-card${selectedType === type.id ? ' selected' : ''}`}
                   onClick={() => setSelectedType(type.id)}
-                  aria-pressed={selectedType === type.id}
+                  aria-checked={selectedType === type.id}
                   data-testid={`type-${type.id}`}
                 >
                   <span className="subguide-type-icon">{type.icon}</span>
@@ -179,7 +180,7 @@ export function GenerateSubGuideModal({
 
         {/* Footer */}
         <div className="subguide-footer">
-          <span className="subguide-credits">
+          <span className="subguide-credits" data-testid="credits-info">
             Uses 1 AI credit &middot; {aiRemaining} remaining
           </span>
           <div className="subguide-actions">
