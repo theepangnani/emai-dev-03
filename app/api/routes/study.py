@@ -1307,6 +1307,55 @@ def list_guide_versions(
     return versions
 
 
+@router.get("/guides/{guide_id}/children", response_model=list[StudyGuideResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_child_guides(
+    request: Request,
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List sub-guides generated from this study guide."""
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # Must be owner, parent of owner, admin, or shared-with user
+    if guide.user_id != current_user.id:
+        if current_user.role == UserRole.ADMIN or getattr(current_user, 'has_role', lambda r: False)(UserRole.ADMIN):
+            pass  # Admin can see all
+        elif guide.shared_with_user_id == current_user.id:
+            pass  # Shared with this user
+        elif current_user.role == UserRole.PARENT:
+            child_ids = [r[0] for r in db.query(parent_students.c.student_id).filter(parent_students.c.parent_id == current_user.id).all()]
+            child_user_ids = [r[0] for r in db.query(Student.user_id).filter(Student.id.in_(child_ids)).all()] if child_ids else []
+            if guide.user_id not in child_user_ids:
+                raise HTTPException(status_code=404, detail="Study guide not found")
+        else:
+            raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # Query children where parent_guide_id = guide_id
+    children = (
+        db.query(StudyGuide)
+        .filter(
+            StudyGuide.parent_guide_id == guide_id,
+            StudyGuide.archived_at.is_(None),
+        )
+        .order_by(StudyGuide.created_at.desc())
+        .all()
+    )
+
+    # Filter to only sub_guides (not version regenerations)
+    # If relationship_type column exists, use it; otherwise include all
+    result = []
+    for child in children:
+        rt = getattr(child, 'relationship_type', None)
+        if rt is None or rt == 'sub_guide':
+            result.append(child)
+
+    return result
+
+
 @router.delete("/guides/{guide_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_study_guide(
     guide_id: int,
