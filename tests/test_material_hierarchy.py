@@ -121,7 +121,7 @@ class TestMaterialHierarchyService:
             assert sub.parent_content_id == master.id
 
     def test_get_linked_from_master(self, db_session, hierarchy_users):
-        """get_linked_materials from master returns sub-materials."""
+        """get_linked_materials from master returns master + sub-materials."""
         from app.models.course_content import CourseContent
         from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials
 
@@ -154,11 +154,12 @@ class TestMaterialHierarchyService:
 
         linked = get_linked_materials(db_session, master.id)
         linked_ids = {m.id for m in linked}
+        assert master.id in linked_ids
         for sub in subs:
             assert sub.id in linked_ids
 
     def test_get_linked_from_sub(self, db_session, hierarchy_users):
-        """get_linked_materials from a sub returns master + siblings."""
+        """get_linked_materials from a sub returns master + all siblings including self."""
         from app.models.course_content import CourseContent
         from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials
 
@@ -192,9 +193,9 @@ class TestMaterialHierarchyService:
         linked = get_linked_materials(db_session, subs[0].id)
         linked_ids = {m.id for m in linked}
         assert master.id in linked_ids
+        assert subs[0].id in linked_ids
         assert subs[1].id in linked_ids
         assert subs[2].id in linked_ids
-        assert subs[0].id not in linked_ids
 
     def test_get_linked_standalone(self, db_session, hierarchy_users):
         """get_linked_materials on non-grouped material returns empty list."""
@@ -278,7 +279,7 @@ class TestUploadMultiHierarchy:
         assert resp.status_code == 400
 
     def test_sub_material_naming(self, client, db_session, hierarchy_users):
-        """Sub-materials should be named 'Master Title \u2014 Part N'."""
+        """Sub-materials should be named 'Master Title \u2014 Part N' starting from Part 2."""
         from app.models.course_content import CourseContent
 
         headers = _auth(client, hierarchy_users["teacher"].email)
@@ -302,8 +303,10 @@ class TestUploadMultiHierarchy:
             .order_by(CourseContent.id)
             .all()
         )
+        # 3 files => 1 master + 2 subs (per §6.98 Rule 3)
         sub_titles = [m.title for m in materials if m.id != data["id"]]
-        for i, title in enumerate(sub_titles, start=1):
+        assert len(sub_titles) == 2
+        for i, title in enumerate(sub_titles, start=2):
             assert title == f"Naming Test \u2014 Part {i}"
 
 
@@ -341,7 +344,7 @@ class TestLinkedMaterialsEndpoint:
         )
         assert resp.status_code == 200
         linked = resp.json()
-        assert len(linked) >= 3
+        assert len(linked) >= 3  # 3 files => master + 2 subs; includes self
 
     def test_linked_materials_from_sub(self, client, db_session, hierarchy_users):
         """GET /linked-materials from sub returns master + siblings."""
@@ -369,7 +372,7 @@ class TestLinkedMaterialsEndpoint:
         linked = resp.json()
         linked_ids = {item["id"] for item in linked}
         assert master["id"] in linked_ids
-        assert sub.id not in linked_ids
+        assert sub.id in linked_ids
 
     def test_linked_materials_standalone(self, client, hierarchy_users):
         """GET /linked-materials on non-grouped material returns empty list."""
