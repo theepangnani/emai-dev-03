@@ -3194,4 +3194,74 @@ Self-referencing FK: `parent_content_id` on `course_contents` (master has NULL, 
 
 **GitHub:** #1740
 
-**Status:** PENDING
+**Status:** IMPLEMENTED
+
+### 6.99 Multi-Document Management for Existing Materials (#993)
+
+Extend the material hierarchy (§6.98) to support **post-creation management** of attached files. Users can add more files to an existing material, reorder sub-materials, and delete individual sub-materials.
+
+**Motivation:** After initial multi-file upload, users need to attach additional documents (e.g., an answer key added later), reorganize sub-materials, or remove files that were uploaded by mistake.
+
+**Related:** §6.98 (#1740 — master/sub hierarchy, already implemented), #991 (multi-file upload, closed)
+
+#### 6.99.1 Add Files to Existing Material
+
+- **Endpoint:** `POST /api/course-contents/{content_id}/add-files`
+- Accepts up to 10 files per request
+- If target is a standalone material (no hierarchy): promote to master, create subs for new files
+- If target is a master material: create new subs linked to the existing group
+- If target is a sub-material: add files to the parent master's group
+- Extracts text from each new file, appends to master's combined text
+- Creates SourceFile records for each new file (GCS storage)
+- Updates `source_files_count` on response
+
+#### 6.99.2 Reorder Sub-Materials
+
+- **Endpoint:** `PUT /api/course-contents/{content_id}/reorder-subs`
+- Accepts `{ sub_ids: [int] }` — ordered list of sub-material IDs
+- Updates `display_order` on each sub-material
+- Only master material owner or course member can reorder
+
+#### 6.99.3 Delete Sub-Material
+
+- **Endpoint:** `DELETE /api/course-contents/{content_id}/sub-materials/{sub_id}`
+- Deletes the sub-material, its SourceFile(s), ContentImage(s), and GCS files
+- Updates master's combined `text_content` (removes deleted file's text)
+- If last sub deleted, demote master back to standalone material
+- Archives linked study guides on the deleted sub
+
+#### 6.99.4 Frontend — Add More Files
+
+- "Add More Files" button in DocumentTab actions bar (visible on master or standalone materials)
+- Opens file picker (same accepted types as upload wizard)
+- Shows upload progress
+- Refreshes SourceFilesSection and linked materials after upload
+
+#### 6.99.5 Frontend — Reorder Sub-Materials
+
+- Drag-and-drop or up/down arrow buttons in LinkedMaterialsPanel
+- Persists order via reorder endpoint
+- Visual feedback during reorder
+
+#### 6.99.6 Frontend — Delete Sub-Material
+
+- Delete button (trash icon) on each sub-material in LinkedMaterialsPanel
+- Confirmation dialog before deletion
+- Refreshes panel after deletion
+
+#### Acceptance Criteria
+
+- [ ] "Add More Files" button visible on master and standalone materials
+- [ ] Adding files to standalone material promotes it to master with hierarchy
+- [ ] Adding files to master creates new subs in existing group
+- [ ] Sub-materials can be reordered via display_order
+- [ ] Individual sub-materials can be deleted with confirmation
+- [ ] Deleting last sub demotes master to standalone
+- [ ] Master text_content updated when subs added/removed
+- [ ] All file operations use GCS storage in production
+- [ ] Backend tests cover all 3 new endpoints
+- [ ] Frontend build and lint pass
+
+**GitHub:** #993
+
+**Status:** PLANNED
