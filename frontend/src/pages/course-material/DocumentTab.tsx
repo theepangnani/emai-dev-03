@@ -25,6 +25,7 @@ interface DocumentTabProps {
   showToast: (msg: string) => void;
   onShowRegenPrompt: () => void;
   onReloadData: () => Promise<void>;
+  onAddMoreFiles?: () => void;
 }
 
 function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] } | { type: 'flashcards'; data: FlashcardItem[] } | null {
@@ -88,6 +89,7 @@ export function DocumentTab({
   showToast,
   onShowRegenPrompt,
   onReloadData,
+  onAddMoreFiles,
 }: DocumentTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');
@@ -170,6 +172,11 @@ export function DocumentTab({
               <button className="cm-action-btn" onClick={onShowReplaceModal}>
                 {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
               </button>
+              {onAddMoreFiles && !content.parent_content_id && (
+                <button className="cm-action-btn" onClick={onAddMoreFiles}>
+                  {'\u{1F4C1}'} Add More Files
+                </button>
+              )}
               {(content.source_files_count ?? 0) > 0 && (
                 <button className="cm-action-btn" onClick={() => sourceFilesRef.current?.scrollToAndExpand()}>
                   {'\u{1F4C2}'} Source Files ({content.source_files_count})

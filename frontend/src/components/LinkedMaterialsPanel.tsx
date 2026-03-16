@@ -17,9 +17,11 @@ interface LinkedMaterialsPanelProps {
   currentMaterialId: number;
   isCurrentMaster?: boolean;
   loading?: boolean;
+  onReorder?: (materialId: number, direction: 'up' | 'down') => void;
+  onDeleteSub?: (materialId: number) => void;
 }
 
-export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onReorder, onDeleteSub }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading) return null;
@@ -50,22 +52,55 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: 
 
       {expanded && (
         <div className="linked-materials-list">
-          {materials.map(m => (
-            <Link
-              key={m.id}
-              to={`/course-materials/${m.id}`}
-              className={`linked-material-item ${m.id === currentMaterialId ? 'current' : ''}`}
-            >
-              <span className="linked-material-title">
-                {m.title}
-              </span>
-              {m.is_master === 'true' && (
-                <span className="linked-material-badge master">Master</span>
+          {materials.map((m, idx) => (
+            <div key={m.id} className="linked-material-row">
+              <Link
+                to={`/course-materials/${m.id}`}
+                className={`linked-material-item ${m.id === currentMaterialId ? 'current' : ''}`}
+              >
+                <span className="linked-material-title">
+                  {m.title}
+                </span>
+                {m.is_master === 'true' && (
+                  <span className="linked-material-badge master">Master</span>
+                )}
+                {m.is_master !== 'true' && (
+                  <span className="linked-material-badge sub">Sub</span>
+                )}
+              </Link>
+              {isCurrentMaster && m.is_master !== 'true' && (
+                <span className="linked-material-actions">
+                  <button
+                    className="linked-material-reorder-btn"
+                    aria-label={`Move ${m.title} up`}
+                    disabled={idx === 0 || materials[idx - 1]?.is_master === 'true'}
+                    onClick={(e) => { e.stopPropagation(); onReorder?.(m.id, 'up'); }}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    className="linked-material-reorder-btn"
+                    aria-label={`Move ${m.title} down`}
+                    disabled={idx === materials.length - 1}
+                    onClick={(e) => { e.stopPropagation(); onReorder?.(m.id, 'down'); }}
+                  >
+                    ▼
+                  </button>
+                  <button
+                    className="linked-material-delete-btn"
+                    aria-label={`Delete ${m.title}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Remove "${m.title}" from this group?`)) {
+                        onDeleteSub?.(m.id);
+                      }
+                    }}
+                  >
+                    ✕
+                  </button>
+                </span>
               )}
-              {m.is_master !== 'true' && (
-                <span className="linked-material-badge sub">Sub</span>
-              )}
-            </Link>
+            </div>
           ))}
         </div>
       )}
