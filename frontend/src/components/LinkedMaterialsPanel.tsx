@@ -17,9 +17,10 @@ interface LinkedMaterialsPanelProps {
   currentMaterialId: number;
   isCurrentMaster?: boolean;
   loading?: boolean;
+  onDeleteSub?: (subId: number) => void;
 }
 
-export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onDeleteSub }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading) return null;
@@ -51,21 +52,36 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: 
       {expanded && (
         <div className="linked-materials-list">
           {materials.map(m => (
-            <Link
-              key={m.id}
-              to={`/course-materials/${m.id}`}
-              className={`linked-material-item ${m.id === currentMaterialId ? 'current' : ''}`}
-            >
-              <span className="linked-material-title">
-                {m.title}
-              </span>
-              {m.is_master === 'true' && (
-                <span className="linked-material-badge master">Master</span>
+            <div key={m.id} className={`linked-material-item ${m.id === currentMaterialId ? 'current' : ''}`}>
+              <Link
+                to={`/course-materials/${m.id}`}
+                className="linked-material-link"
+              >
+                <span className="linked-material-title">
+                  {m.title}
+                </span>
+                {m.is_master === 'true' && (
+                  <span className="linked-material-badge master">Master</span>
+                )}
+                {m.is_master !== 'true' && (
+                  <span className="linked-material-badge sub">Sub</span>
+                )}
+              </Link>
+              {isCurrentMaster && m.is_master !== 'true' && m.id !== currentMaterialId && onDeleteSub && (
+                <button
+                  className="linked-material-delete-btn"
+                  title="Delete sub-material"
+                  aria-label={`Delete ${m.title}`}
+                  onClick={() => {
+                    if (window.confirm('Delete this sub-material? This will permanently remove the file and any linked study guides.')) {
+                      onDeleteSub(m.id);
+                    }
+                  }}
+                >
+                  &times;
+                </button>
               )}
-              {m.is_master !== 'true' && (
-                <span className="linked-material-badge sub">Sub</span>
-              )}
-            </Link>
+            </div>
           ))}
         </div>
       )}

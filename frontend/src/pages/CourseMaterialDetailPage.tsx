@@ -239,7 +239,7 @@ export function CourseMaterialDetailPage() {
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
 
   // Linked materials for hierarchy (#1740)
-  const { data: linkedMaterials = [], isLoading: linkedLoading } = useLinkedMaterials(
+  const { data: linkedMaterials = [], isLoading: linkedLoading, refetch: refetchLinked } = useLinkedMaterials(
     content?.id,
     content?.material_group_id
   );
@@ -691,6 +691,17 @@ export function CourseMaterialDetailPage() {
               currentMaterialId={content.id}
               isCurrentMaster={content.is_master === 'true'}
               loading={linkedLoading}
+              onDeleteSub={async (subId) => {
+                try {
+                  const masterId = linkedMaterials.find(m => m.is_master === 'true')?.id ?? content.id;
+                  await courseContentsApi.deleteSubMaterial(masterId, subId);
+                  showToast('Sub-material deleted');
+                  refetchLinked();
+                  loadData();
+                } catch {
+                  showToast('Failed to delete sub-material');
+                }
+              }}
             />
           )}
 
