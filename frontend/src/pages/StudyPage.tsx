@@ -653,7 +653,7 @@ export function StudyPage() {
                 ? `/study/quiz/${guide.id}`
                 : guide.guide_type === 'flashcards'
                 ? `/study/flashcards/${guide.id}`
-                : `/study/guide/${guide.id}`
+                : guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`
             );
           }
         }}

@@ -10,7 +10,7 @@ interface ContinueStudyingProps {
 function getGuideRoute(guide: StudyGuide): string {
   if (guide.guide_type === 'quiz') return `/study/quiz/${guide.id}`;
   if (guide.guide_type === 'flashcards') return `/study/flashcards/${guide.id}`;
-  return `/study/guide/${guide.id}`;
+  return guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`;
 }
 
 function getGuideTypeLabel(guideType: string): string {
