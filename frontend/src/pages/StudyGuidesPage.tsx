@@ -679,23 +679,6 @@ export function StudyGuidesPage() {
 
   /** Extract and concatenate text from multiple files using the backend extract endpoint.
    *  Files are processed sequentially to avoid hitting the per-minute rate limit. */
-  const extractCombinedText = async (files: File[]): Promise<string> => {
-    const parts: string[] = [];
-    for (const f of files) {
-      try {
-        const result = await studyApi.extractTextFromFile(f);
-        parts.push(`--- [${f.name}] ---\n${result.text}`);
-      } catch (err: any) {
-        const status = err?.response?.status;
-        const detail = status === 429
-          ? 'rate limit exceeded — try again in a moment'
-          : 'text extraction failed';
-        parts.push(`--- [${f.name}] ---\n(${detail})`);
-      }
-    }
-    return parts.join('\n\n');
-  };
-
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
     if (generatingRef.current) return;
     // Block AI generation when at limit (upload-only mode is allowed)
@@ -731,14 +714,12 @@ export function StudyGuidesPage() {
               'notes',
             );
           } else if (isMultiFile) {
-            // Multiple files → one material: extract text from all, create text-based content
-            const combinedText = await extractCombinedText(files);
-            await courseContentsApi.create({
-              course_id: resolvedCourseId,
-              title: modalParams.title || files.map(f => f.name).join(', '),
-              text_content: combinedText,
-              content_type: 'notes',
-            });
+            await courseContentsApi.uploadMultiFiles(
+              files,
+              resolvedCourseId,
+              modalParams.title || undefined,
+              'notes',
+            );
           } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
             // Pasted images: upload as files so backend can store and extract text
             const imagesToUpload = modalParams.pastedImages;
@@ -812,13 +793,12 @@ export function StudyGuidesPage() {
       try {
         const cId = modalParams.courseId || (await coursesApi.getDefault(filterChild || undefined)).id;
         if (isMultiFile) {
-          const combinedText = await extractCombinedText(files);
-          const cc = await courseContentsApi.create({
-            course_id: cId,
-            title: modalParams.title || files.map(f => f.name).join(', '),
-            text_content: combinedText,
-            content_type: 'notes',
-          });
+          const cc = await courseContentsApi.uploadMultiFiles(
+            files,
+            cId,
+            modalParams.title || undefined,
+            'notes',
+          );
           sharedCourseContentId = cc.id;
         } else if (modalParams.mode === 'file' && files.length === 1) {
           const cc = await courseContentsApi.uploadFile(

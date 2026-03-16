@@ -182,13 +182,12 @@ export function useParentStudyTools({
               'notes',
             );
           } else if (isMultiFile) {
-            const combinedText = await extractCombinedText(files);
-            await courseContentsApi.create({
-              course_id: targetCourseId,
-              title: modalParams.title || files.map(f => f.name).join(', '),
-              text_content: combinedText,
-              content_type: 'notes',
-            });
+            await courseContentsApi.uploadMultiFiles(
+              files,
+              targetCourseId,
+              modalParams.title || undefined,
+              'notes',
+            );
           } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
             // Pasted images: upload as files so backend can store and extract text
             const imagesToUpload = modalParams.pastedImages;
@@ -256,13 +255,12 @@ export function useParentStudyTools({
       try {
         const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
         if (isMultiFile) {
-          const combinedText = await extractCombinedText(files);
-          const cc = await courseContentsApi.create({
-            course_id: targetCourseId,
-            title: modalParams.title || files.map(f => f.name).join(', '),
-            text_content: combinedText,
-            content_type: 'notes',
-          });
+          const cc = await courseContentsApi.uploadMultiFiles(
+            files,
+            targetCourseId,
+            modalParams.title || undefined,
+            'notes',
+          );
           sharedCourseContentId = cc.id;
         } else if (modalParams.mode === 'file' && files.length === 1) {
           const cc = await courseContentsApi.uploadFile(
