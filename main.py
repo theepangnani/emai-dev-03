@@ -1244,6 +1244,24 @@ with engine.connect() as conn:
                 conn.rollback()
             conn.commit()
 
+    # ── study_guides: relationship_type & generation_context columns (#1594) ──
+    if "study_guides" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("study_guides")}
+        if "relationship_type" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN relationship_type VARCHAR(20) NOT NULL DEFAULT 'version'"))
+                logger.info("Added 'relationship_type' column to study_guides (#1594)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+        if "generation_context" not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN generation_context TEXT"))
+                logger.info("Added 'generation_context' column to study_guides (#1594)")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
     # Widen ai_usage_history.generation_type from VARCHAR(20) to VARCHAR(50)
     # "conversation_starters" is 22 chars and exceeds the old limit
     if "sqlite" not in settings.database_url:
