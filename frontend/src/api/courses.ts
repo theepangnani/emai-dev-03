@@ -377,6 +377,17 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
+  addFilesToMaterial: async (contentId: number, files: File[]): Promise<CourseContentItem> => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const response = await api.post(`/api/course-contents/${contentId}/add-files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as CourseContentItem;
+  },
+
   bulkCategorize: async (contentIds: number[], category: string) => {
     const response = await api.post('/api/course-contents/bulk-categorize', {
       content_ids: contentIds,
