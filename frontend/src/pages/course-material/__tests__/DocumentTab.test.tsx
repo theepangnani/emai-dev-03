@@ -10,6 +10,7 @@ vi.mock('../../../api/client', () => ({
 vi.mock('../../../components/ContentCard', () => ({
   ContentCard: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   MarkdownBody: ({ content }: { content: string }) => <div>{content}</div>,
+  MarkdownErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('../../../utils/exportUtils', () => ({
