@@ -603,20 +603,15 @@ export function StudyGuidesPage() {
         let content = params.content;
         let mode = params.mode;
         if (params.files && params.files.length > 1) {
-          const parts: string[] = [];
-          for (const f of params.files) {
-            try {
-              const result = await studyApi.extractTextFromFile(f);
-              parts.push(`--- [${f.name}] ---\n${result.text}`);
-            } catch (err: any) {
-              const status = (err as any)?.response?.status;
-              const detail = status === 429
-                ? 'rate limit exceeded — try again in a moment'
-                : 'text extraction failed';
-              parts.push(`--- [${f.name}] ---\n(${detail})`);
-            }
-          }
-          content = parts.join('\n\n');
+          const resolvedCourseId = params.courseId || (await coursesApi.getDefault(filterChild || undefined)).id;
+          const cc = await courseContentsApi.uploadMultiFiles(
+            params.files,
+            resolvedCourseId,
+            params.title || undefined,
+            'notes',
+          );
+          params.courseContentId = cc.id;
+          content = cc.text_content || '';
           mode = 'text';
         }
 
