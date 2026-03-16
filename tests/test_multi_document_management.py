@@ -102,9 +102,9 @@ class TestAddFiles:
         )
         assert linked.status_code == 200
         linked_data = linked.json()
-        assert len(linked_data) == 2
-        for sub in linked_data:
-            assert sub["is_master"] == "false"
+        assert len(linked_data) == 3  # master + 2 subs (includes current)
+        sub_items = [item for item in linked_data if item["is_master"] == "false"]
+        assert len(sub_items) == 2
 
     def test_add_files_to_master_material(self, client, users):
         """Create a multi-file upload (master+subs), then add 1 more file."""
@@ -198,7 +198,7 @@ class TestReorderSubs:
             headers=headers,
         )
         assert linked.status_code == 200
-        sub_ids = [s["id"] for s in linked.json()]
+        sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
         assert len(sub_ids) == 3
 
         # Reverse the order
@@ -269,7 +269,7 @@ class TestDeleteSubMaterial:
             headers=headers,
         )
         assert linked.status_code == 200
-        sub_ids = [s["id"] for s in linked.json()]
+        sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
         return master_id, sub_ids
 
     def test_delete_sub_material_success(self, client, users):
@@ -296,9 +296,9 @@ class TestDeleteSubMaterial:
             f"/api/course-contents/{master_id}/linked-materials",
             headers=headers,
         )
-        remaining_ids = [s["id"] for s in linked.json()]
-        assert to_delete not in remaining_ids
-        assert len(remaining_ids) == 2
+        remaining_sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
+        assert to_delete not in remaining_sub_ids
+        assert len(remaining_sub_ids) == 2
 
     def test_delete_last_sub_demotes_master(self, client, users):
         """Delete the only sub in a group → master demotes to standalone."""
@@ -322,7 +322,7 @@ class TestDeleteSubMaterial:
             headers=headers,
         )
         assert linked.status_code == 200
-        sub_ids = [s["id"] for s in linked.json()]
+        sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
         assert len(sub_ids) == 1
 
         # Delete the only sub
