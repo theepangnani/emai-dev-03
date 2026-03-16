@@ -125,6 +125,10 @@ class CourseContentUpdateResponse(CourseContentResponse):
     archived_guides_count: int = 0
 
 
+class ReorderSubsRequest(BaseModel):
+    sub_ids: list[int] = Field(min_length=1)
+
+
 class LinkedMaterialResponse(BaseModel):
     """Lightweight representation of a linked material (master or sub)."""
     id: int
@@ -137,3 +141,5 @@ class LinkedMaterialResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+

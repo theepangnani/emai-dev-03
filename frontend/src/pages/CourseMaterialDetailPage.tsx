@@ -239,7 +239,7 @@ export function CourseMaterialDetailPage() {
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
 
   // Linked materials for hierarchy (#1740)
-  const { data: linkedMaterials = [], isLoading: linkedLoading } = useLinkedMaterials(
+  const { data: linkedMaterials = [], isLoading: linkedLoading, refetch: refetchLinkedMaterials } = useLinkedMaterials(
     content?.id,
     content?.material_group_id
   );
@@ -691,6 +691,32 @@ export function CourseMaterialDetailPage() {
               currentMaterialId={content.id}
               isCurrentMaster={content.is_master === 'true'}
               loading={linkedLoading}
+              masterId={content.is_master === 'true' ? content.id : (content.parent_content_id ?? undefined)}
+              onReorder={async (materialId, direction) => {
+                const mid = content.is_master === 'true' ? content.id : content.parent_content_id;
+                if (!mid) return;
+                // Compute new sub order by moving the materialId up or down
+                const subs = linkedMaterials.filter(m => m.is_master !== 'true');
+                const subIds = subs.map(s => s.id);
+                const idx = subIds.indexOf(materialId);
+                if (idx < 0) return;
+                const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+                if (targetIdx < 0 || targetIdx >= subIds.length) return;
+                [subIds[idx], subIds[targetIdx]] = [subIds[targetIdx], subIds[idx]];
+                await courseContentsApi.reorderSubMaterials(mid, subIds);
+                refetchLinkedMaterials();
+              }}
+              onDeleteSub={async (subId) => {
+                try {
+                  const masterId = linkedMaterials.find(m => m.is_master === 'true')?.id ?? content.id;
+                  await courseContentsApi.deleteSubMaterial(masterId, subId);
+                  showToast('Sub-material deleted');
+                  refetchLinkedMaterials();
+                  loadData();
+                } catch {
+                  showToast('Failed to delete sub-material');
+                }
+              }}
             />
           )}
 

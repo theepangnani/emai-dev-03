@@ -17,13 +17,19 @@ interface LinkedMaterialsPanelProps {
   currentMaterialId: number;
   isCurrentMaster?: boolean;
   loading?: boolean;
+  onReorder?: (materialId: number, direction: 'up' | 'down') => void;
+  masterId?: number;
+  onDeleteSub?: (subId: number) => void;
 }
 
-export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onReorder, onDeleteSub }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading) return null;
   if (!materials || materials.length === 0) return null;
+
+  const masterItem = materials.find(m => m.is_master === 'true');
+  const subItems = materials.filter(m => m.is_master !== 'true');
 
   return (
     <div className="linked-materials-panel">
@@ -50,22 +56,68 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, loading }: 
 
       {expanded && (
         <div className="linked-materials-list">
-          {materials.map(m => (
+          {/* Render master item first */}
+          {masterItem && (
             <Link
-              key={m.id}
-              to={`/course-materials/${m.id}`}
-              className={`linked-material-item ${m.id === currentMaterialId ? 'current' : ''}`}
+              key={masterItem.id}
+              to={`/course-materials/${masterItem.id}`}
+              className={`linked-material-item ${masterItem.id === currentMaterialId ? 'current' : ''}`}
             >
               <span className="linked-material-title">
-                {m.title}
+                {masterItem.title}
               </span>
-              {m.is_master === 'true' && (
-                <span className="linked-material-badge master">Master</span>
-              )}
-              {m.is_master !== 'true' && (
-                <span className="linked-material-badge sub">Sub</span>
-              )}
+              <span className="linked-material-badge master">Master</span>
             </Link>
+          )}
+          {/* Render sub items with optional reorder and delete buttons */}
+          {subItems.map((m, index) => (
+            <div key={m.id} className="linked-material-row">
+              <Link
+                to={`/course-materials/${m.id}`}
+                className={`linked-material-item ${m.id === currentMaterialId ? 'current' : ''}`}
+              >
+                <span className="linked-material-title">
+                  {m.title}
+                </span>
+                {isCurrentMaster && (
+                  <span className="linked-material-reorder-controls">
+                    <button
+                      className="linked-material-reorder-btn"
+                      disabled={index === 0}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReorder?.(m.id, 'up'); }}
+                      aria-label={`Move ${m.title} up`}
+                      title="Move up"
+                    >
+                      {'\u25B2'}
+                    </button>
+                    <button
+                      className="linked-material-reorder-btn"
+                      disabled={index === subItems.length - 1}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReorder?.(m.id, 'down'); }}
+                      aria-label={`Move ${m.title} down`}
+                      title="Move down"
+                    >
+                      {'\u25BC'}
+                    </button>
+                  </span>
+                )}
+                <span className="linked-material-badge sub">Sub</span>
+              </Link>
+              {isCurrentMaster && m.id !== currentMaterialId && (
+                <button
+                  className="linked-material-delete-btn"
+                  title="Delete sub-material"
+                  aria-label={`Delete ${m.title}`}
+                  onClick={() => {
+                    if (window.confirm('Delete this sub-material? This will permanently remove the file and any linked study guides.')) {
+                      onDeleteSub?.(m.id);
+                    }
+                  }}
+                >
+                  &times;
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

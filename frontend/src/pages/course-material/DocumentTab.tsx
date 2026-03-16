@@ -25,6 +25,7 @@ interface DocumentTabProps {
   showToast: (msg: string) => void;
   onShowRegenPrompt: () => void;
   onReloadData: () => Promise<void>;
+  onAddMoreFiles?: () => void;
 }
 
 function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] } | { type: 'flashcards'; data: FlashcardItem[] } | null {
@@ -93,8 +94,29 @@ export function DocumentTab({
   const [editTextContent, setEditTextContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [addingFiles, setAddingFiles] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const sourceFilesRef = useRef<SourceFilesSectionHandle>(null);
+  const addFilesInputRef = useRef<HTMLInputElement>(null);
+
+  const canAddFiles = !content.parent_content_id;
+
+  const handleAddFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setAddingFiles(true);
+    try {
+      await courseContentsApi.addFilesToMaterial(content.id, Array.from(files));
+      showToast('Files added successfully');
+      await onReloadData();
+    } catch {
+      showToast('Failed to add files');
+    } finally {
+      setAddingFiles(false);
+      // Reset input so the same files can be selected again
+      if (addFilesInputRef.current) addFilesInputRef.current.value = '';
+    }
+  };
 
   const handleStartEdit = () => {
     setEditTextContent(content.text_content || '');
@@ -170,6 +192,25 @@ export function DocumentTab({
               <button className="cm-action-btn" onClick={onShowReplaceModal}>
                 {content.has_file ? '\u{1F504} Replace Document' : '\u{1F4E4} Upload Document'}
               </button>
+              {canAddFiles && (
+                <>
+                  <input
+                    ref={addFilesInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip"
+                    style={{ display: 'none' }}
+                    onChange={handleAddFiles}
+                  />
+                  <button
+                    className="cm-action-btn"
+                    onClick={() => addFilesInputRef.current?.click()}
+                    disabled={addingFiles}
+                  >
+                    {addingFiles ? 'Adding...' : '\u{1F4CE} Add More Files'}
+                  </button>
+                </>
+              )}
               {(content.source_files_count ?? 0) > 0 && (
                 <button className="cm-action-btn" onClick={() => sourceFilesRef.current?.scrollToAndExpand()}>
                   {'\u{1F4C2}'} Source Files ({content.source_files_count})

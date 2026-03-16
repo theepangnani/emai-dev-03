@@ -377,12 +377,32 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
+  addFilesToMaterial: async (contentId: number, files: File[]): Promise<CourseContentItem> => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const response = await api.post(`/api/course-contents/${contentId}/add-files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as CourseContentItem;
+  },
+
+  reorderSubMaterials: async (contentId: number, subIds: number[]): Promise<{ updated: number }> => {
+    const response = await api.put(`/api/course-contents/${contentId}/reorder-subs`, { sub_ids: subIds });
+    return response.data;
+  },
+
   bulkCategorize: async (contentIds: number[], category: string) => {
     const response = await api.post('/api/course-contents/bulk-categorize', {
       content_ids: contentIds,
       category,
     });
     return response.data as { updated: number; category: string };
+  },
+
+  deleteSubMaterial: async (masterId: number, subId: number): Promise<void> => {
+    await api.delete(`/api/course-contents/${masterId}/sub-materials/${subId}`);
   },
 
   listCategories: async () => {
