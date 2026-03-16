@@ -36,6 +36,7 @@ from app.schemas.course_content import (
     CourseContentResponse,
     CourseContentUpdateResponse,
     LinkedMaterialResponse,
+    ReorderSubsRequest,
 )
 from app.schemas.content_image import ContentImageResponse
 from app.schemas.source_file import SourceFileResponse
@@ -1469,6 +1470,52 @@ def get_linked_materials_endpoint(
             created_at=m.created_at,
         ))
     return results
+
+
+@router.put("/{content_id}/reorder-subs")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def reorder_sub_materials(
+    request: Request,
+    content_id: int,
+    body: ReorderSubsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reorder sub-materials under a master material."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if content.is_master != "true":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not a master material")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    if not _can_modify_content(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this content")
+
+    # Fetch all sub-materials in this group
+    subs = db.query(CourseContent).filter(
+        CourseContent.material_group_id == content.material_group_id,
+        CourseContent.is_master != "true",
+    ).all()
+    sub_map = {s.id: s for s in subs}
+
+    # Validate all provided IDs belong to this group
+    for sid in body.sub_ids:
+        if sid not in sub_map:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Sub-material {sid} is not in this master's group",
+            )
+
+    # Update display_order
+    for idx, sid in enumerate(body.sub_ids):
+        sub_map[sid].display_order = idx
+
+    db.commit()
+    return {"updated": len(body.sub_ids)}
 
 
 # ── Content Images endpoints (#1311) ──────────────────────────────
