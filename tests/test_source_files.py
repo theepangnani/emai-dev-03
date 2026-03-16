@@ -88,10 +88,9 @@ class TestMultiFileUpload:
         assert resp.status_code == 201
         data = resp.json()
         assert data["title"] == "Multi-file upload"
-        # With hierarchy (#1740), master has combined text but source files are on subs
+        # With hierarchy (#1740 / §6.98 Rule 3), master gets first file's text
         assert data["material_group_id"] is not None
         assert "Content of file 1" in (data.get("text_content") or "")
-        assert "Content of file 2" in (data.get("text_content") or "")
 
     def test_upload_multi_uses_filenames_as_default_title(self, client, users):
         headers = _auth(client, users["teacher"].email)
@@ -151,18 +150,17 @@ class TestSourceFilesListing:
         return resp.json()
 
     def test_list_source_files(self, client, users, db_session):
-        """With hierarchy (#1740), source files are on sub-materials not master."""
+        """With §6.98 Rule 3, master is first file; remaining files are subs."""
         from app.models.course_content import CourseContent
         content = self._create_content_with_sources(client, users)
         headers = _auth(client, users["teacher"].email)
-        # Master has no source files (they're on subs)
         resp = client.get(f"/api/course-contents/{content['id']}/source-files", headers=headers)
         assert resp.status_code == 200
-        # Source files are on sub-materials; check subs have them
+        # First file is master; remaining 2 files are sub-materials
         subs = db_session.query(CourseContent).filter(
             CourseContent.parent_content_id == content['id'],
         ).all()
-        assert len(subs) == 3  # One sub per file
+        assert len(subs) == 2  # First file is master; remaining 2 are subs
 
     def test_list_source_files_returns_metadata(self, client, users):
         content = self._create_content_with_sources(client, users)
@@ -253,7 +251,7 @@ class TestSourceFilesCount:
         assert resp.json()["source_files_count"] == 0
 
     def test_multi_upload_response_includes_count(self, client, users):
-        """With hierarchy (#1740), master's source_files_count is 0 (files on subs)."""
+        """With §6.98 Rule 3, master IS the first file so has 1 source file."""
         headers = _auth(client, users["teacher"].email)
         files = [
             ("files", ("a.txt", b"AAA", "text/plain")),
@@ -266,8 +264,8 @@ class TestSourceFilesCount:
             headers=headers,
         )
         assert resp.status_code == 201
-        # Master has no direct source files — they're on sub-materials
-        assert resp.json()["source_files_count"] == 0
+        # Master is the first file, so it has 1 source file
+        assert resp.json()["source_files_count"] == 1
         assert resp.json()["material_group_id"] is not None
 
     def test_get_response_includes_count(self, client, users):
@@ -316,11 +314,11 @@ class TestSourceFilesCascadeDelete:
         master_id = resp.json()["id"]
         group_id = resp.json()["material_group_id"]
 
-        # Verify sub-materials exist (hierarchy creates master + 2 subs)
+        # Verify sub-materials exist (2 files => master + 1 sub per §6.98 Rule 3)
         subs = db_session.query(CourseContent).filter(
             CourseContent.parent_content_id == master_id,
         ).all()
-        assert len(subs) == 2
+        assert len(subs) == 1
 
         # Archive master first (required before permanent delete)
         client.delete(f"/api/course-contents/{master_id}", headers=headers)

@@ -640,23 +640,40 @@ async def upload_multi_files(
             )
             db.add(source)
     else:
-        # Multiple files: create master + sub-materials
-        master_text = combined_text  # Master gets overview of all content
+        # Multiple files: first file becomes master, rest become sub-materials
+        # Per §6.98 Rule 3: N files → 1 master (first file) + (N-1) subs
+        first_fname, first_fbytes, first_fmime = file_entries[0]
+        first_text = text_parts[0] if text_parts else None
+
         master = CourseContent(
             course_id=course_id,
             title=content_title,
             content_type=content_type,
-            text_content=master_text,
-            file_size=total_size,
-            mime_type="multipart/mixed",
+            text_content=first_text,
+            original_filename=first_fname,
+            file_size=len(first_fbytes),
+            mime_type=first_fmime,
             created_by_user_id=current_user.id,
         )
         db.add(master)
         db.flush()  # Get master.id
 
-        # Create sub-materials, one per file
+        # Store first file as SourceFile on the master
+        if settings.use_gcs:
+            _gcs_path = f"source-files/{master.id}/{first_fname}"
+            gcs_service.upload_file(_gcs_path, first_fbytes, first_fmime or "application/octet-stream")
+            source = SourceFile(
+                course_content_id=master.id,
+                filename=first_fname,
+                file_type=first_fmime,
+                file_size=len(first_fbytes),
+                gcs_path=_gcs_path,
+            )
+            db.add(source)
+
+        # Create sub-materials for remaining files (2nd, 3rd, etc.)
         sub_materials = []
-        for idx, (fname, fbytes, fmime) in enumerate(file_entries, 1):
+        for idx, (fname, fbytes, fmime) in enumerate(file_entries[1:], 2):
             sub_title = generate_sub_title(content_title, idx)
             # Extract text for this specific file
             sub_text = text_parts[idx - 1] if idx - 1 < len(text_parts) else None
