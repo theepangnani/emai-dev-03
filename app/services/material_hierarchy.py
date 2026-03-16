@@ -57,10 +57,10 @@ def create_material_hierarchy(
 
 
 def get_linked_materials(db: Session, content_id: int) -> list[CourseContent]:
-    """Get all materials linked to the given content (master + siblings).
+    """Get all materials in the same group as the given content.
 
-    If the content is a master: returns all sub-materials.
-    If the content is a sub: returns the master + all sibling subs.
+    If the content is a master: returns the master + all sub-materials.
+    If the content is a sub: returns the master + all sibling subs (including self).
     If standalone (no group): returns empty list.
     """
     CourseContent = _get_model()
@@ -73,10 +73,9 @@ def get_linked_materials(db: Session, content_id: int) -> list[CourseContent]:
     if not content or not content.material_group_id:
         return []
 
-    # Get all materials in the same group, excluding the current one
+    # Get all materials in the same group (including the current one)
     linked = db.query(CourseContent).filter(
         CourseContent.material_group_id == content.material_group_id,
-        CourseContent.id != content_id,
         CourseContent.archived_at.is_(None),
     ).order_by(
         CourseContent.is_master.desc(),  # Master first
