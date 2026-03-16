@@ -38,6 +38,7 @@ from app.schemas.study import (
     DuplicateCheckRequest,
     DuplicateCheckResponse,
     AutoCreatedTask,
+    GenerateChildRequest,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
@@ -1305,6 +1306,181 @@ def list_guide_versions(
         raise HTTPException(status_code=404, detail="Study guide not found")
 
     return versions
+
+
+@router.post("/guides/{guide_id}/generate-child", response_model=StudyGuideResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_child_guide(
+    request: Request,
+    guide_id: int,
+    body: GenerateChildRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a child sub-guide from selected text within a parent guide."""
+    # Fetch parent guide and validate access (same logic as get_study_guide)
+    parent_guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not parent_guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    has_access = False
+    if parent_guide.user_id == current_user.id:
+        has_access = True
+    elif current_user.role == UserRole.PARENT:
+        children_user_ids = get_linked_children_user_ids(db, current_user.id)
+        if parent_guide.user_id in children_user_ids:
+            has_access = True
+        elif parent_guide.course_id:
+            children_course_ids = get_children_course_ids(db, current_user.id)
+            if parent_guide.course_id in children_course_ids:
+                has_access = True
+    elif current_user.role == UserRole.STUDENT and parent_guide.course_id:
+        enrolled_course_ids = get_student_enrolled_course_ids(db, current_user.id)
+        if parent_guide.course_id in enrolled_course_ids:
+            has_access = True
+    elif current_user.role == UserRole.ADMIN:
+        has_access = True
+    # Shared-with user
+    if parent_guide.shared_with_user_id == current_user.id:
+        has_access = True
+
+    if not has_access:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # Validate topic text safety
+    safe, reason = check_content_safe(body.topic)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
+    if body.custom_prompt:
+        safe, reason = check_content_safe(body.custom_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
+    # Check AI usage limit
+    check_ai_usage(current_user, db)
+
+    topic_preview = body.topic[:100]
+    parent_content_truncated = parent_guide.content[:8000]
+
+    GUIDE_TYPE_LABELS = {
+        "study_guide": "Study Guide",
+        "quiz": "Quiz",
+        "flashcards": "Flashcards",
+    }
+
+    generated_content = ""
+    is_truncated = False
+    critical_dates: list[dict] = []
+
+    if body.guide_type == "study_guide":
+        try:
+            raw_content, is_truncated = await generate_study_guide(
+                assignment_title=f"Sub-guide: {topic_preview}",
+                assignment_description=parent_content_truncated,
+                course_name="General",
+                focus_prompt=body.topic,
+                custom_prompt=body.custom_prompt,
+            )
+            raw_content, critical_dates = parse_critical_dates(raw_content)
+            generated_content = raw_content
+        except ValueError as e:
+            from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
+            raise_with_faq_hint(status_code=500, detail=str(e), faq_code=AI_GENERATION_FAILED)
+        except Exception as e:
+            logger.error("Child study guide generation failed: %s: %s", type(e).__name__, e)
+            detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+            raise HTTPException(status_code=500, detail=detail[:500])
+
+    elif body.guide_type == "quiz":
+        try:
+            raw_quiz = await generate_quiz(
+                topic=topic_preview,
+                content=parent_content_truncated,
+                focus_prompt=body.topic,
+                num_questions=5,
+            )
+            raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
+            generated_content = strip_json_fences(raw_quiz)
+            # Validate JSON parses
+            json.loads(generated_content)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse child quiz JSON response")
+            raise HTTPException(status_code=500, detail="Failed to parse quiz response")
+        except ValueError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        except Exception as e:
+            logger.error("Child quiz generation failed: %s: %s", type(e).__name__, e)
+            detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+            raise HTTPException(status_code=500, detail=detail[:500])
+
+    elif body.guide_type == "flashcards":
+        try:
+            raw_cards = await generate_flashcards(
+                topic=topic_preview,
+                content=parent_content_truncated,
+                focus_prompt=body.topic,
+                num_cards=10,
+            )
+            raw_cards, critical_dates = parse_critical_dates(raw_cards)
+            generated_content = strip_json_fences(raw_cards)
+            # Validate JSON parses
+            json.loads(generated_content)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse child flashcards JSON response")
+            raise HTTPException(status_code=500, detail="Failed to parse flashcards response")
+        except ValueError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        except Exception as e:
+            logger.error("Child flashcards generation failed: %s: %s", type(e).__name__, e)
+            detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
+            raise HTTPException(status_code=500, detail=detail[:500])
+
+    # Increment AI usage
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type=body.guide_type,
+        is_regeneration=False, **_usage,
+    )
+
+    # Enforce limit and save
+    enforce_study_guide_limit(db, current_user)
+    title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        course_id=parent_guide.course_id,
+        course_content_id=parent_guide.course_content_id,
+        title=title,
+        content=generated_content,
+        guide_type=body.guide_type,
+        version=1,
+        parent_guide_id=guide_id,
+        relationship_type="sub_guide",
+        generation_context=body.topic,
+        focus_prompt=body.custom_prompt,
+        is_truncated=is_truncated,
+    )
+    db.add(study_guide)
+    db.flush()
+
+    # Auto-create tasks
+    if not critical_dates:
+        critical_dates = scan_content_for_dates(generated_content, title)
+    if not critical_dates:
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        parent_guide.course_id, parent_guide.course_content_id,
+    )
+
+    log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=study_guide.id, details={"guide_type": body.guide_type, "parent_guide_id": guide_id, "relationship_type": "sub_guide", "auto_tasks": len(created_tasks)})
+    db.commit()
+    db.refresh(study_guide)
+
+    resp = StudyGuideResponse.model_validate(study_guide)
+    resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
+    return resp
 
 
 @router.delete("/guides/{guide_id}", status_code=status.HTTP_204_NO_CONTENT)
