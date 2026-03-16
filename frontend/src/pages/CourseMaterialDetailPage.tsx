@@ -314,7 +314,6 @@ export function CourseMaterialDetailPage() {
   // Right-click context menu → generate sub-study guide from selected text (#1594)
   const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string) => {
     if (!content) return;
-    setShowGenerateModal(false);
     // Find the current study guide to use as parent for sub-guide generation
     const parentGuide = guides.find(g => g.guide_type === 'study_guide');
     if (parentGuide) {
@@ -326,9 +325,11 @@ export function CourseMaterialDetailPage() {
           custom_prompt: customPrompt,
         });
         refreshAIUsage();
+        setShowGenerateModal(false);
         navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
       } catch {
         setError('Failed to generate sub-guide');
+        setShowGenerateModal(false);
       }
     } else {
       // No existing study guide — generate new one with selected text as focus
@@ -364,7 +365,9 @@ export function CourseMaterialDetailPage() {
         }
         await loadData();
         refreshAIUsage();
+        setShowGenerateModal(false);
       } catch {
+        setShowGenerateModal(false);
         // error handled by tab
       } finally {
         setGenerating(null);
