@@ -47,6 +47,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const dragState = useRef<{ startX: number; startY: number; panelX: number; panelY: number } | null>(null);
 
+  // Resize state
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const resizeState = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+
   const parseHighlights = (json: string | null | undefined): NoteHighlight[] => {
     if (!json) return [];
     try {
@@ -135,6 +139,40 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
     const handleUp = () => {
       dragState.current = null;
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, []);
+
+  // Resize handler
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    resizeState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: rect.width,
+      startH: rect.height,
+    };
+
+    const handleMove = (ev: MouseEvent) => {
+      if (!resizeState.current) return;
+      const dw = ev.clientX - resizeState.current.startX;
+      const dh = ev.clientY - resizeState.current.startY;
+      setSize({
+        w: Math.min(Math.max(280, resizeState.current.startW + dw), window.innerWidth * 0.8),
+        h: Math.min(Math.max(200, resizeState.current.startH + dh), window.innerHeight * 0.8),
+      });
+    };
+
+    const handleUp = () => {
+      resizeState.current = null;
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
     };
@@ -326,9 +364,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
   const isEffectivelyReadOnly = readOnly && !parentEditing;
 
-  const panelStyle: React.CSSProperties = position
-    ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
-    : {};
+  const panelStyle: React.CSSProperties = {
+    ...(position ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto' } : {}),
+    ...(size ? { width: size.w, maxHeight: size.h } : {}),
+  };
 
   // History view
   if (showHistory) {
@@ -396,6 +435,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
             </div>
           )}
         </div>
+        <div className="notes-panel-resize-handle" onMouseDown={handleResizeStart} />
       </div>
     );
   }
@@ -493,6 +533,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       )}
 
       {toast && <div className="notes-toast">{toast}</div>}
+      <div className="notes-panel-resize-handle" onMouseDown={handleResizeStart} />
     </div>
   );
 }
