@@ -1,6 +1,6 @@
 import { Suspense, useRef, useState } from 'react';
 import type { BriefingNote } from '../../api/client';
-import { ContentCard, MarkdownBody } from '../../components/ContentCard';
+import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 
 interface BriefingTabProps {
@@ -73,9 +73,11 @@ export function BriefingTab({
           )}
           <div className="cm-tab-card-body" ref={printRef}>
             <ContentCard>
-              <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                <MarkdownBody content={briefingNote.content} courseContentId={courseContentId} />
-              </Suspense>
+              <MarkdownErrorBoundary>
+                <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+                  <MarkdownBody content={briefingNote.content} courseContentId={courseContentId} />
+                </Suspense>
+              </MarkdownErrorBoundary>
             </ContentCard>
           </div>
         </div>

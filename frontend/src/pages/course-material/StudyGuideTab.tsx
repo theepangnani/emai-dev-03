@@ -2,7 +2,7 @@ import { Suspense, useRef, useState } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
-import { ContentCard, MarkdownBody } from '../../components/ContentCard';
+import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
@@ -126,9 +126,11 @@ export function StudyGuideTab({
           )}
           <div className="cm-tab-card-body" ref={printRef}>
             <ContentCard>
-              <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
-              </Suspense>
+              <MarkdownErrorBoundary>
+                <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+                  <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
+                </Suspense>
+              </MarkdownErrorBoundary>
             </ContentCard>
           </div>
           {studyGuide.is_truncated && (
