@@ -38,6 +38,7 @@ from app.schemas.study import (
     DuplicateCheckRequest,
     DuplicateCheckResponse,
     AutoCreatedTask,
+    GenerateChildRequest,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
@@ -1305,6 +1306,95 @@ def list_guide_versions(
         raise HTTPException(status_code=404, detail="Study guide not found")
 
     return versions
+
+
+@router.post("/guides/{guide_id}/generate-child", response_model=StudyGuideResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_child_guide(
+    request: Request,
+    guide_id: int,
+    body: GenerateChildRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a child study guide (sub-guide, quiz, or flashcards) from a parent guide."""
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id, StudyGuide.user_id == current_user.id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    check_ai_usage(current_user, db)
+
+    topic_preview = body.topic[:100]
+    parent_content = guide.content[:8000] if guide.content else ""
+
+    LABELS = {"study_guide": "Study Guide", "quiz": "Quiz", "flashcards": "Flashcards"}
+
+    if body.guide_type == "study_guide":
+        raw_content, is_truncated = await generate_study_guide(
+            assignment_title=f"Sub-guide: {topic_preview}",
+            assignment_description=parent_content,
+            course_name=guide.course.name if guide.course else "General",
+            focus_prompt=body.topic,
+            custom_prompt=body.custom_prompt,
+        )
+        content, _ = parse_critical_dates(raw_content)
+    elif body.guide_type == "quiz":
+        raw_content = await generate_quiz(topic=topic_preview, content=parent_content, focus_prompt=body.topic, num_questions=5)
+        content = raw_content
+        is_truncated = False
+    elif body.guide_type == "flashcards":
+        raw_content = await generate_flashcards(topic=topic_preview, content=parent_content, focus_prompt=body.topic, num_cards=10)
+        content = raw_content
+        is_truncated = False
+
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(current_user, db, generation_type=body.guide_type, is_regeneration=False, **_usage)
+    enforce_study_guide_limit(db, current_user)
+
+    child = StudyGuide(
+        user_id=current_user.id,
+        course_id=guide.course_id,
+        course_content_id=guide.course_content_id,
+        title=f"{LABELS.get(body.guide_type, 'Study Guide')}: {topic_preview}",
+        content=content if isinstance(content, str) else json.dumps(content),
+        guide_type=body.guide_type,
+        version=1,
+        parent_guide_id=guide_id,
+        relationship_type="sub_guide",
+        generation_context=body.topic,
+        focus_prompt=body.custom_prompt,
+        is_truncated=is_truncated if body.guide_type == "study_guide" else False,
+    )
+    db.add(child)
+    db.flush()
+
+    log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=child.id, details={"guide_type": body.guide_type, "parent_guide_id": guide_id})
+    db.commit()
+    db.refresh(child)
+    return child
+
+
+@router.get("/guides/{guide_id}/children", response_model=list[StudyGuideResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_child_guides(
+    request: Request,
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List child sub-guides of a study guide."""
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+    if guide.user_id != current_user.id and not (hasattr(current_user, 'has_role') and current_user.has_role(UserRole.ADMIN)):
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    children = db.query(StudyGuide).filter(
+        StudyGuide.parent_guide_id == guide_id,
+        StudyGuide.archived_at.is_(None),
+    ).order_by(StudyGuide.created_at.desc()).all()
+
+    return [c for c in children if getattr(c, 'relationship_type', 'version') == 'sub_guide']
 
 
 @router.delete("/guides/{guide_id}", status_code=status.HTTP_204_NO_CONTENT)

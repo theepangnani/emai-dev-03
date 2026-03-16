@@ -27,6 +27,8 @@ class StudyGuide(Base):
     version = Column(Integer, nullable=False, default=1)
     parent_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True)
     content_hash = Column(String(64), nullable=True)  # SHA-256 for duplicate detection
+    relationship_type = Column(String(20), nullable=False, default="version", server_default="version")
+    generation_context = Column(Text, nullable=True)
 
     # Sharing (parent → child)
     shared_with_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
