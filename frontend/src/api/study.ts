@@ -353,6 +353,16 @@ export const studyApi = {
     await api.delete(`/api/quiz-results/${id}`);
   },
 
+  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string }) => {
+    const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params);
+    return response.data as StudyGuide;
+  },
+
+  listChildGuides: async (guideId: number) => {
+    const response = await api.get(`/api/study/guides/${guideId}/children`);
+    return response.data as StudyGuide[];
+  },
+
   resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
     const response = await api.get('/api/quiz-results/resolve-student', { params });
     return response.data as ResolvedStudent | null;

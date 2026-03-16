@@ -110,6 +110,7 @@ export function GenerateSubGuideModal({
         aria-modal="true"
         aria-labelledby="subguide-title"
         onClick={(e) => e.stopPropagation()}
+        data-testid="subguide-modal"
       >
         {/* Header */}
         <div className="subguide-header">
@@ -131,7 +132,7 @@ export function GenerateSubGuideModal({
           {/* Selected text preview */}
           <div className="subguide-section">
             <label className="subguide-label">Selected Text</label>
-            <blockquote className="subguide-preview">{truncatedText}</blockquote>
+            <blockquote className="subguide-preview" data-testid="selected-text-preview">{truncatedText}</blockquote>
           </div>
 
           {/* Type selection */}
@@ -145,6 +146,7 @@ export function GenerateSubGuideModal({
                   className={`subguide-type-card${selectedType === type.id ? ' selected' : ''}`}
                   onClick={() => setSelectedType(type.id)}
                   aria-pressed={selectedType === type.id}
+                  data-testid={`type-${type.id}`}
                 >
                   <span className="subguide-type-icon">{type.icon}</span>
                   <span className="subguide-type-title">{type.title}</span>
@@ -167,11 +169,12 @@ export function GenerateSubGuideModal({
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               disabled={generating}
+              data-testid="custom-prompt-input"
             />
           </div>
 
           {/* Error message */}
-          {error && <p className="subguide-error">{error}</p>}
+          {error && <p className="subguide-error" data-testid="subguide-error">{error}</p>}
         </div>
 
         {/* Footer */}
@@ -185,6 +188,7 @@ export function GenerateSubGuideModal({
               className="subguide-cancel"
               onClick={onClose}
               disabled={generating}
+              data-testid="cancel-btn"
             >
               Cancel
             </button>
@@ -193,6 +197,7 @@ export function GenerateSubGuideModal({
               className="subguide-generate"
               onClick={handleGenerate}
               disabled={!aiAvailable || generating}
+              data-testid="generate-btn"
             >
               {generating ? (
                 <>

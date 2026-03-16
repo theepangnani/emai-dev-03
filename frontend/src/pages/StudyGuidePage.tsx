@@ -18,6 +18,8 @@ import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useRegisterNotesFAB } from '../context/FABContext';
 import { NotesPanel } from '../components/NotesPanel';
 import { SelectionTooltip } from '../components/SelectionTooltip';
+import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
+import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -56,6 +58,8 @@ export function StudyGuidePage() {
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateSelectedText, setGenerateSelectedText] = useState('');
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -77,13 +81,36 @@ export function StudyGuidePage() {
 
   const handleScrollTop = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-  const handleAddToNotes = () => {
-    if (!selection) return;
-    setAppendText(selection.text);
-    setAddHighlight({ text: selection.text });
+  const handleAddToNotes = (text?: string) => {
+    const noteText = text || selection?.text;
+    if (!noteText) return;
+    setAppendText(noteText);
+    setAddHighlight({ text: noteText });
     setNotesOpen(true);
     clearSelection();
     window.getSelection()?.removeAllRanges();
+  };
+
+  const handleGenerateSubGuide = (selectedText: string) => {
+    setGenerateSelectedText(selectedText);
+    setShowGenerateModal(true);
+  };
+
+  const handleDoGenerate = async (guideType: string, customPrompt?: string) => {
+    if (!guide) return;
+    try {
+      const result = await studyApi.generateChildGuide(guide.id, {
+        topic: generateSelectedText,
+        guide_type: guideType,
+        custom_prompt: customPrompt,
+      });
+      refreshAIUsage();
+      setShowGenerateModal(false);
+      navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
+    } catch {
+      setError('Failed to generate sub-guide');
+      setShowGenerateModal(false);
+    }
   };
 
   // Detect first-time guide view from navigation state
@@ -281,6 +308,21 @@ export function StudyGuidePage() {
       {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
+      <TextSelectionContextMenu
+        containerRef={contentRef}
+        onAddNote={handleAddToNotes}
+        onGenerateStudyGuide={handleGenerateSubGuide}
+        onGenerateSampleTest={handleGenerateSubGuide}
+        aiAvailable={!atLimit}
+      />
+      <GenerateSubGuideModal
+        open={showGenerateModal}
+        selectedText={generateSelectedText}
+        onClose={() => setShowGenerateModal(false)}
+        onGenerate={handleDoGenerate}
+        aiAvailable={!atLimit}
+        aiRemaining={remaining}
+      />
       {guide.course_content_id && (
         <>
           <NotesPanel
