@@ -1954,3 +1954,69 @@
     font-size: 0.82rem;
   }
 }
+
+/* ── Sub-guide generation status banner (#1838) ──────────── */
+
+.cm-subguide-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  animation: cmStatusSlideIn 0.2s ease-out;
+}
+
+@keyframes cmStatusSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cm-subguide-status.generating {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.cm-subguide-status.ready {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  color: #065f46;
+}
+
+.cm-subguide-status-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f59e0b;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: cmSpin 0.8s linear infinite;
+}
+
+@keyframes cmSpin {
+  to { transform: rotate(360deg); }
+}
+
+.cm-subguide-status-link {
+  color: #065f46;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cm-subguide-status-dismiss {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 1.125rem;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0 0.25rem;
+}
+
+.cm-subguide-status-dismiss:hover {
+  opacity: 1;
+}

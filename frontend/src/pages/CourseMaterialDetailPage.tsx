@@ -225,6 +225,8 @@ export function CourseMaterialDetailPage() {
   // Right-click context menu state (#1594)
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateSelectedText, setGenerateSelectedText] = useState('');
+  const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string } | null>(null);
+  const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
   const handleContextGenerate = useCallback((selectedText: string) => {
     setGenerateSelectedText(selectedText);
     setShowGenerateModal(true);
@@ -317,20 +319,22 @@ export function CourseMaterialDetailPage() {
     // Find the current study guide to use as parent for sub-guide generation
     const parentGuide = guides.find(g => g.guide_type === 'study_guide');
     if (parentGuide) {
-      // Generate as sub-guide of existing study guide
-      try {
-        const result = await studyApi.generateChildGuide(parentGuide.id, {
-          topic: generateSelectedText,
-          guide_type: guideType,
-          custom_prompt: customPrompt,
-        });
+      // Close modal immediately, fire API in background
+      setShowGenerateModal(false);
+      setSubGuideStatus({ generating: true, ready: false });
+      studyApi.generateChildGuide(parentGuide.id, {
+        topic: generateSelectedText,
+        guide_type: guideType,
+        custom_prompt: customPrompt,
+      }).then(result => {
         refreshAIUsage();
-        setShowGenerateModal(false);
-        navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
-      } catch {
+        setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title });
+        // Refresh child guides list
+        studyApi.listChildGuides(parentGuide.id).then(setChildGuides).catch(() => {});
+      }).catch(() => {
+        setSubGuideStatus(null);
         setError('Failed to generate sub-guide');
-        setShowGenerateModal(false);
-      }
+      });
     } else {
       // No existing study guide — generate new one with selected text as focus
       const type = guideType as 'study_guide' | 'quiz' | 'flashcards';
@@ -422,6 +426,12 @@ export function CourseMaterialDetailPage() {
   const quiz = guides.find(g => g.guide_type === 'quiz');
   const flashcardSet = guides.find(g => g.guide_type === 'flashcards');
   const mindMapGuide = guides.find(g => g.guide_type === 'mind_map');
+
+  // Fetch child guides for the study guide (#1838)
+  useEffect(() => {
+    if (!studyGuide) { setChildGuides([]); return; }
+    studyApi.listChildGuides(studyGuide.id).then(setChildGuides).catch(() => setChildGuides([]));
+  }, [studyGuide?.id]);
 
   const hasSourceContent = !!(content?.text_content || content?.description);
 
@@ -736,6 +746,34 @@ export function CourseMaterialDetailPage() {
         )}
 
         <AIWarningBanner />
+
+        {subGuideStatus && (
+          <div className={`cm-subguide-status ${subGuideStatus.ready ? 'ready' : 'generating'}`}>
+            {subGuideStatus.generating ? (
+              <>
+                <span className="cm-subguide-status-spinner" />
+                <span>Generating sub-guide...</span>
+              </>
+            ) : subGuideStatus.ready ? (
+              <>
+                <span>Sub-guide ready!</span>
+                <Link to={`/study/guide/${subGuideStatus.guideId}`} className="cm-subguide-status-link">
+                  View &ldquo;{subGuideStatus.title}&rdquo; &rarr;
+                </Link>
+                <button className="cm-subguide-status-dismiss" onClick={() => setSubGuideStatus(null)} aria-label="Dismiss">&times;</button>
+              </>
+            ) : null}
+          </div>
+        )}
+
+        {childGuides.length > 0 && studyGuide && (
+          <div className="cm-subguide-status ready" style={{ cursor: 'pointer' }} onClick={() => navigate(`/study/guide/${studyGuide.id}`)}>
+            <span>Sub-Guides ({childGuides.length})</span>
+            <Link to={`/study/guide/${studyGuide.id}`} className="cm-subguide-status-link">
+              View in Study Guide &rarr;
+            </Link>
+          </div>
+        )}
 
         {/* ── Tab navigation ───────────────────────── */}
         <div className="cm-tabs" role="tablist">
