@@ -692,9 +692,17 @@ export function CourseMaterialDetailPage() {
               isCurrentMaster={content.is_master === 'true'}
               loading={linkedLoading}
               masterId={content.is_master === 'true' ? content.id : (content.parent_content_id ?? undefined)}
-              onReorder={async (subIds) => {
+              onReorder={async (materialId, direction) => {
                 const mid = content.is_master === 'true' ? content.id : content.parent_content_id;
                 if (!mid) return;
+                // Compute new sub order by moving the materialId up or down
+                const subs = linkedMaterials.filter(m => m.is_master !== 'true');
+                const subIds = subs.map(s => s.id);
+                const idx = subIds.indexOf(materialId);
+                if (idx < 0) return;
+                const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+                if (targetIdx < 0 || targetIdx >= subIds.length) return;
+                [subIds[idx], subIds[targetIdx]] = [subIds[targetIdx], subIds[idx]];
                 await courseContentsApi.reorderSubMaterials(mid, subIds);
                 refetchLinkedMaterials();
               }}

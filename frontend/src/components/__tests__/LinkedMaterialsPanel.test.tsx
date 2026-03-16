@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { LinkedMaterialsPanel, type LinkedMaterialDisplay } from '../LinkedMaterialsPanel'
@@ -81,5 +81,63 @@ describe('LinkedMaterialsPanel', () => {
     expect(screen.getByText('Math Notes — Part 1')).toBeInTheDocument()
     fireEvent.click(toggle)
     expect(screen.queryByText('Math Notes — Part 1')).not.toBeInTheDocument()
+  })
+
+  it('shows reorder buttons when isCurrentMaster is true', () => {
+    renderPanel({ isCurrentMaster: true })
+    fireEvent.click(screen.getByText('Linked Materials (3)'))
+    // Sub-materials should have up/down reorder buttons
+    expect(screen.getByLabelText('Move Math Notes — Part 1 up')).toBeInTheDocument()
+    expect(screen.getByLabelText('Move Math Notes — Part 1 down')).toBeInTheDocument()
+    expect(screen.getByLabelText('Move Math Notes — Part 2 up')).toBeInTheDocument()
+    expect(screen.getByLabelText('Move Math Notes — Part 2 down')).toBeInTheDocument()
+  })
+
+  it('hides reorder buttons when isCurrentMaster is false', () => {
+    renderPanel({ isCurrentMaster: false })
+    fireEvent.click(screen.getByText('Linked Materials (3)'))
+    expect(screen.queryByLabelText('Move Math Notes — Part 1 up')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Move Math Notes — Part 1 down')).not.toBeInTheDocument()
+  })
+
+  it('calls onReorder when arrow button clicked', () => {
+    const onReorder = vi.fn()
+    renderPanel({ isCurrentMaster: true, onReorder })
+    fireEvent.click(screen.getByText('Linked Materials (3)'))
+    fireEvent.click(screen.getByLabelText('Move Math Notes — Part 2 up'))
+    expect(onReorder).toHaveBeenCalledWith(3, 'up')
+    fireEvent.click(screen.getByLabelText('Move Math Notes — Part 1 down'))
+    expect(onReorder).toHaveBeenCalledWith(2, 'down')
+  })
+
+  it('shows delete button on sub-materials when isCurrentMaster', () => {
+    renderPanel({ isCurrentMaster: true })
+    fireEvent.click(screen.getByText('Linked Materials (3)'))
+    expect(screen.getByLabelText('Delete Math Notes — Part 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Delete Math Notes — Part 2')).toBeInTheDocument()
+    // Master material should NOT have a delete button
+    expect(screen.queryByLabelText('Delete Math Notes')).not.toBeInTheDocument()
+  })
+
+  it('calls onDeleteSub when delete confirmed', () => {
+    const onDeleteSub = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPanel({ isCurrentMaster: true, onDeleteSub })
+    fireEvent.click(screen.getByText('Linked Materials (3)'))
+    fireEvent.click(screen.getByLabelText('Delete Math Notes — Part 1'))
+    expect(window.confirm).toHaveBeenCalled()
+    expect(onDeleteSub).toHaveBeenCalledWith(2)
+    vi.restoreAllMocks()
+  })
+
+  it('does not call onDeleteSub when delete cancelled', () => {
+    const onDeleteSub = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderPanel({ isCurrentMaster: true, onDeleteSub })
+    fireEvent.click(screen.getByText('Linked Materials (3)'))
+    fireEvent.click(screen.getByLabelText('Delete Math Notes — Part 1'))
+    expect(window.confirm).toHaveBeenCalled()
+    expect(onDeleteSub).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
   })
 })

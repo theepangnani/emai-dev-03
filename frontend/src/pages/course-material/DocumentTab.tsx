@@ -25,6 +25,7 @@ interface DocumentTabProps {
   showToast: (msg: string) => void;
   onShowRegenPrompt: () => void;
   onReloadData: () => Promise<void>;
+  onAddMoreFiles?: () => void;
 }
 
 function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] } | { type: 'flashcards'; data: FlashcardItem[] } | null {
@@ -88,6 +89,7 @@ export function DocumentTab({
   showToast,
   onShowRegenPrompt,
   onReloadData,
+  onAddMoreFiles,
 }: DocumentTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');

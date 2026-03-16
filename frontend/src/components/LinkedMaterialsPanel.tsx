@@ -17,7 +17,7 @@ interface LinkedMaterialsPanelProps {
   currentMaterialId: number;
   isCurrentMaster?: boolean;
   loading?: boolean;
-  onReorder?: (reorderedIds: number[]) => void;
+  onReorder?: (materialId: number, direction: 'up' | 'down') => void;
   masterId?: number;
   onDeleteSub?: (subId: number) => void;
 }
@@ -43,23 +43,6 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
 
   const masterItem = displayMaterials.find(m => m.is_master === 'true');
   const subItems = displayMaterials.filter(m => m.is_master !== 'true');
-
-  const canReorder = isCurrentMaster && !!onReorder && !!masterId && subItems.length > 1;
-
-  const handleMove = (index: number, direction: 'up' | 'down') => {
-    const newSubs = [...subItems];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= newSubs.length) return;
-    [newSubs[index], newSubs[targetIndex]] = [newSubs[targetIndex], newSubs[index]];
-
-    // Rebuild full list: master first, then reordered subs
-    const newList = masterItem ? [masterItem, ...newSubs] : [...newSubs];
-    setLocalMaterials(newList);
-
-    // Call onReorder with just the sub IDs in new order
-    const newSubIds = newSubs.map(s => s.id);
-    onReorder?.(newSubIds);
-  };
 
   return (
     <div className="linked-materials-panel">
@@ -109,12 +92,12 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
                 <span className="linked-material-title">
                   {m.title}
                 </span>
-                {canReorder && (
+                {isCurrentMaster && (
                   <span className="linked-material-reorder-controls">
                     <button
                       className="linked-material-reorder-btn"
                       disabled={index === 0}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMove(index, 'up'); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReorder?.(m.id, 'up'); }}
                       aria-label={`Move ${m.title} up`}
                       title="Move up"
                     >
@@ -123,7 +106,7 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
                     <button
                       className="linked-material-reorder-btn"
                       disabled={index === subItems.length - 1}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMove(index, 'down'); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReorder?.(m.id, 'down'); }}
                       aria-label={`Move ${m.title} down`}
                       title="Move down"
                     >
