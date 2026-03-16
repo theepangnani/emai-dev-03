@@ -86,6 +86,49 @@ describe('NotesPanel', () => {
     expect((textarea as HTMLTextAreaElement).value).toContain('> some highlighted text');
   });
 
+  it('processes addHighlight for parent readOnly after parentEditing switch (#1821)', async () => {
+    const onHighlightConsumed = vi.fn();
+    const onHighlightsChange = vi.fn();
+    const onAppendConsumed = vi.fn();
+
+    // Parent's own note (loaded after parentEditing switches)
+    mockGetByContent.mockResolvedValue({ ...defaultNote, content: '' });
+    // Child has no notes
+    mockGetChildNotes.mockResolvedValue(null);
+
+    // Both appendText and addHighlight arrive together (parent readOnly mode).
+    // appendText triggers the parentEditing switch; addHighlight should wait
+    // for it to complete and then process the highlight.
+    render(
+      <NotesPanel
+        courseContentId={42}
+        isOpen={true}
+        onClose={() => {}}
+        appendText="quoted text"
+        onAppendConsumed={onAppendConsumed}
+        addHighlight={{ text: 'test' }}
+        onHighlightConsumed={onHighlightConsumed}
+        onHighlightsChange={onHighlightsChange}
+        readOnly={true}
+        childStudentId={99}
+      />
+    );
+
+    // After parentEditing switch completes, both should be consumed
+    await waitFor(() => {
+      expect(onHighlightConsumed).toHaveBeenCalled();
+    });
+
+    // onHighlightsChange should have been called with the highlight
+    const calls = onHighlightsChange.mock.calls;
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'test' }),
+      ])
+    );
+  });
+
   it('does not overwrite highlights when switching to child notes view (regression #1212)', async () => {
     const onHighlightConsumed = vi.fn();
     const onHighlightsChange = vi.fn();

@@ -177,19 +177,27 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   // Handle addHighlight prop — add highlight entry (deduped by text)
   useEffect(() => {
     if (!addHighlight || loading) return;
+    // Wait for parent editing switch to complete before processing
+    if (readOnly && !parentEditing) return;
     const text = addHighlight.text;
     onHighlightConsumed?.();
 
-    setHighlights(prev => {
-      if (prev.some(h => h.text === text)) return prev;
-      const updated = [...prev, { text, start: 0, end: 0 }];
-      onHighlightsChange?.(updated);
-      // Auto-save with updated highlights
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveNote(content, updated), 300);
-      return updated;
-    });
-  }, [addHighlight, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (highlights.some(h => h.text === text)) return;
+    const updated = [...highlights, { text, start: 0, end: 0 }];
+    setHighlights(updated);
+    onHighlightsChange?.(updated);
+
+    // Compute content including any pending append text for combined save
+    let contentForSave = content;
+    if (appendText) {
+      const quoted = appendText.split('\n').map(line => `> ${line}`).join('\n');
+      const separator = content.trim() ? '\n\n' : '';
+      contentForSave = content + separator + quoted + '\n';
+    }
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveNote(contentForSave, updated), 300);
+  }, [addHighlight, loading, readOnly, parentEditing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle removeHighlightText prop — remove highlight entry by text
   useEffect(() => {
