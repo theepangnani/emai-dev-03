@@ -239,7 +239,7 @@ export function CourseMaterialDetailPage() {
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
 
   // Linked materials for hierarchy (#1740)
-  const { data: linkedMaterials = [], isLoading: linkedLoading } = useLinkedMaterials(
+  const { data: linkedMaterials = [], isLoading: linkedLoading, refetch: refetchLinkedMaterials } = useLinkedMaterials(
     content?.id,
     content?.material_group_id
   );
@@ -691,6 +691,13 @@ export function CourseMaterialDetailPage() {
               currentMaterialId={content.id}
               isCurrentMaster={content.is_master === 'true'}
               loading={linkedLoading}
+              masterId={content.is_master === 'true' ? content.id : (content.parent_content_id ?? undefined)}
+              onReorder={async (subIds) => {
+                const mid = content.is_master === 'true' ? content.id : content.parent_content_id;
+                if (!mid) return;
+                await courseContentsApi.reorderSubMaterials(mid, subIds);
+                refetchLinkedMaterials();
+              }}
             />
           )}
 
