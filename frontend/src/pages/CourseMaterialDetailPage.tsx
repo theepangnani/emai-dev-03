@@ -28,6 +28,8 @@ import type { StudyFormat } from '../components/study/FormatSelector';
 import { NotesPanel } from '../components/NotesPanel';
 import { useRegisterNotesFAB } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
+import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
+import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -219,6 +221,15 @@ export function CourseMaterialDetailPage() {
     clearSelection();
     window.getSelection()?.removeAllRanges();
   }, [selection, clearSelection]);
+
+  // Right-click context menu state (#1594)
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateSelectedText, setGenerateSelectedText] = useState('');
+  const handleContextGenerate = useCallback((selectedText: string) => {
+    setGenerateSelectedText(selectedText);
+    setShowGenerateModal(true);
+  }, []);
+
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
@@ -299,6 +310,67 @@ export function CourseMaterialDetailPage() {
   }, [contentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Right-click context menu → generate sub-study guide from selected text (#1594)
+  const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string) => {
+    if (!content) return;
+    setShowGenerateModal(false);
+    // Find the current study guide to use as parent for sub-guide generation
+    const parentGuide = guides.find(g => g.guide_type === 'study_guide');
+    if (parentGuide) {
+      // Generate as sub-guide of existing study guide
+      try {
+        const result = await studyApi.generateChildGuide(parentGuide.id, {
+          topic: generateSelectedText,
+          guide_type: guideType,
+          custom_prompt: customPrompt,
+        });
+        refreshAIUsage();
+        navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
+      } catch {
+        setError('Failed to generate sub-guide');
+      }
+    } else {
+      // No existing study guide — generate new one with selected text as focus
+      const type = guideType as 'study_guide' | 'quiz' | 'flashcards';
+      const tabMap: Record<string, TabKey> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards' };
+      setActiveTab(tabMap[type] || 'guide');
+      setGenerating(type);
+      try {
+        if (type === 'study_guide') {
+          await studyApi.generateGuide({
+            course_content_id: contentId,
+            course_id: content.course_id,
+            title: content.title,
+            content: content.text_content || content.description || '',
+            focus_prompt: generateSelectedText + (customPrompt ? `\n\n${customPrompt}` : ''),
+          });
+        } else if (type === 'quiz') {
+          await studyApi.generateQuiz({
+            course_content_id: contentId,
+            course_id: content.course_id,
+            topic: content.title,
+            content: content.text_content || content.description || '',
+            focus_prompt: generateSelectedText + (customPrompt ? `\n\n${customPrompt}` : ''),
+          });
+        } else if (type === 'flashcards') {
+          await studyApi.generateFlashcards({
+            course_content_id: contentId,
+            course_id: content.course_id,
+            topic: content.title,
+            content: content.text_content || content.description || '',
+            focus_prompt: generateSelectedText + (customPrompt ? `\n\n${customPrompt}` : ''),
+          });
+        }
+        await loadData();
+        refreshAIUsage();
+      } catch {
+        // error handled by tab
+      } finally {
+        setGenerating(null);
+      }
+    }
+  }, [content, contentId, generateSelectedText, guides, refreshAIUsage, loadData, navigate]);
 
   // Auto-open notes panel if ?notes=open is in URL (#1087)
   useEffect(() => {
@@ -890,10 +962,25 @@ export function CourseMaterialDetailPage() {
         </div>
       )}
 
-      {/* Contextual notes: selection tooltip + FAB */}
+      {/* Contextual notes: selection tooltip + right-click context menu + FAB */}
       {selection && (
         <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
       )}
+      <TextSelectionContextMenu
+        containerRef={contentAreaRef}
+        onAddNote={(text) => { setAppendText(text); setAddHighlight({ text }); setShowNotesPanel(true); window.getSelection()?.removeAllRanges(); }}
+        onGenerateStudyGuide={handleContextGenerate}
+        onGenerateSampleTest={handleContextGenerate}
+        aiAvailable={!atLimit}
+      />
+      <GenerateSubGuideModal
+        open={showGenerateModal}
+        selectedText={generateSelectedText}
+        onClose={() => setShowGenerateModal(false)}
+        onGenerate={handleDoContextGenerate}
+        aiAvailable={!atLimit}
+        aiRemaining={remaining}
+      />
       {showHelpStudyMenu && resolvedStudent && (
         <HelpStudyMenu
           studentId={resolvedStudent.student_user_id}
