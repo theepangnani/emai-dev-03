@@ -401,6 +401,10 @@ export const courseContentsApi = {
     return response.data as { updated: number; category: string };
   },
 
+  deleteSubMaterial: async (masterId: number, subId: number): Promise<void> => {
+    await api.delete(`/api/course-contents/${masterId}/sub-materials/${subId}`);
+  },
+
   listCategories: async () => {
     const response = await api.get('/api/course-contents/categories');
     return response.data as string[];

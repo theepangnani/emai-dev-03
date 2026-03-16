@@ -698,6 +698,17 @@ export function CourseMaterialDetailPage() {
                 await courseContentsApi.reorderSubMaterials(mid, subIds);
                 refetchLinkedMaterials();
               }}
+              onDeleteSub={async (subId) => {
+                try {
+                  const masterId = linkedMaterials.find(m => m.is_master === 'true')?.id ?? content.id;
+                  await courseContentsApi.deleteSubMaterial(masterId, subId);
+                  showToast('Sub-material deleted');
+                  refetchLinkedMaterials();
+                  loadData();
+                } catch {
+                  showToast('Failed to delete sub-material');
+                }
+              }}
             />
           )}
 

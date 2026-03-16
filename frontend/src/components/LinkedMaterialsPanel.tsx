@@ -19,9 +19,10 @@ interface LinkedMaterialsPanelProps {
   loading?: boolean;
   onReorder?: (reorderedIds: number[]) => void;
   masterId?: number;
+  onDeleteSub?: (subId: number) => void;
 }
 
-export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onReorder, masterId }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onReorder, masterId, onDeleteSub }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [localMaterials, setLocalMaterials] = useState<LinkedMaterialDisplay[] | null>(null);
 
@@ -98,7 +99,7 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
               <span className="linked-material-badge master">Master</span>
             </Link>
           )}
-          {/* Render sub items with optional reorder buttons */}
+          {/* Render sub items with optional reorder and delete buttons */}
           {subItems.map((m, index) => (
             <div key={m.id} className="linked-material-row">
               <Link
@@ -132,6 +133,20 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
                 )}
                 <span className="linked-material-badge sub">Sub</span>
               </Link>
+              {isCurrentMaster && m.id !== currentMaterialId && onDeleteSub && (
+                <button
+                  className="linked-material-delete-btn"
+                  title="Delete sub-material"
+                  aria-label={`Delete ${m.title}`}
+                  onClick={() => {
+                    if (window.confirm('Delete this sub-material? This will permanently remove the file and any linked study guides.')) {
+                      onDeleteSub(m.id);
+                    }
+                  }}
+                >
+                  &times;
+                </button>
+              )}
             </div>
           ))}
         </div>

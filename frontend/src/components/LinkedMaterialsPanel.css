@@ -105,7 +105,9 @@
 
 /* Reorder controls (#993) */
 .linked-material-row {
-  display: contents;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .linked-material-reorder-controls {
@@ -140,4 +142,25 @@
 .linked-material-reorder-btn:disabled {
   opacity: 0.3;
   cursor: default;
+}
+
+/* Delete sub-material button (#993) */
+.linked-material-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #94a3b8);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.linked-material-delete-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
 }
