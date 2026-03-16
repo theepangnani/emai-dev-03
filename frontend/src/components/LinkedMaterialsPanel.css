@@ -102,3 +102,42 @@
   background: var(--color-surface-alt, #f8fafc);
   color: var(--color-text-muted, #64748b);
 }
+
+/* Reorder controls (#993) */
+.linked-material-row {
+  display: contents;
+}
+
+.linked-material-reorder-controls {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+}
+
+.linked-material-reorder-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 3px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-muted, #64748b);
+  font-size: 0.5rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.linked-material-reorder-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover, #f1f5f9);
+  color: var(--color-text, #1e293b);
+}
+
+.linked-material-reorder-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}

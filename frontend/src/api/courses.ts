@@ -377,6 +377,11 @@ export const courseContentsApi = {
     return response.data as CourseContentItem;
   },
 
+  reorderSubMaterials: async (contentId: number, subIds: number[]): Promise<{ updated: number }> => {
+    const response = await api.put(`/api/course-contents/${contentId}/reorder-subs`, { sub_ids: subIds });
+    return response.data;
+  },
+
   bulkCategorize: async (contentIds: number[], category: string) => {
     const response = await api.post('/api/course-contents/bulk-categorize', {
       content_ids: contentIds,
