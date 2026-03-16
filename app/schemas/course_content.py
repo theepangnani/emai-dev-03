@@ -137,3 +137,8 @@ class LinkedMaterialResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ReorderSubsRequest(BaseModel):
+    """Request body for reordering sub-materials within a master group."""
+    sub_ids: list[int] = Field(min_length=1)

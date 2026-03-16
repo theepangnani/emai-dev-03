@@ -36,6 +36,7 @@ from app.schemas.course_content import (
     CourseContentResponse,
     CourseContentUpdateResponse,
     LinkedMaterialResponse,
+    ReorderSubsRequest,
 )
 from app.schemas.content_image import ContentImageResponse
 from app.schemas.source_file import SourceFileResponse
@@ -1469,6 +1470,236 @@ def get_linked_materials_endpoint(
             created_at=m.created_at,
         ))
     return results
+
+
+# ── Multi-Document Management endpoints (#993 / §6.99) ───────────
+
+MAX_SUB_FILES = 10  # Max files that can be added in a single request
+
+
+@router.post("/{content_id}/add-files", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
+async def add_files_to_material(
+    request: Request,
+    content_id: int,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add files to an existing material, promoting to master if standalone."""
+    if not files:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
+
+    content = db.query(CourseContent).filter(
+        CourseContent.id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Resolve master: if target is a sub, redirect to its parent master
+    master = content
+    if content.parent_content_id:
+        master = db.query(CourseContent).filter(
+            CourseContent.id == content.parent_content_id,
+            CourseContent.archived_at.is_(None),
+        ).first()
+        if not master:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent master not found")
+
+    # Count existing subs
+    existing_subs = db.query(CourseContent).filter(
+        CourseContent.parent_content_id == master.id,
+        CourseContent.archived_at.is_(None),
+    ).count() if master.is_master == "true" else 0
+
+    if existing_subs + len(files) > MAX_SUB_FILES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot exceed {MAX_SUB_FILES} sub-materials. Currently {existing_subs}, trying to add {len(files)}.",
+        )
+
+    # Read file data
+    file_entries: list[tuple[str, bytes, str | None]] = []
+    total_size = 0
+    for f in files:
+        file_bytes = await f.read()
+        total_size += len(file_bytes)
+        file_entries.append((f.filename or "unknown", file_bytes, f.content_type))
+
+    # If standalone, promote to master
+    if master.is_master != "true":
+        import time
+        group_id = int(time.time() * 1000) % 2147483647
+        master.is_master = "true"
+        master.material_group_id = group_id
+        db.flush()
+
+    # Extract text from new files
+    text_parts: list[str] = []
+    for fname, fbytes, _ in file_entries:
+        try:
+            extracted = process_file(fbytes, fname)
+            if extracted.strip():
+                text_parts.append(f"--- [{fname}] ---\n{extracted}")
+        except FileProcessingError as e:
+            logger.warning("Text extraction failed for %s: %s", fname, e)
+            text_parts.append(f"--- [{fname}] ---\n(text extraction failed)")
+
+    # Create sub-materials
+    new_subs = []
+    start_idx = existing_subs + 1
+    for idx, (fname, fbytes, fmime) in enumerate(file_entries, start_idx):
+        sub_title = generate_sub_title(master.title, idx)
+        sub_text = text_parts[idx - start_idx] if (idx - start_idx) < len(text_parts) else None
+
+        sub = CourseContent(
+            course_id=master.course_id,
+            title=sub_title,
+            content_type=master.content_type,
+            text_content=sub_text,
+            original_filename=fname,
+            file_size=len(fbytes),
+            mime_type=fmime,
+            created_by_user_id=current_user.id,
+            parent_content_id=master.id,
+            is_master="false",
+            material_group_id=master.material_group_id,
+            display_order=idx,
+        )
+        db.add(sub)
+        db.flush()
+
+        # Store file as SourceFile
+        if settings.use_gcs:
+            _gcs_path = f"source-files/{sub.id}/{fname}"
+            gcs_service.upload_file(_gcs_path, fbytes, fmime or "application/octet-stream")
+            source = SourceFile(
+                course_content_id=sub.id,
+                filename=fname,
+                file_type=fmime,
+                file_size=len(fbytes),
+                gcs_path=_gcs_path,
+            )
+            db.add(source)
+
+        new_subs.append(sub)
+
+    # Append new text to master's combined text
+    if text_parts:
+        new_text = "\n\n".join(text_parts)
+        if master.text_content:
+            master.text_content = master.text_content + "\n\n" + new_text
+        else:
+            master.text_content = new_text
+
+    db.commit()
+    db.refresh(master)
+    return _to_response(master)
+
+
+@router.put("/{content_id}/reorder-subs")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def reorder_sub_materials(
+    request: Request,
+    content_id: int,
+    data: ReorderSubsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reorder sub-materials within a master material group."""
+    content = db.query(CourseContent).filter(
+        CourseContent.id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if content.is_master != "true":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials reordered")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    # Validate all sub_ids belong to this master's group
+    subs = db.query(CourseContent).filter(
+        CourseContent.parent_content_id == content.id,
+        CourseContent.archived_at.is_(None),
+    ).all()
+    sub_id_set = {s.id for s in subs}
+
+    for sid in data.sub_ids:
+        if sid not in sub_id_set:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Sub-material {sid} does not belong to this master group",
+            )
+
+    # Update display_order
+    sub_map = {s.id: s for s in subs}
+    for order, sid in enumerate(data.sub_ids, 1):
+        sub_map[sid].display_order = order
+
+    db.commit()
+    return {"status": "ok", "reordered": len(data.sub_ids)}
+
+
+@router.delete("/{content_id}/sub-materials/{sub_id}", status_code=status.HTTP_200_OK)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_sub_material(
+    request: Request,
+    content_id: int,
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a sub-material from a master group. Demotes master if last sub removed."""
+    master = db.query(CourseContent).filter(
+        CourseContent.id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
+    if not master:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if master.is_master != "true":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials deleted")
+
+    if not can_access_course(db, current_user, master.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    sub = db.query(CourseContent).filter(
+        CourseContent.id == sub_id,
+        CourseContent.parent_content_id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sub-material not found in this group")
+
+    # Delete sub's source files, images, study guides
+    db.query(SourceFile).filter(SourceFile.course_content_id == sub_id).delete()
+    db.query(ContentImage).filter(ContentImage.course_content_id == sub_id).delete()
+    db.query(StudyGuide).filter(StudyGuide.course_content_id == sub_id).delete()
+    db.query(ResourceLink).filter(ResourceLink.course_content_id == sub_id).delete()
+    db.delete(sub)
+    db.flush()
+
+    # Check remaining subs
+    remaining = db.query(CourseContent).filter(
+        CourseContent.parent_content_id == content_id,
+        CourseContent.archived_at.is_(None),
+    ).count()
+
+    if remaining == 0:
+        # Demote master back to standalone
+        master.is_master = "false"
+        master.material_group_id = None
+
+    db.commit()
+    db.refresh(master)
+    return {"status": "ok", "remaining_subs": remaining, "is_master": master.is_master}
 
 
 # ── Content Images endpoints (#1311) ──────────────────────────────
