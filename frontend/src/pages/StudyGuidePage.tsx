@@ -147,6 +147,13 @@ export function StudyGuidePage() {
     fetchGuide();
   }, [id]);
 
+  // Redirect to course-materials tab when guide has a parent material (#1837)
+  useEffect(() => {
+    if (guide && guide.course_content_id) {
+      navigate(`/course-materials/${guide.course_content_id}?tab=guide`, { replace: true });
+    }
+  }, [guide, navigate]);
+
   // Fetch parent guide title for sub-guides (#1594)
   useEffect(() => {
     if (!guide?.parent_guide_id) { setParentGuideTitle(null); return; }
