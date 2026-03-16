@@ -22,27 +22,14 @@ interface LinkedMaterialsPanelProps {
   onDeleteSub?: (subId: number) => void;
 }
 
-export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onReorder, masterId, onDeleteSub }: LinkedMaterialsPanelProps) {
+export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMaster, loading, onReorder, onDeleteSub }: LinkedMaterialsPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const [localMaterials, setLocalMaterials] = useState<LinkedMaterialDisplay[] | null>(null);
 
   if (loading) return null;
   if (!materials || materials.length === 0) return null;
 
-  // Use local order if we've reordered, otherwise use props
-  const displayMaterials = localMaterials ?? materials;
-
-  // Reset local state when props change (e.g., after refetch)
-  if (localMaterials && materials.length > 0 && localMaterials.length === materials.length) {
-    const propsIds = materials.map(m => m.id).join(',');
-    const localIds = localMaterials.map(m => m.id).join(',');
-    if (propsIds === localIds) {
-      // Props caught up to our local state, clear local override
-    }
-  }
-
-  const masterItem = displayMaterials.find(m => m.is_master === 'true');
-  const subItems = displayMaterials.filter(m => m.is_master !== 'true');
+  const masterItem = materials.find(m => m.is_master === 'true');
+  const subItems = materials.filter(m => m.is_master !== 'true');
 
   return (
     <div className="linked-materials-panel">
@@ -58,7 +45,7 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
           </svg>
         </span>
         <span className="linked-materials-label">
-          Linked Materials ({displayMaterials.length})
+          Linked Materials ({materials.length})
         </span>
         <span className={`linked-materials-chevron ${expanded ? 'expanded' : ''}`}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -116,14 +103,14 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
                 )}
                 <span className="linked-material-badge sub">Sub</span>
               </Link>
-              {isCurrentMaster && m.id !== currentMaterialId && onDeleteSub && (
+              {isCurrentMaster && m.id !== currentMaterialId && (
                 <button
                   className="linked-material-delete-btn"
                   title="Delete sub-material"
                   aria-label={`Delete ${m.title}`}
                   onClick={() => {
                     if (window.confirm('Delete this sub-material? This will permanently remove the file and any linked study guides.')) {
-                      onDeleteSub(m.id);
+                      onDeleteSub?.(m.id);
                     }
                   }}
                 >

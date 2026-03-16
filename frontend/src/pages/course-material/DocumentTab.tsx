@@ -89,7 +89,6 @@ export function DocumentTab({
   showToast,
   onShowRegenPrompt,
   onReloadData,
-  onAddMoreFiles,
 }: DocumentTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');
@@ -100,7 +99,7 @@ export function DocumentTab({
   const sourceFilesRef = useRef<SourceFilesSectionHandle>(null);
   const addFilesInputRef = useRef<HTMLInputElement>(null);
 
-  const canAddFiles = content.is_master === 'true' || !content.parent_content_id;
+  const canAddFiles = !content.parent_content_id;
 
   const handleAddFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
