@@ -1172,6 +1172,176 @@ def update_course_content(
     return resp
 
 
+@router.post("/{content_id}/add-files", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
+async def add_files_to_material(
+    request: Request,
+    content_id: int,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add files to an existing material, creating or extending a material hierarchy.
+
+    - Standalone material: promotes to master and creates sub-materials for new files.
+    - Master material: adds new sub-materials to the existing group.
+    - Sub-material: finds the parent master and adds new subs to that group.
+    """
+    if not files:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
+
+    if len(files) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 10 files per upload. Please reduce the number of files.",
+        )
+
+    # Look up the target content
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    if not can_access_course(db, current_user, content.course_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+
+    if not _can_modify_content(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this content")
+
+    # Read all files and validate total size
+    file_entries: list[tuple[str, bytes, str | None]] = []
+    total_size = 0
+    for f in files:
+        file_bytes = await f.read()
+        total_size += len(file_bytes)
+        if total_size > MAX_UPLOAD_SIZE * 5:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Total upload size exceeds {(MAX_UPLOAD_SIZE * 5) // (1024*1024)} MB limit",
+            )
+        file_entries.append((f.filename or "unknown", file_bytes, f.content_type))
+
+    check_upload_allowed(current_user, total_size)
+
+    # Determine the master material
+    if content.is_master == "false" and content.parent_content_id:
+        # Sub-material: find parent master
+        master = db.query(CourseContent).filter(CourseContent.id == content.parent_content_id).first()
+        if not master:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent master material not found")
+    elif content.is_master == "true":
+        # Already a master
+        master = content
+    else:
+        # Standalone material: promote to master
+        master = content
+        create_material_hierarchy(db, master, [])
+        db.flush()
+
+    # Count existing sub-materials to determine next part number
+    existing_sub_count = db.query(CourseContent).filter(
+        CourseContent.parent_content_id == master.id,
+        CourseContent.archived_at.is_(None),
+    ).count()
+
+    # Extract text from new files
+    text_parts: list[str] = []
+    for fname, fbytes, _ in file_entries:
+        try:
+            extracted = process_file(fbytes, fname)
+            if extracted.strip():
+                text_parts.append(f"--- [{fname}] ---\n{extracted}")
+        except FileProcessingError as e:
+            logger.warning("Text extraction failed for %s: %s", fname, e)
+            text_parts.append(f"--- [{fname}] ---\n(text extraction failed)")
+
+    # Create sub-materials for each new file
+    new_subs: list[CourseContent] = []
+    for idx, (fname, fbytes, fmime) in enumerate(file_entries, 1):
+        part_number = existing_sub_count + idx
+        sub_title = generate_sub_title(master.title, part_number)
+        sub_text = text_parts[idx - 1] if idx - 1 < len(text_parts) else None
+
+        sub = CourseContent(
+            course_id=master.course_id,
+            title=sub_title,
+            content_type=master.content_type,
+            text_content=sub_text,
+            original_filename=fname,
+            file_size=len(fbytes),
+            mime_type=fmime,
+            created_by_user_id=current_user.id,
+            parent_content_id=master.id,
+            is_master="false",
+            material_group_id=master.material_group_id,
+        )
+        db.add(sub)
+        db.flush()
+
+        # Store file as SourceFile
+        if settings.use_gcs:
+            _gcs_path = f"source-files/{sub.id}/{fname}"
+            gcs_service.upload_file(_gcs_path, fbytes, fmime or "application/octet-stream")
+            source = SourceFile(
+                course_content_id=sub.id,
+                filename=fname,
+                file_type=fmime,
+                file_size=len(fbytes),
+                gcs_path=_gcs_path,
+            )
+            db.add(source)
+
+        new_subs.append(sub)
+
+    # Append new text to master's text_content
+    new_text = "\n\n".join(text_parts) if text_parts else None
+    if new_text:
+        if master.text_content:
+            master.text_content = master.text_content + "\n\n" + new_text
+        else:
+            master.text_content = new_text
+
+    record_upload(db, current_user, total_size)
+    db.commit()
+    db.refresh(master)
+
+    # Extract and store images from new files
+    try:
+        # Determine starting image index from existing images
+        existing_image_count = db.query(ContentImage).filter(
+            ContentImage.course_content_id == master.id,
+        ).count()
+
+        all_images: list[dict] = []
+        for fname, fbytes, _ in file_entries:
+            file_images = extract_images_from_file(fbytes, fname)
+            all_images.extend(file_images)
+
+        for idx, img_data in enumerate(all_images):
+            img_idx = existing_image_count + idx
+            img_data['position_index'] = img_idx
+            if settings.use_gcs:
+                _img_gcs_path = f"content-images/{master.id}/{img_idx}.jpg"
+                gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
+                content_image = ContentImage(
+                    course_content_id=master.id,
+                    gcs_path=_img_gcs_path,
+                    media_type=img_data['media_type'],
+                    description=img_data['description'],
+                    position_context=img_data['position_context'],
+                    position_index=img_data['position_index'],
+                    file_size=img_data['file_size'],
+                )
+                db.add(content_image)
+        if all_images:
+            db.commit()
+            logger.info("Stored %d images for content %d (add-files)", len(all_images), master.id)
+    except Exception as e:
+        db.rollback()
+        logger.warning("Image extraction failed for add-files: %s", e)
+
+    return _to_response(master)
+
+
 @router.put("/{content_id}/replace-file", response_model=CourseContentUpdateResponse)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def replace_course_content_file(
