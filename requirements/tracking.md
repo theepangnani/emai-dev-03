@@ -1,9 +1,9 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 10, 2026):** 863 total issues — 690 closed (80%), 173 open (20%)
-- **Features built:** 252 enhancements closed
-- **Bugs fixed:** 179 bugs closed
-- **Other closed:** 259 (pilot prep, docs, testing, misc)
+**Summary (as of Mar 14, 2026):** 1,801 total issues — 1,622 closed (90%), 179 open (10%)
+- **Features built:** 375 enhancements closed
+- **Bugs fixed:** 316 bugs closed
+- **Other closed:** 931 (pilot prep, docs, testing, misc)
 
 Current feature issues are tracked in GitHub:
 
@@ -864,72 +864,173 @@ Current feature issues are tracked in GitHub:
 - Issue #806: VASP Compliance: Create formal data classification and inventory
 - Issue #807: VASP Compliance: Implement comprehensive API rate limiting
 
-### Railway Migration (Open)
-- Issue #769: Add Railway URL to Google OAuth Console
-- Issue #770: Update CI/CD pipeline from GCP Cloud Run to Railway
-- Issue #771: Test core features on Railway deployment
-- Issue #772: Custom domain cutover: point classbridge.ca to Railway
-- Issue #773: Decommission GCP Cloud Run and Cloud SQL
-- Issue #774: Clean up Railway migration temp files (security)
+### Railway Migration (CLOSED — Abandoned)
+- Issue #769: ~~Add Railway URL to Google OAuth Console~~ (CLOSED)
+- Issue #770: ~~Update CI/CD pipeline from GCP Cloud Run to Railway~~ (CLOSED)
+- Issue #771: ~~Test core features on Railway deployment~~ (CLOSED)
+- Issue #772: ~~Custom domain cutover: point clazzbridge.com to Railway~~ (CLOSED)
+- Issue #773: ~~Decommission GCP Cloud Run and Cloud SQL~~ (CLOSED)
+- Issue #774: ~~Clean up Railway migration temp files (security)~~ (CLOSED)
+- Issue #971: ~~Railway dashboard config~~ (CLOSED — migration abandoned, project remains on GCP Cloud Run)
 
-### LMS Abstraction & D2L Brightspace Integration (Open)
-- Issue #768: Research: Brightspace (D2L) API integration
-- Issue #775: Arch: LMS abstraction layer - Adapter Pattern + OneRoster canonical models
-- Issue #776: Refactor: Extract Google Classroom sync into LMSProvider adapter
-- Issue #777: D2L Integration Partner registration & Brightspace sandbox setup
-- Issue #778: Feature: Brightspace integration MVP - courses, assignments, grades sync
+### LMS Abstraction & D2L Brightspace Integration (Partial)
+- Issue #768: ~~Research: Brightspace (D2L) API integration~~ (CLOSED)
+- Issue #775: ~~Arch: LMS abstraction layer — Adapter Pattern + OneRoster canonical models~~ (CLOSED)
+- Issue #776: ~~Refactor: Extract Google Classroom sync into LMSProvider adapter~~ (CLOSED)
+- Issue #777: D2L Integration Partner registration & Brightspace sandbox setup (OPEN)
+- Issue #778: Feature: Brightspace integration MVP — courses, assignments, grades sync (OPEN)
 
-### Mobile App Distribution & Testing (Open)
-- Issue #327: Mobile: Implement Course Detail Screen
-- Issue #328: Mobile: Implement Assignments Screen
-- Issue #329: Mobile: Implement Assignment Detail Screen
-- Issue #336: Mobile: Implement Offline Mode with Data Caching
-- Issue #339: Mobile: Write Mobile App Tests
-- Issue #342: Deployment: Beta Testing with TestFlight (iOS)
-- Issue #425: Mobile: Add Lottie animation loader (post-pilot)
-- Issue #457: Build and distribute ClassBridge mobile app via EAS Build
-- Issue #460: Link EAS project and update app.json placeholders
-- Issue #461: Register iOS pilot devices for ad hoc distribution
-- Issue #462: Update pilot docs with real download links after EAS Build
-- Issue #477: Android: Build APK and test on devices
-- Issue #478: iOS: Build IPA and distribute via TestFlight
-- Issue #482: Publish Android app to Google Play Store
-- Issue #483: Publish iOS app to Apple App Store
+### Mobile App Distribution & Testing (Partial)
+- Issue #327: Mobile: Implement Course Detail Screen (OPEN)
+- Issue #328: Mobile: Implement Assignments Screen (OPEN)
+- Issue #329: Mobile: Implement Assignment Detail Screen (OPEN)
+- Issue #336: Mobile: Implement Offline Mode with Data Caching (OPEN)
+- Issue #339: Mobile: Write Mobile App Tests (OPEN)
+- Issue #342: Deployment: Beta Testing with TestFlight (iOS) (OPEN)
+- Issue #425: Mobile: Add Lottie animation loader (post-pilot) (OPEN)
+- Issue #457: ~~Build and distribute ClassBridge mobile app via EAS Build~~ (CLOSED)
+- Issue #460: ~~Link EAS project and update app.json placeholders~~ (CLOSED)
+- Issue #461: ~~Register iOS pilot devices for ad hoc distribution~~ (CLOSED)
+- Issue #462: ~~Update pilot docs with real download links after EAS Build~~ (CLOSED)
+- Issue #477: ~~Android: Build APK and test on devices~~ (CLOSED)
+- Issue #478: ~~iOS: Build IPA and distribute via TestFlight~~ (CLOSED)
+- Issue #482: ~~Publish Android app to Google Play Store~~ (CLOSED)
+- Issue #483: ~~Publish iOS app to Apple App Store~~ (CLOSED)
 
-### UI/UX Polish (Open)
-- Issue #198: UI Layout Redesign: turbo.ai-inspired navigation and content structure
-- Issue #199: UI Layout: Glassmorphism card design and improved dashboard cards
-- Issue #200: UI Layout: Improved information hierarchy and content density
-- Issue #264: Create reusable UI testing package from ClassBridge test infrastructure
-- Issue #669: UI Polish: Mute teal saturation on active sidebar nav items
-- Issue #670: UI Polish: Hide motivational quote on mobile (<640px) to save space
-- Issue #671: UI Polish: Add small labels below sidebar icons (icon+label stacked, ~80px)
-- Issue #678: Add multiple dark theme options for user selection
-- Issue #734: ui: redesign Course Material Detail page layout and polish
+### UI/UX Polish (Partial)
+- Issue #198: UI Layout Redesign: turbo.ai-inspired navigation and content structure (OPEN — partially addressed by §6.65 dashboard redesign)
+- Issue #199: UI Layout: Glassmorphism card design and improved dashboard cards (OPEN — backlog)
+- Issue #200: UI Layout: Improved information hierarchy and content density (OPEN — partially addressed)
+- Issue #264: Create reusable UI testing package from ClassBridge test infrastructure (OPEN)
+- Issue #669: ~~UI Polish: Mute teal saturation on active sidebar nav items~~ (CLOSED)
+- Issue #670: ~~UI Polish: Hide motivational quote on mobile~~ (CLOSED)
+- Issue #671: ~~UI Polish: Add small labels below sidebar icons~~ (CLOSED)
+- Issue #678: Add multiple dark theme options for user selection (OPEN — Phase 2)
+- Issue #734: ~~ui: redesign Course Material Detail page layout and polish~~ (CLOSED)
 
-### Performance & Scalability (Open)
-- Issue #242: Performance: Add pagination to unbounded list endpoints
-- Issue #243: Performance: Move synchronous email sending to background jobs
-- Issue #294: Teacher: Batch student invites via CSV upload or email list
-- Issue #757: Set up support email for OAuth consent screen
+### Performance & Scalability (Partial)
+- Issue #242: Performance: Add pagination to unbounded list endpoints (OPEN)
+- Issue #243: Performance: Move synchronous email sending to background jobs (OPEN)
+- Issue #294: Teacher: Batch student invites via CSV upload or email list (OPEN)
+- Issue #757: ~~Set up support email for OAuth consent screen~~ (CLOSED)
 
 ### Business & Marketing (Open)
 - Issue #761: Marketing strategy & monetization plan for 100K users
 - Issue #762: Competitive analysis & market positioning
 
-### Other Open Issues
-- Issue #296: Teacher: Add course content reordering (drag-to-reorder)
-- Issue #297: Teacher: Add draft/publish visibility controls for course content
-- Issue #407: Clean up old Cloud Run URL from Google OAuth console
-- Issue #476: Re-enable Analytics nav link in Phase 2
-- Issue #479: Re-enable FAQ nav link in Phase 2
-- Issue #485: Phase 1 (MVP) Delivery Plan - ClassBridge Launch Readiness
-- Issue #579: Optimize multi-material generation: single API call vs parallel
-- Issue #587: Record Google OAuth demo video for scope verification
-- Issue #589: Submit Google OAuth app for production verification
-- Issue #623: Tag unlinked course materials and streamline parent-to-child assignment
-- Issue #735: refactor: break CourseMaterialDetailPage into sub-components
-- Issue #736: ux: improve focus prompt behavior across tabs
+### Other Issues (Updated Mar 14, 2026)
+- Issue #296: Teacher: Add course content reordering (drag-to-reorder) (OPEN)
+- Issue #297: Teacher: Add draft/publish visibility controls for course content (OPEN)
+- Issue #407: ~~Clean up old Cloud Run URL from Google OAuth console~~ (CLOSED)
+- Issue #476: ~~Re-enable Analytics nav link in Phase 2~~ (CLOSED)
+- Issue #479: ~~Re-enable FAQ nav link in Phase 2~~ (CLOSED)
+- Issue #485: ~~Phase 1 (MVP) Delivery Plan - ClassBridge Launch Readiness~~ (CLOSED)
+- Issue #579: Optimize multi-material generation: single API call vs parallel (OPEN)
+- Issue #587: ~~Record Google OAuth demo video for scope verification~~ (CLOSED)
+- Issue #589: ~~Submit Google OAuth app for production verification~~ (CLOSED)
+- Issue #623: ~~Tag unlinked course materials and streamline parent-to-child assignment~~ (CLOSED)
+- Issue #735: ~~refactor: break CourseMaterialDetailPage into sub-components~~ (CLOSED)
+- Issue #736: ~~ux: improve focus prompt behavior across tabs~~ (CLOSED)
+
+### Chatbot & Search (§6.59) — Open
+- Issue #1698: feat: deprecate GlobalSearch — remove in favour of chatbot unified search
+- Issue #1716: fix: View button navigates to wrong ID after study material generation
+- Issue #1719: fix: search_service uses raw message as ILIKE term — strip action words before search
+- Issue #1720: feat: handle 'list all entity' queries — return nav card or all entities
+- Issue #1722: fix: chatbot 'show tasks for [name]' returns no results
+- Issue #1734: fix: chatbot search scope narrower than global search for parents
+- Issue #1744: research: LLM-based intent classification — cost/benefit analysis
+- Issue #1778: fix: add TOPIC_KEYWORDS to intent classifier and suggestion chips on no-results
+- Issue #1779: content: expand help knowledge base FAQ coverage for missing features
+
+### WOW Features & Parent UX (Open)
+- Issue #1403: Epic: Smart Daily Briefing — Proactive Parent Intelligence (§6.61)
+- Issue #1405: Frontend: daily briefing card on parent dashboard (§6.61.2)
+- Issue #1407: Epic: Help My Kid — One-Tap Study Actions (§6.62)
+- Issue #1429: Dev Plan: WOW Features — Parallel Development Strategy
+- Issue #1430: Product Strategy: Two Layers — Infrastructure vs Intelligence
+- Issue #1431: Epic: Smart Data Import — Parent-Powered School Data (§6.67)
+- Issue #1432: Photo Capture: Snap assignment/report card → auto-import (§6.67.1)
+- Issue #1433: Email Forwarding: Forward school emails → auto-parse assignments (§6.67.2)
+- Issue #1435: Decision: No Perplexity Integration — AI Strategy Note
+- Issue #1436: Epic: "Learn Your Way" — Interest-Based Personalized Learning (§6.69)
+- Issue #1441: feat: Learn Your Way freemium paywall design
+
+### Digital Wallet & Subscription System (§6.60) — Open
+- Issue #1384: Epic: Digital Wallet & Subscription System (§6.60)
+- Issue #1385: Stripe integration: account setup, SDK, webhook handler (§6.60.1)
+- Issue #1386: Subscription plans: data model, Stripe Checkout, plan management API (§6.60.2)
+- Issue #1387: Digital wallet: balance model, fund via card, auto-refill, transaction log (§6.60.3)
+- Issue #1388: One-time AI credit purchase: buy credits packs (§6.60.4)
+- Issue #1389: Subscription frontend: pricing page, plan selector, billing settings (§6.60.5)
+- Issue #1390: Invoice module: generate, send, and track invoices (§6.60.6)
+- Issue #1391: Admin subscription management: user tier control, revenue dashboard (§6.60.7)
+- Issue #1392: Payments backend tests + frontend tests (§6.60.8)
+
+### MCP Protocol Integration (Phase 2) — Open
+- Issue #903: EPIC: MCP Protocol Integration — AI-Powered Contextual Learning
+- Issue #906: Student Academic Context MCP resources and tools
+- Issue #907: Google Classroom MCP tools
+- Issue #908: Study Material Generation MCP tools
+- Issue #909: AI Tutor Agent — contextual study plan generation via MCP
+- Issue #910: Teacher Communication MCP tools
+- Issue #911: MCP Client — external educational resource discovery
+- Issue #912: MCP integration tests and Claude Desktop configuration
+
+### DTAP / VASP Compliance (Phase 2) — Open
+- Issue #779: VASP: Migrate infrastructure to GCP Canada region
+- Issue #780: VASP: Address OpenAI API data residency (US data transfer risk)
+- Issue #781: VASP: Update Privacy Policy & ToS for MFIPPA/PIPEDA compliance
+- Issue #782: VASP: Create Privacy Impact Assessment (PIA)
+- Issue #784: VASP: Implement MFA/2FA support
+- Issue #785: VASP: Implement SSO/SAML for school board integration
+- Issue #787: VASP: Implement data export and right to erasure
+- Issue #789: VASP: Add dependency vulnerability scanning to CI/CD
+- Issue #790: VASP: Establish annual penetration testing program
+- Issue #791: VASP: Begin SOC 2 Type II readiness assessment
+- Issue #792: VASP: Obtain cyber liability insurance
+- Issue #793: VASP: Create DPA template for school boards
+- Issue #794: VASP: Implement formal breach notification procedures
+- Issue #795: VASP: Complete K-12CVAT vendor questionnaire
+- Issue #798: VASP: Implement formal data retention and automated purging
+- Issue #799: VASP: Designate privacy officer and establish privacy program
+- Issue #800: VASP: Enhance audit logging for SOC 2 and VASP requirements
+- Issue #802: VASP: Identify and engage pilot school board partner
+- Issue #803: EPIC: DTAP Compliance — Ontario School Board Digital Technology Approval Process
+- Issue #804: VASP: Add WAF/DDoS protection (Cloud Armor)
+- Issue #806: VASP: Create formal data classification and inventory
+
+### Phase 2 — Other Features (Open)
+- Issue #513: Admin: View and edit email templates from dashboard
+- Issue #514: Admin: Broadcast email history with reuse and resend
+- Issue #572: Course Materials Storage Strategy (partially done — GCS migration complete)
+- Issue #573: Study Guide Repository — cross-student reuse and content-matching dedup
+- Issue #578: User-Provided AI API Key (BYOK)
+- Issue #665: Phase 2: Teacher grade & feedback entry per student per term
+- Issue #666: Phase 2: Unified teacher material upload with type classification
+- Issue #664: Phase 2: Parent-assigned quizzes with complexity levels
+- Issue #882: Bulk child import via CSV
+- Issue #884: Study material version history
+- Issue #993: Multi-document support per course material
+- Issue #1090: Epic: Contextual Notes System — Note-taking on Course Materials (§6.7)
+- Issue #1209: feat: Replace tutorial SVG placeholders with real screenshots
+- Issue #1594: feat: hierarchical study guides — generate child study guides from parent topics
+- Issue #1740: feat: master/sub class material hierarchy for multi-document uploads (§6.95)
+
+### Phase 3+ — Open
+- Issue #506: University Pathway Alignment
+- Issue #507: Course Planning Navigation & Dashboard Integration
+- Issue #508: Course Planning Tests
+- Issue #511: School Board Integration for Course Planning
+- Issue #571: Ontario Curriculum Management
+- Issue #942: Phase 1.5: School board email integration
+- Issue #943: Phase 1.5: Google Calendar push integration
+- Issue #945: Phase 1.5: Multi-Google account support for teachers
+- Issue #959: Epic: AI Exam & Assessment Engine
+- Issue #960: Epic: Student Progress & Report Card Analysis
+- Issue #963: Epic: Mobile App Build & Distribution
+- Issue #967: Epic: Phase 4 — LMS Integration Hub
+- Issue #968: Epic: Phase 5 — Marketplace & Community Features
 
 ---
 

@@ -253,11 +253,11 @@
 - [x] **Performance Analytics Dashboard** — Grade tracking, trends, AI insights, weekly reports (#469-#474) — IMPLEMENTED
 - [ ] Advanced notifications
 - [ ] **Contextual Notes System** — Side-panel note-taking on course materials with WYSIWYG editor, image support (paste/upload/camera), auto-save, task linking, parent read-only child access, global search integration (§6.7, #1084-#1090)
-- [ ] Data privacy & user rights (account deletion, data export, consent)
+- [x] **Data privacy & user rights** — Account deletion with data anonymization (#964), user data export for PIPEDA right of access (#965) (IMPLEMENTED)
 - [x] **FAQ / Knowledge Base** — Community-driven Q&A with admin approval (#437-#444) (IMPLEMENTED)
 - [ ] **Admin email template management** — View, edit, preview, and reset email templates from Admin Dashboard (#513)
 - [ ] **Broadcast history reuse & resend** — View full broadcast details, reuse as template, resend to all users (#514)
-- [ ] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; signed URLs, per-user quotas, lifecycle policies (#572)
+- [x] **Course Materials Storage** — GCS-based persistent file storage for uploaded materials; migrated from PostgreSQL blobs to GCS (`gs://classbridge-files`); backfill complete; `file_data`/`image_data` columns dropped (#572, §6.93, #1643, PRs #1689 #1691 #1704) (IMPLEMENTED — 2026-03-14)
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
 - [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
@@ -315,14 +315,14 @@
 
 **Tier 2 — Important:**
 - [x] **Empty states** — Shared EmptyState component (default/compact variants), replaced 22 inline empty states across 10 pages (#835) ✅
-- [ ] **Teacher dashboard enhancement** — SVG icons, dynamic counts, announcement preview (#833)
-- [ ] **Student engagement** — Streak celebrations, spaced repetition, continue studying (#834)
+- [x] **Teacher dashboard enhancement** — SVG icons, dynamic counts, announcement preview (#833) (IMPLEMENTED — via Teacher Dashboard v2 §6.65.3)
+- [x] **Student engagement** — Streak celebrations, spaced repetition, continue studying (#834) (IMPLEMENTED)
 - [x] **Message search** — Search with pagination, date filtering, and in-thread search (#836) (IMPLEMENTED)
-- [ ] **Quick action paradigm** — Unify quick actions across Parent, Student, Teacher roles (#837)
+- [x] **Quick action paradigm** — Unified quick actions across Parent, Student, Teacher roles (#837) (IMPLEMENTED)
 
 **Tier 3 — Backlog:**
-- [ ] **Grade integration** — Display grades from Google Classroom (#838)
-- [ ] **Assignment submission** — Allow students to submit work (#839)
+- [x] **Grade integration** — Display grades from Google Classroom (#838) (IMPLEMENTED)
+- [x] **Assignment submission** — Allow students to submit work (#839) (IMPLEMENTED)
 
 #### 6.28 FAQ / Knowledge Base (Phase 2) -- COMPLETE
 

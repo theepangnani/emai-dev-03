@@ -560,9 +560,9 @@ Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a sin
 - [x] Update TeacherDashboard to use new wizard modal
 - [x] Update StudyGuidesPage to use new wizard modal
 - [x] Update StudyPage to use new wizard modal
-- [ ] Update ReplaceDocumentModal for visual consistency
-- [ ] Remove old CreateStudyMaterialModal.tsx after migration
-- [ ] Remove orphaned CSS for old modal
+- [x] Update ReplaceDocumentModal for visual consistency (IMPLEMENTED — PR #1685)
+- [x] Remove old CreateStudyMaterialModal.tsx after migration (IMPLEMENTED — PR #1685)
+- [x] Remove orphaned CSS for old modal (IMPLEMENTED — PR #1685)
 
 #### 6.28.6 Backend
 - No backend changes required — same `/api/course-contents/upload` and `/api/course-contents/upload-multi` endpoints
