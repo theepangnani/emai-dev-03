@@ -1,4 +1,4 @@
-import { lazy, useMemo, useState, useEffect, useCallback } from 'react';
+import { Component, lazy, useMemo, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { looksLikeOCR } from '../utils/ocrDetect';
 import { api } from '../api/client';
@@ -188,6 +188,31 @@ export const MarkdownBody = lazy(() =>
     return loadMarkdown();
   }),
 );
+
+/* ── Error boundary for MarkdownBody ───────────────────────────── */
+
+interface MarkdownErrorBoundaryState {
+  hasError: boolean;
+}
+
+export class MarkdownErrorBoundary extends Component<{ children: ReactNode; fallback?: ReactNode }, MarkdownErrorBoundaryState> {
+  state: MarkdownErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): MarkdownErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div style={{ padding: '1rem', color: 'var(--color-ink-muted, #64748b)', fontStyle: 'italic' }}>
+          This content could not be rendered. Try reloading the page.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /* ── ContentCard wrapper ───────────────────────────────────────── */
 

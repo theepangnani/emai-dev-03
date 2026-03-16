@@ -2,7 +2,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { parentApi, type BriefingNote } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { ContentCard, MarkdownBody } from '../components/ContentCard';
+import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../components/ContentCard';
 import { useConfirm } from '../components/ConfirmModal';
 import { PageNav } from '../components/PageNav';
 import './ParentBriefingNotesPage.css';
@@ -115,9 +115,11 @@ export function ParentBriefingNotesPage() {
                 {expandedId === note.id && (
                   <div className="briefing-note-body">
                     <ContentCard>
-                      <Suspense fallback={<div>Rendering...</div>}>
-                        <MarkdownBody content={note.content} />
-                      </Suspense>
+                      <MarkdownErrorBoundary>
+                        <Suspense fallback={<div>Rendering...</div>}>
+                          <MarkdownBody content={note.content} />
+                        </Suspense>
+                      </MarkdownErrorBoundary>
                     </ContentCard>
                   </div>
                 )}

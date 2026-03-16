@@ -1,6 +1,6 @@
 import { useState, useRef, Suspense } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse } from '../../api/client';
-import { ContentCard, MarkdownBody } from '../../components/ContentCard';
+import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { SourceFilesSection, type SourceFilesSectionHandle } from './SourceFilesSection';
 
@@ -74,9 +74,11 @@ function FormattedContent({ textContent, courseContentId }: { textContent: strin
     );
   }
   return (
-    <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-      <MarkdownBody content={textContent} courseContentId={courseContentId} />
-    </Suspense>
+    <MarkdownErrorBoundary>
+      <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+        <MarkdownBody content={textContent} courseContentId={courseContentId} />
+      </Suspense>
+    </MarkdownErrorBoundary>
   );
 }
 
