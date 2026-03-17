@@ -64,15 +64,17 @@ def _get_school_course_ids(db: Session, course_ids: list[int]) -> set[int]:
     return {r[0] for r in rows}
 
 
-def _populate_source_files_count(resp: CourseContentResponse, item) -> CourseContentResponse:
+def _populate_source_files_count(resp: CourseContentResponse, item, db: Session | None = None) -> CourseContentResponse:
     """Set source_files_count on a response from an ORM item's relationship."""
     try:
         own_count = item.source_files.count()
-        # For master materials, also count source files from all sub-materials
-        if getattr(item, 'is_master', 'false') == 'true' and getattr(item, 'material_group_id', None):
-            from sqlalchemy.orm import object_session
-            db = object_session(item)
-            if db:
+    except Exception:
+        own_count = 0
+
+    # For master materials, also count source files from all sub-materials
+    if own_count == 0 or (getattr(item, 'is_master', 'false') == 'true'):
+        if getattr(item, 'material_group_id', None) and db:
+            try:
                 sub_count = (
                     db.query(SourceFile)
                     .join(CourseContent, SourceFile.course_content_id == CourseContent.id)
@@ -84,20 +86,25 @@ def _populate_source_files_count(resp: CourseContentResponse, item) -> CourseCon
                     .count()
                 )
                 own_count += sub_count
-        resp.source_files_count = own_count
-    except Exception:
-        resp.source_files_count = 0
+            except Exception as e:
+                logger.warning("Failed to count sub-material source files for content %s: %s", item.id, e)
+
+    resp.source_files_count = own_count
     return resp
 
 
 def _to_response(item, db: Session | None = None) -> CourseContentResponse:
     """Convert an ORM CourseContent to a response with source_files_count."""
     resp = CourseContentResponse.model_validate(item)
-    return _populate_source_files_count(resp, item)
+    # Try to get db from object_session if not passed
+    if db is None:
+        from sqlalchemy.orm import object_session
+        db = object_session(item)
+    return _populate_source_files_count(resp, item, db)
 
 
 def _strip_urls_for_school(
-    items: list, school_ids: set[int]
+    items: list, school_ids: set[int], db: Session | None = None
 ) -> list[CourseContentResponse]:
     """Convert ORM items to Pydantic and strip URLs for school courses.
 
@@ -106,7 +113,7 @@ def _strip_urls_for_school(
     """
     results = []
     for item in items:
-        resp = _to_response(item)
+        resp = _to_response(item, db)
         if item.course_id in school_ids:
             resp.reference_url = None
             resp.google_classroom_url = None
@@ -262,7 +269,7 @@ def create_course_content(
             course_name=course.name,
         )
 
-    return _to_response(content)
+    return _to_response(content, db)
 
 
 MAX_UPLOAD_SIZE = settings.max_upload_size_mb * 1024 * 1024
@@ -549,7 +556,7 @@ async def upload_course_content_file(
             course_name=course.name,
         )
 
-    return _to_response(content)
+    return _to_response(content, db)
 
 
 @router.post("/upload-multi", response_model=CourseContentResponse, status_code=status.HTTP_201_CREATED)
@@ -795,7 +802,7 @@ async def upload_multi_files(
             course_name=course.name,
         )
 
-    return _to_response(content)
+    return _to_response(content, db)
 
 
 @router.post("/bulk-categorize")
@@ -941,9 +948,9 @@ def list_course_contents(
         cids = list({item.course_id for item in items})
         school_ids = _get_school_course_ids(db, cids)
         if school_ids:
-            return _strip_urls_for_school(items, school_ids)
+            return _strip_urls_for_school(items, school_ids, db)
 
-    return [_to_response(item) for item in items]
+    return [_to_response(item, db) for item in items]
 
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
@@ -1071,13 +1078,13 @@ def get_course_content(
     if current_user.role == UserRole.STUDENT:
         school_ids = _get_school_course_ids(db, [content.course_id])
         if content.course_id in school_ids:
-            resp = _to_response(content)
+            resp = _to_response(content, db)
             resp.reference_url = None
             resp.google_classroom_url = None
             resp.download_restricted = True
             return resp
 
-    return _to_response(content)
+    return _to_response(content, db)
 
 
 @router.get("/{content_id}/download")
@@ -1201,7 +1208,7 @@ def update_course_content(
     db.refresh(content)
 
     resp = CourseContentUpdateResponse.model_validate(content)
-    _populate_source_files_count(resp, content)
+    _populate_source_files_count(resp, content, db)
     resp.archived_guides_count = archived_guides_count
     return resp
 
@@ -1373,7 +1380,7 @@ async def add_files_to_material(
         db.rollback()
         logger.warning("Image extraction failed for add-files: %s", e)
 
-    return _to_response(master)
+    return _to_response(master, db)
 
 
 @router.put("/{content_id}/replace-file", response_model=CourseContentUpdateResponse)
@@ -1472,7 +1479,7 @@ async def replace_course_content_file(
     _extract_and_store_links(db, content.id, extracted_text)
 
     resp = CourseContentUpdateResponse.model_validate(content)
-    _populate_source_files_count(resp, content)
+    _populate_source_files_count(resp, content, db)
     resp.archived_guides_count = archived_guides_count
     return resp
 
@@ -1516,7 +1523,7 @@ def restore_course_content(
     content.archived_at = None
     db.commit()
     db.refresh(content)
-    return _to_response(content)
+    return _to_response(content, db)
 
 
 @router.delete("/{content_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
