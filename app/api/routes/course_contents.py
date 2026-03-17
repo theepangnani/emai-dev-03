@@ -79,23 +79,26 @@ def _populate_source_files_count(resp: CourseContentResponse, item, db: Session 
     except Exception:
         own_count = 0
 
-    # For master materials, also count source files from all sub-materials
-    if own_count == 0 or (getattr(item, 'is_master', 'false') == 'true'):
-        if getattr(item, 'material_group_id', None) and db:
-            try:
-                sub_count = (
-                    db.query(SourceFile)
-                    .join(CourseContent, SourceFile.course_content_id == CourseContent.id)
-                    .filter(
-                        CourseContent.material_group_id == item.material_group_id,
-                        CourseContent.id != item.id,
-                        CourseContent.archived_at.is_(None),
-                    )
-                    .count()
+    # For materials in a group, also count source files from all linked materials
+    group_id = getattr(item, 'material_group_id', None)
+    if group_id and db:
+        try:
+            group_count = (
+                db.query(SourceFile)
+                .join(CourseContent, SourceFile.course_content_id == CourseContent.id)
+                .filter(
+                    CourseContent.material_group_id == group_id,
+                    CourseContent.id != item.id,
+                    CourseContent.archived_at.is_(None),
                 )
-                own_count += sub_count
-            except Exception as e:
-                logger.warning("Failed to count sub-material source files for content %s: %s", item.id, e)
+                .count()
+            )
+            own_count += group_count
+            logger.info("source_files_count for content %d: own=%d group=%d total=%d is_master=%s group_id=%s",
+                        item.id, own_count - group_count, group_count, own_count,
+                        getattr(item, 'is_master', 'N/A'), group_id)
+        except Exception as e:
+            logger.warning("Failed to count group source files for content %d: %s", item.id, e)
 
     resp.source_files_count = own_count
     return resp
@@ -1596,7 +1599,7 @@ def list_source_files(
     if not can_access_course(db, current_user, content.course_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
 
-    if content.is_master == "true" and content.material_group_id:
+    if content.material_group_id:
         # Get source files from master + all sub-materials in the group
         sub_ids = [
             r[0] for r in db.query(CourseContent.id).filter(
