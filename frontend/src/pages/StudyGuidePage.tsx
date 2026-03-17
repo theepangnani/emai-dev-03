@@ -62,6 +62,7 @@ export function StudyGuidePage() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateSelectedText, setGenerateSelectedText] = useState('');
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
+  const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string } | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -100,19 +101,22 @@ export function StudyGuidePage() {
 
   const handleDoGenerate = async (guideType: string, customPrompt?: string) => {
     if (!guide) return;
-    try {
-      const result = await studyApi.generateChildGuide(guide.id, {
-        topic: generateSelectedText,
-        guide_type: guideType,
-        custom_prompt: customPrompt,
-      });
+    setShowGenerateModal(false); // Close modal immediately
+    setSubGuideStatus({ generating: true, ready: false });
+    // Fire and forget — no await
+    studyApi.generateChildGuide(guide.id, {
+      topic: generateSelectedText,
+      guide_type: guideType,
+      custom_prompt: customPrompt,
+    }).then(result => {
       refreshAIUsage();
-      setShowGenerateModal(false);
-      navigate(result.course_content_id ? `/course-materials/${result.course_content_id}?tab=guide` : `/study/guide/${result.id}`);
-    } catch {
+      setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title });
+      // Refresh child guides list
+      studyApi.listChildGuides(guide.id).then(setChildGuides).catch(() => {});
+    }).catch(() => {
+      setSubGuideStatus(null);
       setError('Failed to generate sub-guide');
-      setShowGenerateModal(false);
-    }
+    });
   };
 
   // Detect first-time guide view from navigation state
@@ -284,6 +288,13 @@ export function StudyGuidePage() {
           <span className="sg-type-badge">{guideTypeLabel}</span>
           {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
           <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
+          {childGuides.length > 0 && (
+            <button className="sg-sub-guides-badge" onClick={() => {
+              document.querySelector('.sg-sub-guides-section')?.scrollIntoView({ behavior: 'smooth' });
+            }}>
+              Sub-Guides ({childGuides.length})
+            </button>
+          )}
           <div className="sg-icon-actions">
             {/* Notes FAB at bottom-right replaces inline toggle */}
             <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
@@ -316,6 +327,25 @@ export function StudyGuidePage() {
           <button className="skip-btn" onClick={() => setShowTaskPrompt(false)}>
             Skip
           </button>
+        </div>
+      )}
+
+      {subGuideStatus && (
+        <div className={`sg-subguide-status ${subGuideStatus.ready ? 'ready' : 'generating'}`}>
+          {subGuideStatus.generating ? (
+            <>
+              <span className="sg-subguide-status-spinner" />
+              <span>Generating sub-guide...</span>
+            </>
+          ) : subGuideStatus.ready ? (
+            <>
+              <span>Sub-guide ready!</span>
+              <Link to={`/study/guide/${subGuideStatus.guideId}`} className="sg-subguide-status-link">
+                View &ldquo;{subGuideStatus.title}&rdquo; &rarr;
+              </Link>
+              <button className="sg-subguide-status-dismiss" onClick={() => setSubGuideStatus(null)} aria-label="Dismiss">&times;</button>
+            </>
+          ) : null}
         </div>
       )}
 
