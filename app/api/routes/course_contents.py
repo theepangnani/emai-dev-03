@@ -646,6 +646,7 @@ async def upload_multi_files(
 
     # === Material Hierarchy (#1740) ===
     content_title = title or _filename_to_title(file_entries[0][0])
+    logger.warning("UPLOAD-MULTI DEBUG: use_gcs=%s, bucket=%s, file_count=%d", settings.use_gcs, settings.gcs_bucket_name, len(file_entries))
 
     if len(file_entries) == 1:
         # Single file: no hierarchy, create as before
@@ -731,6 +732,7 @@ async def upload_multi_files(
             if settings.use_gcs:
                 _gcs_path = f"source-files/{sub.id}/{fname}"
                 gcs_service.upload_file(_gcs_path, fbytes, fmime or "application/octet-stream")
+                logger.warning("UPLOAD-MULTI DEBUG: Creating SourceFile for sub %d, gcs_path=%s", sub.id, _gcs_path)
                 source = SourceFile(
                     course_content_id=sub.id,
                     filename=fname,
@@ -739,6 +741,8 @@ async def upload_multi_files(
                     gcs_path=_gcs_path,
                 )
                 db.add(source)
+            else:
+                logger.warning("UPLOAD-MULTI DEBUG: use_gcs is FALSE, skipping SourceFile for sub %d", sub.id)
 
             sub_materials.append(sub)
 
