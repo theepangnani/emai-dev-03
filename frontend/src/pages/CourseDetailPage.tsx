@@ -138,6 +138,10 @@ export function CourseDetailPage() {
   const [uploadAiTool, setUploadAiTool] = useState<'none' | 'study_guide' | 'quiz' | 'flashcards'>('none');
   const [uploadAiCustomPrompt, setUploadAiCustomPrompt] = useState('');
 
+  // Bulk archive (#1856)
+  const [selectedContentIds, setSelectedContentIds] = useState<Set<number>>(new Set());
+  const [bulkArchiving, setBulkArchiving] = useState(false);
+
   // Collapsible sections
   const [materialsExpanded, setMaterialsExpanded] = useState(true);
   const [assignmentsExpanded, setAssignmentsExpanded] = useState(true);
@@ -396,6 +400,34 @@ export function CourseDetailPage() {
       await courseContentsApi.delete(contentId);
       loadContents();
     } catch { /* ignore */ }
+  };
+
+  // Bulk archive handlers (#1856)
+  const toggleContentSelection = (id: number) => {
+    setSelectedContentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedContentIds.size === 0) return;
+    const ok = await confirm({
+      title: 'Archive Selected',
+      message: `This will archive ${selectedContentIds.size} class material(s). You can restore them later from Class Materials.`,
+      confirmLabel: 'Archive',
+    });
+    if (!ok) return;
+    setBulkArchiving(true);
+    try {
+      const result = await courseContentsApi.bulkArchive([...selectedContentIds]);
+      setContents(prev => prev.filter(c => !selectedContentIds.has(c.id)));
+      setSelectedContentIds(new Set());
+      alert(`${result.archived} material(s) archived`);
+    } catch { /* ignore */ }
+    setBulkArchiving(false);
   };
 
   // Upload document handlers
@@ -701,9 +733,33 @@ export function CourseDetailPage() {
                 <p>{canEdit ? 'No class materials yet. Add notes, links, resources, or upload documents.' : 'No class materials available yet.'}</p>
               </div>
             ) : (
+              <>
+              {/* Bulk archive action bar (#1856) */}
+              {canEdit && selectedContentIds.size > 0 && (
+                <div className="bulk-category-bar">
+                  <span>{selectedContentIds.size} selected</span>
+                  <button
+                    className="courses-btn secondary btn-secondary btn-sm bulk-archive-btn"
+                    disabled={bulkArchiving}
+                    onClick={handleBulkArchive}
+                    title="Archive selected materials"
+                  >
+                    {bulkArchiving ? 'Archiving...' : `Archive (${selectedContentIds.size})`}
+                  </button>
+                </div>
+              )}
               <div className="course-detail-content-list">
                 {contents.map((item) => (
                   <div key={item.id} className="cd-content-item">
+                    {canEdit && (
+                      <label className="cd-content-checkbox" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedContentIds.has(item.id)}
+                          onChange={() => toggleContentSelection(item.id)}
+                        />
+                      </label>
+                    )}
                     <div className="cd-content-item-info" onClick={() => navigate(`/course-materials/${item.id}`)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate(`/course-materials/${item.id}`)}>
                       <div className="cd-content-item-top">
                         <span className={`content-type-badge ${item.content_type}`}>
@@ -766,6 +822,7 @@ export function CourseDetailPage() {
                   </div>
                 ))}
               </div>
+              </>
             )}
           </>
         )}
