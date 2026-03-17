@@ -22,6 +22,7 @@ interface UploadWizardStep1Props {
   selectedCourseId?: number | '';
   onCourseChange?: (id: number | '') => void;
   onCreateCourse?: (name: string) => Promise<void>;
+  courseDisabled?: boolean;
   // State
   isGenerating: boolean;
   error: string;
@@ -57,6 +58,7 @@ function UploadWizardStep1({
   selectedCourseId,
   onCourseChange,
   onCreateCourse,
+  courseDisabled,
   isGenerating,
   error,
   isDragging,
@@ -225,7 +227,7 @@ function UploadWizardStep1({
                   onCourseChange(e.target.value ? Number(e.target.value) : '');
                 }
               }}
-              disabled={isGenerating}
+              disabled={isGenerating || courseDisabled}
             >
               <option value="">Select a class</option>
               {courses.map((c) => (

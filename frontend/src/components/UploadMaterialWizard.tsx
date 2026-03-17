@@ -278,6 +278,7 @@ export default function UploadMaterialWizard({
                 onChange={(e) => {
                   const id = Number(e.target.value);
                   setInternalChildId(id);
+                  setInternalCourseId('');
                   onChildChange(id);
                 }}
               >
@@ -308,6 +309,7 @@ export default function UploadMaterialWizard({
               selectedCourseId={internalCourseId}
               onCourseChange={setInternalCourseId}
               onCreateCourse={handleCreateCourse}
+              courseDisabled={needsChild}
               isGenerating={isGenerating}
               error={error}
               isDragging={isDragging}
