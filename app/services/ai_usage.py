@@ -16,9 +16,21 @@ logger = get_logger(__name__)
 def check_ai_usage(user: User, db: Session) -> None:
     """Check if user has remaining AI credits. Raises 429 if at limit.
 
-    If ai_usage_limit is 0 or None, the user is treated as having
-    unlimited credits (e.g. admin users or before migration runs).
+    Checks wallet balance first (new system). Falls back to legacy
+    ai_usage_limit check for users without wallets.
     """
+    # --- Wallet-based credit check (§6.60) ---
+    from app.models.wallet import Wallet
+
+    wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
+    if wallet:
+        total = (wallet.package_credits or 0) + (wallet.purchased_credits or 0)
+        if total > 0:
+            return  # Wallet has credits — allow
+        # Wallet exists but empty — check if legacy system allows it
+        # (fall through to legacy check below)
+
+    # --- Legacy ai_usage_limit check (unchanged) ---
     limit = getattr(user, "ai_usage_limit", None)
     count = getattr(user, "ai_usage_count", None)
 
@@ -93,6 +105,7 @@ def increment_ai_usage(
     """Increment user's AI usage count after successful generation.
 
     Also logs an entry to ai_usage_history for the audit trail.
+    Debits wallet if user has one (§6.60).
     """
     log_ai_usage(
         user, db, generation_type, course_material_id,
@@ -105,6 +118,24 @@ def increment_ai_usage(
         parent_generation_id=parent_generation_id,
     )
 
+    # --- Wallet debit (§6.60) ---
+    from app.models.wallet import Wallet
+
+    wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
+    if wallet:
+        from decimal import Decimal
+        total = Decimal(str(wallet.purchased_credits or 0)) + Decimal(str(wallet.package_credits or 0))
+        if total > 0:
+            from app.services.wallet_service import debit_wallet
+            try:
+                debit_wallet(db, wallet, Decimal("1"), note=f"AI generation: {generation_type}")
+            except Exception:
+                logger.warning("Wallet debit failed for user_id=%s", user.id)
+            # Don't also increment legacy counter if wallet was debited
+            db.commit()
+            return
+
+    # --- Legacy counter increment (unchanged) ---
     limit = getattr(user, "ai_usage_limit", None)
 
     # Only track count if limits are active (non-zero, non-null)
