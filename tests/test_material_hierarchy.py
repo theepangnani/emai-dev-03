@@ -279,7 +279,7 @@ class TestUploadMultiHierarchy:
         assert resp.status_code == 400
 
     def test_sub_material_naming(self, client, db_session, hierarchy_users):
-        """Sub-materials should be named 'Master Title \u2014 Part N' starting from Part 2."""
+        """Sub-materials should be named after their original filenames (without extension)."""
         from app.models.course_content import CourseContent
 
         headers = _auth(client, hierarchy_users["teacher"].email)
@@ -306,8 +306,9 @@ class TestUploadMultiHierarchy:
         # 3 files => 1 master + 2 subs (per §6.98 Rule 3)
         sub_titles = [m.title for m in materials if m.id != data["id"]]
         assert len(sub_titles) == 2
-        for i, title in enumerate(sub_titles, start=2):
-            assert title == f"Naming Test \u2014 Part {i}"
+        # Sub-materials use their original filenames (without extension)
+        assert sub_titles[0] == "file2"
+        assert sub_titles[1] == "file3"
 
 
 # ── Integration tests: linked-materials endpoint ─────────────
