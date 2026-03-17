@@ -120,6 +120,10 @@ class BulkCategorizeRequest(BaseModel):
         return strip_whitespace(v)
 
 
+class BulkArchiveRequest(BaseModel):
+    content_ids: list[int] = Field(min_length=1)
+
+
 class CourseContentUpdateResponse(CourseContentResponse):
     """Extended response returned from PATCH that includes side-effect counts."""
     archived_guides_count: int = 0
