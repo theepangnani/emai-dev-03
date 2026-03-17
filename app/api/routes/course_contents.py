@@ -1537,6 +1537,11 @@ def delete_course_content(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can delete content")
 
     content.archived_at = datetime.now(timezone.utc)
+    if content.is_master == "true":
+        db.query(CourseContent).filter(
+            CourseContent.parent_content_id == content.id,
+            CourseContent.archived_at.is_(None),
+        ).update({"archived_at": content.archived_at}, synchronize_session="fetch")
     db.commit()
 
 
@@ -1558,6 +1563,11 @@ def restore_course_content(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not archived")
 
     content.archived_at = None
+    if content.is_master == "true":
+        db.query(CourseContent).filter(
+            CourseContent.parent_content_id == content.id,
+            CourseContent.archived_at.isnot(None),
+        ).update({"archived_at": None}, synchronize_session="fetch")
     db.commit()
     db.refresh(content)
     return _to_response(content, db)
@@ -1580,6 +1590,18 @@ def permanent_delete_course_content(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can permanently delete content")
     if content.archived_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
+
+    # Cascade permanent delete to sub-materials
+    if content.is_master == "true":
+        subs = db.query(CourseContent).filter(
+            CourseContent.parent_content_id == content.id,
+        ).all()
+        for sub in subs:
+            if sub.file_size and sub.created_by_user_id:
+                creator = db.query(User).filter(User.id == sub.created_by_user_id).first()
+                if creator:
+                    record_deletion(db, creator, sub.file_size)
+            _permanent_delete_content(db, sub)
 
     if content.file_size and content.created_by_user_id:
         creator = db.query(User).filter(User.id == content.created_by_user_id).first()
