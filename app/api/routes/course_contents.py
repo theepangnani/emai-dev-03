@@ -849,7 +849,7 @@ def bulk_archive(
     from datetime import datetime, timezone
     contents = db.query(CourseContent).filter(
         CourseContent.id.in_(data.content_ids),
-        CourseContent.archived_at.is_(None),  # Only archive non-archived items
+        CourseContent.archived_at.is_(None),
     ).all()
     if not contents:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No matching content items found")
