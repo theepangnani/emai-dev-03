@@ -2438,15 +2438,16 @@ Phase 2 payment method for the Canadian market. Interac e-Transfer's programmati
 
 #### Sub-tasks
 
-- [ ] Stripe integration: PaymentIntent flow, SDK, webhooks, idempotency (#1385)
-- [ ] Subscription plans: PackageTier config table, Checkout, pro-rated upgrades (#1386)
-- [ ] Digital wallet: dual credit pools, debit order, immutable ledger (#1387)
-- [ ] Credit purchases: buy packs, replace "Request More" flow (#1388)
-- [ ] Subscription frontend: pricing page, billing settings, Stripe Elements (#1389)
+- [x] Stripe integration: PaymentIntent flow, SDK, webhooks, idempotency (#1385) — **IMPLEMENTED PR #1854**
+- [ ] Subscription plans: Stripe Checkout for recurring billing, pro-rated upgrades (#1386) — PackageTier table + enrollment done, Stripe recurring NOT done
+- [x] Digital wallet: dual credit pools, debit order, immutable ledger (#1387) — **IMPLEMENTED PR #1854**
+- [ ] Credit purchases: integrate CreditTopUpModal into "Request More" flow (#1388, #1861) — checkout + modal done, ConfirmModal bridge NOT done
+- [ ] Subscription frontend: pricing page, billing settings, tier badge (#1389, #1862) — WalletPage done, pricing/billing/badge NOT done
 - [ ] Invoice module: generate, send, track invoices (#1390)
-- [ ] Admin subscription management + revenue dashboard (#1391)
-- [ ] Backend + frontend tests (#1392)
+- [ ] Admin subscription management + revenue dashboard (#1391, #1860)
+- [x] Backend tests (#1392) — **IMPLEMENTED PR #1854** (13 tests)
 - [ ] Interac e-Transfer: manual-assisted payment flow (#1851)
+- [ ] Fix UTF-8 arrow in transaction notes (#1859)
 
 ### 6.60.1 Product Strategy: Two Layers — Infrastructure vs Intelligence
 
