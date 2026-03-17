@@ -389,7 +389,8 @@ Course materials and study guides use soft-delete (archive) with retention polic
 9. **On-access permanent delete after 7 years** — When a course material is accessed via GET, if `last_viewed_at` is more than 7 years ago, the item and linked study guides are permanently deleted
 10. **Last-viewed tracking** — `last_viewed_at` is updated on every GET access to a course material
 11. **Toast notifications** — Success messages for archive, restore, delete, and content-save operations
-12. **Bulk archive** — Users can select multiple class materials on the StudyGuidesPage and archive them in a single action. A confirmation dialog shows the count of selected items before proceeding. Archive is soft-delete (`archived_at` timestamp), same as individual archive. Permission checks (ownership / role) apply per item; items the user lacks permission to archive are skipped with a warning toast
+12. **Bulk archive** — Users can select multiple class materials and archive them in a single action. Available on both StudyGuidesPage and CourseDetailPage (`/course-materials`). A confirmation dialog shows the count of selected items before proceeding. Archive is soft-delete (`archived_at` timestamp), same as individual archive. Permission checks (ownership / role) apply per item; items the user lacks permission to archive are skipped with a warning toast (#1846, #1856)
+13. **Cascade archive/restore/delete for master materials** — When a master material (`is_master == "true"`) is archived, restored, or permanently deleted, the operation cascades to all its sub-materials (`parent_content_id`). Archive and restore use batch SQL updates; permanent delete iterates subs to handle file cleanup and quota tracking (#1849)
 
 #### Technical Implementation
 - **Model changes**: `archived_at` column on `course_contents` and `study_guides` tables; `last_viewed_at` column on `course_contents`
@@ -407,7 +408,7 @@ Course materials and study guides use soft-delete (archive) with retention polic
 - `frontend/src/api/client.ts` — new API methods and types
 - `frontend/src/pages/StudyGuidesPage.tsx` — edit/delete icons, archive section
 - `frontend/src/pages/CourseMaterialDetailPage.tsx` — document editing, regeneration prompt
-- `frontend/src/pages/CourseDetailPage.tsx` — archive wording
+- `frontend/src/pages/CourseDetailPage.tsx` — archive wording, bulk archive UI (#1856)
 - CSS files for archived row styles, toast, and regeneration prompt
 
 ---
