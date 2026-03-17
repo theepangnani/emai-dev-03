@@ -261,7 +261,7 @@
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
 - [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
-- [ ] **Digital Wallet & Subscription System** — Stripe payments, subscription tiers (Free $0 / Plus $5 / Unlimited $10), digital wallet with auto-refill, one-time credit purchases replacing "Request More" flow, invoice module for school board billing, admin revenue dashboard (§6.60, #1384-#1392)
+- [ ] **Digital Wallet & Subscription System** — Stripe PaymentIntent flow, dual credit pools (package + purchased), admin-managed PackageTier config, subscription plans (Free / Standard / Premium), one-time credit purchases replacing "Request More" flow, Interac e-Transfer (Phase 2), invoice module for school board billing, admin revenue dashboard (§6.60, #1384-#1392, #1851)
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
 - [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)

@@ -958,14 +958,15 @@ Current feature issues are tracked in GitHub:
 
 ### Digital Wallet & Subscription System (§6.60) — Open
 - Issue #1384: Epic: Digital Wallet & Subscription System (§6.60)
-- Issue #1385: Stripe integration: account setup, SDK, webhook handler (§6.60.1)
-- Issue #1386: Subscription plans: data model, Stripe Checkout, plan management API (§6.60.2)
-- Issue #1387: Digital wallet: balance model, fund via card, auto-refill, transaction log (§6.60.3)
+- Issue #1385: Stripe integration: PaymentIntent flow, SDK, webhook handler, idempotency (§6.60.1)
+- Issue #1386: Subscription plans: PackageTier config table, Stripe Checkout, pro-rated upgrades (§6.60.2)
+- Issue #1387: Digital wallet: dual credit pools, debit order, immutable ledger, auto-refill (§6.60.3)
 - Issue #1388: One-time AI credit purchase: buy credits packs (§6.60.4)
 - Issue #1389: Subscription frontend: pricing page, plan selector, billing settings (§6.60.5)
 - Issue #1390: Invoice module: generate, send, and track invoices (§6.60.6)
 - Issue #1391: Admin subscription management: user tier control, revenue dashboard (§6.60.7)
 - Issue #1392: Payments backend tests + frontend tests (§6.60.8)
+- Issue #1851: Interac e-Transfer: manual-assisted payment flow for Canadian users (§6.60.8)
 
 ### MCP Protocol Integration (Phase 2) — Open
 - Issue #903: EPIC: MCP Protocol Integration — AI-Powered Contextual Learning
