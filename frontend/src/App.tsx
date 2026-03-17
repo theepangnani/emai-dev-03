@@ -87,6 +87,7 @@ const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionR
 const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
+const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -423,6 +424,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DataExportPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/wallet"
+                element={
+                  <ProtectedRoute>
+                    <WalletPage />
                   </ProtectedRoute>
                 }
               />
