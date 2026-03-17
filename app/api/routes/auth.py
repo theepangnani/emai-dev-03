@@ -195,6 +195,10 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     db.add(user)
     db.flush()
 
+    # Auto-create wallet (#1387)
+    from app.models.wallet import Wallet
+    db.add(Wallet(user_id=user.id, package="free"))
+
     # Create profile records only when roles are provided
     if has_roles:
         from app.services.user_service import ensure_profile_records
@@ -542,6 +546,10 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     )
     db.add(user)
     db.flush()
+
+    # Auto-create wallet (#1387)
+    from app.models.wallet import Wallet
+    db.add(Wallet(user_id=user.id, package="free"))
 
     # Create Teacher or Student record
     if role == UserRole.TEACHER:
