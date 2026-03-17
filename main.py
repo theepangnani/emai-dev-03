@@ -38,6 +38,7 @@ from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, C
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
+from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1496,6 +1497,24 @@ with engine.connect() as conn:
         except Exception:
             pass
 
+    # Backfill wallets for existing users without one (#1387)
+    try:
+        with engine.connect() as conn:
+            from sqlalchemy import inspect as sa_inspect
+            inspector = sa_inspect(engine)
+            if "wallets" in inspector.get_table_names():
+                result = conn.execute(text(
+                    "INSERT INTO wallets (user_id, package, package_credits, purchased_credits, "
+                    "auto_refill_enabled, auto_refill_threshold_cents, auto_refill_amount_cents) "
+                    "SELECT id, 'free', 0, 0, FALSE, 0, 500 FROM users "
+                    "WHERE id NOT IN (SELECT user_id FROM wallets)"
+                ))
+                if result.rowcount:
+                    logger.info("Backfilled %d wallets for existing users", result.rowcount)
+                conn.commit()
+    except Exception as e:
+        logger.warning("Wallet backfill migration: %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1640,6 +1659,9 @@ app.include_router(tutorials.router, prefix="/api")
 app.include_router(readiness.router, prefix="/api")
 app.include_router(conversation_starters.router, prefix="/api")
 app.include_router(daily_digest.router, prefix="/api")
+from app.api.routes import wallet as wallet_routes
+app.include_router(wallet_routes.router, prefix="/api")
+app.include_router(wallet_routes.payments_router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1712,6 +1734,27 @@ else:
         return {"message": "ClassBridge API", "app": settings.app_name, "docs": "/docs"}
 
 
+def seed_wallet_data(db):
+    """Seed package_tiers and credit_packages if tables are empty."""
+    from app.models.wallet import PackageTier, CreditPackage
+    if db.query(PackageTier).count() == 0:
+        db.add_all([
+            PackageTier(name="free", monthly_credits=0, price_cents=0),
+            PackageTier(name="standard", monthly_credits=0, price_cents=0),
+            PackageTier(name="premium", monthly_credits=0, price_cents=0),
+        ])
+        db.commit()
+        logger.info("Seeded package_tiers with default tiers")
+    if db.query(CreditPackage).count() == 0:
+        db.add_all([
+            CreditPackage(name="Starter", credits=50, price_cents=200),
+            CreditPackage(name="Standard", credits=200, price_cents=500),
+            CreditPackage(name="Bulk", credits=500, price_cents=1000),
+        ])
+        db.commit()
+        logger.info("Seeded credit_packages with default bundles")
+
+
 @app.on_event("startup")
 async def startup_event():
     from apscheduler.triggers.cron import CronTrigger
@@ -1729,6 +1772,7 @@ async def startup_event():
         seed_messages(db)
         seed_faq(db)
         seed_grades(db)
+        seed_wallet_data(db)
     finally:
         db.close()
 
@@ -1808,6 +1852,14 @@ async def startup_event():
         cleanup_note_versions,
         CronTrigger(hour=3, minute=30),
         id="note_version_cleanup",
+        replace_existing=True,
+    )
+
+    from app.jobs.wallet_refresh import refresh_monthly_credits
+    scheduler.add_job(
+        refresh_monthly_credits,
+        CronTrigger(day=1, hour=0, minute=0),
+        id="wallet_monthly_refresh",
         replace_existing=True,
     )
 

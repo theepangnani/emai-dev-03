@@ -2194,18 +2194,30 @@ Expand the FAQ knowledge base to provide comprehensive coverage for all platform
 ### 6.60 Digital Wallet & Subscription System — Payments, Plans, Invoicing (Phase 2+)
 
 **Epic:** #1384
-**Issues:** #1385-#1392
+**Issues:** #1385-#1392, #1851
 **Dependencies:** AI Usage Limits (§6.54, #1116), Premium Accounts (#1007), Monetization Plan (#761)
+**Source:** ClassBridge_DigitalWallet_Requirement.docx v1.0 (March 2026)
 
-Build a complete monetization system: digital wallet, subscription plans, one-time credit purchases, and invoice generation for billing clients.
+Build a complete monetization system: digital wallet with dual credit pools, subscription plans via admin-managed PackageTier config, one-time credit purchases, Interac e-Transfer (Phase 2), and invoice generation for billing clients.
 
-#### Subscription Tiers
+#### Key Design Decisions
 
-| Tier | Price | AI Credits/Month | Features |
-|------|-------|-----------------|----------|
-| **Free** | $0 | 10 (auto-reset) | Basic features, manual credit requests via admin |
-| **Plus** | $5/mo | 500 | Premium features (TBD), priority support |
-| **Unlimited** | $10/mo | Unlimited | All premium features, unlimited AI usage |
+- **Dual credit pools:** Wallet tracks `package_credits` (reset monthly, don't roll over) and `purchased_credits` (roll over indefinitely) separately
+- **Debit order:** Consume `purchased_credits` first, then `package_credits` — preserves renewable allocation. Configurable via settings flag in future.
+- **PaymentIntent flow:** Server-side PaymentIntent + `<PaymentElement>` for credit top-ups (full UI control). Stripe Checkout used only for subscription plan changes.
+- **PackageTier config table:** Admin-adjustable tier allocations without code deploy
+- **Immutable ledger:** No records ever deleted from `wallet_transactions` — full audit trail
+- **Idempotency guard:** Before crediting on webhook, check `reference_id` against existing transactions. If found, skip — Stripe may deliver webhooks more than once.
+
+#### Subscription Tiers (via `package_tiers` table)
+
+| Tier | Monthly Credits | Price (CAD) | Notes |
+|------|----------------|-------------|-------|
+| **Free** | TBD by product | $0 | Default for all new users |
+| **Standard** | TBD by product | TBD | Monthly subscription |
+| **Premium** | TBD by product | TBD | Priority access + higher allocation |
+
+> Credit amounts and prices are stored in the `package_tiers` DB table — adjustable by admin without code deploy.
 
 Free tier users can also purchase additional credits à la carte:
 | Pack | Credits | Price |
@@ -2216,21 +2228,38 @@ Free tier users can also purchase additional credits à la carte:
 
 #### 6.60.1 Stripe Integration (#1385)
 
-Payment processing foundation using Stripe.
+Payment processing foundation using Stripe with **PaymentIntent flow** for credit top-ups.
 
 - Stripe Customer created on user registration (`stripe_customer_id` on users table)
-- Webhook endpoint `POST /api/payments/webhook` handles: `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.*`
+- **PaymentIntent flow for credit purchases:** Backend creates PaymentIntent → returns `client_secret` → Frontend renders `<PaymentElement>` (supports card, Apple Pay, Google Pay) → Webhook confirms and credits
+- **Stripe Checkout** for subscription plan upgrades (hosted redirect)
+- Webhook endpoint `POST /api/payments/webhook` handles: `payment_intent.succeeded`, `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.*`
+- **Webhook idempotency guard:** Query `wallet_transactions` for `reference_id = payment_intent_id` before crediting. Skip if found.
 - Webhook signature verification for security
 - Env vars: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
+- Frontend: Load `stripePromise` once at app root via `loadStripe()`. Never instantiate inside a render loop.
+
+**Payment provider rationale:** Stripe recommended for Phase 1 — best DX, webhook reliability, native CAD support, Elements compatibility. Revisit Moneris only if monthly volume > ~$50K CAD.
 
 #### 6.60.2 Subscription Plans (#1386)
 
-Recurring billing via Stripe Checkout and Customer Portal.
+Recurring billing via Stripe Checkout and Customer Portal, backed by an admin-managed **PackageTier config table**.
+
+**`package_tiers` table (NEW):**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | |
+| name | VARCHAR(20) UNIQUE | `free` / `standard` / `premium` |
+| monthly_credits | DECIMAL | Credits allocated per month |
+| price_cents | INTEGER | Monthly price in cents CAD (0 for free) |
+| is_active | BOOLEAN DEFAULT TRUE | Soft-delete / disable tier |
+| created_at | DATETIME | |
+| updated_at | DATETIME | |
 
 **Data model additions to `users` table:**
 | Column | Type | Default | Notes |
 |--------|------|---------|-------|
-| subscription_tier | VARCHAR(20) | 'free' | free / plus / unlimited |
+| subscription_tier | VARCHAR(20) | 'free' | free / standard / premium |
 | subscription_stripe_id | VARCHAR(255) | NULL | Stripe subscription ID |
 | subscription_status | VARCHAR(20) | 'active' | active / past_due / canceled / trialing |
 | subscription_period_end | DATETIME | NULL | Current billing period end |
@@ -2239,64 +2268,90 @@ Recurring billing via Stripe Checkout and Customer Portal.
 **API Endpoints:**
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| GET | `/api/wallet/packages` | Authenticated | List available package tiers |
+| POST | `/api/wallet/packages/enroll` | Authenticated | Enroll in or change package tier |
 | POST | `/api/subscriptions/checkout` | Authenticated | Create Stripe Checkout session |
 | POST | `/api/subscriptions/portal` | Authenticated | Open Stripe Customer Portal |
 | GET | `/api/subscriptions/status` | Authenticated | Current plan + status |
 | PATCH | `/api/subscriptions/change-plan` | Authenticated | Switch plans |
 
+**Package Lifecycle:**
+- **Upgrade:** Grants a pro-rated delta of credits immediately for the remainder of the billing cycle
+- **Downgrade:** Takes effect at next billing cycle start. No credit clawback.
+- All changes recorded as `WalletTransaction` with `transaction_type = 'package_credit'`
+
 **Behaviors:**
-- Monthly cron resets `ai_usage_count` per tier (10 Free, 500 Plus, skip Unlimited)
-- Unlimited tier bypasses AI usage limit checks entirely
+- Monthly scheduled task (1st of month, 00:00 UTC): resets `package_credits` for all wallets to their tier allocation from `package_tiers` table
+- Premium tier bypasses AI usage limit checks entirely
 - 3-day grace period on failed payments before downgrade to Free
 
 #### 6.60.3 Digital Wallet (#1387)
 
-Per-user balance for credit purchases and one-time payments.
+Per-user wallet with **dual credit pools** — package credits and purchased credits tracked separately.
+
+**Credit Model:**
+| Credit Type | Description |
+|---|---|
+| `package_credits` | Allocated monthly by active tier. Reset on 1st of each month. Do **not** roll over. |
+| `purchased_credits` | Bought by user via payment. **Roll over indefinitely**. Consumed first on debit. |
 
 **`wallets` table:**
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER PK | |
 | user_id | INTEGER FK UNIQUE | One wallet per user |
-| balance_cents | INTEGER DEFAULT 0 | Balance in cents |
+| package | VARCHAR(20) DEFAULT 'free' | Active tier: free / standard / premium |
+| package_credits | DECIMAL DEFAULT 0 | From active package (reset monthly) |
+| purchased_credits | DECIMAL DEFAULT 0 | From top-ups (roll over indefinitely) |
 | auto_refill_enabled | BOOLEAN DEFAULT FALSE | |
 | auto_refill_threshold_cents | INTEGER DEFAULT 0 | Trigger refill below this |
 | auto_refill_amount_cents | INTEGER DEFAULT 500 | Amount to add ($5.00) |
+| created_at | DATETIME | |
+| updated_at | DATETIME | |
 
-**`wallet_transactions` table:**
+**Computed property:** `total_balance = package_credits + purchased_credits`
+
+**`wallet_transactions` table (immutable ledger):**
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER PK | |
 | wallet_id | INTEGER FK | |
-| type | VARCHAR(20) | deposit / purchase / refund / subscription_credit |
-| amount_cents | INTEGER | +deposit, -purchase |
-| description | TEXT | |
-| stripe_payment_intent_id | VARCHAR(255) NULL | |
+| transaction_type | VARCHAR(20) | `package_credit` / `purchase_credit` / `debit` / `refund` |
+| amount | DECIMAL | Positive for credits, negative for debits |
+| balance_after | DECIMAL | Snapshot of total_balance after transaction |
+| reference_id | VARCHAR(255) NULL | Stripe PaymentIntent ID — **idempotency guard** |
+| payment_method | VARCHAR(20) NULL | `stripe` / `interac` / `system` |
+| note | TEXT NULL | e.g., "Monthly reset — free tier" |
 | created_at | DATETIME | |
+
+**Auto-create:** Wallet created automatically on user registration. Every user gets a Free wallet — zero friction.
 
 **API Endpoints:**
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/wallet` | Authenticated | Balance + recent transactions |
-| GET | `/api/wallet/transactions` | Authenticated | Full history (paginated) |
-| POST | `/api/wallet/deposit` | Authenticated | Add funds via Stripe |
+| GET | `/api/wallet` | Authenticated | Balance (both pools), package, summary |
+| GET | `/api/wallet/transactions` | Authenticated | Full history (paginated, immutable) |
+| POST | `/api/wallet/deposit` | Authenticated | Add funds via Stripe PaymentIntent |
 | PATCH | `/api/wallet/auto-refill` | Authenticated | Configure auto-refill |
+| GET | `/api/admin/wallets` | Admin | List all wallets with balances |
 
 #### 6.60.4 One-Time Credit Purchases (#1388)
 
 Buy AI credits à la carte. Replaces "Request More Credits" admin flow for paid users.
 
-- `POST /api/credits/purchase` — Buy a credit pack (wallet or card)
+- `POST /api/wallet/credits/checkout` — Create Stripe PaymentIntent for a credit bundle
+- `POST /api/wallet/credits/confirm` — Confirm payment (client-side flow)
 - `GET /api/credits/packs` — List available packs with prices
 - ConfirmModal shows "Buy More Credits" for wallet/subscription users, "Request More Credits" for free-only
-- Deducts from wallet balance (preferred) or charges card directly
+- Credits added to `purchased_credits` pool (roll over indefinitely)
 
 #### 6.60.5 Subscription Frontend (#1389)
 
 - **Pricing page** (`/pricing`) — 3-column plan comparison with "Current Plan" badge
-- **Billing settings** (`/settings/billing`) — Plan, credits, wallet, transactions, invoices
+- **Billing settings** (`/settings/billing`) — Plan, credits (both pools), wallet, transactions, invoices
 - **Tier badge** in header next to username
-- **Buy Credits modal** — Credit pack cards, one-click wallet purchase
+- **Buy Credits modal** — Credit pack cards with `<PaymentElement>` (Stripe Elements)
+- **Credit top-up modal** wrapped in `<Elements stripe={stripePromise} options={{ clientSecret }}>`
 
 #### 6.60.6 Invoice Module (#1390)
 
@@ -2346,17 +2401,52 @@ Generate and send invoices to clients (school boards, parents).
 - Revenue dashboard: MRR, subscriber count, churn, growth charts
 - Grant bonus credits, override tier limits
 - Payment transaction history
+- PackageTier management (add/edit/disable tiers)
+
+#### 6.60.8 Interac e-Transfer — Manual-Assisted Flow (#1851)
+
+Phase 2 payment method for the Canadian market. Interac e-Transfer's programmatic receive API is restricted to licensed financial institutions — no third-party processor (including Stripe) supports it.
+
+**Flow:**
+1. User selects "Interac e-Transfer" in top-up UI
+2. System displays ClassBridge receiving email + unique reference code: `CB-{user_id}-{timestamp}`
+3. User sends transfer from their bank using the reference code
+4. Admin receives and accepts the transfer
+5. Admin confirms via admin panel → system credits wallet as `purchase_credit` with `payment_method = interac`
+
+**`interac_transfer_requests` table:**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | |
+| user_id | INTEGER FK | |
+| wallet_id | INTEGER FK | |
+| reference_code | VARCHAR(50) UNIQUE | `CB-{user_id}-{timestamp}` |
+| amount_cents | INTEGER | Expected transfer amount |
+| credits_to_add | DECIMAL | Credits to grant on confirmation |
+| status | VARCHAR(20) | pending / confirmed / rejected / expired |
+| admin_confirmed_by | INTEGER FK NULL | Admin who confirmed |
+| confirmed_at | DATETIME NULL | |
+| created_at | DATETIME | |
+
+**API Endpoints:**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/wallet/interac/request` | Authenticated | Submit request, get reference code |
+| GET | `/api/admin/interac/pending` | Admin | List pending transfers |
+| POST | `/api/admin/interac/{id}/confirm` | Admin | Confirm and credit wallet |
+| POST | `/api/admin/interac/{id}/reject` | Admin | Reject transfer |
 
 #### Sub-tasks
 
-- [ ] Stripe integration: account, SDK, webhooks (#1385)
-- [ ] Subscription plans: data model, Checkout, management API (#1386)
-- [ ] Digital wallet: balance, funding, auto-refill, transactions (#1387)
+- [ ] Stripe integration: PaymentIntent flow, SDK, webhooks, idempotency (#1385)
+- [ ] Subscription plans: PackageTier config table, Checkout, pro-rated upgrades (#1386)
+- [ ] Digital wallet: dual credit pools, debit order, immutable ledger (#1387)
 - [ ] Credit purchases: buy packs, replace "Request More" flow (#1388)
-- [ ] Subscription frontend: pricing page, billing settings (#1389)
+- [ ] Subscription frontend: pricing page, billing settings, Stripe Elements (#1389)
 - [ ] Invoice module: generate, send, track invoices (#1390)
 - [ ] Admin subscription management + revenue dashboard (#1391)
 - [ ] Backend + frontend tests (#1392)
+- [ ] Interac e-Transfer: manual-assisted payment flow (#1851)
 
 ### 6.60.1 Product Strategy: Two Layers — Infrastructure vs Intelligence
 

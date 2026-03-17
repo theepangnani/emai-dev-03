@@ -93,6 +93,11 @@ class Settings(BaseSettings):
     premium_upload_limit_bytes: int = 52428800
     storage_warning_threshold: float = 0.8
 
+    # Stripe payments (§6.60)
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"
