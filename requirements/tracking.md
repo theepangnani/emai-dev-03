@@ -956,17 +956,21 @@ Current feature issues are tracked in GitHub:
 - Issue #1436: Epic: "Learn Your Way" — Interest-Based Personalized Learning (§6.69)
 - Issue #1441: feat: Learn Your Way freemium paywall design
 
-### Digital Wallet & Subscription System (§6.60) — Open
+### Digital Wallet & Subscription System (§6.60) — Partially Implemented (PR #1854)
 - Issue #1384: Epic: Digital Wallet & Subscription System (§6.60)
-- Issue #1385: Stripe integration: PaymentIntent flow, SDK, webhook handler, idempotency (§6.60.1)
-- Issue #1386: Subscription plans: PackageTier config table, Stripe Checkout, pro-rated upgrades (§6.60.2)
-- Issue #1387: Digital wallet: dual credit pools, debit order, immutable ledger, auto-refill (§6.60.3)
-- Issue #1388: One-time AI credit purchase: buy credits packs (§6.60.4)
-- Issue #1389: Subscription frontend: pricing page, plan selector, billing settings (§6.60.5)
+- ~~Issue #1385: Stripe integration (§6.60.1) — CLOSED, implemented PR #1854~~
+- Issue #1386: Subscription plans: Stripe Checkout for recurring billing (§6.60.2) — PackageTier done, recurring NOT done
+- ~~Issue #1387: Digital wallet: dual credit pools (§6.60.3) — CLOSED, implemented PR #1854~~
+- Issue #1388: One-time credit purchase: ConfirmModal "Buy More" integration (§6.60.4) — checkout done, bridge NOT done
+- Issue #1389: Subscription frontend: pricing page, billing settings, tier badge (§6.60.5) — WalletPage done, rest NOT done
 - Issue #1390: Invoice module: generate, send, and track invoices (§6.60.6)
 - Issue #1391: Admin subscription management: user tier control, revenue dashboard (§6.60.7)
-- Issue #1392: Payments backend tests + frontend tests (§6.60.8)
-- Issue #1851: Interac e-Transfer: manual-assisted payment flow for Canadian users (§6.60.8)
+- ~~Issue #1392: Payments backend tests (§6.60.8) — CLOSED, implemented PR #1854~~
+- Issue #1851: Interac e-Transfer: manual-assisted payment flow for Canadian users (§6.60.9)
+- Issue #1859: fix: UTF-8 arrow character in wallet transaction notes
+- Issue #1860: feat: admin wallet management — view wallets, grant credits, override tiers
+- Issue #1861: feat: integrate CreditTopUpModal into insufficient credits (402) flow
+- Issue #1862: feat: wallet link in sidebar + tier badge in header
 
 ### MCP Protocol Integration (Phase 2) — Open
 - Issue #903: EPIC: MCP Protocol Integration — AI-Powered Contextual Learning
