@@ -1466,18 +1466,17 @@ with engine.connect() as conn:
     try:
         with engine.connect() as conn:
             rows = conn.execute(text("""
-                SELECT cc.id, cc.original_filename, cc.mime_type, cc.file_size, cc.file_path
+                SELECT cc.id, cc.original_filename, cc.mime_type, cc.file_size
                 FROM course_contents cc
                 LEFT JOIN source_files sf ON sf.course_content_id = cc.id
                 WHERE cc.original_filename IS NOT NULL
-                  AND cc.file_path IS NOT NULL
                   AND sf.id IS NULL
             """)).fetchall()
 
             if rows:
                 for row in rows:
-                    content_id, filename, mime_type, file_size, file_path = row
-                    gcs_path = f"source-files/{content_id}/{filename}" if file_path and not file_path.startswith("source-files/") else file_path
+                    content_id, filename, mime_type, file_size = row
+                    gcs_path = f"source-files/{content_id}/{filename}"
                     conn.execute(text("""
                         INSERT INTO source_files (course_content_id, filename, file_type, file_size, gcs_path)
                         VALUES (:content_id, :filename, :file_type, :file_size, :gcs_path)
