@@ -106,8 +106,8 @@ class TestMultiFileUpload:
         )
         assert resp.status_code == 201
         data = resp.json()
-        assert "notes.txt" in data["title"]
-        assert "summary.txt" in data["title"]
+        # Master title uses first filename without extension
+        assert data["title"] == "notes"
 
     def test_upload_multi_no_files_rejected(self, client, users):
         headers = _auth(client, users["teacher"].email)

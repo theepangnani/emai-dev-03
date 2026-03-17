@@ -49,6 +49,14 @@ _SEVEN_YEARS = timedelta(days=365 * 7)
 
 VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
 
+
+def _filename_to_title(filename: str) -> str:
+    """Strip file extension to create a material title from filename."""
+    import os
+    name, _ = os.path.splitext(filename)
+    return name or filename
+
+
 router = APIRouter(prefix="/course-contents", tags=["Course Contents"])
 
 
@@ -633,7 +641,7 @@ async def upload_multi_files(
     combined_text = "\n\n".join(text_parts) if text_parts else None
 
     # === Material Hierarchy (#1740) ===
-    content_title = title or ", ".join(fname for fname, _, _ in file_entries)
+    content_title = title or _filename_to_title(file_entries[0][0])
 
     if len(file_entries) == 1:
         # Single file: no hierarchy, create as before
@@ -698,7 +706,7 @@ async def upload_multi_files(
         # Create sub-materials for remaining files (2nd, 3rd, etc.)
         sub_materials = []
         for idx, (fname, fbytes, fmime) in enumerate(file_entries[1:], 2):
-            sub_title = generate_sub_title(content_title, idx)
+            sub_title = _filename_to_title(fname)
             # Extract text for this specific file
             sub_text = text_parts[idx - 1] if idx - 1 < len(text_parts) else None
 
@@ -1299,7 +1307,7 @@ async def add_files_to_material(
     new_subs: list[CourseContent] = []
     for idx, (fname, fbytes, fmime) in enumerate(file_entries, 1):
         part_number = existing_sub_count + idx
-        sub_title = generate_sub_title(master.title, part_number)
+        sub_title = _filename_to_title(fname)
         sub_text = text_parts[idx - 1] if idx - 1 < len(text_parts) else None
 
         sub = CourseContent(
