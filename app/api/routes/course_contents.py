@@ -1757,63 +1757,6 @@ def get_linked_materials_endpoint(
     return results
 
 
-@router.get("/{content_id}/debug-source-files")
-def debug_source_files(
-    request: Request,
-    content_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """TEMPORARY: Debug endpoint to check source file state for a material and its group."""
-    if not current_user.has_role(UserRole.ADMIN):
-        raise HTTPException(status_code=403, detail="Admin only")
-
-    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
-    if not content:
-        raise HTTPException(status_code=404, detail="Not found")
-
-    result = {
-        "content_id": content.id,
-        "title": content.title,
-        "is_master": content.is_master,
-        "material_group_id": content.material_group_id,
-        "parent_content_id": getattr(content, 'parent_content_id', None),
-        "own_source_files": [],
-        "group_materials": [],
-    }
-
-    # Own source files
-    own_files = db.query(SourceFile).filter(SourceFile.course_content_id == content_id).all()
-    result["own_source_files_count"] = len(own_files)
-    for sf in own_files:
-        result["own_source_files"].append({
-            "id": sf.id, "filename": sf.filename, "file_type": sf.file_type,
-            "file_size": sf.file_size, "gcs_path": sf.gcs_path,
-        })
-
-    # Group materials and their source files
-    if content.material_group_id:
-        group = db.query(CourseContent).filter(
-            CourseContent.material_group_id == content.material_group_id,
-            CourseContent.archived_at.is_(None),
-        ).all()
-        for m in group:
-            m_files = db.query(SourceFile).filter(SourceFile.course_content_id == m.id).all()
-            result["group_materials"].append({
-                "id": m.id,
-                "title": m.title[:50],
-                "is_master": m.is_master,
-                "source_files_count": len(m_files),
-                "source_files": [{"id": sf.id, "filename": sf.filename, "gcs_path": sf.gcs_path} for sf in m_files],
-            })
-
-    result["total_group_source_files"] = sum(
-        len(m.get("source_files", [])) for m in result["group_materials"]
-    )
-
-    return result
-
-
 @router.put("/{content_id}/reorder-subs")
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def reorder_sub_materials(

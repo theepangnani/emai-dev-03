@@ -1461,6 +1461,41 @@ with engine.connect() as conn:
         except Exception:
             pass
 
+    # ── Backfill: create SourceFile records for materials with files but no source_files (#1841) ──
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT cc.id, cc.original_filename, cc.mime_type, cc.file_size, cc.file_path
+                FROM course_contents cc
+                LEFT JOIN source_files sf ON sf.course_content_id = cc.id
+                WHERE cc.original_filename IS NOT NULL
+                  AND cc.file_path IS NOT NULL
+                  AND sf.id IS NULL
+            """)).fetchall()
+
+            if rows:
+                for row in rows:
+                    content_id, filename, mime_type, file_size, file_path = row
+                    gcs_path = f"source-files/{content_id}/{filename}" if file_path and not file_path.startswith("source-files/") else file_path
+                    conn.execute(text("""
+                        INSERT INTO source_files (course_content_id, filename, file_type, file_size, gcs_path)
+                        VALUES (:content_id, :filename, :file_type, :file_size, :gcs_path)
+                    """), {
+                        "content_id": content_id,
+                        "filename": filename,
+                        "file_type": mime_type,
+                        "file_size": file_size,
+                        "gcs_path": gcs_path,
+                    })
+                conn.commit()
+                logger.info("Backfilled %d SourceFile records from CourseContent file metadata (#1841)", len(rows))
+    except Exception as e:
+        logger.warning("SourceFile backfill failed (#1841): %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
 
 _is_prod = "sqlite" not in settings.database_url
 
