@@ -401,6 +401,13 @@ export const courseContentsApi = {
     return response.data as { updated: number; category: string };
   },
 
+  bulkArchive: async (contentIds: number[]) => {
+    const response = await api.post('/api/course-contents/bulk-archive', {
+      content_ids: contentIds,
+    });
+    return response.data as { archived: number };
+  },
+
   deleteSubMaterial: async (masterId: number, subId: number): Promise<void> => {
     await api.delete(`/api/course-contents/${masterId}/sub-materials/${subId}`);
   },
