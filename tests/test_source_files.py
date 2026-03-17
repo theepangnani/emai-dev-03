@@ -251,7 +251,8 @@ class TestSourceFilesCount:
         assert resp.json()["source_files_count"] == 0
 
     def test_multi_upload_response_includes_count(self, client, users):
-        """With §6.98 Rule 3, master IS the first file so has 1 source file."""
+        """With §6.98 Rule 3, master IS the first file so has 1 source file.
+        Master now aggregates sub-material source files too (#1841)."""
         headers = _auth(client, users["teacher"].email)
         files = [
             ("files", ("a.txt", b"AAA", "text/plain")),
@@ -264,8 +265,8 @@ class TestSourceFilesCount:
             headers=headers,
         )
         assert resp.status_code == 201
-        # Master is the first file, so it has 1 source file
-        assert resp.json()["source_files_count"] == 1
+        # Master has 1 own file + 1 sub-material file = 2 (#1841)
+        assert resp.json()["source_files_count"] == 2
         assert resp.json()["material_group_id"] is not None
 
     def test_get_response_includes_count(self, client, users):
