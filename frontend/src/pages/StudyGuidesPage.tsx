@@ -165,6 +165,7 @@ export function StudyGuidesPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [moveCategoryTarget, setMoveCategoryTarget] = useState('');
   const [bulkCategorizing, setBulkCategorizing] = useState(false);
+  const [bulkArchiving, setBulkArchiving] = useState(false);
 
   // Create Course from child-selector "+" menu
   const [showChildAddMenu, setShowChildAddMenu] = useState(false);
@@ -414,6 +415,26 @@ export function StudyGuidesPage() {
       showToast(`Moved ${selectedContentIds.size} items to "${category}"`);
     } catch { showToast('Failed to categorize'); }
     setBulkCategorizing(false);
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedContentIds.size === 0) return;
+    const ok = await confirm({
+      title: 'Archive Selected',
+      message: `This will archive ${selectedContentIds.size} class material(s). You can restore them later from the archive.`,
+      confirmLabel: 'Archive',
+    });
+    if (!ok) return;
+    setBulkArchiving(true);
+    try {
+      const result = await courseContentsApi.bulkArchive([...selectedContentIds]);
+      setContentItems(prev => prev.filter(c => !selectedContentIds.has(c.id)));
+      setSelectedContentIds(new Set());
+      showToast(`${result.archived} material(s) archived`);
+      if (showArchived) loadArchived();
+    } catch { /* ignore */ } finally {
+      setBulkArchiving(false);
+    }
   };
 
   const toggleCategoryCollapse = (cat: string) => {
@@ -1472,6 +1493,14 @@ export function StudyGuidesPage() {
                     onClick={() => handleBulkCategorize(moveCategoryTarget === '__new__' ? newCategoryName.trim() : moveCategoryTarget)}
                   >
                     {bulkCategorizing ? 'Moving...' : 'Move'}
+                  </button>
+                  <button
+                    className="guides-batch-assign-btn bulk-archive-btn"
+                    disabled={bulkArchiving}
+                    onClick={handleBulkArchive}
+                    title="Archive selected materials"
+                  >
+                    {bulkArchiving ? 'Archiving...' : `🗑️ Archive (${selectedContentIds.size})`}
                   </button>
                 </div>
               )}

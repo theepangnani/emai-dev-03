@@ -30,6 +30,7 @@ from app.services.link_extraction_service import extract_and_enrich_links
 from app.services import gcs_service
 from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials, generate_sub_title
 from app.schemas.course_content import (
+    BulkArchiveRequest,
     BulkCategorizeRequest,
     CourseContentCreate,
     CourseContentUpdate,
@@ -837,6 +838,31 @@ def bulk_categorize(
             updated += 1
     db.commit()
     return {"updated": updated, "category": data.category}
+
+
+@router.post("/bulk-archive")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def bulk_archive(
+    request: Request,
+    data: BulkArchiveRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Archive multiple course content items."""
+    from datetime import datetime, timezone
+    contents = db.query(CourseContent).filter(
+        CourseContent.id.in_(data.content_ids),
+        CourseContent.archived_at.is_(None),
+    ).all()
+    if not contents:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No matching content items found")
+    archived = 0
+    for content in contents:
+        if _can_modify_content(db, current_user, content):
+            content.archived_at = datetime.now(timezone.utc)
+            archived += 1
+    db.commit()
+    return {"archived": archived}
 
 
 @router.get("/categories")
