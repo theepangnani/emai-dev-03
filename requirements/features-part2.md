@@ -389,6 +389,7 @@ Course materials and study guides use soft-delete (archive) with retention polic
 9. **On-access permanent delete after 7 years** — When a course material is accessed via GET, if `last_viewed_at` is more than 7 years ago, the item and linked study guides are permanently deleted
 10. **Last-viewed tracking** — `last_viewed_at` is updated on every GET access to a course material
 11. **Toast notifications** — Success messages for archive, restore, delete, and content-save operations
+12. **Bulk archive** — Users can select multiple class materials on the StudyGuidesPage and archive them in a single action. A confirmation dialog shows the count of selected items before proceeding. Archive is soft-delete (`archived_at` timestamp), same as individual archive. Permission checks (ownership / role) apply per item; items the user lacks permission to archive are skipped with a warning toast
 
 #### Technical Implementation
 - **Model changes**: `archived_at` column on `course_contents` and `study_guides` tables; `last_viewed_at` column on `course_contents`
