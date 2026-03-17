@@ -5,9 +5,7 @@ Part of the Digital Wallet & Subscription System (§6.60, #1384).
 """
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text,
-    Index,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -34,15 +32,10 @@ class Wallet(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    user = relationship("User", foreign_keys=[user_id], lazy="joined")
-
     @property
     def total_balance(self):
         return (self.package_credits or 0) + (self.purchased_credits or 0)
 
-    __table_args__ = (
-        Index("ix_wallets_user_id", "user_id"),
-    )
 
 
 class PackageTier(Base):
@@ -77,12 +70,7 @@ class WalletTransaction(Base):
     note = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    wallet = relationship("Wallet", foreign_keys=[wallet_id])
 
-    __table_args__ = (
-        Index("ix_wallet_transactions_reference_id", "reference_id"),
-        Index("ix_wallet_transactions_wallet_id", "wallet_id"),
-    )
 
 
 class CreditPackage(Base):

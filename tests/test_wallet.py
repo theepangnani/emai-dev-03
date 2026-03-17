@@ -6,46 +6,66 @@ from decimal import Decimal
 
 from conftest import PASSWORD, _auth
 
-from app.models.user import User, UserRole
-from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage
-from app.core.security import get_password_hash
-
 
 @pytest.fixture()
 def wallet_users(db_session):
-    """Create test users with wallets."""
+    """Create or retrieve test users with wallets.
+
+    Idempotent — safe to call across multiple tests in a shared DB session.
+    """
+    from app.models.user import User, UserRole
+    from app.models.wallet import Wallet, PackageTier, CreditPackage
+    from app.core.security import get_password_hash
+
     hashed = get_password_hash(PASSWORD)
 
-    student = User(
-        email="wallet_student@test.com",
-        username="wallet_student",
-        hashed_password=hashed,
-        full_name="Wallet Student",
-        role=UserRole.STUDENT,
-        roles="student",
-        onboarding_completed=True,
-        email_verified=True,
-    )
-    db_session.add(student)
-    db_session.flush()
+    # Get or create student
+    student = db_session.query(User).filter(User.email == "wallet_student@test.com").first()
+    if not student:
+        student = User(
+            email="wallet_student@test.com",
+            username="wallet_student",
+            hashed_password=hashed,
+            full_name="Wallet Student",
+            role=UserRole.STUDENT,
+            roles="student",
+            onboarding_completed=True,
+            email_verified=True,
+        )
+        db_session.add(student)
+        db_session.flush()
 
-    admin = User(
-        email="wallet_admin@test.com",
-        username="wallet_admin",
-        hashed_password=hashed,
-        full_name="Wallet Admin",
-        role=UserRole.ADMIN,
-        roles="admin",
-        onboarding_completed=True,
-        email_verified=True,
-    )
-    db_session.add(admin)
-    db_session.flush()
+    # Get or create admin
+    admin = db_session.query(User).filter(User.email == "wallet_admin@test.com").first()
+    if not admin:
+        admin = User(
+            email="wallet_admin@test.com",
+            username="wallet_admin",
+            hashed_password=hashed,
+            full_name="Wallet Admin",
+            role=UserRole.ADMIN,
+            roles="admin",
+            onboarding_completed=True,
+            email_verified=True,
+        )
+        db_session.add(admin)
+        db_session.flush()
 
-    # Create wallets
-    student_wallet = Wallet(user_id=student.id, package="free", package_credits=10, purchased_credits=5)
-    admin_wallet = Wallet(user_id=admin.id, package="free")
-    db_session.add_all([student_wallet, admin_wallet])
+    # Get or create wallets
+    student_wallet = db_session.query(Wallet).filter(Wallet.user_id == student.id).first()
+    if not student_wallet:
+        student_wallet = Wallet(user_id=student.id, package="free", package_credits=10, purchased_credits=5)
+        db_session.add(student_wallet)
+    else:
+        # Reset to known state for test reproducibility
+        student_wallet.package = "free"
+        student_wallet.package_credits = 10
+        student_wallet.purchased_credits = 5
+
+    admin_wallet = db_session.query(Wallet).filter(Wallet.user_id == admin.id).first()
+    if not admin_wallet:
+        admin_wallet = Wallet(user_id=admin.id, package="free")
+        db_session.add(admin_wallet)
 
     # Seed tiers
     if db_session.query(PackageTier).count() == 0:
@@ -79,6 +99,9 @@ class TestGetWallet:
 
     def test_get_wallet_auto_creates_if_missing(self, client, db_session, wallet_users):
         """Wallet is auto-created for users who don't have one."""
+        from app.models.user import User, UserRole
+        from app.core.security import get_password_hash
+
         # Create a user without a wallet
         user = User(
             email="no_wallet@test.com",
@@ -113,6 +136,8 @@ class TestTransactions:
         assert data["total"] == 0
 
     def test_get_transactions_with_data(self, client, db_session, wallet_users):
+        from app.models.wallet import WalletTransaction
+
         wallet = wallet_users["student_wallet"]
         txn = WalletTransaction(
             wallet_id=wallet.id,
