@@ -229,7 +229,7 @@ describe('StudyGuidePage', () => {
         expect.objectContaining({ regenerate_from_id: 7 }),
       )
     })
-    expect(mockNavigate).toHaveBeenCalledWith('/study/guide/99', { state: { newGuide: true } })
+    expect(mockNavigate).toHaveBeenCalledWith('/study/guide/99')
   })
 
   it('shows error when regenerate fails', async () => {

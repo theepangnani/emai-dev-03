@@ -151,6 +151,13 @@ export function StudyGuidePage() {
     fetchGuide();
   }, [id]);
 
+  // Redirect to course-materials tab when guide has a parent material (#1837)
+  useEffect(() => {
+    if (guide && guide.course_content_id) {
+      navigate(`/course-materials/${guide.course_content_id}?tab=guide`, { replace: true });
+    }
+  }, [guide, navigate]);
+
   // Fetch parent guide title for sub-guides (#1594)
   useEffect(() => {
     if (!guide?.parent_guide_id) { setParentGuideTitle(null); return; }
@@ -220,7 +227,7 @@ export function StudyGuidePage() {
         ...(focusPrompt ? { focus_prompt: focusPrompt } : {}),
       });
       refreshAIUsage();
-      navigate(`/study/guide/${result.id}`, { state: { newGuide: true } });
+      navigate(result.course_content_id ? `/course-materials/${result.course_content_id}?tab=guide` : `/study/guide/${result.id}`);
     } catch (err) {
       setError('Failed to regenerate');
       setFaqCode(extractFaqCode(err));
@@ -305,7 +312,7 @@ export function StudyGuidePage() {
             <path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
           <span>Generated from: </span>
-          <Link to={`/study/guide/${guide.parent_guide_id}`} className="sg-parent-link">
+          <Link to={guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.parent_guide_id}`} className="sg-parent-link">
             {parentGuideTitle}
           </Link>
         </div>
@@ -363,7 +370,7 @@ export function StudyGuidePage() {
           </h3>
           <div className="sg-sub-guides-list">
             {childGuides.map(child => (
-              <Link key={child.id} to={`/study/guide/${child.id}`} className="sg-sub-guide-item">
+              <Link key={child.id} to={child.course_content_id ? `/course-materials/${child.course_content_id}?tab=guide` : `/study/guide/${child.id}`} className="sg-sub-guide-item">
                 <span className="sg-sub-guide-type">
                   {child.guide_type === 'study_guide' ? '\u{1F4D6}' : child.guide_type === 'quiz' ? '\u2753' : '\u{1F0CF}'}
                 </span>
