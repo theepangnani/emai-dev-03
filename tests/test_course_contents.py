@@ -485,3 +485,74 @@ class TestParentAccessChildContent:
         parent_headers = _auth(client, family["parent"].email)
         resp = client.delete(f"/api/course-contents/{content_id}", headers=parent_headers)
         assert resp.status_code == 204
+
+
+# ── Bulk Archive ─────────────────────────────────────────────
+
+class TestBulkArchive:
+    def _create_content(self, client, users, title="Bulk Item"):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/", json={
+            "course_id": users["course"].id, "title": title,
+        }, headers=headers)
+        assert resp.status_code == 201
+        return resp.json()["id"]
+
+    def test_bulk_archive_success(self, client, db_session, users):
+        ids = [self._create_content(client, users, f"Bulk {i}") for i in range(3)]
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/bulk-archive", json={
+            "content_ids": ids[:2],
+        }, headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["archived"] == 2
+
+        # Verify archived_at is set on the two archived items
+        from app.models.course_content import CourseContent
+        for cid in ids[:2]:
+            db_session.expire_all()
+            cc = db_session.query(CourseContent).filter(CourseContent.id == cid).first()
+            assert cc.archived_at is not None
+        # Third item should not be archived
+        cc3 = db_session.query(CourseContent).filter(CourseContent.id == ids[2]).first()
+        assert cc3.archived_at is None
+
+    def test_bulk_archive_empty_ids(self, client, users):
+        headers = _auth(client, users["teacher"].email)
+        resp = client.post("/api/course-contents/bulk-archive", json={
+            "content_ids": [],
+        }, headers=headers)
+        assert resp.status_code == 422
+
+    def test_bulk_archive_already_archived(self, client, db_session, users):
+        cid = self._create_content(client, users, "Already Archived")
+        headers = _auth(client, users["teacher"].email)
+
+        # Archive it individually first
+        from app.models.course_content import CourseContent
+        from datetime import datetime, timezone
+        cc = db_session.query(CourseContent).filter(CourseContent.id == cid).first()
+        cc.archived_at = datetime.now(timezone.utc)
+        db_session.commit()
+
+        # Bulk archive should find no unarchived items
+        resp = client.post("/api/course-contents/bulk-archive", json={
+            "content_ids": [cid],
+        }, headers=headers)
+        assert resp.status_code == 404
+
+    def test_bulk_archive_permission_denied(self, client, db_session, users):
+        cid = self._create_content(client, users, "No Permission")
+        # "other" teacher is not the creator and not admin
+        headers = _auth(client, users["other"].email)
+        resp = client.post("/api/course-contents/bulk-archive", json={
+            "content_ids": [cid],
+        }, headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["archived"] == 0
+
+        # Verify item is still not archived
+        from app.models.course_content import CourseContent
+        db_session.expire_all()
+        cc = db_session.query(CourseContent).filter(CourseContent.id == cid).first()
+        assert cc.archived_at is None
