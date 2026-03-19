@@ -1730,6 +1730,9 @@ export function StudyGuidesPage() {
         }}
         onDismissDuplicate={() => setDuplicateCheck(null)}
         showParentNote={user?.role === 'student'}
+        childName={isParent && children.length === 1 ? children[0].full_name : undefined}
+        children={isParent && children.length > 0 ? children.map(c => ({ id: c.student_id, name: c.full_name })) : undefined}
+        onChildChange={(studentId) => setFilterChild(studentId)}
       />
 
       <CreateTaskModal
