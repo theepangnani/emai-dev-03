@@ -127,10 +127,9 @@ SURVEY_QUESTIONS: dict[str, list[dict]] = {
             "required": True,
             "options": [
                 "Free only",
-                "$1–$5/month",
-                "$5–$10/month",
-                "$10–$20/month",
-                "$20+/month",
+                "Monthly subscription ($5–$10/month)",
+                "Yearly subscription ($99–$150/year)",
+                "Buy AI credits as needed (pay-per-use)",
             ],
         },
         {
