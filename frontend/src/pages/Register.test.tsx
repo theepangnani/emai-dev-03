@@ -97,6 +97,8 @@ describe('Register', () => {
       password: 'password123',
       full_name: 'New User',
       roles: [],
+      started_at: expect.any(Number),
+      website: '',
     })
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/onboarding')

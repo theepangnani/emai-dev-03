@@ -84,7 +84,7 @@ describe('AuthContext', () => {
       await result.current.login('test@example.com', 'password123')
     })
 
-    expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123')
+    expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123', undefined)
     expect(localStorage.getItem('token')).toBe('new-jwt')
     expect(localStorage.getItem('refresh_token')).toBe('refresh-jwt')
     expect(result.current.user).toEqual(mockUser)
@@ -108,7 +108,7 @@ describe('AuthContext', () => {
     })
 
     expect(mockRegister).toHaveBeenCalledWith(regData)
-    expect(mockLogin).toHaveBeenCalledWith('new@example.com', 'pass1234')
+    expect(mockLogin).toHaveBeenCalledWith('new@example.com', 'pass1234', undefined)
     expect(result.current.user).toEqual(mockUser)
   })
 
