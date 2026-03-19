@@ -1370,6 +1370,8 @@ export function MyKidsPage() {
         onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
         showParentNote={true}
         childName={children.find(c => c.student_id === selectedChild)?.full_name}
+        children={!selectedChild ? children.map(c => ({ id: c.student_id, name: c.full_name })) : undefined}
+        onChildChange={!selectedChild ? (studentId: number) => setSelectedChild(studentId) : undefined}
       />
       {studyTools.showLimitModal && <AILimitRequestModal open={studyTools.showLimitModal} onClose={() => studyTools.setShowLimitModal(false)} />}
       {studyTools.backgroundGeneration && (
