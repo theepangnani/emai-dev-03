@@ -301,22 +301,6 @@
   cursor: not-allowed;
 }
 
-/* Spinner */
-.subguide-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: subguideSpin 0.6s linear infinite;
-}
-
-@keyframes subguideSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* ============================================
    Dark theme

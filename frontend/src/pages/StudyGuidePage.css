@@ -289,18 +289,6 @@
   color: #065f46;
 }
 
-.sg-subguide-status-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #f59e0b;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: sgSpin 0.8s linear infinite;
-}
-
-@keyframes sgSpin {
-  to { transform: rotate(360deg); }
-}
 
 .sg-subguide-status-link {
   color: #065f46;

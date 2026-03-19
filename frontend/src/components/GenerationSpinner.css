@@ -1,0 +1,53 @@
+/* ============================================
+   GenerationSpinner — unified spinner component
+   ============================================ */
+
+@keyframes gen-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gen-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Base spinner */
+.gen-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  animation: gen-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Size variants */
+.gen-spinner--sm {
+  width: 14px;
+  height: 14px;
+}
+
+.gen-spinner--md {
+  width: 18px;
+  height: 18px;
+}
+
+.gen-spinner--lg {
+  width: 36px;
+  height: 36px;
+  border-width: 4px;
+}
+
+/* Pulsing label text */
+.gen-spinner-label {
+  animation: gen-pulse 1.5s ease-in-out infinite;
+}
+
+/* Inline spinner + text row layout */
+.gen-spinner-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

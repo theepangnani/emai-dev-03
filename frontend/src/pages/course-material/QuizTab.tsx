@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { studyApi, type StudyGuide, type ResolvedStudent } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
+import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 
@@ -195,7 +196,7 @@ export function QuizTab({
             <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
             <button className="cm-action-btn" onClick={resetQuiz}>{'\u{1F504}'} Reset</button>
             <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
-              <button className="cm-action-btn" onClick={() => onGenerate(difficulty)} disabled={generating !== null || atLimit}>{generating === 'quiz' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+              <button className="cm-action-btn" onClick={() => onGenerate(difficulty)} disabled={generating !== null || atLimit}>{generating === 'quiz' ? <><GenerationSpinner size="sm" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(quiz)}>{'\u{1F5D1}\uFE0F'} Delete</button>
@@ -206,7 +207,7 @@ export function QuizTab({
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'quiz' && (
             <div className="cm-regen-status">
-              <div className="cm-inline-spinner" />
+              <GenerationSpinner size="md" />
               <span>Regenerating quiz...</span>
             </div>
           )}
@@ -289,7 +290,7 @@ export function QuizTab({
         </div>
       ) : generating === 'quiz' ? (
         <div className="cm-inline-generating">
-          <div className="cm-inline-spinner" />
+          <GenerationSpinner size="lg" />
           <p>Generating quiz... This may take a moment.</p>
         </div>
       ) : (
