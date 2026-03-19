@@ -55,7 +55,9 @@ jobs:
       # JSON to JSONTaggedDecoder. nltk is only used for text processing.
       # CVE-2026-33230: nltk WordNet Browser reflected XSS — we don't use the WordNet
       # Browser web UI at all.
-      - run: pip-audit --desc --ignore-vuln CVE-2024-23342 --ignore-vuln GHSA-rf74-v2fm-23pw --ignore-vuln CVE-2026-33230
+      # CVE-2026-33231: nltk WordNet Browser unauthenticated remote shutdown — same
+      # component we don't use.
+      - run: pip-audit --desc --ignore-vuln CVE-2024-23342 --ignore-vuln GHSA-rf74-v2fm-23pw --ignore-vuln CVE-2026-33230 --ignore-vuln CVE-2026-33231
       - uses: actions/upload-artifact@v4
         if: always()
         with:
