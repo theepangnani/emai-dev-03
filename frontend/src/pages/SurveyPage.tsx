@@ -11,7 +11,6 @@ export function SurveyPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
-  const [sessionId] = useState(() => crypto.randomUUID());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -61,7 +60,7 @@ export function SurveyPage() {
           return { question_key: q.key, question_type: q.type, answer_value: value };
         }).filter((a) => a.answer_value != null && a.answer_value !== '' && !(Array.isArray(a.answer_value) && a.answer_value.length === 0));
 
-        await api.post('/api/survey', { role, session_id: sessionId, answers: formattedAnswers });
+        await api.post('/api/survey', { role, session_id: crypto.randomUUID(), answers: formattedAnswers });
         setPhase('thanks');
       } catch {
         setError('Failed to submit survey. Please try again.');
