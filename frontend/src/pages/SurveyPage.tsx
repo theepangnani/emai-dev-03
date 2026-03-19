@@ -1,18 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import './Auth.css';
 import './SurveyPage.css';
 
+const STORAGE_KEY = 'classbridge_survey_progress';
+
+function loadSavedState() {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function SurveyPage() {
-  const [phase, setPhase] = useState<'role' | 'questions' | 'thanks'>('role');
-  const [role, setRole] = useState('');
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
+  const [saved] = useState(() => loadSavedState());
+  const [phase, setPhase] = useState<'role' | 'questions' | 'thanks'>(saved?.phase || 'role');
+  const [role, setRole] = useState(saved?.role || '');
+  const [questions, setQuestions] = useState<any[]>(saved?.questions || []);
+  const [currentIndex, setCurrentIndex] = useState(saved?.currentIndex || 0);
+  const [answers, setAnswers] = useState<Record<string, any>>(saved?.answers || {});
+  const [otherTexts, setOtherTexts] = useState<Record<string, string>>(saved?.otherTexts || {});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (phase === 'thanks') {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    if (phase === 'questions') {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          phase, role, questions, currentIndex, answers, otherTexts
+        }));
+      } catch { /* storage full — silently ignore */ }
+    }
+  }, [phase, role, questions, currentIndex, answers, otherTexts]);
 
   const handleRoleSelect = async (selectedRole: string) => {
     setRole(selectedRole);
