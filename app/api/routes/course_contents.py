@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.database import get_db, SessionLocal
 from app.core.rate_limit import limiter, get_user_id_or_ip
@@ -939,7 +939,7 @@ def get_linked_course_ids(
 
     # Get child info (student_id, user_id, full_name) for the frontend
     children_info = []
-    students = db.query(Student).filter(Student.id.in_(child_sids)).all()
+    students = db.query(Student).options(selectinload(Student.user)).filter(Student.id.in_(child_sids)).all()
     for s in students:
         children_info.append({
             "student_id": s.id,
@@ -1001,7 +1001,7 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
         # Courses created by the user + enrolled courses
         created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
         ids = {r[0] for r in created}
-        student = db.query(Student).filter(Student.user_id == user.id).first()
+        student = db.query(Student).options(selectinload(Student.courses)).filter(Student.user_id == user.id).first()
         if student:
             ids.update(c.id for c in student.courses)
         return list(ids)
@@ -1015,7 +1015,7 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
 
         if student_user_id:
             # Specific child selected — only courses this child is enrolled in
-            child_student = db.query(Student).filter(
+            child_student = db.query(Student).options(selectinload(Student.courses)).filter(
                 Student.user_id == student_user_id,
                 Student.id.in_(child_sids),
             ).first()
