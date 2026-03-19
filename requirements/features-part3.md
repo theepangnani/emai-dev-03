@@ -131,6 +131,8 @@ Visual redesign of the My Kids section on the parent dashboard for improved clar
 4. **+ Icon Popover for actions** - IMPLEMENTED (#700, PR #701)
    - All four action buttons (Add Child, Add Class, Class Materials, Quiz History) replaced with a single + icon popover at the end of the child selector row
    - Uses shared `AddActionButton` component (same pattern as Dashboard and Tasks pages)
+   - **FAB "Class Material" opens inline UploadMaterialWizard modal** (#1931, PRs #1932, #1941) — instead of navigating away, the modal opens directly on the page using `useParentStudyTools` hook (same pattern as StudentDashboard/TeacherDashboard). Includes background generation banner and AI credit limit modal.
+   - **Child selector in upload modal** (#1946, PR #1947) — when "All" children filter is selected, the upload modal shows a child dropdown so parents can choose which child the material is for
 5. **Responsive** - Cards single-column on tablet, action buttons horizontal on mobile
 6. **Theme compatible** - Works across light, dark, and focus themes
 
@@ -3071,6 +3073,7 @@ Reorganized and expanded quick action buttons on parent/student dashboards.
 - Removed: duplicate Upload Material, Add Action (+) button from child selector
 - Reordered actions for better discoverability
 - Task count badge on Tasks Overview panel header
+- **View Class Material** quick action button added to My Kids page (📄 icon → `/course-materials`) (#1931, PR #1932)
 
 ### 6.90 MyKidsPage Final Polish (Phase 2) - IMPLEMENTED
 
