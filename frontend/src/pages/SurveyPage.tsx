@@ -329,7 +329,7 @@ export function SurveyPage() {
                           onClick={() => handleLikertMatrix(currentQuestion.key, item, n)}
                           title={`${n} - ${LIKERT_ICONS[n - 1]}`}
                         >
-                          {n}
+                          {answers[currentQuestion.key]?.[item] === n ? LIKERT_ICONS[n - 1] : n}
                         </button>
                       ))}
                     </div>
