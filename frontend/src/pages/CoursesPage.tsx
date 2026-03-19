@@ -863,11 +863,8 @@ export function CoursesPage() {
                 <h3 className="cp-section-title">{childName ? `${childName}'s Classes` : 'Classes'} ({childOverview?.courses.length ?? 0})</h3>
               </button>
               <div className="cp-section-header-right">
-                <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                  </svg>
+                <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => setShowCreateModal(true)}>
+                  + Create Class
                 </button>
                 {myCourses.length > 0 && selectedChild && (
                   <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
