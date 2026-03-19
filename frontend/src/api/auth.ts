@@ -2,10 +2,12 @@ import { api } from './client';
 
 // Auth API
 export const authApi = {
-  login: async (identifier: string, password: string) => {
+  login: async (identifier: string, password: string, botFields?: { website?: string; started_at?: number }) => {
     const formData = new URLSearchParams();
     formData.append('username', identifier);
     formData.append('password', password);
+    if (botFields?.website) formData.append('website', botFields.website);
+    if (botFields?.started_at != null) formData.append('started_at', String(botFields.started_at));
 
     const response = await api.post('/api/auth/login', formData, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -13,7 +15,7 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string }) => {
+  register: async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string; website?: string; started_at?: number }) => {
     const response = await api.post('/api/auth/register', { roles: [], ...data });
     return response.data;
   },
@@ -38,8 +40,8 @@ export const authApi = {
     return response.data as { access_token: string; token_type: string; refresh_token?: string };
   },
 
-  forgotPassword: async (email: string) => {
-    const response = await api.post('/api/auth/forgot-password', { email });
+  forgotPassword: async (email: string, botFields?: { website?: string; started_at?: number }) => {
+    const response = await api.post('/api/auth/forgot-password', { email, ...botFields });
     return response.data as { message: string };
   },
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -10,6 +11,8 @@ class WaitlistCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     email: EmailStr
     roles: list[str] = Field(min_length=1)
+    website: str = ""  # honeypot
+    started_at: Optional[float] = None  # timing check
 
     @field_validator("roles")
     @classmethod

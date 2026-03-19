@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from datetime import datetime
@@ -26,6 +27,8 @@ class UserCreate(BaseModel):
     teacher_type: str | None = Field(default=None, max_length=50)
     google_id: str | None = Field(default=None, max_length=255)
     token: str | None = Field(default=None, max_length=255)  # Waitlist invite token (#1114)
+    website: str = ""  # honeypot
+    started_at: Optional[float] = None  # timing check
 
     @field_validator('full_name', 'teacher_type', mode='before')
     @classmethod
@@ -141,6 +144,8 @@ class Token(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    website: str = ""  # honeypot
+    started_at: Optional[float] = None  # timing check
 
 
 class ResetPasswordRequest(BaseModel):
