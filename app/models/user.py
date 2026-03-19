@@ -124,6 +124,7 @@ class User(Base):
         "material_uploaded": "study_guides",
         "task_due": "tasks",
         "system": "system",
+        "survey_completed": "system",
     }
 
     def get_notification_preferences(self) -> dict:
