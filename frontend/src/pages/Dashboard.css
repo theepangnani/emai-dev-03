@@ -310,9 +310,11 @@
   /* Expanded sidebar on hover */
   .persistent-sidebar:hover {
     width: 200px;
-    min-width: 200px;
+    margin-right: -120px;
     padding: 12px 8px;
     overflow: hidden;
+    z-index: 50;
+    box-shadow: 4px 0 12px rgba(0,0,0,0.08);
   }
 
   /* Show labels when hovered */
