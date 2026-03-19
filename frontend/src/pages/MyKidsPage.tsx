@@ -1357,7 +1357,8 @@ export function MyKidsPage() {
         onClose={studyTools.resetStudyModal}
         onGenerate={studyTools.handleGenerateFromModal}
         isGenerating={studyTools.isGenerating}
-        courses={courses.map(c => ({ id: c.id, name: c.name }))}
+        courses={selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined}
+        selectedCourseId={selectedChild && overview?.courses.length === 1 ? overview.courses[0].id : ''}
         duplicateCheck={studyTools.duplicateCheck}
         onViewExisting={() => {
           const guide = studyTools.duplicateCheck?.existing_guide;
@@ -1370,8 +1371,8 @@ export function MyKidsPage() {
         onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
         showParentNote={true}
         childName={children.find(c => c.student_id === selectedChild)?.full_name}
-        children={!selectedChild ? children.map(c => ({ id: c.student_id, name: c.full_name })) : undefined}
-        onChildChange={!selectedChild ? (studentId: number) => setSelectedChild(studentId) : undefined}
+        children={children.map(c => ({ id: c.student_id, name: c.full_name }))}
+        onChildChange={(studentId: number) => setSelectedChild(studentId)}
       />
       {studyTools.showLimitModal && <AILimitRequestModal open={studyTools.showLimitModal} onClose={() => studyTools.setShowLimitModal(false)} />}
       {studyTools.backgroundGeneration && (
