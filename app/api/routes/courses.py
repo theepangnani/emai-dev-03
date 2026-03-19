@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel as PydanticBaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import insert
 
 from app.db.database import get_db
@@ -674,7 +674,7 @@ def enroll_in_course(
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
     """Enroll the current student in a course."""
-    course = db.query(Course).filter(Course.id == course_id).first()
+    course = db.query(Course).options(selectinload(Course.teacher)).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -806,6 +806,14 @@ def list_course_students(
         raise HTTPException(status_code=404, detail="Course not found")
     _require_course_manager(db, current_user, course)
 
+    students = (
+        db.query(Student)
+        .join(student_courses, Student.id == student_courses.c.student_id)
+        .filter(student_courses.c.course_id == course_id)
+        .options(selectinload(Student.user))
+        .all()
+    )
+
     return [
         {
             "student_id": s.id,
@@ -814,7 +822,7 @@ def list_course_students(
             "email": s.user.email,
             "grade_level": s.grade_level,
         }
-        for s in course.students
+        for s in students
     ]
 
 
