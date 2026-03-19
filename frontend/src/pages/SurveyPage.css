@@ -164,26 +164,49 @@
 }
 
 .survey-likert-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   cursor: pointer;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 14px;
   color: var(--color-ink);
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+.survey-likert-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.survey-likert-num {
+  font-size: 11px;
+  color: var(--color-ink-muted);
 }
 
 .survey-likert-btn:hover {
   border-color: var(--color-accent);
+  transform: translateY(-2px);
 }
 
 .survey-likert-btn.selected {
   background: var(--color-accent);
   color: #fff;
   border-color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.survey-likert-btn.selected .survey-likert-num {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .survey-matrix {
@@ -215,6 +238,10 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--color-ink-muted);
+}
+
+.survey-matrix-header-emoji {
+  font-size: 20px;
 }
 
 .survey-matrix-row {
@@ -380,9 +407,17 @@
   }
 
   .survey-likert-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+  }
+
+  .survey-likert-emoji {
+    font-size: 18px;
+  }
+
+  .survey-likert-num {
+    font-size: 10px;
   }
 
   .survey-matrix-btn {

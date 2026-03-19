@@ -102,6 +102,8 @@ export function SurveyPage() {
     setAnswers({ ...answers, [questionId]: value });
   };
 
+  const LIKERT_ICONS = ['😟', '😕', '😐', '🙂', '😍'];
+
   // Phase 3: Thank You
   if (phase === 'thanks') {
     return (
@@ -292,7 +294,8 @@ export function SurveyPage() {
                       className={`survey-likert-btn${answers[currentQuestion.key] === n ? ' selected' : ''}`}
                       onClick={() => handleLikert(currentQuestion.key, n)}
                     >
-                      {n}
+                      <span className="survey-likert-emoji">{LIKERT_ICONS[n - 1]}</span>
+                      <span className="survey-likert-num">{n}</span>
                     </button>
                   ))}
                 </div>
@@ -309,7 +312,9 @@ export function SurveyPage() {
                   <div className="survey-matrix-label" />
                   <div className="survey-matrix-ratings">
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <div key={n} className="survey-matrix-header-num">{n}</div>
+                      <div key={n} className="survey-matrix-header-num">
+                        <span className="survey-matrix-header-emoji">{LIKERT_ICONS[n - 1]}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -322,6 +327,7 @@ export function SurveyPage() {
                           key={n}
                           className={`survey-likert-btn survey-matrix-btn${answers[currentQuestion.key]?.[item] === n ? ' selected' : ''}`}
                           onClick={() => handleLikertMatrix(currentQuestion.key, item, n)}
+                          title={`${n} - ${LIKERT_ICONS[n - 1]}`}
                         >
                           {n}
                         </button>
