@@ -188,6 +188,33 @@ src/domains/{context}/
 - **Security:** Encryption in transit and at rest
 - **Compliance:** FERPA, MFIPPA, PIPEDA, GDPR (if applicable)
 
+### 10.0 Performance Standards (#1954–#1967)
+
+#### 10.0.1 Backend Query Efficiency
+- **No N+1 queries:** Every endpoint that returns ORM objects with relationships MUST use eager loading (`selectinload` / `joinedload`) via shared options helpers. Lazy loading of relationships in response builders is prohibited.
+- **Batch queries over loops:** Never query the database inside a loop. Use `.in_()` filters or JOINs to batch-fetch related records.
+- **DB round trips per endpoint:** Standard CRUD endpoints MUST complete in ≤ 4 DB round trips (query + commit). Dashboard/aggregation endpoints ≤ 8.
+
+#### 10.0.2 Database Indexing
+- Every foreign key column MUST have an index (either single-column or as the leading column of a composite index).
+- Columns used in `.filter()` across 2+ endpoints MUST be indexed (e.g., `status`, `is_active`, `role`, `guide_type`).
+- Frequently queried column pairs SHOULD have composite indexes (e.g., `(user_id, archived_at)`, `(course_id, content_type)`).
+
+#### 10.0.3 Connection Pooling
+- Production PostgreSQL engine MUST configure `pool_size`, `max_overflow`, `pool_pre_ping`, and `pool_recycle`.
+- SQLite development mode is exempt from pooling requirements.
+
+#### 10.0.4 Frontend Network Resilience
+- **Default request timeout:** All Axios requests MUST have a default timeout (30s). Long-running operations (AI generation, file upload) may override with explicit higher timeout.
+- **AbortController cleanup:** `useEffect` hooks that make API calls SHOULD use `AbortController` to cancel in-flight requests on unmount.
+- **Visibility-aware polling:** Polling intervals (notifications, messages, AI usage) MUST pause when `document.visibilityState === 'hidden'` and resume on focus.
+
+#### 10.0.5 Token & Auth Performance
+- Token blacklist lookups SHOULD be cached in-memory (LRU, TTL ≤ 60s) to avoid +1 DB query per authenticated request.
+
+#### 10.0.6 Pagination
+- List endpoints returning unbounded results MUST support pagination or enforce a default LIMIT. Parent dashboard, admin user lists, and search results must not load full tables into memory.
+
 ### 10.1 Data Privacy & User Rights
 
 ClassBridge handles student data subject to FERPA, PIPEDA, and MFIPPA. The following capabilities are required (implementation deferred to Phase 2+):
