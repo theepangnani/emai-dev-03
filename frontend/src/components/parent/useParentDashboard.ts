@@ -220,6 +220,14 @@ export function useParentDashboard() {
     }
   };
 
+  // Non-toggling child selection for wizard (#1923)
+  const selectChildForWizard = (studentId: number) => {
+    setSelectedChild(studentId);
+    setDetailPanelCollapsed(false);
+    const child = children.find(c => c.student_id === studentId);
+    if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
+  };
+
   // Explicit "All" tab click (#830)
   const handleAllChildrenClick = () => {
     setSelectedChild(null);
@@ -426,7 +434,7 @@ export function useParentDashboard() {
     loading, dashboardError, children, navigate, confirmModal,
 
     // Child selection
-    selectedChild, handleChildTabClick, handleAllChildrenClick, selectedChildUserId, selectedChildFirstName,
+    selectedChild, handleChildTabClick, handleAllChildrenClick, selectChildForWizard, selectedChildUserId, selectedChildFirstName,
 
     // Overview
     overviewLoading,
