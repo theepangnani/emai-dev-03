@@ -77,7 +77,7 @@ describe('Login', () => {
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
-    expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123')
+    expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123', { started_at: expect.any(Number), website: '' })
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
     })
