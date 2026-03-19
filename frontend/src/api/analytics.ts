@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, AI_TIMEOUT } from './client';
 
 export interface GradeItem {
   student_assignment_id: number;
@@ -93,7 +93,7 @@ export const analyticsApi = {
     const resp = await api.post('/api/analytics/ai-insights', {
       student_id: studentId,
       focus_area: focusArea ?? null,
-    });
+    }, AI_TIMEOUT);
     return resp.data as AIInsight;
   },
 

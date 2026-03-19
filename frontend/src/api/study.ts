@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, AI_TIMEOUT } from './client';
 
 // Study Guide Types
 export interface AutoCreatedTask {
@@ -194,22 +194,22 @@ export interface ResolvedStudent {
 // Study Tools API
 export const studyApi = {
   generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string }) => {
-    const response = await api.post('/api/study/generate', params);
+    const response = await api.post('/api/study/generate', params, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
 
   generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string; difficulty?: string }) => {
-    const response = await api.post('/api/study/quiz/generate', params);
+    const response = await api.post('/api/study/quiz/generate', params, AI_TIMEOUT);
     return response.data as Quiz;
   },
 
   generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
-    const response = await api.post('/api/study/flashcards/generate', params);
+    const response = await api.post('/api/study/flashcards/generate', params, AI_TIMEOUT);
     return response.data as FlashcardSet;
   },
 
   generateMindMap: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; regenerate_from_id?: number; focus_prompt?: string }) => {
-    const response = await api.post('/api/study/mind-map/generate', params);
+    const response = await api.post('/api/study/mind-map/generate', params, AI_TIMEOUT);
     return response.data as MindMap;
   },
 
@@ -252,7 +252,7 @@ export const studyApi = {
   },
 
   continueGuide: async (guideId: number) => {
-    const response = await api.post(`/api/study/${guideId}/continue`);
+    const response = await api.post(`/api/study/${guideId}/continue`, null, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
 
@@ -286,6 +286,7 @@ export const studyApi = {
 
     const response = await api.post('/api/study/upload/generate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as StudyGuide;
   },
@@ -316,6 +317,7 @@ export const studyApi = {
 
     const response = await api.post('/api/study/generate-with-images', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as StudyGuide;
   },
@@ -326,6 +328,7 @@ export const studyApi = {
 
     const response = await api.post('/api/study/upload/extract-text', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as ExtractedText;
   },
@@ -356,7 +359,7 @@ export const studyApi = {
   },
 
   generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string }) => {
-    const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params);
+    const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
 
