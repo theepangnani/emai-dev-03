@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func as sa_func
 
 from app.core.rate_limit import limiter, get_user_id_or_ip
@@ -70,16 +70,23 @@ def _compute_course_grade_data(db: Session, student_id: int, course_id: int | No
     query = query.group_by(GradeRecord.course_id, Course.name)
     rows = query.all()
 
+    if not rows:
+        return []
+
+    # Batch-fetch total assignment counts for all relevant courses
+    course_ids = [row[0] for row in rows]
+    assignment_totals = dict(
+        db.query(Assignment.course_id, sa_func.count(Assignment.id))
+        .filter(Assignment.course_id.in_(course_ids))
+        .group_by(Assignment.course_id)
+        .all()
+    )
+
     result = []
     for row in rows:
         cid, cname, graded_count, avg_pct = row
         avg_pct = round(float(avg_pct or 0), 1)
-        # Count total assignments in this course
-        total_assignments = (
-            db.query(sa_func.count(Assignment.id))
-            .filter(Assignment.course_id == cid)
-            .scalar()
-        ) or 0
+        total_assignments = assignment_totals.get(cid, 0)
         letter = _percentage_to_letter(avg_pct)
         result.append({
             "course_id": cid,
@@ -106,15 +113,19 @@ def _get_student_ids_for_user(db: Session, current_user: User) -> list[tuple[int
         rows = db.execute(
             parent_students.select().where(parent_students.c.parent_id == current_user.id)
         ).fetchall()
-        result = []
-        for row in rows:
-            student = db.query(Student).filter(Student.id == row.student_id).first()
-            if student and student.user:
-                result.append((student.id, student.user.full_name or "Student"))
-        return result
+        student_ids = [row.student_id for row in rows]
+        if not student_ids:
+            return []
+        students = (
+            db.query(Student)
+            .options(selectinload(Student.user))
+            .filter(Student.id.in_(student_ids))
+            .all()
+        )
+        return [(s.id, s.user.full_name or "Student") for s in students if s.user]
 
     if current_user.has_role(UserRole.ADMIN):
-        students = db.query(Student).all()
+        students = db.query(Student).options(selectinload(Student.user)).all()
         return [(s.id, s.user.full_name if s.user else "Student") for s in students]
 
     return []
