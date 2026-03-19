@@ -778,6 +778,12 @@ export function HelpPage() {
             </div>
           </div>
         ))}
+
+        <div className="help-survey-cta">
+          <h3>Help us improve ClassBridge</h3>
+          <p>Take our quick 3-5 minute survey and share your thoughts on what features matter most to you.</p>
+          <a href="/survey" className="help-survey-btn">Take the Survey</a>
+        </div>
       </div>
     </DashboardLayout>
   );

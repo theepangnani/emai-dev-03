@@ -123,7 +123,7 @@ export function SurveyPage() {
             Interested? Join the ClassBridge Waitlist
           </Link>
           <p className="auth-footer">
-            <Link to="/">Back to Home</Link>
+            <a href="https://www.classbridge.ca/">Back to Home</a>
           </p>
         </div>
       </div>
