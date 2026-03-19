@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
@@ -167,7 +167,7 @@ class EducationService:
         if not teacher:
             return []
 
-        return self.db.query(Course).filter(Course.teacher_id == teacher.id).all()
+        return self.db.query(Course).options(selectinload(Course.created_by)).filter(Course.teacher_id == teacher.id).all()
 
     def get_enrolled_courses(self, user: User) -> list[Course]:
         """Get courses a student is enrolled in.
