@@ -1,0 +1,61 @@
+.admin-survey-page { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+
+.admin-survey-filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.admin-survey-filters select,
+.admin-survey-filters input[type="date"] { padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink); font-size: 14px; }
+.admin-survey-export-btn { margin-left: auto; padding: 8px 16px; background: var(--color-accent); color: #fff; border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 14px; }
+
+.admin-survey-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.admin-survey-stat-card { padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); text-align: center; }
+.admin-survey-stat-value { font-size: 28px; font-weight: 700; color: var(--color-ink); }
+.admin-survey-stat-label { font-size: 13px; color: var(--color-ink-muted); margin-top: 4px; }
+
+.admin-survey-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+.admin-survey-chart-card { padding: 20px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.admin-survey-chart-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--color-ink); }
+
+.admin-survey-question-card { padding: 20px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 16px; }
+.admin-survey-question-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.admin-survey-question-key { display: inline-block; padding: 2px 8px; background: var(--color-accent); color: #fff; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.admin-survey-question-text { font-size: 15px; font-weight: 600; color: var(--color-ink); }
+.admin-survey-question-meta { font-size: 13px; color: var(--color-ink-muted); margin-bottom: 12px; }
+
+.admin-survey-free-text-list { list-style: none; padding: 0; margin: 0; }
+.admin-survey-free-text-item { padding: 10px 12px; border-bottom: 1px solid var(--color-border); font-size: 14px; color: var(--color-ink); line-height: 1.5; }
+
+.admin-survey-responses-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+.admin-survey-responses-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--color-border); font-size: 13px; color: var(--color-ink-muted); font-weight: 600; }
+.admin-survey-responses-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); font-size: 14px; }
+
+.admin-survey-role-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.admin-survey-role-badge.parent { background: #ede9fe; color: #6d28d9; }
+.admin-survey-role-badge.student { background: #d1fae5; color: #065f46; }
+.admin-survey-role-badge.teacher { background: #dbeafe; color: #1e40af; }
+
+.admin-survey-view-btn { padding: 4px 12px; background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--color-ink); }
+.admin-survey-view-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+.admin-survey-detail { padding: 16px; background: var(--color-surface-alt); border-radius: var(--radius-sm); margin: 8px 0; }
+.admin-survey-detail-answer { margin-bottom: 12px; }
+.admin-survey-detail-key { font-weight: 600; font-size: 13px; color: var(--color-accent); }
+.admin-survey-detail-question { font-size: 14px; color: var(--color-ink-muted); margin: 4px 0; }
+.admin-survey-detail-value { font-size: 14px; color: var(--color-ink); }
+
+.admin-survey-pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+.admin-survey-pagination button { padding: 6px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink); cursor: pointer; }
+.admin-survey-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.admin-survey-empty { text-align: center; padding: 48px 16px; color: var(--color-ink-muted); }
+
+/* Dark theme */
+[data-theme="dark"] .admin-survey-role-badge.parent { background: rgba(139,92,246,0.2); color: #a78bfa; }
+[data-theme="dark"] .admin-survey-role-badge.student { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+[data-theme="dark"] .admin-survey-role-badge.teacher { background: rgba(59,130,246,0.2); color: #93c5fd; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-survey-charts { grid-template-columns: 1fr; }
+  .admin-survey-filters { flex-direction: column; }
+  .admin-survey-export-btn { margin-left: 0; width: 100%; }
+}

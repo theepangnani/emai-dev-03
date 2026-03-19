@@ -88,6 +88,8 @@ const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').the
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
+const SurveyPage = lazyRetry(() => import('./pages/SurveyPage').then((m) => ({ default: m.SurveyPage })));
+const AdminSurveyPage = lazyRetry(() => import('./pages/AdminSurveyPage').then((m) => ({ default: m.AdminSurveyPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +122,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/waitlist" element={<WaitlistPage />} />
+              <Route path="/survey" element={<SurveyPage />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route
@@ -367,6 +370,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminWaitlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/survey"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminSurveyPage />
                   </ProtectedRoute>
                 }
               />
