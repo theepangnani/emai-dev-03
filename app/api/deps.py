@@ -1,3 +1,5 @@
+import time
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -5,7 +7,29 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.database import get_db
+from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User, UserRole
+
+# Simple TTL cache for token blacklist lookups
+_blacklist_cache: dict[str, tuple[bool, float]] = {}
+_BLACKLIST_CACHE_TTL = 60  # seconds
+
+
+def _is_token_blacklisted(db: Session, jti: str) -> bool:
+    """Check if a JTI is blacklisted, with in-memory caching."""
+    now = time.time()
+    cached = _blacklist_cache.get(jti)
+    if cached and (now - cached[1]) < _BLACKLIST_CACHE_TTL:
+        return cached[0]
+
+    result = db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first() is not None
+    _blacklist_cache[jti] = (result, now)
+
+    # Prune old entries periodically (keep cache small)
+    if len(_blacklist_cache) > 10000:
+        _blacklist_cache.clear()
+
+    return result
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -30,11 +54,8 @@ def get_current_user(
 
     # Check token blacklist (revoked tokens)
     jti = payload.get("jti")
-    if jti:
-        from app.models.token_blacklist import TokenBlacklist
-        revoked = db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first()
-        if revoked:
-            raise credentials_exception
+    if jti and _is_token_blacklisted(db, jti):
+        raise credentials_exception
 
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
