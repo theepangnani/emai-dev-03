@@ -16,13 +16,13 @@ class Teacher(Base):
     __tablename__ = "teachers"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)  # Nullable for shadow teachers
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)  # Nullable for shadow teachers
     school_name = Column(String(255), nullable=True)
     department = Column(String(255), nullable=True)
     teacher_type = Column(Enum(TeacherType), nullable=True)
 
     # Shadow teacher support
-    is_shadow = Column(Boolean, default=False)
+    is_shadow = Column(Boolean, default=False, index=True)
     is_platform_user = Column(Boolean, default=True)  # False for shadow teachers created during sync
     google_email = Column(String(255), nullable=True, unique=True)
     full_name = Column(String(255), nullable=True)  # For shadow teachers without a User

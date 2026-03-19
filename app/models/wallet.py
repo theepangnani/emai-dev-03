@@ -46,7 +46,7 @@ class PackageTier(Base):
     name = Column(String(20), unique=True, nullable=False)
     monthly_credits = Column(Numeric(10, 2), nullable=False)
     price_cents = Column(Integer, nullable=False, default=0)
-    is_active = Column(Boolean, default=True, server_default="TRUE")
+    is_active = Column(Boolean, default=True, server_default="TRUE", index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -81,5 +81,5 @@ class CreditPackage(Base):
     name = Column(String(50), nullable=False)
     credits = Column(Numeric(10, 2), nullable=False)
     price_cents = Column(Integer, nullable=False)
-    is_active = Column(Boolean, default=True, server_default="TRUE")
+    is_active = Column(Boolean, default=True, server_default="TRUE", index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

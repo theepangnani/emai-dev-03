@@ -21,13 +21,13 @@ class User(Base):
     username = Column(String(100), unique=True, index=True, nullable=True)
     hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth users
     full_name = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=True)  # Nullable for users pending onboarding
+    role = Column(Enum(UserRole), nullable=True, index=True)  # Nullable for users pending onboarding
     roles = Column(String(50), nullable=True)  # comma-separated: "parent,teacher"
     needs_onboarding = Column(Boolean, default=False)
     onboarding_completed = Column(Boolean, default=False)
     email_verified = Column(Boolean, default=False)
     email_verified_at = Column(DateTime(timezone=True), nullable=True)
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, index=True)
 
     # Google OAuth
     google_id = Column(String(255), unique=True, nullable=True)
