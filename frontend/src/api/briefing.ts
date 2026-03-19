@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, AI_TIMEOUT } from './client';
 
 export interface BriefingTask {
   id: number;
@@ -57,7 +57,7 @@ export const briefingApi = {
     return response.data as DailyBriefingResponse;
   },
   helpMyKid: async (data: HelpMyKidRequest) => {
-    const response = await api.post('/api/briefing/help-my-kid', data);
+    const response = await api.post('/api/briefing/help-my-kid', data, AI_TIMEOUT);
     return response.data as HelpMyKidResponse;
   },
 };

@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, AI_TIMEOUT } from './client';
 
 export interface WeakSpot {
   topic: string;
@@ -51,18 +51,18 @@ export const parentAIApi = {
     api.post<WeakSpotsResponse>('/api/parent-ai/weak-spots', {
       student_id: studentId,
       course_id: courseId ?? null,
-    }),
+    }, AI_TIMEOUT),
 
   checkReadiness: (studentId: number, assignmentId: number) =>
     api.post<ReadinessCheckResponse>('/api/parent-ai/readiness-check', {
       student_id: studentId,
       assignment_id: assignmentId,
-    }),
+    }, AI_TIMEOUT),
 
   generatePracticeProblems: (studentId: number, courseId: number, topic: string) =>
     api.post<PracticeProblemsResponse>('/api/parent-ai/practice-problems', {
       student_id: studentId,
       course_id: courseId,
       topic,
-    }),
+    }, AI_TIMEOUT),
 };

@@ -6,10 +6,14 @@ const API_BASE_URL =
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 30_000, // 30 seconds default timeout
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+/** Extended timeout (2 minutes) for AI generation and file upload calls. */
+export const AI_TIMEOUT = { timeout: 120_000 };
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
