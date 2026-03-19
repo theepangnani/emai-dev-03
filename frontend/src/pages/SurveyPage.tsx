@@ -21,7 +21,7 @@ export function SurveyPage() {
     setError('');
     try {
       const res = await api.get(`/api/survey/questions/${selectedRole}`);
-      setQuestions(res.data);
+      setQuestions(res.data.questions || res.data);
       setPhase('questions');
     } catch {
       setError('Failed to load survey questions. Please try again.');
@@ -34,7 +34,7 @@ export function SurveyPage() {
 
   const isAnswered = (): boolean => {
     if (!currentQuestion) return false;
-    const answer = answers[currentQuestion.id];
+    const answer = answers[currentQuestion.key];
     if (currentQuestion.type === 'free_text') return true; // optional
     if (currentQuestion.type === 'multi_select') return Array.isArray(answer) && answer.length > 0;
     if (currentQuestion.type === 'likert_matrix') {
@@ -53,13 +53,13 @@ export function SurveyPage() {
       setError('');
       try {
         const formattedAnswers = questions.map((q) => {
-          let value = answers[q.id];
+          let value = answers[q.key];
           // For multi_select with "Other", append the other text
-          if (q.type === 'multi_select' && Array.isArray(value) && value.includes('Other') && otherTexts[q.id]) {
-            value = value.map((v: string) => v === 'Other' ? `Other: ${otherTexts[q.id]}` : v);
+          if (q.type === 'multi_select' && Array.isArray(value) && value.includes('Other') && otherTexts[q.key]) {
+            value = value.map((v: string) => v === 'Other' ? `Other: ${otherTexts[q.key]}` : v);
           }
-          return { question_id: q.id, value };
-        }).filter((a) => a.value != null && a.value !== '' && !(Array.isArray(a.value) && a.value.length === 0));
+          return { question_key: q.key, question_type: q.type, answer_value: value };
+        }).filter((a) => a.answer_value != null && a.answer_value !== '' && !(Array.isArray(a.answer_value) && a.answer_value.length === 0));
 
         await api.post('/api/survey', { role, session_id: sessionId, answers: formattedAnswers });
         setPhase('thanks');
@@ -223,11 +223,11 @@ export function SurveyPage() {
                 {(currentQuestion.options || []).map((opt: string) => (
                   <button
                     key={opt}
-                    className={`survey-option${answers[currentQuestion.id] === opt ? ' selected' : ''}`}
-                    onClick={() => handleSingleSelect(currentQuestion.id, opt)}
+                    className={`survey-option${answers[currentQuestion.key] === opt ? ' selected' : ''}`}
+                    onClick={() => handleSingleSelect(currentQuestion.key, opt)}
                   >
                     <span className="survey-option-radio">
-                      {answers[currentQuestion.id] === opt ? (
+                      {answers[currentQuestion.key] === opt ? (
                         <svg width="18" height="18" viewBox="0 0 18 18">
                           <circle cx="9" cy="9" r="8" fill="none" stroke="var(--color-accent)" strokeWidth="2" />
                           <circle cx="9" cy="9" r="4.5" fill="var(--color-accent)" />
@@ -247,12 +247,12 @@ export function SurveyPage() {
             {currentQuestion.type === 'multi_select' && (
               <div className="survey-options">
                 {(currentQuestion.options || []).map((opt: string) => {
-                  const selected = ((answers[currentQuestion.id] as string[]) || []).includes(opt);
+                  const selected = ((answers[currentQuestion.key] as string[]) || []).includes(opt);
                   return (
                     <div key={opt}>
                       <button
                         className={`survey-option${selected ? ' selected' : ''}`}
-                        onClick={() => handleMultiSelect(currentQuestion.id, opt)}
+                        onClick={() => handleMultiSelect(currentQuestion.key, opt)}
                       >
                         <span className="survey-option-check">
                           {selected ? (
@@ -273,8 +273,8 @@ export function SurveyPage() {
                           type="text"
                           className="survey-other-input"
                           placeholder="Please specify..."
-                          value={otherTexts[currentQuestion.id] || ''}
-                          onChange={(e) => setOtherTexts({ ...otherTexts, [currentQuestion.id]: e.target.value })}
+                          value={otherTexts[currentQuestion.key] || ''}
+                          onChange={(e) => setOtherTexts({ ...otherTexts, [currentQuestion.key]: e.target.value })}
                         />
                       )}
                     </div>
@@ -289,16 +289,16 @@ export function SurveyPage() {
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
                       key={n}
-                      className={`survey-likert-btn${answers[currentQuestion.id] === n ? ' selected' : ''}`}
-                      onClick={() => handleLikert(currentQuestion.id, n)}
+                      className={`survey-likert-btn${answers[currentQuestion.key] === n ? ' selected' : ''}`}
+                      onClick={() => handleLikert(currentQuestion.key, n)}
                     >
                       {n}
                     </button>
                   ))}
                 </div>
                 <div className="survey-likert-labels">
-                  <span>{currentQuestion.min_label || 'Strongly Disagree'}</span>
-                  <span>{currentQuestion.max_label || 'Strongly Agree'}</span>
+                  <span>{currentQuestion.likert_min_label || 'Strongly Disagree'}</span>
+                  <span>{currentQuestion.likert_max_label || 'Strongly Agree'}</span>
                 </div>
               </div>
             )}
@@ -320,8 +320,8 @@ export function SurveyPage() {
                       {[1, 2, 3, 4, 5].map((n) => (
                         <button
                           key={n}
-                          className={`survey-likert-btn survey-matrix-btn${answers[currentQuestion.id]?.[item] === n ? ' selected' : ''}`}
-                          onClick={() => handleLikertMatrix(currentQuestion.id, item, n)}
+                          className={`survey-likert-btn survey-matrix-btn${answers[currentQuestion.key]?.[item] === n ? ' selected' : ''}`}
+                          onClick={() => handleLikertMatrix(currentQuestion.key, item, n)}
                         >
                           {n}
                         </button>
@@ -330,8 +330,8 @@ export function SurveyPage() {
                   </div>
                 ))}
                 <div className="survey-likert-labels">
-                  <span>{currentQuestion.min_label || 'Not Important'}</span>
-                  <span>{currentQuestion.max_label || 'Very Important'}</span>
+                  <span>{currentQuestion.likert_min_label || 'Not Important'}</span>
+                  <span>{currentQuestion.likert_max_label || 'Very Important'}</span>
                 </div>
               </div>
             )}
@@ -341,12 +341,12 @@ export function SurveyPage() {
                 <textarea
                   className="survey-textarea"
                   placeholder="Type your answer here (optional)..."
-                  value={answers[currentQuestion.id] || ''}
-                  onChange={(e) => handleFreeText(currentQuestion.id, e.target.value)}
+                  value={answers[currentQuestion.key] || ''}
+                  onChange={(e) => handleFreeText(currentQuestion.key, e.target.value)}
                   maxLength={1000}
                 />
                 <div className="survey-char-count">
-                  {(answers[currentQuestion.id] || '').length} / 1000
+                  {(answers[currentQuestion.key] || '').length} / 1000
                 </div>
               </div>
             )}

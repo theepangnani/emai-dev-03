@@ -151,6 +151,13 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="9" y1="18" x2="13" y2="18"/>
     </svg>
   ),
+  'Survey Results': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 20V10"/>
+      <path d="M12 20V4"/>
+      <path d="M6 20v-6"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -228,6 +235,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
     if (user?.role === 'admin') {
       items.push({ label: 'Waitlist', path: '/admin/waitlist' });
+      items.push({ label: 'Survey Results', path: '/admin/survey' });
       items.push({ label: 'AI Usage', path: '/admin/ai-usage' });
     }
 
