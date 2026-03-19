@@ -38,7 +38,7 @@ class StudentAssignment(Base):
     assignment_id = Column(Integer, ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False)
 
     grade = Column(Float, nullable=True)
-    status = Column(String(50), default="pending")  # pending, submitted, graded
+    status = Column(String(50), default="pending", index=True)  # pending, submitted, graded
     submitted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Submission fields (#839)

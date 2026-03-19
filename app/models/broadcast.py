@@ -9,7 +9,7 @@ class Broadcast(Base):
     __tablename__ = "broadcasts"
 
     id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     subject = Column(String(255), nullable=False)
     body = Column(Text, nullable=False)
     recipient_count = Column(Integer, default=0)

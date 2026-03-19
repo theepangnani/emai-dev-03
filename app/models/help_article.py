@@ -12,7 +12,7 @@ class HelpArticle(Base):
     title = Column(String(300), nullable=False)
     content = Column(Text, nullable=False)
     category = Column(String(100), nullable=False, index=True)
-    role = Column(String(100), nullable=True)  # comma-separated roles or NULL for all
+    role = Column(String(100), nullable=True, index=True)  # comma-separated roles or NULL for all
     display_order = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
