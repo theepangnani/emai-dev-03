@@ -3434,3 +3434,208 @@ Generate **child study guides** (study guides, quizzes, flashcards) from selecte
 **GitHub:** #1594
 
 **Status:** PLANNED
+
+### 6.95 User Cloud Storage Destination (Phase 2) - PLANNED
+
+Allow users to choose where their uploaded class materials are stored — either in ClassBridge's GCS (default) or in their personal cloud drive (Google Drive, OneDrive). When cloud drive storage is selected, uploaded files are saved to an auto-created `ClassBridge/{Course Name}/` folder structure in the user's drive. ClassBridge retains only a reference and downloads on-demand when needed for AI regeneration.
+
+**Motivation:** Data ownership (users keep their files), GCS cost reduction (offload storage to user accounts), and file accessibility outside ClassBridge.
+
+**PRD:** [docs/cloud-storage-integration-prd.md](../docs/cloud-storage-integration-prd.md)
+
+**MVP Scope:** Google Drive + OneDrive. Dropbox deferred to Phase 2 enhancement.
+
+#### Core Behaviors
+
+1. **Storage destination preference**: Per-user setting in Settings/Integrations — "ClassBridge" (GCS, default) or a connected cloud provider. Upload wizard shows destination badge with per-upload override option.
+2. **OAuth connections**: Google Drive (`drive.file` scope — only ClassBridge-created files), OneDrive (`Files.ReadWrite.AppFolder`). Encrypted token storage (AES-256-GCM). Auto-refresh.
+3. **Cloud upload flow**: After text extraction, original file uploaded to user's cloud drive under `ClassBridge/{Course Name}/{filename}`. Folder structure auto-created. If cloud upload fails (quota, auth, network) → fallback to GCS + user notification.
+4. **On-demand download**: When AI regeneration or original file download is triggered, backend fetches file from user's cloud drive. 30-second timeout. Clear error messages for deleted/moved/permission-changed files.
+5. **Existing files stay**: Switching storage preference only affects new uploads. No automatic migration of existing GCS files (optional migration deferred to Phase 2 enhancement).
+6. **All roles**: Available to Parent, Student, Teacher — not gated by subscription tier.
+
+#### Data Model
+
+- `cloud_storage_connections` — user OAuth tokens per provider (encrypted)
+- `cloud_storage_folders` — cached folder IDs for ClassBridge folder structure in user's drive
+- `source_files` new columns: `storage_destination`, `cloud_file_id`, `cloud_provider`, `cloud_folder_id`
+- `users` new column: `file_storage_preference` (default: `'gcs'`)
+
+#### API Endpoints
+
+- `POST /api/cloud-storage/connect/{provider}` — initiate OAuth, store tokens
+- `DELETE /api/cloud-storage/disconnect/{provider}` — revoke and delete
+- `GET /api/cloud-storage/connections` — list user's connections
+- `PATCH /api/users/me/storage-preference` — update preference
+- `GET /api/source-files/{id}/download` — extended to support cloud-stored files
+
+#### Frontend
+
+- New page: `/settings/integrations` — cloud connections + storage preference
+- Upload wizard: storage destination badge + per-upload override dropdown
+- Course Material Detail: "Stored in: Google Drive / ClassBridge" indicator
+- Mobile: expo-auth-session OAuth, adapted Settings screen
+
+#### Out of Scope (MVP)
+
+- Dropbox integration
+- Migration of existing GCS files to cloud drive
+- Two-way sync (cloud drive edits reflected in ClassBridge)
+- Shared/team drives
+- Cloud drive quota monitoring
+
+#### Sub-tasks
+
+- [ ] OAuth connection management — backend (#1865)
+- [ ] Settings/Integrations page — frontend + backend (#1866)
+- [ ] Upload to user's cloud drive — backend + frontend (#1867)
+- [ ] On-demand file download from cloud drive (#1868)
+- [ ] Cloud storage folder cache and auto-creation (#1869)
+- [ ] Mobile cloud storage OAuth + Settings (#1870)
+- [ ] Backend + frontend tests (#1871)
+
+**GitHub Issues:** #1865-#1871
+
+### 6.96 Cloud File Import for Study Materials (Phase 2) - PLANNED
+
+Allow users to import files directly from their connected Google Drive or OneDrive into the Upload Material Wizard, eliminating the download-then-reupload friction. Files are browsed and selected inline via a tabbed file picker in Step 1 of the wizard, then processed through the same AI generation pipeline.
+
+**Motivation:** Users organize schoolwork in cloud storage — downloading files just to re-upload them to ClassBridge is unnecessary friction, especially on mobile.
+
+**Depends on:** §6.95 (OAuth connection infrastructure shared)
+
+**MVP Scope:** Google Drive + OneDrive. Dropbox deferred.
+
+#### Core Behaviors
+
+1. **Tabbed file picker in Upload Wizard Step 1**: Tabs — "Upload" | "Google Drive" | "OneDrive". Cloud tabs show file browser for connected providers; unconnected providers show inline "Connect" CTA for discoverability.
+2. **Full folder browsing + multi-select**: Navigate folder tree with breadcrumbs (compact: truncate middle segments at depth > 3). Files show name, size, modified date, type icon. Multi-select with checkboxes (up to 10 files). Unsupported/oversized files grayed out with tooltip.
+3. **Search**: Filter files by name within current folder (client-side); deep search via provider API.
+4. **Server-side download**: Backend downloads selected files from provider API (tokens never exposed to frontend). Files processed through existing `process_file()` pipeline — same text extraction, AI generation, material hierarchy.
+5. **SourceFile tracking**: Records store `source_type = "google_drive"` or `"onedrive"` with `cloud_file_id` for analytics and re-download.
+6. **Error handling**: Partial success — if some files fail to download, skip them, process remaining, show which succeeded/failed. 30-second timeout per file.
+7. **No mixed sources**: User cannot mix local and cloud files in same upload session. Switching source tabs clears selection with confirmation.
+8. **Mobile**: Source selector dropdown (< 480px) instead of tabs. Stack-based folder navigation (slide in/out) instead of breadcrumbs.
+
+#### OAuth Scope Expansion
+
+§6.95 connections use write-only scopes (`drive.file`, `Files.ReadWrite.AppFolder`). Cloud import needs additional read scopes:
+- Google Drive: `drive.readonly` (read all user files for browsing)
+- OneDrive: `Files.Read` (read all user files for browsing)
+- Incremental consent: if user already connected for §6.95, prompt for additional scope on first browse attempt
+
+#### API Endpoints
+
+- `GET /api/cloud-storage/{provider}/files?folder_id=&search=` — list files/folders with metadata and breadcrumb
+- `POST /api/cloud-storage/{provider}/import` — download selected files and process through upload pipeline
+
+#### Frontend
+
+- `UploadWizardStep1.tsx` — add source tabs
+- New `CloudFileBrowser.tsx` — folder browser with breadcrumbs, file list, multi-select, search
+- New `CloudConnectPrompt.tsx` — inline OAuth CTA for unconnected providers
+- Mobile: dropdown source selector + stack navigation
+
+#### Out of Scope (MVP)
+
+- Dropbox (Phase 2 enhancement)
+- Shared/team drives (personal drives only)
+- File preview before import
+- "Import all from folder" bulk action
+- Recent/favorite files quick-access
+
+#### Sub-tasks
+
+- [ ] Cloud file browser UI component (#1872)
+- [ ] Cloud file listing backend API (#1873)
+- [ ] Server-side cloud file download & processing (#1874)
+- [ ] Upload wizard cloud import UX — connect flow, loading, errors (#1875)
+- [ ] OAuth scope expansion for read access (#1876)
+- [ ] Backend + frontend tests (#1877)
+
+**GitHub Issues:** #1872-#1877
+
+### 6.101 Railway Deployment for clazzbridge.com (Infrastructure) - PLANNED
+
+Set up Railway as a fully deployed mirror environment serving **clazzbridge.com**, auto-synced from the production repository (`theepangnani/emai-dev-03` on GCP Cloud Run → classbridge.ca).
+
+**Motivation:** Provide a separate, independently deployed instance of ClassBridge at clazzbridge.com for demo, staging, and non-school-board use cases. Production remains on GCP Cloud Run (classbridge.ca) for FIPPA/MFIPPA compliance required by Ontario school boards. Railway provides a cost-effective ($5/mo) alternative deployment with its own database and infrastructure.
+
+**Architecture:**
+```
+theepangnani/emai-dev-03 (production repo)
+  ├── GCP Cloud Run → classbridge.ca (production)
+  └── GitHub Actions sync ──▶ theepangnani/emai-railway (mirror repo)
+                                  └── Railway auto-deploy → clazzbridge.com
+```
+
+**Previous context:** Railway was evaluated in #759 — account created (Hobby Plan $5/mo), PostgreSQL provisioned, app deployed and login verified at `emai-class-bridge-production.up.railway.app`. Migration was abandoned (#769-#774, #971 closed as stale) due to Canadian data residency concerns. This requirement re-scopes Railway as a parallel deployment at clazzbridge.com, not a replacement for GCP production.
+
+#### Phase 1: Repository & Sync Infrastructure
+
+- **Mirror repo**: Create `theepangnani/emai-railway` (private, not a GitHub fork). Contains production code plus Railway-specific config (`railway.toml`). Default branch: `main`.
+- **Auto-sync workflow**: GitHub Actions in `emai-dev-03` triggers on push to `master`, force-pushes to `emai-railway:main`. Uses PAT or deploy key stored as `RAILWAY_REPO_TOKEN` secret. Manual `workflow_dispatch` trigger for re-sync.
+
+#### Phase 2: Railway Service Setup
+
+- **Railway project**: Reuse or recreate the existing Railway project. Connect `emai-railway` repo, deploy branch `main`, enable Check Suites.
+- **PostgreSQL**: Railway PostgreSQL plugin — `DATABASE_URL` auto-injected via internal networking.
+- **Deployment config** (`railway.toml`):
+  ```toml
+  [build]
+  builder = "DOCKERFILE"
+  dockerfilePath = "Dockerfile"
+
+  [deploy]
+  healthcheckPath = "/api/health"
+  healthcheckTimeout = 300
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 5
+  ```
+- **Environment variables**: `ENVIRONMENT=production`, `FRONTEND_URL=https://www.clazzbridge.com`, `CANONICAL_DOMAIN=www.clazzbridge.com`, `GOOGLE_REDIRECT_URI=https://www.clazzbridge.com/api/google/callback`, `USE_GCS=false`. New `SECRET_KEY` (never reuse production). Shared API keys (OpenAI, Anthropic, SendGrid).
+
+#### Phase 3: Domain & OAuth
+
+- **DNS**: Point `clazzbridge.com` and `www.clazzbridge.com` to Railway (CNAME/A records). Railway auto-provisions SSL via Let's Encrypt.
+- **Google OAuth**: Add `https://clazzbridge.com`, `https://www.clazzbridge.com`, and Railway default URL to Google Cloud Console authorized origins and redirect URIs.
+
+#### Phase 4: Storage & Data
+
+- **File storage**: Set `USE_GCS=false` — app falls back to local storage. Attach Railway persistent volume for upload persistence across redeployments. S3-compatible storage (Cloudflare R2/Backblaze B2) deferred to later enhancement.
+- **Database seed**: App `create_all()` auto-creates tables on first deploy. Startup migrations in `main.py` handle ALTER TABLE operations. Create admin user for testing. No production data copied.
+
+#### Phase 5: Verification & Documentation
+
+- Full smoke test of all core features (auth, OAuth, Google Classroom, AI tools, messaging, file uploads, parent/admin features).
+- Document architecture, sync workflow, operational runbook, and differences from GCP production.
+
+#### Key Differences from Production (GCP)
+
+| Aspect | Production (GCP) | Railway |
+|--------|-------------------|---------|
+| URL | classbridge.ca | clazzbridge.com |
+| Hosting | GCP Cloud Run | Railway |
+| Database | Cloud SQL PostgreSQL | Railway PostgreSQL |
+| File storage | GCS (`classbridge-files`) | Local + Railway volume |
+| CI/CD | `deploy.yml` on master push | Auto-deploy on `emai-railway:main` push |
+| Data residency | GCP Toronto (planned) | US (Railway) |
+| Compliance | FIPPA/MFIPPA ready | Not for school board use |
+| Cost | ~$20-30/mo | ~$5/mo |
+
+#### Sub-tasks
+
+- [ ] Create mirror repo `emai-railway` (#1879)
+- [ ] GitHub Actions auto-sync workflow (#1880)
+- [ ] Configure Railway project, service, PostgreSQL (#1881)
+- [ ] Configure environment variables and secrets (#1882)
+- [ ] Add `railway.toml` deployment config (#1883)
+- [ ] Configure clazzbridge.com DNS → Railway (#1884)
+- [ ] Add Railway URLs to Google OAuth console (#1885)
+- [ ] Configure file storage for Railway (#1886)
+- [ ] Seed Railway PostgreSQL (#1887)
+- [ ] Smoke test all core features (#1888)
+- [ ] Document Railway setup and architecture (#1889)
+
+**GitHub Issues:** #1878 (epic), #1879-#1889
+
+**Status:** PLANNED

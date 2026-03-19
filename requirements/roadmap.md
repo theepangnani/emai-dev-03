@@ -266,6 +266,8 @@
 - [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
 - [ ] **Parent AI Insights** — Student interest profiling, academic health score, semester reports, engagement analysis (#581)
+- [ ] **User Cloud Storage Destination** — Users choose to store uploaded materials in their own Google Drive or OneDrive instead of GCS; auto-created `ClassBridge/{Course}/` folder structure; on-demand download for AI regeneration; fallback to GCS on failure (§6.95, #1865-#1871)
+- [ ] **Cloud File Import** — Import files directly from Google Drive or OneDrive into Upload Wizard via tabbed file browser; folder browsing, multi-select, server-side download into existing processing pipeline (§6.96, #1872-#1877)
 
 #### UI/UX Audit — Phase 1 Improvements (#668)
 
@@ -495,6 +497,30 @@ New features that deepen ClassBridge's AI capabilities, build a data foundation 
 - [ ] Reply ingestion
 - [ ] AI summaries
 - [ ] Searchable archive
+
+### Infrastructure: Railway Deployment for clazzbridge.com — #1878
+
+Deploy ClassBridge to Railway as an auto-synced mirror of the production repo, serving **clazzbridge.com**. Production remains on GCP Cloud Run (classbridge.ca) for school board compliance. Railway provides a cost-effective parallel deployment for demo and non-school-board use.
+
+**Architecture:** `emai-dev-03` (master) → GitHub Actions sync → `emai-railway` (main) → Railway auto-deploy → clazzbridge.com
+
+| Phase | Task | Issue | Status |
+|-------|------|-------|--------|
+| 1 | Create mirror repo `emai-railway` | #1879 | Planned |
+| 1 | GitHub Actions auto-sync workflow | #1880 | Planned |
+| 2 | Configure Railway project, service, PostgreSQL | #1881 | Planned |
+| 2 | Configure environment variables and secrets | #1882 | Planned |
+| 2 | Add `railway.toml` deployment config | #1883 | Planned |
+| 3 | Configure clazzbridge.com DNS → Railway | #1884 | Planned |
+| 3 | Add Railway URLs to Google OAuth console | #1885 | Planned |
+| 4 | Configure file storage for Railway | #1886 | Planned |
+| 4 | Seed Railway PostgreSQL | #1887 | Planned |
+| 5 | Smoke test all core features | #1888 | Planned |
+| 5 | Document Railway setup and architecture | #1889 | Planned |
+
+**Cost:** Railway Hobby Plan ~$5/month (includes PostgreSQL + custom domain)
+
+**Compliance note:** Railway has no Canadian data centers — not suitable for FIPPA/MFIPPA school board deployments. Production stays on GCP.
 
 ---
 

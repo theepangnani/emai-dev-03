@@ -2,8 +2,8 @@
 
 **Product Name:** ClassBridge (EMAI)
 **Author:** Sarah (Product Owner) / Theepan Gnanasabapathy
-**Version:** 2.1
-**Date:** 2026-02-27
+**Version:** 2.2
+**Date:** 2026-03-18
 **Quality Score:** 95/100
 
 ---
@@ -212,6 +212,8 @@ frontend/src/
 | **Version Control** | Regeneration creates linked versions preserving history |
 | **Storage Limits** | 100 guides/student, 200/parent (configurable) with soft-delete archival |
 | **Print & PDF Export** | Print and download PDF on all course material detail tabs |
+| **Cloud Storage Destination** | Users choose to store uploads in their own Google Drive or OneDrive instead of GCS; auto-created `ClassBridge/{Course}/` folder structure; on-demand download for AI regeneration; fallback to GCS on failure (§6.95) |
+| **Cloud File Import** | Import files directly from Google Drive or OneDrive via tabbed file browser in Upload Wizard; folder browsing, multi-select, server-side download into existing processing pipeline (§6.96) |
 
 ### 7.3 Task Manager & Calendar (Phase 1 - IMPLEMENTED)
 
@@ -984,6 +986,8 @@ Features that answer pilot feedback: *"Why should I use ClassBridge?"* — trans
 - [ ] Student Progress Analysis (#575)
 - [ ] Sample Exams/Tests Upload (#577)
 - [ ] Parent AI Insights (#581)
+- [ ] **User Cloud Storage Destination** — Users choose to store uploaded materials in their own Google Drive or OneDrive instead of GCS; auto-created `ClassBridge/{Course}/` folder structure; on-demand download for AI regeneration; fallback to GCS on failure (§6.95, #1865-#1871)
+- [ ] **Cloud File Import** — Import files directly from Google Drive or OneDrive into Upload Wizard via tabbed file browser; folder browsing, multi-select, server-side download into existing processing pipeline (§6.96, #1872-#1877)
 - [x] Mobile App March 2026 Pilot (8 screens COMPLETE)
 
 ### VASP/DTAP Compliance - Ontario School Board Approval (29 issues open)
@@ -1129,6 +1133,25 @@ FAQAnswer
 
 InspirationMessage
   |- message, author, target_role, is_active, display_order
+
+CloudStorageConnection (§6.95, §6.96)
+  |- user_id, provider (google_drive/onedrive/dropbox)
+  |- encrypted_refresh_token, account_email
+  |- connected_at, last_used_at, is_active
+  |- UNIQUE(user_id, provider)
+
+CloudStorageFolder (§6.95 — folder cache)
+  |- user_id, provider, course_id
+  |- folder_name, cloud_folder_id, parent_folder_id
+  |- UNIQUE(user_id, provider, course_id)
+
+SourceFile (new columns for §6.95/§6.96)
+  |- storage_destination (gcs/google_drive/onedrive)
+  |- cloud_file_id, cloud_provider, cloud_folder_id
+  |- source_type (local_upload/google_drive/onedrive)
+
+User (new column for §6.95)
+  |- file_storage_preference (gcs/google_drive/onedrive)
 ```
 
 ### 14.2 API Endpoint Summary
@@ -1205,6 +1228,14 @@ InspirationMessage
 - `POST /api/invites/teacher` - Invite teacher
 - `POST /api/invites/resend/{id}` - Resend invite
 
+**Cloud Storage (§6.95, §6.96):**
+- `POST /api/cloud-storage/connect/{provider}` - Initiate OAuth, store tokens
+- `DELETE /api/cloud-storage/disconnect/{provider}` - Revoke and delete connection
+- `GET /api/cloud-storage/connections` - List user's cloud connections
+- `PATCH /api/users/me/storage-preference` - Update file storage destination preference
+- `GET /api/cloud-storage/{provider}/files` - List files/folders in user's cloud drive (§6.96)
+- `POST /api/cloud-storage/{provider}/import` - Download and process cloud files (§6.96)
+
 ### 14.3 Glossary
 
 | Term | Definition |
@@ -1219,6 +1250,9 @@ InspirationMessage
 | **BYOK** | Bring Your Own Key (user provides their OpenAI API key) |
 | **DDD** | Domain-Driven Design (target architecture) |
 | **OSSD** | Ontario Secondary School Diploma |
+| **Storage Destination** | Where uploaded files are persisted — GCS (ClassBridge-managed) or user's personal cloud drive (§6.95) |
+| **Cloud File Import** | Browsing and selecting files from a user's cloud drive for import into ClassBridge (§6.96) |
+| **Incremental Auth** | Adding new OAuth scopes to an existing authentication without full re-consent |
 
 ### 14.4 References
 
@@ -1226,6 +1260,7 @@ InspirationMessage
 - [requirements/](../requirements/) - Detailed feature specifications
 - [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md) - UI/UX Audit Report
 - [docs/ClassBridge_UI_UX_Assessment_Report.docx](ClassBridge_UI_UX_Assessment_Report.docx) - HCD Assessment
+- [docs/cloud-storage-integration-prd.md](cloud-storage-integration-prd.md) - Cloud Storage PRD (§6.95, §6.96)
 - Swagger API Docs: `http://localhost:8000/docs`
 - Production URL: `https://www.classbridge.ca`
 
