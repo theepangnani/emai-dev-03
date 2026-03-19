@@ -267,7 +267,7 @@ export default function UploadMaterialWizard({
           {step === 2 && <button className="uw-back-btn" onClick={() => setStep(1)}>&larr;</button>}
           <div className="uw-header-titles">
             <h2>Upload Class Material</h2>
-            {childName && !children?.length && (
+            {childName && (!children || children.length <= 1) && (
               <span className="uw-child-label">for {childName}</span>
             )}
             {children && children.length > 1 && onChildChange && (
