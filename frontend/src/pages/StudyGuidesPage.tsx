@@ -147,7 +147,7 @@ export function StudyGuidesPage() {
 
   // Linked course tracking for unlinked material tagging (#623)
   const [linkedCourseIds, setLinkedCourseIds] = useState<Set<number>>(new Set());
-  const [, setCourseStudentMap] = useState<Record<number, number[]>>({});
+  const [courseStudentMap, setCourseStudentMap] = useState<Record<number, number[]>>({});
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
   const [assignFilter, setAssignFilter] = useState<'all' | 'unlinked' | 'assigned'>('all');
 
@@ -211,6 +211,18 @@ export function StudyGuidesPage() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [filterChild]);
+
+  // Courses filtered by selected child for the upload wizard (#1923)
+  const wizardCourses = useMemo(() => {
+    if (!filterChild || Object.keys(courseStudentMap).length === 0) return courses;
+    // filterChild is user_id; courseStudentMap maps course_id -> student_id[]
+    const child = children.find(c => c.user_id === filterChild || c.student_id === filterChild);
+    if (!child) return courses;
+    return courses.filter(c => {
+      const students = courseStudentMap[c.id];
+      return students && students.includes(child.student_id);
+    });
+  }, [filterChild, courseStudentMap, courses, children]);
 
   // Reload content when filters change
   useEffect(() => {
@@ -1705,7 +1717,7 @@ export function StudyGuidesPage() {
         onClose={resetModal}
         onGenerate={handleGenerateFromModal}
         isGenerating={isGenerating}
-        courses={courses}
+        courses={wizardCourses}
         materials={modalMaterials}
         selectedCourseId={modalCourseId}
         onCourseChange={setModalCourseId}
@@ -1741,7 +1753,10 @@ export function StudyGuidesPage() {
         showParentNote={user?.role === 'student'}
         childName={isParent && children.length === 1 ? children[0].full_name : undefined}
         children={isParent && children.length > 0 ? children.map(c => ({ id: c.student_id, name: c.full_name })) : undefined}
-        onChildChange={(studentId) => setFilterChild(studentId)}
+        onChildChange={(studentId) => {
+          const child = children.find(c => c.student_id === studentId);
+          setFilterChild(child ? child.user_id : studentId);
+        }}
       />
 
       <CreateTaskModal
