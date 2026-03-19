@@ -309,8 +309,11 @@
 
   /* Expanded sidebar on hover */
   .persistent-sidebar:hover {
+    position: fixed;
+    left: 0;
+    top: 50px;
+    height: calc(100vh - 50px);
     width: 200px;
-    margin-right: -120px;
     padding: 12px 8px;
     overflow: hidden;
     z-index: 50;
