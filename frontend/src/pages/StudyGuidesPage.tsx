@@ -197,7 +197,7 @@ export function StudyGuidesPage() {
         if (prev) setLoadError(true);
         return false;
       });
-    }, 15000);
+    }, 30000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -304,24 +304,33 @@ export function StudyGuidesPage() {
       setContentGuideMap(guideMap);
 
       if (isParent) {
-        const [childrenData, linkedData, statusData] = await Promise.all([
-          parentApi.getChildren(),
-          courseContentsApi.getLinkedCourseIds(),
-          studyApi.getSharedStatus(),
-        ]);
-        setChildren(childrenData);
-        setLinkedCourseIds(new Set(linkedData.linked_course_ids));
-        setCourseStudentMap(linkedData.course_student_map);
-        setLinkedChildren(linkedData.children);
-        setSharedStatus(new Map(statusData.map(s => [s.id, s])));
+        try {
+          const [childrenData, linkedData, statusData] = await Promise.all([
+            parentApi.getChildren(),
+            courseContentsApi.getLinkedCourseIds(),
+            studyApi.getSharedStatus(),
+          ]);
+          setChildren(childrenData);
+          setLinkedCourseIds(new Set(linkedData.linked_course_ids));
+          setCourseStudentMap(linkedData.course_student_map);
+          setLinkedChildren(linkedData.children);
+          setSharedStatus(new Map(statusData.map(s => [s.id, s])));
+        } catch (err) {
+          console.error('[CourseMaterials] Failed to load parent-specific data:', err);
+        }
       }
 
       // Student: load guides shared by parent (#1414)
       if (isStudent) {
-        const shared = await studyApi.getSharedWithMe();
-        setSharedWithMe(shared);
+        try {
+          const shared = await studyApi.getSharedWithMe();
+          setSharedWithMe(shared);
+        } catch (err) {
+          console.error('[CourseMaterials] Failed to load shared guides:', err);
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error('[CourseMaterials] Failed to load course materials:', err);
       setLoadError(true);
     } finally {
       setLoading(false);
