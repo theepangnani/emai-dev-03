@@ -385,3 +385,75 @@
   key_actions:
     - "Confirm account deletion"
     - "Cancel and keep your account"
+
+# ============================================================
+# WALLET
+# ============================================================
+
+- id: page-wallet
+  route: "/wallet"
+  page_name: "Wallet"
+  description: "View and manage your AI credit balance. See current credits, usage history, and request additional credits when running low. Credits are consumed by AI study tool generation."
+  roles: [parent, student, teacher]
+  key_actions:
+    - "View current credit balance"
+    - "Review credit usage history"
+    - "Request additional credits"
+
+# ============================================================
+# SURVEY
+# ============================================================
+
+- id: page-survey
+  route: "/survey"
+  page_name: "Survey"
+  description: "Take platform surveys to provide feedback on ClassBridge features and experience. View available surveys and submit your responses."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "View available surveys"
+    - "Answer survey questions"
+    - "Submit survey responses"
+
+# ============================================================
+# ACTIVITY HISTORY
+# ============================================================
+
+- id: page-activity
+  route: "/activity"
+  page_name: "Activity History"
+  description: "Chronological log of your platform actions including study sessions, quiz attempts, material uploads, and task completions. Filter by date range, activity type, or course."
+  roles: [parent, student, teacher]
+  key_actions:
+    - "Browse activity log sorted by date"
+    - "Filter by activity type, date range, or course"
+    - "View detailed activity entries"
+
+# ============================================================
+# PARENT AI TOOLS
+# ============================================================
+
+- id: page-parent-ai-tools
+  route: "/ai-tools"
+  page_name: "Parent AI Tools"
+  description: "Access AI-powered tools for parents including study guide generation, quiz creation, flashcards, Help My Kid briefing, conversation starters, and grade insights for linked children."
+  roles: [parent]
+  key_actions:
+    - "Generate study tools for children's materials"
+    - "View Help My Kid briefing"
+    - "Get conversation starters"
+    - "Access AI grade insights"
+
+# ============================================================
+# PARENT BRIEFING NOTES
+# ============================================================
+
+- id: page-parent-briefing-notes
+  route: "/parent-briefing-notes"
+  page_name: "Parent Briefing Notes"
+  description: "AI-generated academic summaries for each linked child. View upcoming deadlines, recent grades, areas needing attention, and suggested actions to support your child."
+  roles: [parent]
+  key_actions:
+    - "View briefing notes for each child"
+    - "Review upcoming deadlines and recent grades"
+    - "See AI-suggested actions"
+    - "Navigate to specific courses or tasks"

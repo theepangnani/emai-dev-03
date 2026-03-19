@@ -107,5 +107,41 @@
     "description": "Understanding upcoming school board and teacher-level integration plans.",
     "category": "getting-started",
     "answer": "Currently, ClassBridge integrates with Google Classroom through the parent or student's own Google account. Direct integration with school boards and teacher-managed systems requires institutional permissions that are not yet in place. We are actively working on partnerships and approval processes to enable school-level and board-level integration in future phases. Stay tuned — this is a top priority on our roadmap."
+  },
+  {
+    "title": "What is the ClassBridge Wallet?",
+    "description": "Understanding AI credits and the Wallet feature.",
+    "category": "account",
+    "answer": "The ClassBridge Wallet is your credit balance for AI-powered features. Each AI generation (study guide, quiz, flashcards, mind map) costs one credit. View your balance on the dashboard badge or the Wallet page. When credits run low, you can request more from an admin."
+  },
+  {
+    "title": "How do I take a survey on ClassBridge?",
+    "description": "Participating in platform surveys and providing feedback.",
+    "category": "other",
+    "answer": "When a survey is available, you'll see a notification or survey card on your dashboard. Click it to open the survey, answer the questions, and submit your responses. Surveys help us improve ClassBridge based on your feedback."
+  },
+  {
+    "title": "What is Activity History?",
+    "description": "Tracking your actions and usage on ClassBridge.",
+    "category": "account",
+    "answer": "Activity History tracks your actions on ClassBridge including study sessions, quiz attempts, material uploads, and task completions. It provides a chronological log you can filter by date range, activity type, or course."
+  },
+  {
+    "title": "What AI tools are available for parents?",
+    "description": "Understanding parent-specific AI features.",
+    "category": "study-tools",
+    "answer": "Parents have access to AI study tools (study guides, quizzes, flashcards, mind maps) for their children's course materials. Parents also get exclusive features like Help My Kid briefing, conversation starters, and AI-powered grade insights."
+  },
+  {
+    "title": "What are Parent Briefing Notes?",
+    "description": "AI-generated academic summaries for parents.",
+    "category": "study-tools",
+    "answer": "Parent Briefing Notes are AI-generated summaries that give you a quick overview of your child's academic status. They highlight upcoming deadlines, recent grades, areas needing attention, and suggested actions to support your child."
+  },
+  {
+    "title": "How do I view or download source files?",
+    "description": "Accessing original uploaded documents.",
+    "category": "study-tools",
+    "answer": "Open the course material detail page and go to the Document tab. Click the download icon to save the original file, or view it inline if the format is supported (PDF, images, text). Use the + menu for replace or edit options."
   }
 ]

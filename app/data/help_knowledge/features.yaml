@@ -706,3 +706,79 @@
     - "Step 3: Click the dropdown and select which role's dashboard to view."
     - "Step 4: You retain access to features from all your roles."
   tags: [roles, multi-role, switching, access]
+
+# ============================================================
+# WALLET
+# ============================================================
+
+- id: feature-wallet
+  name: "Wallet & AI Credits"
+  description: "Track and manage your AI credit balance. Each AI generation uses one credit. View your balance, request top-ups, and monitor usage history from the Wallet page."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: View your credit balance on the dashboard badge or Wallet page."
+    - "Step 2: Generate AI study tools (each uses 1 credit)."
+    - "Step 3: When credits run low, click 'Request More' on the limit-reached modal."
+    - "Step 4: Enter the number of credits needed and a reason."
+    - "Step 5: An admin reviews and approves your request."
+  tags: [wallet, credits, ai, balance, top-up]
+
+# ============================================================
+# SURVEY
+# ============================================================
+
+- id: feature-survey
+  name: "Platform Surveys"
+  description: "Take surveys to provide feedback on ClassBridge features and experience. Admins create surveys, users respond, and results help improve the platform."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: When a survey is available, a notification or card appears on your dashboard."
+    - "Step 2: Click the survey to open it and read the questions."
+    - "Step 3: Answer each question and click Submit."
+    - "Step 4: Admins can view aggregated results from the Admin Dashboard."
+  tags: [survey, feedback, responses, admin]
+
+# ============================================================
+# ACTIVITY HISTORY
+# ============================================================
+
+- id: feature-activity-history
+  name: "Activity History"
+  description: "Chronological log of your platform actions including study sessions, quiz attempts, material uploads, and task completions. Filter by date, type, or course."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Navigate to the Activity History page from the sidebar."
+    - "Step 2: Browse your activity log sorted by date."
+    - "Step 3: Use filters to narrow by activity type, date range, or course."
+    - "Step 4: Parents can view activity for each linked child from My Kids."
+  tags: [activity, history, tracking, log, filter]
+
+# ============================================================
+# PARENT BRIEFING NOTES
+# ============================================================
+
+- id: feature-parent-briefing-notes
+  name: "Parent Briefing Notes"
+  description: "AI-generated summaries for parents highlighting a child's academic status, upcoming deadlines, recent grades, and suggested actions. Updated regularly based on latest data."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to the Parent Dashboard and select a child."
+    - "Step 2: View the briefing card with today's focus areas."
+    - "Step 3: The AI analyzes courses, assignments, grades, and tasks."
+    - "Step 4: Review suggested actions and areas needing attention."
+  tags: [briefing-notes, parent, ai, summary, child]
+
+# ============================================================
+# SOURCE FILES
+# ============================================================
+
+- id: feature-source-files
+  name: "Source File Management"
+  description: "View, download, and manage the original documents uploaded as course materials. Source files are preserved alongside AI-generated study tools on the material detail page."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Open a course material detail page."
+    - "Step 2: Go to the Document tab to see the original content."
+    - "Step 3: Click the download icon to save the file locally."
+    - "Step 4: Use the + menu to replace or edit the source document."
+  tags: [source-files, download, document, materials, upload]

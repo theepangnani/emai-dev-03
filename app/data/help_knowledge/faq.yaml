@@ -1014,3 +1014,193 @@
   answer: "You'll see a warning when approaching your limit. You won't be able to upload new files until you delete some materials or request a limit increase from an admin."
   roles: [parent, student, teacher]
   tags: [storage, limits, upload, warning]
+
+# ============================================================
+# WALLET
+# ============================================================
+
+- id: faq-wallet-1
+  question: "What is the ClassBridge Wallet?"
+  answer: "The ClassBridge Wallet is your credit balance for AI-powered features. Each AI generation (study guide, quiz, flashcards, mind map) costs one credit. You can view your balance on your dashboard or the Wallet page."
+  roles: [parent, student, teacher]
+  tags: [wallet, credits, balance, ai]
+
+- id: faq-wallet-2
+  question: "How do I check my Wallet balance?"
+  answer: "Your current credit balance is shown on the dashboard badge and on the Wallet page at /wallet. The badge updates in real time as you use credits."
+  roles: [parent, student, teacher]
+  tags: [wallet, credits, balance, dashboard]
+
+- id: faq-wallet-3
+  question: "What are the Wallet credit tiers?"
+  answer: "ClassBridge offers different credit tiers based on your usage needs. Free users start with a default allocation. Admins can adjust your credit limit, and you can request additional credits when you run low."
+  roles: [parent, student, teacher]
+  tags: [wallet, credits, tiers, limits]
+
+- id: faq-wallet-4
+  question: "How do I top up my Wallet credits?"
+  answer: "When your credits run low, click 'Request More' on the limit-reached modal or visit the Wallet page. Enter the number of credits you need and a brief reason. An admin will review and approve your request."
+  roles: [parent, student, teacher]
+  tags: [wallet, credits, top-up, request]
+
+- id: faq-wallet-5
+  question: "What happens when my Wallet runs out of credits?"
+  answer: "When you reach your credit limit, AI generation buttons are disabled and a limit-reached modal appears. You can request more credits from an admin. Existing generated content (study guides, quizzes, flashcards) remains accessible."
+  roles: [parent, student, teacher]
+  tags: [wallet, credits, limit, disabled]
+
+# ============================================================
+# SURVEY
+# ============================================================
+
+- id: faq-survey-1
+  question: "How do I take a survey on ClassBridge?"
+  answer: "When a survey is available, you will see a notification or a survey card on your dashboard. Click it to open the survey, answer the questions, and submit your responses. Surveys help us improve the platform."
+  roles: [parent, student, teacher]
+  tags: [survey, feedback, responses]
+
+- id: faq-survey-2
+  question: "Where can I see survey results?"
+  answer: "Admins can view survey results from the Admin Dashboard. Results include response counts, answer distributions, and individual responses. Regular users can see their own submitted responses."
+  roles: [admin]
+  tags: [survey, results, admin, analytics]
+
+- id: faq-survey-3
+  question: "Can I edit my survey response after submitting?"
+  answer: "Once a survey response is submitted, it cannot be modified. If the survey is still open, you may be able to submit a new response depending on the survey settings configured by the admin."
+  roles: [parent, student, teacher]
+  tags: [survey, edit, response, submit]
+
+# ============================================================
+# ACTIVITY HISTORY
+# ============================================================
+
+- id: faq-activity-1
+  question: "What is Activity History?"
+  answer: "Activity History tracks your actions on ClassBridge, including study sessions, quiz attempts, material uploads, and task completions. It provides a chronological log of your platform usage."
+  roles: [parent, student, teacher]
+  tags: [activity, history, tracking, log]
+
+- id: faq-activity-2
+  question: "How do I filter my Activity History?"
+  answer: "On the Activity History page, use the filter options to narrow results by date range, activity type (study, quiz, upload, task), or course. This helps you find specific actions quickly."
+  roles: [parent, student, teacher]
+  tags: [activity, history, filter, search]
+
+- id: faq-activity-3
+  question: "Can parents view their child's Activity History?"
+  answer: "Yes. Parents can view activity history for each linked child from the My Kids section. Select a child and navigate to their activity log to see study sessions, quiz attempts, and other platform usage."
+  roles: [parent]
+  tags: [activity, history, parent, child]
+
+# ============================================================
+# PARENT AI TOOLS
+# ============================================================
+
+- id: faq-parent-ai-1
+  question: "What AI tools are available for parents?"
+  answer: "Parents have access to AI study tools (study guides, quizzes, flashcards, mind maps) for their children's course materials. Parents can also use the Help My Kid briefing, conversation starters, and AI-powered grade insights."
+  roles: [parent]
+  tags: [parent, ai, study-tools, briefing]
+
+- id: faq-parent-ai-2
+  question: "How are parent AI tools different from student AI tools?"
+  answer: "Parent AI tools include everything students get (study guides, quizzes, flashcards) plus parent-specific features like the Help My Kid briefing, conversation starters, and cross-child analytics. Parents can generate study tools for any of their linked children's materials."
+  roles: [parent]
+  tags: [parent, ai, student, comparison]
+
+# ============================================================
+# PARENT BRIEFING NOTES
+# ============================================================
+
+- id: faq-briefing-notes-1
+  question: "What are Parent Briefing Notes?"
+  answer: "Parent Briefing Notes are AI-generated summaries that give you a quick overview of your child's academic status. They highlight upcoming deadlines, recent grades, areas needing attention, and suggested actions."
+  roles: [parent]
+  tags: [briefing-notes, parent, ai, summary]
+
+- id: faq-briefing-notes-2
+  question: "How are Parent Briefing Notes generated?"
+  answer: "Briefing Notes are generated automatically by analyzing your child's courses, assignments, grades, and task completion data. They update regularly to reflect the latest activity and can be accessed from the Parent Dashboard."
+  roles: [parent]
+  tags: [briefing-notes, parent, ai, generated]
+
+# ============================================================
+# SOURCE FILES
+# ============================================================
+
+- id: faq-source-files-1
+  question: "What are source files in ClassBridge?"
+  answer: "Source files are the original documents you upload as course materials (PDFs, Word docs, images, etc.). They are stored alongside the AI-generated study tools and can be viewed or downloaded from the course material detail page."
+  roles: [parent, student, teacher]
+  tags: [source-files, upload, documents, materials]
+
+- id: faq-source-files-2
+  question: "How do I view or download a source file?"
+  answer: "Open the course material detail page and go to the Document tab. Click the download icon to save the original file, or view it inline if the format is supported (PDF, images, text). Use the + menu for replace or edit options."
+  roles: [parent, student, teacher]
+  tags: [source-files, download, view, document]
+
+# ============================================================
+# BRIEFING TAB
+# ============================================================
+
+- id: faq-briefing-tab-1
+  question: "What is the Briefing tab on course materials?"
+  answer: "The Briefing tab provides a concise AI-generated overview of a course material's key points. It is shorter than a full study guide and designed for quick review before class or study sessions."
+  roles: [parent, student, teacher]
+  tags: [briefing-tab, course-materials, ai, summary]
+
+- id: faq-briefing-tab-2
+  question: "How do I generate a briefing for a course material?"
+  answer: "Open any course material and navigate to the Briefing tab. If no briefing exists yet, click Generate to create one. The AI produces a concise summary highlighting the most important concepts and takeaways."
+  roles: [parent, student, teacher]
+  tags: [briefing-tab, generate, course-materials, ai]
+
+# ============================================================
+# STUDY HUB (expanded)
+# ============================================================
+
+- id: faq-study-hub-1
+  question: "What is the Study Hub?"
+  answer: "The Study Hub is a unified study page for students at /study. It combines your course list, per-course materials, upload functionality, and quiz progress stats in one place. Select a course from the left panel to see its materials."
+  roles: [student]
+  tags: [study-hub, student, courses, materials]
+
+- id: faq-study-hub-2
+  question: "How do I navigate the Study Hub?"
+  answer: "The Study Hub has a course list panel on the left and a materials panel on the right. Click a course to see its materials, use the type filter to show only guides, quizzes, or flashcards, and click the upload button to add new materials to any course."
+  roles: [student]
+  tags: [study-hub, navigation, student, courses]
+
+# ============================================================
+# CALENDAR IMPORT (expanded)
+# ============================================================
+
+- id: faq-calendar-import-3
+  question: "Why aren't my imported calendar events showing up?"
+  answer: "If imported events are not appearing, check that the iCal URL is correct and accessible. Ensure the calendar is public or shared with ClassBridge. Try removing and re-adding the calendar import. Events may take a few minutes to sync after initial setup."
+  roles: [parent, student, teacher]
+  tags: [calendar, import, troubleshooting, sync]
+
+- id: faq-calendar-import-4
+  question: "Can I export my ClassBridge calendar?"
+  answer: "Yes. Go to the Tasks page calendar section and look for the export option. You can export your ClassBridge tasks and assignments as an iCal file to import into Google Calendar, Apple Calendar, or Outlook."
+  roles: [parent, student, teacher]
+  tags: [calendar, export, ical, tasks]
+
+# ============================================================
+# DATA EXPORT (expanded)
+# ============================================================
+
+- id: faq-data-export-1
+  question: "How do I request a data export?"
+  answer: "Go to Account Settings and click 'Request Data Export'. ClassBridge prepares a downloadable archive containing your profile, courses, materials, tasks, grades, messages, and notes. You will be notified when the export is ready."
+  roles: [parent, student, teacher]
+  tags: [data-export, request, account, privacy]
+
+- id: faq-data-export-2
+  question: "Is my data export GDPR compliant?"
+  answer: "Yes. ClassBridge data exports comply with GDPR data portability requirements. The export includes all personal data we hold about you in a standard, machine-readable format. You can also request account deletion from Account Settings."
+  roles: [parent, student, teacher]
+  tags: [data-export, gdpr, privacy, compliance]
