@@ -102,6 +102,32 @@ function UploadWizardStep1({
 
   return (
     <div className="upload-wizard-step">
+      {/* Course selector */}
+      {courses && onCourseChange && (
+        <div className="uw-course-select">
+          <label>
+            Class
+            <select
+              value={selectedCourseId ?? ''}
+              onChange={(e) => {
+                if (e.target.value === '__create__') {
+                  setShowCreateClassModal(true);
+                } else {
+                  onCourseChange(e.target.value ? Number(e.target.value) : '');
+                }
+              }}
+              disabled={isGenerating || courseDisabled}
+            >
+              <option value="">Select a class</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+              <option value="__create__">+ Create new class...</option>
+            </select>
+          </label>
+        </div>
+      )}
+
       {/* File drop zone — hero element */}
       <input
         ref={fileInputRef}
@@ -208,32 +234,6 @@ function UploadWizardStep1({
             ))}
           </div>
           {pastedImages.length >= 10 && <small className="uw-pasted-limit-note">Maximum 10 images</small>}
-        </div>
-      )}
-
-      {/* Course selector */}
-      {courses && onCourseChange && (
-        <div className="uw-course-select">
-          <label>
-            Class
-            <select
-              value={selectedCourseId ?? ''}
-              onChange={(e) => {
-                if (e.target.value === '__create__') {
-                  setShowCreateClassModal(true);
-                } else {
-                  onCourseChange(e.target.value ? Number(e.target.value) : '');
-                }
-              }}
-              disabled={isGenerating || courseDisabled}
-            >
-              <option value="">Select a class</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-              <option value="__create__">+ Create new class...</option>
-            </select>
-          </label>
         </div>
       )}
 
