@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { MindMapData, MindMapBranchGroup } from '../../api/study';
 import type { TaskItem } from '../../api/tasks';
+import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import './MindMapTab.css';
 
@@ -141,7 +142,7 @@ export function MindMapTab({
           <div className="cm-guide-actions">
             <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
               <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>
-                {generating === 'mind_map' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}
+                {generating === 'mind_map' ? <><GenerationSpinner size="sm" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}
               </button>
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
@@ -150,7 +151,7 @@ export function MindMapTab({
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'mind_map' && (
             <div className="cm-regen-status">
-              <div className="cm-inline-spinner" />
+              <GenerationSpinner size="md" />
               <span>Regenerating mind map...</span>
             </div>
           )}
@@ -186,7 +187,7 @@ export function MindMapTab({
         </div>
       ) : generating === 'mind_map' ? (
         <div className="cm-inline-generating">
-          <div className="cm-inline-spinner" />
+          <GenerationSpinner size="lg" />
           <p>Generating mind map... This may take a moment.</p>
         </div>
       ) : (

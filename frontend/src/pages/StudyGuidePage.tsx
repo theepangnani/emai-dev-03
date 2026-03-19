@@ -20,6 +20,7 @@ import { NotesPanel } from '../components/NotesPanel';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
+import { GenerationSpinner } from '../components/GenerationSpinner';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -334,7 +335,7 @@ export function StudyGuidePage() {
         <div className={`sg-subguide-status ${subGuideStatus.ready ? 'ready' : 'generating'}`}>
           {subGuideStatus.generating ? (
             <>
-              <span className="sg-subguide-status-spinner" />
+              <GenerationSpinner size="sm" />
               <span>Generating sub-guide...</span>
             </>
           ) : subGuideStatus.ready ? (

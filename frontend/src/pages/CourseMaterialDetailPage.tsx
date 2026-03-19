@@ -30,6 +30,7 @@ import { useRegisterNotesFAB } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
+import { GenerationSpinner } from '../components/GenerationSpinner';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -751,7 +752,7 @@ export function CourseMaterialDetailPage() {
           <div className={`cm-subguide-status ${subGuideStatus.ready ? 'ready' : 'generating'}`}>
             {subGuideStatus.generating ? (
               <>
-                <span className="cm-subguide-status-spinner" />
+                <GenerationSpinner size="sm" />
                 <span>Generating sub-guide...</span>
               </>
             ) : subGuideStatus.ready ? (
@@ -969,7 +970,7 @@ export function CourseMaterialDetailPage() {
       {toast && <div className="toast-notification">{toast}</div>}
       {uploadStatus === 'uploading' && (
         <div className="cm-upload-status">
-          <span className="cm-upload-spinner" />
+          <GenerationSpinner size="md" />
           Uploading &amp; extracting text...
         </div>
       )}

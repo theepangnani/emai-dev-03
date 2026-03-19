@@ -1,6 +1,7 @@
 import { Suspense, useRef, useState } from 'react';
 import type { BriefingNote } from '../../api/client';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
+import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 
 interface BriefingTabProps {
@@ -67,7 +68,7 @@ export function BriefingTab({
           </div>
           {generating && (
             <div className="cm-regen-status">
-              <div className="cm-inline-spinner" />
+              <GenerationSpinner size="md" />
               <span>Regenerating parent briefing...</span>
             </div>
           )}
@@ -83,7 +84,7 @@ export function BriefingTab({
         </div>
       ) : generating ? (
         <div className="cm-inline-generating">
-          <div className="cm-inline-spinner" />
+          <GenerationSpinner size="lg" />
           <p>Generating parent briefing{studentName ? ` for ${studentName}'s material` : ''}... This may take a moment.</p>
         </div>
       ) : (

@@ -22,6 +22,7 @@ import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary } from '../api/grades';
+import { GenerationSpinner } from '../components/GenerationSpinner';
 import './StudentDashboard.css';
 import './DashboardGrid.css';
 
@@ -746,7 +747,7 @@ export function StudentDashboard() {
       {studyTools.backgroundGeneration && (
         <div className={`sd-generation-banner ${studyTools.backgroundGeneration.status}`}>
           {studyTools.backgroundGeneration.status === 'generating' && (
-            <span><span className="sd-gen-spinner" /> Generating {studyTools.backgroundGeneration.type}...</span>
+            <span><GenerationSpinner size="sm" /> Generating {studyTools.backgroundGeneration.type}...</span>
           )}
           {studyTools.backgroundGeneration.status === 'success' && (
             <>

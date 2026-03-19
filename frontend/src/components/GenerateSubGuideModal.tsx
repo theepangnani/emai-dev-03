@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useFocusTrap } from '../utils/useFocusTrap';
+import { GenerationSpinner } from './GenerationSpinner';
 import './GenerateSubGuideModal.css';
 
 interface GenerateSubGuideModalProps {
@@ -202,7 +203,7 @@ export function GenerateSubGuideModal({
             >
               {generating ? (
                 <>
-                  <span className="subguide-spinner" aria-hidden="true" />
+                  <GenerationSpinner size="sm" />
                   Generating&hellip;
                 </>
               ) : (

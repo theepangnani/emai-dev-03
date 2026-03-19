@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
+import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 
@@ -153,7 +154,7 @@ export function FlashcardsTab({
             <button className="cm-action-btn" onClick={handleReset}>{'\u{1F504}'} Reset</button>
             <button className="cm-action-btn" onClick={handleShuffle}>{'\u{1F500}'} Shuffle</button>
             <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
-              <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{generating === 'flashcards' ? <><span className="cm-inline-spinner" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
+              <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{generating === 'flashcards' ? <><GenerationSpinner size="sm" /> Regenerating...</> : <>{'\u2728'} Regenerate</>}</button>
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(flashcardSet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
@@ -164,7 +165,7 @@ export function FlashcardsTab({
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'flashcards' && (
             <div className="cm-regen-status">
-              <div className="cm-inline-spinner" />
+              <GenerationSpinner size="md" />
               <span>Regenerating flashcards...</span>
             </div>
           )}
@@ -221,7 +222,7 @@ export function FlashcardsTab({
         </div>
       ) : generating === 'flashcards' ? (
         <div className="cm-inline-generating">
-          <div className="cm-inline-spinner" />
+          <GenerationSpinner size="lg" />
           <p>Generating flashcards... This may take a moment.</p>
         </div>
       ) : (

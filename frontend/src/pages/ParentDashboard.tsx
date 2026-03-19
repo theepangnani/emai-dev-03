@@ -17,6 +17,7 @@ import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { SectionPanel } from '../components/SectionPanel';
+import { GenerationSpinner } from '../components/GenerationSpinner';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -246,7 +247,7 @@ export function ParentDashboard() {
             <div className={`pd-generation-banner ${pd.backgroundGeneration.status}`}>
               {pd.backgroundGeneration.status === 'generating' && (
                 <>
-                  <span className="pd-gen-spinner" />
+                  <GenerationSpinner size="sm" />
                   <span>{pd.backgroundGeneration.type === 'Material' ? 'Uploading material...' : `Generating ${pd.backgroundGeneration.type}...`}</span>
                 </>
               )}

@@ -4,6 +4,7 @@ import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
+import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 
@@ -120,7 +121,7 @@ export function StudyGuideTab({
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'study_guide' && (
             <div className="cm-regen-status">
-              <div className="cm-inline-spinner" />
+              <GenerationSpinner size="md" />
               <span>Regenerating study guide...</span>
             </div>
           )}
@@ -137,7 +138,7 @@ export function StudyGuideTab({
             <div className="cm-truncated-banner">
               {continuing ? (
                 <div className="cm-regen-status">
-                  <div className="cm-inline-spinner" />
+                  <GenerationSpinner size="md" />
                   <span>Continuing study guide...</span>
                 </div>
               ) : (
@@ -150,7 +151,7 @@ export function StudyGuideTab({
         </div>
       ) : generating === 'study_guide' ? (
         <div className="cm-inline-generating">
-          <div className="cm-inline-spinner" />
+          <GenerationSpinner size="lg" />
           <p>Generating study guide... This may take a moment.</p>
         </div>
       ) : (
