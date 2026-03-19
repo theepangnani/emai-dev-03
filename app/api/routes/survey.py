@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.survey import SurveyResponse, SurveyAnswer
+from app.models.user import User, UserRole
+from app.models.notification import NotificationType
 from app.schemas.survey import SurveySubmission, SurveyResponseOut
 from app.services.survey_questions import get_questions_for_role, get_question_map_for_role, validate_answer, VALID_SURVEY_ROLES
+from app.services.notification_service import send_multi_channel_notification
 from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -111,4 +114,25 @@ def submit_survey(
     db.refresh(survey_response)
 
     logger.info("Survey submitted: session_id=%s role=%s", data.session_id, role)
+
+    # Best-effort admin notification
+    try:
+        admins = db.query(User).filter(User.role == UserRole.ADMIN).all()
+        for admin in admins:
+            try:
+                send_multi_channel_notification(
+                    db=db,
+                    recipient=admin,
+                    sender=None,
+                    title="New Survey Response",
+                    content=f"A {role} completed the pre-launch survey.",
+                    notification_type=NotificationType.SURVEY_COMPLETED,
+                    link="/admin/survey",
+                    channels=["in_app", "email"],
+                )
+            except Exception as e:
+                logger.warning("Failed to notify admin %s: %s", admin.id, e)
+    except Exception as e:
+        logger.warning("Failed to send survey admin notifications: %s", e)
+
     return survey_response
