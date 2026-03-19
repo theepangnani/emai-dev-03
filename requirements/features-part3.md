@@ -3655,6 +3655,12 @@ Collect structured feedback from parents, students, and teachers via a public pr
 - [x] §6.102.4 Frontend: admin survey results dashboard at `/admin/survey` with Recharts charts, filters, CSV export (#1894)
 - [x] §6.102.5 Survey link on landing page and Help page CTA
 - [x] §6.102.6 Admin sidebar "Survey Results" navigation link
+- [x] §6.102.7 Fix: matrix likert buttons show emoji when selected (#1915)
+- [x] §6.102.8 Fix: generate session_id at submit time to prevent 409 conflicts (#1920)
+- [x] §6.102.9 Fix: persist survey progress in sessionStorage to survive browser refresh and mobile tab switch (#1927)
+- [x] §6.102.10 Feat: admin in-app + email notifications on survey completion via SURVEY_COMPLETED notification type (#1928)
+- [x] §6.102.11 Fix: bot protection — honeypot field + minimum completion time for survey (#1934)
+- [ ] §6.102.12 Feat: app-wide bot protection for all public forms — register, login, forgot-password, waitlist (#1935)
 
 **Key Implementation Details:**
 - **Models:** `SurveyResponse`, `SurveyAnswer` (`app/models/survey.py`)
