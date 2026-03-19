@@ -16,6 +16,7 @@ import { ConversationStartersCard } from '../components/briefing/ConversationSta
 import { SectionPanel } from '../components/SectionPanel';
 import './MyKidsPage.css';
 import './DashboardGrid.css';
+import '../components/ChildSelectorTabs.css';
 
 const CHILD_COLORS = [
   '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b',
@@ -853,7 +854,7 @@ export function MyKidsPage() {
 
           {/* ── Quick Actions ──────────────────────── */}
           <div className="dash-quick-actions" style={{ marginBottom: 16 }}>
-            <button className="dash-quick-action" onClick={() => navigate('/study-tools')}>
+            <button className="dash-quick-action" onClick={() => navigate('/study')}>
               <span className="dash-quick-action-icon" aria-hidden="true">&#128228;</span>
               <span>Upload Material</span>
             </button>
