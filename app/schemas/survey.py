@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -16,6 +16,8 @@ class SurveySubmission(BaseModel):
     role: str
     session_id: str = Field(min_length=1, max_length=36)
     answers: list[SurveyAnswerCreate] = Field(min_length=1)
+    website: str = ""  # honeypot field — should always be empty
+    started_at: Optional[float] = None  # Unix timestamp when survey started
 
     @field_validator("role")
     @classmethod
