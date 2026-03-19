@@ -736,7 +736,7 @@ export function MyKidsPage() {
           </div>
         ))}
         <AddActionButton actions={[
-          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/course-materials'), showPlus: true },
+          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/study'), showPlus: true },
           { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
           { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
           { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
@@ -865,6 +865,10 @@ export function MyKidsPage() {
             <button className="dash-quick-action" onClick={() => navigate('/courses')}>
               <span className="dash-quick-action-icon" aria-hidden="true">&#128218;</span>
               <span>View Classes</span>
+            </button>
+            <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#128196;</span>
+              <span>View Class Material</span>
             </button>
             <button className="dash-quick-action" onClick={() => navigate('/ai-tools')}>
               <span className="dash-quick-action-icon" aria-hidden="true">&#128161;</span>
