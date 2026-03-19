@@ -211,6 +211,11 @@ export const coursesApi = {
     return response.data as { status: string; request_id?: number };
   },
 
+  enrollmentStatusBatch: async (courseIds: number[]) => {
+    const { data } = await api.post('/api/courses/enrollment-status/batch', { course_ids: courseIds });
+    return data as Record<string, { status: string; request_id?: number }>;
+  },
+
   listEnrollmentRequests: async (courseId: number, status?: string) => {
     const params = status ? { status } : {};
     const response = await api.get(`/api/courses/${courseId}/enrollment-requests`, { params });
