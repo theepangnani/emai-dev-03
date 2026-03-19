@@ -371,7 +371,14 @@ def get_parent_dashboard(
 
     tasks = (
         db.query(Task)
+        .options(
+            selectinload(Task.creator),
+            selectinload(Task.assignee),
+            selectinload(Task.course),
+        )
         .filter(or_(*task_filters), Task.archived_at.is_(None))
+        .order_by(Task.due_date.asc())
+        .limit(20)
         .all()
     )
 
@@ -430,6 +437,8 @@ def get_parent_dashboard(
             Conversation.participant_1_id == current_user.id,
             Conversation.participant_2_id == current_user.id,
         ))
+        .order_by(Conversation.updated_at.desc())
+        .limit(10)
         .all()
     )
     conv_ids = [c.id for c in conversations]
