@@ -34,6 +34,7 @@ export function LaunchLandingPage() {
             <Link to="/register" className="launch-btn-primary launch-btn-lg">Get Started</Link>
           )}
           <Link to="/login" className="launch-btn-secondary launch-btn-lg">Login</Link>
+          <Link to="/survey" className="launch-btn-secondary launch-btn-lg">Take Our Survey</Link>
         </div>
       </section>
 

@@ -473,3 +473,42 @@
     font-size: 16px;
   }
 }
+
+.help-survey-cta {
+  text-align: center;
+  padding: 32px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: 8px;
+}
+
+.help-survey-cta h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--color-ink);
+}
+
+.help-survey-cta p {
+  margin: 0 0 20px 0;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.help-survey-btn {
+  display: inline-block;
+  padding: 10px 28px;
+  background: var(--color-accent);
+  color: #fff;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.help-survey-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
