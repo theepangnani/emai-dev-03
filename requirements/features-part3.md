@@ -3665,3 +3665,29 @@ Collect structured feedback from parents, students, and teachers via a public pr
 - **PR:** #1895 (main implementation) + follow-up fixes
 
 **Status:** COMPLETE
+
+### 6.103 Help Knowledge Base Expansion & Chatbot Search Parity (#1779, #1778, #1908) - IMPLEMENTED
+
+**Added:** 2026-03-18 | **Implemented:** 2026-03-19 | **PR:** #1918
+
+Comprehensive audit revealed significant gaps in FAQ/help coverage and chatbot search routing. Multiple features exist in the app but have zero or minimal help documentation, making them undiscoverable via the chatbot.
+
+**GitHub:** #1779 (FAQ expansion), #1778 (intent classifier keywords), #1908 (orphaned HelpArticle model)
+
+**Sub-tasks:**
+- [x] §6.103.1 Add 27 new FAQ entries to `faq.yaml` covering: Wallet, Survey, Activity History, Parent AI Tools, Parent Briefing Notes, Source Files, Briefing Tab, Calendar Import details, Data Export walkthrough, Study Hub guide
+- [x] §6.103.2 Add missing feature entries to `features.yaml` for: Wallet, Survey management, Activity History, Parent Briefing Notes, Source Files
+- [x] §6.103.3 Add missing page entries to `pages.yaml` for: Wallet, Survey, Activity History, Parent AI Tools, Parent Briefing Notes
+- [x] §6.103.4 Add missing TOPIC_KEYWORDS to `intent_classifier.py`: wallet, survey, activity, export, theme, my kids, courses, tasks, briefing, source files, mind map
+- [x] §6.103.5 Add suggestion chips on no-results in chatbot help route
+- [x] §6.103.6 Seed `data/faq/seed.json` with 6 critical new entries to match faq.yaml coverage
+
+**Key Files:**
+- `app/data/help_knowledge/faq.yaml`
+- `app/data/help_knowledge/features.yaml`
+- `app/data/help_knowledge/pages.yaml`
+- `app/services/intent_classifier.py`
+- `app/api/routes/help.py`
+- `data/faq/seed.json`
+
+**Status:** IMPLEMENTED
