@@ -97,6 +97,14 @@ async def help_chat(
     user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
     intent = classify_intent(request.message, openai_api_key=settings.openai_api_key)
 
+    no_results_suggestion_chips = [
+        "Getting started",
+        "Study tools",
+        "Google Classroom",
+        "Account settings",
+        "Upload materials",
+    ]
+
     if intent in ("search", "action"):
         results = search_service.search(
             query=request.message,
@@ -126,6 +134,7 @@ async def help_chat(
                 for r in results
             ],
             intent=return_intent,
+            suggestion_chips=no_results_suggestion_chips if not results else [],
         )
 
     # Help flow (existing)
@@ -174,6 +183,14 @@ async def help_chat_stream(
     user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
     intent = classify_intent(request.message, openai_api_key=settings.openai_api_key)
 
+    no_results_suggestion_chips = [
+        "Getting started",
+        "Study tools",
+        "Google Classroom",
+        "Account settings",
+        "Upload materials",
+    ]
+
     async def event_stream():
         # Search/action: emit single event with full results
         if intent in ("search", "action"):
@@ -204,6 +221,7 @@ async def help_chat_stream(
                     }
                     for r in results
                 ],
+                "suggestion_chips": no_results_suggestion_chips if not results else [],
             }
             yield f"data: {json.dumps(payload)}\n\n"
             return

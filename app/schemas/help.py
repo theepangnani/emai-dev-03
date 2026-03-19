@@ -53,3 +53,4 @@ class HelpChatResponse(BaseModel):
     videos: list[VideoResponse]
     search_results: list[SearchResultItem] = []
     intent: str = "help"  # "help" | "search" | "action"
+    suggestion_chips: list[str] = []

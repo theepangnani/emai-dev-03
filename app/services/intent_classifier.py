@@ -27,6 +27,18 @@ TOPIC_KEYWORDS = [
     "storage", "export",
     "mind map", "mindmap",
     "readiness", "readiness check",
+    "wallet", "credits", "top up", "topup",
+    "survey", "surveys", "feedback",
+    "activity", "activity history",
+    "my kids", "children", "child",
+    "courses", "course",
+    "tasks", "task",
+    "source files", "source file",
+    "briefing notes", "parent briefing",
+    "teacher comms", "teacher communications",
+    "study hub",
+    "data export",
+    "calendar import",
 ]
 
 
