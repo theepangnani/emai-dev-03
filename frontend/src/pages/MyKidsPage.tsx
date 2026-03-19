@@ -14,6 +14,10 @@ import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
 import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import { SectionPanel } from '../components/SectionPanel';
+import UploadMaterialWizard from '../components/UploadMaterialWizard';
+import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
+import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { GenerationSpinner } from '../components/GenerationSpinner';
 import './MyKidsPage.css';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
@@ -44,6 +48,8 @@ export function MyKidsPage() {
   const { toast } = useToast();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
+  const selectedChildUserId = children.find(c => c.student_id === selectedChild)?.user_id ?? null;
+  const studyTools = useParentStudyTools({ selectedChildUserId, navigate });
   const urlStudentId = searchParams.get('student_id');
   const [overview, setOverview] = useState<ChildOverview | null>(null);
   const [materials, setMaterials] = useState<CourseContentItem[]>([]);
@@ -736,7 +742,7 @@ export function MyKidsPage() {
           </div>
         ))}
         <AddActionButton actions={[
-          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => navigate('/study'), showPlus: true },
+          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => studyTools.setShowStudyModal(true), showPlus: true },
           { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
           { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
           { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
@@ -1343,6 +1349,47 @@ export function MyKidsPage() {
               }}>{editLoading ? 'Saving...' : 'Save'}</button>
             </div>
           </div>
+        </div>
+      )}
+      {/* ── Upload Class Material Modal ── */}
+      <UploadMaterialWizard
+        open={studyTools.showStudyModal}
+        onClose={studyTools.resetStudyModal}
+        onGenerate={studyTools.handleGenerateFromModal}
+        isGenerating={studyTools.isGenerating}
+        courses={courses.map(c => ({ id: c.id, name: c.name }))}
+        duplicateCheck={studyTools.duplicateCheck}
+        onViewExisting={() => {
+          const guide = studyTools.duplicateCheck?.existing_guide;
+          if (guide) {
+            studyTools.resetStudyModal();
+            navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`);
+          }
+        }}
+        onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
+        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
+        showParentNote={true}
+        childName={children.find(c => c.student_id === selectedChild)?.full_name}
+      />
+      {studyTools.showLimitModal && <AILimitRequestModal open={studyTools.showLimitModal} onClose={() => studyTools.setShowLimitModal(false)} />}
+      {studyTools.backgroundGeneration && (
+        <div className={`sd-generation-banner ${studyTools.backgroundGeneration.status}`}>
+          {studyTools.backgroundGeneration.status === 'generating' && (
+            <span><GenerationSpinner size="sm" /> Generating {studyTools.backgroundGeneration.type}...</span>
+          )}
+          {studyTools.backgroundGeneration.status === 'success' && (
+            <>
+              <span>{studyTools.backgroundGeneration.type} ready!</span>
+              <button className="sd-gen-view-btn" onClick={() => { navigate(studyTools.backgroundGeneration?.resultId ? `/course-materials/${studyTools.backgroundGeneration.resultId}` : '/course-materials'); studyTools.dismissBackgroundGeneration(); }}>View</button>
+              <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
+            </>
+          )}
+          {studyTools.backgroundGeneration.status === 'error' && (
+            <>
+              <span>Failed to generate {studyTools.backgroundGeneration.type}{studyTools.backgroundGeneration.error ? `: ${studyTools.backgroundGeneration.error}` : ''}</span>
+              <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
+            </>
+          )}
         </div>
       )}
       {confirmModal}
