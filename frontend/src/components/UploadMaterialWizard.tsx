@@ -204,6 +204,11 @@ export default function UploadMaterialWizard({
     setInternalCourseId(newCourse.id);
   };
 
+  const handleClassCreated = (course: { id: number; name: string }) => {
+    setManagedCourses(prev => [...(prev || []), { id: course.id, name: course.name }]);
+    setInternalCourseId(course.id);
+  };
+
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
@@ -309,6 +314,7 @@ export default function UploadMaterialWizard({
               selectedCourseId={internalCourseId}
               onCourseChange={setInternalCourseId}
               onCreateCourse={handleCreateCourse}
+              onClassCreated={handleClassCreated}
               courseDisabled={needsChild}
               isGenerating={isGenerating}
               error={error}
