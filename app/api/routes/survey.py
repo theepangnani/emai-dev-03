@@ -1,7 +1,9 @@
 """Public survey API endpoints (no auth required)."""
 
 import logging
+import time
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -41,6 +43,26 @@ def submit_survey(
 ):
     """Submit a complete survey response. Public endpoint, no auth required."""
     role = data.role
+
+    # Bot detection: honeypot field
+    fake_response = {
+        "id": 0,
+        "session_id": data.session_id,
+        "role": role,
+        "completed": True,
+        "created_at": datetime.utcnow(),
+        "completed_at": datetime.utcnow(),
+    }
+    if data.website:
+        # Bots fill hidden fields — return fake success silently
+        return fake_response
+
+    # Bot detection: minimum completion time (10 seconds)
+    if data.started_at:
+        elapsed = time.time() - data.started_at
+        if elapsed < 10:
+            # Too fast for a human — return fake success silently
+            return fake_response
 
     # Validate role
     if role not in VALID_SURVEY_ROLES:

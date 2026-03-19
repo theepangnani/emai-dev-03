@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { waitlistApi } from '../api/waitlist';
+import { useBotProtection } from '../hooks/useBotProtection';
 import './Auth.css';
 import './WaitlistPage.css';
 
@@ -19,6 +20,7 @@ export function WaitlistPage() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const botProtection = useBotProtection();
 
   const isValidEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -48,7 +50,8 @@ export function WaitlistPage() {
 
     setIsLoading(true);
     try {
-      await waitlistApi.join({ name: name.trim(), email: email.trim(), roles });
+      const { website, started_at } = botProtection.getFields();
+      await waitlistApi.join({ name: name.trim(), email: email.trim(), roles, website, started_at });
       setSubmitted(true);
     } catch (err: any) {
       const status = err?.response?.status;
@@ -100,6 +103,7 @@ export function WaitlistPage() {
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
+          <input {...botProtection.honeypotProps} />
           <div className="form-group">
             <label htmlFor="waitlist-name">Full Name</label>
             <input

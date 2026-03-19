@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import './Auth.css';
@@ -25,6 +25,8 @@ export function SurveyPage() {
   const [otherTexts, setOtherTexts] = useState<Record<string, string>>(saved?.otherTexts || {});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [honeypot, setHoneypot] = useState('');
+  const startedAtRef = useRef<number>(Date.now() / 1000);
 
   useEffect(() => {
     if (phase === 'thanks') {
@@ -47,6 +49,7 @@ export function SurveyPage() {
     try {
       const res = await api.get(`/api/survey/questions/${selectedRole}`);
       setQuestions(res.data.questions || res.data);
+      startedAtRef.current = Date.now() / 1000;
       setPhase('questions');
     } catch {
       setError('Failed to load survey questions. Please try again.');
@@ -86,7 +89,7 @@ export function SurveyPage() {
           return { question_key: q.key, question_type: q.type, answer_value: value };
         }).filter((a) => a.answer_value != null && a.answer_value !== '' && !(Array.isArray(a.answer_value) && a.answer_value.length === 0));
 
-        await api.post('/api/survey', { role, session_id: crypto.randomUUID(), answers: formattedAnswers });
+        await api.post('/api/survey', { role, session_id: crypto.randomUUID(), answers: formattedAnswers, website: honeypot, started_at: startedAtRef.current });
         setPhase('thanks');
       } catch {
         setError('Failed to submit survey. Please try again.');
@@ -238,6 +241,18 @@ export function SurveyPage() {
             />
           </div>
         </div>
+
+        {/* Honeypot - hidden from humans */}
+        <input
+          type="text"
+          name="website"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0 }}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+        />
 
         {error && <div className="auth-error">{error}</div>}
 

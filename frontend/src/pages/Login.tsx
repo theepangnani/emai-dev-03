@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { googleApi } from '../api/client';
 import { useFeature } from '../hooks/useFeatureToggle';
+import { useBotProtection } from '../hooks/useBotProtection';
 import './Auth.css';
 
 export function Login() {
@@ -18,6 +19,7 @@ export function Login() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const waitlistEnabled = useFeature('waitlist_enabled');
+  const botProtection = useBotProtection();
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Redirect to dashboard once user is loaded (after OAuth or if already logged in)
@@ -92,7 +94,8 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      await login(identifier, password);
+      const { website, started_at } = botProtection.getFields();
+      await login(identifier, password, { website, started_at });
       setLockoutSeconds(0);
       setRemainingAttempts(null);
       navigate('/dashboard');
@@ -164,6 +167,7 @@ export function Login() {
         )}
 
         <form onSubmit={handleSubmit} className="auth-form">
+          <input {...botProtection.honeypotProps} />
           <div className="form-group">
             <label htmlFor="identifier">Email or Username</label>
             <input

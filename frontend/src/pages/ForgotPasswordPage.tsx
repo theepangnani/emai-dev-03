@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/client';
+import { useBotProtection } from '../hooks/useBotProtection';
 import './Auth.css';
 
 export function ForgotPasswordPage() {
@@ -8,13 +9,15 @@ export function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const botProtection = useBotProtection();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
-      await authApi.forgotPassword(email);
+      const { website, started_at } = botProtection.getFields();
+      await authApi.forgotPassword(email, { website, started_at });
       setSubmitted(true);
     } catch {
       setError('Something went wrong. Please try again.');
@@ -45,6 +48,7 @@ export function ForgotPasswordPage() {
             {error && <div className="auth-error">{error}</div>}
 
             <form onSubmit={handleSubmit} className="auth-form">
+              <input {...botProtection.honeypotProps} />
               <div className="form-group">
                 <label htmlFor="email">Email</label>
                 <input
