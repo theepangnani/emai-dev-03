@@ -9,6 +9,7 @@ import type {
 } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { usePageVisible } from '../hooks/usePageVisible';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
 import '../components/AddActionButton.css';
@@ -66,15 +67,19 @@ export function MessagesPage() {
   const [isRecipientSearching, setIsRecipientSearching] = useState(false);
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
   const recipientSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isVisible = usePageVisible();
 
   useEffect(() => {
     loadConversations(true);
     loadRecipients();
+  }, []);
 
-    // Poll for new messages every 30 seconds
+  // Poll for new conversations every 30 seconds (only when page is visible)
+  useEffect(() => {
+    if (!isVisible) return;
     const interval = setInterval(() => loadConversations(true), 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isVisible]);
 
   // Handle recipient_id query param (from teacher "Message" button)
   useEffect(() => {
@@ -121,16 +126,16 @@ export function MessagesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedConversation, threadSearchOpen]);
 
-  // Poll active conversation more frequently
+  // Poll active conversation more frequently (only when page is visible)
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!selectedConversation || !isVisible) return;
 
     const interval = setInterval(() => {
       refreshSelectedConversation();
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [selectedConversation?.id, messageOffset]);
+  }, [selectedConversation?.id, messageOffset, isVisible]);
 
   const loadConversations = async (reset = false) => {
     try {
