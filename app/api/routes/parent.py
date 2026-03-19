@@ -860,20 +860,29 @@ def discover_children_google(
 
     db.commit()
 
-    discovered = []
-    for user in matched_users:
-        student = db.query(Student).filter(Student.user_id == user.id).first()
-        already_linked = False
-        if student:
-            existing_link = (
-                db.query(parent_students)
+    # Batch-fetch students and linked status for all matched users
+    _matched_user_ids = [u.id for u in matched_users]
+    _student_by_uid: dict[int, Student] = {}
+    _linked_sids: set[int] = set()
+    if _matched_user_ids:
+        _students = db.query(Student).filter(Student.user_id.in_(_matched_user_ids)).all()
+        _student_by_uid = {s.user_id: s for s in _students}
+        _sids = [s.id for s in _students]
+        if _sids:
+            _linked_rows = (
+                db.query(parent_students.c.student_id)
                 .filter(
                     parent_students.c.parent_id == current_user.id,
-                    parent_students.c.student_id == student.id,
+                    parent_students.c.student_id.in_(_sids),
                 )
-                .first()
+                .all()
             )
-            already_linked = existing_link is not None
+            _linked_sids = {r[0] for r in _linked_rows}
+
+    discovered = []
+    for user in matched_users:
+        student = _student_by_uid.get(user.id)
+        already_linked = student is not None and student.id in _linked_sids
 
         discovered.append(DiscoveredChild(
             user_id=user.id,
@@ -973,7 +982,12 @@ def get_child_overview(
     if not link:
         raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
 
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = (
+        db.query(Student)
+        .options(selectinload(Student.user))
+        .filter(Student.id == student_id)
+        .first()
+    )
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
@@ -1234,11 +1248,14 @@ def assign_courses_to_child(
     public = db.query(Course.id).filter(Course.is_private == False).all()  # noqa: E712
     allowed_course_ids.update(r[0] for r in public)
     if child_sids:
-        # Child-created courses
-        child_uids = [r[0] for r in db.query(Student.user_id).filter(Student.id.in_(child_sids)).all()]
-        if child_uids:
-            child_created = db.query(Course.id).filter(Course.created_by_user_id.in_(child_uids)).all()
-            allowed_course_ids.update(r[0] for r in child_created)
+        # Child-created courses (single JOIN instead of two queries)
+        child_created = (
+            db.query(Course.id)
+            .join(Student, Student.user_id == Course.created_by_user_id)
+            .filter(Student.id.in_(child_sids))
+            .all()
+        )
+        allowed_course_ids.update(r[0] for r in child_created)
         # Co-parent courses
         co_parent_rows = db.query(parent_students.c.parent_id).filter(
             parent_students.c.student_id.in_(child_sids),
@@ -1353,13 +1370,17 @@ def link_teacher_to_child(
     if not link:
         raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
 
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = (
+        db.query(Student)
+        .options(selectinload(Student.user))
+        .filter(Student.id == student_id)
+        .first()
+    )
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
     # Get child's display name
-    child_user = db.query(User).filter(User.id == student.user_id).first()
-    child_name = child_user.full_name if child_user else "your child"
+    child_name = student.user.full_name if student.user else "your child"
 
     # Find teacher user by email
     teacher_user = db.query(User).filter(User.email == data.teacher_email).first()
@@ -1663,11 +1684,16 @@ def reset_child_password(
     if not link:
         raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
 
-    student = db.query(Student).filter(Student.id == student_id).first()
+    student = (
+        db.query(Student)
+        .options(selectinload(Student.user))
+        .filter(Student.id == student_id)
+        .first()
+    )
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    user = db.query(User).filter(User.id == student.user_id).first()
+    user = student.user
     if not user:
         raise HTTPException(status_code=404, detail="Student account not found")
 
