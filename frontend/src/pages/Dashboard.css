@@ -289,6 +289,10 @@
 }
 
 @media (min-width: 768px) {
+  .dashboard-body {
+    margin-left: 80px;
+  }
+
   .persistent-sidebar {
     display: flex;
     flex-direction: column;
@@ -296,23 +300,20 @@
     min-width: 80px;
     background: var(--color-surface);
     border-right: 1px solid var(--color-border);
-    position: sticky;
+    position: fixed;
+    left: 0;
     top: 50px;
     height: calc(100vh - 50px);
     overflow-y: auto;
     overflow-x: hidden;
     padding: 12px 4px;
     z-index: 5;
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
     flex-shrink: 0;
   }
 
   /* Expanded sidebar on hover */
   .persistent-sidebar:hover {
-    position: fixed;
-    left: 0;
-    top: 50px;
-    height: calc(100vh - 50px);
     width: 200px;
     padding: 12px 8px;
     overflow: hidden;
