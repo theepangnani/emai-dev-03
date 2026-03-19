@@ -3639,3 +3639,29 @@ theepangnani/emai-dev-03 (production repo)
 **GitHub Issues:** #1878 (epic), #1879-#1889
 
 **Status:** PLANNED
+
+---
+
+### 6.102 Pre-Launch Survey System (#1890) - COMPLETE
+
+Collect structured feedback from parents, students, and teachers via a public pre-launch survey. Role-specific question sets cover platform expectations, feature priorities, and willingness to pay. Admin dashboard provides analytics, filtering, and CSV export.
+
+**GitHub:** #1890 (epic), #1891-#1895
+
+**Sub-tasks:**
+- [x] §6.102.1 Survey question design — Parent (10 questions), Student (8), Teacher (9) question sets (#1891)
+- [x] §6.102.2 Backend: survey models, public API routes, admin analytics/export endpoints (#1892)
+- [x] §6.102.3 Frontend: public survey page at `/survey` with role selection, progress bar, emoji likert scale, waitlist CTA (#1893)
+- [x] §6.102.4 Frontend: admin survey results dashboard at `/admin/survey` with Recharts charts, filters, CSV export (#1894)
+- [x] §6.102.5 Survey link on landing page and Help page CTA
+- [x] §6.102.6 Admin sidebar "Survey Results" navigation link
+
+**Key Implementation Details:**
+- **Models:** `SurveyResponse`, `SurveyAnswer` (`app/models/survey.py`)
+- **Question definitions:** Static in code (`app/services/survey_questions.py`)
+- **Public API:** `GET /api/survey/questions/{role}`, `POST /api/survey` (rate-limited 5/hour)
+- **Admin API:** Analytics, responses list, response detail, CSV export (all admin-only, rate-limited)
+- **Question types:** `single_select`, `multi_select`, `likert` (1-5 with emoji indicators), `likert_matrix`, `free_text`
+- **PR:** #1895 (main implementation) + follow-up fixes
+
+**Status:** COMPLETE

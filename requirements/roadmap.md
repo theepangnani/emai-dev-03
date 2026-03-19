@@ -162,6 +162,7 @@
 - [x] **Admin Dashboard v2** — Platform Health + Recent Activity + Quick Actions with trend indicators (§6.65.4, #1419) (IMPLEMENTED)
 - [x] **Upload wizard cleanup + tests** — ReplaceDocumentModal updated, old upload modal removed, wizard frontend tests added (§6.28, #1272, #1273, PR #1685) (IMPLEMENTED)
 - [x] **Scroll-to-top button** — Floating button on Course Material Detail page using IntersectionObserver; bottom-left, no conflict with FABs (§6.94, #1686, PRs #1687 #1692) (IMPLEMENTED)
+- [x] **Pre-Launch Survey System** — Public role-specific survey (Parent/Student/Teacher question sets); emoji likert scale; admin analytics dashboard with Recharts charts, filters, CSV export; rate-limited public + admin APIs (§6.102, #1890, PR #1895) (COMPLETE)
 
 #### Waitlist System & AI Usage Limits (§6.53, §6.54) — Pre-Launch — #1106-#1124
 - [x] **Waitlist data model** — `waitlist` table with status tracking, invite tokens, email validation (IMPLEMENTED — #1107)
