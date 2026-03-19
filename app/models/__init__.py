@@ -35,6 +35,7 @@ from app.models.calendar_feed import CalendarFeed
 from app.models.calendar_event import CalendarEvent
 from app.models.help_article import HelpArticle
 from app.models.enrollment_request import EnrollmentRequest
+from app.models.survey import SurveyResponse, SurveyAnswer
 
 __all__ = [
     "User",
@@ -88,4 +89,6 @@ __all__ = [
     "CalendarEvent",
     "HelpArticle",
     "EnrollmentRequest",
+    "SurveyResponse",
+    "SurveyAnswer",
 ]
