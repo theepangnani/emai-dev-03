@@ -198,12 +198,6 @@ export default function UploadMaterialWizard({
     return () => document.removeEventListener('paste', handler);
   }, [open, addFiles]);
 
-  const handleCreateCourse = async (name: string) => {
-    const newCourse = await coursesApi.create({ name });
-    setManagedCourses(prev => [...(prev || []), { id: newCourse.id, name: newCourse.name }]);
-    setInternalCourseId(newCourse.id);
-  };
-
   const handleClassCreated = (course: { id: number; name: string }) => {
     setManagedCourses(prev => [...(prev || []), { id: course.id, name: course.name }]);
     setInternalCourseId(course.id);
@@ -313,7 +307,6 @@ export default function UploadMaterialWizard({
               courses={managedCourses}
               selectedCourseId={internalCourseId}
               onCourseChange={setInternalCourseId}
-              onCreateCourse={handleCreateCourse}
               onClassCreated={handleClassCreated}
               courseDisabled={needsChild}
               isGenerating={isGenerating}

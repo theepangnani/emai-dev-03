@@ -22,7 +22,6 @@ interface UploadWizardStep1Props {
   courses?: { id: number; name: string }[];
   selectedCourseId?: number | '';
   onCourseChange?: (id: number | '') => void;
-  onCreateCourse?: (name: string) => Promise<void>;
   onClassCreated?: (course: { id: number; name: string }) => void;
   courseDisabled?: boolean;
   // State
@@ -59,7 +58,6 @@ function UploadWizardStep1({
   courses,
   selectedCourseId,
   onCourseChange,
-  onCreateCourse: _onCreateCourse,
   onClassCreated,
   courseDisabled,
   isGenerating,
