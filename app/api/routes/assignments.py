@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
@@ -114,6 +114,19 @@ def _notify_enrolled_students(db: Session, course: Course, assignment: Assignmen
         ))
 
 
+def _assignment_eager_options():
+    """SQLAlchemy options to eager-load Assignment relationships (avoids N+1)."""
+    return [selectinload(Assignment.course)]
+
+
+def _submission_eager_options():
+    """SQLAlchemy options to eager-load StudentAssignment relationships (avoids N+1)."""
+    return [
+        selectinload(StudentAssignment.assignment).selectinload(Assignment.course),
+        selectinload(StudentAssignment.student).selectinload(Student.user),
+    ]
+
+
 def _to_response(assignment: Assignment) -> dict:
     """Convert assignment to response dict with course_name."""
     return {
@@ -146,7 +159,12 @@ def create_assignment(
 
     _notify_enrolled_students(db, course, assignment, current_user.full_name)
     db.commit()
-    db.refresh(assignment)
+    assignment = (
+        db.query(Assignment)
+        .options(*_assignment_eager_options())
+        .filter(Assignment.id == assignment.id)
+        .first()
+    )
     return _to_response(assignment)
 
 
@@ -171,7 +189,12 @@ def update_assignment(
         setattr(assignment, key, value)
 
     db.commit()
-    db.refresh(assignment)
+    assignment = (
+        db.query(Assignment)
+        .options(*_assignment_eager_options())
+        .filter(Assignment.id == assignment.id)
+        .first()
+    )
     return _to_response(assignment)
 
 
@@ -215,7 +238,7 @@ def list_assignments(
         if accessible is not None:  # None means admin (all access)
             query = query.filter(Assignment.course_id.in_(accessible))
 
-    assignments = query.order_by(Assignment.due_date.asc().nullslast(), Assignment.created_at.desc()).all()
+    assignments = query.options(*_assignment_eager_options()).order_by(Assignment.due_date.asc().nullslast(), Assignment.created_at.desc()).all()
     return [_to_response(a) for a in assignments]
 
 
@@ -228,7 +251,12 @@ def get_assignment(
     current_user: User = Depends(get_current_user),
 ):
     """Get an assignment. Must have access to its course."""
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    assignment = (
+        db.query(Assignment)
+        .options(*_assignment_eager_options())
+        .filter(Assignment.id == assignment_id)
+        .first()
+    )
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
@@ -370,7 +398,12 @@ async def submit_assignment(
         sa.is_late = False
 
     db.commit()
-    db.refresh(sa)
+    sa = (
+        db.query(StudentAssignment)
+        .options(*_submission_eager_options())
+        .filter(StudentAssignment.id == sa.id)
+        .first()
+    )
 
     # Notify the course teacher
     try:
@@ -416,6 +449,7 @@ def get_submission(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found")
         sa = (
             db.query(StudentAssignment)
+            .options(*_submission_eager_options())
             .filter(
                 StudentAssignment.student_id == student.id,
                 StudentAssignment.assignment_id == assignment_id,
@@ -441,7 +475,12 @@ def list_submissions(
     current_user: User = Depends(get_current_user),
 ):
     """List all submissions for an assignment. Teachers, course creators, and admins only."""
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    assignment = (
+        db.query(Assignment)
+        .options(*_assignment_eager_options())
+        .filter(Assignment.id == assignment_id)
+        .first()
+    )
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
@@ -462,6 +501,7 @@ def list_submissions(
 
     submissions = (
         db.query(StudentAssignment)
+        .options(*_submission_eager_options())
         .filter(StudentAssignment.assignment_id == assignment_id)
         .all()
     )
