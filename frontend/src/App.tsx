@@ -19,6 +19,9 @@ function lazyRetry<T extends ComponentType<any>>(
   return lazy(() =>
     importFn()
       .then((module) => {
+        if (!module.default) {
+          throw new Error('Chunk loaded but export is undefined');
+        }
         // Successfully loaded — clear any stale reload flag
         sessionStorage.removeItem('chunk_reload');
         return module;

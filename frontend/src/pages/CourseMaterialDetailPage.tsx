@@ -551,8 +551,10 @@ export function CourseMaterialDetailPage() {
     try {
       await courseContentsApi.delete(content.id);
       navigate('/course-materials');
-    } catch {
-      setError('Failed to archive material');
+    } catch (err) {
+      console.error('[CourseMaterial] Failed to archive:', err);
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || 'Failed to archive material. Please try again.');
     }
   };
 
