@@ -192,7 +192,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
-  // Sidebar always expanded (collapse feature removed for simplicity)
+  // Sidebar collapses to icons, expands on hover
 
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
@@ -485,7 +485,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       <div className="dashboard-body">
         {/* Persistent sidebar (>=768px) */}
         <aside
-          className="persistent-sidebar expanded"
+          className="persistent-sidebar"
           aria-label="Main navigation"
         >
           <nav className="persistent-sidebar-nav">
