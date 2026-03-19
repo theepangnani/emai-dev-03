@@ -29,6 +29,20 @@ const PIE_COLORS: Record<string, string> = {
   teacher: '#3b82f6',
 };
 
+const TruncatedTick = ({ x, y, payload }: any) => {
+  const MAX_LEN = 45;
+  const label = payload?.value ?? '';
+  const display = label.length > MAX_LEN ? label.slice(0, MAX_LEN) + '...' : label;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{label}</title>
+      <text x={0} y={0} dy={4} textAnchor="end" fontSize={12} fill="var(--color-ink, #333)">
+        {display}
+      </text>
+    </g>
+  );
+};
+
 export function AdminSurveyPage() {
   const { toast } = useToast();
 
@@ -151,11 +165,11 @@ export function AdminSurveyPage() {
         average: Number(avg.toFixed(2)),
       }));
       return (
-        <ResponsiveContainer width="100%" height={data.length * 40 + 40}>
-          <BarChart data={data} layout="vertical" margin={{ left: 120, right: 20, top: 5, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={data.length * 50 + 40}>
+          <BarChart data={data} layout="vertical" margin={{ left: 210, right: 20, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" domain={[0, 5]} />
-            <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="name" width={200} tick={<TruncatedTick />} />
             <Tooltip />
             <Bar dataKey="average" fill={CHART_COLORS[0]} />
           </BarChart>
@@ -196,11 +210,11 @@ export function AdminSurveyPage() {
 
       // single_select / multi_select — horizontal bar
       return (
-        <ResponsiveContainer width="100%" height={data.length * 36 + 40}>
-          <BarChart data={data} layout="vertical" margin={{ left: 120, right: 20, top: 5, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={data.length * 45 + 40}>
+          <BarChart data={data} layout="vertical" margin={{ left: 210, right: 20, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" allowDecimals={false} />
-            <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="name" width={200} tick={<TruncatedTick />} />
             <Tooltip />
             <Bar dataKey="count" fill={CHART_COLORS[0]}>
               {data.map((_, i) => (
