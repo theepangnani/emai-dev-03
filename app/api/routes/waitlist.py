@@ -28,6 +28,15 @@ def join_waitlist(
     db: Session = Depends(get_db),
 ):
     """Join the ClassBridge waitlist. Public endpoint, no auth required."""
+    # Bot protection check
+    from app.core.bot_protection import is_bot_submission
+    if is_bot_submission(data.website, data.started_at, min_seconds=3):
+        return {"id": 0, "name": data.name, "email": data.email, "roles": data.roles,
+                "status": "pending", "admin_notes": None, "invite_token": None,
+                "invite_link_clicked": False, "approved_by_user_id": None,
+                "approved_at": None, "registered_user_id": None, "reminder_sent_at": None,
+                "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc)}
+
     # Normalize email to lowercase
     email = data.email.lower()
 

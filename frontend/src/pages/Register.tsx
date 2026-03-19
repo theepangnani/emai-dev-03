@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { isValidEmail } from '../utils/validation';
 import { useFeatureToggles } from '../hooks/useFeatureToggle';
+import { useBotProtection } from '../hooks/useBotProtection';
 import './Auth.css';
 
 type RegisterMode = 'email' | 'username';
@@ -35,6 +36,7 @@ export function Register() {
   const navigate = useNavigate();
   const usernameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const features = useFeatureToggles();
+  const botProtection = useBotProtection();
 
   // Waitlist token state
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
@@ -185,6 +187,8 @@ export function Register() {
     setIsLoading(true);
 
     try {
+      const { website, started_at } = botProtection.getFields();
+
       if (mode === 'email') {
         const registrationData: {
           email: string;
@@ -193,11 +197,15 @@ export function Register() {
           roles: string[];
           google_id?: string;
           token?: string;
+          website?: string;
+          started_at?: number;
         } = {
           email: formData.email,
           password: formData.password,
           full_name: formData.full_name,
           roles: [],
+          website,
+          started_at,
         };
 
         if (googleData) registrationData.google_id = googleData.google_id;
@@ -213,6 +221,8 @@ export function Register() {
           password: formData.password,
           full_name: formData.full_name,
           roles: ['student'] as string[],
+          website,
+          started_at,
         };
 
         await register(registrationData);
@@ -298,6 +308,7 @@ export function Register() {
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
+          <input {...botProtection.honeypotProps} />
           <div className="form-group">
             <label htmlFor="full_name">Full Name</label>
             <input

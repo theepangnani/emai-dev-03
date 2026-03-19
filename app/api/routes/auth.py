@@ -81,6 +81,15 @@ def _send_verification_ack_email(user: User, db: Session) -> None:
 @router.post("/register", response_model=UserResponse)
 @limiter.limit("3/minute")
 def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
+    # Bot protection check
+    from app.core.bot_protection import is_bot_submission
+    if is_bot_submission(user_data.website, user_data.started_at, min_seconds=5):
+        return UserResponse(
+            id=0, email="", full_name="", role=None, roles=[], is_active=True,
+            google_connected=False, needs_onboarding=False, onboarding_completed=False,
+            email_verified=False, created_at=datetime.now(timezone.utc),
+        )
+
     # --- Waitlist token gate (#1114) ---
     waitlist_record = None
     if settings.waitlist_enabled:
@@ -349,11 +358,24 @@ def _get_lockout_duration(failed_attempts: int) -> int | None:
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-def login(
+async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    # Bot protection check (fields sent as extra form data)
+    from app.core.bot_protection import is_bot_submission
+    form_body = await request.form()
+    _hp = form_body.get("website", "")
+    _sa_raw = form_body.get("started_at")
+    _sa = float(_sa_raw) if _sa_raw else None
+    if is_bot_submission(str(_hp), _sa, min_seconds=2):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email/username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     ip = request.client.host if request.client else None
     # Detect email vs username by checking for '@'
     identifier = form_data.username
@@ -701,6 +723,11 @@ def _render(template: str, **kwargs: str) -> str:
 @limiter.limit("3/minute")
 def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Send a password reset email. Always returns 200 to avoid user enumeration."""
+    # Bot protection check
+    from app.core.bot_protection import is_bot_submission
+    if is_bot_submission(body.website, body.started_at, min_seconds=2):
+        return {"message": "If an account with that email exists, a reset link has been sent."}
+
     user = db.query(User).filter(func.lower(User.email) == body.email.lower()).first()
 
     if not user:
