@@ -100,7 +100,7 @@ export function StudyGuidePage() {
     setShowGenerateModal(true);
   };
 
-  const handleDoGenerate = async (guideType: string, customPrompt?: string) => {
+  const handleDoGenerate = async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {
     if (!guide) return;
     setShowGenerateModal(false); // Close modal immediately
     setSubGuideStatus({ generating: true, ready: false });
@@ -109,6 +109,8 @@ export function StudyGuidePage() {
       topic: generateSelectedText,
       guide_type: guideType,
       custom_prompt: customPrompt,
+      document_type: documentType,
+      study_goal: studyGoal,
     }).then(result => {
       refreshAIUsage();
       setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title });
@@ -427,6 +429,8 @@ export function StudyGuidePage() {
         onGenerate={handleDoGenerate}
         aiAvailable={!atLimit}
         aiRemaining={remaining}
+        documentType={guide.document_type ?? undefined}
+        studyGoal={guide.study_goal ?? undefined}
       />
       {guide.course_content_id && (
         <>

@@ -75,7 +75,7 @@ describe('GenerateSubGuideModal', () => {
     renderModal({ onGenerate });
     fireEvent.click(screen.getByTestId('generate-btn'));
     await waitFor(() => {
-      expect(onGenerate).toHaveBeenCalledWith('study_guide', undefined);
+      expect(onGenerate).toHaveBeenCalledWith('study_guide', undefined, undefined, undefined);
     });
   });
 
@@ -87,7 +87,7 @@ describe('GenerateSubGuideModal', () => {
     });
     fireEvent.click(screen.getByTestId('generate-btn'));
     await waitFor(() => {
-      expect(onGenerate).toHaveBeenCalledWith('study_guide', 'Focus on chapter 3');
+      expect(onGenerate).toHaveBeenCalledWith('study_guide', 'Focus on chapter 3', undefined, undefined);
     });
   });
 
