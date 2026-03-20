@@ -55,6 +55,9 @@ class CourseContentUpdate(BaseModel):
     course_id: Optional[int] = None
     category: Optional[str] = Field(default=None, max_length=100)
     display_order: Optional[int] = None
+    document_type: Optional[str] = Field(default=None, max_length=50)
+    study_goal: Optional[str] = Field(default=None, max_length=50)
+    study_goal_text: Optional[str] = Field(default=None, max_length=500)
 
     @field_validator('title', 'description', mode='before')
     @classmethod
