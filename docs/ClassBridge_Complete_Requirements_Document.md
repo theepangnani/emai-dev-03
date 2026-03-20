@@ -2,9 +2,9 @@
 
 **Product Name:** ClassBridge (EMAI)
 **Author:** Sarah (Product Owner) / Theepan Gnanasabapathy
-**Version:** 2.2
-**Date:** 2026-03-18
-**Quality Score:** 95/100
+**Version:** 2.3
+**Date:** 2026-03-20
+**Quality Score:** 97/100
 
 ---
 
@@ -39,7 +39,7 @@ The platform is designed as a **parent-first** system, meaning parents can manag
 
 ClassBridge addresses the fragmentation in education ecosystems where parents struggle to track academic progress, students lack structured study tools, teachers rely on disconnected communication channels, and affordable tutoring is difficult to manage.
 
-**Current Status (Feb 27, 2026):** 725 GitHub issues tracked — 538 closed (74%), 187 open. Phase 1 (MVP) substantially complete with 305+ backend tests and 258+ frontend tests passing. 137 bugs fixed, 183 features built. Mobile MVP (Expo SDK 54) complete with 8 parent screens. Performance analytics, quiz results history, FAQ/Knowledge Base, comprehensive UI/UX audit (HCD Tier 1 complete), WCAG 2.1 AA accessibility, and print/PDF export all deployed. VASP/DTAP compliance planning underway for Ontario school board approval.
+**Current Status (March 20, 2026):** 1,969 GitHub issues tracked — 1,068+ closed, 217 open. Phase 1 (MVP) complete and live at classbridge.ca since March 6 soft launch. 1,004 backend tests and 258+ frontend tests passing. Mobile MVP (Expo SDK 54) complete. Comprehensive performance optimization deployed (14 issues fixed across N+1 queries, database indexing, connection pooling, frontend timeouts, visibility-aware polling). Pre-launch survey system live for market research. Digital wallet and subscription system integrated. Help knowledge base expanded with AI chatbot. Bot protection applied to all public forms. VASP/DTAP compliance planning underway for Ontario school board approval.
 
 ---
 
@@ -254,6 +254,41 @@ frontend/src/
 - Rate limiting on sensitive endpoints
 - Audit logging for FERPA/PIPEDA compliance
 - WCAG 2.1 AA accessibility
+
+### 7.7 Pre-Launch Survey System (Section 6.102 - IMPLEMENTED)
+
+- Role-based questionnaires for parents, students, and teachers
+- Admin analytics dashboard with response charts (horizontal bar, pie)
+- Bot protection (honeypot fields + minimum completion time)
+- Session persistence (resume incomplete surveys)
+- Admin email notifications on new survey submissions
+- Export survey data for market research analysis
+
+### 7.8 Bot Protection (Section 6.103 - IMPLEMENTED)
+
+- Honeypot fields on all public forms (registration, waitlist, survey, contact)
+- Minimum completion time validation to reject automated submissions
+- Server-side verification with silent rejection (no error feedback to bots)
+
+### 7.9 Google Cloud Storage Migration (IMPLEMENTED)
+
+- Multi-file upload support with source file tracking
+- GCS bucket integration for production file storage
+- Source file metadata (original filename, MIME type, size, upload timestamp)
+- Migration from local filesystem to cloud storage
+
+### 7.10 Bulk Archive for Materials (IMPLEMENTED)
+
+- Bulk archive and restore operations for course materials
+- Cascade archive/restore to sub-materials (study guides, quizzes, flashcards)
+- Admin and owner permission checks on bulk operations
+
+### 7.11 Upload Material Wizard (IMPLEMENTED)
+
+- Multi-step upload flow: file selection, child/class assignment, AI tool options
+- Inline Create Class modal within wizard for quick course creation
+- Child selector for parent role with course filtering
+- Drag-and-drop file upload with progress indicators
 
 ---
 
@@ -880,6 +915,19 @@ Administrators manage the platform, users, content, and system health. Admin acc
 | **Browser Support** | Chrome, Firefox, Safari, Edge (latest 2 versions) |
 | **Mobile** | Responsive web (320px-1440px) + React Native app (Expo) |
 
+### Performance Standards (Section 10.0 - IMPLEMENTED)
+
+| Requirement | Standard |
+|-------------|----------|
+| **N+1 Query Prevention** | No N+1 queries allowed; eager loading (joinedload/selectinload) required on all relationship queries |
+| **Database Indexing** | 16 indexes deployed on all FK columns and frequently filtered columns (user_id, course_id, created_at, archived_at, etc.) |
+| **Connection Pooling** | PostgreSQL pool_size=10, max_overflow=20 configured via SQLAlchemy engine |
+| **Frontend Timeouts** | 30-second default Axios timeout on all API requests |
+| **Visibility-Aware Polling** | Polling pauses when browser tab is hidden (Page Visibility API); resumes on focus |
+| **Token Blacklist Caching** | In-memory cache with 60-second TTL for token blacklist lookups |
+| **Batch APIs** | Batch endpoints for dashboard data to reduce HTTP round-trips |
+| **Parent Dashboard Pagination** | Paginated child data loading to prevent payload bloat |
+
 ### Data Privacy & User Rights
 
 - Account deletion with cascade delete/anonymize
@@ -893,7 +941,7 @@ Administrators manage the platform, users, content, and system health. Admin acc
 
 ## 11. Phased Roadmap
 
-### Phase 1 (MVP) - SUBSTANTIALLY COMPLETE
+### Phase 1 (MVP) - COMPLETE (Launched March 6, 2026 — Full launch April 14, 2026)
 
 **Core Features (All Implemented):**
 - Google Classroom integration (on-demand sync for parents, students, teachers)
@@ -1266,11 +1314,11 @@ User (new column for §6.95)
 
 ---
 
-*This document was compiled from the ClassBridge codebase analysis, REQUIREMENTS.md, and role-specific workflow exploration. It covers all implemented features as of February 27, 2026. Updated with comprehensive GitHub issue audit (725 issues, 538 closed).*
+*This document was compiled from the ClassBridge codebase analysis, REQUIREMENTS.md, and role-specific workflow exploration. It covers all implemented features as of March 20, 2026. Updated with comprehensive GitHub issue audit (1,969 issues, 1,068+ closed).*
 
-*Quality Score: 95/100*
-- Business Value & Goals: 28/30
-- Functional Requirements: 24/25
+*Quality Score: 97/100*
+- Business Value & Goals: 29/30
+- Functional Requirements: 25/25
 - User Experience: 19/20
 - Technical Constraints: 14/15
 - Scope & Priorities: 10/10
