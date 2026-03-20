@@ -152,12 +152,14 @@ export function StudyGuidePage() {
     fetchGuide();
   }, [id]);
 
-  // Redirect to course-materials tab when guide has a parent material (#1837)
+  // Redirect to course-materials tab when guide has a parent material (#1837, #1969)
+  // Skip redirect if opened from class materials tab (fromMaterial state)
+  const fromMaterial = (location.state as { fromMaterial?: boolean })?.fromMaterial;
   useEffect(() => {
-    if (guide && guide.course_content_id) {
+    if (guide && guide.course_content_id && !fromMaterial) {
       navigate(`/course-materials/${guide.course_content_id}?tab=guide`, { replace: true });
     }
-  }, [guide, navigate]);
+  }, [guide, navigate, fromMaterial]);
 
   // Fetch parent guide title for sub-guides (#1594)
   useEffect(() => {
@@ -269,7 +271,7 @@ export function StudyGuidePage() {
         { label: 'Home', to: '/dashboard' },
         { label: 'Class Materials', to: '/course-materials' },
         ...(guide?.course_content_id
-          ? [{ label: guide.title.replace(/^Study Guide:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+          ? [{ label: guide.title.replace(/^Study Guide:\s*/i, ''), to: `/course-materials/${guide.course_content_id}?tab=guide` }]
           : []),
         { label: 'Study Guide' },
       ]} />

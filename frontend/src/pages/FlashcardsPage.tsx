@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -64,11 +64,14 @@ export function FlashcardsPage() {
   }, [id]);
 
   // Redirect to course-materials tab when flashcards have a parent material (#1969)
+  // Skip redirect if opened from class materials tab (fromMaterial state)
+  const location = useLocation();
+  const fromMaterial = (location.state as { fromMaterial?: boolean })?.fromMaterial;
   useEffect(() => {
-    if (guide && guide.course_content_id) {
+    if (guide && guide.course_content_id && !fromMaterial) {
       navigate(`/course-materials/${guide.course_content_id}?tab=flashcards`, { replace: true });
     }
-  }, [guide, navigate]);
+  }, [guide, navigate, fromMaterial]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped(prev => !prev);
@@ -229,7 +232,7 @@ export function FlashcardsPage() {
             { label: 'Home', to: '/dashboard' },
             { label: 'Class Materials', to: '/course-materials' },
             ...(guide?.course_content_id
-              ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+              ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}?tab=flashcards` }]
               : []),
             { label: 'Flashcards' },
           ]} />
@@ -249,7 +252,7 @@ export function FlashcardsPage() {
             { label: 'Home', to: '/dashboard' },
             { label: 'Class Materials', to: '/course-materials' },
             ...(guide?.course_content_id
-              ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+              ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}?tab=flashcards` }]
               : []),
             { label: 'Flashcards' },
           ]} />
@@ -303,7 +306,7 @@ export function FlashcardsPage() {
           { label: 'Home', to: '/dashboard' },
           { label: 'Class Materials', to: '/course-materials' },
           ...(guide?.course_content_id
-            ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}` }]
+            ? [{ label: guide.title.replace(/^Flashcards:\s*/i, ''), to: `/course-materials/${guide.course_content_id}?tab=flashcards` }]
             : []),
           { label: 'Flashcards' },
         ]} />
