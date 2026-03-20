@@ -93,6 +93,9 @@ export function StudyGuidesPage() {
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
 
+  // Wizard-local child selection (does not mutate page filter) (#1994)
+  const [wizardChildId, setWizardChildId] = useState<number | ''>('');
+
   // Study tools modal
   const [showModal, setShowModal] = useState(false);
   const [modalCourseId, setModalCourseId] = useState<number | ''>('');
@@ -216,16 +219,18 @@ export function StudyGuidesPage() {
   }, [filterChild]);
 
   // Courses filtered by selected child for the upload wizard (#1923)
+  // Use wizardChildId when set, otherwise fall back to filterChild (#1994)
   const wizardCourses = useMemo(() => {
-    if (!filterChild || Object.keys(courseStudentMap).length === 0) return courses;
-    // filterChild is user_id; courseStudentMap maps course_id -> student_id[]
-    const child = children.find(c => c.user_id === filterChild || c.student_id === filterChild);
+    const effectiveChild = wizardChildId || filterChild;
+    if (!effectiveChild || Object.keys(courseStudentMap).length === 0) return courses;
+    // effectiveChild is user_id; courseStudentMap maps course_id -> student_id[]
+    const child = children.find(c => c.user_id === effectiveChild || c.student_id === effectiveChild);
     if (!child) return courses;
     return courses.filter(c => {
       const students = courseStudentMap[c.id];
       return students && students.includes(child.student_id);
     });
-  }, [filterChild, courseStudentMap, courses, children]);
+  }, [wizardChildId, filterChild, courseStudentMap, courses, children]);
 
   // Reload content when filters change
   useEffect(() => {
@@ -1729,7 +1734,7 @@ export function StudyGuidesPage() {
       {/* Study Tools Modal */}
       <UploadMaterialWizard
         open={showModal}
-        onClose={resetModal}
+        onClose={() => { resetModal(); setWizardChildId(''); }}
         onGenerate={handleGenerateFromModal}
         isGenerating={isGenerating}
         courses={wizardCourses}
@@ -1741,7 +1746,7 @@ export function StudyGuidesPage() {
         duplicateCheck={duplicateCheck}
         onViewExisting={() => {
           const guide = duplicateCheck?.existing_guide;
-          if (guide) { resetModal(); navigateToLegacyGuide(guide); }
+          if (guide) { resetModal(); setWizardChildId(''); navigateToLegacyGuide(guide); }
         }}
         onRegenerate={() => {
           if (lastGenerateParamsRef.current) {
@@ -1769,11 +1774,11 @@ export function StudyGuidesPage() {
         }}
         onDismissDuplicate={() => setDuplicateCheck(null)}
         showParentNote={user?.role === 'student'}
-        childName={isParent && children.length === 1 ? children[0].full_name : undefined}
+        childName={isParent ? (wizardChildId ? children.find(c => c.user_id === wizardChildId || c.student_id === wizardChildId)?.full_name : (children.length === 1 ? children[0].full_name : undefined)) : undefined}
         children={isParent && children.length > 0 ? children.map(c => ({ id: c.student_id, name: c.full_name })) : undefined}
         onChildChange={(studentId) => {
           const child = children.find(c => c.student_id === studentId);
-          setFilterChild(child ? child.user_id : studentId);
+          setWizardChildId(child ? child.user_id : studentId);
         }}
       />
 

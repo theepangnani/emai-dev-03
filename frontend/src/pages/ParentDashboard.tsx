@@ -831,12 +831,12 @@ export function ParentDashboard() {
       {/* Study Tools Modal */}
       <UploadMaterialWizard
         open={pd.showStudyModal}
-        onClose={pd.resetStudyModal}
+        onClose={() => { pd.resetStudyModal(); pd.resetWizardChild(); }}
         onGenerate={pd.handleGenerateFromModal}
         isGenerating={pd.isGenerating}
         initialTitle={pd.studyModalInitialTitle}
         initialContent={pd.studyModalInitialContent}
-        childName={pd.selectedChildFirstName ?? undefined}
+        childName={(pd.wizardChildFirstName ?? pd.selectedChildFirstName) ?? undefined}
         children={pd.children.map(c => ({ id: c.student_id, name: c.full_name }))}
         onChildChange={(studentId) => pd.selectChildForWizard(studentId)}
         courses={pd.childCoursesForWizard}

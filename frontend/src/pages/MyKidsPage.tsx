@@ -90,6 +90,23 @@ export function MyKidsPage() {
   const [resetPwError, setResetPwError] = useState('');
   const [resetPwSuccess, setResetPwSuccess] = useState('');
 
+  // Wizard-local child selection (does not mutate page filter) (#1994)
+  const [wizardChildId, setWizardChildId] = useState<number | null>(null);
+  const [wizardCourses, setWizardCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
+  useEffect(() => {
+    if (!wizardChildId) { setWizardCourses(undefined); return; }
+    // If we already have overview for this child, use it
+    if (selectedChild === wizardChildId && overview) {
+      setWizardCourses(overview.courses.map(c => ({ id: c.id, name: c.name })));
+      return;
+    }
+    let ignore = false;
+    parentApi.getChildOverview(wizardChildId).then(ov => {
+      if (!ignore) setWizardCourses(ov.courses.map(c => ({ id: c.id, name: c.name })));
+    }).catch(() => { if (!ignore) setWizardCourses(undefined); });
+    return () => { ignore = true; };
+  }, [wizardChildId, selectedChild, overview]);
+
   // All-children view: unassigned courses/materials
   const [unassignedCourses, setUnassignedCourses] = useState<Array<{ id: number; name: string; description?: string | null; subject?: string | null; teacher_name?: string | null }>>([]);
   const [unassignedMaterials, setUnassignedMaterials] = useState<CourseContentItem[]>([]);
@@ -1354,16 +1371,17 @@ export function MyKidsPage() {
       {/* ── Upload Class Material Modal ── */}
       <UploadMaterialWizard
         open={studyTools.showStudyModal}
-        onClose={studyTools.resetStudyModal}
+        onClose={() => { studyTools.resetStudyModal(); setWizardChildId(null); }}
         onGenerate={studyTools.handleGenerateFromModal}
         isGenerating={studyTools.isGenerating}
-        courses={selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined}
-        selectedCourseId={selectedChild && overview?.courses.length === 1 ? overview.courses[0].id : ''}
+        courses={wizardChildId ? wizardCourses : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)}
+        selectedCourseId={(() => { const wc = wizardChildId ? wizardCourses : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined); return wc?.length === 1 ? wc[0].id : ''; })()}
         duplicateCheck={studyTools.duplicateCheck}
         onViewExisting={() => {
           const guide = studyTools.duplicateCheck?.existing_guide;
           if (guide) {
             studyTools.resetStudyModal();
+            setWizardChildId(null);
             if (guide.course_content_id) {
               const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
               navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
@@ -1375,9 +1393,9 @@ export function MyKidsPage() {
         onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
         onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
         showParentNote={true}
-        childName={children.find(c => c.student_id === selectedChild)?.full_name}
+        childName={(wizardChildId ? children.find(c => c.student_id === wizardChildId)?.full_name : children.find(c => c.student_id === selectedChild)?.full_name)}
         children={children.map(c => ({ id: c.student_id, name: c.full_name }))}
-        onChildChange={(studentId: number) => setSelectedChild(studentId)}
+        onChildChange={(studentId: number) => setWizardChildId(studentId)}
       />
       {studyTools.showLimitModal && <AILimitRequestModal open={studyTools.showLimitModal} onClose={() => studyTools.setShowLimitModal(false)} />}
       {studyTools.backgroundGeneration && (
