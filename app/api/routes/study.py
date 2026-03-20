@@ -485,6 +485,25 @@ def check_duplicate(
 
 
 # ============================================
+# Classification Endpoints
+# ============================================
+
+
+@router.post("/classify-document")
+@limiter.limit("20/minute", key_func=get_user_id_or_ip)
+async def classify_document(
+    request: Request,
+    text_content: str = Form(...),
+    filename: str = Form(""),
+    current_user: User = Depends(get_current_user),
+):
+    """Auto-detect document type from uploaded content (§6.105.3)."""
+    from app.services.document_classifier import DocumentClassifierService
+    result = DocumentClassifierService.classify(text_content[:800], filename)
+    return result
+
+
+# ============================================
 # Generation Endpoints
 # ============================================
 
@@ -559,6 +578,18 @@ async def generate_study_guide_endpoint(
     # Fetch image metadata for prompt enrichment
     images_metadata = _get_images_metadata(db, body.course_content_id)
 
+    # Strategy pattern: select prompt template based on document type and study goal (§6.105)
+    strategy_template = None
+    strategy_system_prompt = None
+    if body.document_type or body.study_goal:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        strategy_template = StudyGuideStrategyService.get_prompt_template(
+            document_type=body.document_type,
+            study_goal=body.study_goal,
+            focus_area=body.study_goal_text or body.focus_prompt,
+        )
+        strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
     # Generate study guide using AI
     try:
         raw_content, is_truncated = await generate_study_guide(
@@ -566,7 +597,7 @@ async def generate_study_guide_endpoint(
             assignment_description=description,
             course_name=course_name,
             due_date=due_date,
-            custom_prompt=body.custom_prompt,
+            custom_prompt=strategy_system_prompt if strategy_system_prompt else body.custom_prompt,
             focus_prompt=body.focus_prompt,
             images=images_metadata,
             interests=_get_user_interests(current_user),
@@ -646,6 +677,38 @@ async def generate_study_guide_endpoint(
     log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=study_guide.id, details={"guide_type": "study_guide", "auto_tasks": len(created_tasks)})
     db.commit()
     db.refresh(study_guide)
+
+    # Generate parent summary if applicable (§6.105.4)
+    if body.document_type or body.study_goal:
+        try:
+            from app.services.parent_summary import ParentSummaryService
+            parent_summary = await ParentSummaryService.generate(
+                study_guide_content=content,
+                student_name=current_user.full_name,
+                subject=course_name,
+                document_type=body.document_type,
+                study_goal=body.study_goal,
+            )
+            if parent_summary:
+                study_guide.parent_summary = parent_summary
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Parent summary generation failed: {e}")
+
+    # Persist document_type and study_goal on course content (§6.105)
+    if body.course_content_id and (body.document_type or body.study_goal):
+        try:
+            cc = db.query(CourseContent).filter(CourseContent.id == body.course_content_id).first()
+            if cc:
+                if body.document_type:
+                    cc.document_type = body.document_type
+                if body.study_goal:
+                    cc.study_goal = body.study_goal
+                if body.study_goal_text:
+                    cc.study_goal_text = body.study_goal_text
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to persist document type on course content: {e}")
 
     _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 

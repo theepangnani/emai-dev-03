@@ -3758,3 +3758,96 @@ Systematic performance audit identified and fixed 14 issues across the full appl
 | mind_map | `?tab=mindmap` |
 
 **Status:** IMPLEMENTED
+
+---
+
+### 6.106 Study Guide Strategy Pattern — Document Type & Persona-Based Generation (Phase 2) - IN PROGRESS
+
+**Epic:** #1972 | **Source:** ClassBridge_StudyGuide_Requirements.docx v1.0 | **Review deadline:** April 14, 2026
+
+When generating a study guide, the system determines what kind of document was uploaded and what the student is preparing for. This context shapes the AI output structure, tone, and focus strategy — the primary mechanism by which ClassBridge delivers differentiated value over generic AI platforms.
+
+#### 6.106.1 Document Type Classification (#1973)
+
+**Supported document types:**
+
+| Document Type | Examples |
+|---|---|
+| Teacher Notes / Handout | Lecture slides, class notes, printed handouts, annotated worksheets |
+| Course Syllabus | Unit overview, course outline, curriculum map, topic schedule |
+| Past Exam / Test | Prior year exam, returned test with marks, completed quiz |
+| Practice / Mock Exam | Sample questions, review sheet, prep quiz, unseen practice paper |
+| Project Brief | Assignment rubric, project guidelines, inquiry task, performance task |
+| Lab / Experiment | Lab procedure, experiment report template, data collection sheet |
+| Textbook Excerpt | Chapter section, reference reading, supplementary material |
+| Custom | Free-form label entered by the user |
+
+**Data model:** `document_type` (VARCHAR(30)) and `study_goal` (VARCHAR(30)) + `study_goal_text` (VARCHAR(200)) on `course_contents`; `parent_summary` (TEXT) and `curriculum_codes` (TEXT/JSON) on `study_guides`.
+
+**Sub-tasks:**
+- [x] Data model, enums, schemas, and migration (#1973)
+- [x] Prompt template map / strategy service (#1974)
+- [x] Document type auto-detection service (#1975)
+- [x] Parent summary dual output generation (#1976)
+- [x] Ontario curriculum mapping service (#1977)
+- [x] Cross-document intelligence service (#1978)
+- [x] API route updates (#1979)
+- [x] Frontend: document type selector UI (#1980)
+- [x] Frontend: study goal selector UI (#1981)
+- [x] Frontend: parent summary display (#1982)
+- [x] Backend tests (#1983)
+- [x] Frontend tests (#1984)
+
+#### 6.106.2 Study Goal Selection (#1973)
+
+**Preset dropdown options:** Upcoming Test/Quiz, Final Exam, Assignment/Project Submission, Lab Preparation/Report, General Review/Consolidation, In-class Discussion/Presentation, Parent Review (parent-facing summary mode)
+
+**Free-form focus field:** Optional secondary input (max 200 chars) appended to AI system prompt as `focus_area` variable. Placeholder: *"Anything specific to focus on? (e.g., Chapter 4 only, quadratic equations, the water cycle)"*
+
+#### 6.106.3 AI Output Structure by Document Type (#1974)
+
+| Document Type | Study Guide Output Shape |
+|---|---|
+| Teacher Notes | Summary → Key Concepts → Likely Exam Topics → Practice Questions |
+| Course Syllabus | Unit Breakdown → Study Priority Order → Weightings → Timeline Checklist |
+| Past Exam | Gap Analysis → Topics Likely Missed → Targeted Drill Questions → Concept Explanations |
+| Mock / Practice Exam | Answer Walkthrough → Concept Behind Each Question → Common Mistake Flags |
+| Project Brief | Rubric Decoder → Step-by-Step Plan → Success Criteria Checklist → Timeline |
+| Lab / Experiment | Pre-Lab Prep → Hypothesis Framing → Key Variables → Report Scaffold |
+| Textbook Excerpt | Chapter Summary → Key Terms → Concept Map → Review Questions |
+
+#### 6.106.4 Auto-Detection (#1975)
+
+On upload, attempt classification using document metadata and first-pass AI inference (Claude Haiku, ~$0.001/call). Surface as pre-selected default for user to confirm or override. Falls back to "Custom" on low confidence.
+
+#### 6.106.5 Parent Summary — Dual Output (#1976)
+
+All study guide generations produce two outputs: `studentGuide` and `parentSummary`. Parent summary uses simplified language with 3 actionable support items. Example: *"Haashini is preparing for a Grade 8 science lab on cell division. Here are 3 ways you can support her tonight."*
+
+#### 6.106.6 Curriculum Anchoring — Ontario Curriculum Mapping (#1977)
+
+Post-generation step: secondary AI call maps key concepts to Ontario curriculum expectation codes (e.g., MTH1W-B2.3 — Strand B: Number). Requires student grade and subject context. **Priority 1 differentiator** — no generic AI platform can generate this without the student's grade and school context.
+
+#### 6.106.7 Cross-Document Intelligence (#1978)
+
+Detect relationships between uploaded documents over time using keyword frequency analysis. Example: *"You uploaded Chapter 5 notes last week and this practice test today. The test covers 3 topics you have not yet reviewed."* Requires persistent upload history per student. **Priority 2 differentiator.**
+
+#### 6.106.8 Differentiators vs Generic AI Platforms
+
+| Generic AI Knows | ClassBridge Knows |
+|---|---|
+| Document content only | Document + student's grade, school, teacher name, enrolled subjects |
+| No curriculum awareness | Ontario curriculum expectations mapped per grade and subject |
+| No history | Cross-document intelligence across all uploads this term |
+| Single output format | Output shaped separately for Student, Parent, and Teacher views |
+| No follow-through | Linked to Smart Daily Briefing and Parent-Child Study Link features |
+
+**Key files:**
+- `app/services/study_guide_strategy.py` — Prompt template map + strategy service
+- `app/services/document_classifier.py` — Auto-detection service
+- `app/services/parent_summary.py` — Parent summary generation
+- `app/services/curriculum_mapping.py` — Ontario curriculum annotation
+- `app/services/cross_document.py` — Cross-document intelligence
+- `frontend/src/components/DocumentTypeSelector.tsx` — Document type chip selector
+- `frontend/src/components/StudyGoalSelector.tsx` — Study goal dropdown + focus field
+- `frontend/src/components/ParentSummaryCard.tsx` — Parent summary display card

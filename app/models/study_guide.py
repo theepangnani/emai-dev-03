@@ -30,6 +30,10 @@ class StudyGuide(Base):
     relationship_type = Column(String(20), nullable=False, default="version", server_default="version")  # "version" or "sub_guide"
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation
 
+    # Study Guide Strategy Pattern (§6.105, #1972)
+    parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary
+    curriculum_codes = Column(Text, nullable=True)  # JSON array of {concept, curriculum_code, strand}
+
     # Sharing (parent → child)
     shared_with_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     shared_at = Column(DateTime(timezone=True), nullable=True)
