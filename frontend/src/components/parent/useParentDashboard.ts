@@ -38,6 +38,7 @@ export function useParentDashboard() {
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(false);
   const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
+  const [wizardChildId, setWizardChildId] = useState<number | null>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
   const [pendingInvites, setPendingInvites] = useState<InviteResponse[]>([]);
@@ -220,12 +221,13 @@ export function useParentDashboard() {
     }
   };
 
-  // Non-toggling child selection for wizard (#1923)
+  // Non-toggling child selection for wizard (#1923, #1994)
   const selectChildForWizard = (studentId: number) => {
-    setSelectedChild(studentId);
-    setDetailPanelCollapsed(false);
-    const child = children.find(c => c.student_id === studentId);
-    if (child) sessionStorage.setItem('selectedChildId', String(child.user_id));
+    setWizardChildId(studentId);
+  };
+
+  const resetWizardChild = () => {
+    setWizardChildId(null);
   };
 
   // Explicit "All" tab click (#830)
@@ -367,13 +369,13 @@ export function useParentDashboard() {
     );
   }, [activeOverviews, courseIds, children.length]);
 
-  // Compute child courses for the upload wizard
+  // Compute child courses for the upload wizard (uses wizardChildId, not selectedChild)
   const childCoursesForWizard = useMemo(() => {
-    if (!selectedChild) return undefined;
-    const overview = childOverview;
+    if (!wizardChildId) return undefined;
+    const overview = allOverviews.find(o => o.student_id === wizardChildId);
     if (!overview) return undefined;
     return overview.courses.map(c => ({ id: c.id, name: c.name }));
-  }, [selectedChild, childOverview]);
+  }, [wizardChildId, allOverviews]);
 
   const handleGoToCourse = (courseId: number) => {
     navigate(`/courses?highlight=${courseId}`);
@@ -388,6 +390,12 @@ export function useParentDashboard() {
     const name = children.find(c => c.student_id === selectedChild)?.full_name;
     return name?.split(' ')[0] ?? null;
   }, [selectedChild, children]);
+
+  const wizardChildFirstName = useMemo(() => {
+    if (!wizardChildId) return null;
+    const name = children.find(c => c.student_id === wizardChildId)?.full_name;
+    return name?.split(' ')[0] ?? null;
+  }, [wizardChildId, children]);
 
   const perChildOverdue = useMemo(() => {
     if (selectedChild || children.length <= 1) return [];
@@ -434,7 +442,7 @@ export function useParentDashboard() {
     loading, dashboardError, children, navigate, confirmModal,
 
     // Child selection
-    selectedChild, handleChildTabClick, handleAllChildrenClick, selectChildForWizard, selectedChildUserId, selectedChildFirstName,
+    selectedChild, handleChildTabClick, handleAllChildrenClick, selectChildForWizard, selectedChildUserId, selectedChildFirstName, wizardChildId, wizardChildFirstName, resetWizardChild,
 
     // Overview
     overviewLoading,
