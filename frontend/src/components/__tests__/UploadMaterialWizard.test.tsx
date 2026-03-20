@@ -12,6 +12,10 @@ vi.mock('../../api/courses', () => ({
   },
 }))
 
+vi.mock('../../api/study', () => ({
+  classifyDocument: vi.fn().mockResolvedValue({ document_type: 'custom', confidence: 0 }),
+}))
+
 const defaultProps = {
   open: true,
   onClose: vi.fn(),
