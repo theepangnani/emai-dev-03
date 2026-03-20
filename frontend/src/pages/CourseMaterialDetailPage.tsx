@@ -315,7 +315,7 @@ export function CourseMaterialDetailPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   // Right-click context menu → generate sub-study guide from selected text (#1594)
-  const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string) => {
+  const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {
     if (!content) return;
     // Find the current study guide to use as parent for sub-guide generation
     const parentGuide = guides.find(g => g.guide_type === 'study_guide');
@@ -327,6 +327,8 @@ export function CourseMaterialDetailPage() {
         topic: generateSelectedText,
         guide_type: guideType,
         custom_prompt: customPrompt,
+        document_type: documentType,
+        study_goal: studyGoal,
       }).then(result => {
         refreshAIUsage();
         setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title });
@@ -1024,6 +1026,8 @@ export function CourseMaterialDetailPage() {
         onGenerate={handleDoContextGenerate}
         aiAvailable={!atLimit}
         aiRemaining={remaining}
+        documentType={guides.find(g => g.document_type)?.document_type ?? undefined}
+        studyGoal={guides.find(g => g.study_goal)?.study_goal ?? undefined}
       />
       {showHelpStudyMenu && resolvedStudent && (
         <HelpStudyMenu

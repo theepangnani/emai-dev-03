@@ -32,6 +32,10 @@ export interface StudyGuide {
   viewed_at?: string | null;
   viewed_count?: number;
   shared_with_name?: string | null;
+  // §6.106: Strategy context
+  document_type?: string | null;
+  study_goal?: string | null;
+  study_goal_text?: string | null;
 }
 
 // Sharing types
@@ -358,7 +362,7 @@ export const studyApi = {
     await api.delete(`/api/quiz-results/${id}`);
   },
 
-  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string }) => {
+  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string; document_type?: string; study_goal?: string }) => {
     const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params, AI_TIMEOUT);
     return response.data as StudyGuide;
   },

@@ -224,6 +224,10 @@ class GenerateChildRequest(BaseModel):
     topic: str = Field(min_length=3, max_length=5000)  # The selected text
     guide_type: str = Field(default="study_guide", max_length=50)  # study_guide, quiz, flashcards
     custom_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus (e.g., "make it harder")
+    # §6.106: Strategy context inherited from parent
+    document_type: str | None = Field(default=None, max_length=30)
+    study_goal: str | None = Field(default=None, max_length=30)
+    study_goal_text: str | None = Field(default=None, max_length=200)
 
     @field_validator('guide_type')
     @classmethod

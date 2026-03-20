@@ -1460,6 +1460,17 @@ async def generate_child_guide(
     if not has_access:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
+    # §6.106: Inherit document_type/study_goal from parent guide's course content
+    if not body.document_type and parent_guide.course_content_id:
+        parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+        if parent_cc:
+            if not body.document_type and getattr(parent_cc, 'document_type', None):
+                body.document_type = parent_cc.document_type
+            if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                body.study_goal = parent_cc.study_goal
+            if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                body.study_goal_text = parent_cc.study_goal_text
+
     # Validate topic text safety
     safe, reason = check_content_safe(body.topic)
     if not safe:
@@ -1485,6 +1496,12 @@ async def generate_child_guide(
     is_truncated = False
     critical_dates: list[dict] = []
 
+    # §6.106: Apply strategy context to sub-guide generation
+    effective_custom_prompt = body.custom_prompt
+    if body.document_type and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
     if body.guide_type == "study_guide":
         try:
             raw_content, is_truncated = await generate_study_guide(
@@ -1492,7 +1509,7 @@ async def generate_child_guide(
                 assignment_description=parent_content_truncated,
                 course_name="General",
                 focus_prompt=body.topic,
-                custom_prompt=body.custom_prompt,
+                custom_prompt=effective_custom_prompt,
             )
             raw_content, critical_dates = parse_critical_dates(raw_content)
             generated_content = raw_content
@@ -1590,6 +1607,23 @@ async def generate_child_guide(
     log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=study_guide.id, details={"guide_type": body.guide_type, "parent_guide_id": guide_id, "relationship_type": "sub_guide", "auto_tasks": len(created_tasks)})
     db.commit()
     db.refresh(study_guide)
+
+    # §6.106: Generate parent summary for sub-guide
+    if body.document_type or body.study_goal:
+        try:
+            from app.services.parent_summary import ParentSummaryService
+            parent_summary = await ParentSummaryService.generate(
+                study_guide_content=generated_content,
+                student_name=current_user.full_name,
+                subject=parent_guide.course.name if parent_guide.course else None,
+                document_type=body.document_type,
+                study_goal=body.study_goal,
+            )
+            if parent_summary:
+                study_guide.parent_summary = parent_summary
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Sub-guide parent summary generation failed: {e}")
 
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
