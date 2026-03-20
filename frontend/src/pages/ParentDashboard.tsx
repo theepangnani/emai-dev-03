@@ -844,7 +844,15 @@ export function ParentDashboard() {
         duplicateCheck={pd.duplicateCheck}
         onViewExisting={() => {
           const guide = pd.duplicateCheck?.existing_guide;
-          if (guide) { pd.resetStudyModal(); pd.navigate(guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}` : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}` : guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`); }
+          if (guide) {
+            pd.resetStudyModal();
+            if (guide.course_content_id) {
+              const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
+              pd.navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
+            } else if (guide.guide_type === 'quiz') pd.navigate(`/study/quiz/${guide.id}`);
+            else if (guide.guide_type === 'flashcards') pd.navigate(`/study/flashcards/${guide.id}`);
+            else pd.navigate(`/study/guide/${guide.id}`);
+          }
         }}
         onRegenerate={() => pd.handleGenerateFromModal({ title: pd.studyModalInitialTitle, content: pd.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
         onDismissDuplicate={() => pd.setDuplicateCheck(null)}

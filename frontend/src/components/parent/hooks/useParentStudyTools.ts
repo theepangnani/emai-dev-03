@@ -331,9 +331,13 @@ export function useParentStudyTools({
       });
       if (dupResult.exists && dupResult.existing_guide) {
         const guide = dupResult.existing_guide;
-        const path = guide.guide_type === 'quiz' ? `/study/quiz/${guide.id}`
-          : guide.guide_type === 'flashcards' ? `/study/flashcards/${guide.id}`
-          : guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`;
+        let path: string;
+        if (guide.course_content_id) {
+          const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
+          path = `/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`;
+        } else if (guide.guide_type === 'quiz') path = `/study/quiz/${guide.id}`;
+        else if (guide.guide_type === 'flashcards') path = `/study/flashcards/${guide.id}`;
+        else path = `/study/guide/${guide.id}`;
         navigate(path);
         return;
       }

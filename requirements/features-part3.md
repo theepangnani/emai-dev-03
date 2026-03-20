@@ -3733,13 +3733,41 @@ Systematic performance audit identified and fixed 14 issues across the full appl
 
 **Status:** IMPLEMENTED
 
-### 6.105 Study Guide Strategy Pattern — Document Type & Persona-Based Generation (Phase 2) - IN PROGRESS
+---
+
+### 6.105 Consolidated Study Material Navigation (#1969)
+
+**Problem:** Study materials (quizzes, flashcards, study guides) have dedicated standalone pages at `/study/quiz/:id`, `/study/flashcards/:id`, `/study/guide/:id`, but the class materials page at `/course-materials/:id` already has tabs for all these types (`?tab=quiz|flashcards|guide|mindmap|videos|briefing`). Navigation is fragmented across 16+ files, with some going to standalone pages and others to class material tabs.
+
+**Solution:** Consolidate all study material navigation to the class materials page tabs. When a study guide has a `course_content_id`, always navigate to `/course-materials/{course_content_id}?tab=<type>`. Dedicated pages remain accessible from class materials tabs via "Full Page" button, with back navigation returning to the class materials page.
+
+**Requirements:**
+- [x] §6.105.1 QuizPage and FlashcardsPage redirect to `/course-materials/{course_content_id}?tab=quiz|flashcards` when `course_content_id` exists (matching existing StudyGuidePage behavior from #1837)
+- [x] §6.105.2 All navigation points across dashboards, components, and pages use `/course-materials/{course_content_id}?tab=<type>` when `course_content_id` is available
+- [x] §6.105.3 Legacy fallback preserved for guides without `course_content_id` (standalone pages still work)
+- [x] §6.105.4 Route definitions in App.tsx kept for `/study/quiz/:id`, `/study/flashcards/:id`, `/study/guide/:id` as redirect endpoints
+- [x] §6.105.5 "Full Page" button in QuizTab, FlashcardsTab, StudyGuideTab opens dedicated page with `fromMaterial` state to bypass redirect
+- [x] §6.105.6 Back navigation from dedicated pages returns to class materials page with correct tab activated
+
+**Tab mapping:**
+| guide_type | Tab parameter |
+|------------|---------------|
+| quiz | `?tab=quiz` |
+| flashcards | `?tab=flashcards` |
+| study_guide | `?tab=guide` |
+| mind_map | `?tab=mindmap` |
+
+**Status:** IMPLEMENTED
+
+---
+
+### 6.106 Study Guide Strategy Pattern — Document Type & Persona-Based Generation (Phase 2) - IN PROGRESS
 
 **Epic:** #1972 | **Source:** ClassBridge_StudyGuide_Requirements.docx v1.0 | **Review deadline:** April 14, 2026
 
 When generating a study guide, the system determines what kind of document was uploaded and what the student is preparing for. This context shapes the AI output structure, tone, and focus strategy — the primary mechanism by which ClassBridge delivers differentiated value over generic AI platforms.
 
-#### 6.105.1 Document Type Classification (#1973)
+#### 6.106.1 Document Type Classification (#1973)
 
 **Supported document types:**
 
@@ -3770,13 +3798,13 @@ When generating a study guide, the system determines what kind of document was u
 - [x] Backend tests (#1983)
 - [x] Frontend tests (#1984)
 
-#### 6.105.2 Study Goal Selection (#1973)
+#### 6.106.2 Study Goal Selection (#1973)
 
 **Preset dropdown options:** Upcoming Test/Quiz, Final Exam, Assignment/Project Submission, Lab Preparation/Report, General Review/Consolidation, In-class Discussion/Presentation, Parent Review (parent-facing summary mode)
 
 **Free-form focus field:** Optional secondary input (max 200 chars) appended to AI system prompt as `focus_area` variable. Placeholder: *"Anything specific to focus on? (e.g., Chapter 4 only, quadratic equations, the water cycle)"*
 
-#### 6.105.3 AI Output Structure by Document Type (#1974)
+#### 6.106.3 AI Output Structure by Document Type (#1974)
 
 | Document Type | Study Guide Output Shape |
 |---|---|
@@ -3788,23 +3816,23 @@ When generating a study guide, the system determines what kind of document was u
 | Lab / Experiment | Pre-Lab Prep → Hypothesis Framing → Key Variables → Report Scaffold |
 | Textbook Excerpt | Chapter Summary → Key Terms → Concept Map → Review Questions |
 
-#### 6.105.4 Auto-Detection (#1975)
+#### 6.106.4 Auto-Detection (#1975)
 
 On upload, attempt classification using document metadata and first-pass AI inference (Claude Haiku, ~$0.001/call). Surface as pre-selected default for user to confirm or override. Falls back to "Custom" on low confidence.
 
-#### 6.105.5 Parent Summary — Dual Output (#1976)
+#### 6.106.5 Parent Summary — Dual Output (#1976)
 
 All study guide generations produce two outputs: `studentGuide` and `parentSummary`. Parent summary uses simplified language with 3 actionable support items. Example: *"Haashini is preparing for a Grade 8 science lab on cell division. Here are 3 ways you can support her tonight."*
 
-#### 6.105.6 Curriculum Anchoring — Ontario Curriculum Mapping (#1977)
+#### 6.106.6 Curriculum Anchoring — Ontario Curriculum Mapping (#1977)
 
 Post-generation step: secondary AI call maps key concepts to Ontario curriculum expectation codes (e.g., MTH1W-B2.3 — Strand B: Number). Requires student grade and subject context. **Priority 1 differentiator** — no generic AI platform can generate this without the student's grade and school context.
 
-#### 6.105.7 Cross-Document Intelligence (#1978)
+#### 6.106.7 Cross-Document Intelligence (#1978)
 
 Detect relationships between uploaded documents over time using keyword frequency analysis. Example: *"You uploaded Chapter 5 notes last week and this practice test today. The test covers 3 topics you have not yet reviewed."* Requires persistent upload history per student. **Priority 2 differentiator.**
 
-#### 6.105.8 Differentiators vs Generic AI Platforms
+#### 6.106.8 Differentiators vs Generic AI Platforms
 
 | Generic AI Knows | ClassBridge Knows |
 |---|---|
