@@ -80,6 +80,9 @@ class QuizGenerateRequest(BaseModel):
     regenerate_from_id: int | None = None
     focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
     difficulty: str | None = Field(default=None, max_length=10)  # easy, medium, hard
+    document_type: str | None = Field(default=None, max_length=30)  # §6.106: inherited on regeneration
+    study_goal: str | None = Field(default=None, max_length=30)
+    study_goal_text: str | None = Field(default=None, max_length=200)
 
     @field_validator('topic', 'focus_prompt', mode='before')
     @classmethod
@@ -130,6 +133,9 @@ class FlashcardGenerateRequest(BaseModel):
     num_cards: int = Field(default=10, ge=1, le=50)
     regenerate_from_id: int | None = None
     focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
+    document_type: str | None = Field(default=None, max_length=30)  # §6.106: inherited on regeneration
+    study_goal: str | None = Field(default=None, max_length=30)
+    study_goal_text: str | None = Field(default=None, max_length=200)
 
     @field_validator('topic', 'focus_prompt', mode='before')
     @classmethod

@@ -207,12 +207,12 @@ export const studyApi = {
     return response.data as StudyGuide;
   },
 
-  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string; difficulty?: string }) => {
+  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string; difficulty?: string; document_type?: string; study_goal?: string; study_goal_text?: string }) => {
     const response = await api.post('/api/study/quiz/generate', params, AI_TIMEOUT);
     return response.data as Quiz;
   },
 
-  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
+  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string; document_type?: string; study_goal?: string; study_goal_text?: string }) => {
     const response = await api.post('/api/study/flashcards/generate', params, AI_TIMEOUT);
     return response.data as FlashcardSet;
   },

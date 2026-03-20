@@ -466,6 +466,12 @@ export function CourseMaterialDetailPage() {
     try {
       const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt, mind_map: mindmapFocusPrompt };
       const fp = promptMap[type].trim() || undefined;
+      // §6.106: Pass strategy context from course content for regeneration
+      const strategyFields = {
+        ...(content.document_type ? { document_type: content.document_type } : {}),
+        ...(content.study_goal ? { study_goal: content.study_goal } : {}),
+        ...(content.study_goal_text ? { study_goal_text: content.study_goal_text } : {}),
+      };
       if (type === 'study_guide') {
         await studyApi.generateGuide({
           course_content_id: contentId,
@@ -473,6 +479,7 @@ export function CourseMaterialDetailPage() {
           title: content.title,
           content: content.text_content || content.description || '',
           focus_prompt: fp,
+          ...strategyFields,
         });
       } else if (type === 'quiz') {
         await studyApi.generateQuiz({
@@ -483,6 +490,7 @@ export function CourseMaterialDetailPage() {
           num_questions: extractQuestionCount(fp),
           focus_prompt: fp,
           difficulty,
+          ...strategyFields,
         });
       } else if (type === 'flashcards') {
         await studyApi.generateFlashcards({
@@ -492,6 +500,7 @@ export function CourseMaterialDetailPage() {
           content: content.text_content || content.description || '',
           num_cards: extractCardCount(fp),
           focus_prompt: fp,
+          ...strategyFields,
         });
       } else if (type === 'mind_map') {
         await studyApi.generateMindMap({
