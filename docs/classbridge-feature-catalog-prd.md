@@ -1,6 +1,6 @@
 # ClassBridge — Complete Feature & Design Catalog
 
-**Version**: 1.1
+**Version**: 1.2
 **Date**: 2026-03-20
 **Author**: Sarah (Product Owner)
 **Source Data**: 1,969 GitHub Issues + REQUIREMENTS.md (60+ feature sections)
@@ -210,6 +210,49 @@ Unified `invites` table for student, teacher, and parent invites:
 - K-12 policy: blocks sexual content, violence, hate speech, self-harm, drug use, prompt injection
 - Fails-open on API error, returns HTTP 400 on violation
 
+### 3.8 Sub-Guide Generation from Text Selection (§6.100, #1594)
+**Status**: IMPLEMENTED (v1) | PLANNED (v2) | **Issues**: #1594, #1817-#1820
+
+Generate **child study guides** (study guides, quizzes, flashcards) from selected text within an existing study guide. Enables deeper topic exploration on demand.
+
+| Feature | Status |
+|---------|--------|
+| Right-click context menu on selected study guide text | Implemented |
+| Generate Sub-Guide Modal (Study Guide / Quiz / Flashcards type cards) | Implemented |
+| Selected text as context preview in modal | Implemented |
+| `POST /api/study/guides/{id}/generate-child` endpoint | Implemented |
+| `GET /api/study/guides/{id}/children` endpoint | Implemented |
+| Child guide shows "Generated from: [Parent Title]" link | Implemented |
+| Background generation with inline status | Implemented (#1838) |
+| Enhanced SelectionTooltip with "Generate Study Material" button | Planned (v2, #1817) |
+| Sub-Guides collapsible section on parent guide page | Planned (v2, #1818) |
+| Breadcrumb navigation for multi-level hierarchies | Planned (v2, #1819) |
+| Full tree hierarchy endpoint | Planned (v2, #1820) |
+
+**Data Model:**
+- `relationship_type` column on `study_guides`: `version` (existing) vs `sub_guide` (new)
+- `generation_context` column: stores the selected text used for generation
+
+**Components:** `TextSelectionContextMenu`, `GenerateSubGuideModal`, `SelectionTooltip`
+
+### 3.9 Study Guide Strategy Pattern (§6.106, #1972)
+**Status**: IMPLEMENTED | **Issues**: #1972, #1985, #1987, #1989
+
+Document type classification and study goal selection to produce persona-based, contextually-aware AI study output.
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Document type classification | Claude Haiku classifies uploaded documents into 8 types | Implemented |
+| Study goal selection | 7 study goal options in upload wizard Step 2 | Implemented |
+| AI output structured by type | Prompts vary based on document type + study goal | Implemented |
+| Strategy context in sub-guides | Sub-guide generation inherits parent strategy context | Implemented (#1989) |
+
+**Document Types:** teacher_notes, course_syllabus, past_exam, mock_exam, project_brief, lab_experiment, textbook_excerpt, custom
+
+**Study Goals:** upcoming_test, final_exam, assignment, lab_prep, general_review, discussion, parent_review
+
+**Components:** `DocumentTypeSelector`, `StudyGoalSelector` (wired into `UploadWizardStep2`)
+
 ---
 
 ## 4. Course & Content Management
@@ -274,6 +317,52 @@ Unified `invites` table for student, teacher, and parent invites:
 - Optional study material generation on upload
 - Student roster management (teacher view)
 - Assignment section with create/edit/delete
+
+### 4.6 Material Hierarchy — Master/Sub Architecture (§6.98, #1740)
+**Status**: IMPLEMENTED | **Issues**: #1740, #1804, #1809, #1815, #1822, #1841, #1849
+
+When uploading multiple documents, the system creates a **master Class Material** and one **sub Class Material per attachment**, forming a parent-child hierarchy. This enables per-section study tool generation when combined content exceeds AI context limits.
+
+**Hierarchy Rules:**
+
+| Scenario | Result |
+|----------|--------|
+| 1 file uploaded | Standalone material (no hierarchy) |
+| N files, no pasted text | First file = master, remaining = sub-materials |
+| N files + pasted text | Master holds pasted text, all N files = sub-materials |
+| More than 10 files | Validation error — upload rejected |
+
+**Data Model:**
+- `parent_content_id` — Self-referencing FK; subs point to master, master is NULL
+- `is_master` — `"true"/"false"` (string for SQLite/PostgreSQL cross-DB compatibility)
+- `material_group_id` — Timestamp-based group ID linking master + all subs
+- `display_order` — Order of sub-materials within hierarchy
+
+**Sub-Material Naming:** Auto-named as "Master Title — Part 1", "Part 2", etc. (user-editable)
+
+**AI Generation:** At upload time, generation triggered **only for master**. Sub-materials generate on demand post-upload.
+
+**UI — Linked Materials Panel:**
+- Collapsible panel at top of all tabs (Document, Study Guide, Quiz, Flashcards)
+- Master view: lists all sub-materials as clickable links
+- Sub view: lists master + all sibling subs
+- Seamless back-and-forth navigation
+
+**Key Endpoints:**
+- `POST /api/course-contents/upload-multi` — Multi-file upload (max 10 files, 100 MB total)
+- `GET /api/course-contents/{id}/linked-materials` — Get all materials in group
+
+### 4.7 Post-Creation Material Management (§6.99, #993)
+**Status**: IMPLEMENTED | **Issues**: #993
+
+Extends the material hierarchy (§6.98) for post-upload file management.
+
+| Feature | Endpoint | Description |
+|---------|----------|-------------|
+| Add files | `POST /{id}/add-files` | Max 10 files; promotes standalone → master if needed |
+| Reorder subs | `PUT /{id}/reorder-subs` | Updates `display_order` on sub-materials |
+| Delete sub | `DELETE /{id}/sub-materials/{sub_id}` | Cascades to SourceFiles, images, study guides; demotes master if last sub |
+| Replace file | `PUT /{id}/replace-file` | Deletes old file, re-extracts text/images, archives linked study guides |
 
 ---
 
