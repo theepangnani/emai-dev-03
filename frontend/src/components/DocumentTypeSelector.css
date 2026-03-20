@@ -19,8 +19,8 @@
 .doc-type-selector__auto-tag {
   font-size: 0.7rem;
   font-weight: 500;
-  color: var(--color-primary);
-  background: var(--color-primary-light, rgba(99, 102, 241, 0.1));
+  color: var(--color-accent, #4A90D9);
+  background: var(--color-accent-light, rgba(74, 144, 217, 0.1));
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -47,18 +47,18 @@
 }
 
 .doc-type-chip:hover:not(:disabled) {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent, #4A90D9);
   background: var(--color-surface-alt, var(--color-surface));
 }
 
 .doc-type-chip--selected {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: var(--color-accent, #4A90D9);
+  background: var(--color-accent, #4A90D9);
   color: white;
 }
 
 .doc-type-chip--selected:hover:not(:disabled) {
-  background: var(--color-primary);
+  background: var(--color-accent, #4A90D9);
   color: white;
 }
 
@@ -90,7 +90,7 @@
 }
 
 .doc-type-selector__custom-input:focus {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent, #4A90D9);
 }
 
 .doc-type-selector__custom-input::placeholder {
