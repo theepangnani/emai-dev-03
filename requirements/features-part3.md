@@ -3700,3 +3700,35 @@ Comprehensive audit revealed significant gaps in FAQ/help coverage and chatbot s
 - `data/faq/seed.json`
 
 **Status:** IMPLEMENTED
+
+### 6.104 Comprehensive Performance Optimization (#1954-#1967) - IMPLEMENTED
+
+**Added:** 2026-03-20 | **Implemented:** 2026-03-20 | **PR:** #1968
+
+Systematic performance audit identified and fixed 14 issues across the full application stack. Changes span backend N+1 query elimination, database indexing, connection pooling, frontend network resilience, and API batching.
+
+**GitHub:** #1954-#1967 (individual issues), #1968 (integration PR)
+
+**Sub-tasks:**
+- [x] §6.104.1 Backend N+1 query elimination — eager loading (selectinload) added to tasks.py, assignments.py, courses.py, grades.py, course_contents.py, study.py, parent.py (#1954-#1959, #1967)
+- [x] §6.104.2 Database indexes — 16 new indexes across 11 models (User.role, User.is_active, Teacher.user_id, CalendarFeed.user_id, StudentAssignment.status, etc.) + ALTER TABLE migrations (#1961)
+- [x] §6.104.3 PostgreSQL connection pooling — pool_size=10, max_overflow=20, pool_pre_ping=True, pool_recycle=1800 (#1962)
+- [x] §6.104.4 Token blacklist in-memory cache — LRU cache with 60s TTL eliminates per-request DB query (#1964)
+- [x] §6.104.5 Parent dashboard pagination — tasks capped at 20, conversations at 10, with eager loading (#1965)
+- [x] §6.104.6 Batch enrollment status API — new POST /api/courses/enrollment-status/batch replaces N individual calls (#1966)
+- [x] §6.104.7 Frontend Axios timeout — 30s default + 120s for AI/upload operations across 6 API files (#1960)
+- [x] §6.104.8 Visibility-aware polling — new usePageVisible hook pauses NotificationBell, MessagesPage, useAIUsage polling when tab hidden (#1963)
+- [x] §6.104.9 Requirements update — Section 10.0 Performance Standards added to requirements/technical.md
+
+**Key Files:**
+- `app/api/routes/tasks.py`, `assignments.py`, `courses.py`, `grades.py`, `course_contents.py`, `study.py`, `parent.py`
+- `app/models/` — 11 model files with new indexes
+- `app/db/database.py` — connection pooling config
+- `app/api/deps.py` — token blacklist cache
+- `frontend/src/api/client.ts` — Axios timeout
+- `frontend/src/hooks/usePageVisible.ts` — visibility hook
+- `frontend/src/api/courses.ts` — batch enrollment API
+- `main.py` — 16 CREATE INDEX migrations
+- `requirements/technical.md` — Section 10.0
+
+**Status:** IMPLEMENTED

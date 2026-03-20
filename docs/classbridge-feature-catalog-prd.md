@@ -1,9 +1,9 @@
 # ClassBridge — Complete Feature & Design Catalog
 
-**Version**: 1.0
-**Date**: 2026-03-08
+**Version**: 1.1
+**Date**: 2026-03-20
 **Author**: Sarah (Product Owner)
-**Source Data**: 1,007 GitHub Issues (829 closed, 178 open) + REQUIREMENTS.md (60+ feature sections)
+**Source Data**: 1,969 GitHub Issues + REQUIREMENTS.md (60+ feature sections)
 **Quality Score**: 95/100
 
 ---
@@ -15,13 +15,13 @@ ClassBridge is an AI-powered education platform connecting parents, students, te
 This document catalogs **every feature** across 5 development phases, organized by functional domain. Each feature includes its status, GitHub issues, design details, and implementation notes.
 
 **By the numbers:**
-- **855+ issues** tracked across phases
-- **682 closed** (80% completion rate)
+- **1,969 issues** tracked across phases
 - **60+ feature sections** documented
 - **4 role-based dashboards** (Parent, Student, Teacher, Admin)
 - **8 mobile screens** (Parent MVP)
 - **14 email templates**
-- **333+ frontend tests**, **288+ backend tests**
+- **1,004 backend tests**
+- **Production**: classbridge.ca (live since March 6, 2026)
 
 ---
 
@@ -49,8 +49,12 @@ This document catalogs **every feature** across 5 development phases, organized 
 20. [UI/UX Design System](#20-uiux-design-system)
 21. [Mobile App](#21-mobile-app)
 22. [Monetization & Payments](#22-monetization--payments)
-23. [Course Planning (Phase 3)](#23-course-planning-phase-3)
-24. [Future Phases](#24-future-phases)
+23. [Pre-Launch Survey System](#23-pre-launch-survey-system)
+24. [Bot Protection](#24-bot-protection)
+25. [Performance Optimization](#25-performance-optimization)
+26. [Course Planning (Phase 3)](#26-course-planning-phase-3)
+27. [WOW Features — Parent Value & Engagement](#27-wow-features--parent-value--engagement-phase-2-march-2026)
+28. [Future Phases](#28-future-phases)
 
 ---
 
@@ -230,6 +234,8 @@ Unified `invites` table for student, teacher, and parent invites:
 - Structured content items with 7 types: notes, syllabus, labs, assignments, readings, resources, other
 - Upload: PDF, Word, PPTX, text notes, images, ZIP
 - Multi-file upload: up to 10 files, 20 MB each, combined into one material
+- Google Cloud Storage integration for production with SourceFile tracking (#1841)
+- Backfill migration for existing materials; original filenames as material titles
 - Magic bytes validation prevents extension spoofing
 - OCR for embedded images in .docx files (Tesseract)
 - Tabbed detail view: Document | Study Guide | Quiz | Flashcards | Videos & Links
@@ -238,6 +244,8 @@ Unified `invites` table for student, teacher, and parent invites:
 **Status**: IMPLEMENTED | **Issues**: §6.25
 
 - Soft delete (archive) with `archived_at` timestamp
+- Bulk archive button on class materials and CourseDetailPage (#1846, #1849, #1856)
+- Cascade archive/restore/delete to sub-materials
 - Archive list with restore and permanent delete
 - On-access auto-archive after 1 year
 - On-access permanent delete after 7 years
@@ -650,11 +658,12 @@ Sidebar items: Overview | Child Profiles | Courses | Course Materials | Tasks | 
 
 ## 16. AI Help Chatbot
 
-**Status**: PARTIAL (backend implemented, frontend in progress) | **Issues**: #1355-#1363
+**Status**: IMPLEMENTED | **Issues**: #1355-#1363, #1779, #1778, #1921
 
 ### Architecture
 - RAG-powered: embed query → vector search → LLM response
-- Static YAML knowledge base (~200-500 chunks)
+- Expanded YAML knowledge base with additional articles (#1779, #1778, #1921)
+- Fixed chatbot search gaps and broken links (§6.103 requirements)
 - Claude API for chat (switched from OpenAI, #1378)
 - In-memory vector store (cosine similarity <10ms)
 - Rate limited: 30 requests/hour per user
@@ -744,6 +753,9 @@ Sidebar items: Overview | Child Profiles | Courses | Course Materials | Tasks | 
 | Rate Limiting | `slowapi` on auth (5/min), AI (10/min), upload (20/min) (#140) |
 | Security Headers | HSTS, CSP, X-Frame-Options, X-Content-Type-Options (#141) |
 | LIKE Injection | Escaped `%` and `_` wildcards in search terms (#184) |
+| Bot Protection | Honeypot hidden field + minimum completion time validation (#1934, #1935) |
+
+**Bot protection** applied to all public forms: survey, waitlist signup, registration, login.
 
 ### 19.3 Compliance
 - **Standards**: FERPA, MFIPPA, PIPEDA, GDPR
@@ -837,7 +849,21 @@ Inspired by Canadian consumer-tech leaders:
 - "Just Upload" shortcut to skip AI tools
 - Progressive wizard with slide animation
 
-### 20.9 Mobile Responsive
+### 20.9 UI/UX Polish (March 2026)
+**Status**: IMPLEMENTED
+
+| Fix | Issue |
+|-----|-------|
+| Sidebar `position:fixed` to prevent hover layout shift | #1922 |
+| Wizard class dropdown filtered by selected child | #1923 |
+| Child selector on upload modal for course-materials page | #1907 |
+| Consistent generation spinners across AI tools | #1904 |
+| FAB Class Material opens UploadMaterialWizard inline | #1931 |
+| Recent Activity panel expands in simplified view | #1945 |
+| Create Class button visible text CTA | #1950 |
+| MyKidsPage upload modal child selector + class filtering | #1952 |
+
+### 20.10 Mobile Responsive
 **Status**: PARTIAL | **Issues**: #152
 
 - CSS breakpoints: 600px, 768px, 1024px
@@ -845,7 +871,7 @@ Inspired by Canadian consumer-tech leaders:
 - 44px minimum touch targets
 - Full-screen modals on small screens
 
-### 20.10 Interactive Tutorials
+### 20.11 Interactive Tutorials
 **Status**: IMPLEMENTED | **Issues**: #1208-#1210
 
 - Role-based tutorial pages at `/tutorial`
@@ -907,14 +933,77 @@ Inspired by Canadian consumer-tech leaders:
 | Standard | 200 | $5.00 |
 | Bulk | 500 | $10.00 |
 
-### Components
+### Digital Wallet
+**Status**: IMPLEMENTED | **Issues**: #1854
+
+- Credit package system with tiers
+- Transaction tracking
+- Wallet balance management
+
+### Planned Components
 - **Stripe Integration**: Customer creation, webhooks, Checkout, Customer Portal
-- **Digital Wallet**: Per-user balance, auto-refill, transaction history
 - **Invoice Module**: Auto-increment numbers, line items, 13% HST, branded PDF
 
 ---
 
-## 23. Course Planning (Phase 3)
+## 23. Pre-Launch Survey System
+
+**Status**: IMPLEMENTED | **Issues**: #1890-#1894
+
+### Survey Flow
+1. Public survey page at `/survey` with role selection (parent / student / teacher)
+2. 8-10 role-specific questions per audience
+3. Question types: `single_select`, `multi_select`, `likert`, `likert_matrix`, `free_text`
+4. Session-based anonymous responses with `sessionStorage` persistence
+5. Waitlist link presented after survey completion
+
+### Bot Protection
+- Honeypot hidden field + minimum completion time validation (#1934, #1935)
+
+### Admin Analytics Dashboard
+- Response analytics with horizontal bar charts, pie charts, matrix views
+- Admin email + in-app notifications on survey completion
+- Per-question breakdown by role
+
+---
+
+## 24. Bot Protection
+
+**Status**: IMPLEMENTED | **Issues**: #1934, #1935
+
+- Honeypot hidden field (invisible to users, traps bots)
+- Minimum completion time validation (rejects instant submissions)
+- Applied to all public forms: survey, waitlist signup, registration, login
+
+---
+
+## 25. Performance Optimization
+
+**Status**: IMPLEMENTED | **Issues**: #1954-#1967
+
+### Backend Optimizations
+| Optimization | Detail |
+|-------------|--------|
+| N+1 query elimination | Eager loading (`selectinload`) across 7 route files |
+| Database indexes | 16 new indexes across 11 models |
+| Connection pooling | PostgreSQL `pool_size=10`, `max_overflow=20`, `pool_pre_ping` |
+| Token blacklist cache | In-memory cache (60s TTL), eliminates per-request DB query |
+| Dashboard pagination | Tasks capped at 20, conversations at 10 |
+| Batch enrollment API | Single call replaces N individual enrollment status checks |
+
+### Frontend Optimizations
+| Optimization | Detail |
+|-------------|--------|
+| Axios timeout | 30s default, 120s for AI/upload operations |
+| Visibility-aware polling | `usePageVisible` hook pauses polling when tab hidden |
+| Affected components | NotificationBell, MessagesPage, useAIUsage |
+
+### Requirements
+- Section 10.0 Performance Standards added to REQUIREMENTS.md
+
+---
+
+## 26. Course Planning (Phase 3)
 
 **Status**: NOT IMPLEMENTED | **Issues**: #500-#508, #511
 
@@ -930,33 +1019,33 @@ Inspired by Canadian consumer-tech leaders:
 
 ---
 
-## 24. WOW Features — Parent Value & Engagement (Phase 2, March 2026)
+## 27. WOW Features — Parent Value & Engagement (Phase 2, March 2026)
 
 Features addressing pilot feedback: *"I don't see a WOW factor."* Core principle: **Parents First, Responsible AI.**
 
-### 24.1 Smart Daily Briefing (§6.61, #1403)
+### 27.1 Smart Daily Briefing (§6.61, #1403)
 Proactive daily summary telling parents what matters today across all children. Pure SQL aggregation ($0 AI cost). Optional morning email digest via SendGrid.
 
-### 24.2 Help My Kid — One-Tap Study Actions (§6.62, #1407)
+### 27.2 Help My Kid — One-Tap Study Actions (§6.62, #1407)
 Parent sees upcoming test → taps "Help Study" → AI generates practice material → child gets notification. Source material linking via self-referential FK on `study_guides` (no new tables).
 
-### 24.3 Global Search + Smart Shortcuts (§6.17, #1410)
+### 27.3 Global Search + Smart Shortcuts (§6.17, #1410)
 Unified search (Ctrl+K) with SQL ILIKE ($0 cost). Smart presets: "due" → shows overdue items; child name → child snapshot. Action buttons on results for AI generation.
 
-### 24.4 Weekly Progress Pulse (§6.63, #1413)
+### 27.4 Weekly Progress Pulse (§6.63, #1413)
 Sunday evening email digest: per-child completed/overdue/upcoming summary. Pure SQL + SendGrid ($0).
 
-### 24.5 Parent-Child Study Link (§6.64, #1414)
+### 27.5 Parent-Child Study Link (§6.64, #1414)
 Bidirectional feedback loop: parent generates quiz → child notified → child completes → parent sees score + weak areas.
 
-### 24.6 Dashboard Redesign (§6.65, #1415)
+### 27.6 Dashboard Redesign (§6.65, #1415)
 Clean, persona-based layouts with 3-section max per role:
 - Parent v5: Daily Briefing + Child Snapshot + Quick Actions
 - Student v4: Coming Up + Recent Study + Quick Actions
 - Teacher v2: Student Alerts + My Classes + Quick Actions
 - Admin v2: Platform Health + Recent Activity + Quick Actions
 
-### 24.7 Responsible AI Parent Tools (§6.66, #1421)
+### 27.7 Responsible AI Parent Tools (§6.66, #1421)
 
 | Tool | For Parent | For Student | AI Cost |
 |------|-----------|-------------|---------|
@@ -968,7 +1057,7 @@ Clean, persona-based layouts with 3-section max per role:
 
 **Revised Help Study Menu:** Primary = Quick Assessment, Practice Problems, Parent Briefing. Secondary = Quiz, Study Guide, Flashcards.
 
-## 25. Future Phases
+## 28. Future Phases
 
 ### Phase 2+: TeachAssist Integration + Polish
 - TeachAssist grade import
@@ -1019,10 +1108,12 @@ Key endpoint groups:
 - `/api/inspiration/*` — Random message, admin CRUD
 - `/api/quiz-results/*` — Save, list, stats
 - `/api/resource-links/*` — Edit, delete
+- `/api/survey/*` — Public survey questions, submit responses, admin analytics
+- `/api/wallet/*` — Balance, transactions, credit packages
 
 ## Appendix B: Data Model Summary
 
-**Total tables: 25+**
+**Total tables: 30+**
 
 | Table | Purpose |
 |-------|---------|
@@ -1055,6 +1146,11 @@ Key endpoint groups:
 | broadcasts | Admin broadcast history |
 | link_requests | Parent-student approval linking |
 | notification_suppressions | Per-source notification muting |
+| survey_questions | Pre-launch survey questions per role |
+| survey_responses | Anonymous survey response data |
+| source_files | Multi-file upload tracking (GCS) |
+| wallet_transactions | Digital wallet credit transactions |
+| token_blacklist | JWT token blacklist with in-memory cache |
 
 ## Appendix C: Technology Stack
 
@@ -1067,7 +1163,7 @@ Key endpoint groups:
 | AI | OpenAI (gpt-4o-mini), Claude (Haiku for moderation, API for chatbot) |
 | Auth | JWT (access + refresh), OAuth2, Google OAuth |
 | Email | SendGrid + Gmail SMTP fallback |
-| Storage | Google Cloud Storage (planned) |
+| Storage | Google Cloud Storage (production) |
 | Deploy | GCP Cloud Run, auto-deploy on merge to master |
 | Charts | Recharts |
 | PDF | html2pdf.js |
@@ -1078,4 +1174,4 @@ Key endpoint groups:
 
 ---
 
-*This feature catalog was generated by analyzing 1,007 GitHub issues, 60+ requirement sections across 8 requirement files, design audit reports, and the full codebase architecture. It represents the complete state of ClassBridge as of March 8, 2026.*
+*This feature catalog was generated by analyzing 1,969 GitHub issues, 60+ requirement sections across 8 requirement files, design audit reports, and the full codebase architecture. It represents the complete state of ClassBridge as of March 20, 2026. Production: classbridge.ca (live since March 6, 2026). Backend tests: 1,004.*

@@ -1,7 +1,7 @@
 # ClassBridge — Design System & UI/UX Documentation
 
-**Version**: 1.0
-**Date**: 2026-03-08
+**Version**: 2.1
+**Date**: 2026-03-20
 **Author**: Sarah (Product Owner)
 **Platform**: Web (React 19) + Mobile (React Native / Expo SDK 54)
 
@@ -213,6 +213,52 @@ Located in `frontend/src/components/calendar/`:
 - **Panel**: 380x520px desktop, full-width bottom sheet mobile
 - **Suggestion chips**: Role-based and context-aware
 - **Video embeds**: YouTube/Loom inline players
+
+### 4.11 usePageVisible Hook
+
+Custom hook that tracks `document.visibilityState` for pausing background operations when the browser tab is hidden. Returns a boolean indicating whether the page is currently visible. Used by polling intervals (e.g., NotificationBell) to avoid unnecessary network requests when the user is on another tab.
+
+### 4.12 GenerationSpinner
+
+Consistent AI generation loading spinner used across all study tool endpoints (study guide, quiz, flashcard generation). Provides a branded, uniform loading experience during AI operations.
+
+### 4.13 SpeedDialFAB
+
+Speed dial floating action button with expandable menu options. Click to reveal a radial or vertical list of contextual actions. Used for quick-access creation flows (e.g., upload material, create task).
+
+### 4.14 UploadMaterialWizard
+
+Multi-step wizard component for uploading documents:
+- **Step 1**: File upload (drag-and-drop zone, paste text, class selector)
+- **Step 2**: Study tool selection (Study Guide, Quiz, Flashcards)
+- "Just Upload" shortcut to skip AI tool generation
+- Slide animation between steps
+- Used across all roles (parent, student, teacher)
+
+### 4.15 ChildSelectorTabs
+
+Tab component for selecting a child account in parent views. Displays child names as horizontal tabs with colored indicators matching the child avatar palette. Selecting a tab filters all downstream content to that child.
+
+### 4.16 SetupChecklist
+
+Onboarding checklist component for new user setup. Displays a list of setup steps (e.g., link Google Classroom, add a child, upload first material) with completion checkmarks. Dismissible once all steps are done or manually closed.
+
+### 4.17 BotProtection Fields
+
+Honeypot + timing validation on public-facing forms (survey, waitlist, registration). Invisible honeypot input field traps bots that auto-fill all fields. Timing validation rejects submissions completed faster than a human threshold.
+
+### 4.18 SurveyPage Components
+
+Role-based questionnaire system supporting multiple question types:
+- **Likert scale**: 5-point agreement scale
+- **Matrix**: Grid of rows x columns for multi-item rating
+- **Multi-select**: Checkbox-based multiple choice
+- **Free-text**: Open-ended text input
+- Responses stored per role with analytics dashboard for admins.
+
+### 4.19 NotificationBell (Updated)
+
+Updated with visibility-aware polling via `usePageVisible` hook. Polling for new notifications pauses automatically when the browser tab is hidden and resumes when the tab becomes visible again, reducing unnecessary API calls.
 
 ---
 
@@ -515,9 +561,35 @@ Replace emoji + CSS pulse during AI generation with branded Lottie animation:
 
 ---
 
-## 11. Accessibility (Current + Planned)
+## 11. Performance Design Patterns
 
-### 11.1 Current
+### 11.1 Eager Loading
+
+All backend endpoints use SQLAlchemy `selectinload()` for relationship access. This prevents N+1 query problems by loading related objects in a single batch query rather than issuing individual queries per row.
+
+### 11.2 Batch API Pattern
+
+Prefer a single batch endpoint over N individual calls. For example, enrollment status checks use a batch endpoint that accepts multiple IDs and returns all statuses in one response, reducing round-trips and improving page load time.
+
+### 11.3 Visibility-Aware Polling
+
+Use the `usePageVisible` hook to pause `setInterval`-based polling when the browser tab is hidden. This applies to notification polling, dashboard refresh, and any periodic data fetch. Polling resumes immediately when the tab becomes visible.
+
+### 11.4 Request Timeout Pattern
+
+- **Default timeout**: 30 seconds for standard API calls
+- **Extended timeout**: 120 seconds for AI generation and file upload operations
+- Configured in the Axios client instance; overridable per-request
+
+### 11.5 In-Memory Caching
+
+Token blacklist uses a TTL (time-to-live) cache to reduce database queries on every authenticated request. Blacklisted tokens are cached in memory with automatic expiry, avoiding repeated DB lookups for the same token.
+
+---
+
+## 12. Accessibility (Current + Planned)
+
+### 12.1 Current
 
 - Keyboard-navigable flashcards (arrows + space)
 - `aria-label` on icon-only buttons
@@ -526,7 +598,7 @@ Replace emoji + CSS pulse during AI generation with branded Lottie animation:
 - Color contrast in all three themes
 - Touch targets minimum 44px on mobile
 
-### 11.2 Planned (#719)
+### 12.2 Planned (#719)
 
 - Full ARIA tab pattern for tabbed interfaces
 - Focus trapping in modals
@@ -536,16 +608,16 @@ Replace emoji + CSS pulse during AI generation with branded Lottie animation:
 
 ---
 
-## 12. Design Consistency Initiative
+## 13. Design Consistency Initiative
 
 **Status**: Planned | **Issues**: #1246-#1254
 
-### 12.1 Universal Page Shell
+### 13.1 Universal Page Shell
 
 Every page will be wrapped in `DashboardLayout` with `PageNav` breadcrumbs. Pages to update:
 - StudyGuidePage, QuizPage, FlashcardsPage, TeacherCommsPage, CoursesPage, CourseDetailPage
 
-### 12.2 Shared CSS Patterns
+### 13.2 Shared CSS Patterns
 
 Standardized classes to be defined in `Dashboard.css`:
 - `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-icon`
@@ -553,7 +625,7 @@ Standardized classes to be defined in `Dashboard.css`:
 - `.list-row`, `.list-row-icon`, `.list-row-body`, `.list-row-action`
 - `.empty-state` (icon + title + description + CTA)
 
-### 12.3 Upload Modal Redesign (Two-Step Wizard)
+### 13.3 Upload Modal Redesign (Two-Step Wizard)
 
 Replace the single dense upload form with a progressive wizard:
 - **Step 1**: Add material (file drop zone, paste text, class selector)
@@ -564,9 +636,9 @@ Replace the single dense upload form with a progressive wizard:
 
 ---
 
-## 13. Mobile App Design
+## 14. Mobile App Design
 
-### 13.1 Design System
+### 14.1 Design System
 
 | Token | Value |
 |-------|-------|
@@ -578,14 +650,14 @@ Replace the single dense upload form with a progressive wizard:
 | Border Radius | 8px (cards), 12px (buttons) |
 | Spacing | 4px base unit |
 
-### 13.2 Navigation
+### 14.2 Navigation
 
 - Bottom tab bar: Home, Calendar, Messages, Notifications, Profile
 - Nested stacks for detail screens (ChildOverview, Chat)
 - Native headers on most screens
 - SafeArea handling via `useSafeAreaInsets`
 
-### 13.3 Mobile Components
+### 14.3 Mobile Components
 
 | Component | Purpose |
 |-----------|---------|
@@ -597,7 +669,7 @@ Replace the single dense upload form with a progressive wizard:
 | Pull-to-refresh | RefreshControl on all list screens |
 | Empty states | Icon + message for empty data |
 
-### 13.4 Mobile Boundary
+### 14.4 Mobile Boundary
 
 - Mobile is read-heavy with limited writes
 - Complex workflows (registration, course management, study generation) are web-only
@@ -605,9 +677,9 @@ Replace the single dense upload form with a progressive wizard:
 
 ---
 
-## 14. Email Template Design
+## 15. Email Template Design
 
-### 14.1 Template Style
+### 15.1 Template Style
 
 All 14 email templates follow a consistent design:
 - ClassBridge logo header
@@ -617,7 +689,7 @@ All 14 email templates follow a consistent design:
 - Role-based inspirational message footer
 - Branded CTA buttons
 
-### 14.2 Templates
+### 15.2 Templates
 
 | Template | Trigger | CTA |
 |----------|---------|-----|
@@ -641,11 +713,11 @@ All 14 email templates follow a consistent design:
 
 ---
 
-## 15. Dashboard Redesign — Persona-Based Layouts (§6.65)
+## 16. Dashboard Redesign — Persona-Based Layouts (§6.65)
 
 All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3-section maximum** layout. White space is a feature, not wasted space.
 
-### 15.1 Design Principles
+### 16.1 Design Principles
 
 | Principle | Rule |
 |-----------|------|
@@ -655,7 +727,7 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 | Progressive Disclosure | Summary first → click to expand |
 | Role-Appropriate | Each role sees only what matters to them |
 
-### 15.2 Parent Dashboard v5
+### 16.2 Parent Dashboard v5
 
 **Persona:** Busy parent, checks app 1-2x/day, wants quick snapshot.
 
@@ -668,7 +740,7 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 - **No widgets, no charts on landing.** Charts live in a dedicated Analytics tab.
 - Child selector tabs if >1 child; default = all children combined view.
 
-### 15.3 Student Dashboard v4
+### 16.3 Student Dashboard v4
 
 **Persona:** Student (ages 10-18), needs to know what's due and stay motivated.
 
@@ -681,7 +753,7 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 - Gamification elements: streak counter, achievement badges (subtle, not distracting).
 - Dark mode default option for older students.
 
-### 15.4 Teacher Dashboard v2
+### 16.4 Teacher Dashboard v2
 
 **Persona:** Teacher managing multiple classes, needs class-level overview.
 
@@ -694,7 +766,7 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 - Class selector dropdown; default = all classes aggregated.
 - No individual student data on landing (click into class for roster).
 
-### 15.5 Admin Dashboard v2
+### 16.5 Admin Dashboard v2
 
 **Persona:** Platform administrator, monitors system health and user activity.
 
@@ -707,7 +779,7 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 - Metric cards with sparkline trends (7-day).
 - Alert badges on sections requiring attention.
 
-### 15.6 Responsive Behavior
+### 16.6 Responsive Behavior
 
 | Breakpoint | Layout |
 |------------|--------|
@@ -715,7 +787,7 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 | Tablet (768-1023px) | 2-column, section 3 moves below |
 | Mobile (<768px) | Single column stack, sections become collapsible accordions |
 
-### 15.7 Color & Typography
+### 16.7 Color & Typography
 
 - Section headers: `text-lg font-semibold` in role accent color
 - Cards: White background, `rounded-xl`, `shadow-sm`, 24px padding
@@ -724,4 +796,4 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 
 ---
 
-*This design system document captures the complete visual language, component library, layout patterns, and design decisions for ClassBridge as of March 8, 2026.*
+*This design system document captures the complete visual language, component library (60+ reusable components, 13+ custom hooks), 54+ page components, 40+ API modules, layout patterns, and design decisions for ClassBridge as of March 20, 2026.*
