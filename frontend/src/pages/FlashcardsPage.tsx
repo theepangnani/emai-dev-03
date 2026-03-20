@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, Flashcard } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -15,6 +15,7 @@ type CardDifficulty = 'mastered' | 'learning';
 
 export function FlashcardsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [allCards, setAllCards] = useState<Flashcard[]>([]);
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -61,6 +62,13 @@ export function FlashcardsPage() {
     };
     fetchFlashcards();
   }, [id]);
+
+  // Redirect to course-materials tab when flashcards have a parent material (#1969)
+  useEffect(() => {
+    if (guide && guide.course_content_id) {
+      navigate(`/course-materials/${guide.course_content_id}?tab=flashcards`, { replace: true });
+    }
+  }, [guide, navigate]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped(prev => !prev);

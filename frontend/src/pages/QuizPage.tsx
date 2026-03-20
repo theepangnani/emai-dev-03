@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, QuizQuestion, ResolvedStudent } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ import './QuizPage.css';
 
 export function QuizPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
   const [guide, setGuide] = useState<StudyGuide | null>(null);
@@ -52,6 +53,13 @@ export function QuizPage() {
     };
     fetchQuiz();
   }, [id]);
+
+  // Redirect to course-materials tab when quiz has a parent material (#1969)
+  useEffect(() => {
+    if (guide && guide.course_content_id) {
+      navigate(`/course-materials/${guide.course_content_id}?tab=quiz`, { replace: true });
+    }
+  }, [guide, navigate]);
 
   // Resolve which student this quiz is for (parents only)
   useEffect(() => {

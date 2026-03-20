@@ -371,7 +371,7 @@ export function StudyGuidePage() {
           </h3>
           <div className="sg-sub-guides-list">
             {childGuides.map(child => (
-              <Link key={child.id} to={child.course_content_id ? `/course-materials/${child.course_content_id}?tab=guide` : `/study/guide/${child.id}`} className="sg-sub-guide-item">
+              <Link key={child.id} to={child.course_content_id ? `/course-materials/${child.course_content_id}?tab=${{ quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' }[child.guide_type] || 'guide'}` : `/study/guide/${child.id}`} className="sg-sub-guide-item">
                 <span className="sg-sub-guide-type">
                   {child.guide_type === 'study_guide' ? '\u{1F4D6}' : child.guide_type === 'quiz' ? '\u2753' : '\u{1F0CF}'}
                 </span>

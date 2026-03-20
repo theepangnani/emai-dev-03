@@ -8,9 +8,13 @@ interface ContinueStudyingProps {
 }
 
 function getGuideRoute(guide: StudyGuide): string {
+  if (guide.course_content_id) {
+    const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
+    return `/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`;
+  }
   if (guide.guide_type === 'quiz') return `/study/quiz/${guide.id}`;
   if (guide.guide_type === 'flashcards') return `/study/flashcards/${guide.id}`;
-  return guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`;
+  return `/study/guide/${guide.id}`;
 }
 
 function getGuideTypeLabel(guideType: string): string {

@@ -181,9 +181,13 @@ export function TaskDetailPage() {
   const getStudyGuideRoute = (task: TaskItem): string | null => {
     if (!task.study_guide_id) return null;
     const guideType = task.study_guide_type || 'study_guide';
+    if (task.course_content_id) {
+      const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
+      return `/course-materials/${task.course_content_id}?tab=${tabMap[guideType] || 'guide'}`;
+    }
     if (guideType === 'quiz') return `/study/quiz/${task.study_guide_id}`;
     if (guideType === 'flashcards') return `/study/flashcards/${task.study_guide_id}`;
-    return task.course_content_id ? `/course-materials/${task.course_content_id}?tab=guide` : `/study/guide/${task.study_guide_id}`;
+    return `/study/guide/${task.study_guide_id}`;
   };
 
   const guideTypeIcon = (type: string | null) => {
