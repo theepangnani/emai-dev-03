@@ -23,6 +23,7 @@ export interface StudyGuide {
   generation_context?: string | null;
   focus_prompt: string | null;
   is_truncated?: boolean;
+  parent_summary?: string | null;
   created_at: string;
   archived_at: string | null;
   auto_created_tasks?: AutoCreatedTask[];
@@ -32,6 +33,10 @@ export interface StudyGuide {
   viewed_at?: string | null;
   viewed_count?: number;
   shared_with_name?: string | null;
+  // §6.106: Strategy context
+  document_type?: string | null;
+  study_goal?: string | null;
+  study_goal_text?: string | null;
 }
 
 // Sharing types
@@ -191,19 +196,27 @@ export interface ResolvedStudent {
   student_name: string;
 }
 
+export async function classifyDocument(textContent: string, filename: string): Promise<{ document_type: string; confidence: number }> {
+  const form = new FormData();
+  form.append('text_content', textContent);
+  form.append('filename', filename);
+  const response = await api.post('/api/study/classify-document', form);
+  return response.data;
+}
+
 // Study Tools API
 export const studyApi = {
-  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string }) => {
+  generateGuide: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; title?: string; content?: string; regenerate_from_id?: number; custom_prompt?: string; focus_prompt?: string; document_type?: string; study_goal?: string; study_goal_text?: string }) => {
     const response = await api.post('/api/study/generate', params, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
 
-  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string; difficulty?: string }) => {
+  generateQuiz: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_questions?: number; regenerate_from_id?: number; focus_prompt?: string; difficulty?: string; document_type?: string; study_goal?: string; study_goal_text?: string }) => {
     const response = await api.post('/api/study/quiz/generate', params, AI_TIMEOUT);
     return response.data as Quiz;
   },
 
-  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string }) => {
+  generateFlashcards: async (params: { assignment_id?: number; course_id?: number; course_content_id?: number; topic?: string; content?: string; num_cards?: number; regenerate_from_id?: number; focus_prompt?: string; document_type?: string; study_goal?: string; study_goal_text?: string }) => {
     const response = await api.post('/api/study/flashcards/generate', params, AI_TIMEOUT);
     return response.data as FlashcardSet;
   },
@@ -272,6 +285,9 @@ export const studyApi = {
     course_content_id?: number;
     focus_prompt?: string;
     difficulty?: string;
+    document_type?: string;
+    study_goal?: string;
+    study_goal_text?: string;
   }) => {
     const formData = new FormData();
     formData.append('file', params.file);
@@ -283,6 +299,9 @@ export const studyApi = {
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
     if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
     if (params.difficulty) formData.append('difficulty', params.difficulty);
+    if (params.document_type) formData.append('document_type', params.document_type);
+    if (params.study_goal) formData.append('study_goal', params.study_goal);
+    if (params.study_goal_text) formData.append('study_goal_text', params.study_goal_text);
 
     const response = await api.post('/api/study/upload/generate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -302,6 +321,9 @@ export const studyApi = {
     course_content_id?: number;
     focus_prompt?: string;
     difficulty?: string;
+    document_type?: string;
+    study_goal?: string;
+    study_goal_text?: string;
   }) => {
     const formData = new FormData();
     formData.append('content', params.content);
@@ -313,6 +335,9 @@ export const studyApi = {
     if (params.course_content_id) formData.append('course_content_id', params.course_content_id.toString());
     if (params.focus_prompt) formData.append('focus_prompt', params.focus_prompt);
     if (params.difficulty) formData.append('difficulty', params.difficulty);
+    if (params.document_type) formData.append('document_type', params.document_type);
+    if (params.study_goal) formData.append('study_goal', params.study_goal);
+    if (params.study_goal_text) formData.append('study_goal_text', params.study_goal_text);
     params.images.forEach(img => formData.append('images', img));
 
     const response = await api.post('/api/study/generate-with-images', formData, {
@@ -358,7 +383,7 @@ export const studyApi = {
     await api.delete(`/api/quiz-results/${id}`);
   },
 
-  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string }) => {
+  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string; document_type?: string; study_goal?: string }) => {
     const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params, AI_TIMEOUT);
     return response.data as StudyGuide;
   },

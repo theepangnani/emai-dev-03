@@ -7,9 +7,11 @@ interface GenerateSubGuideModalProps {
   open: boolean;
   selectedText: string;
   onClose: () => void;
-  onGenerate: (guideType: string, customPrompt?: string) => Promise<void>;
+  onGenerate: (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => Promise<void>;
   aiAvailable: boolean;
   aiRemaining: number;
+  documentType?: string;  // From parent course content
+  studyGoal?: string;     // From parent course content
 }
 
 const GUIDE_TYPES = [
@@ -64,6 +66,8 @@ export function GenerateSubGuideModal({
   onGenerate,
   aiAvailable,
   aiRemaining,
+  documentType,
+  studyGoal,
 }: GenerateSubGuideModalProps) {
   const [selectedType, setSelectedType] = useState('study_guide');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -92,7 +96,7 @@ export function GenerateSubGuideModal({
     setGenerating(true);
     setError('');
     try {
-      await onGenerate(selectedType, customPrompt || undefined);
+      await onGenerate(selectedType, customPrompt || undefined, documentType, studyGoal);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Generation failed. Please try again.'

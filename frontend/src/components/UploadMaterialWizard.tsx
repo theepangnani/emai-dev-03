@@ -20,6 +20,9 @@ export interface StudyMaterialGenerateParams {
   pastedImages?: File[];
   courseId?: number;
   courseContentId?: number;
+  documentType?: string;
+  studyGoal?: string;
+  studyGoalText?: string;
 }
 
 interface UploadMaterialWizardProps {
@@ -73,6 +76,9 @@ export default function UploadMaterialWizard({
   const [pastedImages, setPastedImages] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
+  const [documentType, setDocumentType] = useState('');
+  const [studyGoal, setStudyGoal] = useState('');
+  const [studyGoalText, setStudyGoalText] = useState('');
   const [managedCourses, setManagedCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
   const [internalCourseId, setInternalCourseId] = useState<number | ''>(selectedCourseId ?? '');
   const [internalChildId, setInternalChildId] = useState<number | ''>('');
@@ -106,6 +112,12 @@ export default function UploadMaterialWizard({
     setError('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setInternalChildId('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDocumentType('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyGoal('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudyGoalText('');
 
     // Use provided courses, or fetch them if not provided
     if (courses && courses.length > 0) {
@@ -254,6 +266,9 @@ export default function UploadMaterialWizard({
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
       courseId: internalCourseId || undefined,
       courseContentId: selectedMaterialId ? (selectedMaterialId as number) : undefined,
+      documentType: documentType || undefined,
+      studyGoal: studyGoal || undefined,
+      studyGoalText: studyGoalText.trim() || undefined,
     });
   };
 
@@ -333,6 +348,11 @@ export default function UploadMaterialWizard({
               focusPrompt={focusPrompt}
               onFocusPromptChange={setFocusPrompt}
               isGenerating={isGenerating}
+              documentType={documentType}
+              onDocumentTypeChange={setDocumentType}
+              studyGoal={studyGoal}
+              studyGoalText={studyGoalText}
+              onStudyGoalChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
             />
           )}
 

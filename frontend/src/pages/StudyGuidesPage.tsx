@@ -33,6 +33,9 @@ interface PendingGeneration {
   regenerateId?: number;
   courseId?: number;
   courseContentId?: number;
+  documentType?: string;
+  studyGoal?: string;
+  studyGoalText?: string;
 }
 
 let _pendingGenerations: PendingGeneration[] = [];
@@ -675,6 +678,7 @@ export function StudyGuidesPage() {
             num_cards: params.type === 'flashcards' ? 15 : undefined,
             course_id: params.courseId, course_content_id: params.courseContentId,
             focus_prompt: params.focusPrompt,
+            document_type: params.documentType, study_goal: params.studyGoal, study_goal_text: params.studyGoalText,
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
           result = await studyApi.generateFromTextAndImages({
@@ -687,9 +691,10 @@ export function StudyGuidesPage() {
             course_id: params.courseId,
             course_content_id: params.courseContentId,
             focus_prompt: params.focusPrompt,
+            document_type: params.documentType, study_goal: params.studyGoal, study_goal_text: params.studyGoalText,
           });
         } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({ title: params.title, content: content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
+          result = await studyApi.generateGuide({ title: params.title, content: content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt, document_type: params.documentType, study_goal: params.studyGoal, study_goal_text: params.studyGoalText });
         } else if (params.type === 'quiz') {
           result = await studyApi.generateQuiz({ topic: params.title, content: content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else {
@@ -906,6 +911,9 @@ export function StudyGuidesPage() {
           regenerateId: duplicateCheck?.existing_guide?.id,
           courseId: modalParams.courseId,
           courseContentId: sharedCourseContentId,
+          documentType: modalParams.documentType,
+          studyGoal: modalParams.studyGoal,
+          studyGoalText: modalParams.studyGoalText,
         });
       }
     } finally {
@@ -1752,6 +1760,9 @@ export function StudyGuidesPage() {
                 regenerateId: duplicateCheck?.existing_guide?.id,
                 courseId: params.courseId,
                 courseContentId: params.courseContentId,
+                documentType: params.documentType,
+                studyGoal: params.studyGoal,
+                studyGoalText: params.studyGoalText,
               });
             }
           }

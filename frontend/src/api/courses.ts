@@ -27,6 +27,9 @@ export interface CourseContentItem {
   updated_at: string | null;
   archived_at: string | null;
   last_viewed_at: string | null;
+  document_type: string | null;
+  study_goal: string | null;
+  study_goal_text: string | null;
 }
 
 export interface SourceFileItem {

@@ -530,6 +530,19 @@ async def generate_study_guide_endpoint(
     if body.regenerate_from_id:
         parent_guide_id, version = study_service.get_version_info(body.regenerate_from_id, current_user.id)
 
+    # §6.106: Inherit document_type/study_goal from parent guide's course content on regeneration
+    if body.regenerate_from_id and not body.document_type:
+        parent_guide = db.query(StudyGuide).filter(StudyGuide.id == body.regenerate_from_id).first()
+        if parent_guide and parent_guide.course_content_id:
+            parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+            if parent_cc:
+                if not body.document_type and getattr(parent_cc, 'document_type', None):
+                    body.document_type = parent_cc.document_type
+                if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                    body.study_goal = parent_cc.study_goal
+                if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                    body.study_goal_text = parent_cc.study_goal_text
+
     # Get source content
     assignment = None
     course = None
@@ -792,6 +805,19 @@ async def generate_quiz_endpoint(
     if body.regenerate_from_id:
         parent_guide_id, version = study_service.get_version_info(body.regenerate_from_id, current_user.id)
 
+    # §6.106: Inherit document_type/study_goal from parent guide's course content on regeneration
+    if body.regenerate_from_id and not body.document_type:
+        parent_guide = db.query(StudyGuide).filter(StudyGuide.id == body.regenerate_from_id).first()
+        if parent_guide and parent_guide.course_content_id:
+            parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+            if parent_cc:
+                if not body.document_type and getattr(parent_cc, 'document_type', None):
+                    body.document_type = parent_cc.document_type
+                if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                    body.study_goal = parent_cc.study_goal
+                if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                    body.study_goal_text = parent_cc.study_goal_text
+
     topic = body.topic or "Quiz"
     content = body.content or ""
 
@@ -833,6 +859,14 @@ async def generate_quiz_endpoint(
     # Fetch image metadata for prompt enrichment
     images_metadata = _get_images_metadata(db, body.course_content_id)
 
+    # §6.106: Apply strategy context to quiz generation
+    effective_focus = body.focus_prompt or ""
+    if body.document_type:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        type_labels = {"teacher_notes": "teacher notes", "past_exam": "past exam", "mock_exam": "practice exam", "course_syllabus": "syllabus", "project_brief": "project brief", "lab_experiment": "lab material", "textbook_excerpt": "textbook reading"}
+        doc_label = type_labels.get(body.document_type, body.document_type)
+        effective_focus = f"This content is from {doc_label}. {effective_focus}".strip()
+
     # Generate quiz using AI
     critical_dates = []
     try:
@@ -840,7 +874,7 @@ async def generate_quiz_endpoint(
             topic=topic,
             content=content,
             num_questions=num_questions,
-            focus_prompt=body.focus_prompt,
+            focus_prompt=effective_focus or None,
             difficulty=body.difficulty,
             images=images_metadata,
             interests=_get_user_interests(current_user),
@@ -957,6 +991,19 @@ async def generate_flashcards_endpoint(
     if body.regenerate_from_id:
         parent_guide_id, version = study_service.get_version_info(body.regenerate_from_id, current_user.id)
 
+    # §6.106: Inherit document_type/study_goal from parent guide's course content on regeneration
+    if body.regenerate_from_id and not body.document_type:
+        parent_guide = db.query(StudyGuide).filter(StudyGuide.id == body.regenerate_from_id).first()
+        if parent_guide and parent_guide.course_content_id:
+            parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+            if parent_cc:
+                if not body.document_type and getattr(parent_cc, 'document_type', None):
+                    body.document_type = parent_cc.document_type
+                if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                    body.study_goal = parent_cc.study_goal
+                if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                    body.study_goal_text = parent_cc.study_goal_text
+
     topic = body.topic or "Flashcards"
     content = body.content or ""
 
@@ -989,6 +1036,14 @@ async def generate_flashcards_endpoint(
     # Fetch image metadata for prompt enrichment
     images_metadata = _get_images_metadata(db, body.course_content_id)
 
+    # §6.106: Apply strategy context to flashcard generation
+    effective_focus = body.focus_prompt or ""
+    if body.document_type:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        type_labels = {"teacher_notes": "teacher notes", "past_exam": "past exam", "mock_exam": "practice exam", "course_syllabus": "syllabus", "project_brief": "project brief", "lab_experiment": "lab material", "textbook_excerpt": "textbook reading"}
+        doc_label = type_labels.get(body.document_type, body.document_type)
+        effective_focus = f"This content is from {doc_label}. {effective_focus}".strip()
+
     # Generate flashcards using AI
     critical_dates = []
     try:
@@ -996,7 +1051,7 @@ async def generate_flashcards_endpoint(
             topic=topic,
             content=content,
             num_cards=body.num_cards,
-            focus_prompt=body.focus_prompt,
+            focus_prompt=effective_focus or None,
             images=images_metadata,
             interests=_get_user_interests(current_user),
         )
@@ -1460,6 +1515,17 @@ async def generate_child_guide(
     if not has_access:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
+    # §6.106: Inherit document_type/study_goal from parent guide's course content
+    if not body.document_type and parent_guide.course_content_id:
+        parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+        if parent_cc:
+            if not body.document_type and getattr(parent_cc, 'document_type', None):
+                body.document_type = parent_cc.document_type
+            if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                body.study_goal = parent_cc.study_goal
+            if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                body.study_goal_text = parent_cc.study_goal_text
+
     # Validate topic text safety
     safe, reason = check_content_safe(body.topic)
     if not safe:
@@ -1485,6 +1551,12 @@ async def generate_child_guide(
     is_truncated = False
     critical_dates: list[dict] = []
 
+    # §6.106: Apply strategy context to sub-guide generation
+    effective_custom_prompt = body.custom_prompt
+    if body.document_type and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
     if body.guide_type == "study_guide":
         try:
             raw_content, is_truncated = await generate_study_guide(
@@ -1492,7 +1564,7 @@ async def generate_child_guide(
                 assignment_description=parent_content_truncated,
                 course_name="General",
                 focus_prompt=body.topic,
-                custom_prompt=body.custom_prompt,
+                custom_prompt=effective_custom_prompt,
             )
             raw_content, critical_dates = parse_critical_dates(raw_content)
             generated_content = raw_content
@@ -1590,6 +1662,23 @@ async def generate_child_guide(
     log_action(db, user_id=current_user.id, action="create", resource_type="study_guide", resource_id=study_guide.id, details={"guide_type": body.guide_type, "parent_guide_id": guide_id, "relationship_type": "sub_guide", "auto_tasks": len(created_tasks)})
     db.commit()
     db.refresh(study_guide)
+
+    # §6.106: Generate parent summary for sub-guide
+    if body.document_type or body.study_goal:
+        try:
+            from app.services.parent_summary import ParentSummaryService
+            parent_summary = await ParentSummaryService.generate(
+                study_guide_content=generated_content,
+                student_name=current_user.full_name,
+                subject=parent_guide.course.name if parent_guide.course else None,
+                document_type=body.document_type,
+                study_goal=body.study_goal,
+            )
+            if parent_summary:
+                study_guide.parent_summary = parent_summary
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Sub-guide parent summary generation failed: {e}")
 
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
