@@ -4,8 +4,18 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
 # SQLite needs connect_args for FastAPI compatibility
-connect_args = {"check_same_thread": False} if "sqlite" in settings.database_url else {}
-engine = create_engine(settings.database_url, connect_args=connect_args)
+if "sqlite" in settings.database_url:
+    engine = create_engine(
+        settings.database_url, connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(
+        settings.database_url,
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+    )
 
 # Enable foreign key enforcement in SQLite (off by default)
 if "sqlite" in settings.database_url:

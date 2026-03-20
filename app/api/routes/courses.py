@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel as PydanticBaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import insert
 
 from app.db.database import get_db
@@ -562,6 +562,52 @@ def lookup_course_by_code(
     return course
 
 
+@router.post("/enrollment-status/batch")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def batch_enrollment_status(
+    request: Request,
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get enrollment status for multiple courses in one request."""
+    course_ids = body.get("course_ids", [])
+    if not course_ids or len(course_ids) > 100:
+        raise HTTPException(status_code=400, detail="Provide 1-100 course_ids")
+
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        return {str(cid): {"status": "not_student"} for cid in course_ids}
+
+    # Batch-fetch enrolled course ids
+    enrolled_rows = db.execute(
+        student_courses.select().where(
+            student_courses.c.student_id == student.id,
+            student_courses.c.course_id.in_(course_ids),
+        )
+    ).fetchall()
+    enrolled_ids = {row.course_id for row in enrolled_rows}
+
+    # Batch-fetch pending enrollment requests
+    pending_requests = db.query(EnrollmentRequest).filter(
+        EnrollmentRequest.student_id == student.id,
+        EnrollmentRequest.course_id.in_(course_ids),
+        EnrollmentRequest.status == "pending",
+    ).all()
+    pending_map = {er.course_id: er.id for er in pending_requests}
+
+    result = {}
+    for cid in course_ids:
+        if cid in enrolled_ids:
+            result[str(cid)] = {"status": "enrolled"}
+        elif cid in pending_map:
+            result[str(cid)] = {"status": "pending", "request_id": pending_map[cid]}
+        else:
+            result[str(cid)] = {"status": "none"}
+
+    return result
+
+
 @router.get("/{course_id}", response_model=CourseResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_course(
@@ -674,7 +720,7 @@ def enroll_in_course(
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
     """Enroll the current student in a course."""
-    course = db.query(Course).filter(Course.id == course_id).first()
+    course = db.query(Course).options(selectinload(Course.teacher)).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -806,6 +852,14 @@ def list_course_students(
         raise HTTPException(status_code=404, detail="Course not found")
     _require_course_manager(db, current_user, course)
 
+    students = (
+        db.query(Student)
+        .join(student_courses, Student.id == student_courses.c.student_id)
+        .filter(student_courses.c.course_id == course_id)
+        .options(selectinload(Student.user))
+        .all()
+    )
+
     return [
         {
             "student_id": s.id,
@@ -814,7 +868,7 @@ def list_course_students(
             "email": s.user.email,
             "grade_level": s.grade_level,
         }
-        for s in course.students
+        for s in students
     ]
 
 

@@ -169,7 +169,7 @@ def get_task(
     current_user: User = Depends(get_current_user),
 ):
     """Get a single task by ID. Only accessible to creator or assignee."""
-    task = db.query(Task).filter(Task.id == task_id).first()
+    task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -219,7 +219,7 @@ def create_task(
     log_action(db, user_id=current_user.id, action="create", resource_type="task", resource_id=task.id,
                details={"title": data.title, "assigned_to": data.assigned_to_user_id})
     db.commit()
-    db.refresh(task)
+    task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task.id).first()
 
     # Notify parents if a student created a task
     if current_user.role == UserRole.STUDENT:
@@ -267,7 +267,7 @@ def update_task(
         if data.is_completed is not None:
             task_service.toggle_completion(task, current_user, data.is_completed)
             db.commit()
-            db.refresh(task)
+            task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task.id).first()
 
             # Notify the task creator (parent) when assignee completes the task
             if data.is_completed and task.created_by_user_id and task.created_by_user_id != current_user.id:
@@ -321,7 +321,7 @@ def update_task(
         task.study_guide_id = data.study_guide_id if data.study_guide_id != 0 else None
 
     db.commit()
-    db.refresh(task)
+    task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task.id).first()
     return _task_to_response(task)
 
 
@@ -367,7 +367,7 @@ def restore_task(
     task_service = TaskService(db)
     task_service.restore_task(task, current_user)
     db.commit()
-    db.refresh(task)
+    task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task.id).first()
     return _task_to_response(task)
 
 

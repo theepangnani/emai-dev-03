@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, Link } from 'react-router-dom';
 import { notificationsApi } from '../api/client';
 import type { NotificationResponse } from '../api/client';
+import { usePageVisible } from '../hooks/usePageVisible';
 import './NotificationBell.css';
 
 export function NotificationBell() {
@@ -13,13 +14,15 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [modalNotification, setModalNotification] = useState<NotificationResponse | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isVisible = usePageVisible();
 
-  // Poll unread count every 60 seconds
+  // Poll unread count every 60 seconds (only when page is visible)
   useEffect(() => {
+    if (!isVisible) return;
     loadUnreadCount();
     const interval = setInterval(loadUnreadCount, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isVisible]);
 
   // Close modal on Escape key
   useEffect(() => {

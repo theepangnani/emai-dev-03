@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Column, Index, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -9,11 +9,12 @@ class CalendarEvent(Base):
     __tablename__ = "calendar_events"
     __table_args__ = (
         UniqueConstraint("feed_id", "uid", name="uq_calendar_event_feed_uid"),
+        Index("ix_calendar_events_feed_start", "feed_id", "start_date"),
     )
 
     id = Column(Integer, primary_key=True)
-    feed_id = Column(Integer, ForeignKey("calendar_feeds.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    feed_id = Column(Integer, ForeignKey("calendar_feeds.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     uid = Column(String(500), nullable=False)
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)

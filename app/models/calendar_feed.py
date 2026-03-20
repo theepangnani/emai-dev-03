@@ -9,7 +9,7 @@ class CalendarFeed(Base):
     __tablename__ = "calendar_feeds"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     url = Column(String(1000), nullable=False)
     name = Column(String(255), nullable=True)
     last_synced = Column(DateTime(timezone=True), nullable=True)

@@ -206,10 +206,11 @@ export function CoursesPage() {
         // Check pending status for require_approval courses
         const approvalCourses = results.filter((c: CourseItem) => c.require_approval);
         if (approvalCourses.length > 0) {
-          const statuses = await Promise.all(
-            approvalCourses.map((c: CourseItem) => coursesApi.enrollmentStatus(c.id).then((s: { status: string }) => ({ id: c.id, ...s })).catch(() => ({ id: c.id, status: 'none' })))
+          const courseIds = approvalCourses.map((c: CourseItem) => c.id);
+          const statusMap = await coursesApi.enrollmentStatusBatch(courseIds);
+          const pending = new Set<number>(
+            courseIds.filter((id: number) => statusMap[String(id)]?.status === 'pending')
           );
-          const pending = new Set<number>(statuses.filter((s: { id: number; status: string }) => s.status === 'pending').map((s: { id: number; status: string }) => s.id));
           setPendingCourseIds(pending);
         }
       } catch {

@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from sqlalchemy import or_, and_, func as sa_func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import Optional, List
 
 from app.core.config import settings
@@ -164,7 +164,7 @@ def enforce_study_guide_limit(db: Session, user: User) -> None:
 
 def get_student_enrolled_course_ids(db: Session, user_id: int) -> list[int]:
     """Get course IDs for a student's enrolled courses."""
-    student = db.query(Student).filter(Student.user_id == user_id).first()
+    student = db.query(Student).options(selectinload(Student.courses)).filter(Student.user_id == user_id).first()
     if not student:
         return []
     return [c.id for c in student.courses]
@@ -192,7 +192,7 @@ def get_children_course_ids(db: Session, parent_id: int, student_user_id: int | 
         return []
 
     if student_user_id:
-        child_student = db.query(Student).filter(
+        child_student = db.query(Student).options(selectinload(Student.courses)).filter(
             Student.user_id == student_user_id,
             Student.id.in_(child_sids),
         ).first()

@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, AI_TIMEOUT } from './client';
 
 // Course Content Types
 export interface CourseContentItem {
@@ -211,6 +211,11 @@ export const coursesApi = {
     return response.data as { status: string; request_id?: number };
   },
 
+  enrollmentStatusBatch: async (courseIds: number[]) => {
+    const { data } = await api.post('/api/courses/enrollment-status/batch', { course_ids: courseIds });
+    return data as Record<string, { status: string; request_id?: number }>;
+  },
+
   listEnrollmentRequests: async (courseId: number, status?: string) => {
     const params = status ? { status } : {};
     const response = await api.get(`/api/courses/${courseId}/enrollment-requests`, { params });
@@ -278,6 +283,7 @@ export const courseContentsApi = {
     if (aiCustomPrompt) formData.append('ai_custom_prompt', aiCustomPrompt);
     const response = await api.post('/api/course-contents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as CourseContentItem;
   },
@@ -302,6 +308,7 @@ export const courseContentsApi = {
     formData.append('file', file);
     const response = await api.put(`/api/course-contents/${id}/replace-file`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as CourseContentUpdateResponse;
   },
@@ -373,6 +380,7 @@ export const courseContentsApi = {
     if (aiCustomPrompt) formData.append('ai_custom_prompt', aiCustomPrompt);
     const response = await api.post('/api/course-contents/upload-multi', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as CourseContentItem;
   },
@@ -384,6 +392,7 @@ export const courseContentsApi = {
     }
     const response = await api.post(`/api/course-contents/${contentId}/add-files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data as CourseContentItem;
   },
@@ -499,6 +508,7 @@ export const assignmentsApi = {
   submit: async (assignmentId: number, formData: FormData): Promise<SubmissionResponse> => {
     const response = await api.post(`/api/assignments/${assignmentId}/submit`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...AI_TIMEOUT,
     });
     return response.data;
   },
