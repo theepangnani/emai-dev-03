@@ -14,6 +14,10 @@ vi.mock('../api/courses', () => ({
   },
 }))
 
+vi.mock('../api/study', () => ({
+  classifyDocument: vi.fn().mockResolvedValue({ document_type: 'custom', confidence: 0 }),
+}))
+
 // Mock URL.createObjectURL / revokeObjectURL for pasted image thumbnails
 beforeEach(() => {
   global.URL.createObjectURL = vi.fn(() => 'blob:mock')
