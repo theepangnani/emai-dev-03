@@ -58,6 +58,9 @@ export function useParentStudyTools({
     regenerateId?: number;
     courseId?: number;
     courseContentId?: number;
+    documentType?: string;
+    studyGoal?: string;
+    studyGoalText?: string;
   }) => {
     const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
     setBackgroundGeneration({ status: 'generating', type: typeLabel });
@@ -89,6 +92,9 @@ export function useParentStudyTools({
             focus_prompt: params.focusPrompt,
             course_id: params.courseId,
             course_content_id: params.courseContentId,
+            document_type: params.documentType,
+            study_goal: params.studyGoal,
+            study_goal_text: params.studyGoalText,
           });
         } else if (params.pastedImages && params.pastedImages.length > 0) {
           result = await studyApi.generateFromTextAndImages({
@@ -101,6 +107,9 @@ export function useParentStudyTools({
             focus_prompt: params.focusPrompt,
             course_id: params.courseId,
             course_content_id: params.courseContentId,
+            document_type: params.documentType,
+            study_goal: params.studyGoal,
+            study_goal_text: params.studyGoalText,
           });
         } else if (params.type === 'study_guide') {
           result = await studyApi.generateGuide({
@@ -110,6 +119,9 @@ export function useParentStudyTools({
             focus_prompt: params.focusPrompt,
             course_id: params.courseId,
             course_content_id: params.courseContentId,
+            document_type: params.documentType,
+            study_goal: params.studyGoal,
+            study_goal_text: params.studyGoalText,
           });
         } else if (params.type === 'quiz') {
           result = await studyApi.generateQuiz({
@@ -313,6 +325,9 @@ export function useParentStudyTools({
         regenerateId: duplicateCheck?.existing_guide?.id,
         courseId: modalParams.courseId,
         courseContentId: sharedCourseContentId,
+        documentType: modalParams.documentType,
+        studyGoal: modalParams.studyGoal,
+        studyGoalText: modalParams.studyGoalText,
       });
     }
   };

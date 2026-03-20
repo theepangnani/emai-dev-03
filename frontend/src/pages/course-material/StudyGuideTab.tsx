@@ -8,6 +8,7 @@ import { FormatSelector, type StudyFormat } from '../../components/study/FormatS
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
+import ParentSummaryCard from '../../components/ParentSummaryCard';
 
 interface StudyGuideTabProps {
   studyGuide: StudyGuide | undefined;
@@ -121,6 +122,9 @@ export function StudyGuideTab({
             <Link to={`/study/guide/${studyGuide.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
+          {studyGuide.parent_summary && (
+            <ParentSummaryCard summary={studyGuide.parent_summary} />
+          )}
           {generating === 'study_guide' && (
             <div className="cm-regen-status">
               <GenerationSpinner size="md" />

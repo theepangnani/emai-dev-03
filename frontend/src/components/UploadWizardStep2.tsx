@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { StudyMaterialType } from './UploadMaterialWizard';
+import DocumentTypeSelector from './DocumentTypeSelector';
+import StudyGoalSelector from './StudyGoalSelector';
+import { classifyDocument } from '../api/study';
 
 interface UploadWizardStep2Props {
   // Upload summary info
@@ -17,6 +20,12 @@ interface UploadWizardStep2Props {
   onFocusPromptChange: (value: string) => void;
   // State
   isGenerating: boolean;
+  // Strategy params
+  documentType: string;
+  onDocumentTypeChange: (type: string) => void;
+  studyGoal: string;
+  studyGoalText: string;
+  onStudyGoalChange: (goal: string, focusText?: string) => void;
 }
 
 const TOOL_CARDS: { type: StudyMaterialType; icon: string; label: string; desc: string }[] = [
@@ -55,9 +64,41 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
   focusPrompt,
   onFocusPromptChange,
   isGenerating,
+  documentType,
+  onDocumentTypeChange,
+  studyGoal,
+  studyGoalText,
+  onStudyGoalChange,
 }) => {
   const summaryText = buildSummaryText(selectedFiles, studyContent, pastedImages);
   const hasSelection = selectedTypes.size > 0;
+
+  const [autoDetectedType, setAutoDetectedType] = useState<string | null>(null);
+  const [autoConfidence, setAutoConfidence] = useState(0);
+
+  // Auto-detect document type when step mounts
+  useEffect(() => {
+    let cancelled = false;
+    const textContent = studyContent.trim();
+    const filename = selectedFiles.length > 0 ? selectedFiles[0].name : '';
+    if (!textContent && !filename) return;
+
+    classifyDocument(textContent || '', filename || 'document')
+      .then((result) => {
+        if (cancelled) return;
+        setAutoDetectedType(result.document_type);
+        setAutoConfidence(result.confidence);
+        // Only pre-select if no type already chosen
+        if (!documentType) {
+          onDocumentTypeChange(result.document_type);
+        }
+      })
+      .catch(() => { /* auto-detect is best-effort */ });
+
+    return () => { cancelled = true; };
+    // Run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="upload-wizard-step">
@@ -66,6 +107,22 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
         <span className="uw-summary-icon">&#x2705;</span>
         <span className="uw-summary-text">{summaryText}</span>
       </div>
+
+      {/* Document type selector */}
+      <DocumentTypeSelector
+        defaultType={documentType || autoDetectedType}
+        confidence={autoConfidence}
+        onChange={(type) => onDocumentTypeChange(type)}
+        disabled={isGenerating}
+      />
+
+      {/* Study goal selector */}
+      <StudyGoalSelector
+        defaultGoal={studyGoal || null}
+        defaultFocusText={studyGoalText || null}
+        onChange={onStudyGoalChange}
+        disabled={isGenerating}
+      />
 
       {/* Tool selection cards */}
       <div className="uw-tool-cards">
