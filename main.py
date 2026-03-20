@@ -1515,6 +1515,59 @@ with engine.connect() as conn:
         logger.warning("Wallet backfill migration: %s", e)
 
 
+    # §6.105 Study Guide Strategy Pattern - document type & study goal on course_contents (#1973)
+    try:
+        with engine.connect() as conn:
+            inspector_cc = sa_inspect(engine)
+            if "course_contents" in inspector_cc.get_table_names():
+                existing_cols = {c["name"] for c in inspector_cc.get_columns("course_contents")}
+                if "document_type" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN document_type VARCHAR(30)"))
+                        logger.info("Added 'document_type' column to course_contents (#1973)")
+                    except Exception:
+                        conn.rollback()
+                    conn.commit()
+                if "study_goal" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN study_goal VARCHAR(30)"))
+                        logger.info("Added 'study_goal' column to course_contents (#1973)")
+                    except Exception:
+                        conn.rollback()
+                    conn.commit()
+                if "study_goal_text" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN study_goal_text VARCHAR(200)"))
+                        logger.info("Added 'study_goal_text' column to course_contents (#1973)")
+                    except Exception:
+                        conn.rollback()
+                    conn.commit()
+    except Exception as e:
+        logger.warning("course_contents strategy columns migration failed (#1973): %s", e)
+
+    # §6.105 Study Guide Strategy Pattern - parent summary & curriculum codes on study_guides (#1973)
+    try:
+        with engine.connect() as conn:
+            inspector_sg = sa_inspect(engine)
+            if "study_guides" in inspector_sg.get_table_names():
+                existing_cols = {c["name"] for c in inspector_sg.get_columns("study_guides")}
+                if "parent_summary" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE study_guides ADD COLUMN parent_summary TEXT"))
+                        logger.info("Added 'parent_summary' column to study_guides (#1973)")
+                    except Exception:
+                        conn.rollback()
+                    conn.commit()
+                if "curriculum_codes" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE study_guides ADD COLUMN curriculum_codes TEXT"))
+                        logger.info("Added 'curriculum_codes' column to study_guides (#1973)")
+                    except Exception:
+                        conn.rollback()
+                    conn.commit()
+    except Exception as e:
+        logger.warning("study_guides strategy columns migration failed (#1973): %s", e)
+
     # ── Add missing indexes on frequently-queried columns (#1961) ──
     with engine.connect() as conn:
         _index_statements = [

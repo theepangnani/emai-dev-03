@@ -15,6 +15,9 @@ class StudyGuideCreate(BaseModel):
     regenerate_from_id: int | None = None  # ID of existing guide to create new version of
     custom_prompt: str | None = Field(default=None, max_length=5000)  # Custom AI prompt (for "Other" tool selection)
     focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
+    document_type: str | None = Field(default=None, max_length=30)
+    study_goal: str | None = Field(default=None, max_length=30)
+    study_goal_text: str | None = Field(default=None, max_length=200)
 
     @field_validator('title', 'custom_prompt', 'focus_prompt', mode='before')
     @classmethod
@@ -46,6 +49,11 @@ class StudyGuideResponse(BaseModel):
     generation_context: str | None = None
     focus_prompt: str | None = None
     is_truncated: bool = False
+    parent_summary: str | None = None
+    curriculum_codes: str | None = None  # JSON string
+    document_type: str | None = None
+    study_goal: str | None = None
+    study_goal_text: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     auto_created_tasks: list[AutoCreatedTask] = []

@@ -48,6 +48,11 @@ class CourseContent(Base):
     is_master = Column(String(5), nullable=False, default="false", server_default="false")  # "true"/"false" for cross-DB compat
     material_group_id = Column(Integer, nullable=True)
 
+    # Study Guide Strategy Pattern (§6.105, #1972)
+    document_type = Column(String(30), nullable=True)  # teacher_notes, course_syllabus, past_exam, mock_exam, project_brief, lab_experiment, textbook_excerpt, custom
+    study_goal = Column(String(30), nullable=True)  # upcoming_test, final_exam, assignment, lab_prep, general_review, discussion, parent_review
+    study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
