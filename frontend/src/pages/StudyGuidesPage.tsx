@@ -521,9 +521,12 @@ export function StudyGuidesPage() {
   };
 
   const navigateToLegacyGuide = (guide: StudyGuide) => {
-    if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
+    if (guide.course_content_id) {
+      const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
+      navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
+    } else if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
     else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
-    else navigate(guide.course_content_id ? `/course-materials/${guide.course_content_id}?tab=guide` : `/study/guide/${guide.id}`);
+    else navigate(`/study/guide/${guide.id}`);
   };
 
   const handleDeleteLegacyGuide = async (id: number) => {
@@ -1688,7 +1691,11 @@ export function StudyGuidesPage() {
             <div className="guides-list">
               {sharedWithMe.map(guide => (
                 <div key={`shared-${guide.id}`} className="guide-row">
-                  <div className="guide-row-main" onClick={() => navigate(`/study/guide/${guide.id}`)}>
+                  <div className="guide-row-main" onClick={() => {
+                    if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
+                    else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
+                    else navigate(`/study/guide/${guide.id}`);
+                  }}>
                     <span className="guide-row-icon">
                       {guide.guide_type === 'quiz' ? '?' : guide.guide_type === 'flashcards' ? '\uD83C\uDCCF' : '\uD83D\uDCD6'}
                     </span>

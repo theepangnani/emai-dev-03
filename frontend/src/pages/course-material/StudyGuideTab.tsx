@@ -1,4 +1,5 @@
 import { Suspense, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
@@ -117,6 +118,7 @@ export function StudyGuideTab({
             {onViewDocument && (
               <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
             )}
+            <Link to={`/study/guide/${studyGuide.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
           </div>
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'study_guide' && (

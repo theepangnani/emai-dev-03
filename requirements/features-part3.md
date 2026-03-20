@@ -3732,3 +3732,29 @@ Systematic performance audit identified and fixed 14 issues across the full appl
 - `requirements/technical.md` — Section 10.0
 
 **Status:** IMPLEMENTED
+
+---
+
+### 6.105 Consolidated Study Material Navigation (#1969)
+
+**Problem:** Study materials (quizzes, flashcards, study guides) have dedicated standalone pages at `/study/quiz/:id`, `/study/flashcards/:id`, `/study/guide/:id`, but the class materials page at `/course-materials/:id` already has tabs for all these types (`?tab=quiz|flashcards|guide|mindmap|videos|briefing`). Navigation is fragmented across 16+ files, with some going to standalone pages and others to class material tabs.
+
+**Solution:** Consolidate all study material navigation to the class materials page tabs. When a study guide has a `course_content_id`, always navigate to `/course-materials/{course_content_id}?tab=<type>`. Dedicated pages remain accessible from class materials tabs via "Full Page" button, with back navigation returning to the class materials page.
+
+**Requirements:**
+- [x] §6.105.1 QuizPage and FlashcardsPage redirect to `/course-materials/{course_content_id}?tab=quiz|flashcards` when `course_content_id` exists (matching existing StudyGuidePage behavior from #1837)
+- [x] §6.105.2 All navigation points across dashboards, components, and pages use `/course-materials/{course_content_id}?tab=<type>` when `course_content_id` is available
+- [x] §6.105.3 Legacy fallback preserved for guides without `course_content_id` (standalone pages still work)
+- [x] §6.105.4 Route definitions in App.tsx kept for `/study/quiz/:id`, `/study/flashcards/:id`, `/study/guide/:id` as redirect endpoints
+- [x] §6.105.5 "Full Page" button in QuizTab, FlashcardsTab, StudyGuideTab opens dedicated page with `fromMaterial` state to bypass redirect
+- [x] §6.105.6 Back navigation from dedicated pages returns to class materials page with correct tab activated
+
+**Tab mapping:**
+| guide_type | Tab parameter |
+|------------|---------------|
+| quiz | `?tab=quiz` |
+| flashcards | `?tab=flashcards` |
+| study_guide | `?tab=guide` |
+| mind_map | `?tab=mindmap` |
+
+**Status:** IMPLEMENTED
