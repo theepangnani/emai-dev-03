@@ -15,9 +15,9 @@ class StudyGuideCreate(BaseModel):
     regenerate_from_id: int | None = None  # ID of existing guide to create new version of
     custom_prompt: str | None = Field(default=None, max_length=5000)  # Custom AI prompt (for "Other" tool selection)
     focus_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus area for AI generation
-    document_type: str | None = Field(default=None, max_length=30)
-    study_goal: str | None = Field(default=None, max_length=30)
-    study_goal_text: str | None = Field(default=None, max_length=200)
+    document_type: str | None = Field(default=None, max_length=30)  # Auto-detected or user-selected document type (§6.105)
+    study_goal: str | None = Field(default=None, max_length=30)  # Study goal selection (§6.105)
+    study_goal_text: str | None = Field(default=None, max_length=200)  # Free-text study goal details (§6.105)
 
     @field_validator('title', 'custom_prompt', 'focus_prompt', mode='before')
     @classmethod
