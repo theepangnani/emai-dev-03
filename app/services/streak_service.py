@@ -117,7 +117,7 @@ class StreakService:
         # Check if yesterday was a holiday
         is_holiday = (
             db.query(HolidayDate)
-            .filter(HolidayDate.holiday_date == yesterday)
+            .filter(HolidayDate.date == yesterday)
             .first()
         )
         if is_holiday:

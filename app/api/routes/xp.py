@@ -73,6 +73,24 @@ def get_streak(
     return XpService.get_streak(db, current_user.id)
 
 
+@router.post("/streak/recover")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def recover_streak(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Attempt to recover a broken streak."""
+    from app.services.streak_service import StreakService
+    result = StreakService.recover_streak(db, current_user.id)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not eligible for streak recovery",
+        )
+    return result
+
+
 @router.get("/children/{student_id}/summary", response_model=XpSummaryResponse)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def get_child_xp_summary(
