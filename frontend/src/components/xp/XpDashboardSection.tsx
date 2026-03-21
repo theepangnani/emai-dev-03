@@ -37,7 +37,10 @@ export function XpDashboardSection() {
       />
       <TodayXpWidget todayXp={data.today_xp} todayMaxXp={data.today_max_xp} />
       {data.recent_badges.length > 0 && <BadgesShelf badges={data.recent_badges} />}
-      <Link to="/xp/history" className="xp-badges-more">View Full History</Link>
+      <div className="xp-dashboard-links">
+        <Link to="/xp/history" className="xp-badges-more">View Full History</Link>
+        <Link to="/activity/timeline" className="xp-badges-more">Study Timeline</Link>
+      </div>
     </div>
   );
 }
