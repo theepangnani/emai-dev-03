@@ -1824,3 +1824,33 @@ def request_task_completion(
     db.commit()
 
     return {"message": f"Completion request sent to {student_user.full_name} for \"{task.title}\""}
+
+
+@router.get("/children/{student_id}/on-track")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_child_on_track(
+    request: Request,
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Return effort-based on-track signal for a linked child."""
+    # Verify parent-student link exists
+    link = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Student not found or not linked to your account")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    from app.services.on_track_service import OnTrackService
+    result = OnTrackService.get_signal(db, student_id=student.id, student_user_id=student.user_id)
+    return result
