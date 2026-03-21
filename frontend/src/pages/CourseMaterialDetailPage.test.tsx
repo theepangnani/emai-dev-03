@@ -113,7 +113,7 @@ vi.mock('../components/DashboardLayout', () => ({
 
 vi.mock('../context/FABContext', () => ({
   useRegisterNotesFAB: () => {},
-  useFABContext: () => ({ notesFAB: null, registerNotesFAB: () => {}, unregisterNotesFAB: () => {} }),
+  useFABContext: () => ({ notesFAB: null, registerNotesFAB: () => {}, unregisterNotesFAB: () => {}, studyGuideContext: null, setStudyGuideContext: () => {} }),
   FABProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
