@@ -441,6 +441,219 @@ Features that answer the pilot feedback question: *"Why should I use ClassBridge
 
 **Deferred (post April 14):** Photo Capture (#1432), Email Forwarding (#1433), Daily Email Digest (#1406), Monetization (#1384-#1392), Learn Your Way Paywall/Monetization (#1441)
 
+### Phase 2 (September 2026 Retention Bundle) — #1997-#2025
+
+Student retention and parent engagement features based on StudyGuide Requirements v3 analysis. Target: September 2026 launch.
+
+| Priority | Feature | Epic/Issue | Build Effort | Audience |
+|----------|---------|------------|-------------|----------|
+| Critical | **Study Streak & XP Point System** | #1997 | High | Student |
+| Critical | **Weekly Parent Digest Enhancements** | #2022 | Low | Parent |
+| High | **Sibling Profiles** (mostly LIVE) | — | Low | Parent |
+| High | **Assessment Countdown Widget** | #1998 | Low-Medium | Both |
+| High | **Multilingual Parent Summaries** | #1999 | Low | Parent |
+| High | **Personal Study History Timeline** | #2017 | Medium | Student |
+| High | **Sub-Guide v2** | #1817–#1820 | Medium | Student |
+| Medium | **End-of-Term Report Card** | #2018 | Medium | Both |
+| Medium | **Parent-Initiated Study Request** | #2019 | Medium | Parent |
+| Medium | **Is My Child On Track Signal** | #2020 | Low | Parent |
+| Medium | **Study With Me (Pomodoro)** | #2021 | Low-Medium | Student |
+
+**Aggressive Batch Delivery Plan — 7 Batches, April–August 2026:**
+
+Each batch is a deployable, testable unit merged to master via PR. Batches include backend + frontend + tests. Parallel Claude sessions use integration branches per CLAUDE.md Rule 6.
+
+---
+
+#### Batch 0 — Tech Debt & Schema Foundation (April 7–11)
+**Theme:** Clean slate — fix debt, add columns needed by everything else.
+**Duration:** 1 week | **Risk:** Low | **Deploy:** Yes — invisible to users
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2025 | **is_master String→Boolean migration** — ALTER TABLE + model update + code cleanup | 0.5d |
+| 2 | #2010 | **source_type column** on SourceFile + CourseContent — migration + update upload endpoints to set value | 0.5d |
+| 3 | — | **User model columns** — `preferred_language` (VARCHAR DEFAULT 'en'), `timezone` (VARCHAR DEFAULT 'America/Toronto') via ALTER TABLE in main.py | 0.5d |
+| 4 | #2024 | **holiday_dates table** — model, admin CRUD endpoints, seed YRDSB 2026-27 dates | 1d |
+| 5 | — | **Tests** for all migrations + new endpoints | 0.5d |
+
+**Hook points prepared:** upload routes tag `source_type`, user model ready for XP/streak/language.
+**Verification:** `pytest` passes, `npm run build` clean, deploy to staging.
+
+---
+
+#### Batch 1 — XP Core Engine (April 14–25) ★ Critical Path
+**Theme:** Backend gamification engine — no UI yet, just the data layer and service.
+**Duration:** 2 weeks | **Risk:** Medium | **Deploy:** Yes — feature-flagged, invisible
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2000 | **XP data model** — `xp_ledger`, `xp_summary`, `badges`, `streak_log` tables (models + migrations) | 1d |
+| 2 | #2001 | **XP earning service** — `app/services/xp_service.py` with `award_xp()`, daily cap enforcement, multiplier logic | 2d |
+| 3 | — | **Hook into 6 endpoints** — study.py (generate, quiz, flashcards, upload), course_contents.py (upload), quiz_results.py (completion) | 2d |
+| 4 | #2002 | **Streak engine** — `app/services/streak_service.py`, `app/jobs/streak_check.py` nightly cron, freeze token logic, holiday_dates query | 2d |
+| 5 | #2003 | **XP levels & titles** — level calculation in xp_service, level-up notification | 0.5d |
+| 6 | — | **XP API endpoints** — `app/api/routes/xp.py`: GET /api/xp/summary, GET /api/xp/history, GET /api/xp/badges | 1d |
+| 7 | — | **Tests** — 40+ tests for XP award, caps, streaks, multipliers, levels, edge cases | 1.5d |
+
+**Key decision:** XP awards fire after DB commit in each hook point. Use `await xp_service.award_xp(user_id, action_type, db)` — fail-safe (XP failure doesn't block the primary action).
+**Verification:** `pytest` passes, manual test via API calls, streak cron runs correctly.
+
+---
+
+#### Batch 2 — XP Dashboard & Visibility (April 28 – May 9)
+**Theme:** Make gamification visible to students and parents.
+**Duration:** 2 weeks | **Risk:** Low | **Deploy:** Yes — users see streaks/XP for first time
+
+**Track A (Student UI)** — can run as parallel session:
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2006 | **XP dashboard widgets** — StreakCounter, LevelBar, TodayXP, BadgesShelf components on StudentDashboard | 2d |
+| 2 | #2007 | **XP history page** — `/xp/history` route, ledger table with filters, PDF export via html2pdf | 1.5d |
+| 3 | — | **Streak flame animations** — CSS keyframe animations for 5 streak tiers (grey→orange→red→glow→gold) | 0.5d |
+
+**Track B (Parent UI)** — can run as parallel session:
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 4 | #2008 | **Parent XP visibility** — child streak/level/weekly XP on My Kids cards, child detail panel | 1.5d |
+| 5 | — | **XP in weekly digest** — extend `weekly_digest_service.py` to include XP summary per child | 0.5d |
+
+**Track C (Digest Cron)** — can run as parallel session:
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 6 | #2022 | **Weekly digest cron** — APScheduler job in main.py, Sunday 7pm, timezone-aware, conversation starters | 1d |
+| 7 | #2023 | **Daily digest cron** — APScheduler job, morning delivery, opt-in preference | 0.5d |
+
+**Verification:** Full E2E — upload a file → see XP awarded → streak increments → parent sees child's streak. Digest emails fire on schedule.
+
+---
+
+#### Batch 3 — Badges & Brownie Points (May 12–23)
+**Theme:** Depth — make gamification sticky with achievements and social rewards.
+**Duration:** 2 weeks | **Risk:** Low | **Deploy:** Yes
+
+**Track A (Badges):**
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2004 | **Badge trigger service** — evaluate 14 badge conditions after XP award, badge definitions in code | 2d |
+| 2 | — | **Badge UI** — badge collection page, badge shelf on dashboard, badge unlock toast notification | 1.5d |
+| 3 | — | **Badge tests** — trigger conditions, edge cases, no duplicates | 1d |
+
+**Track B (Brownie Points + Anti-Gaming):**
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 4 | #2005 | **Brownie points** — POST /api/xp/award endpoint, weekly caps, audit log, admin view | 1.5d |
+| 5 | #2009 | **Anti-gaming rules** — time-on-task checks, 60-second dedup, rapid upload flags, quiz repeat caps | 1.5d |
+| 6 | — | **Tests** for brownie points + anti-gaming | 1d |
+
+**Verification:** Earn badge by triggering condition → toast appears → badge on profile. Parent awards brownie points → child sees notification → admin sees audit log.
+
+---
+
+#### Batch 4 — Assessment Countdown & On Track (May 26 – June 6)
+**Theme:** Urgency — give parents and students reasons to open ClassBridge daily.
+**Duration:** 2 weeks | **Risk:** Medium (AI date parsing is tricky) | **Deploy:** Yes
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2011 | **Assessment date detection** — regex + Claude Haiku parsing of uploaded text for dates + exam keywords, hook into upload pipeline | 2d |
+| 2 | #2012 | **detected_events table + API** — model, migration, GET /api/events/upcoming, DELETE /api/events/{id} (dismiss false positive) | 1d |
+| 3 | #2013 | **Countdown widget UI** — AssessmentCountdown component on student + parent dashboards, "X days until" cards, "last studied Y days ago", tap → opens study guide | 2d |
+| 4 | #2020 | **On Track signal** — nightly cron comparing streak_log vs detected_events, green/yellow/red on parent dashboard per child | 1.5d |
+| 5 | #2019 | **Parent study request** — extend Help My Kid with urgency selector, student accept/defer/flag flow, response visible to parent | 2d |
+| 6 | — | **Tests** — date parsing, events API, countdown display, On Track conditions | 1.5d |
+
+**Verification:** Upload past exam → date detected → countdown appears → On Track signal shows yellow if not studying → parent sends study request → student sees notification.
+
+---
+
+#### Batch 5 — Multilingual & Sub-Guide v2 (June 9–20)
+**Theme:** Differentiation — features no competitor has.
+**Duration:** 2 weeks | **Risk:** Medium (translation costs) | **Deploy:** Yes
+
+**Track A (Multilingual):**
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2014 | **Language preference UI** — settings page language selector, saved to user.preferred_language | 0.5d |
+| 2 | #2015 | **Translation service** — `app/services/translation_service.py`, Claude API call, `translated_summaries` cache table, on-demand generation | 2d |
+| 3 | #2016 | **Multilingual digest** — apply translation to weekly/daily digest emails | 1d |
+| 4 | — | **Tests** — translation caching, language preference, digest translation | 0.5d |
+
+**Track B (Sub-Guide v2)** — can run as parallel session:
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 5 | #1817 | **Enhanced SelectionTooltip** — "Generate Study Material" button alongside "Add to Notes" | 1d |
+| 6 | #1818 | **Sub-Guides collapsible panel** on parent study guide page | 1d |
+| 7 | #1819 | **Breadcrumb navigation** for multi-level sub-guide hierarchies | 1d |
+| 8 | #1820 | **Tree hierarchy API endpoint** — full parent-child tree | 1d |
+
+**Verification:** Set language to Tamil → view study guide → parent summary in Tamil. Select text → generate sub-guide → see in panel → breadcrumb navigates back.
+
+---
+
+#### Batch 6 — Timeline, Pomodoro & Report Card (June 23 – July 4)
+**Theme:** Polish — complete the retention loop.
+**Duration:** 2 weeks | **Risk:** Low | **Deploy:** Yes
+
+**Track A:**
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2017 | **Study history timeline** — backend aggregation API + vertical timeline component with subject/date filters | 3d |
+| 2 | #2021 | **Pomodoro sessions** — timer UI, subject selection, min 20-min validation, AI recap via gpt-4o-mini, XP award hook | 2d |
+
+**Track B:**
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 3 | #2018 | **End-of-term report card** — semester data aggregation, PDF generation via html2pdf, in-app card, next-term CTA | 2.5d |
+| 4 | — | **Tests** for timeline, Pomodoro, report card | 1.5d |
+
+**Verification:** View timeline → see full semester activity. Start Pomodoro → complete 25 min → AI recap → XP awarded. Generate report card PDF.
+
+---
+
+#### Summary Timeline
+
+```
+April   ░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
+        B0      B1              B2 starts
+May     ░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
+        B2 ends   B3          B4 starts
+June    ░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
+        B4 ends   B5          B6 starts
+July    ░░▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░
+        B6 ends   Buffer / QA / bug fixes
+Aug     ░░░░░░░░░░░░░░░░░░░░░░░░░░
+        Integration testing + staging soak
+Sept    🚀 September 2026 Launch
+```
+
+| Batch | Dates | Issues | Deploy |
+|-------|-------|--------|--------|
+| **B0** | Apr 7–11 | #2025, #2010, #2024 | Invisible |
+| **B1** | Apr 14–25 | #2000, #2001, #2002, #2003 | Feature-flagged |
+| **B2** | Apr 28 – May 9 | #2006, #2007, #2008, #2022, #2023 | Users see XP |
+| **B3** | May 12–23 | #2004, #2005, #2009 | Badges live |
+| **B4** | May 26 – Jun 6 | #2011–#2013, #2019, #2020 | Countdown live |
+| **B5** | Jun 9–20 | #2014–#2016, #1817–#1820 | Multilingual + Sub-guide v2 |
+| **B6** | Jun 23 – Jul 4 | #2017, #2018, #2021 | Full bundle |
+| **Buffer** | Jul 7–31 | Bug fixes, QA, perf testing | Stabilize |
+| **Soak** | Aug 1–31 | Staging soak, beta feedback | Validate |
+
+**Parallel session opportunities:** Batches 2, 3, 5, and 6 each have 2 independent tracks (A/B) that can run as parallel Claude sessions using integration branches.
+
+**Safe rollback points:** Each batch is atomic. If a batch has issues, revert its PR. XP system is feature-flagged in Batch 1 — can disable without removing code.
+
+**Total estimated effort:** ~60 working days across 13 weeks (April 7 – July 4) + 2 months buffer.
+
 ### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
 
 New features that deepen ClassBridge's AI capabilities, build a data foundation for student insights, and reduce platform costs.
