@@ -216,10 +216,10 @@ class TestEvaluateStreak:
 
         # Add yesterday as a holiday
         existing_holiday = db_session.query(HolidayDate).filter(
-            HolidayDate.holiday_date == yesterday
+            HolidayDate.date == yesterday
         ).first()
         if not existing_holiday:
-            db_session.add(HolidayDate(holiday_date=yesterday, name="Test Holiday"))
+            db_session.add(HolidayDate(date=yesterday, description="Test Holiday"))
             db_session.commit()
 
         # Set up streak but no activity yesterday
@@ -237,7 +237,7 @@ class TestEvaluateStreak:
         assert summary.current_streak == 5  # Preserved
 
         # Clean up holiday
-        db_session.query(HolidayDate).filter(HolidayDate.holiday_date == yesterday).delete()
+        db_session.query(HolidayDate).filter(HolidayDate.date == yesterday).delete()
         db_session.commit()
 
     def test_freeze_token_preserves_streak(self, db_session, clean_streak_data):

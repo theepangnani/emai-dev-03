@@ -334,4 +334,5 @@ class XpService:
             "freeze_tokens_remaining": summary.freeze_tokens_remaining,
             "multiplier": multiplier,
             "tier": tier,
+            "streak_tier": tier,
         }

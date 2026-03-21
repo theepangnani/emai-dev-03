@@ -46,6 +46,7 @@ class XpSummary(Base):
     longest_streak = Column(Integer, nullable=False, default=0)
     freeze_tokens_remaining = Column(Integer, nullable=False, default=1)
     last_qualifying_action_date = Column(Date, nullable=True)
+    last_streak_date = Column(Date, nullable=True)
     streak_broken_at = Column(DateTime(timezone=True), nullable=True)
     last_recovery_at = Column(DateTime(timezone=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -81,7 +82,7 @@ class StreakLog(Base):
         nullable=False,
         index=True,
     )
-    streak_date = Column(Date, nullable=False)
+    log_date = Column(Date, nullable=False)
     qualifying_action = Column(String(30), nullable=True)
     freeze_used = Column(Boolean, nullable=False, default=False, server_default="FALSE")
     is_holiday = Column(Boolean, nullable=False, default=False, server_default="FALSE")
@@ -89,5 +90,5 @@ class StreakLog(Base):
     multiplier = Column(Float, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("student_id", "streak_date", name="uq_student_streak_date"),
+        UniqueConstraint("student_id", "log_date", name="uq_student_log_date"),
     )
