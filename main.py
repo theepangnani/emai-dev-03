@@ -51,6 +51,16 @@ logger.info("Database tables created/verified")
 # Lightweight schema migration: add columns missing from pre-existing tables
 from sqlalchemy import inspect as sa_inspect, text
 
+# Acquire PostgreSQL advisory lock to prevent parallel migration execution (#2068).
+# During Cloud Run deployments, old and new instances can overlap briefly; this
+# cooperative lock ensures only one instance runs migrations at a time.
+_is_sqlite = "sqlite" in settings.database_url
+_migration_lock_conn = None
+if not _is_sqlite:
+    _migration_lock_conn = engine.connect()
+    _migration_lock_conn.execute(text("SELECT pg_advisory_lock(1)"))
+    logger.info("Acquired advisory lock for migrations")
+
 
 def _apply_cascade_and_unique_migration(conn, inspector):
     """Add CASCADE/SET NULL FK rules and unique constraints (idempotent)."""
@@ -1710,6 +1720,13 @@ try:
                     conn.rollback()
 except Exception as e:
     logger.warning("xp_ledger context_id migration failed (#2009): %s", e)
+
+# Release PostgreSQL advisory lock after migrations complete (#2068)
+if _migration_lock_conn is not None:
+    _migration_lock_conn.execute(text("SELECT pg_advisory_unlock(1)"))
+    _migration_lock_conn.close()
+    logger.info("Released advisory lock after migrations")
+    _migration_lock_conn = None
 
 _is_prod = "sqlite" not in settings.database_url
 
