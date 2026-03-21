@@ -114,3 +114,18 @@
   background: var(--color-accent, #2a9fa8);
   color: #fff;
 }
+
+.subguides-panel-item.current {
+  background: var(--color-accent-light, rgba(42, 159, 168, 0.06));
+  border-left: 3px solid var(--color-accent-strong, #2a9fa8);
+}
+
+.subguides-panel-current-label {
+  flex-shrink: 0;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #64748b);
+  background: var(--color-surface-hover, #f1f5f9);
+}

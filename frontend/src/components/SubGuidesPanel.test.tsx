@@ -120,6 +120,20 @@ describe('SubGuidesPanel', () => {
     expect(viewLinks[2].closest('a')).toHaveAttribute('href', '/study/guide/12')
   })
 
+  it('highlights current guide with "Current" label instead of View link (#2095)', () => {
+    renderWithProviders(
+      <SubGuidesPanel childGuides={MOCK_CHILDREN} parentGuideId={1} currentGuideId={10} />
+    )
+    // The current guide should show "Current" label
+    expect(screen.getByText('Current')).toBeInTheDocument()
+    // Other guides still show "View"
+    const viewLinks = screen.getAllByText('View')
+    expect(viewLinks).toHaveLength(2)
+    // Current item should have .current class
+    const currentItem = screen.getByTestId('sub-guide-item-10')
+    expect(currentItem.className).toContain('current')
+  })
+
   it('shows guide type labels in meta text', () => {
     renderWithProviders(
       <SubGuidesPanel childGuides={MOCK_CHILDREN} parentGuideId={1} />

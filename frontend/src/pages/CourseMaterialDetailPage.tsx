@@ -435,10 +435,14 @@ export function CourseMaterialDetailPage() {
   const mindMapGuide = findRootGuide('mind_map');
 
   // Fetch child guides for the study guide (#1838)
+  // If the study guide is itself a sub-guide, fetch siblings from the parent (#2095)
   useEffect(() => {
     if (!studyGuide) { setChildGuides([]); return; }
-    studyApi.listChildGuides(studyGuide.id).then(setChildGuides).catch(() => setChildGuides([]));
-  }, [studyGuide?.id]);
+    const fetchId = studyGuide.parent_guide_id && (!studyGuide.relationship_type || studyGuide.relationship_type === 'sub_guide')
+      ? studyGuide.parent_guide_id
+      : studyGuide.id;
+    studyApi.listChildGuides(fetchId).then(setChildGuides).catch(() => setChildGuides([]));
+  }, [studyGuide?.id, studyGuide?.parent_guide_id, studyGuide?.relationship_type]);
 
   // Auto-dismiss ephemeral sub-guide notification when persistent banner appears
   useEffect(() => {
@@ -804,7 +808,7 @@ export function CourseMaterialDetailPage() {
         )}
 
         {studyGuide && (
-          <SubGuidesPanel childGuides={childGuides} parentGuideId={studyGuide.id} />
+          <SubGuidesPanel childGuides={childGuides} parentGuideId={studyGuide.parent_guide_id || studyGuide.id} currentGuideId={studyGuide.parent_guide_id ? studyGuide.id : undefined} />
         )}
 
         {/* ── Tab navigation ───────────────────────── */}

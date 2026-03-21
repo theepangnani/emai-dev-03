@@ -184,12 +184,16 @@ export function StudyGuidePage() {
   }, [guide?.parent_guide_id, guide?.relationship_type]);
 
   // Fetch child guides (sub-guides) for this guide (#1594)
+  // If this guide is itself a sub-guide, fetch siblings from the parent (#2095)
   useEffect(() => {
     if (!guide) return;
-    studyApi.listChildGuides(guide.id)
+    const fetchId = guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide')
+      ? guide.parent_guide_id
+      : guide.id;
+    studyApi.listChildGuides(fetchId)
       .then(setChildGuides)
       .catch(() => setChildGuides([]));
-  }, [guide?.id]);
+  }, [guide?.id, guide?.parent_guide_id, guide?.relationship_type]);
 
   // Resolve child student for parent role
   useEffect(() => {
@@ -390,7 +394,7 @@ export function StudyGuidePage() {
         </ContentCard>
       </div>
 
-      <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.id} />
+      <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.parent_guide_id || guide.id} currentGuideId={guide.parent_guide_id ? guide.id : undefined} />
 
       <CreateTaskModal
         open={showTaskModal}
