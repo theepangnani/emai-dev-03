@@ -731,7 +731,7 @@ export function TeacherDashboard() {
           {studyTools.backgroundGeneration.status === 'success' && (
             <>
               <span>{studyTools.backgroundGeneration.type} ready!</span>
-              <button className="td-gen-view-btn" onClick={() => { navigate(studyTools.backgroundGeneration?.resultId ? `/course-materials/${studyTools.backgroundGeneration.resultId}` : '/course-materials'); studyTools.dismissBackgroundGeneration(); }}>View</button>
+              <button className="td-gen-view-btn" onClick={() => { navigate(studyTools.getBackgroundGenerationRoute()); studyTools.dismissBackgroundGeneration(); }}>View</button>
               <button className="td-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
             </>
           )}

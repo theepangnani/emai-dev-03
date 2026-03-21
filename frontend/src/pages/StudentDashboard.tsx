@@ -785,7 +785,7 @@ export function StudentDashboard() {
           {studyTools.backgroundGeneration.status === 'success' && (
             <>
               <span>{studyTools.backgroundGeneration.type} ready!</span>
-              <button className="sd-gen-view-btn" onClick={() => { navigate(studyTools.backgroundGeneration?.resultId ? `/course-materials/${studyTools.backgroundGeneration.resultId}` : '/course-materials'); studyTools.dismissBackgroundGeneration(); }}>View</button>
+              <button className="sd-gen-view-btn" onClick={() => { navigate(studyTools.getBackgroundGenerationRoute()); studyTools.dismissBackgroundGeneration(); }}>View</button>
               <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
             </>
           )}
