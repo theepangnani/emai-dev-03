@@ -7,25 +7,25 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class XpSummaryResponse(BaseModel):
     """Current user's XP summary."""
-    user_id: int
     total_xp: int = 0
-    level: int = 1
-    current_level_xp: int = 0
-    next_level_xp: int = 100
-    streak_days: int = 0
+    current_level: int = 1
+    level_title: str = "Curious Learner"
+    current_streak: int = 0
     longest_streak: int = 0
+    freeze_tokens_remaining: int = 1
+    xp_to_next_level: int = 200
+    today_xp: int = 0
+    today_cap: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class XpLedgerEntry(BaseModel):
     """Single XP ledger row."""
-    id: int
-    user_id: int
-    xp_amount: int
-    action: str
-    description: Optional[str] = None
-    awarder_id: Optional[int] = None
+    action_type: str
+    xp_awarded: int
+    multiplier: float = 1.0
+    reason: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -33,29 +33,29 @@ class XpLedgerEntry(BaseModel):
 
 class XpHistoryResponse(BaseModel):
     """Paginated XP history."""
-    items: list[XpLedgerEntry]
-    total: int
-    limit: int
-    offset: int
+    entries: list[XpLedgerEntry]
+    total_count: int
 
 
 class BadgeResponse(BaseModel):
     """Badge info (earned or unearned)."""
-    id: int
-    slug: str
-    name: str
-    description: str
-    icon: Optional[str] = None
+    badge_id: str
+    badge_name: str
+    badge_description: str
     earned: bool = False
-    earned_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
+    awarded_at: Optional[datetime] = None
 
 
 class StreakResponse(BaseModel):
     """Current streak info."""
     current_streak: int = 0
     longest_streak: int = 0
+    freeze_tokens_remaining: int = 1
+    multiplier: float = 1.0
+    tier: str = "grey"
+    streak_tier: Optional[str] = None
+    tier_label: Optional[str] = None
+    last_streak_date: Optional[str] = None
     last_activity_date: Optional[str] = None
 
 

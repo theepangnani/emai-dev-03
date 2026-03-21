@@ -153,6 +153,10 @@ def award_xp(
     endpoint is never blocked by gamification failures.
     """
     try:
+        from app.core.config import settings
+        if not settings.xp_enabled:
+            return None
+
         from app.models.xp import XpLedger
 
         action = XP_ACTIONS.get(action_type)
@@ -313,6 +317,56 @@ class XpService:
         return result
 
     @staticmethod
+    def award_brownie_points(
+        db,
+        student_user_id: int,
+        points: int,
+        awarder_id: int,
+        reason: str | None = None,
+    ):
+        """Award brownie points to a student. Returns BrowniePointResponse dict."""
+        from app.models.xp import XpLedger
+
+        try:
+            summary = _get_or_create_summary(db, student_user_id)
+
+            # Create ledger entry for brownie points
+            entry = XpLedger(
+                student_id=student_user_id,
+                action_type="brownie_points",
+                xp_awarded=points,
+                multiplier=1.0,
+                reason=reason,
+            )
+            db.add(entry)
+            db.flush()
+
+            # Update summary
+            summary.total_xp = (summary.total_xp or 0) + points
+            level_info = get_level_for_xp(summary.total_xp)
+            summary.current_level = level_info["level"]
+            db.flush()
+
+            logger.info(
+                "Brownie points awarded | student_user_id=%s | points=%d | awarder_id=%s",
+                student_user_id, points, awarder_id,
+            )
+            return {
+                "awarded": points,
+                "student_user_id": student_user_id,
+                "new_total_xp": summary.total_xp,
+                "message": f"Awarded {points} brownie points",
+            }
+
+        except Exception:
+            logger.exception(
+                "Brownie points award failed | student_user_id=%s | awarder_id=%s",
+                student_user_id, awarder_id,
+            )
+            db.rollback()
+            raise
+
+    @staticmethod
     def get_streak(db, student_id: int):
         """Get streak info for a student."""
         summary = _get_or_create_summary(db, student_id)
@@ -334,4 +388,5 @@ class XpService:
             "freeze_tokens_remaining": summary.freeze_tokens_remaining,
             "multiplier": multiplier,
             "tier": tier,
+            "streak_tier": tier,
         }
