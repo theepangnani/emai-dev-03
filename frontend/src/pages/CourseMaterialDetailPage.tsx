@@ -436,6 +436,14 @@ export function CourseMaterialDetailPage() {
     studyApi.listChildGuides(studyGuide.id).then(setChildGuides).catch(() => setChildGuides([]));
   }, [studyGuide?.id]);
 
+  // Auto-dismiss ephemeral sub-guide notification when persistent banner appears
+  useEffect(() => {
+    if (childGuides.length > 0 && subGuideStatus?.ready) {
+      const timer = setTimeout(() => setSubGuideStatus(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [childGuides.length, subGuideStatus?.ready]);
+
   const hasSourceContent = !!(content?.text_content || content?.description);
 
   const showToast = (msg: string) => {

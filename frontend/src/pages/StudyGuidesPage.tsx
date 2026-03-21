@@ -75,6 +75,7 @@ export function StudyGuidesPage() {
   const [legacyGuides, setLegacyGuides] = useState<StudyGuide[]>([]);
   // Map of course_content_id -> guide_types for filtering
   const [contentGuideMap, setContentGuideMap] = useState<Record<number, string[]>>({});
+  const [hasSubGuides, setHasSubGuides] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -322,6 +323,15 @@ export function StudyGuidesPage() {
         }
       });
       setContentGuideMap(guideMap);
+
+      // Build set of content IDs that have sub-guides
+      const subGuideContentIds = new Set<number>();
+      allGuides.forEach((g: StudyGuide) => {
+        if (g.course_content_id && g.parent_guide_id && g.relationship_type === 'sub_guide') {
+          subGuideContentIds.add(g.course_content_id);
+        }
+      });
+      setHasSubGuides(subGuideContentIds);
 
       if (isParent) {
         try {
@@ -1149,6 +1159,9 @@ export function StudyGuidesPage() {
               {item.title}
               {isUnlinked && (
                 <span className="guide-unlinked-badge">Not assigned</span>
+              )}
+              {hasSubGuides.has(item.id) && (
+                <span className="guide-sub-badge">Has Sub-Guides</span>
               )}
             </span>
             <span className="guide-row-meta">

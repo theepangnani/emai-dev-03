@@ -1095,3 +1095,15 @@
   margin: 0 auto;
   line-height: 1.6;
 }
+
+.guide-sub-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #e0f7f0;
+  color: #1a7a5a;
+  margin-left: 6px;
+  vertical-align: middle;
+}
