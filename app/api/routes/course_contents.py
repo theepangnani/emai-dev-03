@@ -251,6 +251,7 @@ def create_course_content(
         reference_url=data.reference_url,
         google_classroom_url=data.google_classroom_url,
         created_by_user_id=current_user.id,
+        source_type="local_upload",
     )
     db.add(content)
     db.commit()
@@ -517,6 +518,7 @@ async def upload_course_content_file(
         file_size=len(file_content),
         mime_type=file.content_type,
         created_by_user_id=current_user.id,
+        source_type="local_upload",
     )
     db.add(content)
     record_upload(db, current_user, len(file_content))
@@ -534,6 +536,7 @@ async def upload_course_content_file(
                 file_type=file.content_type,
                 file_size=len(file_content),
                 gcs_path=_gcs_path,
+                source_type="local_upload",
             )
             db.add(source)
             db.commit()
@@ -735,6 +738,7 @@ async def upload_multi_files(
                 file_type=fmime,
                 file_size=len(fbytes),
                 gcs_path=_gcs_path,
+                source_type="local_upload",
             )
             db.add(source)
     else:
@@ -767,6 +771,7 @@ async def upload_multi_files(
                 file_type=first_fmime,
                 file_size=len(first_fbytes),
                 gcs_path=_gcs_path,
+                source_type="local_upload",
             )
             db.add(source)
 
@@ -802,6 +807,7 @@ async def upload_multi_files(
                     file_type=fmime,
                     file_size=len(fbytes),
                     gcs_path=_gcs_path,
+                    source_type="local_upload",
                 )
                 db.add(source)
             else:
@@ -1453,6 +1459,7 @@ async def add_files_to_material(
                 file_type=fmime,
                 file_size=len(fbytes),
                 gcs_path=_gcs_path,
+                source_type="local_upload",
             )
             db.add(source)
 

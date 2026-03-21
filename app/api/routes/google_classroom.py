@@ -753,6 +753,7 @@ def _sync_materials_for_course(course: Course, user: User, db: Session) -> int:
                 google_classroom_url=alternate_link,
                 google_classroom_material_id=material_id,
                 reference_url=reference_url,
+                source_type="google_classroom",
             )
             db.add(content)
             count += 1
