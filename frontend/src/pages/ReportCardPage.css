@@ -1,0 +1,260 @@
+.rc-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.rc-error {
+  color: #dc2626;
+  text-align: center;
+  padding: 2rem;
+}
+
+.rc-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.rc-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.rc-btn:hover {
+  opacity: 0.85;
+}
+
+.rc-btn--primary {
+  background: var(--color-accent, #4a90d9);
+  color: #fff;
+}
+
+.rc-btn--secondary {
+  background: var(--bg-tertiary, #f0f0f0);
+  color: var(--text-primary, #1a1a2e);
+}
+
+/* Card / Certificate */
+.rc-card {
+  background: var(--bg-primary, #fff);
+  border: 2px solid var(--color-accent, #4a90d9);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.rc-header {
+  text-align: center;
+  padding: 2rem 1.5rem 1.5rem;
+  background: linear-gradient(135deg, var(--color-accent, #4a90d9) 0%, #6c3eb8 100%);
+  color: #fff;
+}
+
+.rc-logo {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  opacity: 0.85;
+  margin-bottom: 0.25rem;
+}
+
+.rc-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.rc-term {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin: 0 0 0.5rem;
+}
+
+.rc-student {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Sections */
+.rc-section {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.rc-section:last-of-type {
+  border-bottom: none;
+}
+
+.rc-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-accent, #4a90d9);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 0.75rem;
+}
+
+/* Stats grid */
+.rc-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.rc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.rc-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.rc-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 0.15rem;
+}
+
+/* Subjects table */
+.rc-subjects-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rc-subjects-table th,
+.rc-subjects-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.rc-subjects-table th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rc-subjects-table td {
+  font-size: 0.9rem;
+}
+
+/* Achievements */
+.rc-achievements {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rc-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a2e;
+  padding: 0.5rem 1rem;
+  border-radius: 24px;
+  width: fit-content;
+}
+
+.rc-level-number {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.rc-level-title {
+  font-size: 0.9rem;
+}
+
+.rc-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rc-badge-chip {
+  background: var(--bg-tertiary, #f0f0f0);
+  color: var(--text-primary, #1a1a2e);
+  padding: 0.35rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.rc-muted {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* Topics list */
+.rc-topics-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rc-topics-list li {
+  background: var(--bg-tertiary, #f0f0f0);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+/* Footer */
+.rc-footer {
+  text-align: center;
+  padding: 1.5rem;
+  background: var(--bg-secondary, #fafafa);
+}
+
+.rc-cta {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent, #4a90d9);
+  margin: 0 0 0.5rem;
+}
+
+.rc-generated {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .rc-page {
+    padding: 0.5rem;
+  }
+
+  .rc-header {
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  .rc-title {
+    font-size: 1.4rem;
+  }
+
+  .rc-section {
+    padding: 1rem;
+  }
+
+  .rc-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
