@@ -153,14 +153,6 @@ class CourseContentResponse(BaseModel):
     archived_at: Optional[datetime] = None
     last_viewed_at: Optional[datetime] = None
 
-    @field_validator('is_master', mode='before')
-    @classmethod
-    def _coerce_is_master(cls, v: object) -> bool:
-        """Handle VARCHAR 'true'/'false' from production DB."""
-        if isinstance(v, bool):
-            return v
-        return str(v).lower() == 'true'
-
     @model_validator(mode="after")
     def compute_has_file(self):
         self.has_file = self.file_path is not None
@@ -202,14 +194,6 @@ class LinkedMaterialResponse(BaseModel):
     has_file: bool = False
     original_filename: Optional[str] = None
     created_at: datetime
-
-    @field_validator('is_master', mode='before')
-    @classmethod
-    def _coerce_is_master(cls, v: object) -> bool:
-        """Handle VARCHAR 'true'/'false' from production DB."""
-        if isinstance(v, bool):
-            return v
-        return str(v).lower() == 'true'
 
     class Config:
         from_attributes = True
