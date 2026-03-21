@@ -15,7 +15,7 @@ import { downloadAsPdf } from '../utils/exportUtils';
 import { PageNav } from '../components/PageNav';
 import { useAIUsage } from '../hooks/useAIUsage';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
-import { useRegisterNotesFAB } from '../context/FABContext';
+import { useRegisterNotesFAB, useFABContext } from '../context/FABContext';
 import { NotesPanel } from '../components/NotesPanel';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
@@ -56,6 +56,14 @@ export function StudyGuidePage() {
   const [notesOpen, setNotesOpen] = useState(false);
   const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
   useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
+  // §6.114 — Register study guide context for chatbot Q&A mode
+  const { setStudyGuideContext } = useFABContext();
+  useEffect(() => {
+    if (guide) {
+      setStudyGuideContext({ id: guide.id, title: guide.title, courseId: guide.course_id ?? undefined });
+    }
+    return () => setStudyGuideContext(null);
+  }, [guide?.id, guide?.title, guide?.course_id, setStudyGuideContext]);
   const [appendText, setAppendText] = useState<string | null>(null);
   const [parentGuideTitle, setParentGuideTitle] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);

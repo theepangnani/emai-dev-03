@@ -10,13 +10,16 @@ import './SpeedDialFAB.css';
 const CHAT_COMMANDS = new Set(['clear', 'reset']);
 
 export function SpeedDialFAB() {
-  const { notesFAB } = useFABContext();
+  const { notesFAB, studyGuideContext } = useFABContext();
   const [dialOpen, setDialOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Help chat state
-  const { messages, sendMessage, isLoading, error, clearMessages } = useHelpChat();
+  // Help chat state — passes study guide context for §6.114
+  const {
+    messages, sendMessage, isLoading, error, clearMessages,
+    saveAsGuide, saveAsMaterial, isStudyMode,
+  } = useHelpChat(studyGuideContext);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,6 +91,14 @@ export function SpeedDialFAB() {
   // If no notes action registered, render the chat FAB directly (no speed dial)
   const hasMultipleActions = !!notesFAB;
 
+  // §6.114 — header and welcome text adapt to study mode
+  const headerTitle = isStudyMode
+    ? `Ask about: ${studyGuideContext?.title?.slice(0, 30) || 'Study Guide'}${(studyGuideContext?.title?.length || 0) > 30 ? '...' : ''}`
+    : 'ClassBridge Help';
+  const welcomeText = isStudyMode
+    ? 'Ask me anything about this study guide. I can explain concepts, generate practice questions, and more.'
+    : 'Hi! I\'m ClassBridge Helper. Ask me anything about the platform.';
+
   return (
     <div className="speed-dial" ref={containerRef}>
       {/* Chat panel (always available) */}
@@ -96,8 +107,11 @@ export function SpeedDialFAB() {
           <div className="help-chatbot-header">
             <div className="help-chatbot-header-title">
               <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
-              <h3>ClassBridge Help</h3>
+              <h3>{headerTitle}</h3>
             </div>
+            {isStudyMode && (
+              <span className="help-chatbot-credit-info">0.25 credits/Q</span>
+            )}
             {messages.length > 0 && (
               <button
                 className="help-chatbot-clear"
@@ -119,11 +133,15 @@ export function SpeedDialFAB() {
           <div className="help-chatbot-messages">
             {showWelcome && (
               <div className="help-chatbot-welcome">
-                Hi! I'm ClassBridge Helper. Ask me anything about the platform.
+                {welcomeText}
               </div>
             )}
             {showChips && (
-              <SuggestionChips onChipClick={handleChipClick} currentPage={location.pathname} />
+              <SuggestionChips
+                onChipClick={handleChipClick}
+                currentPage={location.pathname}
+                isStudyMode={isStudyMode}
+              />
             )}
             {messages.map((msg) => (
               <ChatMessage
@@ -133,6 +151,11 @@ export function SpeedDialFAB() {
                 videos={msg.videos}
                 sources={msg.sources}
                 search_results={msg.search_results}
+                mode={msg.mode}
+                credits_used={msg.credits_used}
+                onSaveAsGuide={isStudyMode ? saveAsGuide : undefined}
+                onSaveAsMaterial={isStudyMode && studyGuideContext?.courseId ? saveAsMaterial : undefined}
+                hasCourseId={!!studyGuideContext?.courseId}
               />
             ))}
             {isLoading && (
@@ -159,7 +182,7 @@ export function SpeedDialFAB() {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Type your question..."
+              placeholder={isStudyMode ? 'Ask about this study guide...' : 'Type your question...'}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -187,7 +210,7 @@ export function SpeedDialFAB() {
             <span className="speed-dial-chat-icon">
               <img src="/chat-icon.png" alt="" className="speed-dial-action-logo" />
             </span>
-            <span className="speed-dial-action-label">Chat</span>
+            <span className="speed-dial-action-label">{isStudyMode ? 'Ask' : 'Chat'}</span>
           </button>
           <button
             className={`speed-dial-action speed-dial-action--notes ${notesFAB.isOpen ? 'speed-dial-action--active' : ''}`}

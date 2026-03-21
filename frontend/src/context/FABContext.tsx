@@ -7,16 +7,26 @@ export interface NotesFABConfig {
   hasNote?: boolean;
 }
 
+/** §6.114 — Study guide context for chatbot Q&A mode */
+export interface StudyGuideContext {
+  id: number;
+  title: string;
+  courseId?: number;
+}
+
 interface FABContextValue {
   notesFAB: NotesFABConfig | null;
   registerNotesFAB: (config: NotesFABConfig) => void;
   unregisterNotesFAB: () => void;
+  studyGuideContext: StudyGuideContext | null;
+  setStudyGuideContext: (ctx: StudyGuideContext | null) => void;
 }
 
 const FABContext = createContext<FABContextValue | null>(null);
 
 export function FABProvider({ children }: { children: ReactNode }) {
   const [notesFAB, setNotesFAB] = useState<NotesFABConfig | null>(null);
+  const [studyGuideContext, setStudyGuideContextState] = useState<StudyGuideContext | null>(null);
 
   const registerNotesFAB = useCallback((config: NotesFABConfig) => {
     setNotesFAB(config);
@@ -26,7 +36,14 @@ export function FABProvider({ children }: { children: ReactNode }) {
     setNotesFAB(null);
   }, []);
 
-  const value = useMemo(() => ({ notesFAB, registerNotesFAB, unregisterNotesFAB }), [notesFAB, registerNotesFAB, unregisterNotesFAB]);
+  const setStudyGuideContext = useCallback((ctx: StudyGuideContext | null) => {
+    setStudyGuideContextState(ctx);
+  }, []);
+
+  const value = useMemo(() => ({
+    notesFAB, registerNotesFAB, unregisterNotesFAB,
+    studyGuideContext, setStudyGuideContext,
+  }), [notesFAB, registerNotesFAB, unregisterNotesFAB, studyGuideContext, setStudyGuideContext]);
 
   return (
     <FABContext.Provider value={value}>
@@ -39,6 +56,8 @@ const NOOP_FAB_CONTEXT: FABContextValue = {
   notesFAB: null,
   registerNotesFAB: () => {},
   unregisterNotesFAB: () => {},
+  studyGuideContext: null,
+  setStudyGuideContext: () => {},
 };
 
 export function useFABContext() {
