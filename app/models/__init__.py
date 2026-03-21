@@ -42,6 +42,7 @@ from app.models.detected_event import DetectedEvent
 from app.models.study_request import StudyRequest
 from app.models.translated_summary import TranslatedSummary
 from app.models.study_session import StudySession
+from app.models.bug_report import BugReport
 
 
 __all__ = [
@@ -110,4 +111,5 @@ __all__ = [
     "StudyRequest",
     "TranslatedSummary",
     "StudySession",
+    "BugReport",
 ]
