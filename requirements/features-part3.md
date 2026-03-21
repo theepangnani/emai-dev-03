@@ -4003,7 +4003,7 @@ Auto-translate parent-facing study guide summaries and digest emails into the pa
 **Supported Languages (Launch):** English, French, Tamil, Mandarin (Simplified), Punjabi, Urdu
 
 **Requirements:**
-- Language preference set once in parent profile; applied to all summaries and digest emails
+- Language preference set once in parent profile (Account Settings page, accessible from dashboard More dropdown); applied to all summaries and digest emails
 - Translation via Claude API post-generation pass; cached per guide per language
 - On-demand generation (not pre-emptive) to control costs
 - Consider gating behind premium tier
