@@ -19,6 +19,7 @@ export function Register() {
     password: '',
     confirmPassword: '',
     full_name: '',
+    email_consent: false,
   });
   const [googleData, setGoogleData] = useState<{
     google_id: string;
@@ -199,6 +200,7 @@ export function Register() {
           token?: string;
           website?: string;
           started_at?: number;
+          email_consent?: boolean;
         } = {
           email: formData.email,
           password: formData.password,
@@ -206,6 +208,7 @@ export function Register() {
           roles: [],
           website,
           started_at,
+          email_consent: formData.email_consent,
         };
 
         if (googleData) registrationData.google_id = googleData.google_id;
@@ -450,6 +453,21 @@ export function Register() {
               </button>
             </div>
           </div>
+
+          {mode === 'email' && (
+            <div className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <input
+                type="checkbox"
+                id="email_consent"
+                checked={formData.email_consent}
+                onChange={(e) => setFormData({ ...formData, email_consent: e.target.checked })}
+                style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
+              />
+              <label htmlFor="email_consent" style={{ fontSize: 13, color: '#6b7280', cursor: 'pointer' }}>
+                I'd like to receive weekly study updates and tips via email
+              </label>
+            </div>
+          )}
 
           <button type="submit" className="auth-button" disabled={isLoading}>
             {isLoading ? 'Creating account...' : 'Create Account'}

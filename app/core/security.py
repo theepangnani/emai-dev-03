@@ -118,6 +118,31 @@ def create_deletion_confirmation_token(user_id: int) -> str:
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
+def create_unsubscribe_token(user_id: int) -> str:
+    """Create a JWT for one-click email unsubscribe (365-day expiry, CASL)."""
+    expire = datetime.now(timezone.utc) + timedelta(days=365)
+    to_encode = {"sub": str(user_id), "exp": expire, "type": "unsubscribe"}
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
+def decode_unsubscribe_token(token: str) -> int | None:
+    """Decode an unsubscribe JWT. Returns the user_id (int) or None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") != "unsubscribe":
+            return None
+        sub = payload.get("sub")
+        return int(sub) if sub is not None else None
+    except Exception:
+        return None
+
+
+def get_unsubscribe_url(user_id: int) -> str:
+    """Generate the full unsubscribe URL for a user."""
+    token = create_unsubscribe_token(user_id)
+    return f"{settings.frontend_url.rstrip('/')}/api/auth/unsubscribe/{token}"
+
+
 def decode_deletion_confirmation_token(token: str) -> int | None:
     """Decode an account-deletion JWT. Returns the user_id (int) or None."""
     try:

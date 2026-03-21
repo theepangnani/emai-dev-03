@@ -8,7 +8,9 @@ from app.services.briefing_service import get_daily_briefing
 from app.services.email_service import send_email, wrap_branded_email
 
 
-def _render_digest_email_html(briefing: DailyBriefingResponse) -> str:
+def _render_digest_email_html(
+    briefing: DailyBriefingResponse, unsubscribe_url: str | None = None
+) -> str:
     """Render the daily briefing data as branded HTML email."""
 
     children_html = ""
@@ -109,6 +111,13 @@ def _render_digest_email_html(briefing: DailyBriefingResponse) -> str:
     </p>
     """
 
+    if unsubscribe_url:
+        body_html += f"""
+    <p style="text-align:center;font-size:12px;color:#999;margin-top:24px;">
+      <a href="{unsubscribe_url}" style="color:#999;">Unsubscribe from these emails</a>
+    </p>
+    """
+
     return wrap_branded_email(body_html)
 
 
@@ -141,13 +150,16 @@ async def send_daily_digest_email(db: Session, parent_user_id: int, force: bool 
     if not parent or not parent.email:
         return False
 
+    from app.core.security import get_unsubscribe_url
+
     briefing = generate_daily_digest(db, parent_user_id)
 
     # Skip if nothing to report (unless forced, e.g. test send)
     if not force and not has_content(briefing):
         return False
 
-    html = _render_digest_email_html(briefing)
+    unsub_url = get_unsubscribe_url(parent_user_id)
+    html = _render_digest_email_html(briefing, unsubscribe_url=unsub_url)
     subject = f"Daily Digest - {briefing.date}"
 
     return await send_email(parent.email, subject, html)
