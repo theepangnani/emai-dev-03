@@ -2034,6 +2034,24 @@ async def startup_event():
         replace_existing=True,
     )
 
+    # Weekly digest email — every Sunday at 7 PM UTC (#2022)
+    from app.jobs.weekly_digest import send_weekly_digests
+    scheduler.add_job(
+        send_weekly_digests,
+        CronTrigger(day_of_week="sun", hour=19, minute=0),
+        id="weekly_digest",
+        replace_existing=True,
+    )
+
+    # Daily digest email — every day at 7 AM UTC (#2023)
+    from app.jobs.daily_digest_job import send_daily_digests
+    scheduler.add_job(
+        send_daily_digests,
+        CronTrigger(hour=7, minute=0),
+        id="daily_digest",
+        replace_existing=True,
+    )
+
     # Teacher comm sync disabled — all syncs are manual/on-demand per parent-first platform design
     # from app.jobs.teacher_comm_sync import check_teacher_communications
     # scheduler.add_job(check_teacher_communications, IntervalTrigger(minutes=15), id="teacher_comm_sync", replace_existing=True)
