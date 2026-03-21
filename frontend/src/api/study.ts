@@ -19,7 +19,7 @@ export interface StudyGuide {
   guide_type: string;
   version: number;
   parent_guide_id: number | null;
-  relationship_type?: string;
+  relationship_type?: string | null;
   generation_context?: string | null;
   focus_prompt: string | null;
   is_truncated?: boolean;
