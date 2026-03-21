@@ -1,7 +1,13 @@
-"""Tests for global search endpoint (GET /api/search)."""
+"""Tests for global search endpoint (GET /api/search).
+
+DEPRECATED: GlobalSearch removed in favour of chatbot unified search (#1698).
+The /api/search endpoint is no longer mounted, so these tests are skipped.
+"""
 
 import pytest
 from conftest import PASSWORD, _login, _auth
+
+pytestmark = pytest.mark.skip(reason="GlobalSearch endpoint deprecated (#1698)")
 
 
 @pytest.fixture()

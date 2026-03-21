@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from app.services.search_service import SearchService, SearchResult
+from app.services.search_service import SearchService, SearchResult, _extract_search_term
 
 
 # --- Preset detection tests ---
@@ -119,6 +119,26 @@ def test_search_tasks_for_noah_routes_to_person_filter(monkeypatch):
     assert len(results) == 1
 
 
+# --- Person filter false-positive tests (#1722) ---
+
+def test_extract_person_filter_ignores_entity_keywords():
+    """'search for tasks' must NOT treat 'tasks' as a person name."""
+    svc = SearchService()
+    assert svc._extract_person_filter("search for tasks") is None
+    assert svc._extract_person_filter("search for courses") is None
+    assert svc._extract_person_filter("looking for notes") is None
+    assert svc._extract_person_filter("search for assignments") is None
+    assert svc._extract_person_filter("looking for something") is None
+
+
+def test_extract_person_filter_allows_real_names():
+    """'show tasks for Thanushan' must still extract 'Thanushan' as a person name."""
+    svc = SearchService()
+    assert svc._extract_person_filter("show tasks for Thanushan") == "Thanushan"
+    assert svc._extract_person_filter("tasks for noah") == "noah"
+    assert svc._extract_person_filter("list tasks for Emma") == "Emma"
+
+
 # --- Result limit and summary card tests (#1749) ---
 
 def test_list_tasks_returns_max_5_plus_summary_when_over_limit():
@@ -158,3 +178,24 @@ def test_list_tasks_returns_max_5_plus_summary_when_over_limit():
     assert len(summary_results) == 1
     assert "5 of 25" in summary_results[0].title
     assert summary_results[0].actions[0]["route"] == "/tasks"
+
+
+# --- _extract_search_term tests (#1719) ---
+
+@pytest.mark.parametrize("raw,expected", [
+    ("Find my course", "course"),
+    ("Show me my tasks", "tasks"),
+    ("list my notes", "notes"),
+    ("show me all the tasks", "tasks"),
+    ("math", "math"),
+    ("search for study guides", "study guides"),
+    ("Where are my notes", "notes"),
+    ("Look up algebra", "algebra"),
+    ("get me my assignments", "assignments"),
+    ("What are my courses", "courses"),
+    ("What are the tasks", "tasks"),
+    ("  Find my course  ", "course"),
+    ("show", "show"),
+])
+def test_extract_search_term(raw, expected):
+    assert _extract_search_term(raw) == expected

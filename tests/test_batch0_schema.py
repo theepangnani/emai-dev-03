@@ -205,6 +205,62 @@ class TestSourceTypeColumn:
         db_session.refresh(cc)
         assert cc.source_type == "local_upload"
 
+    def test_google_classroom_value(self, db_session, teacher_user):
+        """source_type can be set to 'google_classroom'."""
+        from app.models.course_content import CourseContent
+
+        cc = CourseContent(
+            course_id=teacher_user["course"].id,
+            title="GC Source Type Test",
+            content_type="resources",
+            created_by_user_id=teacher_user["user"].id,
+            source_type="google_classroom",
+        )
+        db_session.add(cc)
+        db_session.commit()
+        db_session.refresh(cc)
+        assert cc.source_type == "google_classroom"
+
+    def test_api_returns_source_type(self, client, teacher_user):
+        """API response should include source_type field."""
+        headers = _auth(client, teacher_user["user"].email)
+        resp = client.post(
+            "/api/course-contents/",
+            json={
+                "course_id": teacher_user["course"].id,
+                "title": "API Source Type Test",
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["source_type"] == "local_upload"
+
+    def test_source_file_default(self, db_session, teacher_user):
+        """SourceFile source_type should default to 'local_upload'."""
+        from app.models.course_content import CourseContent
+        from app.models.source_file import SourceFile
+
+        cc = CourseContent(
+            course_id=teacher_user["course"].id,
+            title="SF Source Type Test",
+            content_type="notes",
+            created_by_user_id=teacher_user["user"].id,
+        )
+        db_session.add(cc)
+        db_session.flush()
+
+        sf = SourceFile(
+            course_content_id=cc.id,
+            filename="test.pdf",
+            file_type="application/pdf",
+            file_size=1024,
+        )
+        db_session.add(sf)
+        db_session.commit()
+        db_session.refresh(sf)
+        assert sf.source_type == "local_upload"
+
 
 # ── User preferred_language & timezone (#2024) ───────────────
 
@@ -256,15 +312,15 @@ class TestHolidayDatesTable:
 
         holiday = HolidayDate(
             date=date(2026, 12, 25),
-            board_name="YRDSB",
-            description="Christmas Day",
+            board="YRDSB",
+            name="Christmas Day",
         )
         db_session.add(holiday)
         db_session.commit()
         db_session.refresh(holiday)
         assert holiday.id is not None
         assert holiday.date == date(2026, 12, 25)
-        assert holiday.board_name == "YRDSB"
+        assert holiday.board == "YRDSB"
 
 
 class TestHolidayCRUDEndpoints:
@@ -282,16 +338,16 @@ class TestHolidayCRUDEndpoints:
             "/api/admin/holidays",
             json={
                 "date": "2026-09-07",
-                "board_name": "YRDSB",
-                "description": "Labour Day",
+                "board": "YRDSB",
+                "name": "Labour Day",
             },
             headers=headers,
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["date"] == "2026-09-07"
-        assert data["board_name"] == "YRDSB"
-        assert data["description"] == "Labour Day"
+        assert data["board"] == "YRDSB"
+        assert data["name"] == "Labour Day"
         assert data["id"] is not None
 
     def test_delete_holiday_endpoint(self, client, admin_user):
@@ -300,7 +356,7 @@ class TestHolidayCRUDEndpoints:
         # Create first
         create_resp = client.post(
             "/api/admin/holidays",
-            json={"date": "2026-10-12", "description": "Thanksgiving"},
+            json={"date": "2026-10-12", "name": "Thanksgiving"},
             headers=headers,
         )
         assert create_resp.status_code == 201

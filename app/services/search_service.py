@@ -124,17 +124,11 @@ class SearchService:
                 (Task.assigned_to_user_id == user_id) | (Task.created_by_user_id == user_id)
             )
         elif user_role == "parent":
-            student_ids = [
-                row[0] for row in db.query(parent_students.c.student_id).filter(
-                    parent_students.c.parent_id == user_id
-                ).all()
-            ]
-            child_user_ids = [
-                row[0] for row in db.query(Student.user_id).filter(
-                    Student.id.in_(student_ids)
-                ).all()
-            ]
-            query = query.filter(Task.assigned_to_user_id.in_(child_user_ids))
+            accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            query = query.filter(
+                (Task.created_by_user_id.in_(accessible_ids)) |
+                (Task.assigned_to_user_id.in_(accessible_ids))
+            )
         else:
             query = query.filter(Task.created_by_user_id == user_id)
 
@@ -161,9 +155,15 @@ class SearchService:
             "show Emma tasks"       -> "Emma"  (bare name before entity)
         """
         msg = message.strip()
+        # Words that should never be treated as a person name
+        _entity_words = {
+            "task", "tasks", "course", "courses", "assignment", "assignments",
+            "note", "notes", "material", "materials", "content",
+            "study", "guide", "guides", "file", "files", "something",
+        }
         # Match "for <Name>" or "for <Name>'s"
         m = re.search(r"\bfor\s+([A-Za-z]+)(?:'s)?\b", msg, re.IGNORECASE)
-        if m:
+        if m and m.group(1).lower() not in _entity_words and m.group(1).lower() not in _STOP_WORDS:
             return m.group(1)
         # Match "<Name>'s tasks" / "<Name>s tasks"
         m2 = re.search(r"\b([A-Za-z]+)'s\s+(?:tasks?|assignments?|study[\s\-]?guides?)\b", msg, re.IGNORECASE)
@@ -480,10 +480,14 @@ class SearchService:
             ))
         return results
 
-    def _list_notes(self, user_id: int, db: Session) -> list[SearchResult]:
-        """Return up to 8 most recent notes for the user."""
+    def _list_notes(self, user_id: int, db: Session, user_role: str = "") -> list[SearchResult]:
+        """Return up to 8 most recent notes for the user (and children for parents)."""
         from app.models.course_content import CourseContent as _CC
-        note_q = db.query(Note).filter(Note.user_id == user_id)
+        if user_role == "parent":
+            accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            note_q = db.query(Note).filter(Note.user_id.in_(accessible_ids))
+        else:
+            note_q = db.query(Note).filter(Note.user_id == user_id)
         total_count = note_q.count()
         notes = note_q.order_by(Note.updated_at.desc()).limit(5).all()
         results = []
@@ -634,7 +638,7 @@ class SearchService:
             return self._list_study_guides(user_id, db, user_role=user_role)
 
         if preset == "list_notes":
-            return self._list_notes(user_id, db)
+            return self._list_notes(user_id, db, user_role=user_role)
 
         if preset == "list_materials":
             return self._list_materials(user_id, user_role, db)
@@ -977,10 +981,12 @@ class SearchService:
         if remaining <= 0:
             return results
 
-        # Notes (search plain_text or content, filter by user)
-        note_q = db.query(Note).filter(
-            Note.user_id == user_id,
-        )
+        # Notes (search plain_text or content, filter by user; parents see children's)
+        if user_role == "parent":
+            note_accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+            note_q = db.query(Note).filter(Note.user_id.in_(note_accessible_ids))
+        else:
+            note_q = db.query(Note).filter(Note.user_id == user_id)
         # Use plain_text if available, fall back to content
         note_q = note_q.filter(
             (Note.plain_text.ilike(term)) | (Note.content.ilike(term))

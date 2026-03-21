@@ -199,8 +199,6 @@ export type {
 } from './admin';
 export { tasksApi } from './tasks';
 export type { TaskItem, AssignableUser } from './tasks';
-export { searchApi } from './search';
-export type { SearchResultItem, SearchResultGroup, SearchResponse } from './search';
 export { inspirationApi } from './inspiration';
 export type { InspirationMessage, InspirationMessageFull } from './inspiration';
 export { faqApi } from './faq';
