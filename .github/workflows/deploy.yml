@@ -11,6 +11,7 @@ env:
   SERVICE: classbridge
   REPOSITORY: classbridge
   IMAGE: us-central1-docker.pkg.dev/emai-dev-01/classbridge/classbridge
+  TESTING: "1"
 
 jobs:
   test-backend:
