@@ -14,6 +14,7 @@ import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
 import '../components/AddActionButton.css';
 import { PageNav } from '../components/PageNav';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './MessagesPage.css';
 
 export function MessagesPage() {
@@ -483,6 +484,7 @@ export function MessagesPage() {
         <div className="error-banner">
           {error}
           <button onClick={() => setError('')}>&times;</button>
+          <ReportBugLink errorMessage={error} />
         </div>
       )}
 

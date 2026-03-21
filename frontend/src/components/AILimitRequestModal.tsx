@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { aiUsageApi } from '../api/aiUsage';
 import { useFocusTrap } from '../utils/useFocusTrap';
+import { ReportBugLink } from './ReportBugLink';
 import './AILimitRequestModal.css';
 
 interface AILimitRequestModalProps {
@@ -112,6 +113,7 @@ export function AILimitRequestModal({ open, onClose }: AILimitRequestModalProps)
                 <div className="modal-error">
                   <span className="error-icon">!</span>
                   <span className="error-message">{error}</span>
+                  <ReportBugLink errorMessage={error} />
                 </div>
               )}
             </div>

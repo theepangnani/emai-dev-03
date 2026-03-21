@@ -4,6 +4,7 @@ import { isValidEmail } from '../utils/validation';
 import { SearchableSelect, MultiSearchableSelect } from './SearchableSelect';
 import type { SearchableOption } from './SearchableSelect';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { ReportBugLink } from './ReportBugLink';
 
 interface CreateClassModalProps {
   open: boolean;
@@ -205,7 +206,7 @@ export default function CreateClassModal({ open, onClose, onCreated }: CreateCla
             <input type="checkbox" checked={courseRequireApproval} onChange={(e) => setCourseRequireApproval(e.target.checked)} disabled={createLoading} />
             Require approval to join
           </label>
-          {createError && <p className="link-error">{createError}</p>}
+          {createError && <><p className="link-error">{createError}</p><ReportBugLink errorMessage={createError} /></>}
         </div>
         <div className="modal-actions">
           <button className="cancel-btn" onClick={onClose} disabled={createLoading}>

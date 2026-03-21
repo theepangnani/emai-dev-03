@@ -6,6 +6,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { reportCardApi } from '../api/reportCard';
 import type { ReportCardData } from '../api/reportCard';
 import { downloadAsPdf } from '../utils/exportUtils';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './ReportCardPage.css';
 
 export function ReportCardPage() {
@@ -38,7 +39,7 @@ export function ReportCardPage() {
       />
       <div className="rc-page">
         {isLoading && <PageSkeleton />}
-        {error && <div className="rc-error">Failed to load report card.</div>}
+        {error && <><div className="rc-error">Failed to load report card.</div><ReportBugLink errorMessage="Failed to load report card" /></>}
         {data && (
           <>
             <div className="rc-actions">

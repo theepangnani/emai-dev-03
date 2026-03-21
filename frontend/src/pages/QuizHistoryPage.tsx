@@ -7,6 +7,7 @@ import type { QuizResultSummary, QuizHistoryStats, ChildSummary } from '../api/c
 import { useAuth } from '../context/AuthContext';
 import { PageSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './QuizHistoryPage.css';
 
 export function QuizHistoryPage() {
@@ -119,7 +120,7 @@ export function QuizHistoryPage() {
 
         {loading && <PageSkeleton />}
 
-        {error && <div className="quiz-history-error">{error}</div>}
+        {error && <div className="quiz-history-error">{error}<ReportBugLink errorMessage={error} /></div>}
 
         {!loading && !error && stats && (
           <>

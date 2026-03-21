@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { ReportBugLink } from './ReportBugLink';
 import './Toast.css';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -49,6 +50,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               {t.type === 'success' ? '\u2713' : t.type === 'error' ? '\u2717' : '\u2139'}
             </span>
             <span className="toast-message">{t.message}</span>
+            {t.type === 'error' && <ReportBugLink errorMessage={t.message} />}
           </div>
         ))}
       </div>

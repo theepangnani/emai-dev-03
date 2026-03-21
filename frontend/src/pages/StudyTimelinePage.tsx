@@ -5,6 +5,7 @@ import { PageNav } from '../components/PageNav';
 import { PageSkeleton } from '../components/Skeleton';
 import { activityApi, type TimelineEntry } from '../api/activity';
 import { coursesApi } from '../api/courses';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './StudyTimelinePage.css';
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -158,7 +159,7 @@ export function StudyTimelinePage() {
         {/* Content */}
         {isLoading && <PageSkeleton />}
         {error && (
-          <div className="st-error">Failed to load timeline. Please try again.</div>
+          <div className="st-error">Failed to load timeline. Please try again.<ReportBugLink errorMessage="Failed to load timeline" /></div>
         )}
 
         {!isLoading && !error && items.length === 0 && (

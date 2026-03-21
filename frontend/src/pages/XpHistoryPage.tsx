@@ -6,6 +6,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { xpApi } from '../api/xp';
 import type { XpLedgerEntry } from '../api/xp';
 import { downloadAsPdf } from '../utils/exportUtils';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './XpHistoryPage.css';
 
 const ACTION_LABELS: Record<string, string> = {
@@ -180,7 +181,7 @@ export function XpHistoryPage() {
         {isLoading && <PageSkeleton />}
 
         {error && (
-          <div className="xph-error">Failed to load XP history. Please try again.</div>
+          <div className="xph-error">Failed to load XP history. Please try again.<ReportBugLink errorMessage="Failed to load XP history" /></div>
         )}
 
         {!isLoading && !error && (

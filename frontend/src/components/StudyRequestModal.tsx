@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { studyRequestsApi } from '../api/studyRequests';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { ReportBugLink } from './ReportBugLink';
 
 interface ChildOption {
   student_id: number;
@@ -155,7 +156,7 @@ export function StudyRequestModal({
               />
             </label>
 
-            {error && <p className="link-error">{error}</p>}
+            {error && <><p className="link-error">{error}</p><ReportBugLink errorMessage={error} /></>}
           </div>
         )}
 

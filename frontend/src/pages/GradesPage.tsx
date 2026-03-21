@@ -6,6 +6,7 @@ import type { ChildGradeSummary, CourseGradesResponse } from '../api/grades';
 import { useAuth } from '../context/AuthContext';
 import { PageSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './GradesPage.css';
 
 function letterColor(color: string): string {
@@ -186,6 +187,7 @@ export function GradesPage() {
         ) : error ? (
           <div className="gp-error">
             <p>{error}</p>
+            <ReportBugLink errorMessage={error} />
           </div>
         ) : filteredChildren.length === 0 || filteredChildren.every(c => c.courses.length === 0) ? (
           <div className="gp-empty">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { studyApi, coursesApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
+import { ReportBugLink } from './ReportBugLink';
 import './EditStudyGuideModal.css';
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
@@ -69,6 +70,7 @@ export function EditStudyGuideModal({ guide, onClose, onSaved }: EditStudyGuideM
             <span className="error-icon">!</span>
             <span className="error-message">{error}</span>
             <button onClick={handleSave} className="retry-btn" disabled={saving}>Try Again</button>
+            <ReportBugLink errorMessage={error} />
           </div>
         )}
         <div className="modal-form edit-sg-form">
