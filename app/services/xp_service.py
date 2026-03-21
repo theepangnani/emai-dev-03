@@ -4,7 +4,7 @@ XP service — business logic for the Gamification XP system (#2001).
 Handles XP awarding, daily caps, streak multipliers, level calculation,
 and summary maintenance.
 """
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import func
@@ -91,6 +91,13 @@ def get_streak_multiplier(streak_days: int) -> float:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _get_week_start() -> datetime:
+    """Return the start of the current week (Monday 00:00 UTC)."""
+    now = datetime.now(timezone.utc)
+    monday = now - timedelta(days=now.weekday())
+    return monday.replace(hour=0, minute=0, second=0, microsecond=0)
+
 
 def _get_today_xp(db: Session, student_id: int, action_type: str) -> int:
     """Sum of today's XP for a given action type."""
@@ -325,17 +332,49 @@ class XpService:
         points: int,
         awarder_id: int,
         reason: Optional[str] = None,
+        weekly_cap: int = 50,
     ):
-        """Award brownie points from a parent/teacher to a student."""
+        """Award brownie points from a parent/teacher to a student.
+
+        weekly_cap: max XP this awarder can give this student per week
+        (50 for parents, 30 for teachers).
+        """
         from app.models.xp import XpLedger
         from app.schemas.xp import BrowniePointResponse
+
+        # Check weekly cap
+        week_start = _get_week_start()
+        awarded_this_week = (
+            db.query(func.coalesce(func.sum(XpLedger.xp_awarded), 0))
+            .filter(
+                XpLedger.awarder_id == awarder_id,
+                XpLedger.student_id == student_user_id,
+                XpLedger.action_type == "brownie_points",
+                XpLedger.created_at >= week_start,
+            )
+            .scalar()
+        )
+        awarded_this_week = int(awarded_this_week)
+        remaining = weekly_cap - awarded_this_week
+
+        if remaining <= 0:
+            return BrowniePointResponse(
+                awarded=0,
+                student_user_id=student_user_id,
+                new_total_xp=0,
+                remaining_weekly_cap=0,
+                message=f"Weekly cap of {weekly_cap} XP reached for this student",
+            )
+
+        # Clamp to remaining cap
+        actual_points = min(points, remaining)
 
         summary = _get_or_create_summary(db, student_user_id)
 
         entry = XpLedger(
             student_id=student_user_id,
             action_type="brownie_points",
-            xp_awarded=points,
+            xp_awarded=actual_points,
             multiplier=1.0,
             awarder_id=awarder_id,
             reason=reason,
@@ -343,20 +382,37 @@ class XpService:
         db.add(entry)
         db.flush()
 
-        summary.total_xp = (summary.total_xp or 0) + points
+        summary.total_xp = (summary.total_xp or 0) + actual_points
         level_info = get_level_for_xp(summary.total_xp)
         summary.current_level = level_info["level"]
         db.flush()
 
+        # Create notification for student
+        try:
+            from app.models.notification import Notification, NotificationType
+            from app.models.user import User
+            awarder = db.query(User).filter(User.id == awarder_id).first()
+            awarder_name = awarder.full_name if awarder else "Someone"
+            db.add(Notification(
+                user_id=student_user_id,
+                type=NotificationType.SYSTEM,
+                title="You earned brownie points!",
+                content=f"{awarder_name} awarded you {actual_points} XP" + (f": {reason}" if reason else ""),
+            ))
+            db.flush()
+        except Exception:
+            logger.warning("Failed to create brownie points notification for student=%s", student_user_id)
+
         logger.info(
             "Brownie points awarded | student=%s | points=%d | awarder=%s",
-            student_user_id, points, awarder_id,
+            student_user_id, actual_points, awarder_id,
         )
         return BrowniePointResponse(
-            awarded=points,
+            awarded=actual_points,
             student_user_id=student_user_id,
             new_total_xp=summary.total_xp,
-            message=f"Awarded {points} brownie points",
+            remaining_weekly_cap=remaining - actual_points,
+            message=f"Awarded {actual_points} brownie points",
         )
 
     @staticmethod
@@ -383,3 +439,26 @@ class XpService:
             "tier": tier,
             "streak_tier": tier,
         }
+
+    @staticmethod
+    def get_weekly_brownie_remaining(
+        db: Session,
+        awarder_id: int,
+        student_user_id: int,
+        weekly_cap: int = 50,
+    ) -> int:
+        """Return how many brownie points the awarder can still give this student this week."""
+        from app.models.xp import XpLedger
+
+        week_start = _get_week_start()
+        awarded = (
+            db.query(func.coalesce(func.sum(XpLedger.xp_awarded), 0))
+            .filter(
+                XpLedger.awarder_id == awarder_id,
+                XpLedger.student_id == student_user_id,
+                XpLedger.action_type == "brownie_points",
+                XpLedger.created_at >= week_start,
+            )
+            .scalar()
+        )
+        return max(0, weekly_cap - int(awarded))

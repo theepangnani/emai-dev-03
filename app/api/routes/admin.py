@@ -721,6 +721,69 @@ def get_storage_overview(
     }
 
 
+# ── XP Award Audit (#2005) ────────────────────────────────────
+
+
+@router.get("/xp-awards")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_xp_awards(
+    request: Request,
+    awarder_id: int | None = None,
+    student_id: int | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """List all brownie point awards (admin audit view)."""
+    from app.models.xp import XpLedger
+
+    query = db.query(XpLedger).filter(XpLedger.action_type == "brownie_points")
+
+    if awarder_id is not None:
+        query = query.filter(XpLedger.awarder_id == awarder_id)
+    if student_id is not None:
+        query = query.filter(XpLedger.student_id == student_id)
+    if date_from:
+        query = query.filter(XpLedger.created_at >= date_from)
+    if date_to:
+        query = query.filter(XpLedger.created_at <= date_to)
+
+    total = query.count()
+    rows = query.order_by(XpLedger.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Resolve user names
+    user_ids = set()
+    for r in rows:
+        user_ids.add(r.student_id)
+        if r.awarder_id:
+            user_ids.add(r.awarder_id)
+    user_map = {}
+    if user_ids:
+        users = db.query(User.id, User.full_name, User.role).filter(User.id.in_(user_ids)).all()
+        user_map = {u.id: {"name": u.full_name, "role": u.role} for u in users}
+
+    items = []
+    for r in rows:
+        awarder_info = user_map.get(r.awarder_id, {}) if r.awarder_id else {}
+        student_info = user_map.get(r.student_id, {})
+        items.append({
+            "id": r.id,
+            "student_id": r.student_id,
+            "student_name": student_info.get("name"),
+            "awarder_id": r.awarder_id,
+            "awarder_name": awarder_info.get("name"),
+            "awarder_role": awarder_info.get("role"),
+            "xp_awarded": r.xp_awarded,
+            "reason": r.reason,
+            "created_at": r.created_at,
+        })
+
+    return {"items": items, "total": total}
+
+
 # ── Holiday dates CRUD (#2024) ───────────────────────────────
 
 

@@ -22,6 +22,7 @@ import './MyKidsPage.css';
 import { ChildXpStats } from '../components/xp/ChildXpStats';
 import { OnTrackBadge } from '../components/OnTrackBadge';
 import { StudyRequestModal } from '../components/StudyRequestModal';
+import { AwardXpModal } from '../components/AwardXpModal';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -95,6 +96,9 @@ export function MyKidsPage() {
 
   // Study request modal
   const [showStudyRequest, setShowStudyRequest] = useState(false);
+
+  // Award XP modal
+  const [awardXpChild, setAwardXpChild] = useState<{ studentId: number; userId: number; name: string } | null>(null);
 
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
@@ -738,6 +742,15 @@ export function MyKidsPage() {
                       </button>
                     </>
                   )}
+                  <button
+                    className="invite-menu-item"
+                    onClick={() => {
+                      setOpenChildMenuId(null);
+                      setAwardXpChild({ studentId: child.student_id, userId: child.user_id, name: child.full_name });
+                    }}
+                  >
+                    Award XP
+                  </button>
                   <button
                     className="invite-menu-item invite-menu-item--danger"
                     onClick={async () => {
@@ -1438,6 +1451,15 @@ export function MyKidsPage() {
         preselectedChildUserId={selectedChildUserId}
         onSuccess={() => toast('Study request sent!', 'success')}
       />
+      {awardXpChild && (
+        <AwardXpModal
+          open={!!awardXpChild}
+          onClose={() => setAwardXpChild(null)}
+          studentName={awardXpChild.name}
+          studentUserId={awardXpChild.userId}
+          onSuccess={() => toast(`XP awarded to ${awardXpChild.name}!`, 'success')}
+        />
+      )}
     </DashboardLayout>
   );
 }

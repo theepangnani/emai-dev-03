@@ -52,6 +52,19 @@ export interface XpStreakResponse {
   streak_start_date: string | null;
 }
 
+export interface BrowniePointResponse {
+  awarded: number;
+  student_user_id: number;
+  new_total_xp: number;
+  remaining_weekly_cap: number;
+  message: string;
+}
+
+export interface BrownieRemaining {
+  remaining: number;
+  weekly_cap: number;
+}
+
 export const xpApi = {
   getSummary: async () => {
     const response = await api.get<XpSummary>('/api/xp/summary');
@@ -80,6 +93,20 @@ export const xpApi = {
 
   getChildSummary: async (studentId: number) => {
     const response = await api.get<XpSummary>(`/api/xp/children/${studentId}/summary`);
+    return response.data;
+  },
+
+  awardBrowniePoints: async (studentUserId: number, points: number, reason?: string) => {
+    const response = await api.post<BrowniePointResponse>('/api/xp/award', {
+      student_user_id: studentUserId,
+      points,
+      reason: reason || undefined,
+    });
+    return response.data;
+  },
+
+  getBrownieRemaining: async (studentUserId: number) => {
+    const response = await api.get<BrownieRemaining>(`/api/xp/award/remaining?student_user_id=${studentUserId}`);
     return response.data;
   },
 };
