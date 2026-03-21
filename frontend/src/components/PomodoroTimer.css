@@ -1,0 +1,155 @@
+.pomodoro-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+/* Setup form before timer starts */
+.pomodoro-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.pomodoro-setup label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.pomodoro-setup select,
+.pomodoro-setup input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #1e293b);
+}
+
+/* Timer display */
+.pomodoro-timer-ring {
+  position: relative;
+  width: 240px;
+  height: 240px;
+}
+
+.pomodoro-timer-ring svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.pomodoro-ring-bg {
+  fill: none;
+  stroke: var(--color-border, #e2e8f0);
+  stroke-width: 8;
+}
+
+.pomodoro-ring-progress {
+  fill: none;
+  stroke: var(--color-accent, #6366f1);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.pomodoro-time-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.pomodoro-time {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text, #1e293b);
+  line-height: 1;
+}
+
+.pomodoro-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #64748b);
+  margin-top: 0.25rem;
+}
+
+/* Controls */
+.pomodoro-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pomodoro-btn {
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pomodoro-btn:hover {
+  opacity: 0.85;
+}
+
+.pomodoro-btn--primary {
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+}
+
+.pomodoro-btn--secondary {
+  background: var(--color-border, #e2e8f0);
+  color: var(--color-text, #1e293b);
+}
+
+/* Recap card */
+.pomodoro-recap {
+  width: 100%;
+  max-width: 500px;
+  background: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.25rem;
+  text-align: left;
+}
+
+.pomodoro-recap h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--color-text, #1e293b);
+}
+
+.pomodoro-recap-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary, #64748b);
+  white-space: pre-line;
+}
+
+.pomodoro-xp-badge {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pomodoro-no-xp {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-tertiary, #94a3b8);
+}

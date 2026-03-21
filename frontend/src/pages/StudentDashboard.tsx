@@ -728,6 +728,10 @@ export function StudentDashboard() {
             <h3 className="dash-section-title">Quick Actions</h3>
           </div>
           <div className="dash-quick-actions">
+            <button className="dash-quick-action" onClick={() => navigate('/study/session')}>
+              <span className="dash-quick-action-icon">&#9202;</span>
+              Study Session
+            </button>
             <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
               <span className="dash-quick-action-icon">&#128214;</span>
               View Study Guides
