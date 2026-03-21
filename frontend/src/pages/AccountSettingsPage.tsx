@@ -14,6 +14,9 @@ export function AccountSettingsPage() {
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [resetPwSent, setResetPwSent] = useState(false);
+  const [resetPwLoading, setResetPwLoading] = useState(false);
+  const [resetPwError, setResetPwError] = useState('');
   const [showDigestPreview, setShowDigestPreview] = useState(false);
   const [digestPreview, setDigestPreview] = useState<DailyDigestPreview | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
@@ -209,6 +212,43 @@ export function AccountSettingsPage() {
             limitBytes={user?.storage_limit_bytes ?? 104857600}
             uploadLimitBytes={user?.upload_limit_bytes ?? 10485760}
           />
+        </section>
+
+        <section className="account-section">
+          <h2>Reset Password</h2>
+          <p style={{ color: '#6b7280', marginBottom: 16 }}>
+            Send a password reset link to your email address.
+          </p>
+          {resetPwSent ? (
+            <p style={{ color: '#059669', fontSize: 14 }}>
+              A password reset link has been sent to <strong>{user?.email}</strong>. Check your inbox.
+            </p>
+          ) : (
+            <>
+              {resetPwError && (
+                <p className="account-error" style={{ marginBottom: 12 }}>{resetPwError}</p>
+              )}
+              <button
+                className="account-btn account-btn-secondary"
+                disabled={resetPwLoading || !user?.email}
+                onClick={async () => {
+                  if (!user?.email) return;
+                  setResetPwLoading(true);
+                  setResetPwError('');
+                  try {
+                    await authApi.forgotPassword(user.email);
+                    setResetPwSent(true);
+                  } catch {
+                    setResetPwError('Failed to send reset link. Please try again.');
+                  } finally {
+                    setResetPwLoading(false);
+                  }
+                }}
+              >
+                {resetPwLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </>
+          )}
         </section>
 
         {isParent && (
