@@ -1021,6 +1021,9 @@ Current feature issues are tracked in GitHub:
 - Issue #1209: feat: Replace tutorial SVG placeholders with real screenshots
 - Issue #1594: feat: hierarchical study guides — generate child study guides from parent topics
 - Issue #1740: feat: master/sub class material hierarchy for multi-document uploads (§6.95)
+- ~~Issue #2087: User Bug Report with Screenshot → GitHub Issue + Admin Notification (§6.115)~~ ✅
+- ~~Issue #2089: Error Dialog → Report Bug Link (§6.116)~~ ✅
+- Issue #2103: Bug Report Bot Protection (§6.117)
 
 ### Phase 3+ — Open
 - Issue #506: University Pathway Alignment

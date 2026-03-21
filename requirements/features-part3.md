@@ -4154,3 +4154,36 @@ Context-aware chatbot Q&A when users are viewing a study guide. The existing Hel
 **Key Files:**
 - Backend: `app/services/study_qa_service.py`, `app/services/ai_usage.py`, `app/schemas/help.py`, `app/api/routes/help.py`, `app/api/routes/study.py`
 - Frontend: `useHelpChat.ts`, `SpeedDialFAB.tsx`, `ChatMessage.tsx`, `SuggestionChips.tsx`, `FABContext.tsx`, `StudyGuidePage.tsx`, `CourseMaterialDetailPage.tsx`
+
+### 6.115 User Bug Report with Screenshot → GitHub Issue + Admin Notification (Phase 2) (#2087) - IMPLEMENTED
+
+**Purpose:** Let users report bugs directly from the app with an optional screenshot, creating a GitHub issue and notifying admins.
+
+- [x] "Report a Bug" button accessible from help/support area
+- [x] Bug report form with title, description, and optional screenshot upload
+- [x] Screenshot capture via clipboard paste or file upload
+- [x] Screenshot uploaded to backend and attached to GitHub issue
+- [x] Backend creates GitHub issue via GitHub API with user context (role, browser, URL)
+- [x] Admin notification (email or in-app) when new bug report is submitted
+- [x] Rate limiting to prevent spam submissions
+- [x] Success/error feedback to the user after submission
+
+**Key PRs:** #2088 (initial feature), #2092 (fix 405, paste, prefill), #2104 (fix screenshot 500 + modal styling)
+
+### 6.116 Error Dialog → Report Bug Link (Phase 2) (#2089) - IMPLEMENTED
+
+**Purpose:** When an error dialog appears (e.g., API failure), include a "Report Bug" link that pre-fills the bug report form with error context.
+
+- [x] Error dialogs include a "Report this bug" link/button
+- [x] Clicking the link opens the bug report form pre-filled with error details (endpoint, status code, message)
+- [x] Seamless transition from error dialog to bug report modal
+
+**Key PRs:** #2090 (error dialog report links)
+
+### 6.117 Bug Report Bot Protection (Phase 2) (#2103)
+
+**Purpose:** Add bot/spam protection to the bug report submission flow.
+
+- [ ] Implement honeypot field or CAPTCHA on bug report form
+- [ ] Server-side validation for bot submissions
+- [ ] Rate limiting per IP in addition to per-user
