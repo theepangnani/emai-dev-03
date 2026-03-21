@@ -34,7 +34,7 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest, ContentImage, SurveyResponse, SurveyAnswer
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest, ContentImage, SurveyResponse, SurveyAnswer, HolidayDate
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
@@ -1595,6 +1595,75 @@ with engine.connect() as conn:
             except Exception:
                 conn.rollback()
         logger.info("Applied missing database indexes (#1961)")
+
+    # ── Batch 0: is_master String→Boolean migration (#2025) ──
+    try:
+        with engine.connect() as conn:
+            inspector_b0 = sa_inspect(engine)
+            if "course_contents" in inspector_b0.get_table_names():
+                existing_cols = {c["name"] for c in inspector_b0.get_columns("course_contents")}
+                if "is_master_bool" not in existing_cols and "is_master" in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master_bool BOOLEAN DEFAULT FALSE"))
+                        conn.execute(text(
+                            "UPDATE course_contents SET is_master_bool = CASE "
+                            "WHEN is_master = 'true' THEN TRUE ELSE FALSE END"
+                        ))
+                        conn.commit()
+                        logger.info("Added 'is_master_bool' column and migrated data (#2025)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("is_master Boolean migration failed (#2025): %s", e)
+
+    # ── Batch 0: source_type column (#2010) ──
+    try:
+        with engine.connect() as conn:
+            inspector_st = sa_inspect(engine)
+            if "course_contents" in inspector_st.get_table_names():
+                existing_cols = {c["name"] for c in inspector_st.get_columns("course_contents")}
+                if "source_type" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN source_type VARCHAR(20) DEFAULT 'local_upload'"))
+                        conn.commit()
+                        logger.info("Added 'source_type' column to course_contents (#2010)")
+                    except Exception:
+                        conn.rollback()
+            if "source_files" in inspector_st.get_table_names():
+                existing_cols = {c["name"] for c in inspector_st.get_columns("source_files")}
+                if "source_type" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE source_files ADD COLUMN source_type VARCHAR(20) DEFAULT 'local_upload'"))
+                        conn.commit()
+                        logger.info("Added 'source_type' column to source_files (#2010)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("source_type column migration failed (#2010): %s", e)
+
+    # ── Batch 0: User preferred_language & timezone columns (#2024) ──
+    try:
+        with engine.connect() as conn:
+            inspector_ul = sa_inspect(engine)
+            if "users" in inspector_ul.get_table_names():
+                existing_cols = {c["name"] for c in inspector_ul.get_columns("users")}
+                if "preferred_language" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN preferred_language VARCHAR(10) DEFAULT 'en'"))
+                        conn.commit()
+                        logger.info("Added 'preferred_language' column to users (#2024)")
+                    except Exception:
+                        conn.rollback()
+                if "timezone" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN timezone VARCHAR(50) DEFAULT 'America/Toronto'"))
+                        conn.commit()
+                        logger.info("Added 'timezone' column to users (#2024)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("User language/timezone migration failed (#2024): %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 

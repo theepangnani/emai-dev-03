@@ -4,9 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import { LinkedMaterialsPanel, type LinkedMaterialDisplay } from '../LinkedMaterialsPanel'
 
 const mockMaterials: LinkedMaterialDisplay[] = [
-  { id: 1, title: 'Math Notes', is_master: 'true', content_type: 'notes', has_file: false, original_filename: null, created_at: '2026-03-14T00:00:00Z' },
-  { id: 2, title: 'Math Notes — Part 1', is_master: 'false', content_type: 'notes', has_file: true, original_filename: 'file1.pdf', created_at: '2026-03-14T00:00:00Z' },
-  { id: 3, title: 'Math Notes — Part 2', is_master: 'false', content_type: 'notes', has_file: true, original_filename: 'file2.pdf', created_at: '2026-03-14T00:00:00Z' },
+  { id: 1, title: 'Math Notes', is_master: true, content_type: 'notes', has_file: false, original_filename: null, created_at: '2026-03-14T00:00:00Z' },
+  { id: 2, title: 'Math Notes — Part 1', is_master: false, content_type: 'notes', has_file: true, original_filename: 'file1.pdf', created_at: '2026-03-14T00:00:00Z' },
+  { id: 3, title: 'Math Notes — Part 2', is_master: false, content_type: 'notes', has_file: true, original_filename: 'file2.pdf', created_at: '2026-03-14T00:00:00Z' },
 ]
 
 function renderPanel(props: Partial<React.ComponentProps<typeof LinkedMaterialsPanel>> = {}) {

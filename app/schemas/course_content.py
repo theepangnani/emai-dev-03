@@ -143,7 +143,7 @@ class CourseContentResponse(BaseModel):
     category: Optional[str] = None
     display_order: int = 0
     parent_content_id: Optional[int] = None
-    is_master: str = "false"
+    is_master: bool = False
     material_group_id: Optional[int] = None
     document_type: Optional[str] = None
     study_goal: Optional[str] = None
@@ -189,7 +189,7 @@ class LinkedMaterialResponse(BaseModel):
     """Lightweight representation of a linked material (master or sub)."""
     id: int
     title: str
-    is_master: str = "false"
+    is_master: bool = False
     content_type: str
     has_file: bool = False
     original_filename: Optional[str] = None

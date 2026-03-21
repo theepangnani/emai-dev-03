@@ -659,6 +659,7 @@ async def upload_multi_files(
             file_size=total_size,
             mime_type=file_entries[0][2],
             created_by_user_id=current_user.id,
+            source_type="local_upload",
         )
         db.add(content)
         db.flush()
@@ -691,6 +692,7 @@ async def upload_multi_files(
             file_size=len(first_fbytes),
             mime_type=first_fmime,
             created_by_user_id=current_user.id,
+            source_type="local_upload",
         )
         db.add(master)
         db.flush()  # Get master.id
@@ -724,6 +726,7 @@ async def upload_multi_files(
                 file_size=len(fbytes),
                 mime_type=fmime,
                 created_by_user_id=current_user.id,
+                source_type="local_upload",
             )
             db.add(sub)
             db.flush()  # Get sub.id
@@ -1305,12 +1308,12 @@ async def add_files_to_material(
     check_upload_allowed(current_user, total_size)
 
     # Determine the master material
-    if content.is_master == "false" and content.parent_content_id:
+    if not content.is_master and content.parent_content_id:
         # Sub-material: find parent master
         master = db.query(CourseContent).filter(CourseContent.id == content.parent_content_id).first()
         if not master:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent master material not found")
-    elif content.is_master == "true":
+    elif content.is_master:
         # Already a master
         master = content
     else:
@@ -1353,8 +1356,9 @@ async def add_files_to_material(
             mime_type=fmime,
             created_by_user_id=current_user.id,
             parent_content_id=master.id,
-            is_master="false",
+            is_master=False,
             material_group_id=master.material_group_id,
+            source_type="local_upload",
         )
         db.add(sub)
         db.flush()
@@ -1541,7 +1545,7 @@ def delete_course_content(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can delete content")
 
     content.archived_at = datetime.now(timezone.utc)
-    if content.is_master == "true":
+    if content.is_master:
         db.query(CourseContent).filter(
             CourseContent.parent_content_id == content.id,
             CourseContent.archived_at.is_(None),
@@ -1567,7 +1571,7 @@ def restore_course_content(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not archived")
 
     content.archived_at = None
-    if content.is_master == "true":
+    if content.is_master:
         db.query(CourseContent).filter(
             CourseContent.parent_content_id == content.id,
             CourseContent.archived_at.isnot(None),
@@ -1596,7 +1600,7 @@ def permanent_delete_course_content(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
 
     # Cascade permanent delete to sub-materials
-    if content.is_master == "true":
+    if content.is_master:
         subs = db.query(CourseContent).filter(
             CourseContent.parent_content_id == content.id,
         ).all()
@@ -1752,7 +1756,7 @@ def get_linked_materials_endpoint(
         results.append(LinkedMaterialResponse(
             id=m.id,
             title=m.title,
-            is_master=str(m.is_master).lower() if isinstance(m.is_master, bool) else (m.is_master or "false"),
+            is_master=bool(m.is_master),
             content_type=m.content_type,
             has_file=m.file_path is not None,
             original_filename=m.original_filename,
@@ -1778,7 +1782,7 @@ def reorder_sub_materials(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if content.is_master != "true":
+    if not content.is_master:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials reordered")
 
     if not can_access_course(db, current_user, content.course_id):
@@ -1826,7 +1830,7 @@ def delete_sub_material(
     if not master:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if master.is_master != "true":
+    if not master.is_master:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials deleted")
 
     if not can_access_course(db, current_user, master.course_id):
@@ -1862,7 +1866,7 @@ def delete_sub_material(
 
     if remaining == 0:
         # Demote master back to standalone
-        master.is_master = "false"
+        master.is_master = False
         master.material_group_id = None
 
     db.commit()

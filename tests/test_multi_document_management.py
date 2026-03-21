@@ -80,7 +80,7 @@ class TestAddFiles:
         """Upload single file, then add 2 more → promotes to master."""
         headers = _auth(client, users["teacher"].email)
         original = _upload_single(client, headers, users["course"].id, "Standalone")
-        assert original["is_master"] == "false"
+        assert original["is_master"] is False
 
         resp = client.post(
             f"/api/course-contents/{original['id']}/add-files",
@@ -92,7 +92,7 @@ class TestAddFiles:
         )
         assert resp.status_code == 201, resp.text
         data = resp.json()
-        assert data["is_master"] == "true"
+        assert data["is_master"] is True
         assert data["material_group_id"] is not None
 
         # Verify sub-materials were created
@@ -103,7 +103,7 @@ class TestAddFiles:
         assert linked.status_code == 200
         linked_data = linked.json()
         assert len(linked_data) == 3  # master + 2 subs (includes current)
-        sub_items = [item for item in linked_data if item["is_master"] == "false"]
+        sub_items = [item for item in linked_data if item["is_master"] is False]
         assert len(sub_items) == 2
 
     def test_add_files_to_master_material(self, client, users):
@@ -111,7 +111,7 @@ class TestAddFiles:
         headers = _auth(client, users["teacher"].email)
         master = _upload_multi(client, headers, users["course"].id, 2, "Master Test")
         master_id = master["id"]
-        assert master["is_master"] == "true"
+        assert master["is_master"] is True
 
         # Get existing subs count
         linked_before = client.get(
@@ -198,7 +198,7 @@ class TestReorderSubs:
             headers=headers,
         )
         assert linked.status_code == 200
-        sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
+        sub_ids = [s["id"] for s in linked.json() if not s["is_master"]]
         assert len(sub_ids) == 3
 
         # Reverse the order
@@ -269,7 +269,7 @@ class TestDeleteSubMaterial:
             headers=headers,
         )
         assert linked.status_code == 200
-        sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
+        sub_ids = [s["id"] for s in linked.json() if not s["is_master"]]
         return master_id, sub_ids
 
     def test_delete_sub_material_success(self, client, users):
@@ -289,14 +289,14 @@ class TestDeleteSubMaterial:
         assert resp.status_code == 200
         data = resp.json()
         assert data["remaining_subs"] == 2
-        assert data["is_master"] == "true"
+        assert data["is_master"] is True
 
         # Verify it's actually gone
         linked = client.get(
             f"/api/course-contents/{master_id}/linked-materials",
             headers=headers,
         )
-        remaining_sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
+        remaining_sub_ids = [s["id"] for s in linked.json() if not s["is_master"]]
         assert to_delete not in remaining_sub_ids
         assert len(remaining_sub_ids) == 2
 
@@ -314,7 +314,7 @@ class TestDeleteSubMaterial:
             headers=headers,
         )
         assert resp.status_code == 201
-        assert resp.json()["is_master"] == "true"
+        assert resp.json()["is_master"] is True
 
         # Get the sub ID
         linked = client.get(
@@ -322,7 +322,7 @@ class TestDeleteSubMaterial:
             headers=headers,
         )
         assert linked.status_code == 200
-        sub_ids = [s["id"] for s in linked.json() if s["is_master"] != "true"]
+        sub_ids = [s["id"] for s in linked.json() if not s["is_master"]]
         assert len(sub_ids) == 1
 
         # Delete the only sub
@@ -333,7 +333,7 @@ class TestDeleteSubMaterial:
         assert resp.status_code == 200
         data = resp.json()
         assert data["remaining_subs"] == 0
-        assert data["is_master"] == "false"
+        assert data["is_master"] is False
 
     def test_delete_sub_not_in_group(self, client, users):
         """Try to delete a sub that doesn't belong to this master → 404."""
