@@ -208,7 +208,8 @@ class TestEvaluateStreak:
 
     def test_holiday_preserves_streak(self, db_session, clean_streak_data):
         from app.services.streak_service import StreakService
-        from app.models.xp import XpSummary, HolidayDate
+        from app.models.xp import XpSummary
+        from app.models.holiday import HolidayDate
 
         student = clean_streak_data
         yesterday = date.today() - timedelta(days=1)

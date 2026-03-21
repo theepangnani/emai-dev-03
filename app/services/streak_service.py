@@ -8,7 +8,8 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.xp import HolidayDate, StreakLog, XpSummary
+from app.models.xp import StreakLog, XpSummary
+from app.models.holiday import HolidayDate
 
 logger = logging.getLogger(__name__)
 

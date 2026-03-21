@@ -267,3 +267,71 @@ def get_history(db: Session, student_id: int, limit: int = 50, offset: int = 0):
     ]
 
     return XpHistoryResponse(entries=entries, total_count=total_count)
+
+
+class XpService:
+    """Class-based wrapper for XP service functions (used by API routes)."""
+
+    @staticmethod
+    def award_xp(db, student_id: int, action_type: str):
+        return award_xp(db, student_id, action_type)
+
+    @staticmethod
+    def get_summary(db, student_id: int):
+        return get_summary(db, student_id)
+
+    @staticmethod
+    def get_history(db, student_id: int, limit: int = 50, offset: int = 0):
+        return get_history(db, student_id, limit=limit, offset=offset)
+
+    @staticmethod
+    def get_badges(db, student_id: int):
+        """Get all badges for a student."""
+        from app.models.xp import Badge
+        earned = db.query(Badge).filter(Badge.student_id == student_id).all()
+        earned_ids = {b.badge_id for b in earned}
+        all_badges = [
+            {"badge_id": "first_upload", "badge_name": "First Upload", "badge_description": "Upload first document"},
+            {"badge_id": "first_guide", "badge_name": "First Study Guide", "badge_description": "Generate first study guide"},
+            {"badge_id": "streak_7", "badge_name": "7-Day Streak", "badge_description": "Achieve a 7-day streak"},
+            {"badge_id": "streak_30", "badge_name": "30-Day Streak", "badge_description": "Achieve a 30-day streak"},
+            {"badge_id": "flashcard_fanatic", "badge_name": "Flashcard Fanatic", "badge_description": "Review 100 flashcards"},
+            {"badge_id": "lms_linker", "badge_name": "LMS Linker", "badge_description": "Upload 5 docs from LMS"},
+            {"badge_id": "exam_ready", "badge_name": "Exam Ready", "badge_description": "Generate guide from past exam"},
+            {"badge_id": "quiz_improver", "badge_name": "Quiz Improver", "badge_description": "Score higher 3 times"},
+        ]
+        result = []
+        for b in all_badges:
+            earned_badge = next((e for e in earned if e.badge_id == b["badge_id"]), None)
+            result.append({
+                "badge_id": b["badge_id"],
+                "badge_name": b["badge_name"],
+                "badge_description": b["badge_description"],
+                "earned": b["badge_id"] in earned_ids,
+                "awarded_at": earned_badge.awarded_at if earned_badge else None,
+            })
+        return result
+
+    @staticmethod
+    def get_streak(db, student_id: int):
+        """Get streak info for a student."""
+        summary = _get_or_create_summary(db, student_id)
+        streak = summary.current_streak
+        multiplier = get_streak_multiplier(streak)
+        if streak >= 60:
+            tier = "gold"
+        elif streak >= 30:
+            tier = "red_glow"
+        elif streak >= 14:
+            tier = "red"
+        elif streak >= 7:
+            tier = "orange"
+        else:
+            tier = "grey"
+        return {
+            "current_streak": streak,
+            "longest_streak": summary.longest_streak,
+            "freeze_tokens_remaining": summary.freeze_tokens_remaining,
+            "multiplier": multiplier,
+            "tier": tier,
+        }
