@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -39,6 +39,7 @@ from app.models.student import parent_students, student_teachers  # noqa: F401 �
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
 from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
+from app.models.xp import XpSummary, StreakLog, HolidayDate  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1744,6 +1745,7 @@ app.include_router(admin_survey.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
+app.include_router(xp.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1942,6 +1944,23 @@ async def startup_event():
         refresh_monthly_credits,
         CronTrigger(day=1, hour=0, minute=0),
         id="wallet_monthly_refresh",
+        replace_existing=True,
+    )
+
+    # Nightly streak evaluation at 12:30 AM (#2002)
+    from app.jobs.streak_check import check_all_streaks, refresh_freeze_tokens
+    scheduler.add_job(
+        check_all_streaks,
+        CronTrigger(hour=0, minute=30),
+        id="streak_check",
+        replace_existing=True,
+    )
+
+    # Monthly freeze token refresh on 1st of month (#2003)
+    scheduler.add_job(
+        refresh_freeze_tokens,
+        CronTrigger(day=1, hour=0, minute=0),
+        id="freeze_token_refresh",
         replace_existing=True,
     )
 
