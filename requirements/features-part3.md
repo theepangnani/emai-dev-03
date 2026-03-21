@@ -2569,6 +2569,12 @@ study_guides table (existing — add 3 nullable FK columns):
 - [x] Backend: one-tap generation with auto-notify (#1408) (IMPLEMENTED)
 - [x] Frontend: Help Study buttons + generation modal (#1409) (IMPLEMENTED)
 
+**v3 Enhancements — Parent-Initiated Study Request (#2019):**
+- [ ] Parent selects subject, topic, and urgency level
+- [ ] Student receives notification: "Your parent suggested reviewing fractions before Friday. Tap to start."
+- [ ] Student can accept, defer, or flag as "already done"
+- [ ] Response visible to parent on Help My Kid dashboard
+
 ### 6.63 Weekly Progress Pulse — Email Digest (Phase 2)
 
 Weekly email digest summarizing the past week and previewing the next. Sent Sunday evening.
@@ -2590,10 +2596,17 @@ Weekly email digest summarizing the past week and previewing the next. Sent Sund
 **AI Cost:** $0.00 — pure SQL + SendGrid
 
 **Sub-tasks:**
-- [ ] Backend: weekly digest aggregation service
-- [ ] Email template: weekly_progress_pulse.html
-- [ ] Cron/Cloud Scheduler trigger
+- [x] Backend: weekly digest aggregation service (`app/services/weekly_digest_service.py`) (IMPLEMENTED)
+- [x] Email template: weekly digest HTML rendering (IMPLEMENTED)
+- [ ] Cron/Cloud Scheduler trigger — APScheduler job for Sunday 7pm delivery (#2022)
 - [x] Parent notification preferences — advanced per-category notification preferences (PR #1464)
+
+**v3 Enhancements (StudyGuide Requirements v3 — Section 8, Feature #2):**
+- [ ] Conversation starters per child: "Haashini studied cell division — ask her: what is the difference between mitosis and meiosis?"
+- [ ] Frequency preference: weekly / bi-weekly; configurable delivery time (default Sunday 7pm)
+- [ ] CASL-compliant opt-in at registration
+- [ ] One-click unsubscribe link
+- [ ] Multilingual support — translate digest into parent's preferred language (#2016)
 
 ### 6.64 Parent-Child Study Link — Feedback Loop (Phase 2) - IMPLEMENTED
 
@@ -3851,3 +3864,201 @@ Detect relationships between uploaded documents over time using keyword frequenc
 - `frontend/src/components/DocumentTypeSelector.tsx` — Document type chip selector
 - `frontend/src/components/StudyGoalSelector.tsx` — Study goal dropdown + focus field
 - `frontend/src/components/ParentSummaryCard.tsx` — Parent summary display card
+
+### 6.107 Study Streak & XP Point System (Phase 2) — September 2026 Retention Bundle
+
+Gamification system that rewards study consistency (not performance) through XP points, study streaks, achievement badges, and level progression. Primary daily-return mechanism for students.
+
+**GitHub Epic:** #1997
+
+**Source:** StudyGuide Requirements v3 — Section 9
+
+**Design Principles:**
+- Effort over outcomes: XP awarded for actions, never for correctness or grades
+- Consistency over intensity: daily engagement earns more than a single long session
+- Non-monetary: XP separate from wallet/subscription system. Cosmetic rewards only
+- Privacy by default: XP totals never visible to teachers. Leaderboards opt-in only
+- Age-appropriate: no competitive pressure, no public shaming, no punitive loss
+
+**XP Actions:**
+
+| Action | XP | Daily Cap |
+|--------|-----|-----------|
+| Upload a document | 10 | 30 |
+| Upload from LMS (GC/Brightspace) | 15 | 30 |
+| Generate a study guide | 20 | 40 |
+| Generate flashcard deck | 15 | 15 |
+| Complete flashcard review | 10 | 30 |
+| Ask a question in AI Chat | 5 | 20 |
+| Complete Study With Me session | 15 | 30 |
+| Mark flashcard as 'Got it' | 1 | 20 |
+| Daily login streak bonus | 5 | 5 |
+| End-of-week review | 25 | 25 |
+| Complete quiz (any score) | 15 | 30 |
+| Score higher than previous attempt | 10 | 10 |
+
+**Streak System:**
+- Streak day = at least one action worth 10+ XP on a calendar day (student's local timezone)
+- Multipliers: 1.0× (1-6d), 1.25× (7-13d), 1.5× (14-29d), 1.75× (30-59d), 2.0× (60+d)
+- 1 freeze token per calendar month (auto-applied morning after missed day)
+- Streak recovery: earn 2× daily average within 24 hours (max 1 per 30 days)
+- School calendar aware: streaks don't break on holidays; summer pause Jul 1 – Aug 31
+
+**Levels:**
+
+| Level | Title | XP Required | Unlock |
+|-------|-------|-------------|--------|
+| 1 | Curious Learner | 0 | Default |
+| 2 | Note Taker | 200 | Custom profile badge |
+| 3 | Study Starter | 500 | Flashcard theme skin |
+| 4 | Focused Scholar | 1,000 | Streak Freeze bonus token |
+| 5 | Deep Diver | 2,000 | Priority AI guide generation |
+| 6 | Guide Master | 3,500 | Custom study guide cover |
+| 7 | Exam Champion | 5,500 | End-of-term certificate PDF |
+| 8 | ClassBridge Elite | 8,000 | Profile gold border + badge |
+
+**Achievement Badges:** 14 badges (First Upload, First Study Guide, 7-Day Streak, 30-Day Streak, Flashcard Fanatic, LMS Linker, Exam Ready, Quiz Improver, Night Owl, Early Bird, All-Rounder, Parent Partnership, Sub-Guide Explorer, End-of-Term Scholar)
+
+**Brownie Points:** Parent (50 XP/week per child) and Teacher (30 XP/week per student) manual awards with audit log.
+
+**Data Model:**
+- `xp_ledger` — append-only event log
+- `xp_summary` — materialized view (total_xp, level, streak, freeze_tokens)
+- `badges` — student badge awards
+- `streak_log` — daily streak tracking with holiday flag
+- `holiday_dates` — school board calendar for streak awareness
+
+**Anti-Gaming:** Time-on-task validation, 60-second dedup window, rapid upload flags, quiz repeat caps.
+
+**Sub-tasks:**
+- [ ] XP data model (#2000)
+- [ ] XP earning service (#2001)
+- [ ] Streak engine (#2002)
+- [ ] XP levels & titles (#2003)
+- [ ] Achievement badges (#2004)
+- [ ] Brownie points (#2005)
+- [ ] XP dashboard UI (#2006)
+- [ ] XP history log (#2007)
+- [ ] Parent XP visibility (#2008)
+- [ ] Anti-gaming rules (#2009)
+- [ ] source_type column (#2010)
+- [ ] Holiday dates table (#2024)
+
+### 6.108 Assessment Countdown Widget (Phase 2) — September 2026 Retention Bundle
+
+Detect upcoming assessments from uploaded documents and display countdown widgets on dashboards. Creates urgency and daily return triggers.
+
+**GitHub Epic:** #1998
+
+**Source:** StudyGuide Requirements v3 — Section 8, Feature #5
+
+**Requirements:**
+- Parse uploaded documents for date references and exam keywords
+- Use document_type detection (past_exam, mock_exam) and Google Classroom due dates as sources
+- Display countdown cards: "Math quiz in 3 days — last study session was 5 days ago. Tap to review."
+- Tapping countdown opens the linked study guide directly
+- Show on both student and parent dashboards
+
+**Data Model:**
+
+| Table: detected_events | | |
+|---|---|---|
+| id | Integer PK | |
+| student_id | FK → users.id | |
+| course_id | FK → courses.id (nullable) | |
+| event_type | String(30) | test, exam, quiz, assignment, lab |
+| event_title | String(200) | |
+| event_date | Date | |
+| source | String(30) | document_parse, google_classroom |
+
+**Sub-tasks:**
+- [ ] Assessment date detection (#2011)
+- [ ] detected_events table and API (#2012)
+- [ ] Countdown widget UI (#2013)
+
+### 6.109 Multilingual Parent Summaries (Phase 2) — September 2026 Retention Bundle
+
+Auto-translate parent-facing study guide summaries and digest emails into the parent's preferred language. Key differentiator for GTA market (YRDSB, TDSB procurement).
+
+**GitHub Epic:** #1999
+
+**Source:** StudyGuide Requirements v3 — Section 8, Feature #7
+
+**Supported Languages (Launch):** English, French, Tamil, Mandarin (Simplified), Punjabi, Urdu
+
+**Requirements:**
+- Language preference set once in parent profile; applied to all summaries and digest emails
+- Translation via Claude API post-generation pass; cached per guide per language
+- On-demand generation (not pre-emptive) to control costs
+- Consider gating behind premium tier
+
+**Sub-tasks:**
+- [ ] Language preference in user profile (#2014)
+- [ ] Multilingual translation via Claude API (#2015)
+- [ ] Multilingual digest email support (#2016)
+
+### 6.110 Personal Study History Timeline (Phase 2)
+
+Visual timeline showing every document uploaded, guide generated, and topic studied per semester. Students see their own effort over time.
+
+**GitHub Issue:** #2017
+
+**Source:** StudyGuide Requirements v3 — Section 8, Feature #8
+
+**Requirements:**
+- Filterable by subject, document type, and date range
+- Each timeline entry links to the original guide
+- Milestone markers at streak achievements and exam events
+- Accessible from student profile/dashboard
+
+**Sub-tasks:**
+- [ ] Backend: activity timeline API endpoint
+- [ ] Frontend: vertical timeline component with filters
+
+### 6.111 End-of-Term Report Card (Phase 2)
+
+Auto-generated semester summary for student and parent: subjects studied, documents uploaded, guides created, streaks, most-reviewed topics.
+
+**GitHub Issue:** #2018
+
+**Source:** StudyGuide Requirements v3 — Section 8, Feature #10
+
+**Requirements:**
+- Delivered as shareable PDF and in-app card
+- Includes next-term CTA: "Ready to start strong in Semester 2?"
+- Generated at end of each semester
+- Data from XP ledger, upload history, study guide counts
+
+### 6.112 "Is My Child On Track?" Signal (Phase 2)
+
+Effort-based signal comparing study activity vs upcoming assessments. Displayed on parent dashboard.
+
+**GitHub Issue:** #2020
+
+**Source:** StudyGuide Requirements v3 — Section 8, Feature #12
+
+**Signal Conditions:**
+
+| Signal | Condition |
+|--------|-----------|
+| Green | Studying consistently relative to detected upcoming assessments |
+| Yellow | Last study session 4+ days ago with assessment within 7 days |
+| Red | No study activity in 7+ days with assessment within 5 days |
+
+**Important:** Signal is always about effort, never performance. This avoids grade anxiety and is appropriate for school board procurement conversations.
+
+**Dependencies:** detected_events (#2012), streak_log (#2002)
+
+### 6.113 Study With Me (Pomodoro) Sessions (Phase 2)
+
+25-minute timed study session tied to a specific subject. AI recap at end. Session completion awards XP.
+
+**GitHub Issue:** #2021
+
+**Source:** StudyGuide Requirements v3 — Section 8, Feature #13
+
+**Requirements:**
+- Timer UI with subject selection
+- Min. 20 continuous minutes for XP credit (15 XP, daily cap 30 XP)
+- AI recap: "You studied quadratic equations for 25 minutes. Here are 3 things to remember."
+- Weekly session total visible on parent dashboard
