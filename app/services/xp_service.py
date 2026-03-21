@@ -153,6 +153,10 @@ def award_xp(
     endpoint is never blocked by gamification failures.
     """
     try:
+        from app.core.config import settings
+        if not settings.xp_enabled:
+            return None
+
         from app.models.xp import XpLedger
 
         action = XP_ACTIONS.get(action_type)
@@ -223,7 +227,9 @@ def get_summary(db: Session, student_id: int):
     today_xp = _get_today_total_xp(db, student_id)
 
     return XpSummaryResponse(
+        user_id=student_id,
         total_xp=total_xp,
+        level=level_info["level"],
         current_level=level_info["level"],
         level_title=level_info["title"],
         current_streak=summary.current_streak or 0,
@@ -266,7 +272,7 @@ def get_history(db: Session, student_id: int, limit: int = 50, offset: int = 0):
         for r in rows
     ]
 
-    return XpHistoryResponse(entries=entries, total_count=total_count)
+    return XpHistoryResponse(items=entries, total=total_count, limit=limit, offset=offset)
 
 
 class XpService:
@@ -311,6 +317,47 @@ class XpService:
                 "awarded_at": earned_badge.awarded_at if earned_badge else None,
             })
         return result
+
+    @staticmethod
+    def award_brownie_points(
+        db: Session,
+        student_user_id: int,
+        points: int,
+        awarder_id: int,
+        reason: Optional[str] = None,
+    ):
+        """Award brownie points from a parent/teacher to a student."""
+        from app.models.xp import XpLedger
+        from app.schemas.xp import BrowniePointResponse
+
+        summary = _get_or_create_summary(db, student_user_id)
+
+        entry = XpLedger(
+            student_id=student_user_id,
+            action_type="brownie_points",
+            xp_awarded=points,
+            multiplier=1.0,
+            awarder_id=awarder_id,
+            reason=reason,
+        )
+        db.add(entry)
+        db.flush()
+
+        summary.total_xp = (summary.total_xp or 0) + points
+        level_info = get_level_for_xp(summary.total_xp)
+        summary.current_level = level_info["level"]
+        db.flush()
+
+        logger.info(
+            "Brownie points awarded | student=%s | points=%d | awarder=%s",
+            student_user_id, points, awarder_id,
+        )
+        return BrowniePointResponse(
+            awarded=points,
+            student_user_id=student_user_id,
+            new_total_xp=summary.total_xp,
+            message=f"Awarded {points} brownie points",
+        )
 
     @staticmethod
     def get_streak(db, student_id: int):

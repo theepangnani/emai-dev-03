@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class XpSummaryResponse(BaseModel):
     """Current user's XP summary."""
+    user_id: int = 0
     total_xp: int = 0
+    level: int = 1
     current_level: int = 1
     level_title: str = "Curious Learner"
     current_streak: int = 0
@@ -33,19 +35,29 @@ class XpLedgerEntry(BaseModel):
 
 class XpHistoryResponse(BaseModel):
     """Paginated XP history."""
-    entries: list[XpLedgerEntry]
-    total_count: int
+    items: list[XpLedgerEntry] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+
+    @property
+    def entries(self) -> list[XpLedgerEntry]:
+        """Alias for items (backward compat with service-layer tests)."""
+        return self.items
+
+    @property
+    def total_count(self) -> int:
+        """Alias for total (backward compat with service-layer tests)."""
+        return self.total
 
 
 class BadgeResponse(BaseModel):
     """Badge info (earned or unearned)."""
-    id: int
-    slug: str
-    name: str
-    description: str
-    icon: Optional[str] = None
+    badge_id: str
+    badge_name: str
+    badge_description: str
     earned: bool = False
-    earned_at: Optional[datetime] = None
+    awarded_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
