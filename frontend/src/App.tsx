@@ -93,6 +93,7 @@ const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
 const SurveyPage = lazyRetry(() => import('./pages/SurveyPage').then((m) => ({ default: m.SurveyPage })));
 const AdminSurveyPage = lazyRetry(() => import('./pages/AdminSurveyPage').then((m) => ({ default: m.AdminSurveyPage })));
+const XpHistoryPage = lazyRetry(() => import('./pages/XpHistoryPage').then((m) => ({ default: m.XpHistoryPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -438,6 +439,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DataExportPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/xp/history"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <XpHistoryPage />
                   </ProtectedRoute>
                 }
               />
