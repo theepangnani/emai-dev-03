@@ -109,6 +109,7 @@ export function ParentDashboard() {
   const gcEnabled = useFeature('google_classroom');
   const [tipDismissed, setTipDismissed] = useState(false);
   const [tasksCollapsed, setTasksCollapsed] = useState(() => loadViewMode() === 'simplified');
+  const [activityCollapsed, setActivityCollapsed] = useState(() => loadViewMode() === 'simplified');
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   // Collapsible section states (#832) — sectionStates retained for simplified/full toggle
   const [, setSectionStates] = useState<SectionStates>(loadSectionStates);
@@ -119,6 +120,7 @@ export function ParentDashboard() {
       const next = prev === 'full' ? 'simplified' : 'full';
       try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
       setTasksCollapsed(next === 'simplified');
+      setActivityCollapsed(next === 'simplified');
       if (next === 'simplified') {
         const collapsed: SectionStates = { comingUp: false, studentDetail: false };
         setSectionStates(collapsed);
@@ -415,7 +417,7 @@ export function ParentDashboard() {
             </SectionPanel>
 
             <section className="dash-section dash-section--secondary">
-              <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} viewMode={viewMode} />
+              <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} collapsed={activityCollapsed} onToggle={() => setActivityCollapsed(c => !c)} />
             </section>
 
             <section className="dash-section dash-section--actions">

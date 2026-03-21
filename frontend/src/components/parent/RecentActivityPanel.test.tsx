@@ -41,18 +41,17 @@ const VISIBLE_TYPES: ActivityItem['activity_type'][] = [
 
 describe('RecentActivityPanel', () => {
   const mockNavigate = vi.fn();
+  const mockOnToggle = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    // Start expanded for most tests
-    localStorage.setItem('pd-activity-collapsed', '0');
   });
 
   it('renders loading skeleton initially', () => {
     mockGetRecent.mockReturnValue(new Promise(() => {})); // never resolves
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     const skeletons = screen.getAllByTestId('activity-skeleton');
     expect(skeletons).toHaveLength(3);
@@ -65,7 +64,7 @@ describe('RecentActivityPanel', () => {
     ];
     mockGetRecent.mockResolvedValue(items);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => {
       expect(screen.getByText('New Notes')).toBeInTheDocument();
@@ -79,7 +78,7 @@ describe('RecentActivityPanel', () => {
     );
     mockGetRecent.mockResolvedValue(items);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => {
       for (const type of VISIBLE_TYPES) {
@@ -95,7 +94,7 @@ describe('RecentActivityPanel', () => {
     ];
     mockGetRecent.mockResolvedValue(items);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => screen.getByText('Should Show'));
     expect(screen.queryByText('Should Hide')).not.toBeInTheDocument();
@@ -106,7 +105,7 @@ describe('RecentActivityPanel', () => {
       createActivity({ activity_type: 'material_uploaded', title: 'Notes', resource_id: 42 }),
     ]);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => screen.getByText('Notes'));
     fireEvent.click(screen.getByTestId('activity-row'));
@@ -118,37 +117,41 @@ describe('RecentActivityPanel', () => {
       createActivity({ activity_type: 'message_received', title: 'New message' }),
     ]);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => screen.getByText('New message'));
     fireEvent.click(screen.getByTestId('activity-row'));
     expect(mockNavigate).toHaveBeenCalledWith('/messages');
   });
 
-  it('collapse/expand toggles content visibility', async () => {
-    localStorage.setItem('pd-activity-collapsed', '1'); // start collapsed
+  it('collapsed prop controls content visibility', async () => {
     mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
-    renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+    const { rerender } = renderWithProviders(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={true} onToggle={mockOnToggle} />,
     );
 
     const body = screen.getByTestId('activity-body');
-    // Default is collapsed
     expect(body).toHaveClass('pd-activity-body-collapsed');
 
-    // Click header to expand
-    fireEvent.click(screen.getByText(/Recent Activity/));
+    rerender(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
+    );
     expect(body).not.toHaveClass('pd-activity-body-collapsed');
+  });
 
-    // Click again to collapse
+  it('clicking header calls onToggle', async () => {
+    mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
+    renderWithProviders(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
+    );
     fireEvent.click(screen.getByText(/Recent Activity/));
-    expect(body).toHaveClass('pd-activity-body-collapsed');
+    expect(mockOnToggle).toHaveBeenCalledTimes(1);
   });
 
   it('empty state shown when no activities', async () => {
     mockGetRecent.mockResolvedValue([]);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => {
       expect(screen.getByText('No recent activity')).toBeInTheDocument();
@@ -160,7 +163,7 @@ describe('RecentActivityPanel', () => {
       createActivity({ student_name: 'Alice', student_id: 1 }),
     ]);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => {
       expect(screen.getByTestId('activity-child-badge')).toHaveTextContent('Alice');
@@ -172,7 +175,7 @@ describe('RecentActivityPanel', () => {
       createActivity({ student_name: 'Alice', student_id: 1 }),
     ]);
     renderWithProviders(
-      <RecentActivityPanel selectedChild={1} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={1} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => screen.getByText('Test Activity'));
     expect(screen.queryByTestId('activity-child-badge')).not.toBeInTheDocument();
@@ -181,7 +184,7 @@ describe('RecentActivityPanel', () => {
   it('error state shows retry button and can refetch', async () => {
     mockGetRecent.mockRejectedValueOnce(new Error('Network error'));
     renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} collapsed={false} onToggle={mockOnToggle} />,
     );
     await waitFor(() => {
       expect(screen.getByText('Unable to load activity')).toBeInTheDocument();
@@ -194,56 +197,6 @@ describe('RecentActivityPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('After retry')).toBeInTheDocument();
     });
-  });
-
-  it('expands when viewMode changes to full', async () => {
-    localStorage.setItem('pd-activity-collapsed', '1');
-    mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
-    const { rerender } = renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="simplified" />,
-    );
-
-    const body = screen.getByTestId('activity-body');
-    expect(body).toHaveClass('pd-activity-body-collapsed');
-
-    rerender(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="full" />,
-    );
-    expect(body).not.toHaveClass('pd-activity-body-collapsed');
-    expect(localStorage.getItem('pd-activity-collapsed')).toBe('0');
-  });
-
-  it('collapses when viewMode changes to simplified', async () => {
-    localStorage.setItem('pd-activity-collapsed', '0');
-    mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
-    const { rerender } = renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="full" />,
-    );
-
-    const body = screen.getByTestId('activity-body');
-    expect(body).not.toHaveClass('pd-activity-body-collapsed');
-
-    rerender(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="simplified" />,
-    );
-    expect(body).toHaveClass('pd-activity-body-collapsed');
-    expect(localStorage.getItem('pd-activity-collapsed')).toBe('1');
-  });
-
-  it('persists collapse state in localStorage', async () => {
-    mockGetRecent.mockResolvedValue([createActivity()]);
-    renderWithProviders(
-      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} />,
-    );
-    await waitFor(() => screen.getByText('Test Activity'));
-
-    // Click to collapse (expanded -> collapsed = '1')
-    fireEvent.click(screen.getByText(/Recent Activity/));
-    expect(localStorage.getItem('pd-activity-collapsed')).toBe('1');
-
-    // Click to expand (collapsed -> expanded = '0')
-    fireEvent.click(screen.getByText(/Recent Activity/));
-    expect(localStorage.getItem('pd-activity-collapsed')).toBe('0');
   });
 });
 

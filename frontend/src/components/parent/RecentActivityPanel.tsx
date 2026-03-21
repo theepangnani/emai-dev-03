@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { activityApi, type ActivityItem } from '../../api/activity';
 import { CHILD_COLORS } from './useParentDashboard';
@@ -9,7 +9,8 @@ import './RecentActivityPanel.css';
 interface RecentActivityPanelProps {
   selectedChild: number | null; // null = all children
   navigate: (path: string) => void;
-  viewMode?: 'simplified' | 'full';
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 /* ── Relative time helper ───────────────────────────────── */
@@ -120,32 +121,7 @@ function getNavigationPath(item: ActivityItem): string | null {
 
 /* ── Component ──────────────────────────────────────────── */
 
-export function RecentActivityPanel({ selectedChild, navigate, viewMode }: RecentActivityPanelProps) {
-  const [internalCollapsed, setInternalCollapsed] = useState(() => {
-    try {
-      const saved = localStorage.getItem('pd-activity-collapsed');
-      if (saved !== null) return saved === '1';
-    } catch { /* ignore */ }
-    return true; // collapsed by default
-  });
-
-  useEffect(() => {
-    if (!viewMode) return;
-    const next = viewMode === 'simplified';
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- viewMode change must sync collapsed state
-    setInternalCollapsed(next);
-    try { localStorage.setItem('pd-activity-collapsed', next ? '1' : '0'); } catch { /* ignore */ }
-  }, [viewMode]);
-
-  const collapsed = internalCollapsed;
-
-  const toggleCollapsed = useCallback(() => {
-    setInternalCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem('pd-activity-collapsed', next ? '1' : '0'); } catch { /* ignore */ }
-      return next;
-    });
-  }, []);
+export function RecentActivityPanel({ selectedChild, navigate, collapsed, onToggle }: RecentActivityPanelProps) {
 
   const { data: rawActivities, isLoading, isError, refetch } = useQuery({
     queryKey: ['activity', 'recent', selectedChild],
@@ -166,11 +142,11 @@ export function RecentActivityPanel({ selectedChild, navigate, viewMode }: Recen
       {/* Header */}
       <div
         className="pd-activity-header"
-        onClick={toggleCollapsed}
+        onClick={onToggle}
         role="button"
         tabIndex={0}
         aria-expanded={!collapsed}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapsed(); } }}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
       >
         <div className="pd-activity-header-left">
           <h3 className="pd-activity-heading"><span className="dash-section-title-icon" aria-hidden="true">&#128337;</span> Recent Activity</h3>
