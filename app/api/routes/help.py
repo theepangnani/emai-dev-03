@@ -89,6 +89,11 @@ async def help_chat(
     current_user: User = Depends(get_current_user),
 ):
     """Send a message to the ClassBridge Help Assistant."""
+
+    # --- §6.114: Study Q&A mode ---
+    if request.study_guide_id:
+        return await _handle_study_qa_non_streaming(request, db, current_user)
+
     from app.services.intent_classifier import classify_intent
     from app.services.search_service import search_service
     from app.services.help_chat_service import help_chat_service
@@ -174,6 +179,11 @@ async def help_chat_stream(
     current_user: User = Depends(get_current_user),
 ):
     """Streaming version of /chat — returns SSE token stream for help responses."""
+
+    # --- §6.114: Study Q&A mode ---
+    if request.study_guide_id:
+        return await _handle_study_qa_stream(request, db, current_user)
+
     from app.services.intent_classifier import classify_intent
     from app.services.search_service import search_service
     from app.services.help_chat_service import help_chat_service, SYSTEM_PROMPT
@@ -281,3 +291,154 @@ async def help_chat_stream(
             yield f"data: {json.dumps({'type': 'error', 'text': 'Something went wrong. Please try again.'})}\n\n"
 
     return _StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ---------------------------------------------------------------------------
+# §6.114 — Study Guide Contextual Q&A helpers
+# ---------------------------------------------------------------------------
+
+def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
+    """Load a study guide and verify the user has access. Returns (guide, source_text)."""
+    from app.models.study_guide import StudyGuide
+    from app.models.course_content import CourseContent
+
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # Access check: owner, shared with user, or parent of owner
+    has_access = (
+        guide.user_id == user.id
+        or guide.shared_with_user_id == user.id
+    )
+    if not has_access:
+        # Check parent-of-owner
+        from app.models.parent_student import parent_students
+        link = db.execute(
+            parent_students.select().where(
+                and_(
+                    parent_students.c.parent_id == user.id,
+                    parent_students.c.student_id == guide.user_id,
+                )
+            )
+        ).first()
+        if not link:
+            raise HTTPException(status_code=403, detail="Access denied to this study guide")
+
+    # Load source document text if available
+    source_text = None
+    if guide.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == guide.course_content_id).first()
+        if cc and cc.text_content:
+            source_text = cc.text_content
+
+    return guide, source_text
+
+
+async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: User):
+    """SSE streaming study Q&A — §6.114."""
+    from decimal import Decimal
+    from app.services.study_qa_service import study_qa_service
+    from app.services.ai_usage import check_ai_usage, increment_ai_usage
+
+    guide, source_text = _load_study_guide_for_qa(request.study_guide_id, user, db)
+
+    # Credit check
+    check_ai_usage(user, db)
+
+    async def event_stream():
+        last_done = None
+        async for event in study_qa_service.stream_answer(
+            guide_title=guide.title,
+            guide_content=guide.content or "",
+            source_content=source_text,
+            message=request.message,
+            user_id=user.id,
+            conversation_history=[
+                {"role": m.role, "content": m.content}
+                for m in request.conversation
+            ],
+        ):
+            if event.get("type") == "done":
+                last_done = event
+            yield f"data: {json.dumps(event)}\n\n"
+
+        # Debit credits after successful completion
+        if last_done:
+            try:
+                increment_ai_usage(
+                    user, db,
+                    generation_type="study_qa",
+                    course_material_id=guide.course_content_id,
+                    prompt_tokens=last_done.get("input_tokens"),
+                    completion_tokens=last_done.get("output_tokens"),
+                    total_tokens=(last_done.get("input_tokens", 0) or 0) + (last_done.get("output_tokens", 0) or 0),
+                    estimated_cost_usd=last_done.get("estimated_cost_usd"),
+                    model_name="claude-haiku-4-5-20251001",
+                    wallet_debit_amount=Decimal("0.25"),
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning("Failed to debit study Q&A credits for user_id=%s", user.id)
+
+    return _StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, user: User) -> HelpChatResponse:
+    """Non-streaming study Q&A fallback — §6.114."""
+    from decimal import Decimal
+    from app.services.study_qa_service import study_qa_service
+    from app.services.ai_usage import check_ai_usage, increment_ai_usage
+
+    guide, source_text = _load_study_guide_for_qa(request.study_guide_id, user, db)
+    check_ai_usage(user, db)
+
+    reply_parts = []
+    last_done = None
+
+    async for event in study_qa_service.stream_answer(
+        guide_title=guide.title,
+        guide_content=guide.content or "",
+        source_content=source_text,
+        message=request.message,
+        user_id=user.id,
+        conversation_history=[
+            {"role": m.role, "content": m.content}
+            for m in request.conversation
+        ],
+    ):
+        if event.get("type") == "token":
+            reply_parts.append(event["text"])
+        elif event.get("type") == "done":
+            last_done = event
+        elif event.get("type") == "error":
+            raise HTTPException(status_code=500, detail=event.get("text", "Study Q&A failed"))
+
+    # Debit credits
+    if last_done:
+        try:
+            increment_ai_usage(
+                user, db,
+                generation_type="study_qa",
+                course_material_id=guide.course_content_id,
+                prompt_tokens=last_done.get("input_tokens"),
+                completion_tokens=last_done.get("output_tokens"),
+                total_tokens=(last_done.get("input_tokens", 0) or 0) + (last_done.get("output_tokens", 0) or 0),
+                estimated_cost_usd=last_done.get("estimated_cost_usd"),
+                model_name="claude-haiku-4-5-20251001",
+                wallet_debit_amount=Decimal("0.25"),
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning("Failed to debit study Q&A credits for user_id=%s", user.id)
+
+    return HelpChatResponse(
+        reply="".join(reply_parts),
+        sources=[],
+        videos=[],
+        mode="study_qa",
+        credits_used=float(last_done.get("credits_used", 0.25)) if last_done else 0.25,
+        input_tokens=last_done.get("input_tokens") if last_done else None,
+        output_tokens=last_done.get("output_tokens") if last_done else None,
+        estimated_cost_usd=last_done.get("estimated_cost_usd") if last_done else None,
+    )

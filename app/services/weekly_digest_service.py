@@ -1,5 +1,6 @@
 """Service that builds the Weekly Progress Pulse digest for parents."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, func as sa_func
@@ -21,6 +22,9 @@ from app.schemas.weekly_digest import (
     WeeklyDigestResponse,
 )
 from app.services.email_service import send_email, wrap_branded_email
+from app.services.translation_service import TranslationService
+
+logger = logging.getLogger(__name__)
 
 
 def _aware(dt: datetime) -> datetime:
@@ -355,6 +359,33 @@ def render_digest_email_html(
     return wrap_branded_email(body_html)
 
 
+def _translate_safe(text: str, target_language: str) -> str:
+    """Translate text, falling back to original on any error."""
+    try:
+        return TranslationService.translate(text, target_language)
+    except Exception:
+        logger.warning("Translation failed, using English fallback")
+        return text
+
+
+def _translate_digest(digest: WeeklyDigestResponse, target_language: str) -> WeeklyDigestResponse:
+    """Translate key digest text fields in-place and return the digest."""
+    if not target_language or target_language == "en":
+        return digest
+
+    digest.greeting = _translate_safe(digest.greeting, target_language)
+    digest.overall_summary = _translate_safe(digest.overall_summary, target_language)
+
+    for child in digest.children:
+        child.highlight = _translate_safe(child.highlight, target_language)
+        if child.conversation_starter:
+            child.conversation_starter = _translate_safe(
+                child.conversation_starter, target_language
+            )
+
+    return digest
+
+
 async def send_weekly_digest_email(db: Session, parent_user_id: int) -> bool:
     """Generate and send the weekly digest email to a parent."""
     parent = db.query(User).filter(User.id == parent_user_id).first()
@@ -364,8 +395,16 @@ async def send_weekly_digest_email(db: Session, parent_user_id: int) -> bool:
     from app.core.security import get_unsubscribe_url
 
     digest = generate_weekly_digest(db, parent_user_id)
+
+    lang = getattr(parent, "preferred_language", "en") or "en"
+    if lang != "en":
+        digest = _translate_digest(digest, lang)
+
     unsub_url = get_unsubscribe_url(parent_user_id)
     html = render_digest_email_html(digest, unsubscribe_url=unsub_url)
     subject = f"Weekly Progress Pulse - {digest.week_start} to {digest.week_end}"
+
+    if lang != "en":
+        subject = _translate_safe(subject, lang)
 
     return await send_email(parent.email, subject, html)

@@ -55,6 +55,13 @@ STREAK_MULTIPLIERS: list[dict] = [
 # Sum of all daily caps — absolute ceiling for a single day
 _TOTAL_DAILY_CAP = sum(v["daily_cap"] for v in XP_ACTIONS.values())
 
+# Anti-gaming constants (#2009)
+_FLASHCARD_COOLDOWN_SECONDS = 30
+_DEDUP_WINDOW_SECONDS = 60
+_QUIZ_REPEAT_WINDOW_HOURS = 4
+_RAPID_UPLOAD_THRESHOLD = 5
+_RAPID_UPLOAD_WINDOW_SECONDS = 120
+
 
 # ---------------------------------------------------------------------------
 # Public helpers
@@ -146,6 +153,94 @@ def _get_or_create_summary(db: Session, student_id: int):
 
 
 # ---------------------------------------------------------------------------
+# Anti-gaming checks (#2009)
+# ---------------------------------------------------------------------------
+
+_FLASHCARD_ACTIONS = {"flashcard_review", "flashcard_got_it"}
+
+
+def _check_flashcard_cooldown(db: Session, student_id: int, action_type: str) -> bool:
+    """Return True if flashcard cooldown (30s) has NOT elapsed — i.e. reject."""
+    if action_type not in _FLASHCARD_ACTIONS:
+        return False
+    from app.models.xp import XpLedger
+
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_FLASHCARD_COOLDOWN_SECONDS)
+    recent = (
+        db.query(XpLedger.id)
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.action_type == action_type,
+            XpLedger.created_at >= cutoff,
+        )
+        .first()
+    )
+    return recent is not None
+
+
+def _check_dedup_window(db: Session, student_id: int, action_type: str) -> bool:
+    """Return True if a duplicate event exists within the 60-second window — i.e. reject."""
+    from app.models.xp import XpLedger
+
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_DEDUP_WINDOW_SECONDS)
+    recent = (
+        db.query(XpLedger.id)
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.action_type == action_type,
+            XpLedger.created_at >= cutoff,
+        )
+        .first()
+    )
+    return recent is not None
+
+
+def _check_quiz_repeat(
+    db: Session, student_id: int, action_type: str, context_id: Optional[str],
+) -> bool:
+    """Return True if quiz_complete was awarded for the same context within 4 hours — reject."""
+    if action_type != "quiz_complete" or not context_id:
+        return False
+    from app.models.xp import XpLedger
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_QUIZ_REPEAT_WINDOW_HOURS)
+    recent = (
+        db.query(XpLedger.id)
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.action_type == "quiz_complete",
+            XpLedger.context_id == context_id,
+            XpLedger.created_at >= cutoff,
+        )
+        .first()
+    )
+    return recent is not None
+
+
+def _check_rapid_uploads(db: Session, student_id: int, action_type: str) -> None:
+    """Log a warning if > 5 uploads in 2 minutes. Does NOT block."""
+    if action_type != "upload":
+        return
+    from app.models.xp import XpLedger
+
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_RAPID_UPLOAD_WINDOW_SECONDS)
+    count = (
+        db.query(func.count(XpLedger.id))
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.action_type == "upload",
+            XpLedger.created_at >= cutoff,
+        )
+        .scalar()
+    ) or 0
+    if count >= _RAPID_UPLOAD_THRESHOLD:
+        logger.warning(
+            "RAPID_UPLOAD_FLAG | student_id=%s | %d uploads in %ds window",
+            student_id, count, _RAPID_UPLOAD_WINDOW_SECONDS,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Core service functions
 # ---------------------------------------------------------------------------
 
@@ -153,6 +248,7 @@ def award_xp(
     db: Session,
     student_id: int,
     action_type: str,
+    context_id: Optional[str] = None,
 ) -> Optional["XpLedger"]:  # noqa: F821
     """Award XP for an action. Returns the ledger entry, or None if capped.
 
@@ -180,6 +276,40 @@ def award_xp(
             )
             return None
 
+        # Anti-gaming checks (#2009) — fail-safe: if check itself errors, award XP
+        try:
+            # 1. Flashcard cooldown (30s minimum between flashcard XP)
+            if _check_flashcard_cooldown(db, student_id, action_type):
+                logger.debug(
+                    "Flashcard cooldown | student_id=%s | action=%s",
+                    student_id, action_type,
+                )
+                return None
+
+            # 2. 60-second dedup (same student + action within 60s)
+            if _check_dedup_window(db, student_id, action_type):
+                logger.debug(
+                    "Dedup window | student_id=%s | action=%s",
+                    student_id, action_type,
+                )
+                return None
+
+            # 3. Quiz 4-hour repeat cap (same quiz within 4 hours)
+            if _check_quiz_repeat(db, student_id, action_type, context_id):
+                logger.debug(
+                    "Quiz repeat cap | student_id=%s | context_id=%s",
+                    student_id, context_id,
+                )
+                return None
+
+            # 4. Rapid upload flag (log warning, do NOT block)
+            _check_rapid_uploads(db, student_id, action_type)
+        except Exception:
+            logger.exception(
+                "Anti-gaming check failed (fail-safe, awarding XP) | student_id=%s | action=%s",
+                student_id, action_type,
+            )
+
         # Get streak multiplier from summary
         summary = _get_or_create_summary(db, student_id)
         multiplier = get_streak_multiplier(summary.current_streak)
@@ -198,6 +328,7 @@ def award_xp(
             action_type=action_type,
             xp_awarded=final_xp,
             multiplier=multiplier,
+            context_id=context_id,
         )
         db.add(entry)
         db.flush()
@@ -355,8 +486,8 @@ class XpService:
     """Class-based wrapper for XP service functions (used by API routes)."""
 
     @staticmethod
-    def award_xp(db, student_id: int, action_type: str):
-        return award_xp(db, student_id, action_type)
+    def award_xp(db, student_id: int, action_type: str, context_id: Optional[str] = None):
+        return award_xp(db, student_id, action_type, context_id=context_id)
 
     @staticmethod
     def get_summary(db, student_id: int):

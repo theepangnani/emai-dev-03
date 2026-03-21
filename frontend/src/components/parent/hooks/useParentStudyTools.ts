@@ -34,6 +34,8 @@ export function useParentStudyTools({
     status: 'generating' | 'success' | 'error';
     type: string;
     resultId?: number;
+    guideId?: number;
+    guideType?: string;
     error?: string;
   } | null>(null);
 
@@ -146,7 +148,9 @@ export function useParentStudyTools({
         }
 
         const resultId = result?.course_content_id ?? undefined;
-        setBackgroundGeneration({ status: 'success', type: typeLabel, resultId });
+        const guideId = result?.id ?? undefined;
+        const guideType = result?.guide_type ?? params.type;
+        setBackgroundGeneration({ status: 'success', type: typeLabel, resultId, guideId, guideType });
         refreshAIUsage();
       } catch (err: any) {
         const raw = err?.response?.data?.detail || err?.message || 'Generation failed';
@@ -382,6 +386,22 @@ export function useParentStudyTools({
     navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
   };
 
+  const getBackgroundGenerationRoute = (): string => {
+    const bg = backgroundGeneration;
+    if (!bg) return '/course-materials';
+    if (bg.resultId) {
+      const tabMap: Record<string, string> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards', mind_map: 'mindmap' };
+      const tab = bg.guideType ? tabMap[bg.guideType] || 'guide' : 'guide';
+      return `/course-materials/${bg.resultId}?tab=${tab}`;
+    }
+    if (bg.guideId) {
+      if (bg.guideType === 'quiz') return `/study/quiz/${bg.guideId}`;
+      if (bg.guideType === 'flashcards') return `/study/flashcards/${bg.guideId}`;
+      return `/study/guide/${bg.guideId}`;
+    }
+    return '/course-materials';
+  };
+
   return {
     // Study Tools
     showStudyModal, setShowStudyModal, isGenerating,
@@ -390,7 +410,7 @@ export function useParentStudyTools({
     resetStudyModal, handleGenerateFromModal,
     generatingStudyId, handleOneClickStudy, handleViewStudyGuides,
     // Background generation
-    backgroundGeneration, dismissBackgroundGeneration,
+    backgroundGeneration, dismissBackgroundGeneration, getBackgroundGenerationRoute,
     // AI credits
     showLimitModal, setShowLimitModal, atLimit, remaining,
   };

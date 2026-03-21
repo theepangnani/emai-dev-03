@@ -267,6 +267,7 @@
 - [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
 - [ ] **Parent AI Insights** — Student interest profiling, academic health score, semester reports, engagement analysis (#581)
+- [ ] **Study Guide Contextual Q&A** — Context-aware chatbot Q&A on study guide pages; save responses as sub-guides or course materials; 0.25 credits/question via Haiku (§6.114, #2056-#2063)
 - [ ] **User Cloud Storage Destination** — Users choose to store uploaded materials in their own Google Drive or OneDrive instead of GCS; auto-created `ClassBridge/{Course}/` folder structure; on-demand download for AI regeneration; fallback to GCS on failure (§6.95, #1865-#1871)
 - [ ] **Cloud File Import** — Import files directly from Google Drive or OneDrive into Upload Wizard via tabbed file browser; folder browsing, multi-select, server-side download into existing processing pipeline (§6.96, #1872-#1877)
 

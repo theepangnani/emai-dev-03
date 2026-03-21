@@ -40,6 +40,7 @@ export function XpDashboardSection() {
       <div className="xp-dashboard-links">
         <Link to="/xp/history" className="xp-badges-more">View Full History</Link>
         <Link to="/activity/timeline" className="xp-badges-more">Study Timeline</Link>
+        <Link to="/report-card" className="xp-badges-more">Report Card</Link>
       </div>
     </div>
   );

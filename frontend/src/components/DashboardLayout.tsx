@@ -200,9 +200,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
-  // Sidebar collapses to icons, expands on hover
-
-
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
   const navItems = useMemo(() => {

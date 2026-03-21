@@ -26,6 +26,7 @@ class HelpChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=500)
     page_context: str = Field(default="", max_length=100)
     conversation: list[ConversationMessage] = Field(default_factory=list, max_length=10)
+    study_guide_id: int | None = Field(default=None)  # §6.114: triggers study Q&A mode
 
 
 class VideoResponse(BaseModel):
@@ -54,3 +55,8 @@ class HelpChatResponse(BaseModel):
     search_results: list[SearchResultItem] = []
     intent: str = "help"  # "help" | "search" | "action"
     suggestion_chips: list[str] = []
+    mode: str = "help"  # "help" | "study_qa" — §6.114
+    credits_used: float | None = None  # only set in study_qa mode
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost_usd: float | None = None

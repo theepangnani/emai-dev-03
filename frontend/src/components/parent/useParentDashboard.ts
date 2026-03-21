@@ -509,7 +509,7 @@ export function useParentDashboard() {
     studyModalInitialTitle: studyTools.studyModalInitialTitle, studyModalInitialContent: studyTools.studyModalInitialContent,
     duplicateCheck: studyTools.duplicateCheck, setDuplicateCheck: studyTools.setDuplicateCheck,
     resetStudyModal: studyTools.resetStudyModal, handleGenerateFromModal: studyTools.handleGenerateFromModal,
-    backgroundGeneration: studyTools.backgroundGeneration, dismissBackgroundGeneration: studyTools.dismissBackgroundGeneration,
+    backgroundGeneration: studyTools.backgroundGeneration, dismissBackgroundGeneration: studyTools.dismissBackgroundGeneration, getBackgroundGenerationRoute: studyTools.getBackgroundGenerationRoute,
     showLimitModal: studyTools.showLimitModal, setShowLimitModal: studyTools.setShowLimitModal,
 
     // Create Task Modal

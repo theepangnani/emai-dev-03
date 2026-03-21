@@ -27,6 +27,7 @@ class XpLedger(Base):
     xp_awarded = Column(Integer, nullable=False)
     multiplier = Column(Float, nullable=False, default=1.0)
     awarder_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    context_id = Column(String(100), nullable=True)  # e.g. study_guide_id for quiz dedup
     reason = Column(String(200), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
