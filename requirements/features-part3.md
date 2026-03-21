@@ -355,11 +355,12 @@ Daily background job that sends in-app notifications for upcoming task due dates
 
 Cross-cutting infrastructure improvements for email delivery, auth, UX, testing, and mobile support.
 
-#### 6.38.1 Email Delivery (#213-#217)
+#### 6.38.1 Email Delivery (#213-#217, #2042)
 - Fixed SendGrid delivery: use synchronous `sg.send()` calls from synchronous FastAPI endpoints (async `SendGridAPIClientAsync` caused silent failures)
 - Added Gmail SMTP fallback when SendGrid API key is unavailable or fails
 - Parent invite emails now sent automatically when parent creates or links a child
 - SMTP environment secrets added to Cloud Run deployment workflow
+- **Production `FROM_EMAIL` must be `clazzbridge@gmail.com`** (not `pilot-admin@classbridge.ca` — classbridge.ca has no inbound email hosting, causing bounce failures) (#2042)
 
 #### 6.38.2 JWT Token Refresh (#149)
 - Added `POST /api/auth/refresh` endpoint that accepts a refresh token and returns new access + refresh tokens
