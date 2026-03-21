@@ -1,0 +1,269 @@
+"""
+XP service — business logic for the Gamification XP system (#2001).
+
+Handles XP awarding, daily caps, streak multipliers, level calculation,
+and summary maintenance.
+"""
+from datetime import date, datetime, timezone
+from typing import Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+XP_ACTIONS: dict[str, dict] = {
+    "upload": {"xp": 10, "daily_cap": 30},
+    "upload_lms": {"xp": 15, "daily_cap": 30},
+    "study_guide": {"xp": 20, "daily_cap": 40},
+    "flashcard_deck": {"xp": 15, "daily_cap": 15},
+    "flashcard_review": {"xp": 10, "daily_cap": 30},
+    "ai_chat": {"xp": 5, "daily_cap": 20},
+    "pomodoro": {"xp": 15, "daily_cap": 30},
+    "flashcard_got_it": {"xp": 1, "daily_cap": 20},
+    "daily_login": {"xp": 5, "daily_cap": 5},
+    "weekly_review": {"xp": 25, "daily_cap": 25},
+    "quiz_complete": {"xp": 15, "daily_cap": 30},
+    "quiz_improvement": {"xp": 10, "daily_cap": 10},
+}
+
+LEVELS: list[dict] = [
+    {"level": 1, "title": "Curious Learner", "xp_required": 0},
+    {"level": 2, "title": "Note Taker", "xp_required": 200},
+    {"level": 3, "title": "Study Starter", "xp_required": 500},
+    {"level": 4, "title": "Focused Scholar", "xp_required": 1000},
+    {"level": 5, "title": "Deep Diver", "xp_required": 2000},
+    {"level": 6, "title": "Guide Master", "xp_required": 3500},
+    {"level": 7, "title": "Exam Champion", "xp_required": 5500},
+    {"level": 8, "title": "ClassBridge Elite", "xp_required": 8000},
+]
+
+STREAK_MULTIPLIERS: list[dict] = [
+    {"min_days": 60, "multiplier": 2.0},
+    {"min_days": 30, "multiplier": 1.75},
+    {"min_days": 14, "multiplier": 1.5},
+    {"min_days": 7, "multiplier": 1.25},
+    {"min_days": 1, "multiplier": 1.0},
+]
+
+# Sum of all daily caps — absolute ceiling for a single day
+_TOTAL_DAILY_CAP = sum(v["daily_cap"] for v in XP_ACTIONS.values())
+
+
+# ---------------------------------------------------------------------------
+# Public helpers
+# ---------------------------------------------------------------------------
+
+def get_level_for_xp(total_xp: int) -> dict:
+    """Return the level info dict for a given XP total."""
+    result = LEVELS[0]
+    for lvl in LEVELS:
+        if total_xp >= lvl["xp_required"]:
+            result = lvl
+        else:
+            break
+    return result
+
+
+def get_xp_to_next_level(total_xp: int) -> int:
+    """Return how much XP is needed to reach the next level."""
+    current = get_level_for_xp(total_xp)
+    for lvl in LEVELS:
+        if lvl["level"] == current["level"] + 1:
+            return lvl["xp_required"] - total_xp
+    return 0  # already max level
+
+
+def get_streak_multiplier(streak_days: int) -> float:
+    """Return the multiplier for the current streak length."""
+    for tier in STREAK_MULTIPLIERS:
+        if streak_days >= tier["min_days"]:
+            return tier["multiplier"]
+    return 1.0
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _get_today_xp(db: Session, student_id: int, action_type: str) -> int:
+    """Sum of today's XP for a given action type."""
+    from app.models.xp import XpLedger
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    result = (
+        db.query(func.coalesce(func.sum(XpLedger.xp_awarded), 0))
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.action_type == action_type,
+            XpLedger.created_at >= today_start,
+        )
+        .scalar()
+    )
+    return int(result)
+
+
+def _get_today_total_xp(db: Session, student_id: int) -> int:
+    """Sum of all XP earned today across all action types."""
+    from app.models.xp import XpLedger
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    result = (
+        db.query(func.coalesce(func.sum(XpLedger.xp_awarded), 0))
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.created_at >= today_start,
+        )
+        .scalar()
+    )
+    return int(result)
+
+
+def _get_or_create_summary(db: Session, student_id: int):
+    """Return XpSummary row, creating if missing."""
+    from app.models.xp import XpSummary
+
+    summary = db.query(XpSummary).filter(XpSummary.student_id == student_id).first()
+    if not summary:
+        summary = XpSummary(student_id=student_id)
+        db.add(summary)
+        db.flush()
+        logger.info("Auto-created XP summary for student_id=%s", student_id)
+    return summary
+
+
+# ---------------------------------------------------------------------------
+# Core service functions
+# ---------------------------------------------------------------------------
+
+def award_xp(
+    db: Session,
+    student_id: int,
+    action_type: str,
+) -> Optional["XpLedger"]:  # noqa: F821
+    """Award XP for an action. Returns the ledger entry, or None if capped.
+
+    FAIL-SAFE: never raises — logs errors and returns None so the calling
+    endpoint is never blocked by gamification failures.
+    """
+    try:
+        from app.models.xp import XpLedger
+
+        action = XP_ACTIONS.get(action_type)
+        if action is None:
+            logger.warning("Unknown XP action_type=%s for student_id=%s", action_type, student_id)
+            return None
+
+        # Check daily cap for this action type
+        today_xp = _get_today_xp(db, student_id, action_type)
+        if today_xp >= action["daily_cap"]:
+            logger.debug(
+                "Daily cap reached | student_id=%s | action=%s | today=%d | cap=%d",
+                student_id, action_type, today_xp, action["daily_cap"],
+            )
+            return None
+
+        # Get streak multiplier from summary
+        summary = _get_or_create_summary(db, student_id)
+        multiplier = get_streak_multiplier(summary.current_streak)
+
+        base_xp = action["xp"]
+        final_xp = int(base_xp * multiplier)
+
+        # Clamp so we don't exceed daily cap
+        remaining_cap = action["daily_cap"] - today_xp
+        if final_xp > remaining_cap:
+            final_xp = remaining_cap
+
+        # Create ledger entry
+        entry = XpLedger(
+            student_id=student_id,
+            action_type=action_type,
+            xp_awarded=final_xp,
+            multiplier=multiplier,
+        )
+        db.add(entry)
+        db.flush()
+
+        # Update summary
+        summary.total_xp = (summary.total_xp or 0) + final_xp
+        level_info = get_level_for_xp(summary.total_xp)
+        summary.current_level = level_info["level"]
+        summary.last_qualifying_action_date = date.today()
+        db.flush()
+
+        logger.info(
+            "XP awarded | student_id=%s | action=%s | xp=%d | multiplier=%.2f | total=%d",
+            student_id, action_type, final_xp, multiplier, summary.total_xp,
+        )
+        return entry
+
+    except Exception:
+        logger.exception("XP award failed | student_id=%s | action=%s", student_id, action_type)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return None
+
+
+def get_summary(db: Session, student_id: int):
+    """Build an XpSummaryResponse for the student."""
+    from app.schemas.xp import XpSummaryResponse
+
+    summary = _get_or_create_summary(db, student_id)
+    total_xp = summary.total_xp or 0
+    level_info = get_level_for_xp(total_xp)
+    today_xp = _get_today_total_xp(db, student_id)
+
+    return XpSummaryResponse(
+        total_xp=total_xp,
+        current_level=level_info["level"],
+        level_title=level_info["title"],
+        current_streak=summary.current_streak or 0,
+        longest_streak=summary.longest_streak or 0,
+        freeze_tokens_remaining=summary.freeze_tokens_remaining if summary.freeze_tokens_remaining is not None else 1,
+        xp_to_next_level=get_xp_to_next_level(total_xp),
+        today_xp=today_xp,
+        today_cap=_TOTAL_DAILY_CAP,
+    )
+
+
+def get_history(db: Session, student_id: int, limit: int = 50, offset: int = 0):
+    """Return paginated XP history for the student."""
+    from app.models.xp import XpLedger
+    from app.schemas.xp import XpHistoryResponse, XpLedgerEntry
+
+    total_count = (
+        db.query(func.count(XpLedger.id))
+        .filter(XpLedger.student_id == student_id)
+        .scalar()
+    ) or 0
+
+    rows = (
+        db.query(XpLedger)
+        .filter(XpLedger.student_id == student_id)
+        .order_by(XpLedger.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    entries = [
+        XpLedgerEntry(
+            action_type=r.action_type,
+            xp_awarded=r.xp_awarded,
+            multiplier=r.multiplier,
+            reason=r.reason,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+    return XpHistoryResponse(entries=entries, total_count=total_count)

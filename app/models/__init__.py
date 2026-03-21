@@ -36,7 +36,11 @@ from app.models.calendar_event import CalendarEvent
 from app.models.help_article import HelpArticle
 from app.models.enrollment_request import EnrollmentRequest
 from app.models.survey import SurveyResponse, SurveyAnswer
+
 from app.models.holiday import HolidayDate
+
+from app.models.xp import XpLedger, XpSummary, Badge, StreakLog
+
 
 __all__ = [
     "User",
@@ -92,5 +96,12 @@ __all__ = [
     "EnrollmentRequest",
     "SurveyResponse",
     "SurveyAnswer",
+
     "HolidayDate",
+
+    "XpLedger",
+    "XpSummary",
+    "Badge",
+    "StreakLog",
+
 ]
