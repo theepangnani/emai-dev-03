@@ -22,6 +22,7 @@ interface User {
   upload_limit_bytes?: number;
   storage_used_pct?: number;
   storage_warning?: boolean;
+  preferred_language?: string;
 }
 
 interface AuthContextType {
