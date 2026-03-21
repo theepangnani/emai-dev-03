@@ -1,8 +1,8 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 14, 2026):** 1,801 total issues — 1,622 closed (90%), 179 open (10%)
+**Summary (as of Mar 21, 2026):** 1,809 total issues — 1,630 closed (90%), 179 open (10%)
 - **Features built:** 375 enhancements closed
-- **Bugs fixed:** 316 bugs closed
+- **Bugs fixed:** 324 bugs closed
 - **Other closed:** 931 (pilot prep, docs, testing, misc)
 
 Current feature issues are tracked in GitHub:
@@ -224,6 +224,16 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #1574: feat: add class_code field to Course model~~ ✅ (PR #1573)
 - ~~Issue #1575: feat: enrollment search filters for course browse~~ ✅ (PR #1571)
 - ~~Issue #1576: feat: enrollment approval system for courses~~ ✅ (PR #1572)
+
+### Phase 1 - Defect Fixes (Mar 21, 2026 — Defect Batch 1, PR #2102)
+- ~~Issue #2093: bug: sub study guide name missing from identifier display~~ ✅ (show sub-guide name in breadcrumb + topic badge on StudyGuidePage)
+- ~~Issue #2094: bug/ux: "Upload Material" button on parent dashboard mislabeled~~ ✅ (renamed to "Study" with book icon)
+- ~~Issue #2095: bug: sub study guides only visible on master document page~~ ✅ (fetch sibling sub-guides from parent when viewing a sub-guide)
+- ~~Issue #2096: bug: Analytics page orphaned with no navigation menus~~ ✅ (wrapped in DashboardLayout and added Analytics nav item)
+- ~~Issue #2097: bug: Reset Password in wrong location~~ ✅ (moved from "More" dropdown to Account Settings page)
+- ~~Issue #2098: requirement gap: incorrect/uncertain AI answers saveable as study guides~~ ✅ (added uncertainty detection on frontend + backend that blocks saving; see §6.115)
+- ~~Issue #2099: bug/regression: "Has sub study guide" tag not showing on materials list~~ ✅ (moved badge from title row to meta row to avoid CSS overflow hidden)
+- ~~Issue #2100: bug: clicking View on sub study guide didn't navigate~~ ✅ (route to `/study/guide/${id}` instead of parent's course material page)
 
 ### Phase 1 - In Progress (Student UX Simplification Sprint — Mar 2026)
 - Issue #1022: [Student UX] Merge Classes and Materials pages into unified Study Hub (/study) — IN PROGRESS
