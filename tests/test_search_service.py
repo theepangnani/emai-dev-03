@@ -119,6 +119,26 @@ def test_search_tasks_for_noah_routes_to_person_filter(monkeypatch):
     assert len(results) == 1
 
 
+# --- Person filter false-positive tests (#1722) ---
+
+def test_extract_person_filter_ignores_entity_keywords():
+    """'search for tasks' must NOT treat 'tasks' as a person name."""
+    svc = SearchService()
+    assert svc._extract_person_filter("search for tasks") is None
+    assert svc._extract_person_filter("search for courses") is None
+    assert svc._extract_person_filter("looking for notes") is None
+    assert svc._extract_person_filter("search for assignments") is None
+    assert svc._extract_person_filter("looking for something") is None
+
+
+def test_extract_person_filter_allows_real_names():
+    """'show tasks for Thanushan' must still extract 'Thanushan' as a person name."""
+    svc = SearchService()
+    assert svc._extract_person_filter("show tasks for Thanushan") == "Thanushan"
+    assert svc._extract_person_filter("tasks for noah") == "noah"
+    assert svc._extract_person_filter("list tasks for Emma") == "Emma"
+
+
 # --- Result limit and summary card tests (#1749) ---
 
 def test_list_tasks_returns_max_5_plus_summary_when_over_limit():
