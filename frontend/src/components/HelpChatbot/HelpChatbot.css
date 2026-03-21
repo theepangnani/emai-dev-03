@@ -540,6 +540,12 @@
   border-color: var(--color-success, #34a853);
 }
 
+.help-chatbot-qa-uncertain {
+  font-size: 11px;
+  color: var(--color-warning, #e8a317);
+  font-style: italic;
+}
+
 .help-chatbot-credits-badge {
   font-size: 10px;
   color: var(--color-text-muted, #888);

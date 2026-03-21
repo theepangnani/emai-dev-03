@@ -2413,6 +2413,18 @@ async def extract_text_from_upload(
 # §6.114 — Study Guide Contextual Q&A save endpoints
 # ---------------------------------------------------------------------------
 
+_AI_UNCERTAINTY_PHRASES = [
+    "i'm not sure", "i don't know", "could you clarify", "not clear",
+    "doesn't appear", "cannot find", "i don't have", "unclear",
+    "i'm unable to", "i cannot determine", "not enough information",
+    "i'm not certain",
+]
+
+
+def _has_ai_uncertainty(text: str) -> bool:
+    lower = text.lower()
+    return any(phrase in lower for phrase in _AI_UNCERTAINTY_PHRASES)
+
 @router.post("/guides/{guide_id}/qa/save-as-guide", response_model=StudyGuideResponse)
 async def save_qa_as_guide(
     guide_id: int,
@@ -2428,6 +2440,8 @@ async def save_qa_as_guide(
         raise HTTPException(status_code=404, detail="Study guide not found")
     if guide.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not the guide owner")
+    if _has_ai_uncertainty(request.content):
+        raise HTTPException(status_code=422, detail="Cannot save an uncertain AI response as a study guide")
 
     title = request.title.strip() if request.title else f"Q&A: {guide.title}"
     new_guide = StudyGuide(
@@ -2469,6 +2483,8 @@ async def save_qa_as_material(
         raise HTTPException(status_code=403, detail="Not the guide owner")
     if not guide.course_id:
         raise HTTPException(status_code=400, detail="Study guide has no associated course")
+    if _has_ai_uncertainty(request.content):
+        raise HTTPException(status_code=422, detail="Cannot save an uncertain AI response as course material")
 
     title = request.title.strip() if request.title else f"Q&A Notes: {guide.title}"
     new_content = CourseContent(
