@@ -9,7 +9,7 @@ class HolidayDate(Base):
     __tablename__ = "holiday_dates"
 
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, nullable=False)
-    board_name = Column(String(100), nullable=False, default="YRDSB")
-    description = Column(String(200), nullable=True)
+    date = Column(Date, nullable=False, unique=True)
+    name = Column(String(100), nullable=False)
+    board = Column(String(50), default="YRDSB")
     created_at = Column(DateTime, default=func.now())

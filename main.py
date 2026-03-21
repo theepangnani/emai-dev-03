@@ -1733,6 +1733,30 @@ try:
 except Exception as e:
     logger.warning("xp_ledger context_id migration failed (#2009): %s", e)
 
+# ── holiday_dates: rename columns from old schema (#2024) ──
+try:
+    with engine.connect() as conn:
+        inspector = sa_inspect(engine)
+        if "holiday_dates" in inspector.get_table_names():
+            existing_cols = {c["name"] for c in inspector.get_columns("holiday_dates")}
+            is_sqlite = "sqlite" in settings.database_url
+            if "board_name" in existing_cols and "board" not in existing_cols:
+                if is_sqlite:
+                    conn.execute(text("ALTER TABLE holiday_dates RENAME COLUMN board_name TO board"))
+                else:
+                    conn.execute(text("ALTER TABLE holiday_dates RENAME COLUMN board_name TO board"))
+                conn.commit()
+                logger.info("Renamed holiday_dates.board_name -> board (#2024)")
+            if "description" in existing_cols and "name" not in existing_cols:
+                if is_sqlite:
+                    conn.execute(text("ALTER TABLE holiday_dates RENAME COLUMN description TO name"))
+                else:
+                    conn.execute(text("ALTER TABLE holiday_dates RENAME COLUMN description TO name"))
+                conn.commit()
+                logger.info("Renamed holiday_dates.description -> name (#2024)")
+except Exception as e:
+    logger.warning("holiday_dates column rename migration failed (#2024): %s", e)
+
 # Release PostgreSQL advisory lock after migrations complete (#2068)
 if _migration_lock_conn is not None:
     _migration_lock_conn.execute(text("SELECT pg_advisory_unlock(1)"))
@@ -2014,6 +2038,50 @@ def seed_wallet_data(db):
         logger.info("Seeded credit_packages with default bundles")
 
 
+def seed_holiday_dates(db):
+    """Seed YRDSB 2026-27 school holiday dates if table is empty (#2024)."""
+    from datetime import date as dt
+    from app.models.holiday import HolidayDate
+    if db.query(HolidayDate).count() > 0:
+        return
+    holidays = [
+        # 2026-27 YRDSB calendar
+        (dt(2026, 9, 7), "Labour Day"),
+        (dt(2026, 10, 12), "Thanksgiving Day"),
+        (dt(2026, 10, 23), "PA Day (October)"),
+        (dt(2026, 11, 20), "PA Day (November)"),
+        (dt(2026, 12, 21), "Christmas Break"),
+        (dt(2026, 12, 22), "Christmas Break"),
+        (dt(2026, 12, 23), "Christmas Break"),
+        (dt(2026, 12, 24), "Christmas Break"),
+        (dt(2026, 12, 25), "Christmas Day"),
+        (dt(2026, 12, 26), "Boxing Day"),
+        (dt(2026, 12, 28), "Christmas Break"),
+        (dt(2026, 12, 29), "Christmas Break"),
+        (dt(2026, 12, 30), "Christmas Break"),
+        (dt(2026, 12, 31), "Christmas Break"),
+        (dt(2027, 1, 1), "New Year's Day"),
+        (dt(2027, 1, 4), "Christmas Break"),
+        (dt(2027, 1, 29), "PA Day (January)"),
+        (dt(2027, 2, 15), "Family Day"),
+        (dt(2027, 3, 15), "March Break"),
+        (dt(2027, 3, 16), "March Break"),
+        (dt(2027, 3, 17), "March Break"),
+        (dt(2027, 3, 18), "March Break"),
+        (dt(2027, 3, 19), "March Break"),
+        (dt(2027, 3, 26), "Good Friday"),
+        (dt(2027, 3, 29), "Easter Monday"),
+        (dt(2027, 5, 24), "Victoria Day"),
+        (dt(2027, 6, 4), "PA Day (June)"),
+        (dt(2027, 6, 25), "PA Day (End of Year)"),
+    ]
+    db.add_all([
+        HolidayDate(date=d, name=n, board="YRDSB") for d, n in holidays
+    ])
+    db.commit()
+    logger.info("Seeded %d YRDSB 2026-27 holiday dates", len(holidays))
+
+
 @app.on_event("startup")
 async def startup_event():
     from apscheduler.triggers.cron import CronTrigger
@@ -2032,6 +2100,7 @@ async def startup_event():
         seed_faq(db)
         seed_grades(db)
         seed_wallet_data(db)
+        seed_holiday_dates(db)
     finally:
         db.close()
 
