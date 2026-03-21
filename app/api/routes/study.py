@@ -913,7 +913,8 @@ async def generate_quiz_endpoint(
         existing_questions = [QuizQuestion(**q) for q in json.loads(existing.content)]
         return QuizResponse(
             id=existing.id, title=existing.title, questions=existing_questions,
-            guide_type="quiz", version=existing.version,
+            guide_type="quiz", course_content_id=existing.course_content_id,
+            version=existing.version,
             parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
         )
 
@@ -978,6 +979,7 @@ async def generate_quiz_endpoint(
         title=study_guide.title,
         questions=questions,
         guide_type="quiz",
+        course_content_id=study_guide.course_content_id,
         version=study_guide.version,
         parent_guide_id=study_guide.parent_guide_id,
         created_at=study_guide.created_at,
@@ -1096,7 +1098,8 @@ async def generate_flashcards_endpoint(
         existing_cards = [Flashcard(**c) for c in json.loads(existing.content)]
         return FlashcardSetResponse(
             id=existing.id, title=existing.title, cards=existing_cards,
-            guide_type="flashcards", version=existing.version,
+            guide_type="flashcards", course_content_id=existing.course_content_id,
+            version=existing.version,
             parent_guide_id=existing.parent_guide_id, created_at=existing.created_at,
         )
 
@@ -1161,6 +1164,7 @@ async def generate_flashcards_endpoint(
         title=study_guide.title,
         cards=cards,
         guide_type="flashcards",
+        course_content_id=study_guide.course_content_id,
         version=study_guide.version,
         parent_guide_id=study_guide.parent_guide_id,
         created_at=study_guide.created_at,
