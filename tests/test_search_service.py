@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from app.services.search_service import SearchService, SearchResult
+from app.services.search_service import SearchService, SearchResult, _extract_search_term
 
 
 # --- Preset detection tests ---
@@ -158,3 +158,24 @@ def test_list_tasks_returns_max_5_plus_summary_when_over_limit():
     assert len(summary_results) == 1
     assert "5 of 25" in summary_results[0].title
     assert summary_results[0].actions[0]["route"] == "/tasks"
+
+
+# --- _extract_search_term tests (#1719) ---
+
+@pytest.mark.parametrize("raw,expected", [
+    ("Find my course", "course"),
+    ("Show me my tasks", "tasks"),
+    ("list my notes", "notes"),
+    ("show me all the tasks", "tasks"),
+    ("math", "math"),
+    ("search for study guides", "study guides"),
+    ("Where are my notes", "notes"),
+    ("Look up algebra", "algebra"),
+    ("get me my assignments", "assignments"),
+    ("What are my courses", "courses"),
+    ("What are the tasks", "tasks"),
+    ("  Find my course  ", "course"),
+    ("show", "show"),
+])
+def test_extract_search_term(raw, expected):
+    assert _extract_search_term(raw) == expected
