@@ -38,11 +38,8 @@ from app.models.enrollment_request import EnrollmentRequest
 from app.models.survey import SurveyResponse, SurveyAnswer
 from app.models.holiday import HolidayDate
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog
-<<<<<<< HEAD
 from app.models.detected_event import DetectedEvent
-=======
 from app.models.study_request import StudyRequest
->>>>>>> worktree-agent-a0595057
 
 
 __all__ = [
@@ -107,9 +104,6 @@ __all__ = [
     "Badge",
     "StreakLog",
 
-<<<<<<< HEAD
     "DetectedEvent",
-=======
     "StudyRequest",
->>>>>>> worktree-agent-a0595057
 ]
