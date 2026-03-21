@@ -18,11 +18,11 @@ router = APIRouter(tags=["bug-reports"])
 
 MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024  # 5 MB
 ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
-RATE_LIMIT_PER_HOUR = 5
+RATE_LIMIT_PER_HOUR = 20
 
 
 @router.post("/bug-reports", response_model=BugReportResponse)
-@limiter.limit("5/hour")
+@limiter.limit("20/hour")
 async def submit_bug_report(
     request: Request,
     description: Optional[str] = Form(None),
