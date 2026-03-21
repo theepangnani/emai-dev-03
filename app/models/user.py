@@ -68,6 +68,10 @@ class User(Base):
     storage_limit_bytes = Column(BigInteger, default=104857600)
     upload_limit_bytes = Column(Integer, default=10485760)
 
+    # Multilingual & timezone preferences (#2024)
+    preferred_language = Column(String(10), nullable=True, default="en")
+    timezone = Column(String(50), nullable=True, default="America/Toronto")
+
     # Daily email digest opt-in
     daily_digest_enabled = Column(Boolean, default=False)
 

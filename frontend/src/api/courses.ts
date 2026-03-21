@@ -21,7 +21,7 @@ export interface CourseContentItem {
   category: string | null;
   display_order: number;
   parent_content_id: number | null;
-  is_master: string;  // "true" or "false"
+  is_master: boolean;
   material_group_id: number | null;
   created_at: string;
   updated_at: string | null;
@@ -48,7 +48,7 @@ export interface CourseContentUpdateResponse extends CourseContentItem {
 export interface LinkedMaterialItem {
   id: number;
   title: string;
-  is_master: string;
+  is_master: boolean;
   content_type: string;
   has_file: boolean;
   original_filename: string | null;

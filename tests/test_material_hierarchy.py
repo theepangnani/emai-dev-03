@@ -113,7 +113,7 @@ class TestMaterialHierarchyService:
         db_session.refresh(master)
         assert master.title == "Combined Notes"
         assert master.material_group_id == group_id
-        assert master.is_master == "true"
+        assert master.is_master is True
 
         for sub in subs:
             db_session.refresh(sub)

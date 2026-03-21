@@ -24,6 +24,9 @@ class SourceFile(Base):
     file_size = Column(Integer, nullable=True)  # bytes
     gcs_path = Column(String(500), nullable=True)
 
+    # Upload source tracking (#2010)
+    source_type = Column(String(20), nullable=True, default="local_upload")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     course_content = relationship(

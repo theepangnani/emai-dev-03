@@ -38,13 +38,13 @@ def create_material_hierarchy(
     # Use timestamp-based group ID (unique enough for our purposes)
     group_id = int(time.time() * 1000) % 2147483647  # Keep within INT range
 
-    master_content.is_master = "true"
+    master_content.is_master = True
     master_content.material_group_id = group_id
     master_content.parent_content_id = None  # Master has no parent
 
     for sub in sub_contents:
         sub.parent_content_id = master_content.id
-        sub.is_master = "false"
+        sub.is_master = False
         sub.material_group_id = group_id
 
     logger.info(

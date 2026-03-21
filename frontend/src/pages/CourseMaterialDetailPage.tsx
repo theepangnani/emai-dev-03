@@ -816,14 +816,14 @@ export function CourseMaterialDetailPage() {
             <LinkedMaterialsPanel
               materials={linkedMaterials}
               currentMaterialId={content.id}
-              isCurrentMaster={content.is_master === 'true'}
+              isCurrentMaster={content.is_master === true}
               loading={linkedLoading}
-              masterId={content.is_master === 'true' ? content.id : (content.parent_content_id ?? undefined)}
+              masterId={content.is_master === true ? content.id : (content.parent_content_id ?? undefined)}
               onReorder={async (materialId, direction) => {
-                const mid = content.is_master === 'true' ? content.id : content.parent_content_id;
+                const mid = content.is_master === true ? content.id : content.parent_content_id;
                 if (!mid) return;
                 // Compute new sub order by moving the materialId up or down
-                const subs = linkedMaterials.filter(m => m.is_master !== 'true');
+                const subs = linkedMaterials.filter(m => !m.is_master);
                 const subIds = subs.map(s => s.id);
                 const idx = subIds.indexOf(materialId);
                 if (idx < 0) return;
@@ -835,7 +835,7 @@ export function CourseMaterialDetailPage() {
               }}
               onDeleteSub={async (subId) => {
                 try {
-                  const masterId = linkedMaterials.find(m => m.is_master === 'true')?.id ?? content.id;
+                  const masterId = linkedMaterials.find(m => m.is_master)?.id ?? content.id;
                   await courseContentsApi.deleteSubMaterial(masterId, subId);
                   showToast('Sub-material deleted');
                   refetchLinkedMaterials();

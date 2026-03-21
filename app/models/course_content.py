@@ -1,8 +1,8 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Index
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Index
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, text
 
 from app.db.database import Base
 
@@ -45,8 +45,11 @@ class CourseContent(Base):
 
     # Material hierarchy (#1740)
     parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
-    is_master = Column(String(5), nullable=False, default="false", server_default="false")  # "true"/"false" for cross-DB compat
+    is_master = Column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
     material_group_id = Column(Integer, nullable=True)
+
+    # Upload source tracking (#2010)
+    source_type = Column(String(20), nullable=True, default="local_upload")
 
     # Study Guide Strategy Pattern (§6.105, #1972)
     document_type = Column(String(30), nullable=True)  # teacher_notes, course_syllabus, past_exam, mock_exam, project_brief, lab_experiment, textbook_excerpt, custom
@@ -68,10 +71,6 @@ class CourseContent(Base):
     @property
     def course_name(self) -> str | None:
         return self.course.name if self.course else None
-
-    @property
-    def is_master_material(self) -> bool:
-        return self.is_master == "true"
 
     __table_args__ = (
         Index("ix_course_contents_course", "course_id"),
