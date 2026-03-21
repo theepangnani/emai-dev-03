@@ -285,7 +285,9 @@ export function StudyGuidePage() {
         ...(guide?.course_content_id
           ? [{ label: guide.title.replace(/^Study Guide:\s*/i, ''), to: `/course-materials/${guide.course_content_id}?tab=guide` }]
           : []),
-        { label: 'Study Guide' },
+        { label: guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide')
+          ? guide.title.replace(/^Study Guide:\s*/i, '')
+          : 'Study Guide' },
       ]} />
 
       {guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide') && (
@@ -310,6 +312,11 @@ export function StudyGuidePage() {
         </div>
         <div className="sg-meta-row">
           <span className="sg-type-badge">{guideTypeLabel}</span>
+          {guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide') && guide.generation_context && (
+            <span className="sg-topic-badge" title={guide.generation_context}>
+              {guide.generation_context.length > 60 ? guide.generation_context.slice(0, 57) + '...' : guide.generation_context}
+            </span>
+          )}
           {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
           <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
           {childGuides.length > 0 && (

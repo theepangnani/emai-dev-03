@@ -9,13 +9,6 @@ interface SubGuidesPanelProps {
   parentGuideId?: number;
 }
 
-const GUIDE_TYPE_TAB_MAP: Record<string, string> = {
-  study_guide: 'guide',
-  quiz: 'quiz',
-  flashcards: 'flashcards',
-  mind_map: 'mindmap',
-};
-
 const GUIDE_TYPE_LABELS: Record<string, string> = {
   study_guide: 'Study Guide',
   quiz: 'Quiz',
@@ -97,9 +90,7 @@ export function SubGuidesPanel({ childGuides }: SubGuidesPanelProps) {
       {!collapsed && (
         <div className="subguides-panel-list" data-testid="sub-guides-list">
           {childGuides.map(child => {
-            const targetUrl = child.course_content_id
-              ? `/course-materials/${child.course_content_id}?tab=${GUIDE_TYPE_TAB_MAP[child.guide_type] || 'guide'}`
-              : `/study/guide/${child.id}`;
+            const targetUrl = `/study/guide/${child.id}`;
 
             return (
               <div key={child.id} className="subguides-panel-item" data-testid={`sub-guide-item-${child.id}`}>
@@ -114,7 +105,7 @@ export function SubGuidesPanel({ childGuides }: SubGuidesPanelProps) {
                     {new Date(child.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <Link to={targetUrl} className="subguides-panel-view-btn">
+                <Link to={targetUrl} state={{ fromMaterial: true }} className="subguides-panel-view-btn">
                   View
                 </Link>
               </div>

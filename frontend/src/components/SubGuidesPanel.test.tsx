@@ -114,11 +114,9 @@ describe('SubGuidesPanel', () => {
     const viewLinks = screen.getAllByText('View')
     expect(viewLinks).toHaveLength(3)
 
-    // First child (no course_content_id) -> /study/guide/10
+    // All sub-guides link to full page view with fromMaterial state
     expect(viewLinks[0].closest('a')).toHaveAttribute('href', '/study/guide/10')
-    // Second child (has course_content_id=42, quiz) -> /course-materials/42?tab=quiz
-    expect(viewLinks[1].closest('a')).toHaveAttribute('href', '/course-materials/42?tab=quiz')
-    // Third child (no course_content_id) -> /study/guide/12
+    expect(viewLinks[1].closest('a')).toHaveAttribute('href', '/study/guide/11')
     expect(viewLinks[2].closest('a')).toHaveAttribute('href', '/study/guide/12')
   })
 
