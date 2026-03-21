@@ -196,6 +196,40 @@ describe('RecentActivityPanel', () => {
     });
   });
 
+  it('expands when viewMode changes to full', async () => {
+    localStorage.setItem('pd-activity-collapsed', '1');
+    mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
+    const { rerender } = renderWithProviders(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="simplified" />,
+    );
+
+    const body = screen.getByTestId('activity-body');
+    expect(body).toHaveClass('pd-activity-body-collapsed');
+
+    rerender(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="full" />,
+    );
+    expect(body).not.toHaveClass('pd-activity-body-collapsed');
+    expect(localStorage.getItem('pd-activity-collapsed')).toBe('0');
+  });
+
+  it('collapses when viewMode changes to simplified', async () => {
+    localStorage.setItem('pd-activity-collapsed', '0');
+    mockGetRecent.mockResolvedValue([createActivity({ title: 'Item 1' })]);
+    const { rerender } = renderWithProviders(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="full" />,
+    );
+
+    const body = screen.getByTestId('activity-body');
+    expect(body).not.toHaveClass('pd-activity-body-collapsed');
+
+    rerender(
+      <RecentActivityPanel selectedChild={null} navigate={mockNavigate} viewMode="simplified" />,
+    );
+    expect(body).toHaveClass('pd-activity-body-collapsed');
+    expect(localStorage.getItem('pd-activity-collapsed')).toBe('1');
+  });
+
   it('persists collapse state in localStorage', async () => {
     mockGetRecent.mockResolvedValue([createActivity()]);
     renderWithProviders(
