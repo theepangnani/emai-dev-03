@@ -51,9 +51,6 @@ vi.mock('../context/AuthContext', () => ({
   }),
 }))
 
-vi.mock('../components/GlobalSearch', () => ({
-  GlobalSearch: () => <div data-testid="global-search" />,
-}))
 
 vi.mock('../components/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,

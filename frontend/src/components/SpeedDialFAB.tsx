@@ -34,6 +34,16 @@ export function SpeedDialFAB() {
     }
   }, [chatOpen]);
 
+  // Listen for programmatic open (Ctrl+K / Cmd+K dispatches this event)
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setChatOpen(true);
+      setDialOpen(false);
+    };
+    window.addEventListener('open-help-chat', handleOpenChat);
+    return () => window.removeEventListener('open-help-chat', handleOpenChat);
+  }, []);
+
   // Close speed dial when clicking outside
   useEffect(() => {
     if (!dialOpen) return;

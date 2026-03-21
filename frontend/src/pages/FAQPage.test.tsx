@@ -33,9 +33,6 @@ vi.mock('../components/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }))
 
-vi.mock('../components/GlobalSearch', () => ({
-  GlobalSearch: () => <div data-testid="global-search" />,
-}))
 
 vi.mock('../components/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
