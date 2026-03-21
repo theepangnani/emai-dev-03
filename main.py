@@ -1643,6 +1643,30 @@ with engine.connect() as conn:
     except Exception as e:
         logger.warning("source_type column migration failed (#2010): %s", e)
 
+    # ── CASL email consent columns (#2022) ──
+    try:
+        with engine.connect() as conn:
+            inspector_casl = sa_inspect(engine)
+            if "users" in inspector_casl.get_table_names():
+                existing_cols = {c["name"] for c in inspector_casl.get_columns("users")}
+                if "email_marketing_consent" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN email_marketing_consent BOOLEAN DEFAULT FALSE"))
+                        conn.commit()
+                        logger.info("Added 'email_marketing_consent' column to users (#2022)")
+                    except Exception:
+                        conn.rollback()
+                if "email_consent_date" not in existing_cols:
+                    col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN email_consent_date {col_type}"))
+                        conn.commit()
+                        logger.info("Added 'email_consent_date' column to users (#2022)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("CASL consent columns migration failed (#2022): %s", e)
+
     # ── Batch 0: User preferred_language & timezone columns (#2024) ──
     try:
         with engine.connect() as conn:

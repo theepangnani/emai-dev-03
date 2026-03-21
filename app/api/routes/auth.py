@@ -200,6 +200,10 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         google_id=user_data.google_id,
         google_access_token=google_access_token,
         google_refresh_token=google_refresh_token,
+        # CASL email consent (#2022)
+        email_marketing_consent=user_data.email_consent,
+        email_consent_date=datetime.now(timezone.utc) if user_data.email_consent else None,
+        daily_digest_enabled=user_data.email_consent,
     )
     db.add(user)
     db.flush()
@@ -717,6 +721,46 @@ def _render(template: str, **kwargs: str) -> str:
     for k, v in kwargs.items():
         template = template.replace("{{" + k + "}}", v)
     return template
+
+
+@router.get("/unsubscribe/{token}")
+def unsubscribe(token: str, db: Session = Depends(get_db)):
+    """One-click email unsubscribe (CASL compliance, #2022). No auth required."""
+    from app.core.security import decode_unsubscribe_token
+    from fastapi.responses import HTMLResponse
+
+    user_id = decode_unsubscribe_token(token)
+    if not user_id:
+        return HTMLResponse(
+            content="<html><body style='font-family:sans-serif;text-align:center;padding:60px;'>"
+            "<h2>Invalid or Expired Link</h2>"
+            "<p>This unsubscribe link is no longer valid.</p>"
+            "</body></html>",
+            status_code=400,
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return HTMLResponse(
+            content="<html><body style='font-family:sans-serif;text-align:center;padding:60px;'>"
+            "<h2>Invalid or Expired Link</h2>"
+            "<p>This unsubscribe link is no longer valid.</p>"
+            "</body></html>",
+            status_code=400,
+        )
+
+    user.daily_digest_enabled = False
+    user.email_marketing_consent = False
+    db.commit()
+
+    return HTMLResponse(
+        content="<html><body style='font-family:sans-serif;text-align:center;padding:60px;'>"
+        "<h2>You've been unsubscribed</h2>"
+        "<p>You will no longer receive digest emails from ClassBridge.</p>"
+        "<p style='margin-top:24px;'><a href='https://www.classbridge.ca'>Go to ClassBridge</a></p>"
+        "</body></html>",
+        status_code=200,
+    )
 
 
 @router.post("/forgot-password")

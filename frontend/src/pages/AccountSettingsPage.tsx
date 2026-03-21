@@ -217,6 +217,11 @@ export function AccountSettingsPage() {
               </label>
               {digestToggleMutation.isPending && <span style={{ color: '#6b7280', fontSize: 13 }}>Saving...</span>}
             </div>
+            {digestSettingsQuery.data?.email_consent_date && (
+              <p style={{ color: '#9ca3af', fontSize: 12, margin: '0 0 16px' }}>
+                Consent given on {new Date(digestSettingsQuery.data.email_consent_date).toLocaleDateString()}
+              </p>
+            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 className="account-btn account-btn-secondary"

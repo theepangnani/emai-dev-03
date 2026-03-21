@@ -299,7 +299,9 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
     )
 
 
-def render_digest_email_html(digest: WeeklyDigestResponse) -> str:
+def render_digest_email_html(
+    digest: WeeklyDigestResponse, unsubscribe_url: str | None = None
+) -> str:
     """Render the weekly digest as branded HTML email."""
 
     children_html = ""
@@ -343,6 +345,13 @@ def render_digest_email_html(digest: WeeklyDigestResponse) -> str:
     </p>
     """
 
+    if unsubscribe_url:
+        body_html += f"""
+    <p style="text-align:center;font-size:12px;color:#999;margin-top:24px;">
+      <a href="{unsubscribe_url}" style="color:#999;">Unsubscribe from these emails</a>
+    </p>
+    """
+
     return wrap_branded_email(body_html)
 
 
@@ -352,8 +361,11 @@ async def send_weekly_digest_email(db: Session, parent_user_id: int) -> bool:
     if not parent or not parent.email:
         return False
 
+    from app.core.security import get_unsubscribe_url
+
     digest = generate_weekly_digest(db, parent_user_id)
-    html = render_digest_email_html(digest)
+    unsub_url = get_unsubscribe_url(parent_user_id)
+    html = render_digest_email_html(digest, unsubscribe_url=unsub_url)
     subject = f"Weekly Progress Pulse - {digest.week_start} to {digest.week_end}"
 
     return await send_email(parent.email, subject, html)

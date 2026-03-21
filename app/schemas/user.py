@@ -27,6 +27,7 @@ class UserCreate(BaseModel):
     teacher_type: str | None = Field(default=None, max_length=50)
     google_id: str | None = Field(default=None, max_length=255)
     token: str | None = Field(default=None, max_length=255)  # Waitlist invite token (#1114)
+    email_consent: bool = False  # CASL explicit opt-in (#2022)
     website: str = ""  # honeypot
     started_at: Optional[float] = None  # timing check
 
