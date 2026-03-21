@@ -161,16 +161,6 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
 
       {/* Naming preview for multi-file uploads — clickable master selection (#2051) */}
       {selectedFiles.length >= 2 && studyTitle && (() => {
-        const partNumbers = selectedFiles.map((_, i) => {
-          if (i === masterFileIndex) return 0;
-          let count = 0;
-          for (let j = 0; j < selectedFiles.length; j++) {
-            if (j === masterFileIndex) continue;
-            count++;
-            if (j === i) return count;
-          }
-          return count;
-        });
         return (
           <div className="upload-wizard-naming-preview">
             <p style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.375rem' }}>
@@ -179,6 +169,7 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
             <ul className="uw-master-select-list">
               {selectedFiles.map((file, i) => {
                 const isMaster = i === masterFileIndex;
+                const fileTitle = file.name.replace(/\.[^/.]+$/, '');
                 return (
                   <li
                     key={i}
@@ -194,7 +185,7 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
                       {isMaster ? (
                         <><strong>{studyTitle}</strong> <span className="uw-master-label">(master)</span></>
                       ) : (
-                        <>{studyTitle} — Part {partNumbers[i]}</>
+                        <>{fileTitle}</>
                       )}
                     </span>
                     <span className="uw-master-select-filename">{file.name}</span>
