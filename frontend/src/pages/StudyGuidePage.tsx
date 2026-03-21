@@ -65,7 +65,7 @@ export function StudyGuidePage() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateSelectedText, setGenerateSelectedText] = useState('');
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
-  const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string } | null>(null);
+  const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string; courseContentId?: number } | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -115,7 +115,7 @@ export function StudyGuidePage() {
       study_goal: studyGoal,
     }).then(result => {
       refreshAIUsage();
-      setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title });
+      setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title, courseContentId: result.course_content_id ?? undefined });
       // Refresh child guides list
       studyApi.listChildGuides(guide.id).then(setChildGuides).catch(() => {});
     }).catch(() => {
@@ -356,7 +356,7 @@ export function StudyGuidePage() {
           ) : subGuideStatus.ready ? (
             <>
               <span>Sub-guide ready!</span>
-              <Link to={`/study/guide/${subGuideStatus.guideId}`} className="sg-subguide-status-link">
+              <Link to={subGuideStatus.courseContentId ? `/course-materials/${subGuideStatus.courseContentId}?tab=guide` : `/study/guide/${subGuideStatus.guideId}`} className="sg-subguide-status-link">
                 View &ldquo;{subGuideStatus.title}&rdquo; &rarr;
               </Link>
               <button className="sg-subguide-status-dismiss" onClick={() => setSubGuideStatus(null)} aria-label="Dismiss">&times;</button>
