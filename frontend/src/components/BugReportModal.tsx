@@ -20,6 +20,8 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [honeypot, setHoneypot] = useState('');
+  const [cooldown, setCooldown] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(open, onClose);
 
@@ -30,12 +32,22 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
     }
   }, [open, prefillDescription]);
 
+  // Cooldown — disable submit for 3 seconds after modal opens
+  useEffect(() => {
+    if (open) {
+      setCooldown(true);
+      const timer = setTimeout(() => setCooldown(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
   const resetForm = useCallback(() => {
     setDescription('');
     setScreenshot(null);
     setPreviewUrl(null);
     setError('');
     setSuccess(false);
+    setHoneypot('');
   }, []);
 
   const handleClose = useCallback(() => {
@@ -101,6 +113,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
         screenshot: screenshot || undefined,
         pageUrl: prefillPageUrl || window.location.href,
         userAgent: navigator.userAgent,
+        website: honeypot || undefined,
       });
       setSuccess(true);
     } catch (err: unknown) {
@@ -110,7 +123,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
     } finally {
       setSubmitting(false);
     }
-  }, [description, screenshot, submitting, prefillPageUrl]);
+  }, [description, screenshot, submitting, prefillPageUrl, honeypot]);
 
   if (!open) return null;
 
@@ -135,6 +148,20 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
         ) : (
           <div className="bug-report-body">
           <form className="bug-report-form" onSubmit={handleSubmit}>
+            {/* Honeypot — hidden from humans, bots auto-fill it */}
+            <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+              <label htmlFor="website">Website</label>
+              <input
+                type="text"
+                id="website"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </div>
+
             <label>
               Description
               <textarea
@@ -170,7 +197,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
 
             <div className="bug-report-actions">
               <button type="button" className="btn-cancel" onClick={handleClose}>Cancel</button>
-              <button type="submit" className="btn-submit" disabled={submitting}>
+              <button type="submit" className="btn-submit" disabled={submitting || cooldown}>
                 {submitting ? 'Submitting...' : 'Submit Report'}
               </button>
             </div>
