@@ -392,63 +392,63 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           </div>
         )}
         <header className="dashboard-header">
-        <div className="header-left">
-          <button
-            className={`hamburger-btn${menuOpen ? ' open' : ''}`}
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle navigation"
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-          <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
-        </div>
-        <GlobalSearch />
-        <div className="header-right">
-          <AICreditsDisplay />
-          <ThemeToggle />
-          <NotificationBell />
-          <div className="user-chip" ref={roleSwitcherRef}>
-            <span className="user-name">{user?.full_name}</span>
-            {hasMultipleRoles ? (
-              <>
-                <button
-                  className="user-role role-switcher-trigger"
-                  onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
-                >
-                  {user?.role} &#9662;
-                </button>
-                {roleSwitcherOpen && (
-                  <div className="role-switcher-dropdown">
-                    {user?.roles
-                      .filter(r => r !== user?.role)
-                      .map(r => (
-                        <button
-                          key={r}
-                          className="role-switcher-option"
-                          onClick={() => handleSwitchRole(r)}
-                        >
-                          Switch to {r}
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <span className="user-role">{user?.role}</span>
-            )}
+          <div className="header-left">
+            <button
+              className={`hamburger-btn${menuOpen ? ' open' : ''}`}
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle navigation"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+            <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
           </div>
-          {user?.role === 'student' && (
-            <Link to="/settings/emails" className="email-settings-link">
-              Email Settings
-            </Link>
-          )}
-          <button onClick={logout} className="logout-button">
-            Sign Out
-          </button>
-        </div>
-      </header>
+          <GlobalSearch />
+          <div className="header-right">
+            <AICreditsDisplay />
+            <ThemeToggle />
+            <NotificationBell />
+            <div className="user-chip" ref={roleSwitcherRef}>
+              <span className="user-name">{user?.full_name}</span>
+              {hasMultipleRoles ? (
+                <>
+                  <button
+                    className="user-role role-switcher-trigger"
+                    onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
+                  >
+                    {user?.role} &#9662;
+                  </button>
+                  {roleSwitcherOpen && (
+                    <div className="role-switcher-dropdown">
+                      {user?.roles
+                        .filter(r => r !== user?.role)
+                        .map(r => (
+                          <button
+                            key={r}
+                            className="role-switcher-option"
+                            onClick={() => handleSwitchRole(r)}
+                          >
+                            Switch to {r}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="user-role">{user?.role}</span>
+              )}
+            </div>
+            {user?.role === 'student' && (
+              <Link to="/settings/emails" className="email-settings-link">
+                Email Settings
+              </Link>
+            )}
+            <button onClick={logout} className="logout-button">
+              Sign Out
+            </button>
+          </div>
+        </header>
 
       {showVerifyBanner && (
         <div className="verify-email-banner">
@@ -590,40 +590,40 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         </aside>
 
         <main id="main-content" className="dashboard-main-full" tabIndex={-1}>
-        {headerSlot ? (
-          headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
-        ) : (
-          <div className="welcome-section">
-            {inspiration && (
-              <div className="welcome-inspiration">
-                <h2 className="inspiration-text">"{inspiration.text}"</h2>
-                {inspiration.author && (
-                  <p className="inspiration-author">— {inspiration.author}</p>
-                )}
+          {headerSlot ? (
+            headerSlot(inspiration ? { text: inspiration.text, author: inspiration.author } : null)
+          ) : (
+            <div className="welcome-section">
+              {inspiration && (
+                <div className="welcome-inspiration">
+                  <h2 className="inspiration-text">"{inspiration.text}"</h2>
+                  {inspiration.author && (
+                    <p className="inspiration-author">— {inspiration.author}</p>
+                  )}
+                </div>
+              )}
+              <div className={`welcome-fallback${inspiration ? ' has-inspiration' : ''}`}>
+                <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
+                <p>{welcomeSubtitle || "Here's your overview"}</p>
               </div>
-            )}
-            <div className={`welcome-fallback${inspiration ? ' has-inspiration' : ''}`}>
-              <h2>Welcome back, {user?.full_name?.split(' ')[0]}!</h2>
-              <p>{welcomeSubtitle || "Here's your overview"}</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {location.pathname === '/dashboard' && (
-          <div className="dashboard-date-bar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-          </div>
-        )}
+          {location.pathname === '/dashboard' && (
+            <div className="dashboard-date-bar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+          )}
 
-        {children}
-      </main>
-      </div>{/* end dashboard-body */}
+          {children}
+        </main>
+        </div>{/* end dashboard-body */}
 
       <footer className="dashboard-footer">
         <Link to="/privacy">Privacy Policy</Link>
