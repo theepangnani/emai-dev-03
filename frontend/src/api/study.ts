@@ -97,6 +97,7 @@ export interface Quiz {
   title: string;
   questions: QuizQuestion[];
   guide_type: string;
+  course_content_id: number | null;
   version: number;
   parent_guide_id: number | null;
   created_at: string;
@@ -113,6 +114,7 @@ export interface FlashcardSet {
   title: string;
   cards: Flashcard[];
   guide_type: string;
+  course_content_id: number | null;
   version: number;
   parent_guide_id: number | null;
   created_at: string;

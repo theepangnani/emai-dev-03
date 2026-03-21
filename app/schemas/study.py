@@ -111,6 +111,7 @@ class QuizResponse(BaseModel):
     title: str
     questions: list[QuizQuestion]
     guide_type: str = "quiz"
+    course_content_id: int | None = None
     version: int = 1
     parent_guide_id: int | None = None
     created_at: datetime
@@ -152,6 +153,7 @@ class FlashcardSetResponse(BaseModel):
     title: str
     cards: list[Flashcard]
     guide_type: str = "flashcards"
+    course_content_id: int | None = None
     version: int = 1
     parent_guide_id: int | None = None
     created_at: datetime
