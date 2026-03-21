@@ -43,20 +43,28 @@ _ACTION_PREFIX_RE = _re.compile(
     _re.IGNORECASE,
 )
 _POSSESSIVE_RE = _re.compile(r'\bmy\s+|\bthe\s+', _re.IGNORECASE)
+_STOP_WORDS = {"show", "find", "list", "get", "my", "me", "all", "the", "a", "an"}
 
 
 def _extract_search_term(query: str) -> str:
-    """Strip leading action verbs and possessives to get the core search term.
+    """Strip leading action verbs, possessives, and stop words to get the core search term.
 
     Examples:
-        "Find my course"   -> "course"
-        "Show me my tasks" -> "tasks"
-        "list my notes"    -> "notes"
-        "math"             -> "math"  (unchanged)
+        "Find my course"       -> "course"
+        "Show me my tasks"     -> "tasks"
+        "list my notes"        -> "notes"
+        "show me all the tasks" -> "tasks"
+        "math"                 -> "math"  (unchanged)
     """
     q = _ACTION_PREFIX_RE.sub("", query.strip())
     q = _POSSESSIVE_RE.sub("", q)
-    return q.strip() or query.strip()  # fallback to original if stripping empties it
+    q = q.strip()
+    if not q:
+        return query.strip()
+    # Strip remaining stop words
+    words = q.split()
+    filtered = [w for w in words if w.lower() not in _STOP_WORDS]
+    return " ".join(filtered) if filtered else q
 
 
 def _strip_html(text: str) -> str:
@@ -144,16 +152,32 @@ class SearchService:
         return results
 
     def _extract_person_filter(self, message: str) -> str | None:
-        """Detect 'for [name]' / 'for [name]'s' patterns and return the name, or None."""
+        """Detect child name patterns and return the name, or None.
+
+        Supported patterns:
+            "show tasks for Emma"   -> "Emma"
+            "Emma's tasks"          -> "Emma"
+            "Emmas tasks"           -> "Emma"  (without apostrophe)
+            "show Emma tasks"       -> "Emma"  (bare name before entity)
+        """
         msg = message.strip()
         # Match "for <Name>" or "for <Name>'s"
         m = re.search(r"\bfor\s+([A-Za-z]+)(?:'s)?\b", msg, re.IGNORECASE)
         if m:
             return m.group(1)
         # Match "<Name>'s tasks" / "<Name>s tasks"
-        m2 = re.search(r"\b([A-Za-z]+)'?s\s+(?:tasks?|assignments?)\b", msg, re.IGNORECASE)
+        m2 = re.search(r"\b([A-Za-z]+)'s\s+(?:tasks?|assignments?|study[\s\-]?guides?)\b", msg, re.IGNORECASE)
         if m2:
             return m2.group(1)
+        # Match "<Name> tasks" — capitalised word immediately before an entity keyword
+        # (avoids matching action words like "show", "list", etc.)
+        m3 = re.search(
+            r"\b([A-Z][a-z]+)\s+(?:tasks?|assignments?|study[\s\-]?guides?)\b", msg
+        )
+        if m3 and m3.group(1).lower() not in _STOP_WORDS and m3.group(1).lower() not in {
+            "show", "find", "list", "get", "view", "see", "my", "all", "due", "overdue",
+        }:
+            return m3.group(1)
         return None
 
     def _list_tasks_for_person(
@@ -212,6 +236,57 @@ class SearchService:
                 title=t.title,
                 description=f"Due: {due_str}" if due_str else t.description,
                 actions=[{"label": "View", "route": f"/tasks/{t.id}"}],
+            ))
+        return results
+
+    def _list_study_guides_for_person(
+        self, user_id: int, user_role: str, db: Session, person_name: str | None = None
+    ) -> list[SearchResult]:
+        """Return up to 5 study guides, optionally filtered to a named child (parent role only)."""
+        from app.models.user import User as _User
+
+        guide_q = db.query(StudyGuide).filter(StudyGuide.archived_at.is_(None))
+
+        if user_role == "parent":
+            child_user_ids = [
+                row[0] for row in db.query(Student.user_id)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .filter(parent_students.c.parent_id == user_id)
+                .all()
+            ]
+            if person_name:
+                matched_user_ids = [
+                    row[0] for row in db.query(_User.id).filter(
+                        _User.id.in_(child_user_ids),
+                        _User.full_name.ilike(f"%{person_name}%"),
+                    ).all()
+                ]
+                if matched_user_ids:
+                    guide_q = guide_q.filter(StudyGuide.user_id.in_(matched_user_ids))
+                else:
+                    return []
+            else:
+                accessible_ids = self._get_accessible_user_ids(user_id, user_role, db)
+                guide_q = guide_q.filter(StudyGuide.user_id.in_(accessible_ids))
+        else:
+            guide_q = guide_q.filter(StudyGuide.user_id == user_id)
+
+        guides = guide_q.order_by(StudyGuide.created_at.desc()).limit(5).all()
+        results = []
+        for g in guides:
+            guide_type = g.guide_type or "study_guide"
+            tab_map = {"quiz": "quiz", "flashcards": "flashcards"}
+            tab = tab_map.get(guide_type, "guide")
+            if g.course_content_id:
+                route = f"/course-materials/{g.course_content_id}?tab={tab}"
+            else:
+                route = f"/study/quiz/{g.id}" if guide_type == "quiz" else f"/study/flashcards/{g.id}" if guide_type == "flashcards" else f"/study/guide/{g.id}"
+            results.append(SearchResult(
+                entity_type="study_guide",
+                id=g.id,
+                title=g.title,
+                description=None,
+                actions=[{"label": "View", "route": route}],
             ))
         return results
 
@@ -504,6 +579,8 @@ class SearchService:
         person_name = self._extract_person_filter(query)
         if person_name and any(w in msg for w in ["task", "assignment"]):
             return self._list_tasks_for_person(user_id, user_role, db, person_name=person_name)
+        if person_name and any(w in msg for w in ["study", "guide"]):
+            return self._list_study_guides_for_person(user_id, user_role, db, person_name=person_name)
 
         preset = self.detect_preset(query)
 
