@@ -3045,6 +3045,9 @@ Dashboard panels (Tasks Overview, Recent Activity) are collapsible; simplified v
 **Implementation:**
 - Tasks Overview and Recent Activity panels have collapsible headers
 - Simplified view mode: both panels collapsed by default, expandable on demand
+- Full view mode: both panels expanded by default, collapsible on demand
+- Clicking a child tab in Simplified mode switches to Full and expands both panels
+- Panel collapsed state is controlled by ParentDashboard (parent-owned state, not internal component state)
 - Activities limited to 5 items with "View All" link
 - Child cards on My Kids page: uniform size, three-dots menu (Edit/Remove)
 - Student dashboard: collapsible panels, updated quick actions, calendar on tasks page
