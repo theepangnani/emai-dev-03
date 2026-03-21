@@ -132,6 +132,14 @@ def save_quiz_result(
     db.commit()
     db.refresh(result)
 
+    # Award XP for quiz completion (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, target_user_id, "quiz_complete")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"XP award failed (non-blocking): {e}")
+
     resp = QuizResultResponse.model_validate(result)
     resp.quiz_title = guide.title
     return resp

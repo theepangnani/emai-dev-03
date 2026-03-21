@@ -535,6 +535,13 @@ async def upload_course_content_file(
     # Extract and store resource links from text content (#1321)
     _extract_and_store_links(db, content.id, extracted_text)
 
+    # Award XP for file upload (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "upload")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
+
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
         try:

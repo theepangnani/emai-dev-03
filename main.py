@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1741,6 +1741,7 @@ app.include_router(conversation_starters.router, prefix="/api")
 app.include_router(daily_digest.router, prefix="/api")
 app.include_router(survey.router, prefix="/api")
 app.include_router(admin_survey.router, prefix="/api")
+app.include_router(xp.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")

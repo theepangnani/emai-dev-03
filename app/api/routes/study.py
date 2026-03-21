@@ -691,6 +691,13 @@ async def generate_study_guide_endpoint(
     db.commit()
     db.refresh(study_guide)
 
+    # Award XP for study guide creation (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "study_guide")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
+
     # Generate parent summary if applicable (§6.105.4)
     if body.document_type or body.study_goal:
         try:
@@ -955,6 +962,13 @@ async def generate_quiz_endpoint(
     db.commit()
     db.refresh(study_guide)
 
+    # Award XP for quiz generation (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "study_guide")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
+
     _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
     return QuizResponse(
@@ -1130,6 +1144,13 @@ async def generate_flashcards_endpoint(
 
     db.commit()
     db.refresh(study_guide)
+
+    # Award XP for flashcard generation (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "flashcard_deck")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
 
     _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
@@ -2214,6 +2235,13 @@ async def generate_from_file_upload(
 
     db.commit()
     db.refresh(study_guide)
+
+    # Award XP for file upload generation (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "upload")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
 
     _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
