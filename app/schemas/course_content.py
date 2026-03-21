@@ -145,6 +145,7 @@ class CourseContentResponse(BaseModel):
     parent_content_id: Optional[int] = None
     is_master: bool = False
     material_group_id: Optional[int] = None
+    source_type: Optional[str] = None
     document_type: Optional[str] = None
     study_goal: Optional[str] = None
     study_goal_text: Optional[str] = None

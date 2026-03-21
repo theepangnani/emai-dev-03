@@ -11,6 +11,7 @@ class SourceFileResponse(BaseModel):
     file_type: str | None = None
     file_size: int | None = None
     gcs_path: Optional[str] = None
+    source_type: Optional[str] = None
     created_at: datetime
 
     class Config:
