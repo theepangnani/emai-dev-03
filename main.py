@@ -41,6 +41,7 @@ from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa
 from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog  # noqa: F401
 from app.models.detected_event import DetectedEvent  # noqa: F401
+from app.models.translated_summary import TranslatedSummary  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

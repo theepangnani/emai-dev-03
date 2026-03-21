@@ -83,6 +83,11 @@ export const authApi = {
     return response.data;
   },
 
+  updateLanguage: async (preferred_language: string) => {
+    const response = await api.patch('/api/users/me/language', { preferred_language });
+    return response.data;
+  },
+
   checkUsername: async (username: string) => {
     const response = await api.get(`/api/auth/check-username/${encodeURIComponent(username)}`);
     return response.data as { available: boolean; valid: boolean; message: string };
