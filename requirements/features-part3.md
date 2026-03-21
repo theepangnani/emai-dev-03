@@ -3295,6 +3295,8 @@ Self-referencing FK: `parent_content_id` on `course_contents` (master has NULL, 
 
 - [ ] Uploading 3 files + pasted text → 1 master (pasted text) + 3 sub-materials
 - [ ] Uploading 3 files without pasted text → 1 master (first file) + 2 sub-materials
+- [x] User can select master document from file list during multi-file upload (#2051)
+- **Rule 3a (User-selected master):** In the upload wizard Step 2, users can click any file in the "Materials that will be created" preview to designate it as master. Default remains first file. Files are reordered before upload so the selected master is first in the array.
 - [ ] More than 10 files → validation error, upload rejected
 - [ ] Auto study guide generation at upload only triggers for master
 - [ ] Master detail page: all tabs show collapsible "Linked Materials" panel at top with sub-material links

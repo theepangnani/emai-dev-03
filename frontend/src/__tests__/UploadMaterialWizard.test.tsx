@@ -156,6 +156,8 @@ describe('UploadWizardStep2', () => {
     focusPrompt: '',
     onFocusPromptChange: vi.fn(),
     isGenerating: false,
+    masterFileIndex: 0,
+    onMasterFileIndexChange: vi.fn(),
   }
 
   beforeEach(() => {

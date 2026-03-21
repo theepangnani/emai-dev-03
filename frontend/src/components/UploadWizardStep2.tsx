@@ -26,6 +26,9 @@ interface UploadWizardStep2Props {
   studyGoal: string;
   studyGoalText: string;
   onStudyGoalChange: (goal: string, focusText?: string) => void;
+  // Master file selection (#2051)
+  masterFileIndex?: number;
+  onMasterFileIndexChange?: (index: number) => void;
 }
 
 const TOOL_CARDS: { type: StudyMaterialType; icon: string; label: string; desc: string }[] = [
@@ -69,6 +72,8 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
   studyGoal,
   studyGoalText,
   onStudyGoalChange,
+  masterFileIndex = 0,
+  onMasterFileIndexChange,
 }) => {
   const summaryText = buildSummaryText(selectedFiles, studyContent, pastedImages);
   const hasSelection = selectedTypes.size > 0;
@@ -154,20 +159,52 @@ const UploadWizardStep2: React.FC<UploadWizardStep2Props> = ({
         />
       </div>
 
-      {/* Naming preview for multi-file uploads */}
-      {selectedFiles.length >= 2 && studyTitle && (
-        <div className="upload-wizard-naming-preview">
-          <p style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.375rem' }}>
-            Materials that will be created:
-          </p>
-          <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
-            <li><strong>{studyTitle}</strong> (master)</li>
-            {Array.from({ length: selectedFiles.length }, (_, i) => (
-              <li key={i}>{studyTitle} — Part {i + 1}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Naming preview for multi-file uploads — clickable master selection (#2051) */}
+      {selectedFiles.length >= 2 && studyTitle && (() => {
+        const partNumbers = selectedFiles.map((_, i) => {
+          if (i === masterFileIndex) return 0;
+          let count = 0;
+          for (let j = 0; j < selectedFiles.length; j++) {
+            if (j === masterFileIndex) continue;
+            count++;
+            if (j === i) return count;
+          }
+          return count;
+        });
+        return (
+          <div className="upload-wizard-naming-preview">
+            <p style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.375rem' }}>
+              Materials that will be created:
+            </p>
+            <ul className="uw-master-select-list">
+              {selectedFiles.map((file, i) => {
+                const isMaster = i === masterFileIndex;
+                return (
+                  <li
+                    key={i}
+                    className={`uw-master-select-item${isMaster ? ' selected' : ''}`}
+                    onClick={() => { if (!isGenerating) onMasterFileIndexChange?.(i); }}
+                    role="radio"
+                    aria-checked={isMaster}
+                    tabIndex={0}
+                    onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isGenerating) { e.preventDefault(); onMasterFileIndexChange?.(i); } }}
+                  >
+                    <span className={`uw-master-radio${isMaster ? ' checked' : ''}`} />
+                    <span className="uw-master-select-name">
+                      {isMaster ? (
+                        <><strong>{studyTitle}</strong> <span className="uw-master-label">(master)</span></>
+                      ) : (
+                        <>{studyTitle} — Part {partNumbers[i]}</>
+                      )}
+                    </span>
+                    <span className="uw-master-select-filename">{file.name}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })()}
 
       {/* Focus prompt — visible only when at least one tool is selected */}
       {hasSelection && (

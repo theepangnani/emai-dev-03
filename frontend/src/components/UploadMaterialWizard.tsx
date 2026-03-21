@@ -79,6 +79,7 @@ export default function UploadMaterialWizard({
   const [documentType, setDocumentType] = useState('');
   const [studyGoal, setStudyGoal] = useState('');
   const [studyGoalText, setStudyGoalText] = useState('');
+  const [masterFileIndex, setMasterFileIndex] = useState(0);
   const [managedCourses, setManagedCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
   const [internalCourseId, setInternalCourseId] = useState<number | ''>(selectedCourseId ?? '');
   const [internalChildId, setInternalChildId] = useState<number | ''>('');
@@ -112,6 +113,8 @@ export default function UploadMaterialWizard({
     setError('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setInternalChildId('');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMasterFileIndex(0);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDocumentType('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -228,6 +231,12 @@ export default function UploadMaterialWizard({
       selectedFilesRef.current = next;
       return next;
     });
+    // Reset master index when files change (#2051)
+    setMasterFileIndex(prev => {
+      if (index === prev) return 0;
+      if (index < prev) return prev - 1;
+      return prev;
+    });
   };
 
   const hasNoContent = selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
@@ -255,14 +264,24 @@ export default function UploadMaterialWizard({
 
     const types = withAITools ? Array.from(selectedTypes) : [];
 
+    // Reorder files so user-selected master is first (#2051)
+    let orderedFiles = selectedFiles;
+    if (selectedFiles.length > 1 && masterFileIndex > 0) {
+      orderedFiles = [
+        selectedFiles[masterFileIndex],
+        ...selectedFiles.slice(0, masterFileIndex),
+        ...selectedFiles.slice(masterFileIndex + 1),
+      ];
+    }
+
     onGenerate({
-      title: studyTitle || (selectedFiles.length > 0 ? selectedFiles[0].name.replace(/\.[^/.]+$/, '') : 'Uploaded material'),
+      title: studyTitle || (orderedFiles.length > 0 ? orderedFiles[0].name.replace(/\.[^/.]+$/, '') : 'Uploaded material'),
       content: studyContent,
       types,
       focusPrompt: focusPrompt.trim() || undefined,
       mode: effectiveMode,
-      file: selectedFiles.length === 1 ? selectedFiles[0] : undefined,
-      files: selectedFiles.length > 0 ? selectedFiles : undefined,
+      file: orderedFiles.length === 1 ? orderedFiles[0] : undefined,
+      files: orderedFiles.length > 0 ? orderedFiles : undefined,
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
       courseId: internalCourseId || undefined,
       courseContentId: selectedMaterialId ? (selectedMaterialId as number) : undefined,
@@ -353,6 +372,8 @@ export default function UploadMaterialWizard({
               studyGoal={studyGoal}
               studyGoalText={studyGoalText}
               onStudyGoalChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
+              masterFileIndex={masterFileIndex}
+              onMasterFileIndexChange={setMasterFileIndex}
             />
           )}
 
