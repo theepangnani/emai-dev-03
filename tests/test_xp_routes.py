@@ -147,8 +147,25 @@ def test_award_brownie_points_parent(client, xp_users):
     assert data["student_user_id"] == xp_users["child_user"].id
 
 
-def test_award_brownie_points_teacher(client, xp_users):
-    """Teacher can award brownie points to any student."""
+def test_award_brownie_points_teacher(client, xp_users, db_session):
+    """Teacher can award brownie points to a linked student."""
+    from app.models.student import Student, student_teachers
+
+    # Link teacher to student
+    student = db_session.query(Student).filter(Student.user_id == xp_users["child_user"].id).first()
+    existing = db_session.query(student_teachers).filter(
+        student_teachers.c.student_id == student.id,
+        student_teachers.c.teacher_user_id == xp_users["teacher"].id,
+    ).first()
+    if not existing:
+        db_session.execute(student_teachers.insert().values(
+            student_id=student.id,
+            teacher_user_id=xp_users["teacher"].id,
+            teacher_name="XP Teacher",
+            teacher_email="xpteacher@test.com",
+        ))
+        db_session.commit()
+
     headers = _auth(client, "xpteacher@test.com")
     resp = client.post("/api/xp/award", json={
         "student_user_id": xp_users["child_user"].id,
@@ -243,3 +260,206 @@ def test_xp_feature_flag_disabled(db_session, xp_users):
         assert result is None
     finally:
         settings.xp_enabled = original
+
+
+# ---------------------------------------------------------------------------
+# Brownie points: ledger entry creation (#2005)
+# ---------------------------------------------------------------------------
+
+def test_brownie_award_creates_ledger_entry(db_session, xp_users):
+    """Award creates a ledger entry with correct fields."""
+    from app.models.xp import XpLedger
+
+    headers_parent = xp_users["parent"]  # we use service directly
+    from app.services.xp_service import XpService
+
+    result = XpService.award_brownie_points(
+        db_session,
+        student_user_id=xp_users["child_user"].id,
+        points=7,
+        awarder_id=xp_users["parent"].id,
+        reason="Test reason",
+        weekly_cap=50,
+    )
+    db_session.commit()
+
+    assert result.awarded == 7
+    assert result.student_user_id == xp_users["child_user"].id
+
+    entry = (
+        db_session.query(XpLedger)
+        .filter(
+            XpLedger.student_id == xp_users["child_user"].id,
+            XpLedger.action_type == "brownie_points",
+            XpLedger.awarder_id == xp_users["parent"].id,
+        )
+        .order_by(XpLedger.created_at.desc())
+        .first()
+    )
+    assert entry is not None
+    assert entry.xp_awarded == 7
+    assert entry.reason == "Test reason"
+
+
+# ---------------------------------------------------------------------------
+# Brownie points: weekly cap enforcement (#2005)
+# ---------------------------------------------------------------------------
+
+def test_brownie_weekly_cap_parent(client, db_session, xp_users):
+    """Parent is capped at 50 XP/week per child."""
+    from app.models.xp import XpLedger
+    from datetime import datetime, timezone
+
+    headers = _auth(client, "xpparent@test.com")
+
+    # Clean up any old brownie entries for a clean test
+    db_session.query(XpLedger).filter(
+        XpLedger.awarder_id == xp_users["parent"].id,
+        XpLedger.student_id == xp_users["child_user"].id,
+        XpLedger.action_type == "brownie_points",
+    ).delete()
+    db_session.commit()
+
+    # Award 50 XP in one shot
+    resp = client.post("/api/xp/award", json={
+        "student_user_id": xp_users["child_user"].id,
+        "points": 50,
+        "reason": "Cap test",
+    }, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["awarded"] == 50
+
+    # Next award should be rejected (cap exceeded)
+    resp2 = client.post("/api/xp/award", json={
+        "student_user_id": xp_users["child_user"].id,
+        "points": 1,
+    }, headers=headers)
+    assert resp2.status_code == 400
+    assert "cap" in resp2.json()["detail"].lower() or "reached" in resp2.json()["detail"].lower()
+
+
+def test_brownie_weekly_cap_teacher(client, db_session, xp_users):
+    """Teacher is capped at 30 XP/week per student."""
+    from app.models.xp import XpLedger
+    from app.models.student import Student, student_teachers
+
+    headers = _auth(client, "xpteacher@test.com")
+
+    # Link teacher to student
+    student = db_session.query(Student).filter(Student.user_id == xp_users["child_user"].id).first()
+    existing_link = db_session.query(student_teachers).filter(
+        student_teachers.c.student_id == student.id,
+        student_teachers.c.teacher_user_id == xp_users["teacher"].id,
+    ).first()
+    if not existing_link:
+        db_session.execute(student_teachers.insert().values(
+            student_id=student.id,
+            teacher_user_id=xp_users["teacher"].id,
+            teacher_name="XP Teacher",
+            teacher_email="xpteacher@test.com",
+        ))
+        db_session.commit()
+
+    # Clean up any old brownie entries
+    db_session.query(XpLedger).filter(
+        XpLedger.awarder_id == xp_users["teacher"].id,
+        XpLedger.student_id == xp_users["child_user"].id,
+        XpLedger.action_type == "brownie_points",
+    ).delete()
+    db_session.commit()
+
+    # Award 30 XP
+    resp = client.post("/api/xp/award", json={
+        "student_user_id": xp_users["child_user"].id,
+        "points": 30,
+        "reason": "Teacher cap test",
+    }, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["awarded"] == 30
+
+    # Next award should be rejected
+    resp2 = client.post("/api/xp/award", json={
+        "student_user_id": xp_users["child_user"].id,
+        "points": 1,
+    }, headers=headers)
+    assert resp2.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Brownie points: non-related user blocked (#2005)
+# ---------------------------------------------------------------------------
+
+def test_brownie_unlinked_teacher_blocked(client, db_session, xp_users):
+    """Teacher who is NOT linked to a student cannot award points."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    # Create an unlinked teacher
+    hashed = get_password_hash(PASSWORD)
+    unlinked = db_session.query(User).filter(User.email == "xpunlinked_teacher@test.com").first()
+    if not unlinked:
+        unlinked = User(email="xpunlinked_teacher@test.com", full_name="Unlinked Teacher",
+                        role=UserRole.TEACHER, hashed_password=hashed)
+        db_session.add(unlinked)
+        db_session.commit()
+
+    headers = _auth(client, "xpunlinked_teacher@test.com")
+    resp = client.post("/api/xp/award", json={
+        "student_user_id": xp_users["child_user"].id,
+        "points": 5,
+    }, headers=headers)
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Admin audit endpoint (#2005)
+# ---------------------------------------------------------------------------
+
+def test_admin_xp_awards_endpoint(client, db_session, xp_users):
+    """Admin can list brownie point awards."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    hashed = get_password_hash(PASSWORD)
+    admin = db_session.query(User).filter(User.email == "xpadmin@test.com").first()
+    if not admin:
+        admin = User(email="xpadmin@test.com", full_name="XP Admin",
+                     role=UserRole.ADMIN, hashed_password=hashed)
+        db_session.add(admin)
+        db_session.commit()
+
+    headers = _auth(client, "xpadmin@test.com")
+    resp = client.get("/api/admin/xp-awards", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "items" in data
+    assert "total" in data
+    assert isinstance(data["items"], list)
+
+
+def test_admin_xp_awards_filter_by_awarder(client, db_session, xp_users):
+    """Admin can filter XP awards by awarder_id."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    hashed = get_password_hash(PASSWORD)
+    admin = db_session.query(User).filter(User.email == "xpadmin@test.com").first()
+    if not admin:
+        admin = User(email="xpadmin@test.com", full_name="XP Admin",
+                     role=UserRole.ADMIN, hashed_password=hashed)
+        db_session.add(admin)
+        db_session.commit()
+
+    headers = _auth(client, "xpadmin@test.com")
+    resp = client.get(f"/api/admin/xp-awards?awarder_id={xp_users['parent'].id}", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    for item in data["items"]:
+        assert item["awarder_id"] == xp_users["parent"].id
+
+
+def test_non_admin_cannot_access_xp_awards(client, xp_users):
+    """Non-admin users cannot access the XP audit endpoint."""
+    headers = _auth(client, "xpparent@test.com")
+    resp = client.get("/api/admin/xp-awards", headers=headers)
+    assert resp.status_code == 403

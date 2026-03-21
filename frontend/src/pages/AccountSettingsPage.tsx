@@ -24,6 +24,10 @@ export function AccountSettingsPage() {
   const [interestsSaved, setInterestsSaved] = useState(false);
   const interestInputRef = useRef<HTMLInputElement>(null);
 
+  // Language preference state
+  const [selectedLanguage, setSelectedLanguage] = useState(user?.preferred_language ?? 'en');
+  const [languageSaved, setLanguageSaved] = useState(false);
+
   const isParent = user?.roles?.includes('parent') || user?.role === 'parent';
 
   const interestsMutation = useMutation({
@@ -32,6 +36,15 @@ export function AccountSettingsPage() {
       refreshUser();
       setInterestsSaved(true);
       setTimeout(() => setInterestsSaved(false), 3000);
+    },
+  });
+
+  const languageMutation = useMutation({
+    mutationFn: (lang: string) => authApi.updateLanguage(lang),
+    onSuccess: () => {
+      refreshUser();
+      setLanguageSaved(true);
+      setTimeout(() => setLanguageSaved(false), 3000);
     },
   });
 
@@ -197,6 +210,39 @@ export function AccountSettingsPage() {
             uploadLimitBytes={user?.upload_limit_bytes ?? 10485760}
           />
         </section>
+
+        {isParent && (
+          <section className="account-section">
+            <h2>Language Preference</h2>
+            <p style={{ color: '#6b7280', marginBottom: 16 }}>
+              Choose the language for parent summaries on study guides. Summaries will be automatically translated.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <select
+                className="account-language-select"
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+              >
+                <option value="en">English</option>
+                <option value="fr">French</option>
+                <option value="ta">Tamil</option>
+                <option value="zh">Mandarin (Simplified)</option>
+                <option value="pa">Punjabi</option>
+                <option value="ur">Urdu</option>
+              </select>
+              <button
+                className="account-btn account-btn-save-interests"
+                onClick={() => languageMutation.mutate(selectedLanguage)}
+                disabled={languageMutation.isPending || selectedLanguage === (user?.preferred_language ?? 'en')}
+              >
+                {languageMutation.isPending ? 'Saving...' : languageSaved ? 'Saved!' : 'Save'}
+              </button>
+            </div>
+            {languageMutation.isError && (
+              <p className="account-error" style={{ marginTop: 8 }}>Failed to save language preference.</p>
+            )}
+          </section>
+        )}
 
         {isParent && (
           <section className="account-section">

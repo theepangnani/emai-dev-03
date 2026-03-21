@@ -90,9 +90,11 @@ class HelpEmbeddingService:
         return chunks
 
     def _chunk_videos(self, entries: list[dict]) -> list[dict]:
-        """Each video = 1 chunk."""
+        """Each video = 1 chunk.  Skip placeholder entries with no URL."""
         chunks = []
         for entry in entries:
+            if not entry.get("url"):
+                continue
             text = f"Tutorial Video: {entry.get('title', '')}\n{entry.get('description', '')}"
             tags = entry.get("tags", [])
             if tags:

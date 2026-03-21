@@ -5,6 +5,7 @@ import asyncio
 import time
 from contextvars import ContextVar
 from datetime import datetime
+import httpx
 import anthropic
 from app.core.config import settings
 from app.core.logging_config import get_logger
@@ -33,11 +34,14 @@ def _calc_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 
 def get_anthropic_client() -> anthropic.Anthropic:
-    """Get configured Anthropic client."""
+    """Get configured Anthropic client with explicit timeout."""
     if not settings.anthropic_api_key:
         logger.error("Anthropic API key not configured")
         raise ValueError("ANTHROPIC_API_KEY not configured")
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return anthropic.Anthropic(
+        api_key=settings.anthropic_api_key,
+        timeout=httpx.Timeout(120.0, connect=10.0),
+    )
 
 
 def check_content_safe(text: str) -> tuple[bool, str]:
@@ -94,48 +98,73 @@ async def generate_content(
     logger.info(f"Starting AI content generation | model={settings.claude_model} | max_tokens={max_tokens}")
     logger.debug(f"Prompt length: {len(prompt)} chars")
 
-    try:
-        client = get_anthropic_client()
+    max_retries = 2
+    last_error: Exception | None = None
 
-        message = await asyncio.to_thread(
-            client.messages.create,
-            model=settings.claude_model,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-        )
+    for attempt in range(1, max_retries + 2):  # 1-indexed, up to max_retries+1 attempts
+        try:
+            client = get_anthropic_client()
 
-        duration_ms = (time.time() - start_time) * 1000
-        content = message.content[0].text
-        stop_reason = message.stop_reason
-        input_tok = message.usage.input_tokens
-        output_tok = message.usage.output_tokens
+            message = await asyncio.to_thread(
+                client.messages.create,
+                model=settings.claude_model,
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=temperature,
+            )
 
-        # Capture token usage for logging (#1650)
-        model = settings.claude_model
-        _last_ai_usage.set({
-            "prompt_tokens": input_tok,
-            "completion_tokens": output_tok,
-            "total_tokens": input_tok + output_tok,
-            "model_name": model,
-            "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
-        })
+            duration_ms = (time.time() - start_time) * 1000
+            content = message.content[0].text
+            stop_reason = message.stop_reason
+            input_tok = message.usage.input_tokens
+            output_tok = message.usage.output_tokens
 
-        logger.info(
-            f"AI generation completed | duration={duration_ms:.2f}ms | "
-            f"input_tokens={input_tok} | output_tokens={output_tok} | "
-            f"stop_reason={stop_reason}"
-        )
+            # Capture token usage for logging (#1650)
+            model = settings.claude_model
+            _last_ai_usage.set({
+                "prompt_tokens": input_tok,
+                "completion_tokens": output_tok,
+                "total_tokens": input_tok + output_tok,
+                "model_name": model,
+                "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
+            })
 
-        return content, stop_reason
+            logger.info(
+                f"AI generation completed | attempt={attempt} | duration={duration_ms:.2f}ms | "
+                f"input_tokens={input_tok} | output_tokens={output_tok} | "
+                f"stop_reason={stop_reason}"
+            )
 
-    except Exception as e:
-        duration_ms = (time.time() - start_time) * 1000
-        logger.error(f"AI generation failed | duration={duration_ms:.2f}ms | error={str(e)}")
-        raise
+            return content, stop_reason
+
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+            last_error = e
+            duration_ms = (time.time() - start_time) * 1000
+            if attempt <= max_retries:
+                backoff = 2 ** (attempt - 1)  # 1s, 2s
+                logger.warning(
+                    f"AI generation transient error (attempt {attempt}/{max_retries + 1}) | "
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e} | "
+                    f"retrying in {backoff}s"
+                )
+                await asyncio.sleep(backoff)
+            else:
+                logger.error(
+                    f"AI generation failed after {attempt} attempts | "
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}"
+                )
+                raise
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            logger.error(f"AI generation failed | duration={duration_ms:.2f}ms | error={str(e)}")
+            raise
+
+    # Should not reach here, but just in case
+    raise last_error  # type: ignore[misc]
 
 
 async def summarize_teacher_communication(

@@ -88,6 +88,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
     </svg>
   ),
+  Timeline: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  ),
   Tasks: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 11 12 14 22 4"/>
@@ -214,6 +220,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'Study', path: '/study' },
+        { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },

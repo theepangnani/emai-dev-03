@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { XpBadge } from '../../api/xp';
 
 interface BadgesShelfProps {
@@ -6,6 +7,8 @@ interface BadgesShelfProps {
 }
 
 export function BadgesShelf({ badges, maxVisible = 3 }: BadgesShelfProps) {
+  const navigate = useNavigate();
+
   if (!badges || badges.length === 0) return null;
 
   const visible = badges.slice(0, maxVisible);
@@ -23,7 +26,12 @@ export function BadgesShelf({ badges, maxVisible = 3 }: BadgesShelfProps) {
         </span>
       ))}
       {remaining > 0 && (
-        <button className="xp-badges-more" type="button" title="View all badges">
+        <button
+          className="xp-badges-more"
+          type="button"
+          title="View all badges"
+          onClick={() => navigate('/xp/badges')}
+        >
           +{remaining}
         </button>
       )}

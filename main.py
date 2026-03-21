@@ -17,7 +17,8 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, study_sessions
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -41,6 +42,8 @@ from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa
 from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog  # noqa: F401
 from app.models.detected_event import DetectedEvent  # noqa: F401
+from app.models.translated_summary import TranslatedSummary  # noqa: F401
+from app.models.study_session import StudySession  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1693,6 +1696,10 @@ with engine.connect() as conn:
 
 _is_prod = "sqlite" not in settings.database_url
 
+# Readiness flag — set to True after startup_event() completes.
+# Prevents Cloud Run from routing traffic before migrations/seeding finish (#2034).
+_app_ready = False
+
 app = FastAPI(
     title=settings.app_name,
     description="AI-powered education management platform",
@@ -1720,6 +1727,18 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         f"{traceback.format_exc()}"
     )
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+# Readiness gate — return 503 while app is still initializing (#2034).
+# Allows /health so Cloud Run startup probes can check readiness.
+@app.middleware("http")
+async def check_ready(request: Request, call_next):
+    if not _app_ready and request.url.path != "/health":
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Service starting"},
+        )
+    return await call_next(request)
 
 
 # Request logging middleware
@@ -1838,11 +1857,13 @@ app.include_router(survey.router, prefix="/api")
 app.include_router(admin_survey.router, prefix="/api")
 app.include_router(xp.router, prefix="/api")
 app.include_router(study_requests.router, prefix="/api")
+app.include_router(study_sessions.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
 app.include_router(xp.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(timeline.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1852,6 +1873,15 @@ logger.info("All routers registered")
 @app.get("/health")
 def health_check():
     logger.debug("Health check requested")
+    if not _app_ready:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "starting",
+                "version": os.environ.get("APP_VERSION", "dev"),
+                "environment": settings.environment,
+            },
+        )
     return {
         "status": "healthy",
         "version": os.environ.get("APP_VERSION", "dev"),
@@ -2097,6 +2127,11 @@ async def startup_event():
             intent_embedding_service.initialize(settings.openai_api_key)
     except Exception as e:
         logger.warning("Could not initialize intent embedding service: %s", e)
+
+    # Signal that the app is fully initialized — readiness middleware will
+    # start allowing traffic through (#2034).
+    global _app_ready
+    _app_ready = True
 
     logger.info("EMAI application started successfully")
 

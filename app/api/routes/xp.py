@@ -136,10 +136,15 @@ def award_brownie_points(
     current_user: User = Depends(require_role(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN)),
 ):
     """Parent/Teacher awards brownie points to a student."""
+    from app.models.student import student_teachers
+
     # Verify the target is a student
     target_user = db.query(User).filter(User.id == body.student_user_id).first()
     if not target_user or target_user.role != UserRole.STUDENT:
         raise HTTPException(status_code=404, detail="Student not found")
+
+    # Weekly cap differs by role
+    weekly_cap = 50  # default for parents and admins
 
     # Parents can only award to their own children
     if current_user.role == UserRole.PARENT:
@@ -157,6 +162,27 @@ def award_brownie_points(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only award points to your own children",
             )
+        weekly_cap = 50
+
+    # Teachers can only award to students linked via student_teachers
+    elif current_user.role == UserRole.TEACHER:
+        student = db.query(Student).filter(Student.user_id == body.student_user_id).first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        link = (
+            db.query(student_teachers)
+            .filter(
+                student_teachers.c.student_id == student.id,
+                student_teachers.c.teacher_user_id == current_user.id,
+            )
+            .first()
+        )
+        if not link:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only award points to your linked students",
+            )
+        weekly_cap = 30
 
     from app.services.xp_service import XpService
     result = XpService.award_brownie_points(
@@ -165,5 +191,29 @@ def award_brownie_points(
         points=body.points,
         awarder_id=current_user.id,
         reason=body.reason,
+        weekly_cap=weekly_cap,
     )
+    if result.awarded == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.message,
+        )
+    db.commit()
     return result
+
+
+@router.get("/award/remaining")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def get_brownie_remaining(
+    request: Request,
+    student_user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN)),
+):
+    """Get remaining weekly brownie points cap for a specific student."""
+    weekly_cap = 30 if current_user.role == UserRole.TEACHER else 50
+    from app.services.xp_service import XpService
+    remaining = XpService.get_weekly_brownie_remaining(
+        db, current_user.id, student_user_id, weekly_cap,
+    )
+    return {"remaining": remaining, "weekly_cap": weekly_cap}
