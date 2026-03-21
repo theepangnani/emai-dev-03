@@ -5,7 +5,7 @@ import './LinkedMaterialsPanel.css';
 export interface LinkedMaterialDisplay {
   id: number;
   title: string;
-  is_master: string;
+  is_master: boolean;
   content_type: string;
   has_file: boolean;
   original_filename: string | null;
@@ -28,8 +28,8 @@ export function LinkedMaterialsPanel({ materials, currentMaterialId, isCurrentMa
   if (loading) return null;
   if (!materials || materials.length === 0) return null;
 
-  const masterItem = materials.find(m => m.is_master === 'true');
-  const subItems = materials.filter(m => m.is_master !== 'true');
+  const masterItem = materials.find(m => m.is_master);
+  const subItems = materials.filter(m => !m.is_master);
 
   return (
     <div className="linked-materials-panel">

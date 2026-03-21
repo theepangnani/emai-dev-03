@@ -1,0 +1,268 @@
+/* ============================================
+   XP Dashboard Components
+   Streak counter, level bar, badges shelf
+   ============================================ */
+
+/* ── XP Dashboard Section ─────────────────── */
+
+.xp-dashboard-section {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 16px);
+  margin-bottom: 24px;
+}
+
+.xp-dashboard-section--loading {
+  min-height: 72px;
+  animation: xp-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes xp-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Streak Counter ───────────────────────── */
+
+.xp-streak {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.xp-streak-flame {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.xp-streak--tier-cold .xp-streak-flame {
+  --streak-color: #9ca3af;
+  filter: grayscale(0.8) opacity(0.6);
+}
+
+.xp-streak--tier-warm .xp-streak-flame {
+  --streak-color: #f97316;
+}
+
+.xp-streak--tier-hot .xp-streak-flame {
+  --streak-color: #ef4444;
+}
+
+.xp-streak--tier-blazing .xp-streak-flame {
+  --streak-color: #ef4444;
+  animation: streak-glow 2s ease-in-out infinite;
+}
+
+.xp-streak--tier-legendary .xp-streak-flame {
+  --streak-color: #eab308;
+  animation: streak-glow 2s ease-in-out infinite, streak-pulse 2s ease-in-out infinite;
+}
+
+.xp-streak-count {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes streak-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--streak-color)); }
+  50% { filter: drop-shadow(0 0 12px var(--streak-color)); }
+}
+
+@keyframes streak-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ── XP Level Bar ─────────────────────────── */
+
+.xp-level-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.xp-level-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.xp-level-title {
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xp-level-xp {
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.xp-level-progress-track {
+  height: 8px;
+  background: var(--color-surface-alt, #f3f4f6);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xp-level-progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+  min-width: 2px;
+}
+
+/* ── Today XP Widget ──────────────────────── */
+
+.xp-today {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.xp-today-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.xp-today-label {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+}
+
+.xp-today-bar-track {
+  width: 48px;
+  height: 4px;
+  background: var(--color-surface-alt, #f3f4f6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.xp-today-bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── Badges Shelf ─────────────────────────── */
+
+.xp-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.xp-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.08));
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.xp-badge-chip--locked {
+  background: var(--color-surface-alt, #f3f4f6);
+  filter: grayscale(1) opacity(0.4);
+}
+
+.xp-badges-more {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.xp-badges-more:hover {
+  text-decoration: underline;
+}
+
+/* ── Parent Child XP Info ─────────────────── */
+
+.xp-child-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+}
+
+.xp-child-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+}
+
+.xp-child-level {
+  font-weight: 500;
+}
+
+.xp-child-weekly {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ───────────────────────────── */
+
+@media (max-width: 767px) {
+  .xp-dashboard-section {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .xp-dashboard-section > .xp-streak {
+    justify-content: center;
+  }
+
+  .xp-dashboard-section > .xp-today {
+    flex-direction: row;
+    gap: 8px;
+  }
+}
+
+/* ── Reduced motion ───────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-streak-flame {
+    animation: none !important;
+  }
+
+  .xp-level-progress-fill,
+  .xp-today-bar-fill {
+    transition: none;
+  }
+}

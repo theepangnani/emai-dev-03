@@ -45,7 +45,7 @@ function makeContent(overrides: Partial<CourseContentItem> = {}): CourseContentI
     category: null,
     display_order: 0,
     parent_content_id: null,
-    is_master: 'true',
+    is_master: true,
     material_group_id: null,
     created_at: '2026-03-14T00:00:00Z',
     updated_at: null,
@@ -70,7 +70,7 @@ describe('DocumentTab — Add More Files button', () => {
   it('shows Add More Files button for master material', () => {
     render(
       <DocumentTab
-        content={makeContent({ is_master: 'true', parent_content_id: null })}
+        content={makeContent({ is_master: true, parent_content_id: null })}
         {...defaultProps}
       />
     );
@@ -80,7 +80,7 @@ describe('DocumentTab — Add More Files button', () => {
   it('shows Add More Files button for standalone material', () => {
     render(
       <DocumentTab
-        content={makeContent({ is_master: 'false', parent_content_id: null })}
+        content={makeContent({ is_master: false, parent_content_id: null })}
         {...defaultProps}
       />
     );

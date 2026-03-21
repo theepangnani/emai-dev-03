@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -34,11 +34,12 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest, ContentImage, SurveyResponse, SurveyAnswer
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest, ContentImage, SurveyResponse, SurveyAnswer, HolidayDate
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
 from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
+from app.models.xp import XpLedger, XpSummary, Badge, StreakLog  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1596,6 +1597,75 @@ with engine.connect() as conn:
                 conn.rollback()
         logger.info("Applied missing database indexes (#1961)")
 
+    # ── Batch 0: is_master String→Boolean migration (#2025) ──
+    try:
+        with engine.connect() as conn:
+            inspector_b0 = sa_inspect(engine)
+            if "course_contents" in inspector_b0.get_table_names():
+                existing_cols = {c["name"] for c in inspector_b0.get_columns("course_contents")}
+                if "is_master_bool" not in existing_cols and "is_master" in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master_bool BOOLEAN DEFAULT FALSE"))
+                        conn.execute(text(
+                            "UPDATE course_contents SET is_master_bool = CASE "
+                            "WHEN is_master = 'true' THEN TRUE ELSE FALSE END"
+                        ))
+                        conn.commit()
+                        logger.info("Added 'is_master_bool' column and migrated data (#2025)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("is_master Boolean migration failed (#2025): %s", e)
+
+    # ── Batch 0: source_type column (#2010) ──
+    try:
+        with engine.connect() as conn:
+            inspector_st = sa_inspect(engine)
+            if "course_contents" in inspector_st.get_table_names():
+                existing_cols = {c["name"] for c in inspector_st.get_columns("course_contents")}
+                if "source_type" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN source_type VARCHAR(20) DEFAULT 'local_upload'"))
+                        conn.commit()
+                        logger.info("Added 'source_type' column to course_contents (#2010)")
+                    except Exception:
+                        conn.rollback()
+            if "source_files" in inspector_st.get_table_names():
+                existing_cols = {c["name"] for c in inspector_st.get_columns("source_files")}
+                if "source_type" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE source_files ADD COLUMN source_type VARCHAR(20) DEFAULT 'local_upload'"))
+                        conn.commit()
+                        logger.info("Added 'source_type' column to source_files (#2010)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("source_type column migration failed (#2010): %s", e)
+
+    # ── Batch 0: User preferred_language & timezone columns (#2024) ──
+    try:
+        with engine.connect() as conn:
+            inspector_ul = sa_inspect(engine)
+            if "users" in inspector_ul.get_table_names():
+                existing_cols = {c["name"] for c in inspector_ul.get_columns("users")}
+                if "preferred_language" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN preferred_language VARCHAR(10) DEFAULT 'en'"))
+                        conn.commit()
+                        logger.info("Added 'preferred_language' column to users (#2024)")
+                    except Exception:
+                        conn.rollback()
+                if "timezone" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN timezone VARCHAR(50) DEFAULT 'America/Toronto'"))
+                        conn.commit()
+                        logger.info("Added 'timezone' column to users (#2024)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("User language/timezone migration failed (#2024): %s", e)
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 app = FastAPI(
@@ -1741,9 +1811,11 @@ app.include_router(conversation_starters.router, prefix="/api")
 app.include_router(daily_digest.router, prefix="/api")
 app.include_router(survey.router, prefix="/api")
 app.include_router(admin_survey.router, prefix="/api")
+app.include_router(xp.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
+app.include_router(xp.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -1942,6 +2014,41 @@ async def startup_event():
         refresh_monthly_credits,
         CronTrigger(day=1, hour=0, minute=0),
         id="wallet_monthly_refresh",
+        replace_existing=True,
+    )
+
+    # Nightly streak evaluation at 12:30 AM (#2002)
+    from app.jobs.streak_check import check_all_streaks, refresh_freeze_tokens
+    scheduler.add_job(
+        check_all_streaks,
+        CronTrigger(hour=0, minute=30),
+        id="streak_check",
+        replace_existing=True,
+    )
+
+    # Monthly freeze token refresh on 1st of month (#2003)
+    scheduler.add_job(
+        refresh_freeze_tokens,
+        CronTrigger(day=1, hour=0, minute=0),
+        id="freeze_token_refresh",
+        replace_existing=True,
+    )
+
+    # Weekly digest email — every Sunday at 7 PM UTC (#2022)
+    from app.jobs.weekly_digest import send_weekly_digests
+    scheduler.add_job(
+        send_weekly_digests,
+        CronTrigger(day_of_week="sun", hour=19, minute=0),
+        id="weekly_digest",
+        replace_existing=True,
+    )
+
+    # Daily digest email — every day at 7 AM UTC (#2023)
+    from app.jobs.daily_digest_job import send_daily_digests
+    scheduler.add_job(
+        send_daily_digests,
+        CronTrigger(hour=7, minute=0),
+        id="daily_digest",
         replace_existing=True,
     )
 

@@ -31,6 +31,7 @@ import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
+import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -788,13 +789,8 @@ export function CourseMaterialDetailPage() {
           </div>
         )}
 
-        {childGuides.length > 0 && studyGuide && (
-          <div className="cm-subguide-status ready" style={{ cursor: 'pointer' }} onClick={() => navigate(`/study/guide/${studyGuide.id}`)}>
-            <span>Sub-Guides ({childGuides.length})</span>
-            <Link to={`/study/guide/${studyGuide.id}`} className="cm-subguide-status-link">
-              View in Study Guide &rarr;
-            </Link>
-          </div>
+        {studyGuide && (
+          <SubGuidesPanel childGuides={childGuides} parentGuideId={studyGuide.id} />
         )}
 
         {/* ── Tab navigation ───────────────────────── */}
@@ -824,14 +820,14 @@ export function CourseMaterialDetailPage() {
             <LinkedMaterialsPanel
               materials={linkedMaterials}
               currentMaterialId={content.id}
-              isCurrentMaster={content.is_master === 'true'}
+              isCurrentMaster={content.is_master === true}
               loading={linkedLoading}
-              masterId={content.is_master === 'true' ? content.id : (content.parent_content_id ?? undefined)}
+              masterId={content.is_master === true ? content.id : (content.parent_content_id ?? undefined)}
               onReorder={async (materialId, direction) => {
-                const mid = content.is_master === 'true' ? content.id : content.parent_content_id;
+                const mid = content.is_master === true ? content.id : content.parent_content_id;
                 if (!mid) return;
                 // Compute new sub order by moving the materialId up or down
-                const subs = linkedMaterials.filter(m => m.is_master !== 'true');
+                const subs = linkedMaterials.filter(m => !m.is_master);
                 const subIds = subs.map(s => s.id);
                 const idx = subIds.indexOf(materialId);
                 if (idx < 0) return;
@@ -843,7 +839,7 @@ export function CourseMaterialDetailPage() {
               }}
               onDeleteSub={async (subId) => {
                 try {
-                  const masterId = linkedMaterials.find(m => m.is_master === 'true')?.id ?? content.id;
+                  const masterId = linkedMaterials.find(m => m.is_master)?.id ?? content.id;
                   await courseContentsApi.deleteSubMaterial(masterId, subId);
                   showToast('Sub-material deleted');
                   refetchLinkedMaterials();
@@ -1027,7 +1023,18 @@ export function CourseMaterialDetailPage() {
 
       {/* Contextual notes: selection tooltip + right-click context menu + FAB */}
       {selection && (
-        <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
+        <SelectionTooltip
+          rect={selection.rect}
+          visible
+          onAddToNotes={handleAddToNotes}
+          onGenerateStudyMaterial={() => {
+            if (selection) {
+              handleContextGenerate(selection.text);
+              clearSelection();
+              window.getSelection()?.removeAllRanges();
+            }
+          }}
+        />
       )}
       <TextSelectionContextMenu
         containerRef={contentAreaRef}

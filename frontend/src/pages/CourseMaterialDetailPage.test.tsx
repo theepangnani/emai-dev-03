@@ -133,6 +133,10 @@ vi.mock('../components/SelectionTooltip', () => ({
   SelectionTooltip: () => null,
 }))
 
+vi.mock('../components/SubGuidesPanel', () => ({
+  SubGuidesPanel: () => null,
+}))
+
 vi.mock('../hooks/useTextSelection', () => ({
   useTextSelection: () => ({ selectedText: '', position: null, clearSelection: vi.fn() }),
 }))

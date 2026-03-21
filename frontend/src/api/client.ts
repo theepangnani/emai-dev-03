@@ -122,6 +122,8 @@ export type {
   ResolvedStudent,
   SharedGuideStatus,
   SharedWithMeGuide,
+  StudyGuideTreeNode,
+  StudyGuideTreeResponse,
 } from './study';
 export { messagesApi } from './messages';
 export type {
@@ -198,6 +200,8 @@ export { dataExportApi } from './dataExport';
 export type { DataExportRequest as DataExportRequestItem } from './dataExport';
 export { activityApi } from './activity';
 export type { ActivityItem } from './activity';
+export { xpApi } from './xp';
+export type { XpSummary, XpBadge, XpHistoryItem, XpHistoryResponse, XpStreakResponse } from './xp';
 export { briefingApi } from './briefing';
 export type { DailyBriefingResponse, BriefingChildSection } from './briefing';
 export { parentAIApi } from './parentAI';

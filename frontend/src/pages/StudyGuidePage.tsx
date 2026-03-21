@@ -21,6 +21,8 @@ import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
+import { SubGuidesPanel } from '../components/SubGuidesPanel';
+import { StudyGuideBreadcrumb } from '../components/StudyGuideBreadcrumb';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -278,6 +280,10 @@ export function StudyGuidePage() {
         { label: 'Study Guide' },
       ]} />
 
+      {guide.parent_guide_id && guide.relationship_type === 'sub_guide' && (
+        <StudyGuideBreadcrumb guideId={guide.id} />
+      )}
+
       {/* Header card */}
       <div className="sg-detail-header">
         <div className="sg-title-row">
@@ -364,34 +370,7 @@ export function StudyGuidePage() {
         </ContentCard>
       </div>
 
-      {childGuides.length > 0 && (
-        <div className="sg-sub-guides-section">
-          <h3 className="sg-sub-guides-title">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M6 3h7a2 2 0 012 2v6a2 2 0 01-2 2H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              <path d="M10 3H3a2 2 0 00-2 2v6a2 2 0 002 2h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            </svg>
-            Sub-Guides ({childGuides.length})
-          </h3>
-          <div className="sg-sub-guides-list">
-            {childGuides.map(child => (
-              <Link key={child.id} to={child.course_content_id ? `/course-materials/${child.course_content_id}?tab=${{ quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' }[child.guide_type] || 'guide'}` : `/study/guide/${child.id}`} className="sg-sub-guide-item">
-                <span className="sg-sub-guide-type">
-                  {child.guide_type === 'study_guide' ? '\u{1F4D6}' : child.guide_type === 'quiz' ? '\u2753' : '\u{1F0CF}'}
-                </span>
-                <div className="sg-sub-guide-info">
-                  <span className="sg-sub-guide-name">{child.title}</span>
-                  <span className="sg-sub-guide-meta">
-                    {child.guide_type === 'study_guide' ? 'Study Guide' : child.guide_type === 'quiz' ? 'Quiz' : 'Flashcards'}
-                    {' \u00B7 '}
-                    {new Date(child.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.id} />
 
       <CreateTaskModal
         open={showTaskModal}
@@ -413,7 +392,18 @@ export function StudyGuidePage() {
 
       {/* Contextual notes: selection tooltip + FAB + panel */}
       {selection && (
-        <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
+        <SelectionTooltip
+          rect={selection.rect}
+          visible
+          onAddToNotes={handleAddToNotes}
+          onGenerateStudyMaterial={() => {
+            if (selection) {
+              handleGenerateSubGuide(selection.text);
+              clearSelection();
+              window.getSelection()?.removeAllRanges();
+            }
+          }}
+        />
       )}
       <TextSelectionContextMenu
         containerRef={contentRef}

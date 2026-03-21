@@ -20,6 +20,7 @@ import EmptyState from '../components/EmptyState';
 import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
+import { XpDashboardSection } from '../components/xp/XpDashboardSection';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary } from '../api/grades';
 import { GenerationSpinner } from '../components/GenerationSpinner';
@@ -539,6 +540,9 @@ export function StudentDashboard() {
           </Link>
         </div>
       </section>
+
+      {/* ── XP Progress ────────────────────────────────── */}
+      <XpDashboardSection />
 
       {/* ── Notification Alerts ──────────────────────────── */}
       {actionableNotifications.length > 0 && (

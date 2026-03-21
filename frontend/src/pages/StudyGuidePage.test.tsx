@@ -27,6 +27,7 @@ vi.mock('../api/client', () => ({
     generateChildGuide: vi.fn().mockResolvedValue({ id: 99 }),
     markViewed: vi.fn().mockResolvedValue({}),
     resolveStudent: vi.fn().mockRejectedValue(new Error('none')),
+    getGuideTree: vi.fn().mockResolvedValue({ root: { id: 7, title: 'Test', guide_type: 'study_guide', created_at: '2026-01-01T00:00:00Z', children: [] }, current_path: [7] }),
   },
   coursesApi: { list: vi.fn().mockResolvedValue([]) },
   tasksApi: { create: vi.fn() },

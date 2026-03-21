@@ -30,9 +30,11 @@ from app.schemas.admin import (
     AdminMessageCreate, AdminMessageResponse,
 )
 from app.schemas.audit import AuditLogResponse, AuditLogList
+from app.schemas.holiday import HolidayDateCreate, HolidayDateResponse
 from app.schemas.user import UserResponse
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
+from app.models.holiday import HolidayDate
 
 logger = logging.getLogger(__name__)
 
@@ -717,3 +719,53 @@ def get_storage_overview(
         "total_users": total_users,
         "avg_usage_bytes": total_used // max(user_count, 1),
     }
+
+
+# ── Holiday dates CRUD (#2024) ───────────────────────────────
+
+
+@router.get("/holidays", response_model=list[HolidayDateResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_holidays(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """List all holiday dates."""
+    return db.query(HolidayDate).order_by(HolidayDate.date).all()
+
+
+@router.post("/holidays", response_model=HolidayDateResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def create_holiday(
+    request: Request,
+    data: HolidayDateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Create a holiday date."""
+    holiday = HolidayDate(
+        date=data.date,
+        board_name=data.board_name,
+        description=data.description,
+    )
+    db.add(holiday)
+    db.commit()
+    db.refresh(holiday)
+    return holiday
+
+
+@router.delete("/holidays/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_holiday(
+    request: Request,
+    holiday_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Delete a holiday date."""
+    holiday = db.query(HolidayDate).filter(HolidayDate.id == holiday_id).first()
+    if not holiday:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Holiday not found")
+    db.delete(holiday)
+    db.commit()
