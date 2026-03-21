@@ -39,15 +39,11 @@ class XpHistoryResponse(BaseModel):
 
 class BadgeResponse(BaseModel):
     """Badge info (earned or unearned)."""
-    id: int
-    slug: str
-    name: str
-    description: str
-    icon: Optional[str] = None
+    badge_id: str
+    badge_name: str
+    badge_description: str
     earned: bool = False
-    earned_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
+    awarded_at: Optional[datetime] = None
 
 
 class StreakResponse(BaseModel):

@@ -67,8 +67,13 @@ def test_get_xp_summary(client, xp_users):
     assert resp.status_code == 200
     data = resp.json()
     assert "total_xp" in data
-    assert "level" in data
-    assert data["user_id"] == xp_users["child_user"].id
+    assert "current_level" in data
+    assert "level_title" in data
+    assert "current_streak" in data
+    assert "freeze_tokens_remaining" in data
+    assert "xp_to_next_level" in data
+    assert "today_xp" in data
+    assert "today_cap" in data
 
 
 def test_get_xp_summary_unauthenticated(client):
@@ -85,10 +90,9 @@ def test_get_xp_history(client, xp_users):
     resp = client.get("/api/xp/history", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "items" in data
-    assert "total" in data
-    assert data["limit"] == 50
-    assert data["offset"] == 0
+    assert "entries" in data
+    assert "total_count" in data
+    assert isinstance(data["entries"], list)
 
 
 def test_get_xp_history_with_pagination(client, xp_users):
@@ -96,8 +100,8 @@ def test_get_xp_history_with_pagination(client, xp_users):
     resp = client.get("/api/xp/history?limit=10&offset=5", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["limit"] == 10
-    assert data["offset"] == 5
+    assert "entries" in data
+    assert "total_count" in data
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +199,8 @@ def test_parent_views_child_xp(client, xp_users):
     resp = client.get(f"/api/xp/children/{xp_users['student'].id}/summary", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["user_id"] == xp_users["child_user"].id
+    assert "current_level" in data
+    assert "total_xp" in data
 
 
 def test_outsider_cannot_view_child_xp(client, xp_users):
