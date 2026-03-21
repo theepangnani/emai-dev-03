@@ -14,7 +14,7 @@ export interface ActivityItem {
 
 export const activityApi = {
   getRecent: async (studentId?: number, limit = 10): Promise<ActivityItem[]> => {
-    const params: Record<string, any> = { limit };
+    const params: Record<string, string | number> = { limit };
     if (studentId) params.student_id = studentId;
     const { data } = await api.get('/api/activity/recent', { params });
     return data;

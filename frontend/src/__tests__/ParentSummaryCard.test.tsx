@@ -15,7 +15,7 @@ describe('ParentSummaryCard', () => {
   })
 
   it('renders for parent role', () => {
-    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as any)
+    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as ReturnType<typeof useAuth>)
     render(<ParentSummaryCard summary="Test summary with action items" />)
     expect(screen.getByText('Parent Summary')).toBeInTheDocument()
     expect(screen.getByText('Test summary with action items')).toBeInTheDocument()
@@ -24,31 +24,31 @@ describe('ParentSummaryCard', () => {
   it('does not render for student role', () => {
     mockUseAuth.mockReturnValue({
       user: { role: 'STUDENT', roles: ['STUDENT'] },
-    } as any)
+    } as ReturnType<typeof useAuth>)
     const { container } = render(<ParentSummaryCard summary="Test summary" />)
     expect(container.firstChild).toBeNull()
   })
 
   it('does not render when summary is null', () => {
-    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as any)
+    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as ReturnType<typeof useAuth>)
     const { container } = render(<ParentSummaryCard summary={null} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('does not render when summary is empty', () => {
-    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as any)
+    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as ReturnType<typeof useAuth>)
     const { container } = render(<ParentSummaryCard summary="" />)
     expect(container.firstChild).toBeNull()
   })
 
   it('shows student name in title', () => {
-    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as any)
+    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as ReturnType<typeof useAuth>)
     render(<ParentSummaryCard summary="Test" studentName="Haashini" />)
     expect(screen.getByText(/Haashini/)).toBeInTheDocument()
   })
 
   it('toggles collapse on header click', () => {
-    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as any)
+    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as ReturnType<typeof useAuth>)
     render(<ParentSummaryCard summary="My summary text" />)
 
     expect(screen.getByText('My summary text')).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('ParentSummaryCard', () => {
   })
 
   it('starts collapsed when collapsed prop is true', () => {
-    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as any)
+    mockUseAuth.mockReturnValue({ user: { role: 'PARENT', roles: ['PARENT'] } } as ReturnType<typeof useAuth>)
     render(<ParentSummaryCard summary="Hidden text" collapsed />)
     expect(screen.queryByText('Hidden text')).not.toBeInTheDocument()
   })
@@ -71,7 +71,7 @@ describe('ParentSummaryCard', () => {
   it('renders for multi-role user with PARENT in roles array', () => {
     mockUseAuth.mockReturnValue({
       user: { role: 'TEACHER', roles: ['TEACHER', 'PARENT'] },
-    } as any)
+    } as ReturnType<typeof useAuth>)
     render(<ParentSummaryCard summary="Multi-role test" />)
     expect(screen.getByText('Multi-role test')).toBeInTheDocument()
   })

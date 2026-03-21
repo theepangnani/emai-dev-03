@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { activityApi, type ActivityItem } from '../../api/activity';
 import { CHILD_COLORS } from './useParentDashboard';
@@ -129,12 +129,14 @@ export function RecentActivityPanel({ selectedChild, navigate, viewMode }: Recen
     return true; // collapsed by default
   });
 
-  useEffect(() => {
-    if (!viewMode) return;
+  // Track viewMode changes to reset collapsed state (React-recommended render-time state update)
+  const [prevViewMode, setPrevViewMode] = useState(viewMode);
+  if (viewMode && viewMode !== prevViewMode) {
+    setPrevViewMode(viewMode);
     const next = viewMode === 'simplified';
     setInternalCollapsed(next);
     try { localStorage.setItem('pd-activity-collapsed', next ? '1' : '0'); } catch { /* ignore */ }
-  }, [viewMode]);
+  }
 
   const collapsed = internalCollapsed;
 
