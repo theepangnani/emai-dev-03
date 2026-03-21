@@ -1698,7 +1698,7 @@ _is_prod = "sqlite" not in settings.database_url
 
 # Readiness flag — set to True after startup_event() completes.
 # Prevents Cloud Run from routing traffic before migrations/seeding finish (#2034).
-_app_ready = False
+_app_ready = os.environ.get("TESTING") == "1"  # Skip readiness gate in tests
 
 app = FastAPI(
     title=settings.app_name,
@@ -1733,7 +1733,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # Allows /health so Cloud Run startup probes can check readiness.
 @app.middleware("http")
 async def check_ready(request: Request, call_next):
-    if not _app_ready and request.url.path != "/health" and "testclient" not in request.headers.get("user-agent", "").lower() and os.environ.get("TESTING") != "1":
+    if not _app_ready and request.url.path != "/health":
         return JSONResponse(
             status_code=503,
             content={"detail": "Service starting"},
