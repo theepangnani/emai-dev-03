@@ -3422,16 +3422,21 @@ Generate **child study guides** (study guides, quizzes, flashcards) from selecte
 - **Migration:** `ALTER TABLE study_guides ADD COLUMN relationship_type ...` and `generation_context` in `main.py`
 - Existing version chain behavior unchanged (defaults to `relationship_type = 'version'`)
 
-#### 6.100.4 Sub-Guide Navigation (v1 — Minimal)
+#### 6.100.4 Sub-Guide Navigation & Display
 
-- **Child guide page:** "Generated from: [Parent Title]" link at top for back-navigation
-- **Parent guide page:** children count in response (defer collapsible section to v2)
+- **Child guide page:** "Generated from: [Parent Title]" breadcrumb link at top for back-navigation
+- **Sub-Guide badge:** When viewing a sub-guide on StudyGuidePage, display a green "Sub-Guide" badge pill next to the title to clearly distinguish it from parent guides
+- **Parent guide page:** "Sub-Guides (N)" expandable section showing all child guides with links
+- **Course material detail page:**
+  - "Sub-Guides (N)" banner links to the parent study guide page
+  - `findRootGuide()` helper ensures the root/parent guide is always displayed in the study guide tab, preventing sub-guides from replacing the parent on reload
+  - Ephemeral "Sub-guide ready!" notification auto-dismisses after 3 seconds when the persistent "Sub-Guides" banner is visible (prevents duplicate banners)
+- **Class materials list page:** "Has Sub-Guides" badge shown on material cards that have associated sub-guides
 
 #### Deferred to v2
 
 - SelectionTooltip redesign (add generate button alongside "Add to Notes")
-- Breadcrumb navigation for multi-level hierarchies
-- "Sub-Guides" collapsible section on parent guide page
+- Breadcrumb navigation for multi-level hierarchies (3+ levels deep)
 - Full tree hierarchy endpoint (`/tree`)
 
 #### Acceptance Criteria
@@ -3440,9 +3445,9 @@ Generate **child study guides** (study guides, quizzes, flashcards) from selecte
 - [ ] Type selection modal opens with Study Guide / Quiz / Flashcards cards
 - [ ] Selected text displayed as context preview in modal
 - [ ] Can generate a child study guide from selected text
-- [ ] Child guide's `parent_guide_id` set to source guide, `relationship_type = 'sub_guide'`
-- [ ] Child guide page shows "Generated from: [Parent Title]" link
-- [ ] `GET /guides/{id}/children` returns sub-guides
+- [x] Child guide's `parent_guide_id` set to source guide, `relationship_type = 'sub_guide'`
+- [x] Child guide page shows "Generated from: [Parent Title]" link
+- [x] `GET /guides/{id}/children` returns sub-guides
 - [ ] Existing version chain behavior unchanged (`relationship_type = 'version'`)
 - [ ] DB migration adds `relationship_type` and `generation_context` columns
 - [ ] AI uses parent content as context (truncated intelligently)
@@ -3450,10 +3455,15 @@ Generate **child study guides** (study guides, quizzes, flashcards) from selecte
 - [ ] Backend tests cover generate-child and list-children endpoints
 - [ ] Frontend tests cover context menu, modal, and navigation
 - [ ] Build and lint pass
+- [x] Sub-guide badge displayed on StudyGuidePage title when viewing a sub-guide
+- [x] Root guide preferred over sub-guide when displaying study guide tab on CourseMaterialDetailPage
+- [x] "Has Sub-Guides" badge shown on class materials list for materials with sub-guides
+- [x] Duplicate sub-guide banners prevented (ephemeral notification auto-dismissed)
+- [x] Sub-guide detection handles null `relationship_type` correctly
 
 **GitHub:** #1594
 
-**Status:** PLANNED
+**Status:** IMPLEMENTED (v1 navigation complete; v2 items deferred)
 
 ### 6.95 User Cloud Storage Destination (Phase 2) - PLANNED
 
