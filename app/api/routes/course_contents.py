@@ -398,6 +398,27 @@ def _run_ai_generation_background(
                 )
                 db.add(guide)
 
+            # Flush to get guide ID, then create tasks from dates
+            db.flush()
+
+            from app.api.routes.study import parse_critical_dates, scan_content_for_dates, auto_create_tasks_from_dates
+
+            clean_content, critical_dates = parse_critical_dates(raw_content)
+            guide.content = clean_content
+
+            if not critical_dates:
+                critical_dates = scan_content_for_dates(text_content, title)
+
+            if not critical_dates:
+                from datetime import date as _date
+                critical_dates = [{
+                    "date": _date.today().isoformat(),
+                    "title": f"Review: {title}",
+                    "priority": "medium",
+                }]
+
+            auto_create_tasks_from_dates(db, critical_dates, _user, guide.id, course_id, content_id)
+
             # Increment AI usage after successful generation
             user = db.query(User).filter(User.id == user_id).first()
             if user:
