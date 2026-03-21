@@ -9,6 +9,7 @@ import { analyticsApi } from '../api/analytics';
 import type { GradeSummary, TrendPoint, GradeItem, CourseAverage } from '../api/analytics';
 import { parentApi } from '../api/parent';
 import type { ChildSummary } from '../api/parent';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import './AnalyticsPage.css';
 
@@ -184,21 +185,26 @@ export function AnalyticsPage() {
 
   if (loading) {
     return (
+      <DashboardLayout>
       <div className="analytics-page">
         <div className="analytics-loading">Loading analytics...</div>
       </div>
+      </DashboardLayout>
     );
   }
 
   if (error) {
     return (
+      <DashboardLayout>
       <div className="analytics-page">
         <div className="analytics-error">{error}</div>
       </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="analytics-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
@@ -369,5 +375,6 @@ export function AnalyticsPage() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

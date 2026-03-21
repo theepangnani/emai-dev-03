@@ -1,8 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import type { VideoInfo, SearchResult } from './useHelpChat';
 import { SearchResultCards } from './SearchResultCard';
+
+const AI_UNCERTAINTY_PHRASES = [
+  "i'm not sure",
+  "i don't know",
+  "could you clarify",
+  "not clear",
+  "doesn't appear",
+  "cannot find",
+  "i don't have",
+  "unclear",
+  "i'm unable to",
+  "i cannot determine",
+  "not enough information",
+  "i'm not certain",
+];
+
+function hasUncertainty(text: string): boolean {
+  const lower = text.toLowerCase();
+  return AI_UNCERTAINTY_PHRASES.some(phrase => lower.includes(phrase));
+}
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -72,12 +92,13 @@ function FeedbackButtons() {
 }
 
 function QASaveActions({
-  content, onSaveAsGuide, onSaveAsMaterial, hasCourseId,
+  content, onSaveAsGuide, onSaveAsMaterial, hasCourseId, isUncertain,
 }: {
   content: string;
   onSaveAsGuide?: (content: string) => Promise<unknown>;
   onSaveAsMaterial?: (content: string) => Promise<unknown>;
   hasCourseId?: boolean;
+  isUncertain?: boolean;
 }) {
   const [saving, setSaving] = useState<'guide' | 'material' | null>(null);
   const [saved, setSaved] = useState<'guide' | 'material' | null>(null);
@@ -97,6 +118,14 @@ function QASaveActions({
       setSaving(null);
     }
   };
+
+  if (isUncertain) {
+    return (
+      <div className="help-chatbot-qa-actions">
+        <span className="help-chatbot-qa-uncertain">This response may be uncertain and cannot be saved as a guide.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="help-chatbot-qa-actions">
@@ -125,6 +154,7 @@ export function ChatMessage({
   mode, credits_used, onSaveAsGuide, onSaveAsMaterial, hasCourseId,
 }: ChatMessageProps) {
   const navigate = useNavigate();
+  const isUncertain = useMemo(() => role === 'assistant' && hasUncertainty(content), [role, content]);
 
   return (
     <div className={`help-chatbot-message help-chatbot-message--${role}`}>
@@ -183,6 +213,7 @@ export function ChatMessage({
             onSaveAsGuide={onSaveAsGuide}
             onSaveAsMaterial={onSaveAsMaterial}
             hasCourseId={hasCourseId}
+            isUncertain={isUncertain}
           />
         )}
 

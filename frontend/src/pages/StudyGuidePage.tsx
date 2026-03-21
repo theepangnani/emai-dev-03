@@ -184,12 +184,16 @@ export function StudyGuidePage() {
   }, [guide?.parent_guide_id, guide?.relationship_type]);
 
   // Fetch child guides (sub-guides) for this guide (#1594)
+  // If this guide is itself a sub-guide, fetch siblings from the parent (#2095)
   useEffect(() => {
     if (!guide) return;
-    studyApi.listChildGuides(guide.id)
+    const fetchId = guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide')
+      ? guide.parent_guide_id
+      : guide.id;
+    studyApi.listChildGuides(fetchId)
       .then(setChildGuides)
       .catch(() => setChildGuides([]));
-  }, [guide?.id]);
+  }, [guide?.id, guide?.parent_guide_id, guide?.relationship_type]);
 
   // Resolve child student for parent role
   useEffect(() => {
@@ -285,7 +289,9 @@ export function StudyGuidePage() {
         ...(guide?.course_content_id
           ? [{ label: guide.title.replace(/^Study Guide:\s*/i, ''), to: `/course-materials/${guide.course_content_id}?tab=guide` }]
           : []),
-        { label: 'Study Guide' },
+        { label: guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide')
+          ? guide.title.replace(/^Study Guide:\s*/i, '')
+          : 'Study Guide' },
       ]} />
 
       {guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide') && (
@@ -310,6 +316,11 @@ export function StudyGuidePage() {
         </div>
         <div className="sg-meta-row">
           <span className="sg-type-badge">{guideTypeLabel}</span>
+          {guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide') && guide.generation_context && (
+            <span className="sg-topic-badge" title={guide.generation_context}>
+              {guide.generation_context.length > 60 ? guide.generation_context.slice(0, 57) + '...' : guide.generation_context}
+            </span>
+          )}
           {guide.version > 1 && <span className="sg-version-badge">v{guide.version}</span>}
           <span className="sg-date">{new Date(guide.created_at).toLocaleDateString()}</span>
           {childGuides.length > 0 && (
@@ -383,7 +394,7 @@ export function StudyGuidePage() {
         </ContentCard>
       </div>
 
-      <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.id} />
+      <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.parent_guide_id || guide.id} currentGuideId={guide.parent_guide_id ? guide.id : undefined} />
 
       <CreateTaskModal
         open={showTaskModal}

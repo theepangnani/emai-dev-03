@@ -76,6 +76,21 @@
   font-weight: 600;
 }
 
+.sg-topic-badge {
+  display: inline-block;
+  background: #e0f7f0;
+  color: #1a7a5a;
+  padding: 0.15rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-style: italic;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sg-date {
   color: var(--color-ink-muted);
   font-size: 0.8rem;
@@ -428,8 +443,12 @@
     padding-top: 8px;
   }
   .sg-type-badge,
-  .sg-version-badge {
+  .sg-version-badge,
+  .sg-topic-badge {
     font-size: 0.65rem;
+  }
+  .sg-topic-badge {
+    max-width: 180px;
   }
   .sg-icon-actions {
     gap: 4px;

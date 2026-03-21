@@ -7,14 +7,9 @@ interface SubGuidesPanelProps {
   childGuides: StudyGuide[];
   /** Parent guide ID — reserved for future use */
   parentGuideId?: number;
+  /** Currently viewed guide ID — highlights current item in sibling list (#2095) */
+  currentGuideId?: number;
 }
-
-const GUIDE_TYPE_TAB_MAP: Record<string, string> = {
-  study_guide: 'guide',
-  quiz: 'quiz',
-  flashcards: 'flashcards',
-  mind_map: 'mindmap',
-};
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
   study_guide: 'Study Guide',
@@ -61,7 +56,7 @@ function GuideTypeIcon({ guideType }: { guideType: string }) {
   );
 }
 
-export function SubGuidesPanel({ childGuides }: SubGuidesPanelProps) {
+export function SubGuidesPanel({ childGuides, currentGuideId }: SubGuidesPanelProps) {
   const [collapsed, setCollapsed] = useState(childGuides.length === 0);
 
   if (childGuides.length === 0) {
@@ -97,12 +92,10 @@ export function SubGuidesPanel({ childGuides }: SubGuidesPanelProps) {
       {!collapsed && (
         <div className="subguides-panel-list" data-testid="sub-guides-list">
           {childGuides.map(child => {
-            const targetUrl = child.course_content_id
-              ? `/course-materials/${child.course_content_id}?tab=${GUIDE_TYPE_TAB_MAP[child.guide_type] || 'guide'}`
-              : `/study/guide/${child.id}`;
+            const targetUrl = `/study/guide/${child.id}`;
 
             return (
-              <div key={child.id} className="subguides-panel-item" data-testid={`sub-guide-item-${child.id}`}>
+              <div key={child.id} className={`subguides-panel-item${currentGuideId === child.id ? ' current' : ''}`} data-testid={`sub-guide-item-${child.id}`}>
                 <span className="subguides-panel-item-icon">
                   <GuideTypeIcon guideType={child.guide_type} />
                 </span>
@@ -114,9 +107,13 @@ export function SubGuidesPanel({ childGuides }: SubGuidesPanelProps) {
                     {new Date(child.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <Link to={targetUrl} className="subguides-panel-view-btn">
-                  View
-                </Link>
+                {currentGuideId === child.id ? (
+                  <span className="subguides-panel-current-label">Current</span>
+                ) : (
+                  <Link to={targetUrl} state={{ fromMaterial: true }} className="subguides-panel-view-btn">
+                    View
+                  </Link>
+                )}
               </div>
             );
           })}

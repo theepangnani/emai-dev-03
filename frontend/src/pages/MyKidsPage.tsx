@@ -899,8 +899,8 @@ export function MyKidsPage() {
           {/* ── Quick Actions ──────────────────────── */}
           <div className="dash-quick-actions" style={{ marginBottom: 16 }}>
             <button className="dash-quick-action" onClick={() => navigate('/study')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128228;</span>
-              <span>Upload Material</span>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#128214;</span>
+              <span>Study</span>
             </button>
             <button className="dash-quick-action" onClick={() => navigate(selectedChild ? `/tasks?student_id=${selectedChild}` : '/tasks')}>
               <span className="dash-quick-action-icon" aria-hidden="true">&#9989;</span>
