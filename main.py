@@ -1693,6 +1693,10 @@ with engine.connect() as conn:
 
 _is_prod = "sqlite" not in settings.database_url
 
+# Readiness flag — set to True after startup_event() completes.
+# Prevents Cloud Run from routing traffic before migrations/seeding finish (#2034).
+_app_ready = False
+
 app = FastAPI(
     title=settings.app_name,
     description="AI-powered education management platform",
@@ -1720,6 +1724,18 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         f"{traceback.format_exc()}"
     )
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+# Readiness gate — return 503 while app is still initializing (#2034).
+# Allows /health so Cloud Run startup probes can check readiness.
+@app.middleware("http")
+async def check_ready(request: Request, call_next):
+    if not _app_ready and request.url.path != "/health":
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Service starting"},
+        )
+    return await call_next(request)
 
 
 # Request logging middleware
@@ -1852,6 +1868,15 @@ logger.info("All routers registered")
 @app.get("/health")
 def health_check():
     logger.debug("Health check requested")
+    if not _app_ready:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "starting",
+                "version": os.environ.get("APP_VERSION", "dev"),
+                "environment": settings.environment,
+            },
+        )
     return {
         "status": "healthy",
         "version": os.environ.get("APP_VERSION", "dev"),
@@ -2097,6 +2122,11 @@ async def startup_event():
             intent_embedding_service.initialize(settings.openai_api_key)
     except Exception as e:
         logger.warning("Could not initialize intent embedding service: %s", e)
+
+    # Signal that the app is fully initialized — readiness middleware will
+    # start allowing traffic through (#2034).
+    global _app_ready
+    _app_ready = True
 
     logger.info("EMAI application started successfully")
 
