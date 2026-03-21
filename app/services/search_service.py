@@ -161,9 +161,15 @@ class SearchService:
             "show Emma tasks"       -> "Emma"  (bare name before entity)
         """
         msg = message.strip()
+        # Words that should never be treated as a person name
+        _entity_words = {
+            "task", "tasks", "course", "courses", "assignment", "assignments",
+            "note", "notes", "material", "materials", "content",
+            "study", "guide", "guides", "file", "files", "something",
+        }
         # Match "for <Name>" or "for <Name>'s"
         m = re.search(r"\bfor\s+([A-Za-z]+)(?:'s)?\b", msg, re.IGNORECASE)
-        if m:
+        if m and m.group(1).lower() not in _entity_words and m.group(1).lower() not in _STOP_WORDS:
             return m.group(1)
         # Match "<Name>'s tasks" / "<Name>s tasks"
         m2 = re.search(r"\b([A-Za-z]+)'s\s+(?:tasks?|assignments?|study[\s\-]?guides?)\b", msg, re.IGNORECASE)
