@@ -132,6 +132,7 @@ export function RecentActivityPanel({ selectedChild, navigate, viewMode }: Recen
   useEffect(() => {
     if (!viewMode) return;
     const next = viewMode === 'simplified';
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- viewMode change must sync collapsed state
     setInternalCollapsed(next);
     try { localStorage.setItem('pd-activity-collapsed', next ? '1' : '0'); } catch { /* ignore */ }
   }, [viewMode]);

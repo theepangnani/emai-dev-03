@@ -13,7 +13,7 @@ import './App.css';
 // Retry lazy imports to handle stale chunks after deployment.
 // If a chunk 404s (old hash), reload the page once to get fresh HTML,
 // then retry the import. The sessionStorage flag prevents infinite reloads.
-function lazyRetry<T extends ComponentType<any>>(
+function lazyRetry<T extends ComponentType<Record<string, unknown>>>(
   importFn: () => Promise<{ default: T }>,
 ): React.LazyExoticComponent<T> {
   return lazy(() =>
