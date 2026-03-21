@@ -176,6 +176,9 @@ export function CourseMaterialDetailPage() {
 
   const [content, setContent] = useState<CourseContentItem | null>(null);
   const [guides, setGuides] = useState<StudyGuide[]>([]);
+  /** Find the root (non-sub) guide of a given type, falling back to any guide of that type. */
+  const findRootGuide = (type: string) =>
+    guides.find(g => g.guide_type === type && !g.parent_guide_id) || guides.find(g => g.guide_type === type);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
@@ -319,7 +322,7 @@ export function CourseMaterialDetailPage() {
   const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {
     if (!content) return;
     // Find the current study guide to use as parent for sub-guide generation
-    const parentGuide = guides.find(g => g.guide_type === 'study_guide');
+    const parentGuide = findRootGuide('study_guide');
     if (parentGuide) {
       // Close modal immediately, fire API in background
       setShowGenerateModal(false);
@@ -393,10 +396,10 @@ export function CourseMaterialDetailPage() {
   // Pre-populate focus prompts from saved history on first load
   useEffect(() => {
     if (guides.length === 0) return;
-    const sg = guides.find(g => g.guide_type === 'study_guide');
-    const qz = guides.find(g => g.guide_type === 'quiz');
-    const fc = guides.find(g => g.guide_type === 'flashcards');
-    const mm = guides.find(g => g.guide_type === 'mind_map');
+    const sg = findRootGuide('study_guide');
+    const qz = findRootGuide('quiz');
+    const fc = findRootGuide('flashcards');
+    const mm = findRootGuide('mind_map');
     if (sg?.focus_prompt) setGuideFocusPrompt(prev => prev || sg.focus_prompt!);
     if (qz?.focus_prompt) setQuizFocusPrompt(prev => prev || qz.focus_prompt!);
     if (fc?.focus_prompt) setFlashcardsFocusPrompt(prev => prev || fc.focus_prompt!);
@@ -426,10 +429,10 @@ export function CourseMaterialDetailPage() {
     }).catch(() => {});
   }, [isParent, contentId]);
 
-  const studyGuide = guides.find(g => g.guide_type === 'study_guide');
-  const quiz = guides.find(g => g.guide_type === 'quiz');
-  const flashcardSet = guides.find(g => g.guide_type === 'flashcards');
-  const mindMapGuide = guides.find(g => g.guide_type === 'mind_map');
+  const studyGuide = findRootGuide('study_guide');
+  const quiz = findRootGuide('quiz');
+  const flashcardSet = findRootGuide('flashcards');
+  const mindMapGuide = findRootGuide('mind_map');
 
   // Fetch child guides for the study guide (#1838)
   useEffect(() => {
