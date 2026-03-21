@@ -26,7 +26,7 @@ import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import type { StudyFormat } from '../components/study/FormatSelector';
 import { NotesPanel } from '../components/NotesPanel';
-import { useRegisterNotesFAB } from '../context/FABContext';
+import { useRegisterNotesFAB, useFABContext } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
@@ -447,6 +447,17 @@ export function CourseMaterialDetailPage() {
       return () => clearTimeout(timer);
     }
   }, [childGuides.length, subGuideStatus?.ready]);
+
+  // §6.114 — Register study guide context for chatbot Q&A mode
+  const { setStudyGuideContext } = useFABContext();
+  useEffect(() => {
+    if (studyGuide) {
+      setStudyGuideContext({ id: studyGuide.id, title: studyGuide.title, courseId: studyGuide.course_id ?? undefined });
+    } else {
+      setStudyGuideContext(null);
+    }
+    return () => setStudyGuideContext(null);
+  }, [studyGuide?.id, studyGuide?.title, studyGuide?.course_id, setStudyGuideContext]);
 
   const hasSourceContent = !!(content?.text_content || content?.description);
 

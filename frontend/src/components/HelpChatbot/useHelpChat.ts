@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import type { StudyGuideContext } from '../../context/FABContext';
 
-const CHAT_STORAGE_KEY = 'classbridge-help-messages';
+const HELP_STORAGE_KEY = 'classbridge-help-messages';
 
 export interface VideoInfo {
   title: string;
@@ -29,13 +30,22 @@ export interface ChatMessage {
   sources?: string[];
   search_results?: SearchResult[];
   intent?: string;
+  mode?: 'help' | 'study_qa';
+  credits_used?: number;
   timestamp: Date;
 }
 
-export function useHelpChat() {
+function getStorageKey(ctx?: StudyGuideContext | null): string {
+  return ctx ? `classbridge-study-qa-${ctx.id}` : HELP_STORAGE_KEY;
+}
+
+export function useHelpChat(studyGuideContext?: StudyGuideContext | null) {
+  const storageKey = getStorageKey(studyGuideContext);
+  const prevKeyRef = useRef(storageKey);
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
-      const stored = sessionStorage.getItem(CHAT_STORAGE_KEY);
+      const stored = sessionStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         return parsed.map((m: ChatMessage) => ({ ...m, timestamp: new Date(m.timestamp) }));
@@ -43,11 +53,30 @@ export function useHelpChat() {
     } catch { /* ignore */ }
     return [];
   });
+
+  // When storage key changes (different guide or switching modes), reload messages
+  useEffect(() => {
+    if (prevKeyRef.current !== storageKey) {
+      prevKeyRef.current = storageKey;
+      try {
+        const stored = sessionStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setMessages(parsed.map((m: ChatMessage) => ({ ...m, timestamp: new Date(m.timestamp) })));
+        } else {
+          setMessages([]);
+        }
+      } catch {
+        setMessages([]);
+      }
+    }
+  }, [storageKey]);
+
   useEffect(() => {
     try {
-      sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+      sessionStorage.setItem(storageKey, JSON.stringify(messages));
     } catch { /* ignore */ }
-  }, [messages]);
+  }, [messages, storageKey]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +93,6 @@ export function useHelpChat() {
     setError(null);
 
     const assistantId = `assistant-${Date.now()}`;
-    // Add empty assistant placeholder immediately
     setMessages(prev => [...prev, {
       id: assistantId,
       role: 'assistant' as const,
@@ -78,7 +106,6 @@ export function useHelpChat() {
         .map(m => ({ role: m.role, content: m.content }));
 
       const token = localStorage.getItem('token') || '';
-
       const apiBase = import.meta.env.VITE_API_URL ?? '';
       const response = await fetch(`${apiBase}/api/help/chat/stream`, {
         method: 'POST',
@@ -90,6 +117,7 @@ export function useHelpChat() {
           message: text,
           conversation: recentMessages,
           page_context: '',
+          study_guide_id: studyGuideContext?.id ?? null,
         }),
       });
 
@@ -127,7 +155,13 @@ export function useHelpChat() {
             } else if (data.type === 'done') {
               setMessages(prev => prev.map(m =>
                 m.id === assistantId
-                  ? { ...m, sources: data.sources, videos: data.videos }
+                  ? {
+                      ...m,
+                      sources: data.sources,
+                      videos: data.videos,
+                      mode: data.mode || 'help',
+                      credits_used: data.credits_used,
+                    }
                   : m
               ));
             } else if (data.type === 'error') {
@@ -140,8 +174,8 @@ export function useHelpChat() {
       }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      const message = (err as Error)?.message ?? '';
-      const httpStatus = status ?? (message.startsWith('HTTP ') ? parseInt(message.slice(5), 10) : undefined);
+      const errMessage = (err as Error)?.message ?? '';
+      const httpStatus = status ?? (errMessage.startsWith('HTTP ') ? parseInt(errMessage.slice(5), 10) : undefined);
       if (httpStatus === 429) {
         setError('You\u2019ve reached the request limit. Please wait a few minutes and try again.');
       } else if (httpStatus === 401 || httpStatus === 403) {
@@ -149,17 +183,52 @@ export function useHelpChat() {
       } else {
         setError('Could not reach the help service. Please try again, or visit the Help page at /help.');
       }
-      // Remove the empty assistant placeholder on error
       setMessages(prev => prev.filter(m => m.id !== assistantId));
     } finally {
       setIsLoading(false);
     }
-  }, [messages]);
+  }, [messages, studyGuideContext?.id]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-    try { sessionStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* ignore */ }
-  }, []);
+    try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
+  }, [storageKey]);
 
-  return { messages, sendMessage, isLoading, error, clearMessages };
+  const saveAsGuide = useCallback(async (content: string, title?: string) => {
+    if (!studyGuideContext) return null;
+    const token = localStorage.getItem('token') || '';
+    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    const res = await fetch(`${apiBase}/api/study/guides/${studyGuideContext.id}/qa/save-as-guide`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ content, title: title || '' }),
+    });
+    if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+    return res.json();
+  }, [studyGuideContext]);
+
+  const saveAsMaterial = useCallback(async (content: string, title?: string) => {
+    if (!studyGuideContext) return null;
+    const token = localStorage.getItem('token') || '';
+    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    const res = await fetch(`${apiBase}/api/study/guides/${studyGuideContext.id}/qa/save-as-material`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ content, title: title || '' }),
+    });
+    if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+    return res.json();
+  }, [studyGuideContext]);
+
+  return {
+    messages, sendMessage, isLoading, error, clearMessages,
+    saveAsGuide, saveAsMaterial,
+    isStudyMode: !!studyGuideContext,
+  };
 }

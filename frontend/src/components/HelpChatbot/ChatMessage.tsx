@@ -10,10 +10,14 @@ interface ChatMessageProps {
   videos?: VideoInfo[];
   sources?: string[];
   search_results?: SearchResult[];
+  mode?: 'help' | 'study_qa';
+  credits_used?: number;
+  onSaveAsGuide?: (content: string) => Promise<unknown>;
+  onSaveAsMaterial?: (content: string) => Promise<unknown>;
+  hasCourseId?: boolean;
 }
 
 function VideoEmbed({ video }: { video: VideoInfo }) {
-  // Extract YouTube video ID for embedding
   const getYouTubeId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([^&?#]+)/);
     return match?.[1];
@@ -67,7 +71,59 @@ function FeedbackButtons() {
   );
 }
 
-export function ChatMessage({ role, content, videos, sources, search_results }: ChatMessageProps) {
+function QASaveActions({
+  content, onSaveAsGuide, onSaveAsMaterial, hasCourseId,
+}: {
+  content: string;
+  onSaveAsGuide?: (content: string) => Promise<unknown>;
+  onSaveAsMaterial?: (content: string) => Promise<unknown>;
+  hasCourseId?: boolean;
+}) {
+  const [saving, setSaving] = useState<'guide' | 'material' | null>(null);
+  const [saved, setSaved] = useState<'guide' | 'material' | null>(null);
+
+  const handleSave = async (type: 'guide' | 'material') => {
+    setSaving(type);
+    try {
+      if (type === 'guide' && onSaveAsGuide) {
+        await onSaveAsGuide(content);
+      } else if (type === 'material' && onSaveAsMaterial) {
+        await onSaveAsMaterial(content);
+      }
+      setSaved(type);
+    } catch {
+      /* error handled by caller */
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div className="help-chatbot-qa-actions">
+      <button
+        className={`help-chatbot-qa-action ${saved === 'guide' ? 'help-chatbot-qa-action--saved' : ''}`}
+        onClick={() => handleSave('guide')}
+        disabled={saving !== null || saved === 'guide'}
+      >
+        {saved === 'guide' ? 'Saved as Guide' : saving === 'guide' ? 'Saving...' : 'Save as Study Guide'}
+      </button>
+      {hasCourseId && (
+        <button
+          className={`help-chatbot-qa-action ${saved === 'material' ? 'help-chatbot-qa-action--saved' : ''}`}
+          onClick={() => handleSave('material')}
+          disabled={saving !== null || saved === 'material'}
+        >
+          {saved === 'material' ? 'Saved as Material' : saving === 'material' ? 'Saving...' : 'Save as Class Material'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ChatMessage({
+  role, content, videos, sources, search_results,
+  mode, credits_used, onSaveAsGuide, onSaveAsMaterial, hasCourseId,
+}: ChatMessageProps) {
   const navigate = useNavigate();
 
   return (
@@ -121,7 +177,20 @@ export function ChatMessage({ role, content, videos, sources, search_results }: 
           <SearchResultCards results={search_results} />
         )}
 
-        {role === 'assistant' && <FeedbackButtons />}
+        {role === 'assistant' && mode === 'study_qa' && content && (
+          <QASaveActions
+            content={content}
+            onSaveAsGuide={onSaveAsGuide}
+            onSaveAsMaterial={onSaveAsMaterial}
+            hasCourseId={hasCourseId}
+          />
+        )}
+
+        {role === 'assistant' && mode !== 'study_qa' && <FeedbackButtons />}
+
+        {credits_used != null && credits_used > 0 && (
+          <div className="help-chatbot-credits-badge">{credits_used} credit used</div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 interface SuggestionChipsProps {
   onChipClick: (text: string) => void;
   currentPage?: string;
+  isStudyMode?: boolean;
 }
 
 const DEFAULT_CHIPS = [
@@ -23,8 +24,18 @@ const PAGE_CHIPS: Record<string, string[]> = {
   '/help': ['What can this chatbot do?', 'Getting Started', 'How do I use Google Classroom?', 'What are AI Study Tools?'],
 };
 
-export function SuggestionChips({ onChipClick, currentPage }: SuggestionChipsProps) {
-  const chips = (currentPage && PAGE_CHIPS[currentPage]) || DEFAULT_CHIPS;
+const STUDY_QA_CHIPS = [
+  'Summarize key concepts',
+  'Explain the main ideas',
+  'Give me practice questions',
+  'What are the important terms?',
+  'Quiz me on this topic',
+];
+
+export function SuggestionChips({ onChipClick, currentPage, isStudyMode }: SuggestionChipsProps) {
+  const chips = isStudyMode
+    ? STUDY_QA_CHIPS
+    : (currentPage && PAGE_CHIPS[currentPage]) || DEFAULT_CHIPS;
 
   return (
     <div className="help-chatbot-chips">
