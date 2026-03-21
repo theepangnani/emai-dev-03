@@ -261,6 +261,24 @@ class DuplicateCheckRequest(BaseModel):
         return strip_whitespace(v)
 
 
+class StudyGuideTreeNode(BaseModel):
+    """A node in the study guide tree hierarchy."""
+    id: int
+    title: str
+    guide_type: str
+    created_at: datetime
+    children: list["StudyGuideTreeNode"] = []
+
+    class Config:
+        from_attributes = True
+
+
+class StudyGuideTreeResponse(BaseModel):
+    """Full tree hierarchy for a study guide with breadcrumb path."""
+    root: StudyGuideTreeNode
+    current_path: list[int]  # IDs from root to current guide
+
+
 class DuplicateCheckResponse(BaseModel):
     """Response indicating whether a duplicate study guide exists."""
     exists: bool

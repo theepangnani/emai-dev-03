@@ -22,6 +22,7 @@ import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import { SubGuidesPanel } from '../components/SubGuidesPanel';
+import { StudyGuideBreadcrumb } from '../components/StudyGuideBreadcrumb';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -278,6 +279,10 @@ export function StudyGuidePage() {
           : []),
         { label: 'Study Guide' },
       ]} />
+
+      {guide.parent_guide_id && guide.relationship_type === 'sub_guide' && (
+        <StudyGuideBreadcrumb guideId={guide.id} />
+      )}
 
       {/* Header card */}
       <div className="sg-detail-header">

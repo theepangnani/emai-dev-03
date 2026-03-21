@@ -65,6 +65,19 @@ export interface SharedWithMeGuide {
   created_at: string;
 }
 
+export interface StudyGuideTreeNode {
+  id: number;
+  title: string;
+  guide_type: string;
+  created_at: string;
+  children: StudyGuideTreeNode[];
+}
+
+export interface StudyGuideTreeResponse {
+  root: StudyGuideTreeNode;
+  current_path: number[];
+}
+
 export interface DuplicateCheckResponse {
   exists: boolean;
   existing_guide: StudyGuide | null;
@@ -391,6 +404,11 @@ export const studyApi = {
   listChildGuides: async (guideId: number) => {
     const response = await api.get(`/api/study/guides/${guideId}/children`);
     return response.data as StudyGuide[];
+  },
+
+  getGuideTree: async (guideId: number) => {
+    const response = await api.get(`/api/study/guides/${guideId}/tree`);
+    return response.data as StudyGuideTreeResponse;
   },
 
   resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
