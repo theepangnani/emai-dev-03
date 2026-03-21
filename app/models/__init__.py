@@ -38,6 +38,7 @@ from app.models.enrollment_request import EnrollmentRequest
 from app.models.survey import SurveyResponse, SurveyAnswer
 from app.models.holiday import HolidayDate
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog
+from app.models.study_request import StudyRequest
 
 
 __all__ = [
@@ -102,4 +103,5 @@ __all__ = [
     "Badge",
     "StreakLog",
 
+    "StudyRequest",
 ]

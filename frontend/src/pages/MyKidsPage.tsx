@@ -20,6 +20,7 @@ import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import './MyKidsPage.css';
 import { ChildXpStats } from '../components/xp/ChildXpStats';
+import { StudyRequestModal } from '../components/StudyRequestModal';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -90,6 +91,9 @@ export function MyKidsPage() {
   const [resetPwLoading, setResetPwLoading] = useState(false);
   const [resetPwError, setResetPwError] = useState('');
   const [resetPwSuccess, setResetPwSuccess] = useState('');
+
+  // Study request modal
+  const [showStudyRequest, setShowStudyRequest] = useState(false);
 
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
@@ -899,6 +903,10 @@ export function MyKidsPage() {
               <span className="dash-quick-action-icon" aria-hidden="true">&#128161;</span>
               <span>Help My Kid</span>
             </button>
+            <button className="dash-quick-action" onClick={() => setShowStudyRequest(true)}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#128172;</span>
+              <span>Request Study</span>
+            </button>
           </div>
 
           <div className="dashboard-redesign">
@@ -1421,6 +1429,13 @@ export function MyKidsPage() {
         </div>
       )}
       {confirmModal}
+      <StudyRequestModal
+        open={showStudyRequest}
+        onClose={() => setShowStudyRequest(false)}
+        children={children.map(c => ({ student_id: c.student_id, user_id: c.user_id, full_name: c.full_name }))}
+        preselectedChildUserId={selectedChildUserId}
+        onSuccess={() => toast('Study request sent!', 'success')}
+      />
     </DashboardLayout>
   );
 }
