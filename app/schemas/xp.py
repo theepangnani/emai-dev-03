@@ -1,6 +1,6 @@
 """Pydantic schemas for the XP / Gamification system."""
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -18,6 +18,13 @@ class XpSummaryResponse(BaseModel):
     xp_to_next_level: int = 200
     today_xp: int = 0
     today_cap: int = 0
+    # Fields expected by the frontend XpSummary interface
+    streak_days: int = 0
+    xp_in_level: int = 0
+    xp_for_next_level: int = 200
+    today_max_xp: int = 0
+    weekly_xp: int = 0
+    recent_badges: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
