@@ -51,9 +51,6 @@ class StudyGuideResponse(BaseModel):
     is_truncated: bool = False
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
-    document_type: str | None = None
-    study_goal: str | None = None
-    study_goal_text: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     auto_created_tasks: list[AutoCreatedTask] = []
