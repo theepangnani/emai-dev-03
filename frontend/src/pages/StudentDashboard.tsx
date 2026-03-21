@@ -27,6 +27,7 @@ import { studyRequestsApi, type StudyRequestData } from '../api/studyRequests';
 import { StudyRequestCard } from '../components/StudyRequestCard';
 import type { ChildGradeSummary } from '../api/grades';
 import { GenerationSpinner } from '../components/GenerationSpinner';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './StudentDashboard.css';
 import './DashboardGrid.css';
 
@@ -512,6 +513,7 @@ export function StudentDashboard() {
         <div className={`status-message status-${statusMessage.type}`}>
           {statusMessage.text}
           <FAQErrorHint faqCode={faqCode} />
+          {statusMessage.type === 'error' && <ReportBugLink errorMessage={statusMessage.text} />}
         </div>
       )}
 

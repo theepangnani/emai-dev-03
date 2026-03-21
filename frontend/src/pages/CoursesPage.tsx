@@ -18,6 +18,7 @@ import EmptyState from '../components/EmptyState';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { AddActionButton } from '../components/AddActionButton';
 import '../components/AddActionButton.css';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './CoursesPage.css';
 
 const CHILD_COLORS = [
@@ -764,6 +765,7 @@ export function CoursesPage() {
           <div className="no-children-state">
             <h3>Unable to Load Classes</h3>
             <p>Something went wrong while loading your classes. Please try again.</p>
+            <ReportBugLink errorMessage="Unable to load classes" />
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
               <button className="link-child-btn" onClick={() => { setLoading(true); setLoadError(false); loadData(); }}>
                 Retry

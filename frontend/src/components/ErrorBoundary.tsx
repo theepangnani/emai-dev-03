@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
+import { ReportBugLink } from './ReportBugLink';
 import './ErrorBoundary.css';
 
 interface Props {
@@ -80,6 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error && (
               <pre className="error-boundary-details">{this.state.error.message}</pre>
             )}
+            <ReportBugLink errorMessage={this.state.error?.message} />
             <div className="error-boundary-actions">
               <button className="error-boundary-btn secondary" onClick={this.handleReset}>
                 Try Again

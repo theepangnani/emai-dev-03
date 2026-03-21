@@ -9,6 +9,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { walletApi } from '../api/wallet';
 import type { CreditPackageItem } from '../api/wallet';
+import { ReportBugLink } from './ReportBugLink';
 import './CreditTopUpModal.css';
 
 // Initialize Stripe once at module scope
@@ -52,7 +53,7 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="payment-form">
       <PaymentElement />
-      {error && <p className="payment-error">{error}</p>}
+      {error && <><p className="payment-error">{error}</p><ReportBugLink errorMessage={error} /></>}
       <button
         type="submit"
         className="btn-pay"

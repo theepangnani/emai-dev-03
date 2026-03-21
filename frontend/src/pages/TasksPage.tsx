@@ -15,6 +15,7 @@ import { ListSkeleton } from '../components/Skeleton';
 import { AddActionButton } from '../components/AddActionButton';
 import EmptyState from '../components/EmptyState';
 import { PageNav } from '../components/PageNav';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -663,6 +664,7 @@ export function TasksPage() {
         ) : error ? (
           <div className="tasks-empty empty-state">
             <p>Error loading tasks: {error}</p>
+            <ReportBugLink errorMessage={error} />
             <button className="generate-btn btn-primary" onClick={loadTasks}>Retry</button>
           </div>
         ) : filteredTasks.length === 0 ? (

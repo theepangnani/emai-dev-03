@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFocusTrap } from '../utils/useFocusTrap';
 import { GenerationSpinner } from './GenerationSpinner';
+import { ReportBugLink } from './ReportBugLink';
 import './GenerateSubGuideModal.css';
 
 interface GenerateSubGuideModalProps {
@@ -180,7 +181,7 @@ export function GenerateSubGuideModal({
           </div>
 
           {/* Error message */}
-          {error && <p className="subguide-error" data-testid="subguide-error">{error}</p>}
+          {error && <><p className="subguide-error" data-testid="subguide-error">{error}</p><ReportBugLink errorMessage={error} /></>}
         </div>
 
         {/* Footer */}

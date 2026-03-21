@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { courseContentsApi, type CourseContentItem } from '../api/client';
 import { coursesApi } from '../api/courses';
+import { ReportBugLink } from './ReportBugLink';
 import './EditMaterialModal.css';
 
 const CONTENT_TYPES = [
@@ -88,6 +89,7 @@ export function EditMaterialModal({ material, courses: externalCourses, onClose,
             <span className="error-icon">!</span>
             <span className="error-message">{error}</span>
             <button onClick={handleSave} className="retry-btn" disabled={saving}>Try Again</button>
+            <ReportBugLink errorMessage={error} />
           </div>
         )}
         <div className="modal-form edit-mat-form">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { tasksApi } from '../api/client';
 import type { AssignableUser } from '../api/client';
 import { useFocusTrap } from '../utils/useFocusTrap';
+import { ReportBugLink } from './ReportBugLink';
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -135,6 +136,7 @@ export function CreateTaskModal({
               <span className="error-icon">!</span>
               <span className="error-message">{error}</span>
               <button onClick={handleCreate} className="retry-btn" disabled={creating}>Try Again</button>
+              <ReportBugLink errorMessage={error} />
             </div>
           )}
         </div>

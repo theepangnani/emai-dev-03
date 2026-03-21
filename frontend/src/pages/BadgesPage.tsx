@@ -4,6 +4,7 @@ import { PageNav } from '../components/PageNav';
 import { PageSkeleton } from '../components/Skeleton';
 import { xpApi } from '../api/xp';
 import type { XpBadge } from '../api/xp';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './BadgesPage.css';
 
 const BADGE_ICONS: Record<string, string> = {
@@ -42,7 +43,7 @@ export function BadgesPage() {
         </div>
 
         {isLoading && <PageSkeleton />}
-        {error && <p className="badges-error">Failed to load badges.</p>}
+        {error && <><p className="badges-error">Failed to load badges.</p><ReportBugLink errorMessage="Failed to load badges" /></>}
 
         {badges && (
           <div className="badges-grid">

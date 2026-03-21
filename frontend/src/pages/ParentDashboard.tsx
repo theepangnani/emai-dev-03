@@ -19,6 +19,7 @@ import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { SectionPanel } from '../components/SectionPanel';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import { AssessmentCountdown } from '../components/AssessmentCountdown';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -174,6 +175,7 @@ export function ParentDashboard() {
         <div className="no-children-state">
           <h3>Unable to Load Dashboard</h3>
           <p>Something went wrong while loading your dashboard. Please try refreshing the page.</p>
+          <ReportBugLink errorMessage="Unable to load dashboard" />
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
             <button className="link-child-btn" onClick={() => window.location.reload()}>Refresh Page</button>
           </div>

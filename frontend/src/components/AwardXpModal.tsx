@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { xpApi } from '../api/xp';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { ReportBugLink } from './ReportBugLink';
 
 interface AwardXpModalProps {
   open: boolean;
@@ -128,7 +129,7 @@ export function AwardXpModal({
               />
             </label>
 
-            {error && <p className="link-error">{error}</p>}
+            {error && <><p className="link-error">{error}</p><ReportBugLink errorMessage={error} /></>}
           </div>
         )}
 

@@ -5,6 +5,7 @@ import { googleApi } from '../api/client';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { useBotProtection } from '../hooks/useBotProtection';
 import { PasswordInput } from '../components/PasswordInput';
+import { ReportBugLink } from '../components/ReportBugLink';
 import './Auth.css';
 
 export function Login() {
@@ -158,7 +159,7 @@ export function Login() {
           </div>
         )}
 
-        {error && <div className="auth-error">{error}</div>}
+        {error && <div className="auth-error">{error}<ReportBugLink errorMessage={error} /></div>}
 
         {remainingAttempts !== null && remainingAttempts <= 2 && (
           <div className="auth-warning">
