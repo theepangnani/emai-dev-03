@@ -312,6 +312,21 @@
   opacity: 1;
 }
 
+/* Sub-guide title badge (#2046) */
+.sg-sub-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #e0f7f0;
+  color: #1a7a5a;
+  margin-left: 8px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 /* Sub-guides badge in header (#1838) */
 .sg-sub-guides-badge {
   display: inline-flex;
