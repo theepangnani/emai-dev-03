@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, study_sessions
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -41,6 +41,7 @@ from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa
 from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog  # noqa: F401
 from app.models.detected_event import DetectedEvent  # noqa: F401
+from app.models.study_session import StudySession  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1838,6 +1839,7 @@ app.include_router(survey.router, prefix="/api")
 app.include_router(admin_survey.router, prefix="/api")
 app.include_router(xp.router, prefix="/api")
 app.include_router(study_requests.router, prefix="/api")
+app.include_router(study_sessions.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
