@@ -59,10 +59,15 @@ VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
 
 
 def _filename_to_title(filename: str) -> str:
-    """Strip file extension to create a material title from filename."""
+    """Strip file extension and clean up name to create a material title from filename."""
     import os
     name, _ = os.path.splitext(filename)
-    return name or filename
+    name = name or filename
+    # Replace underscores and hyphens with spaces for a cleaner title
+    name = name.replace("_", " ").replace("-", " ")
+    # Collapse multiple spaces
+    name = " ".join(name.split())
+    return name
 
 
 router = APIRouter(prefix="/course-contents", tags=["Course Contents"])
