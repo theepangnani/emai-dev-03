@@ -4187,3 +4187,28 @@ Context-aware chatbot Q&A when users are viewing a study guide. The existing Hel
 - [ ] Implement honeypot field or CAPTCHA on bug report form
 - [ ] Server-side validation for bot submissions
 - [ ] Rate limiting per IP in addition to per-user
+
+### 6.118 AI Answer Uncertainty Detection — Block Saving Uncertain Responses (Phase 1) - IMPLEMENTED
+
+**GitHub Issues:** #2098 (requirement gap), PR #2102
+
+AI responses containing uncertainty markers must not be saveable as study guides or class materials. When an AI response indicates the model is unsure, confused, or requesting clarification, the system shall detect these uncertainty phrases and prevent the user from saving that response as study content.
+
+**Uncertainty Phrases Detected (case-insensitive):**
+- "I'm not sure", "I'm not certain", "I don't know", "I cannot determine"
+- "Could you clarify", "Could you provide more", "Can you clarify"
+- "I don't have enough information", "I don't have access to"
+- "I'm unable to", "I cannot answer", "beyond my knowledge"
+- "I'd need more context", "not enough detail"
+
+**Frontend Behavior:**
+- When an AI assistant message contains any uncertainty phrase, the "Save as Study Guide" and "Save as Class Material" action buttons are disabled
+- A tooltip or visual indicator explains why saving is blocked (e.g., "This response contains uncertain information and cannot be saved as study material")
+- Detection runs on the full message text before rendering save actions
+
+**Backend Validation:**
+- The save-as-guide and save-as-material endpoints perform the same uncertainty phrase check server-side
+- If uncertainty is detected, the endpoint returns HTTP 422 with an error message explaining the block
+- This prevents bypassing the frontend restriction via direct API calls
+
+**Key Principle:** Only high-confidence, definitive AI answers should become part of a student's study material library. Uncertain or clarification-seeking responses could embed misinformation into study guides.
