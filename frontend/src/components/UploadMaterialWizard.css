@@ -569,6 +569,80 @@
   border-radius: 8px;
 }
 
+/* ===== Master file selection list (#2051) ===== */
+
+.uw-master-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+.uw-master-select-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #64748b;
+}
+
+.uw-master-select-item:hover {
+  background: #f1f5f9;
+}
+
+.uw-master-select-item.selected {
+  background: #e6f7f8;
+  color: #1e293b;
+}
+
+.uw-master-radio {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+  position: relative;
+}
+
+.uw-master-radio.checked {
+  border-color: #2a9fa8;
+}
+
+.uw-master-radio.checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2a9fa8;
+}
+
+.uw-master-select-name {
+  flex: 1;
+}
+
+.uw-master-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2a9fa8;
+}
+
+.uw-master-select-filename {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== Step 2: AI Tool Cards ===== */
 
 .uw-summary-bar {
