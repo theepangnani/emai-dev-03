@@ -15,6 +15,7 @@ def test_db_url(tmp_path_factory):
 @pytest.fixture(scope="session")
 def app(test_db_url):
     os.environ["DATABASE_URL"] = test_db_url
+    os.environ["TESTING"] = "1"
     os.environ.setdefault("GOOGLE_CLASSROOM_ENABLED", "true")
     os.environ.setdefault("WAITLIST_ENABLED", "false")
 
