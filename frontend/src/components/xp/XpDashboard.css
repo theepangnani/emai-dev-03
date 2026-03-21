@@ -209,6 +209,12 @@
   text-decoration: underline;
 }
 
+.xp-dashboard-links {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 /* ── Parent Child XP Info ─────────────────── */
 
 .xp-child-stats {
