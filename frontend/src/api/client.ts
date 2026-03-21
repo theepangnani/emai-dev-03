@@ -122,6 +122,8 @@ export type {
   ResolvedStudent,
   SharedGuideStatus,
   SharedWithMeGuide,
+  StudyGuideTreeNode,
+  StudyGuideTreeResponse,
 } from './study';
 export { messagesApi } from './messages';
 export type {

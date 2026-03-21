@@ -39,6 +39,8 @@ from app.schemas.study import (
     DuplicateCheckResponse,
     AutoCreatedTask,
     GenerateChildRequest,
+    StudyGuideTreeNode,
+    StudyGuideTreeResponse,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
@@ -1474,6 +1476,92 @@ def list_child_guides(
 
     return result
 
+
+@router.get("/guides/{guide_id}/tree", response_model=StudyGuideTreeResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_study_guide_tree(
+    request: Request,
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns the full parent-child tree for a study guide."""
+    # 1. Find the requested guide
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # Access check — must be owner, parent of owner, admin, or shared-with user
+    if guide.user_id != current_user.id:
+        if current_user.role == UserRole.ADMIN or getattr(current_user, 'has_role', lambda r: False)(UserRole.ADMIN):
+            pass
+        elif guide.shared_with_user_id == current_user.id:
+            pass
+        elif current_user.role == UserRole.PARENT:
+            child_ids = [r[0] for r in db.query(parent_students.c.student_id).filter(parent_students.c.parent_id == current_user.id).all()]
+            child_user_ids = [r[0] for r in db.query(Student.user_id).filter(Student.id.in_(child_ids)).all()] if child_ids else []
+            if guide.user_id not in child_user_ids:
+                raise HTTPException(status_code=404, detail="Study guide not found")
+        else:
+            raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # 2. Walk up to root
+    root = guide
+    visited = {root.id}
+    while root.parent_guide_id is not None:
+        parent = db.query(StudyGuide).filter(StudyGuide.id == root.parent_guide_id).first()
+        if not parent or parent.id in visited:
+            break
+        visited.add(parent.id)
+        root = parent
+
+    # 3. Build path from root to current guide
+    current_path: list[int] = []
+
+    def _find_path(node_id: int, target_id: int, path: list[int]) -> bool:
+        path.append(node_id)
+        if node_id == target_id:
+            return True
+        children = (
+            db.query(StudyGuide)
+            .filter(
+                StudyGuide.parent_guide_id == node_id,
+                StudyGuide.archived_at.is_(None),
+            )
+            .all()
+        )
+        sub_guides = [c for c in children if getattr(c, 'relationship_type', None) in (None, 'sub_guide')]
+        for child in sub_guides:
+            if _find_path(child.id, target_id, path):
+                return True
+        path.pop()
+        return False
+
+    _find_path(root.id, guide_id, current_path)
+
+    # 4. Build tree recursively from root
+    def _build_node(sg: StudyGuide) -> StudyGuideTreeNode:
+        children = (
+            db.query(StudyGuide)
+            .filter(
+                StudyGuide.parent_guide_id == sg.id,
+                StudyGuide.archived_at.is_(None),
+            )
+            .order_by(StudyGuide.created_at.asc())
+            .all()
+        )
+        sub_guides = [c for c in children if getattr(c, 'relationship_type', None) in (None, 'sub_guide')]
+        return StudyGuideTreeNode(
+            id=sg.id,
+            title=sg.title,
+            guide_type=sg.guide_type,
+            created_at=sg.created_at,
+            children=[_build_node(c) for c in sub_guides],
+        )
+
+    tree_root = _build_node(root)
+
+    return StudyGuideTreeResponse(root=tree_root, current_path=current_path)
 
 
 @router.post("/guides/{guide_id}/generate-child", response_model=StudyGuideResponse)

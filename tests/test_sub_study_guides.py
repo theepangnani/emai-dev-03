@@ -280,3 +280,151 @@ class TestListChildGuides:
             headers=headers,
         )
         assert resp.status_code == 404
+
+
+# ── tree endpoint tests ──────────────────────────────────────
+
+
+class TestStudyGuideTree:
+
+    def test_tree_single_root(self, client, student_user, parent_guide):
+        """A root guide with no children returns tree with just the root."""
+        headers = _auth(client, student_user.email)
+        resp = client.get(
+            f"/api/study/guides/{parent_guide.id}/tree",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["root"]["id"] == parent_guide.id
+        assert data["root"]["title"] == parent_guide.title
+        assert data["root"]["children"] == []
+        assert data["current_path"] == [parent_guide.id]
+
+    def test_tree_hierarchy(self, client, db_session, student_user, parent_guide):
+        """parent -> child -> grandchild: tree is correct and path is correct."""
+        from app.models.study_guide import StudyGuide
+
+        child = StudyGuide(
+            user_id=student_user.id,
+            title="Child Guide",
+            content="Child content",
+            guide_type="study_guide",
+            version=1,
+            parent_guide_id=parent_guide.id,
+            relationship_type="sub_guide",
+        )
+        db_session.add(child)
+        db_session.commit()
+        db_session.refresh(child)
+
+        grandchild = StudyGuide(
+            user_id=student_user.id,
+            title="Grandchild Guide",
+            content="Grandchild content",
+            guide_type="quiz",
+            version=1,
+            parent_guide_id=child.id,
+            relationship_type="sub_guide",
+        )
+        db_session.add(grandchild)
+        db_session.commit()
+        db_session.refresh(grandchild)
+
+        headers = _auth(client, student_user.email)
+
+        # Request tree from grandchild
+        resp = client.get(
+            f"/api/study/guides/{grandchild.id}/tree",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Root should be the parent_guide
+        assert data["root"]["id"] == parent_guide.id
+        assert data["root"]["title"] == parent_guide.title
+
+        # Root has child
+        assert len(data["root"]["children"]) >= 1
+        child_node = next(c for c in data["root"]["children"] if c["id"] == child.id)
+        assert child_node["title"] == "Child Guide"
+
+        # Child has grandchild
+        assert len(child_node["children"]) >= 1
+        gc_node = next(c for c in child_node["children"] if c["id"] == grandchild.id)
+        assert gc_node["title"] == "Grandchild Guide"
+        assert gc_node["guide_type"] == "quiz"
+
+        # current_path goes root -> child -> grandchild
+        assert data["current_path"] == [parent_guide.id, child.id, grandchild.id]
+
+    def test_tree_current_path_from_middle(self, client, db_session, student_user, parent_guide):
+        """When requesting tree from a middle node, current_path stops at that node."""
+        from app.models.study_guide import StudyGuide
+
+        child = StudyGuide(
+            user_id=student_user.id,
+            title="Mid Child",
+            content="Mid content",
+            guide_type="study_guide",
+            version=1,
+            parent_guide_id=parent_guide.id,
+            relationship_type="sub_guide",
+        )
+        db_session.add(child)
+        db_session.commit()
+        db_session.refresh(child)
+
+        headers = _auth(client, student_user.email)
+        resp = client.get(
+            f"/api/study/guides/{child.id}/tree",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["current_path"] == [parent_guide.id, child.id]
+
+    def test_tree_excludes_version_children(self, client, db_session, student_user, parent_guide):
+        """Version regenerations should not appear in the tree."""
+        from app.models.study_guide import StudyGuide
+
+        version_child = StudyGuide(
+            user_id=student_user.id,
+            title="Version 2",
+            content="Version 2 content",
+            guide_type="study_guide",
+            version=2,
+            parent_guide_id=parent_guide.id,
+            relationship_type="version",
+        )
+        sub_child = StudyGuide(
+            user_id=student_user.id,
+            title="Sub Guide",
+            content="Sub content",
+            guide_type="study_guide",
+            version=1,
+            parent_guide_id=parent_guide.id,
+            relationship_type="sub_guide",
+        )
+        db_session.add_all([version_child, sub_child])
+        db_session.commit()
+
+        headers = _auth(client, student_user.email)
+        resp = client.get(
+            f"/api/study/guides/{parent_guide.id}/tree",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        child_ids = [c["id"] for c in data["root"]["children"]]
+        assert sub_child.id in child_ids
+        assert version_child.id not in child_ids
+
+    def test_tree_not_found(self, client, student_user):
+        headers = _auth(client, student_user.email)
+        resp = client.get(
+            "/api/study/guides/999999/tree",
+            headers=headers,
+        )
+        assert resp.status_code == 404
