@@ -5,6 +5,7 @@ export interface XpBadge {
   name: string;
   description: string;
   icon: string;
+  earned: boolean;
   earned_at: string | null;
 }
 
@@ -44,6 +45,14 @@ export interface XpLedgerEntry {
 export interface XpLedgerResponse {
   entries: XpLedgerEntry[];
   total_count: number;
+}
+
+export interface BadgeResponse {
+  badge_id: string;
+  badge_name: string;
+  badge_description: string;
+  earned: boolean;
+  awarded_at: string | null;
 }
 
 export interface XpStreakResponse {

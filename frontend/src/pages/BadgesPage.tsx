@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { PageSkeleton } from '../components/Skeleton';
 import { xpApi } from '../api/xp';
-import type { BadgeResponse } from '../api/xp';
+import type { XpBadge } from '../api/xp';
 import './BadgesPage.css';
 
 const BADGE_ICONS: Record<string, string> = {
@@ -29,7 +29,7 @@ export function BadgesPage() {
     queryFn: xpApi.getBadges,
   });
 
-  const earnedCount = badges?.filter((b: BadgeResponse) => b.earned).length ?? 0;
+  const earnedCount = badges?.filter((b: XpBadge) => b.earned).length ?? 0;
   const totalCount = badges?.length ?? 0;
 
   return (
@@ -46,20 +46,20 @@ export function BadgesPage() {
 
         {badges && (
           <div className="badges-grid">
-            {badges.map((badge: BadgeResponse) => (
+            {badges.map((badge: XpBadge) => (
               <div
-                key={badge.badge_id}
+                key={badge.id}
                 className={`badge-card${badge.earned ? ' badge-card--earned' : ' badge-card--locked'}`}
               >
                 <div className="badge-icon">
-                  {BADGE_ICONS[badge.badge_id] || '\uD83C\uDFC5'}
+                  {BADGE_ICONS[badge.id] || '\uD83C\uDFC5'}
                 </div>
                 <div className="badge-info">
-                  <h3 className="badge-name">{badge.badge_name}</h3>
-                  <p className="badge-description">{badge.badge_description}</p>
+                  <h3 className="badge-name">{badge.name}</h3>
+                  <p className="badge-description">{badge.description}</p>
                   <p className="badge-status">
                     {badge.earned
-                      ? `Earned ${formatDate(badge.awarded_at)}`
+                      ? `Earned ${formatDate(badge.earned_at)}`
                       : 'Locked'}
                   </p>
                 </div>

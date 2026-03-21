@@ -466,6 +466,10 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
                     <BadgesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/activity/timeline"
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
