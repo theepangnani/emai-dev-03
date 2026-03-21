@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     google_classroom_enabled: bool = False
     waitlist_enabled: bool = True  # Waitlist gated flow: "Join Waitlist" on login, token-gated registration (#1113, #1114)
 
+    # XP / Gamification
+    xp_enabled: bool = True
+
     # AI usage limits
     ai_default_usage_limit: int = 10
     ai_usage_warning_threshold: float = 0.8

@@ -1811,6 +1811,7 @@ app.include_router(conversation_starters.router, prefix="/api")
 app.include_router(daily_digest.router, prefix="/api")
 app.include_router(survey.router, prefix="/api")
 app.include_router(admin_survey.router, prefix="/api")
+app.include_router(xp.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
