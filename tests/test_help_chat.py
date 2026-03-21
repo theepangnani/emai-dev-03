@@ -126,6 +126,10 @@ def test_classify_intent_topic_keywords():
     assert classify_intent("google classroom") == "help"
     assert classify_intent("grades") == "help"
     assert classify_intent("mind map") == "help"
+    assert classify_intent("course") == "help"
+    assert classify_intent("task") == "help"
+    assert classify_intent("dark mode") == "help"
+    assert classify_intent("todo") == "help"
 
 
 def test_classify_intent_defaults_to_help():
