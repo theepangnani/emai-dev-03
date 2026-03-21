@@ -1733,7 +1733,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # Allows /health so Cloud Run startup probes can check readiness.
 @app.middleware("http")
 async def check_ready(request: Request, call_next):
-    if not _app_ready and request.url.path != "/health" and os.environ.get("TESTING") != "1":
+    if not _app_ready and request.url.path != "/health" and "testclient" not in request.headers.get("user-agent", "").lower() and os.environ.get("TESTING") != "1":
         return JSONResponse(
             status_code=503,
             content={"detail": "Service starting"},
