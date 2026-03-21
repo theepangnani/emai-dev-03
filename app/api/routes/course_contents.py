@@ -30,11 +30,6 @@ from app.services.link_extraction_service import extract_and_enrich_links
 from app.services import gcs_service
 
 
-def _is_master(val) -> bool:
-    """Safely check is_master which may be VARCHAR 'true'/'false' or Boolean."""
-    if isinstance(val, bool):
-        return val
-    return str(val).lower() == 'true'
 from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials, generate_sub_title
 from app.schemas.course_content import (
     BulkArchiveRequest,
@@ -1388,12 +1383,12 @@ async def add_files_to_material(
     check_upload_allowed(current_user, total_size)
 
     # Determine the master material
-    if not _is_master(content.is_master) and content.parent_content_id:
+    if not content.is_master and content.parent_content_id:
         # Sub-material: find parent master
         master = db.query(CourseContent).filter(CourseContent.id == content.parent_content_id).first()
         if not master:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent master material not found")
-    elif _is_master(content.is_master):
+    elif content.is_master:
         # Already a master
         master = content
     else:
@@ -1625,7 +1620,7 @@ def delete_course_content(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the creator can delete content")
 
     content.archived_at = datetime.now(timezone.utc)
-    if _is_master(content.is_master):
+    if content.is_master:
         db.query(CourseContent).filter(
             CourseContent.parent_content_id == content.id,
             CourseContent.archived_at.is_(None),
@@ -1651,7 +1646,7 @@ def restore_course_content(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is not archived")
 
     content.archived_at = None
-    if _is_master(content.is_master):
+    if content.is_master:
         db.query(CourseContent).filter(
             CourseContent.parent_content_id == content.id,
             CourseContent.archived_at.isnot(None),
@@ -1680,7 +1675,7 @@ def permanent_delete_course_content(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content must be archived before permanent deletion")
 
     # Cascade permanent delete to sub-materials
-    if _is_master(content.is_master):
+    if content.is_master:
         subs = db.query(CourseContent).filter(
             CourseContent.parent_content_id == content.id,
         ).all()
@@ -1836,7 +1831,7 @@ def get_linked_materials_endpoint(
         results.append(LinkedMaterialResponse(
             id=m.id,
             title=m.title,
-            is_master=_is_master(m.is_master),
+            is_master=m.is_master,
             content_type=m.content_type,
             has_file=m.file_path is not None,
             original_filename=m.original_filename,
@@ -1862,7 +1857,7 @@ def reorder_sub_materials(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not _is_master(content.is_master):
+    if not content.is_master:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials reordered")
 
     if not can_access_course(db, current_user, content.course_id):
@@ -1910,7 +1905,7 @@ def delete_sub_material(
     if not master:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not _is_master(master.is_master):
+    if not master.is_master:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only master materials can have sub-materials deleted")
 
     if not can_access_course(db, current_user, master.course_id):
@@ -1951,7 +1946,7 @@ def delete_sub_material(
 
     db.commit()
     db.refresh(master)
-    return {"status": "ok", "remaining_subs": remaining, "is_master": _is_master(master.is_master)}
+    return {"status": "ok", "remaining_subs": remaining, "is_master": master.is_master}
 
 
 # ── Content Images endpoints (#1311) ──────────────────────────────

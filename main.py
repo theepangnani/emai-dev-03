@@ -358,22 +358,8 @@ with engine.connect() as conn:
                 conn.rollback()
         if "is_master" not in existing_cols:
             try:
-                conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master VARCHAR(5) DEFAULT 'false'"))
+                conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master BOOLEAN DEFAULT FALSE"))
                 logger.info("Added 'is_master' column to course_contents")
-            except Exception:
-                conn.rollback()
-        # Fix is_master column type: BOOLEAN → VARCHAR(5) for cross-DB compatibility (#1804)
-        if "is_master" in existing_cols:
-            try:
-                if "sqlite" not in settings.database_url:
-                    conn.execute(text(
-                        "ALTER TABLE course_contents ALTER COLUMN is_master TYPE VARCHAR(5) "
-                        "USING CASE WHEN is_master THEN 'true' ELSE 'false' END"
-                    ))
-                    conn.execute(text(
-                        "ALTER TABLE course_contents ALTER COLUMN is_master SET DEFAULT 'false'"
-                    ))
-                    logger.info("Converted 'is_master' column from BOOLEAN to VARCHAR(5)")
             except Exception:
                 conn.rollback()
         conn.commit()
@@ -1383,7 +1369,7 @@ with engine.connect() as conn:
 
                 # Promote master
                 conn.execute(text(
-                    "UPDATE course_contents SET is_master = 'true', "
+                    "UPDATE course_contents SET is_master = TRUE, "
                     "material_group_id = :gid WHERE id = :mid"
                 ), {"gid": group_id, "mid": master_id})
 
@@ -1424,7 +1410,7 @@ with engine.connect() as conn:
                         "parent_content_id, is_master, material_group_id) "
                         "VALUES (:course_id, :title, :ctype, :created_by, "
                         ":filename, :fsize, :mime, :txt, "
-                        ":parent_id, 'false', :gid)"
+                        ":parent_id, FALSE, :gid)"
                     ), {
                         "course_id": course_id,
                         "title": sub_title,
@@ -1603,20 +1589,46 @@ with engine.connect() as conn:
         logger.info("Applied missing database indexes (#1961)")
 
     # ── Batch 0: is_master String→Boolean migration (#2025) ──
+    # Converts is_master from VARCHAR(5) 'true'/'false' to native BOOLEAN.
+    # PostgreSQL: ALTER COLUMN TYPE with USING cast.
+    # SQLite: column is already BOOLEAN from create_all(); only need data fixup.
     try:
         with engine.connect() as conn:
             inspector_b0 = sa_inspect(engine)
             if "course_contents" in inspector_b0.get_table_names():
-                existing_cols = {c["name"] for c in inspector_b0.get_columns("course_contents")}
-                if "is_master_bool" not in existing_cols and "is_master" in existing_cols:
+                col_info = {c["name"]: c for c in inspector_b0.get_columns("course_contents")}
+                if "is_master" in col_info:
+                    col_type = str(col_info["is_master"]["type"])
+                    if "VARCHAR" in col_type.upper() or "CHAR" in col_type.upper():
+                        try:
+                            if "sqlite" not in settings.database_url:
+                                # PostgreSQL: convert in-place
+                                conn.execute(text(
+                                    "ALTER TABLE course_contents ALTER COLUMN is_master TYPE BOOLEAN "
+                                    "USING CASE WHEN is_master = 'true' THEN TRUE ELSE FALSE END"
+                                ))
+                                conn.execute(text(
+                                    "ALTER TABLE course_contents ALTER COLUMN is_master SET DEFAULT FALSE"
+                                ))
+                            else:
+                                # SQLite: update any remaining string values to proper integers
+                                conn.execute(text(
+                                    "UPDATE course_contents SET is_master = (is_master = 'true') "
+                                    "WHERE typeof(is_master) = 'text'"
+                                ))
+                            conn.commit()
+                            logger.info("Migrated 'is_master' column from VARCHAR to BOOLEAN (#2025)")
+                        except Exception:
+                            conn.rollback()
+                # Clean up temp column if previous partial migration left it
+                if "is_master_bool" in col_info:
                     try:
-                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN is_master_bool BOOLEAN DEFAULT FALSE"))
-                        conn.execute(text(
-                            "UPDATE course_contents SET is_master_bool = CASE "
-                            "WHEN is_master = 'true' THEN TRUE ELSE FALSE END"
-                        ))
+                        if "sqlite" not in settings.database_url:
+                            conn.execute(text("ALTER TABLE course_contents DROP COLUMN is_master_bool"))
+                        else:
+                            conn.execute(text("ALTER TABLE course_contents DROP COLUMN is_master_bool"))
                         conn.commit()
-                        logger.info("Added 'is_master_bool' column and migrated data (#2025)")
+                        logger.info("Dropped leftover 'is_master_bool' column (#2025)")
                     except Exception:
                         conn.rollback()
     except Exception as e:
