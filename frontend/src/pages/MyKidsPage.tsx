@@ -20,6 +20,7 @@ import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import './MyKidsPage.css';
 import { ChildXpStats } from '../components/xp/ChildXpStats';
+import { OnTrackBadge } from '../components/OnTrackBadge';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -671,6 +672,7 @@ export function MyKidsPage() {
                 {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
               </span>
               <ChildXpStats studentId={child.student_id} />
+              <OnTrackBadge studentId={child.student_id} />
             </button>
             <div className="invite-menu-wrapper">
               <button

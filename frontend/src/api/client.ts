@@ -153,6 +153,7 @@ export type {
   DiscoverChildrenResponse,
   LinkedTeacher,
   BriefingNote,
+  OnTrackSignal,
 } from './parent';
 export { invitesApi } from './invites';
 export type { InviteResponse } from './invites';
