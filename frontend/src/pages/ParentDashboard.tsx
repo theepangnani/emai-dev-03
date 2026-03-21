@@ -258,7 +258,7 @@ export function ParentDashboard() {
               {pd.backgroundGeneration.status === 'success' && (
                 <>
                   <span>{pd.backgroundGeneration.type === 'Material' ? 'Material uploaded!' : `${pd.backgroundGeneration.type} ready!`}</span>
-                  <button className="pd-gen-view-btn" onClick={() => { pd.navigate(pd.backgroundGeneration?.resultId ? `/course-materials/${pd.backgroundGeneration.resultId}` : '/course-materials'); pd.dismissBackgroundGeneration(); }}>
+                  <button className="pd-gen-view-btn" onClick={() => { pd.navigate(pd.getBackgroundGenerationRoute()); pd.dismissBackgroundGeneration(); }}>
                     View
                   </button>
                   <button className="pd-gen-dismiss-btn" onClick={pd.dismissBackgroundGeneration}>&times;</button>

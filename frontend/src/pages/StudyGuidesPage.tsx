@@ -1718,7 +1718,10 @@ export function StudyGuidesPage() {
               {sharedWithMe.map(guide => (
                 <div key={`shared-${guide.id}`} className="guide-row">
                   <div className="guide-row-main" onClick={() => {
-                    if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
+                    if (guide.course_content_id) {
+                      const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
+                      navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
+                    } else if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
                     else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
                     else navigate(`/study/guide/${guide.id}`);
                   }}>
