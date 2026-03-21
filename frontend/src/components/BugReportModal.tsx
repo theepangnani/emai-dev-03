@@ -117,20 +117,23 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
   return (
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal" ref={trapRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste}>
-        <div className="modal-header">
+        <div className="bug-report-header">
           <h2>Report a Bug</h2>
-          <button className="modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+          <button className="bug-report-close" onClick={handleClose} aria-label="Close">&times;</button>
         </div>
 
         {success ? (
-          <div className="bug-report-success">
-            <h3>Thank you!</h3>
-            <p>Your bug report has been submitted. Our team will look into it.</p>
-            <div className="bug-report-actions">
-              <button className="btn-submit" onClick={handleClose}>Close</button>
+          <div className="bug-report-body">
+            <div className="bug-report-success">
+              <h3>Thank you!</h3>
+              <p>Your bug report has been submitted. Our team will look into it.</p>
+              <div className="bug-report-actions">
+                <button className="btn-submit" onClick={handleClose}>Close</button>
+              </div>
             </div>
           </div>
         ) : (
+          <div className="bug-report-body">
           <form className="bug-report-form" onSubmit={handleSubmit}>
             <label>
               Description
@@ -172,6 +175,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
               </button>
             </div>
           </form>
+          </div>
         )}
       </div>
     </div>

@@ -11,7 +11,7 @@ class BugReport(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    screenshot_url = Column(String(500), nullable=True)
+    screenshot_url = Column(Text, nullable=True)
     page_url = Column(String(500), nullable=True)
     user_agent = Column(String(500), nullable=True)
     github_issue_number = Column(Integer, nullable=True)
