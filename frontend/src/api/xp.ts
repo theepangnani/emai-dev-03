@@ -33,6 +33,19 @@ export interface XpHistoryResponse {
   total: number;
 }
 
+export interface XpLedgerEntry {
+  action_type: string;
+  xp_awarded: number;
+  multiplier: number;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface XpLedgerResponse {
+  entries: XpLedgerEntry[];
+  total_count: number;
+}
+
 export interface XpStreakResponse {
   current_streak: number;
   longest_streak: number;
@@ -47,6 +60,11 @@ export const xpApi = {
 
   getHistory: async (limit = 50, offset = 0) => {
     const response = await api.get<XpHistoryResponse>(`/api/xp/history?limit=${limit}&offset=${offset}`);
+    return response.data;
+  },
+
+  getLedger: async (limit = 50, offset = 0) => {
+    const response = await api.get<XpLedgerResponse>(`/api/xp/history?limit=${limit}&offset=${offset}`);
     return response.data;
   },
 
