@@ -22,23 +22,24 @@ TOPIC_KEYWORDS = [
     "chatbot", "help bot",
     "grades", "grade", "analytics",
     "assignment", "assignments",
-    "calendar", "digest", "briefing",
+    "calendar", "digest", "briefing", "daily briefing",
     "notification", "notifications",
-    "storage", "export",
+    "storage", "export", "download data",
     "mind map", "mindmap",
     "readiness", "readiness check",
     "wallet", "credits", "top up", "topup",
-    "survey", "surveys", "feedback",
-    "activity", "activity history",
+    "survey", "surveys", "feedback", "feedback form",
+    "activity", "activity history", "recent activity",
     "my kids", "children", "child",
     "courses", "course",
-    "tasks", "task",
-    "source files", "source file",
+    "tasks", "task", "todo",
+    "source files", "source file", "original files",
     "briefing notes", "parent briefing",
     "teacher comms", "teacher communications",
     "study hub",
     "data export",
     "calendar import",
+    "theme", "dark mode", "appearance",
 ]
 
 
@@ -53,6 +54,11 @@ def classify_intent(message: str, openai_api_key: str | None = None) -> str:
 
     # Greetings and menu commands always go to help (show suggestion chips)
     if msg in GREETING_KEYWORDS:
+        return "help"
+
+    # Bare topic keywords — route to help before search can claim them
+    # (e.g. "messages", "course", "task" should go to help, not entity search)
+    if msg in TOPIC_KEYWORDS:
         return "help"
 
     # Check action first (most specific)

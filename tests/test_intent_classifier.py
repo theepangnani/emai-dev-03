@@ -75,6 +75,28 @@ def test_single_word_no_api_key_routes_to_search():
     assert classify_intent("Noah") == "search"
 
 
+def test_bare_topic_keywords_route_to_help():
+    """Bare topic words must route to 'help', not search (regression #1778)."""
+    assert classify_intent("course") == "help"
+    assert classify_intent("task") == "help"
+    assert classify_intent("assignment") == "help"
+    assert classify_intent("todo") == "help"
+    assert classify_intent("dark mode") == "help"
+    assert classify_intent("theme") == "help"
+    assert classify_intent("feedback form") == "help"
+    assert classify_intent("daily briefing") == "help"
+    assert classify_intent("original files") == "help"
+    assert classify_intent("download data") == "help"
+    assert classify_intent("recent activity") == "help"
+
+
+def test_bare_topic_with_search_verb_still_searches():
+    """Topic words combined with search verbs should still route to search."""
+    assert classify_intent("find my courses") == "search"
+    assert classify_intent("show me my tasks") == "search"
+    assert classify_intent("search assignments") == "search"
+
+
 def test_keyword_defaults_to_help_with_none_api_key():
     """Explicitly passing None still falls back to 'help'."""
     assert classify_intent("randomwords xyz", openai_api_key=None) == "help"
