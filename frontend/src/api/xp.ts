@@ -52,12 +52,17 @@ export interface XpStreakResponse {
   streak_start_date: string | null;
 }
 
-export interface BadgeResponse {
-  badge_id: string;
-  badge_name: string;
-  badge_description: string;
-  earned: boolean;
-  awarded_at: string | null;
+export interface BrowniePointResponse {
+  awarded: number;
+  student_user_id: number;
+  new_total_xp: number;
+  remaining_weekly_cap: number;
+  message: string;
+}
+
+export interface BrownieRemaining {
+  remaining: number;
+  weekly_cap: number;
 }
 
 export const xpApi = {
@@ -76,8 +81,8 @@ export const xpApi = {
     return response.data;
   },
 
-  getBadges: async (): Promise<BadgeResponse[]> => {
-    const response = await api.get<BadgeResponse[]>('/api/xp/badges');
+  getBadges: async () => {
+    const response = await api.get<XpBadge[]>('/api/xp/badges');
     return response.data;
   },
 
@@ -88,6 +93,20 @@ export const xpApi = {
 
   getChildSummary: async (studentId: number) => {
     const response = await api.get<XpSummary>(`/api/xp/children/${studentId}/summary`);
+    return response.data;
+  },
+
+  awardBrowniePoints: async (studentUserId: number, points: number, reason?: string) => {
+    const response = await api.post<BrowniePointResponse>('/api/xp/award', {
+      student_user_id: studentUserId,
+      points,
+      reason: reason || undefined,
+    });
+    return response.data;
+  },
+
+  getBrownieRemaining: async (studentUserId: number) => {
+    const response = await api.get<BrownieRemaining>(`/api/xp/award/remaining?student_user_id=${studentUserId}`);
     return response.data;
   },
 };
