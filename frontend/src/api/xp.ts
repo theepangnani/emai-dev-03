@@ -52,6 +52,14 @@ export interface XpStreakResponse {
   streak_start_date: string | null;
 }
 
+export interface BadgeResponse {
+  badge_id: string;
+  badge_name: string;
+  badge_description: string;
+  earned: boolean;
+  awarded_at: string | null;
+}
+
 export const xpApi = {
   getSummary: async () => {
     const response = await api.get<XpSummary>('/api/xp/summary');
@@ -68,8 +76,8 @@ export const xpApi = {
     return response.data;
   },
 
-  getBadges: async () => {
-    const response = await api.get<XpBadge[]>('/api/xp/badges');
+  getBadges: async (): Promise<BadgeResponse[]> => {
+    const response = await api.get<BadgeResponse[]>('/api/xp/badges');
     return response.data;
   },
 
