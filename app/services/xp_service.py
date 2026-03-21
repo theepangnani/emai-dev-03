@@ -234,12 +234,67 @@ def award_xp(
 
 def get_summary(db: Session, student_id: int):
     """Build an XpSummaryResponse for the student."""
+    from app.models.xp import Badge, XpLedger
     from app.schemas.xp import XpSummaryResponse
 
     summary = _get_or_create_summary(db, student_id)
     total_xp = summary.total_xp or 0
     level_info = get_level_for_xp(total_xp)
     today_xp = _get_today_total_xp(db, student_id)
+    current_streak = summary.current_streak or 0
+
+    # xp_in_level / xp_for_next_level: progress within current level band
+    level_start_xp = level_info["xp_required"]
+    next_level_info = None
+    for lvl in LEVELS:
+        if lvl["level"] == level_info["level"] + 1:
+            next_level_info = lvl
+            break
+    if next_level_info:
+        xp_for_next = next_level_info["xp_required"] - level_start_xp
+        xp_in = total_xp - level_start_xp
+    else:
+        # Max level
+        xp_for_next = 0
+        xp_in = 0
+
+    # weekly_xp: sum of last 7 days
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    weekly_xp = int(
+        db.query(func.coalesce(func.sum(XpLedger.xp_awarded), 0))
+        .filter(XpLedger.student_id == student_id, XpLedger.created_at >= week_ago)
+        .scalar()
+    )
+
+    # recent_badges: last 3 earned badges
+    _BADGE_CATALOG = {
+        "first_upload": {"name": "First Upload", "description": "Upload first document"},
+        "first_guide": {"name": "First Study Guide", "description": "Generate first study guide"},
+        "streak_7": {"name": "7-Day Streak", "description": "Achieve a 7-day streak"},
+        "streak_30": {"name": "30-Day Streak", "description": "Achieve a 30-day streak"},
+        "flashcard_fanatic": {"name": "Flashcard Fanatic", "description": "Review 100 flashcards"},
+        "lms_linker": {"name": "LMS Linker", "description": "Upload 5 docs from LMS"},
+        "exam_ready": {"name": "Exam Ready", "description": "Generate guide from past exam"},
+        "quiz_improver": {"name": "Quiz Improver", "description": "Score higher 3 times"},
+    }
+    recent_badge_rows = (
+        db.query(Badge)
+        .filter(Badge.student_id == student_id)
+        .order_by(Badge.awarded_at.desc())
+        .limit(3)
+        .all()
+    )
+    recent_badges = []
+    for b in recent_badge_rows:
+        info = _BADGE_CATALOG.get(b.badge_id, {"name": b.badge_id, "description": ""})
+        recent_badges.append({
+            "id": b.badge_id,
+            "name": info["name"],
+            "description": info["description"],
+            "icon": b.badge_id,
+            "earned": True,
+            "earned_at": b.awarded_at.isoformat() if b.awarded_at else None,
+        })
 
     return XpSummaryResponse(
         user_id=student_id,
@@ -247,12 +302,18 @@ def get_summary(db: Session, student_id: int):
         level=level_info["level"],
         current_level=level_info["level"],
         level_title=level_info["title"],
-        current_streak=summary.current_streak or 0,
+        current_streak=current_streak,
         longest_streak=summary.longest_streak or 0,
         freeze_tokens_remaining=summary.freeze_tokens_remaining if summary.freeze_tokens_remaining is not None else 1,
         xp_to_next_level=get_xp_to_next_level(total_xp),
         today_xp=today_xp,
         today_cap=_TOTAL_DAILY_CAP,
+        streak_days=current_streak,
+        xp_in_level=xp_in,
+        xp_for_next_level=xp_for_next,
+        today_max_xp=_TOTAL_DAILY_CAP,
+        weekly_xp=weekly_xp,
+        recent_badges=recent_badges,
     )
 
 
