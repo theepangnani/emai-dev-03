@@ -42,9 +42,8 @@ def _create_github_issue(
         body_parts.append(f"\n**Browser:** {user_agent}")
 
     if screenshot_bytes and screenshot_content_type:
-        b64 = base64.b64encode(screenshot_bytes).decode("ascii")
         body_parts.append(
-            f"\n**Screenshot:**\n\n![screenshot](data:{screenshot_content_type};base64,{b64})"
+            "\n**Screenshot:** Attached (stored in ClassBridge database)"
         )
 
     body = "\n".join(body_parts)
