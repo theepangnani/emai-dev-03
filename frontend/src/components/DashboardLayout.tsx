@@ -199,6 +199,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [reconnecting, setReconnecting] = useState(false);
+
+  useEffect(() => {
+    const onReconnecting = () => setReconnecting(true);
+    const onReconnected = () => setReconnecting(false);
+    window.addEventListener('api:reconnecting', onReconnecting);
+    window.addEventListener('api:reconnected', onReconnected);
+    return () => {
+      window.removeEventListener('api:reconnecting', onReconnecting);
+      window.removeEventListener('api:reconnected', onReconnected);
+    };
+  }, []);
 
   // Sidebar collapses to icons, expands on hover
 
@@ -373,6 +385,15 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       </a>
 
       <div className="dashboard">
+        {reconnecting && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: '#f59e0b', color: '#fff', textAlign: 'center',
+            padding: '8px 16px', fontSize: '14px', fontWeight: 500,
+          }}>
+            Reconnecting to server…
+          </div>
+        )}
         <header className="dashboard-header">
         <div className="header-left">
           <button
