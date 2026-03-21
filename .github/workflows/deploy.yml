@@ -108,6 +108,12 @@ jobs:
             --cpu 1 \
             --min-instances 1 \
             --max-instances 3 \
+            --startup-cpu-boost \
+            --startup-probe-path /health \
+            --startup-probe-initial-delay 5 \
+            --startup-probe-period 5 \
+            --startup-probe-failure-threshold 12 \
+            --startup-probe-timeout 3 \
             --timeout 300
 
       - name: Show deployment URL

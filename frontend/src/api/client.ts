@@ -24,19 +24,34 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Retry on 503 Service Unavailable (cold-start readiness gate) (#2034)
+// Retry on 503 Service Unavailable (deploy readiness gate) (#2034, #2065)
 api.interceptors.response.use(undefined, async (error) => {
   const config = error.config;
   if (
     error.response?.status === 503 &&
     config &&
-    (config._retryCount ?? 0) < 3
+    (config._retryCount ?? 0) < 5
   ) {
     config._retryCount = (config._retryCount ?? 0) + 1;
-    await new Promise((r) => setTimeout(r, 1000 * config._retryCount));
+    // Dispatch event so UI can show "reconnecting" indicator
+    window.dispatchEvent(new CustomEvent('api:reconnecting', { detail: { attempt: config._retryCount } }));
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s (max ~31s total)
+    await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, config._retryCount - 1)));
     return api(config);
   }
+  // Clear reconnecting state on final failure
+  if (error.response?.status === 503) {
+    window.dispatchEvent(new CustomEvent('api:reconnected'));
+  }
   return Promise.reject(error);
+});
+
+// Clear reconnecting indicator on successful response after retries
+api.interceptors.response.use((response) => {
+  if ((response.config as unknown as Record<string, unknown>)._retryCount) {
+    window.dispatchEvent(new CustomEvent('api:reconnected'));
+  }
+  return response;
 });
 
 // Handle auth errors with token refresh
