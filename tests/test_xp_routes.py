@@ -90,9 +90,9 @@ def test_get_xp_history(client, xp_users):
     resp = client.get("/api/xp/history", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "entries" in data
-    assert "total_count" in data
-    assert isinstance(data["entries"], list)
+    assert "items" in data
+    assert "total" in data
+    assert isinstance(data["items"], list)
 
 
 def test_get_xp_history_with_pagination(client, xp_users):
@@ -100,8 +100,8 @@ def test_get_xp_history_with_pagination(client, xp_users):
     resp = client.get("/api/xp/history?limit=10&offset=5", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "entries" in data
-    assert "total_count" in data
+    assert "items" in data
+    assert "total" in data
 
 
 # ---------------------------------------------------------------------------

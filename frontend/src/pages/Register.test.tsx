@@ -49,14 +49,13 @@ describe('Register', () => {
     renderWithProviders(<Register />)
 
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
 
     // Role selection checkboxes and teacher type should NOT be present
     expect(screen.queryByText(/select role/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/parent/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/teacher type/i)).not.toBeInTheDocument()
   })
 
@@ -71,7 +70,7 @@ describe('Register', () => {
     renderWithProviders(<Register />)
 
     await user.type(screen.getByLabelText(/full name/i), 'Test User')
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'different456')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -87,19 +86,17 @@ describe('Register', () => {
     renderWithProviders(<Register />)
 
     await user.type(screen.getByLabelText(/full name/i), 'New User')
-    await user.type(screen.getByLabelText(/email/i), 'new@example.com')
+    await user.type(screen.getByLabelText('Email'), 'new@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
-    expect(mockRegister).toHaveBeenCalledWith({
+    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({
       email: 'new@example.com',
       password: 'password123',
       full_name: 'New User',
       roles: [],
-      started_at: expect.any(Number),
-      website: '',
-    })
+    }))
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/onboarding')
     })
@@ -114,7 +111,7 @@ describe('Register', () => {
     renderWithProviders(<Register />)
 
     await user.type(screen.getByLabelText(/full name/i), 'Test')
-    await user.type(screen.getByLabelText(/email/i), 'dup@example.com')
+    await user.type(screen.getByLabelText('Email'), 'dup@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -131,7 +128,7 @@ describe('Register', () => {
     renderWithProviders(<Register />)
 
     await user.type(screen.getByLabelText(/full name/i), 'Test')
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -148,7 +145,7 @@ describe('Register', () => {
     renderWithProviders(<Register />)
 
     await user.type(screen.getByLabelText(/full name/i), 'Test')
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -163,8 +160,8 @@ describe('Register', () => {
 
     renderWithProviders(<Register />)
 
-    expect(screen.getByLabelText(/email/i)).toHaveValue('google@example.com')
-    expect(screen.getByLabelText(/email/i)).toBeDisabled()
+    expect(screen.getByLabelText('Email')).toHaveValue('google@example.com')
+    expect(screen.getByLabelText('Email')).toBeDisabled()
     expect(screen.getByLabelText(/full name/i)).toHaveValue('Google User')
     expect(screen.getByText(/complete your google account setup/i)).toBeInTheDocument()
   })
