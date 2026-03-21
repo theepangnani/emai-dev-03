@@ -29,6 +29,26 @@ def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 
+def _build_conversation_starter(
+    child_name: str, guide: "StudyGuide | None"
+) -> str | None:
+    """Build a conversation starter from the child's most recent study guide.
+
+    Returns a sentence like:
+        "Emma studied Cell Division this week — ask her:
+         What did you find most interesting about Cell Division?"
+    """
+    if guide is None:
+        return None
+
+    first_name = (child_name or "").split()[0]
+    topic = guide.title
+    return (
+        f"{first_name} studied {topic} this week "
+        f"— ask them: What did you find most interesting about {topic}?"
+    )
+
+
 def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResponse:
     """Build the weekly digest data for a parent across all linked children."""
 
@@ -136,7 +156,25 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
         )
         study_counts = {uid: cnt for uid, cnt in sc_rows}
 
-    # 5. Quiz results per child (last 7 days)
+    # 5. Most recent study guide per child (for conversation starters)
+    recent_guides: dict[int, StudyGuide] = {}
+    if child_user_ids:
+        for uid in child_user_ids:
+            guide = (
+                db.query(StudyGuide)
+                .filter(
+                    StudyGuide.user_id == uid,
+                    StudyGuide.created_at >= week_start,
+                    StudyGuide.archived_at.is_(None),
+                    StudyGuide.guide_type == "study_guide",
+                )
+                .order_by(StudyGuide.created_at.desc())
+                .first()
+            )
+            if guide:
+                recent_guides[uid] = guide
+
+    # 6. Quiz results per child (last 7 days)
     quiz_data: dict[int, list[float]] = {}
     if child_user_ids:
         qr_rows = (
@@ -223,6 +261,11 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
             parts.append(f"avg quiz score {quiz_info.average_percentage}%")
         highlight = ", ".join(parts) if parts else "No activity this week"
 
+        # Conversation starter based on most recent study guide
+        conversation_starter = _build_conversation_starter(
+            user.full_name, recent_guides.get(user.id)
+        )
+
         child_digests.append(ChildDigest(
             student_id=student.id,
             full_name=user.full_name,
@@ -233,6 +276,7 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
             quiz_scores=quiz_info,
             overdue_items=overdue_items,
             highlight=highlight,
+            conversation_starter=conversation_starter,
         ))
 
     # Overall summary
@@ -282,6 +326,7 @@ def render_digest_email_html(digest: WeeklyDigestResponse) -> str:
             {quiz_html}
           </div>
           {overdue_html}
+          {f'<div style="margin-top:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:13px;">{child.conversation_starter}</div>' if child.conversation_starter else ""}
         </div>
         """
 

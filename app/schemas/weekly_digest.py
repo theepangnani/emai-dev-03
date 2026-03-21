@@ -35,6 +35,7 @@ class ChildDigest(BaseModel):
     quiz_scores: DigestQuizScore = DigestQuizScore()
     overdue_items: list[DigestOverdueItem] = []
     highlight: str = ""  # one-line summary
+    conversation_starter: str | None = None  # suggested question for parent
 
 
 class WeeklyDigestResponse(BaseModel):
