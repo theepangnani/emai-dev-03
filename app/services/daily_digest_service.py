@@ -1,11 +1,16 @@
 """Service that builds and sends the Daily Morning Email Digest for parents."""
 
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.schemas.briefing import DailyBriefingResponse
 from app.services.briefing_service import get_daily_briefing
 from app.services.email_service import send_email, wrap_branded_email
+from app.services.translation_service import TranslationService
+
+logger = logging.getLogger(__name__)
 
 
 def _render_digest_email_html(
@@ -135,6 +140,25 @@ def has_content(briefing: DailyBriefingResponse) -> bool:
     )
 
 
+def _translate_safe(text: str, target_language: str) -> str:
+    """Translate text, falling back to original on any error."""
+    try:
+        return TranslationService.translate(text, target_language)
+    except Exception:
+        logger.warning("Translation failed, using English fallback")
+        return text
+
+
+def _translate_briefing(briefing: DailyBriefingResponse, target_language: str) -> DailyBriefingResponse:
+    """Translate key briefing text fields in-place and return the briefing."""
+    if not target_language or target_language == "en":
+        return briefing
+
+    briefing.greeting = _translate_safe(briefing.greeting, target_language)
+
+    return briefing
+
+
 async def send_daily_digest_email(db: Session, parent_user_id: int, force: bool = False) -> bool:
     """Generate and send the daily digest email to a parent.
 
@@ -158,8 +182,15 @@ async def send_daily_digest_email(db: Session, parent_user_id: int, force: bool 
     if not force and not has_content(briefing):
         return False
 
+    lang = getattr(parent, "preferred_language", "en") or "en"
+    if lang != "en":
+        briefing = _translate_briefing(briefing, lang)
+
     unsub_url = get_unsubscribe_url(parent_user_id)
     html = _render_digest_email_html(briefing, unsubscribe_url=unsub_url)
     subject = f"Daily Digest - {briefing.date}"
+
+    if lang != "en":
+        subject = _translate_safe(subject, lang)
 
     return await send_email(parent.email, subject, html)
