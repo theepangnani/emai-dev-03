@@ -31,6 +31,7 @@ import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
+import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
@@ -780,13 +781,8 @@ export function CourseMaterialDetailPage() {
           </div>
         )}
 
-        {childGuides.length > 0 && studyGuide && (
-          <div className="cm-subguide-status ready" style={{ cursor: 'pointer' }} onClick={() => navigate(`/study/guide/${studyGuide.id}`)}>
-            <span>Sub-Guides ({childGuides.length})</span>
-            <Link to={`/study/guide/${studyGuide.id}`} className="cm-subguide-status-link">
-              View in Study Guide &rarr;
-            </Link>
-          </div>
+        {studyGuide && (
+          <SubGuidesPanel childGuides={childGuides} parentGuideId={studyGuide.id} />
         )}
 
         {/* ── Tab navigation ───────────────────────── */}
@@ -1019,7 +1015,18 @@ export function CourseMaterialDetailPage() {
 
       {/* Contextual notes: selection tooltip + right-click context menu + FAB */}
       {selection && (
-        <SelectionTooltip rect={selection.rect} visible onAddToNotes={handleAddToNotes} />
+        <SelectionTooltip
+          rect={selection.rect}
+          visible
+          onAddToNotes={handleAddToNotes}
+          onGenerateStudyMaterial={() => {
+            if (selection) {
+              handleContextGenerate(selection.text);
+              clearSelection();
+              window.getSelection()?.removeAllRanges();
+            }
+          }}
+        />
       )}
       <TextSelectionContextMenu
         containerRef={contentAreaRef}
