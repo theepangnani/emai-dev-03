@@ -219,7 +219,7 @@ class TestEvaluateStreak:
             HolidayDate.date == yesterday
         ).first()
         if not existing_holiday:
-            db_session.add(HolidayDate(date=yesterday, description="Test Holiday"))
+            db_session.add(HolidayDate(date=yesterday, name="Test Holiday"))
             db_session.commit()
 
         # Set up streak but no activity yesterday

@@ -809,8 +809,8 @@ def create_holiday(
     """Create a holiday date."""
     holiday = HolidayDate(
         date=data.date,
-        board_name=data.board_name,
-        description=data.description,
+        name=data.name,
+        board=data.board,
     )
     db.add(holiday)
     db.commit()
