@@ -235,6 +235,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
+        { label: 'Analytics', path: '/analytics' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -245,6 +246,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'Study', path: '/study' },
+        { label: 'Analytics', path: '/analytics' },
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
@@ -268,6 +270,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     }
 
     if (user?.role === 'admin') {
+      items.push({ label: 'Analytics', path: '/analytics' });
       items.push({ label: 'Waitlist', path: '/admin/waitlist' });
       items.push({ label: 'Survey Results', path: '/admin/survey' });
       items.push({ label: 'AI Usage', path: '/admin/ai-usage' });
