@@ -90,10 +90,11 @@
     "answer": "Go to the Courses page and click \"Create Course\". Enter the course name, subject, and description. You can then add students to the course and upload course materials. Manual courses work the same as synced Google Classroom courses for study tools and tasks."
   },
   {
-    "title": "Where can I report a bug or request a feature?",
-    "description": "I found a problem or have a suggestion for ClassBridge.",
+    "title": "How do I report a bug in ClassBridge?",
+    "description": "I found a problem and want to report it with a screenshot.",
     "category": "other",
-    "answer": "We appreciate your feedback! You can:\n1. Use the Help page to find answers to common questions\n2. Send a message to the admin through the Messages page\n3. Contact support at support@classbridge.ca\n\nPlease include as much detail as possible about the issue, including what you were doing when it occurred and any error messages you saw."
+    "is_pinned": true,
+    "answer": "ClassBridge has a built-in bug report feature:\n1. When you see an error dialog, click the 'Report this issue' link at the bottom of the error message\n2. The Bug Report form opens with the error details pre-filled\n3. You can capture a screenshot by clicking the camera icon — it takes a snapshot of your current screen\n4. You can also paste a screenshot from your clipboard (Ctrl+V / Cmd+V)\n5. Add a description of what you were doing when the error occurred\n6. Click Submit — your report is sent to the development team as a GitHub issue with your screenshot attached\n\nYou can also open the bug report form anytime from the Help menu in the sidebar."
   },
   {
     "title": "What does ClassBridge do that ChatGPT or Claude can't?",
@@ -143,5 +144,109 @@
     "description": "Accessing original uploaded documents.",
     "category": "study-tools",
     "answer": "Open the course material detail page and go to the Document tab. Click the download icon to save the original file, or view it inline if the format is supported (PDF, images, text). Use the + menu for replace or edit options."
+  },
+  {
+    "title": "How do I ask questions about my study guide?",
+    "description": "Using the Study Q&A feature to ask contextual questions about study materials.",
+    "category": "study-tools",
+    "is_pinned": true,
+    "answer": "ClassBridge has a Study Q&A feature that lets you ask questions directly about your study guide content:\n1. Open any study guide from the Study page or Course Materials\n2. Look for the chat icon or 'Ask a Question' button on the study guide view\n3. Type your question — the AI understands the context of your specific study guide\n4. Get an answer that references the actual content you're studying\n5. You can save helpful AI responses as new study notes or course materials\n\nStudy Q&A uses 1 AI credit per question. The AI is contextually aware of your study guide content, so answers are specific and relevant — not generic."
+  },
+  {
+    "title": "What are XP points and badges?",
+    "description": "Understanding the gamification system — experience points, badges, and study streaks.",
+    "category": "account",
+    "answer": "ClassBridge rewards consistent study habits with XP (Experience Points) and Badges:\n\n**XP Points:** You earn XP for study activities like completing quizzes, reviewing flashcards, generating study guides, and finishing tasks. View your XP balance and transaction history on the XP History page.\n\n**Badges:** Achieve badges for milestones like your first quiz, study streaks, and more. Check the Badges page to see earned and available badges.\n\n**Study Streaks:** Track consecutive days of study activity. Your streak appears on your dashboard. If you miss a day, you can use XP to recover your streak before it resets.\n\nThese features are available to students and help build positive study habits through achievable goals."
+  },
+  {
+    "title": "How do I change the app theme (Dark Mode)?",
+    "description": "Switching between Light, Dark, and Focus themes.",
+    "category": "account",
+    "answer": "ClassBridge offers three visual themes:\n1. **Light** — Clean, bright default theme with teal accents\n2. **Dark** — Dark background with purple/cyan accents, easier on the eyes at night\n3. **Focus** — Warm muted tones designed for distraction-free study sessions\n\nTo switch themes, click the theme toggle icon in the top navigation bar (sun/moon icon). Your preference is saved automatically and persists across sessions."
+  },
+  {
+    "title": "What are sub-study guides?",
+    "description": "Understanding master documents and sub-study guide hierarchy.",
+    "category": "study-tools",
+    "answer": "When you upload multiple files at once, you can designate one as the 'master document.' The master document acts as the main study guide, and each additional file becomes a sub-study guide linked to it.\n\nSub-study guides appear as tagged items in the course materials list with a 'Has sub study guide' indicator. You can navigate between the master and its sub-guides using the breadcrumb navigation at the top of the study guide view.\n\nThis is useful for courses with multiple chapters, units, or sections — each gets its own focused study guide while staying organized under a single master."
+  },
+  {
+    "title": "How do I print or export study materials as PDF?",
+    "description": "Printing study guides, quizzes, or flashcards.",
+    "category": "study-tools",
+    "answer": "You can print or export any study material:\n1. Open the study guide, quiz, or flashcard set you want to print\n2. Click the Print icon (printer) or 'Download PDF' button in the toolbar\n3. For printing: Your browser's print dialog opens with optimized formatting\n4. For PDF: A formatted PDF file is downloaded to your device\n\nThe print view automatically adjusts formatting for paper — removing navigation elements and optimizing layout for readability."
+  },
+  {
+    "title": "Can ClassBridge read scanned or handwritten documents?",
+    "description": "Understanding OCR processing for uploaded images and scanned worksheets.",
+    "category": "study-tools",
+    "error_code": "OCR_FAILED",
+    "answer": "Yes! ClassBridge uses OCR (Optical Character Recognition) to extract text from:\n- Scanned PDF documents\n- Photos of worksheets or handouts\n- Images with embedded text\n\nSimply upload the scanned document or image as a course material. ClassBridge automatically processes it and extracts the text content, which can then be used to generate study guides, quizzes, and flashcards.\n\nFor best results, ensure scanned documents are clear and well-lit. Handwritten text recognition works best with neat, legible handwriting."
+  },
+  {
+    "title": "What are Conversation Starters?",
+    "description": "AI-generated discussion topics for parent-child conversations about school.",
+    "category": "study-tools",
+    "answer": "Conversation Starters are AI-generated discussion prompts designed to help parents talk with their children about school in a natural, engaging way. They're based on your child's actual courses, assignments, and recent activity on ClassBridge.\n\nNew starters are generated daily. You can find them on your Parent Dashboard or generate fresh ones on demand. Topics might include upcoming assignments, recent quiz results, or interesting course content — giving you a natural entry point for meaningful academic conversations."
+  },
+  {
+    "title": "How do I export my data from ClassBridge?",
+    "description": "Downloading personal data and child information.",
+    "category": "account",
+    "answer": "ClassBridge lets you download all your personal data:\n1. Go to Settings from the sidebar\n2. Click 'Data Export'\n3. Your data is compiled and downloaded as a file containing your profile, courses, study materials, quiz results, messages, and task history\n\nFor parents, the export includes data for all linked children. This feature supports your right to access your personal information stored on the platform."
+  },
+  {
+    "title": "How do I delete my account?",
+    "description": "Requesting account deletion with grace period.",
+    "category": "account",
+    "answer": "To delete your ClassBridge account:\n1. Go to Settings > Account Settings\n2. Scroll to the bottom and click 'Delete Account'\n3. Confirm your decision — you'll receive a confirmation email\n4. Your account enters a 30-day grace period during which you can cancel the deletion by logging back in\n5. After 30 days, your account is permanently anonymized\n\nImportant: Account deletion removes your personal data but anonymizes (rather than deletes) records to maintain data integrity for other users like teachers and classmates."
+  },
+  {
+    "title": "How do I import my calendar into ClassBridge?",
+    "description": "Syncing external calendars with ClassBridge tasks and assignments.",
+    "category": "account",
+    "answer": "You can import external calendars to see all your events alongside ClassBridge tasks:\n1. Go to Settings > Calendar Import\n2. Enter your calendar feed URL (ICS/iCal format)\n3. Click 'Sync Calendar'\n\nImported events appear on the Tasks page calendar alongside your ClassBridge assignments and tasks. You can manually trigger a re-sync at any time. Most school and Google Calendar feeds provide an ICS URL you can copy from the calendar's sharing settings."
+  },
+  {
+    "title": "How do I view my quiz history and track improvement?",
+    "description": "Reviewing past quiz attempts and score trends.",
+    "category": "study-tools",
+    "answer": "Students can track their quiz performance over time:\n1. Go to Quiz History from the sidebar or Study page\n2. View all past quiz attempts with scores, dates, and course information\n3. See score trending — the system tracks your last 5 attempts per material and shows whether you're improving or declining\n4. Click any attempt to review the questions and your answers\n\nQuiz results are saved automatically after each attempt. Use the trend data to identify topics that need more practice."
+  },
+  {
+    "title": "What keyboard shortcuts are available?",
+    "description": "Quick access to features using keyboard shortcuts.",
+    "category": "other",
+    "answer": "ClassBridge supports keyboard shortcuts for quick navigation. Press '?' (question mark) anywhere in the app to view the full list of available shortcuts. Common shortcuts include navigating between pages, opening search, and toggling the sidebar."
+  },
+  {
+    "title": "How do I manage my notification preferences?",
+    "description": "Configuring which notifications to receive and how.",
+    "category": "account",
+    "answer": "You can customize your notification settings:\n1. Click the bell icon in the top navigation bar\n2. Go to 'Notification Settings' or navigate to Settings > Notifications\n3. Toggle individual notification types on or off (messages, assignments, reminders, system alerts)\n4. Choose whether to receive email notifications for each type\n5. Suppress repeated notifications of the same type if they become noisy\n\nEmail notifications are sent for important events like new messages and assignment reminders. You can unsubscribe from emails using the link at the bottom of any notification email."
+  },
+  {
+    "title": "What is the Daily Digest email?",
+    "description": "Understanding the automated daily summary email.",
+    "category": "other",
+    "answer": "The Daily Digest is an automated email sent each morning summarizing your day ahead on ClassBridge. It includes:\n- Tasks and assignments due today\n- Overdue items that need attention\n- New messages received\n- Recent study activity summary\n- An inspirational quote\n\nYou can manage your digest preferences in Settings > Notifications. The digest helps you stay on top of your academic schedule without needing to log in."
+  },
+  {
+    "title": "How do teachers use email monitoring?",
+    "description": "Understanding the Gmail integration for teacher communications.",
+    "category": "messaging",
+    "answer": "Teachers can connect their Gmail account to ClassBridge for email monitoring:\n1. Go to Teacher Communications from the sidebar\n2. Click 'Connect Gmail' and authorize access\n3. ClassBridge syncs your inbox and shows relevant parent/student emails\n4. AI generates summaries of key communications\n5. Reply to emails directly from ClassBridge\n\nEmail monitoring helps teachers keep track of parent communications alongside their ClassBridge messages. Sync happens automatically, and you can trigger a manual sync at any time."
+  },
+  {
+    "title": "How do I upload multiple files at once?",
+    "description": "Using multi-file upload with master document selection.",
+    "category": "study-tools",
+    "answer": "ClassBridge supports uploading up to 10 files at once:\n1. Click 'Upload Materials' from your dashboard or Course Materials page\n2. Select multiple files (PDF, Word, Excel, PowerPoint, images, text) — max 20MB each\n3. If uploading multiple files, you can designate one as the 'master document' that the others relate to\n4. Choose which AI tools to generate during upload (Study Guide, Quiz, Flashcards)\n5. Select the target course and click Upload\n\nYou can also paste text directly instead of uploading a file. Generation happens in the background — you can continue working while AI processes your materials."
+  },
+  {
+    "title": "How does the study streak work?",
+    "description": "Understanding study streaks and streak recovery.",
+    "category": "account",
+    "answer": "Study streaks track consecutive days of study activity on ClassBridge:\n- Your streak increases by 1 for each day you complete a study activity (take a quiz, review flashcards, read a study guide)\n- Your current streak is displayed on the student dashboard\n- If you miss a day, your streak resets to 0\n- You can use earned XP points to recover a broken streak before it resets\n- School holidays (set by admins) don't break your streak\n\nStreaks encourage consistent daily study habits and work alongside the XP and badge system."
   }
 ]

@@ -96,6 +96,32 @@ const PARENT_TUTORIALS: TutorialSection[] = [
   },
 ];
 
+const SHARED_FEATURE_TUTORIAL: TutorialSection = {
+  id: 'new-features',
+  title: 'New Features & Tips',
+  description: 'Learn about recently added features like bug reporting, themes, and more.',
+  steps: [
+    {
+      title: 'Report a Bug with Screenshot',
+      description: 'When you see an error dialog, click "Report this issue" to open the Bug Report form. Use the camera icon to capture a screenshot, or paste one from your clipboard. Your report is submitted as a tracked issue so the team can fix it.',
+      image: '/tutorial/bug-report.svg',
+      tip: 'You can also open the bug report form anytime from the Help menu in the sidebar.',
+    },
+    {
+      title: 'Switch Themes (Light, Dark, Focus)',
+      description: 'Click the theme toggle icon (sun/moon) in the top navigation bar to switch between Light, Dark, and Focus themes. Dark mode is easier on the eyes at night, and Focus mode uses warm tones for distraction-free studying.',
+      image: '/tutorial/theme-switch.svg',
+      tip: 'Your theme preference is saved automatically and persists across sessions.',
+    },
+    {
+      title: 'Ask Questions About Study Guides',
+      description: 'Open any study guide and use the "Ask a Question" button to chat with AI about the specific content. The AI understands the context of your study guide and gives relevant, targeted answers. You can save helpful responses as study notes.',
+      image: '/tutorial/study-qa.svg',
+      tip: 'Each Study Q&A question uses 1 AI credit from your wallet.',
+    },
+  ],
+};
+
 const STUDENT_TUTORIALS: TutorialSection[] = [
   {
     id: 'student-start',
@@ -141,6 +167,30 @@ const STUDENT_TUTORIALS: TutorialSection[] = [
         title: 'Study with Flashcards',
         description: 'The Flashcards tab generates flip cards from your material. Click to flip, use arrow keys or swipe to navigate, and shuffle for variety.',
         image: '/tutorial/student-flashcards.svg',
+      },
+    ],
+  },
+  {
+    id: 'student-gamification',
+    title: 'XP, Badges & Study Streaks',
+    description: 'Earn rewards for consistent study habits and track your progress.',
+    steps: [
+      {
+        title: 'Earn XP Points',
+        description: 'You earn Experience Points (XP) for study activities: taking quizzes, reviewing flashcards, generating study guides, and completing tasks. Your XP balance is shown on your dashboard.',
+        image: '/tutorial/student-xp.svg',
+        tip: 'Visit the XP History page from the sidebar to see exactly how you earned each point.',
+      },
+      {
+        title: 'Unlock Badges',
+        description: 'Badges are achievements you unlock for milestones like your first quiz, maintaining a study streak, or earning XP thresholds. Check the Badges page to see all available badges and your progress.',
+        image: '/tutorial/student-badges.svg',
+      },
+      {
+        title: 'Maintain Your Study Streak',
+        description: 'Your streak counts consecutive days of study activity. Complete at least one study action each day to keep it going. If you miss a day, you can spend XP to recover your streak before it resets.',
+        image: '/tutorial/student-streak.svg',
+        tip: 'School holidays (set by your admin) won\'t break your streak, so don\'t worry about breaks!',
       },
     ],
   },
@@ -428,6 +478,76 @@ const FAQ_SECTIONS: FaqSection[] = [
     ],
   },
   {
+    title: 'XP, Badges & Study Streaks (Students)',
+    items: [
+      {
+        question: 'What are XP points and how do I earn them?',
+        answer:
+          'XP (Experience Points) are earned by completing study activities: taking quizzes, reviewing flashcards, generating study guides, and finishing tasks. Your XP balance appears on your dashboard. Visit the XP History page from the sidebar to see a full transaction log of how you earned your points.',
+      },
+      {
+        question: 'What are badges and how do I unlock them?',
+        answer:
+          'Badges are achievements you unlock for reaching milestones — like completing your first quiz, maintaining a study streak, or earning a certain amount of XP. Visit the Badges page from the sidebar to see all available badges and which ones you\'ve already earned.',
+      },
+      {
+        question: 'How does the study streak work?',
+        answer:
+          'Your study streak tracks consecutive days of study activity. Each day you complete at least one study action (quiz, flashcards, study guide review), your streak increases. If you miss a day, the streak resets — but you can spend XP to recover it before it\'s lost. School holidays set by admins won\'t break your streak.',
+      },
+    ],
+  },
+  {
+    title: 'Bug Reporting & Screenshots',
+    items: [
+      {
+        question: 'How do I report a bug in ClassBridge?',
+        answer:
+          'When you encounter an error, look for the "Report this issue" link at the bottom of the error dialog. Clicking it opens the Bug Report form with error details pre-filled. You can also open the bug report form from the Help menu anytime.',
+      },
+      {
+        question: 'How do I include a screenshot with my bug report?',
+        answer:
+          'In the Bug Report form, click the camera icon to capture a screenshot of your current screen. You can also paste a screenshot from your clipboard using Ctrl+V (or Cmd+V on Mac). The screenshot is uploaded and attached to your report automatically. Your report is submitted as a GitHub issue so the development team can track and resolve it.',
+      },
+    ],
+  },
+  {
+    title: 'Study Q&A',
+    items: [
+      {
+        question: 'How do I ask questions about my study guide?',
+        answer:
+          'Open any study guide and look for the chat or "Ask a Question" button. Type your question and the AI will answer based on the specific content of your study guide — not generic information. You can save helpful responses as new study notes or course materials. Each question uses 1 AI credit.',
+      },
+    ],
+  },
+  {
+    title: 'Appearance & Themes',
+    items: [
+      {
+        question: 'How do I switch to Dark Mode or Focus Mode?',
+        answer:
+          'Click the theme toggle icon (sun/moon) in the top navigation bar. Choose from Light (bright teal), Dark (dark background with purple/cyan accents), or Focus (warm muted tones for distraction-free studying). Your preference is saved automatically.',
+      },
+    ],
+  },
+  {
+    title: 'Data & Privacy',
+    items: [
+      {
+        question: 'How do I export my data from ClassBridge?',
+        answer:
+          'Go to Settings > Data Export to download all your personal data including profile, courses, study materials, quiz results, messages, and task history. For parents, the export includes data for all linked children.',
+      },
+      {
+        question: 'How do I delete my account?',
+        answer:
+          'Go to Settings > Account Settings and click "Delete Account" at the bottom. Your account enters a 30-day grace period — log back in during this time to cancel. After 30 days, your personal data is permanently anonymized.',
+      },
+    ],
+  },
+  {
     title: 'Troubleshooting',
     items: [
       {
@@ -436,9 +556,14 @@ const FAQ_SECTIONS: FaqSection[] = [
           'First, try clicking the sync button again. If it still fails, your Google authorization may have expired \u2014 go to your Dashboard and reconnect Google Classroom. If the problem persists, sign out and sign back in, then reconnect.',
       },
       {
-        question: 'Where can I report a bug or request a feature?',
+        question: 'How do I report a bug or request a feature?',
         answer:
-          'Please email us at support@classbridge.ca with a description of the issue or your feature idea. Include screenshots if possible. We review all feedback and use it to improve ClassBridge.',
+          'Use the built-in Bug Report feature: when you see an error dialog, click "Report this issue" to submit a report with a screenshot. You can also open the bug report form from the Help menu. For feature requests, email support@classbridge.ca or use the survey on the Help page.',
+      },
+      {
+        question: 'Can ClassBridge read scanned or handwritten documents?',
+        answer:
+          'Yes! ClassBridge uses OCR to extract text from scanned PDFs, photos of worksheets, and images with text. Upload the scanned document as a course material and ClassBridge processes it automatically. For best results, ensure documents are clear and well-lit.',
       },
     ],
   },
@@ -520,11 +645,11 @@ export function HelpPage() {
 
   const tutorials = useMemo(() => {
     switch (user?.role) {
-      case 'parent': return PARENT_TUTORIALS;
-      case 'student': return STUDENT_TUTORIALS;
-      case 'teacher': return TEACHER_TUTORIALS;
-      case 'admin': return ADMIN_TUTORIALS;
-      default: return PARENT_TUTORIALS;
+      case 'parent': return [...PARENT_TUTORIALS, SHARED_FEATURE_TUTORIAL];
+      case 'student': return [...STUDENT_TUTORIALS, SHARED_FEATURE_TUTORIAL];
+      case 'teacher': return [...TEACHER_TUTORIALS, SHARED_FEATURE_TUTORIAL];
+      case 'admin': return [...ADMIN_TUTORIALS, SHARED_FEATURE_TUTORIAL];
+      default: return [...PARENT_TUTORIALS, SHARED_FEATURE_TUTORIAL];
     }
   }, [user?.role]);
 

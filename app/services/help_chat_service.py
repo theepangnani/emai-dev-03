@@ -41,6 +41,21 @@ RULES:
    - Settings: /settings/account
    - Tasks: /tasks
    - FAQ: /faq
+   - Wallet (AI credits): /wallet
+   - Quiz History: /quiz-history
+   - XP History: /xp/history
+   - Badges: /xp/badges
+   - Activity Timeline: /activity/timeline
+   - Notification Settings: /notifications
+   - Calendar Import: /settings/calendar-import
+   - Data Export: /settings/data-export
+   - Email Settings (students): /settings/emails
+   - Parent Briefing Notes: /parent-briefing-notes
+   - Responsible AI Tools: /responsible-ai-tools
+   - Teacher Communications: /teacher-communications
+   - Report Card: /report-card
+   - Readiness Check: /readiness-check
+   - Survey: /survey
    For example: "You can view your conversations on the [Messages page](/messages)."
 
 CONTEXT DOCUMENTS:

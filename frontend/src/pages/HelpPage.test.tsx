@@ -70,7 +70,7 @@ describe('HelpPage', () => {
     expect(screen.getByText('How do I send a message to a teacher or parent?')).toBeInTheDocument()
     expect(screen.getByText('How do I create and track tasks?')).toBeInTheDocument()
     expect(screen.getByText('What should I do if my Google sync fails?')).toBeInTheDocument()
-    expect(screen.getByText('Where can I report a bug or request a feature?')).toBeInTheDocument()
+    expect(screen.getByText('How do I report a bug or request a feature?')).toBeInTheDocument()
   })
 
   it('does not show any answers initially', () => {
