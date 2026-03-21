@@ -1160,11 +1160,11 @@ export function StudyGuidesPage() {
               {isUnlinked && (
                 <span className="guide-unlinked-badge">Not assigned</span>
               )}
+            </span>
+            <span className="guide-row-meta">
               {hasSubGuides.has(item.id) && (
                 <span className="guide-sub-badge">Has Sub-Guides</span>
               )}
-            </span>
-            <span className="guide-row-meta">
               {item.course_name && (
                 <span className="guide-course-badge">{item.course_name}</span>
               )}
