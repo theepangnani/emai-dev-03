@@ -28,11 +28,27 @@ async def submit_bug_report(
     description: Optional[str] = Form(None),
     page_url: Optional[str] = Form(None),
     user_agent: Optional[str] = Form(None),
+    website: Optional[str] = Form(None),  # honeypot field
     screenshot: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Submit a bug report with optional screenshot."""
+    # Honeypot check — bots auto-fill this hidden field
+    if website:
+        logger.warning(f"Honeypot triggered for user {current_user.id}")
+        return BugReportResponse(
+            id=0,
+            user_id=current_user.id,
+            description=description,
+            screenshot_url=None,
+            page_url=page_url,
+            user_agent=user_agent,
+            github_issue_number=None,
+            github_issue_url=None,
+            created_at=datetime.now(timezone.utc),
+        )
+
     # Additional rate limiting check via DB (defense-in-depth)
     one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
     recent_count = db.query(BugReport).filter(
