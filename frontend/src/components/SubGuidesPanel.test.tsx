@@ -114,7 +114,7 @@ describe('SubGuidesPanel', () => {
     const viewLinks = screen.getAllByText('View')
     expect(viewLinks).toHaveLength(3)
 
-    // All sub-guides link to full page view with fromMaterial state
+    // All sub-guides link to their own study guide page
     expect(viewLinks[0].closest('a')).toHaveAttribute('href', '/study/guide/10')
     expect(viewLinks[1].closest('a')).toHaveAttribute('href', '/study/guide/11')
     expect(viewLinks[2].closest('a')).toHaveAttribute('href', '/study/guide/12')
