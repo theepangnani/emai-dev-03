@@ -135,7 +135,7 @@ def save_quiz_result(
     # Award XP for quiz completion (non-blocking)
     try:
         from app.services.xp_service import XpService
-        XpService.award_xp(db, target_user_id, "quiz_complete")
+        XpService.award_xp(db, target_user_id, "quiz_complete", context_id=str(data.study_guide_id))
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"XP award failed (non-blocking): {e}")
