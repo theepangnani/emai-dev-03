@@ -8,7 +8,7 @@ export const bugReportsApi = {
     if (data.pageUrl) formData.append('page_url', data.pageUrl);
     if (data.userAgent) formData.append('user_agent', data.userAgent);
 
-    const response = await api.post('/bug-reports', formData, {
+    const response = await api.post('/api/bug-reports', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
