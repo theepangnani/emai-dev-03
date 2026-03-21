@@ -280,7 +280,7 @@ export function StudyGuidePage() {
         { label: 'Study Guide' },
       ]} />
 
-      {guide.parent_guide_id && guide.relationship_type === 'sub_guide' && (
+      {guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide') && (
         <StudyGuideBreadcrumb guideId={guide.id} />
       )}
 

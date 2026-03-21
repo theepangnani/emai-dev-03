@@ -327,7 +327,7 @@ export function StudyGuidesPage() {
       // Build set of content IDs that have sub-guides
       const subGuideContentIds = new Set<number>();
       allGuides.forEach((g: StudyGuide) => {
-        if (g.course_content_id && g.parent_guide_id && g.relationship_type === 'sub_guide') {
+        if (g.course_content_id && g.parent_guide_id && (!g.relationship_type || g.relationship_type === 'sub_guide')) {
           subGuideContentIds.add(g.course_content_id);
         }
       });
