@@ -206,6 +206,14 @@ def award_xp(
             "XP awarded | student_id=%s | action=%s | xp=%d | multiplier=%.2f | total=%d",
             student_id, action_type, final_xp, multiplier, summary.total_xp,
         )
+
+        # Check and award badges (non-blocking)
+        try:
+            from app.services.badge_service import BadgeService
+            BadgeService.check_and_award(db, student_id, action_type)
+        except Exception:
+            logger.exception("Badge check failed (non-blocking) | student_id=%s", student_id)
+
         return entry
 
     except Exception:
