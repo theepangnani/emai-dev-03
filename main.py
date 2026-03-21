@@ -1788,6 +1788,21 @@ def _run_migrations_inner(engine):
     except Exception as e:
         logger.warning("xp_ledger context_id migration failed (#2009): %s", e)
 
+    # ── bug_reports: widen screenshot_url from VARCHAR(500) to TEXT (#2101) ──
+    try:
+        with engine.connect() as conn:
+            inspector = sa_inspect(engine)
+            if "bug_reports" in inspector.get_table_names():
+                if "sqlite" not in settings.database_url:
+                    try:
+                        conn.execute(text("ALTER TABLE bug_reports ALTER COLUMN screenshot_url TYPE TEXT"))
+                        conn.commit()
+                        logger.info("Widened bug_reports.screenshot_url to TEXT (#2101)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("bug_reports screenshot_url migration failed (#2101): %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 

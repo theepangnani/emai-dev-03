@@ -1,3 +1,44 @@
+/* Modal header & close — needed because shared modal-header styles
+   are in page-specific CSS (TasksPage.css, etc.) which may not be loaded */
+.modal .bug-report-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal .bug-report-header h2 {
+  margin: 0;
+  padding: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-ink, #1f2937);
+  border-bottom: none;
+}
+
+.bug-report-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-ink-muted, #6b7280);
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bug-report-close:hover {
+  color: var(--color-ink, #1f2937);
+}
+
+.bug-report-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
 .bug-report-form {
   display: flex;
   flex-direction: column;
