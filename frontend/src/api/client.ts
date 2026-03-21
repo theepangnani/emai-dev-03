@@ -24,6 +24,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Retry on 503 Service Unavailable (cold-start readiness gate) (#2034)
+api.interceptors.response.use(undefined, async (error) => {
+  const config = error.config;
+  if (
+    error.response?.status === 503 &&
+    config &&
+    (config._retryCount ?? 0) < 3
+  ) {
+    config._retryCount = (config._retryCount ?? 0) + 1;
+    await new Promise((r) => setTimeout(r, 1000 * config._retryCount));
+    return api(config);
+  }
+  return Promise.reject(error);
+});
+
 // Handle auth errors with token refresh
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];

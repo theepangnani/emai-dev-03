@@ -1376,6 +1376,41 @@ def list_study_guides(
     return query.order_by(StudyGuide.created_at.desc()).all()
 
 
+def _maybe_translate_parent_summary(guide: StudyGuide, user: User, db: Session) -> StudyGuideResponse:
+    """Build a StudyGuideResponse, translating parent_summary if the user prefers a non-English language."""
+    resp = StudyGuideResponse.model_validate(guide)
+    lang = user.preferred_language or "en"
+    if lang == "en" or not guide.parent_summary:
+        return resp
+
+    # Check translation cache
+    from app.models.translated_summary import TranslatedSummary
+    cached = db.query(TranslatedSummary).filter(
+        TranslatedSummary.study_guide_id == guide.id,
+        TranslatedSummary.language == lang,
+    ).first()
+    if cached:
+        resp.parent_summary = cached.translated_text
+        return resp
+
+    # Translate on demand and cache
+    from app.services.translation_service import TranslationService
+    translated = TranslationService.translate(guide.parent_summary, lang)
+    if translated != guide.parent_summary:
+        try:
+            ts = TranslatedSummary(
+                study_guide_id=guide.id,
+                language=lang,
+                translated_text=translated,
+            )
+            db.add(ts)
+            db.commit()
+        except Exception:
+            db.rollback()
+    resp.parent_summary = translated
+    return resp
+
+
 @router.get("/guides/{guide_id}", response_model=StudyGuideResponse)
 def get_study_guide(
     guide_id: int,
@@ -1393,23 +1428,23 @@ def get_study_guide(
 
     # Owner always has access
     if guide.user_id == current_user.id:
-        return guide
+        return _maybe_translate_parent_summary(guide, current_user, db)
 
     # Parent can view guides from children's courses or created by children
     if current_user.role == UserRole.PARENT:
         children_user_ids = get_linked_children_user_ids(db, current_user.id)
         if guide.user_id in children_user_ids:
-            return guide
+            return _maybe_translate_parent_summary(guide, current_user, db)
         if guide.course_id:
             children_course_ids = get_children_course_ids(db, current_user.id)
             if guide.course_id in children_course_ids:
-                return guide
+                return _maybe_translate_parent_summary(guide, current_user, db)
 
     # Student can view course-tagged guides for enrolled courses
     if current_user.role == UserRole.STUDENT and guide.course_id:
         enrolled_course_ids = get_student_enrolled_course_ids(db, current_user.id)
         if guide.course_id in enrolled_course_ids:
-            return guide
+            return _maybe_translate_parent_summary(guide, current_user, db)
 
     logger.warning(f"Study guide {guide_id} access denied for user={current_user.id} role={current_user.role} (owner={guide.user_id})")
     raise HTTPException(status_code=404, detail="Study guide not found")

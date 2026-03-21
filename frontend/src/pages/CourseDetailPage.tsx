@@ -13,6 +13,7 @@ import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AssignmentSubmission } from '../components/AssignmentSubmission';
 import { useAIUsage } from '../hooks/useAIUsage';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
+import { AwardXpModal } from '../components/AwardXpModal';
 import '../components/AssignmentSubmission.css';
 import './CourseDetailPage.css';
 
@@ -146,6 +147,7 @@ export function CourseDetailPage() {
   const [materialsExpanded, setMaterialsExpanded] = useState(true);
   const [assignmentsExpanded, setAssignmentsExpanded] = useState(true);
   const [rosterExpanded, setRosterExpanded] = useState(true);
+  const [awardXpStudent, setAwardXpStudent] = useState<{ userId: number; name: string } | null>(null);
 
   // Focus traps for modals
   const addStudentModalRef = useFocusTrap<HTMLDivElement>(showAddStudentModal, () => setShowAddStudentModal(false));
@@ -1054,6 +1056,7 @@ export function CourseDetailPage() {
                         <span className="course-roster-email">{s.email}</span>
                       </div>
                       {s.grade_level != null && <span className="grade-badge">Grade {s.grade_level}</span>}
+                      <button className="courses-btn secondary btn-secondary btn-sm" style={{ marginRight: '4px' }} onClick={() => setAwardXpStudent({ userId: s.user_id, name: s.full_name })}>Award XP</button>
                       <button className="course-roster-remove" onClick={() => handleRemoveStudent(s.student_id, s.full_name)}>Remove</button>
                     </div>
                   ))}
@@ -1345,6 +1348,14 @@ export function CourseDetailPage() {
       />
       {confirmModal}
       <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
+      {awardXpStudent && (
+        <AwardXpModal
+          open={!!awardXpStudent}
+          onClose={() => setAwardXpStudent(null)}
+          studentName={awardXpStudent.name}
+          studentUserId={awardXpStudent.userId}
+        />
+      )}
     </DashboardLayout>
   );
 }

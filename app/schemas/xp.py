@@ -87,4 +87,5 @@ class BrowniePointResponse(BaseModel):
     awarded: int
     student_user_id: int
     new_total_xp: int
+    remaining_weekly_cap: int = 0
     message: str

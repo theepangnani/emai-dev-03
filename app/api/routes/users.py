@@ -12,7 +12,7 @@ from app.models.course import Course, student_courses
 from app.models.student_email import StudentEmail, EmailType
 import json
 
-from app.schemas.user import UserResponse, SwitchRoleRequest, UpdateInterestsRequest
+from app.schemas.user import UserResponse, SwitchRoleRequest, UpdateInterestsRequest, UpdateLanguageRequest
 from app.schemas.student_email import StudentEmailCreate, StudentEmailResponse, SetPrimaryRequest
 from app.api.deps import get_current_user, require_role
 
@@ -42,6 +42,7 @@ def _user_response(user: User) -> UserResponse:
         upload_limit_bytes=user.upload_limit_bytes or 10485760,
         storage_used_pct=round(pct, 1),
         storage_warning=pct >= 80,
+        preferred_language=user.preferred_language or "en",
         created_at=user.created_at,
     )
 
@@ -95,6 +96,21 @@ def update_interests(
 ):
     """Update the current user's interests/hobbies for AI personalization."""
     current_user.interests = json.dumps(body.interests)
+    db.commit()
+    db.refresh(current_user)
+    return _user_response(current_user)
+
+
+@router.patch("/me/language", response_model=UserResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_language(
+    request: Request,
+    body: UpdateLanguageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the current user's preferred language for translated summaries."""
+    current_user.preferred_language = body.preferred_language
     db.commit()
     db.refresh(current_user)
     return _user_response(current_user)

@@ -40,6 +40,8 @@ from app.models.holiday import HolidayDate
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog
 from app.models.detected_event import DetectedEvent
 from app.models.study_request import StudyRequest
+from app.models.translated_summary import TranslatedSummary
+from app.models.study_session import StudySession
 
 
 __all__ = [
@@ -106,4 +108,6 @@ __all__ = [
 
     "DetectedEvent",
     "StudyRequest",
+    "TranslatedSummary",
+    "StudySession",
 ]

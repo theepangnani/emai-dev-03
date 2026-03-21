@@ -101,6 +101,7 @@ class UserResponse(BaseModel):
     upload_limit_bytes: int = 10485760
     storage_used_pct: float = 0.0
     storage_warning: bool = False
+    preferred_language: str = "en"
     created_at: datetime
 
     @field_validator("roles", mode="before")
@@ -178,6 +179,18 @@ class UpdateInterestsRequest(BaseModel):
                 raise ValueError("Each interest must be 50 characters or less")
             cleaned.append(stripped)
         return cleaned
+
+
+class UpdateLanguageRequest(BaseModel):
+    preferred_language: str = Field(min_length=2, max_length=10)
+
+    @field_validator('preferred_language')
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        allowed = {"en", "fr", "ta", "zh", "pa", "ur"}
+        if v not in allowed:
+            raise ValueError(f"Unsupported language. Must be one of: {', '.join(sorted(allowed))}")
+        return v
 
 
 class EmailVerifyRequest(BaseModel):
