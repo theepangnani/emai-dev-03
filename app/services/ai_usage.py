@@ -101,6 +101,7 @@ def increment_ai_usage(
     model_name: str | None = None,
     is_regeneration: bool = False,
     parent_generation_id: int | None = None,
+    wallet_debit_amount=None,
 ) -> None:
     """Increment user's AI usage count after successful generation.
 
@@ -128,7 +129,8 @@ def increment_ai_usage(
         if total > 0:
             from app.services.wallet_service import debit_wallet
             try:
-                debit_wallet(db, wallet, Decimal("1"), note=f"AI generation: {generation_type}")
+                amount = Decimal(str(wallet_debit_amount)) if wallet_debit_amount is not None else Decimal("1")
+                debit_wallet(db, wallet, amount, note=f"AI generation: {generation_type}")
             except Exception:
                 logger.warning("Wallet debit failed for user_id=%s", user.id)
             # Don't also increment legacy counter if wallet was debited

@@ -3946,18 +3946,34 @@ Gamification system that rewards study consistency (not performance) through XP 
 
 **Anti-Gaming:** Time-on-task validation, 60-second dedup window, rapid upload flags, quiz repeat caps.
 
+**XP Summary API Contract (`GET /api/xp/summary`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| user_id | int | Student user ID |
+| total_xp | int | Lifetime XP earned |
+| level | int | Current level (1-8) |
+| level_title | string | Display title for current level |
+| streak_days | int | Current consecutive streak days |
+| xp_in_level | int | XP earned within current level band |
+| xp_for_next_level | int | Total XP width of current level band |
+| today_xp | int | XP earned today |
+| today_max_xp | int | Daily XP cap |
+| weekly_xp | int | XP earned in last 7 days |
+| recent_badges | BadgeResponse[] | Last 3 earned badges (id, name, description, icon, earned_at) |
+
 **Sub-tasks:**
-- [ ] XP data model (#2000)
-- [ ] XP earning service (#2001)
-- [ ] Streak engine (#2002)
-- [ ] XP levels & titles (#2003)
-- [ ] Achievement badges (#2004)
-- [ ] Brownie points (#2005)
-- [ ] XP dashboard UI (#2006)
-- [ ] XP history log (#2007)
+- [x] XP data model (#2000)
+- [x] XP earning service (#2001)
+- [x] Streak engine (#2002)
+- [x] XP levels & titles (#2003)
+- [x] Achievement badges (#2004)
+- [x] Brownie points (#2005)
+- [x] XP dashboard UI (#2006)
+- [x] XP history log (#2007)
 - [ ] Parent XP visibility (#2008)
 - [ ] Anti-gaming rules (#2009)
-- [ ] source_type column (#2010)
+- [x] source_type column (#2010)
 - [ ] Holiday dates table (#2024)
 
 ### 6.108 Assessment Countdown Widget (Phase 2) — September 2026 Retention Bundle
@@ -4078,3 +4094,63 @@ Effort-based signal comparing study activity vs upcoming assessments. Displayed 
 - Min. 20 continuous minutes for XP credit (15 XP, daily cap 30 XP)
 - AI recap: "You studied quadratic equations for 25 minutes. Here are 3 things to remember."
 - Weekly session total visible on parent dashboard
+
+### 6.114 Study Guide Contextual Q&A (Phase 2)
+
+Context-aware chatbot Q&A when users are viewing a study guide. The existing Help Chatbot automatically switches to "study tutor" mode, using the study guide content as context to answer questions. Users can save responses as new study guides or course materials.
+
+**GitHub Epic:** #2056
+**Sub-issues:** #2057 (backend streaming), #2058 (save endpoints), #2059 (wallet debit), #2060 (frontend chatbot), #2061 (page integration), #2062 (tests), #2063 (docs)
+
+**Architecture:** Same chatbot UI, smart routing. Frontend sends `study_guide_id` in the existing `/help/chat/stream` request. Backend detects the ID and routes to study Q&A path instead of help RAG pipeline.
+
+**Cost Model:**
+
+| Aspect | Decision |
+|--------|----------|
+| AI Model | Haiku (`claude-haiku-4-5-20251001`) — fast, cheap |
+| Credit cost | 0.25 credits per question |
+| Rate limit | 20 questions/hour (separate from help chatbot's 30/hr) |
+| Context budget | ~8000 tokens input (6000 guide + 2000 source doc) |
+| Est. cost/question | ~$0.001–$0.003 |
+
+**Study Q&A System Prompt:**
+- Role: Study tutor for ClassBridge
+- Context: Full study guide content (truncated to 24,000 chars) + source document excerpt (8,000 chars) if available
+- Rules: Answer ONLY based on provided material; use markdown + LaTeX for math; 2–4 paragraphs max; provide answers when generating practice questions
+
+**Frontend Behavior:**
+- When on study guide page (full page or Guide tab): chatbot header changes to "Ask about: {guide title}"
+- Suggestion chips switch to study-specific: "Summarize key concepts", "Explain the main ideas", "Give me practice questions", "What are the important terms?", "Quiz me on this topic"
+- Per-guide conversation history (separate sessionStorage key per guide ID)
+- Credit display in header: "0.25 credits/question"
+- Reverts to normal help mode when navigating away from study guide
+
+**Save Actions on Assistant Messages (study_qa mode only):**
+1. **Save as Study Guide** — Creates sub-guide (`relationship_type="sub_guide"`, `parent_guide_id` = current guide). No AI credits consumed.
+2. **Save as Class Material** — Creates `CourseContent` with `text_content` in same course. Only available when guide has `course_id`. No AI credits consumed.
+
+**API Changes:**
+
+| Endpoint | Change |
+|----------|--------|
+| `POST /api/help/chat/stream` | Add `study_guide_id` to request; branch to study Q&A when present |
+| `POST /api/help/chat` | Same branch for non-streaming |
+| `POST /api/study/guides/{id}/qa/save-as-guide` | **NEW** — Save response as sub-guide |
+| `POST /api/study/guides/{id}/qa/save-as-material` | **NEW** — Save response as course material |
+
+**Schema Changes:**
+- `HelpChatRequest`: add `study_guide_id: int | None`
+- `HelpChatResponse`: add `mode: str` ("help" | "study_qa"), `credits_used: float | None`, `input_tokens`, `output_tokens`, `estimated_cost_usd`
+- New: `SaveQAAsGuideRequest`, `SaveQAAsMaterialRequest`
+
+**Backend Service:** `app/services/study_qa_service.py`
+- `StudyQAService` class with Haiku model, 20/hr rate limiting, context truncation
+- `stream_answer()` async generator for SSE
+- `_check_rate_limit()` per-user enforcement
+
+**Access Control:** Guide owner, users guide is shared with, or parent of guide owner
+
+**Key Files:**
+- Backend: `app/services/study_qa_service.py`, `app/services/ai_usage.py`, `app/schemas/help.py`, `app/api/routes/help.py`, `app/api/routes/study.py`
+- Frontend: `useHelpChat.ts`, `SpeedDialFAB.tsx`, `ChatMessage.tsx`, `SuggestionChips.tsx`, `FABContext.tsx`, `StudyGuidePage.tsx`, `CourseMaterialDetailPage.tsx`

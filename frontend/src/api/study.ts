@@ -63,6 +63,7 @@ export interface SharedWithMeGuide {
   viewed_at: string | null;
   viewed_count: number;
   created_at: string;
+  course_content_id: number | null;
 }
 
 export interface StudyGuideTreeNode {

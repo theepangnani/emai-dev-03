@@ -281,3 +281,16 @@ class DuplicateCheckResponse(BaseModel):
     exists: bool
     existing_guide: StudyGuideResponse | None = None
     message: str | None = None
+
+
+# §6.114 — Study Q&A save actions
+class SaveQAAsGuideRequest(BaseModel):
+    """Save a Q&A response as a sub-guide."""
+    content: str = Field(..., min_length=1)
+    title: str = Field(default="", max_length=255)
+
+
+class SaveQAAsMaterialRequest(BaseModel):
+    """Save a Q&A response as a course material."""
+    content: str = Field(..., min_length=1)
+    title: str = Field(default="", max_length=255)

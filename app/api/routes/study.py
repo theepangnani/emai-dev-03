@@ -2403,3 +2403,87 @@ async def extract_text_from_upload(
         "character_count": len(extracted_text),
         "word_count": len(extracted_text.split()),
     }
+
+
+# ---------------------------------------------------------------------------
+# §6.114 — Study Guide Contextual Q&A save endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/guides/{guide_id}/qa/save-as-guide", response_model=StudyGuideResponse)
+async def save_qa_as_guide(
+    guide_id: int,
+    request: "SaveQAAsGuideRequest",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Save a Q&A response as a sub-guide. No AI credits consumed."""
+    from app.schemas.study import SaveQAAsGuideRequest as _Schema  # noqa: F811
+
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+    if guide.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not the guide owner")
+
+    title = request.title.strip() if request.title else f"Q&A: {guide.title}"
+    new_guide = StudyGuide(
+        user_id=current_user.id,
+        title=title[:255],
+        content=request.content,
+        guide_type="study_guide",
+        course_id=guide.course_id,
+        course_content_id=guide.course_content_id,
+        parent_guide_id=guide.id,
+        relationship_type="sub_guide",
+        generation_context="Q&A response",
+        version=1,
+    )
+    db.add(new_guide)
+    db.commit()
+    db.refresh(new_guide)
+
+    log_action(db, current_user.id, "study_guide_create", "study_guide", new_guide.id,
+               details=f"Saved Q&A response as sub-guide of #{guide_id}")
+
+    return StudyGuideResponse.model_validate(new_guide)
+
+
+@router.post("/guides/{guide_id}/qa/save-as-material")
+async def save_qa_as_material(
+    guide_id: int,
+    request: "SaveQAAsMaterialRequest",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Save a Q&A response as a course material. No AI credits consumed."""
+    from app.schemas.study import SaveQAAsMaterialRequest as _Schema  # noqa: F811
+
+    guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+    if guide.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not the guide owner")
+    if not guide.course_id:
+        raise HTTPException(status_code=400, detail="Study guide has no associated course")
+
+    title = request.title.strip() if request.title else f"Q&A Notes: {guide.title}"
+    new_content = CourseContent(
+        course_id=guide.course_id,
+        title=title[:255],
+        text_content=request.content,
+        content_type="notes",
+        created_by_user_id=current_user.id,
+    )
+    db.add(new_content)
+    db.commit()
+    db.refresh(new_content)
+
+    log_action(db, current_user.id, "course_content_create", "course_content", new_content.id,
+               details=f"Saved Q&A response as course material from guide #{guide_id}")
+
+    return {
+        "id": new_content.id,
+        "title": new_content.title,
+        "course_id": new_content.course_id,
+        "content_type": new_content.content_type,
+    }
