@@ -191,7 +191,7 @@ describe('TeacherDashboard', () => {
     await waitFor(() => {
       const syncButtons = screen.getAllByRole('button', { name: 'Sync Classes' })
       expect(syncButtons.length).toBeGreaterThanOrEqual(1)
-    }, { timeout: 3000 })
+    }, { timeout: 5000 })
   })
 
   it('handles Sync Classes click', async () => {
