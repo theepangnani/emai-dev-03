@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { bugReportsApi } from '../api/bugReports';
 import { useFocusTrap } from '../utils/useFocusTrap';
 import './BugReportModal.css';
@@ -6,12 +6,14 @@ import './BugReportModal.css';
 interface BugReportModalProps {
   open: boolean;
   onClose: () => void;
+  prefillDescription?: string;
+  prefillPageUrl?: string;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
-export function BugReportModal({ open, onClose }: BugReportModalProps) {
+export function BugReportModal({ open, onClose, prefillDescription, prefillPageUrl }: BugReportModalProps) {
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -20,6 +22,13 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(open, onClose);
+
+  // Prefill description when modal opens
+  useEffect(() => {
+    if (open && prefillDescription) {
+      setDescription(prefillDescription);
+    }
+  }, [open, prefillDescription]);
 
   const resetForm = useCallback(() => {
     setDescription('');
@@ -34,6 +43,20 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
     onClose();
   }, [onClose, resetForm]);
 
+  const setScreenshotFile = useCallback((file: File) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('Please select a PNG, JPG, or WebP image.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError('Screenshot must be under 5 MB.');
+      return;
+    }
+    setError('');
+    setScreenshot(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  }, []);
+
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -41,23 +64,28 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       setPreviewUrl(null);
       return;
     }
+    setScreenshotFile(file);
+  }, [setScreenshotFile]);
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Please select a PNG, JPG, or WebP image.');
-      e.target.value = '';
-      return;
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) {
+          setScreenshotFile(file);
+        }
+        return;
+      }
     }
+  }, [setScreenshotFile]);
 
-    if (file.size > MAX_FILE_SIZE) {
-      setError('Screenshot must be under 5 MB.');
-      e.target.value = '';
-      return;
-    }
-
-    setError('');
-    setScreenshot(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
+  const handleRemoveScreenshot = useCallback(() => {
+    setScreenshot(null);
+    setPreviewUrl(null);
+    if (fileRef.current) fileRef.current.value = '';
   }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -71,7 +99,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       await bugReportsApi.submit({
         description: description || undefined,
         screenshot: screenshot || undefined,
-        pageUrl: window.location.href,
+        pageUrl: prefillPageUrl || window.location.href,
         userAgent: navigator.userAgent,
       });
       setSuccess(true);
@@ -82,13 +110,13 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [description, screenshot, submitting]);
+  }, [description, screenshot, submitting, prefillPageUrl]);
 
   if (!open) return null;
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal" ref={trapRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug">
+      <div className="modal" ref={trapRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste}>
         <div className="modal-header">
           <h2>Report a Bug</h2>
           <button className="modal-close" onClick={handleClose} aria-label="Close">&times;</button>
@@ -114,19 +142,25 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
               />
             </label>
 
-            <label>
-              Screenshot (optional)
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp"
-                className="bug-report-file-input"
-                onChange={handleFileChange}
-              />
-            </label>
+            <div className="bug-report-screenshot-section">
+              <label>
+                Screenshot (optional)
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="bug-report-file-input"
+                  onChange={handleFileChange}
+                />
+              </label>
+              <p className="bug-report-paste-hint">Or paste from clipboard (Ctrl+V)</p>
+            </div>
 
             {previewUrl && (
-              <img src={previewUrl} alt="Screenshot preview" className="bug-report-preview" />
+              <div className="bug-report-preview-container">
+                <img src={previewUrl} alt="Screenshot preview" className="bug-report-preview" />
+                <button type="button" className="bug-report-remove-preview" onClick={handleRemoveScreenshot} aria-label="Remove screenshot">&times;</button>
+              </div>
             )}
 
             {error && <div className="bug-report-error">{error}</div>}
