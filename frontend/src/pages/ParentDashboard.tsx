@@ -234,6 +234,7 @@ export function ParentDashboard() {
             onSelectChild={(id) => {
               if (id === null) { pd.handleAllChildrenClick(); } else { pd.handleChildTabClick(id); }
               setTasksCollapsed(false);
+              setActivityCollapsed(false);
               if (viewMode === 'simplified') { setViewMode('full'); try { localStorage.setItem(VIEW_MODE_KEY, 'full'); } catch { /* ignore */ } }
             }}
             childOverdueCounts={pd.childOverdueCounts}
