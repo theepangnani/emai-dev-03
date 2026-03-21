@@ -1532,7 +1532,6 @@ def _run_migrations_inner(engine):
         # Backfill wallets for existing users without one (#1387)
         try:
             with engine.connect() as conn:
-                from sqlalchemy import inspect as sa_inspect
                 inspector = sa_inspect(engine)
                 if "wallets" in inspector.get_table_names():
                     result = conn.execute(text(
