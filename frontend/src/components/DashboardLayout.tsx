@@ -6,7 +6,6 @@ import { studyRequestsApi } from '../api/studyRequests';
 import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { AICreditsDisplay } from './AICreditsDisplay';
-import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { OnboardingTour, PARENT_TOUR_STEPS, STUDENT_TOUR_STEPS, TEACHER_TOUR_STEPS } from './OnboardingTour';
@@ -323,9 +322,15 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [roleSwitcherOpen]);
 
-  // Keyboard shortcuts: ? key opens legend
+  // Keyboard shortcuts: ? key opens legend, Ctrl+K / Cmd+K opens chatbot
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // Ctrl+K / Cmd+K → open chatbot (search)
+      if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('open-help-chat'));
+        return;
+      }
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
       if (e.key === '?') {
@@ -404,7 +409,6 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
             </button>
             <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="header-logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }} />
           </div>
-          <GlobalSearch />
           <div className="header-right">
             <AICreditsDisplay />
             <ThemeToggle />

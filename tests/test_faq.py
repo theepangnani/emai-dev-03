@@ -640,9 +640,10 @@ class TestFAQErrorCodeLookup:
         assert resp.status_code == 404
 
 
-# ── Search Integration ─────────────────────────────────────────
+# ── Search Integration (DEPRECATED — /api/search removed #1698) ────
 
 
+@pytest.mark.skip(reason="GlobalSearch endpoint deprecated (#1698)")
 class TestFAQSearch:
     def test_global_search_includes_faq(self, client, faq_users):
         """FAQ questions should appear in global search results."""

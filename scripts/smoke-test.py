@@ -271,7 +271,7 @@ def test_common_endpoints(base, token, role_label=""):
         ("/api/notifications/unread-count", "dict", lambda b: isinstance(b, dict), lambda b: f"count={b.get('count', '?')}"),
         ("/api/tasks/", "list", lambda b: isinstance(b, list), lambda b: f"{len(b)} tasks"),
         ("/api/messages/conversations", "list", lambda b: isinstance(b, list), lambda b: f"{len(b)} conversations"),
-        ("/api/search?q=test", "dict", lambda b: isinstance(b, dict), lambda _: ""),
+        # /api/search removed — chatbot unified search (#1698)
     ]
 
     for path, _type, check, detail_fn in endpoints:
