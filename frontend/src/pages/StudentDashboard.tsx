@@ -21,6 +21,7 @@ import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
 import { XpDashboardSection } from '../components/xp/XpDashboardSection';
+import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { gradesApi } from '../api/grades';
 import type { ChildGradeSummary } from '../api/grades';
 import { GenerationSpinner } from '../components/GenerationSpinner';
@@ -543,6 +544,9 @@ export function StudentDashboard() {
 
       {/* ── XP Progress ────────────────────────────────── */}
       <XpDashboardSection />
+
+      {/* ── Assessment Countdown ──────────────────────── */}
+      <AssessmentCountdown />
 
       {/* ── Notification Alerts ──────────────────────────── */}
       {actionableNotifications.length > 0 && (
