@@ -18,6 +18,7 @@ import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { SectionPanel } from '../components/SectionPanel';
 import { GenerationSpinner } from '../components/GenerationSpinner';
+import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -380,6 +381,9 @@ export function ParentDashboard() {
               </div>
             )}
           </div>
+
+          {/* ── Assessment Countdown ──────────────────────── */}
+          <AssessmentCountdown />
 
           {/* 3-Section Dashboard Grid (#1415) */}
           <div className="dashboard-redesign">

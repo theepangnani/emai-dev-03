@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
+import { studyRequestsApi } from '../api/studyRequests';
 import type { InspirationMessage } from '../api/client';
 import { NotificationBell } from './NotificationBell';
 import { AICreditsDisplay } from './AICreditsDisplay';
@@ -183,6 +184,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingStudyCount, setPendingStudyCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const roleSwitcherRef = useRef<HTMLDivElement>(null);
@@ -258,6 +260,22 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     const interval = setInterval(loadUnreadCount, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Load pending study request count for students
+  useEffect(() => {
+    if (user?.role !== 'student') return;
+    const loadPending = async () => {
+      try {
+        const count = await studyRequestsApi.pendingCount();
+        setPendingStudyCount(count);
+      } catch {
+        // Silently fail
+      }
+    };
+    loadPending();
+    const interval = setInterval(loadPending, 60000);
+    return () => clearInterval(interval);
+  }, [user?.role]);
 
   // Load inspirational message once per session (cached across remounts)
   useEffect(() => {
@@ -440,6 +458,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               {item.path === '/messages' && unreadCount > 0 && (
                 <span className="sidebar-badge">{unreadCount}</span>
               )}
+              {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                <span className="sidebar-badge">{pendingStudyCount}</span>
+              )}
             </button>
           ))}
           <button
@@ -501,6 +522,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
                 <span className="ps-nav-label">{item.label}</span>
                 {item.path === '/messages' && unreadCount > 0 && (
                   <span className="ps-nav-badge">{unreadCount}</span>
+                )}
+                {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                  <span className="ps-nav-badge">{pendingStudyCount}</span>
                 )}
               </button>
             ))}
@@ -599,6 +623,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               <NavIcon name={item.label} />
               {item.path === '/messages' && unreadCount > 0 && (
                 <span className="mobile-tab-badge">{unreadCount}</span>
+              )}
+              {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                <span className="mobile-tab-badge">{pendingStudyCount}</span>
               )}
             </span>
             <span className="mobile-tab-label">{item.label}</span>

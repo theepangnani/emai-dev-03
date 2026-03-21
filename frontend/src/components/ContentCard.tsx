@@ -95,12 +95,21 @@ function resolveImageMarkers(
  * These are common AI-generation artifacts that cause KaTeX parse errors.
  */
 function sanitizeLatex(content: string): string {
-  return content.replace(/\$\$([\s\S]*?)\$\$/g, (_match, inner: string) => {
+  // 1. Display math: $$...$$
+  let result = content.replace(/\$\$([\s\S]*?)\$\$/g, (_match, inner: string) => {
     if (/\\begin\{(array|tabular)\}/.test(inner)) return _match;
     const cleaned = inner.replace(/\\hline\s*/g, '');
     if (cleaned !== inner) return `$$${cleaned}$$`;
     return _match;
   });
+  // 2. Inline math: $...$ (single $, not preceded/followed by another $)
+  result = result.replace(/(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+)\$(?!\$)/g, (_match, inner: string) => {
+    if (/\\begin\{(array|tabular)\}/.test(inner)) return _match;
+    const cleaned = inner.replace(/\\hline\s*/g, '');
+    if (cleaned !== inner) return `$${cleaned}$`;
+    return _match;
+  });
+  return result;
 }
 
 const loadMarkdown = () =>

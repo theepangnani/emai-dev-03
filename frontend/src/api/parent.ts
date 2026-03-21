@@ -99,6 +99,13 @@ export interface BriefingNote {
   student_name: string | null;
 }
 
+export interface OnTrackSignal {
+  signal: 'green' | 'yellow' | 'red';
+  reason: string;
+  last_activity_days: number | null;
+  upcoming_count: number;
+}
+
 // Parent API
 export const parentApi = {
   getDashboard: async () => {
@@ -205,6 +212,11 @@ export const parentApi = {
       ...(message ? { message } : {}),
     });
     return response.data as { message: string };
+  },
+
+  getChildOnTrack: async (studentId: number) => {
+    const response = await api.get(`/api/parent/children/${studentId}/on-track`);
+    return response.data as OnTrackSignal;
   },
 
   // Parent Briefing Notes

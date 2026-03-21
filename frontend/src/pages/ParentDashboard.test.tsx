@@ -127,6 +127,10 @@ vi.mock('../components/SetupChecklist', () => ({
   SetupChecklist: () => <div data-testid="setup-checklist" />,
 }))
 
+vi.mock('../components/AssessmentCountdown', () => ({
+  AssessmentCountdown: () => <div data-testid="assessment-countdown" />,
+}))
+
 vi.mock('../components/GoogleClassroomPrompt', () => ({
   GoogleClassroomPrompt: () => <div data-testid="google-classroom-prompt" />,
 }))

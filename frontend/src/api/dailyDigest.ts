@@ -2,6 +2,7 @@ import { api } from './client';
 
 export interface DigestSettings {
   daily_digest_enabled: boolean;
+  email_consent_date: string | null;
 }
 
 export interface DailyDigestPreview {

@@ -28,6 +28,7 @@ class UserSettingsUpdate(BaseModel):
 
 class UserSettingsResponse(BaseModel):
     daily_digest_enabled: bool
+    email_consent_date: str | None = None
 
 
 # ── User settings endpoint ──────────────────────────────────
@@ -42,12 +43,22 @@ def update_digest_settings(
     current_user: User = Depends(get_current_user),
 ):
     """Update digest-related user settings."""
+    from datetime import datetime, timezone
     if body.daily_digest_enabled is not None:
         current_user.daily_digest_enabled = body.daily_digest_enabled
+        # Track CASL consent
+        if body.daily_digest_enabled:
+            current_user.email_marketing_consent = True
+            if not current_user.email_consent_date:
+                current_user.email_consent_date = datetime.now(timezone.utc)
+        else:
+            current_user.email_marketing_consent = False
     db.commit()
     db.refresh(current_user)
+    consent_date = current_user.email_consent_date.isoformat() if current_user.email_consent_date else None
     return UserSettingsResponse(
         daily_digest_enabled=current_user.daily_digest_enabled or False,
+        email_consent_date=consent_date,
     )
 
 
@@ -58,8 +69,10 @@ def get_digest_settings(
     current_user: User = Depends(get_current_user),
 ):
     """Get digest-related user settings."""
+    consent_date = current_user.email_consent_date.isoformat() if current_user.email_consent_date else None
     return UserSettingsResponse(
         daily_digest_enabled=current_user.daily_digest_enabled or False,
+        email_consent_date=consent_date,
     )
 
 

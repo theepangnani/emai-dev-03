@@ -21,7 +21,10 @@ import { StreakMilestone } from '../components/StreakMilestone';
 import { ContinueStudying } from '../components/ContinueStudying';
 import { StreakHistory } from '../components/StreakHistory';
 import { XpDashboardSection } from '../components/xp/XpDashboardSection';
+import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { gradesApi } from '../api/grades';
+import { studyRequestsApi, type StudyRequestData } from '../api/studyRequests';
+import { StudyRequestCard } from '../components/StudyRequestCard';
 import type { ChildGradeSummary } from '../api/grades';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import './StudentDashboard.css';
@@ -104,6 +107,7 @@ export function StudentDashboard() {
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pendingStudyRequests, setPendingStudyRequests] = useState<StudyRequestData[]>([]);
   const [faqCode, setFaqCode] = useState<string | null>(null);
 
   // Upload / study material generation (shared with Parent experience)
@@ -277,6 +281,7 @@ export function StudentDashboard() {
       loadTasks(),
       loadNotifications(),
       loadGradeSummary(),
+      loadStudyRequests(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 
@@ -323,6 +328,15 @@ export function StudentDashboard() {
       setNotifications(data);
     } catch {
       // Notifications not loaded
+    }
+  };
+
+  const loadStudyRequests = async () => {
+    try {
+      const data = await studyRequestsApi.list();
+      setPendingStudyRequests(data.filter(sr => sr.status === 'pending'));
+    } catch {
+      // Study requests not loaded
     }
   };
 
@@ -544,6 +558,9 @@ export function StudentDashboard() {
       {/* ── XP Progress ────────────────────────────────── */}
       <XpDashboardSection />
 
+      {/* ── Assessment Countdown ──────────────────────── */}
+      <AssessmentCountdown />
+
       {/* ── Notification Alerts ──────────────────────────── */}
       {actionableNotifications.length > 0 && (
         <section className="sd-alerts">
@@ -573,6 +590,9 @@ export function StudentDashboard() {
           </div>
         </section>
       )}
+
+      {/* ── Study Requests from Parent ──────────────────── */}
+      <StudyRequestCard requests={pendingStudyRequests} onUpdate={loadStudyRequests} />
 
       {/* ── Onboarding Tip ───────────────────────────────── */}
       {!onboardingDismissed && studyGuides.length < 3 && (

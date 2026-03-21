@@ -563,6 +563,26 @@ async def upload_course_content_file(
     # Extract and store resource links from text content (#1321)
     _extract_and_store_links(db, content.id, extracted_text)
 
+    # Detect assessment dates from uploaded content (non-blocking)
+    try:
+        from app.services.assessment_detector import detect_assessments
+        from app.models.detected_event import DetectedEvent
+        detected = detect_assessments(extracted_text, filename, course_id)
+        for evt in detected:
+            db.add(DetectedEvent(
+                student_id=current_user.id,
+                course_id=course_id,
+                course_content_id=content.id,
+                event_type=evt["event_type"],
+                event_title=evt["event_title"],
+                event_date=evt["event_date"],
+                source=evt["source"],
+            ))
+        if detected:
+            db.commit()
+    except Exception as e:
+        logger.warning("Assessment detection failed (non-blocking): %s", e)
+
     # Award XP for file upload (non-blocking)
     try:
         from app.services.xp_service import XpService
@@ -823,6 +843,26 @@ async def upload_multi_files(
 
     # Extract and store resource links from text content (#1321)
     _extract_and_store_links(db, content.id, combined_text)
+
+    # Detect assessment dates from uploaded content (non-blocking)
+    try:
+        from app.services.assessment_detector import detect_assessments
+        from app.models.detected_event import DetectedEvent
+        detected = detect_assessments(combined_text, content_title, course_id)
+        for evt in detected:
+            db.add(DetectedEvent(
+                student_id=current_user.id,
+                course_id=course_id,
+                course_content_id=content.id,
+                event_type=evt["event_type"],
+                event_title=evt["event_title"],
+                event_date=evt["event_date"],
+                source=evt["source"],
+            ))
+        if detected:
+            db.commit()
+    except Exception as e:
+        logger.warning("Assessment detection failed (non-blocking): %s", e)
 
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:

@@ -17,7 +17,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -34,12 +34,13 @@ request_logger = RequestLogger(get_logger("emai.requests"))
 logger.info("Starting EMAI application...")
 
 # Create database tables
-from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest, ContentImage, SurveyResponse, SurveyAnswer, HolidayDate
+from app.models import User, Student, Teacher, Course, Assignment, StudyGuide, Conversation, Message, Notification, TeacherCommunication, Invite, Task, CourseContent, AuditLog, InspirationMessage, FAQQuestion, FAQAnswer, GradeRecord, LinkRequest, NotificationSuppression, QuizResult, Waitlist, AILimitRequest, Note, NoteVersion, DataExportRequest, SourceFile, HelpArticle, EnrollmentRequest, ContentImage, SurveyResponse, SurveyAnswer, HolidayDate, StudyRequest
 from app.models.student import parent_students, student_teachers  # noqa: F401 — ensure join tables are created
 from app.models.token_blacklist import TokenBlacklist  # noqa: F401 — ensure table is created
 from app.models.ai_usage_history import AIUsageHistory, AIAdminActionLog  # noqa: F401 — ensure tables are created
 from app.models.wallet import Wallet, PackageTier, WalletTransaction, CreditPackage  # noqa: F401
 from app.models.xp import XpLedger, XpSummary, Badge, StreakLog  # noqa: F401
+from app.models.detected_event import DetectedEvent  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1642,6 +1643,30 @@ with engine.connect() as conn:
     except Exception as e:
         logger.warning("source_type column migration failed (#2010): %s", e)
 
+    # ── CASL email consent columns (#2022) ──
+    try:
+        with engine.connect() as conn:
+            inspector_casl = sa_inspect(engine)
+            if "users" in inspector_casl.get_table_names():
+                existing_cols = {c["name"] for c in inspector_casl.get_columns("users")}
+                if "email_marketing_consent" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN email_marketing_consent BOOLEAN DEFAULT FALSE"))
+                        conn.commit()
+                        logger.info("Added 'email_marketing_consent' column to users (#2022)")
+                    except Exception:
+                        conn.rollback()
+                if "email_consent_date" not in existing_cols:
+                    col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN email_consent_date {col_type}"))
+                        conn.commit()
+                        logger.info("Added 'email_consent_date' column to users (#2022)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("CASL consent columns migration failed (#2022): %s", e)
+
     # ── Batch 0: User preferred_language & timezone columns (#2024) ──
     try:
         with engine.connect() as conn:
@@ -1812,10 +1837,12 @@ app.include_router(daily_digest.router, prefix="/api")
 app.include_router(survey.router, prefix="/api")
 app.include_router(admin_survey.router, prefix="/api")
 app.include_router(xp.router, prefix="/api")
+app.include_router(study_requests.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
 app.include_router(xp.router, prefix="/api")
+app.include_router(events.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

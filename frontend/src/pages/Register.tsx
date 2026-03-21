@@ -5,6 +5,7 @@ import { authApi } from '../api/auth';
 import { isValidEmail } from '../utils/validation';
 import { useFeatureToggles } from '../hooks/useFeatureToggle';
 import { useBotProtection } from '../hooks/useBotProtection';
+import { PasswordInput } from '../components/PasswordInput';
 import './Auth.css';
 
 type RegisterMode = 'email' | 'username';
@@ -19,12 +20,11 @@ export function Register() {
     password: '',
     confirmPassword: '',
     full_name: '',
+    email_consent: false,
   });
   const [googleData, setGoogleData] = useState<{
     google_id: string;
   } | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<{
@@ -199,6 +199,7 @@ export function Register() {
           token?: string;
           website?: string;
           started_at?: number;
+          email_consent?: boolean;
         } = {
           email: formData.email,
           password: formData.password,
@@ -206,6 +207,7 @@ export function Register() {
           roles: [],
           website,
           started_at,
+          email_consent: formData.email_consent,
         };
 
         if (googleData) registrationData.google_id = googleData.google_id;
@@ -384,72 +386,43 @@ export function Register() {
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <div className="password-input-wrapper">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="--------"
-                required
-                minLength={8}
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="--------"
+              required
+              minLength={8}
+            />
           </div>
 
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <div className="password-input-wrapper">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="--------"
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-              >
-                {showConfirmPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="--------"
+              required
+            />
           </div>
+
+          {mode === 'email' && (
+            <div className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <input
+                type="checkbox"
+                id="email_consent"
+                checked={formData.email_consent}
+                onChange={(e) => setFormData({ ...formData, email_consent: e.target.checked })}
+                style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
+              />
+              <label htmlFor="email_consent" style={{ fontSize: 13, color: '#6b7280', cursor: 'pointer' }}>
+                I'd like to receive weekly study updates and tips via email
+              </label>
+            </div>
+          )}
 
           <button type="submit" className="auth-button" disabled={isLoading}>
             {isLoading ? 'Creating account...' : 'Create Account'}
