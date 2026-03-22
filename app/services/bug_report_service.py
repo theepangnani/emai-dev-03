@@ -44,6 +44,37 @@ def _upload_screenshot_to_gcs(
         return None
 
 
+def _generate_thumbnail(screenshot_bytes: bytes, max_size: int = 400, max_bytes: int = 50000) -> str | None:
+    """Generate a low-res JPEG thumbnail as a base64 string for embedding in GitHub issues."""
+    try:
+        from PIL import Image
+        import io
+
+        img = Image.open(io.BytesIO(screenshot_bytes))
+        img.thumbnail((max_size, max_size))
+
+        # Convert to RGB if necessary (PNG with alpha)
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+
+        # Try quality levels until under max_bytes
+        for quality in (60, 40, 25, 15):
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=quality)
+            b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+            if len(b64) <= max_bytes:
+                return b64
+
+        # Still too large — resize smaller
+        img.thumbnail((200, 200))
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=30)
+        return base64.b64encode(buf.getvalue()).decode('ascii')
+    except Exception as e:
+        logger.warning(f"Failed to generate thumbnail: {e}")
+        return None
+
+
 def _create_github_issue(
     description: Optional[str],
     page_url: Optional[str],
@@ -51,6 +82,7 @@ def _create_github_issue(
     user_role: str,
     user_name: str,
     screenshot_link: str | None = None,
+    screenshot_bytes: bytes | None = None,
 ) -> tuple[Optional[int], Optional[str]]:
     """Create a GitHub issue and return (issue_number, issue_url) or (None, None) on failure."""
     if not settings.github_token:
@@ -70,7 +102,12 @@ def _create_github_issue(
         body_parts.append(f"\n**Browser:** {user_agent}")
 
     if screenshot_link:
-        body_parts.append(f"\n**Screenshot:** [View Screenshot]({screenshot_link})")
+        body_parts.append(f"\n**Screenshot:** [View Full Screenshot]({screenshot_link})")
+        # Embed thumbnail if available
+        if screenshot_bytes:
+            thumbnail_b64 = _generate_thumbnail(screenshot_bytes)
+            if thumbnail_b64:
+                body_parts.append(f"\n![screenshot preview](data:image/jpeg;base64,{thumbnail_b64})")
 
     body = "\n".join(body_parts)
 
@@ -139,6 +176,7 @@ def create_bug_report(
         user_role=user.role,
         user_name=user.full_name or user.email,
         screenshot_link=screenshot_link,
+        screenshot_bytes=screenshot_bytes if screenshot_link else None,
     )
 
     # 5. Update report with GitHub issue info
