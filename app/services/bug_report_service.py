@@ -133,6 +133,77 @@ def _create_github_issue(
         return None, None
 
 
+def _process_bug_report_background(
+    report_id: int,
+    user_id: int,
+    user_role: str,
+    user_name: str,
+    user_email: str,
+    description: str | None,
+    screenshot_bytes: bytes | None,
+    screenshot_content_type: str | None,
+    page_url: str | None,
+    user_agent: str | None,
+    admin_emails: list[str],
+) -> None:
+    """Background task: upload to GCS, create GitHub issue, send admin emails."""
+    from app.db.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        report = db.query(BugReport).filter(BugReport.id == report_id).first()
+        if not report:
+            logger.error(f"Bug report {report_id} not found for background processing")
+            return
+
+        # 1. Upload screenshot to GCS
+        screenshot_link = None
+        if screenshot_bytes and screenshot_content_type:
+            gcs_path = _upload_screenshot_to_gcs(screenshot_bytes, screenshot_content_type)
+            if gcs_path:
+                report.screenshot_url = gcs_path
+                screenshot_link = f"{settings.frontend_url}/api/bug-reports/{report_id}/screenshot"
+
+        # 2. Create GitHub issue with thumbnail
+        issue_number, issue_url = _create_github_issue(
+            description=description,
+            page_url=page_url,
+            user_agent=user_agent,
+            user_role=user_role,
+            user_name=user_name,
+            screenshot_link=screenshot_link,
+            screenshot_bytes=screenshot_bytes if screenshot_link else None,
+        )
+
+        # 3. Update report with GitHub issue info
+        if issue_number:
+            report.github_issue_number = issue_number
+            report.github_issue_url = issue_url
+
+        db.commit()
+
+        # 4. Send admin emails (best-effort)
+        subject = f"[ClassBridge] Bug Report from {user_name}"
+        body_html = f"""
+        <h2>New Bug Report</h2>
+        <p><strong>From:</strong> {user_name} ({user_role})</p>
+        <p><strong>Description:</strong> {description or 'No description'}</p>
+        {f'<p><strong>Page:</strong> {page_url}</p>' if page_url else ''}
+        {f'<p><strong>GitHub Issue:</strong> <a href="{issue_url}">#{issue_number}</a></p>' if issue_url else ''}
+        """
+        for email in admin_emails:
+            try:
+                send_email_sync(email, subject, wrap_branded_email(body_html))
+            except Exception as e:
+                logger.warning(f"Failed to email admin {email} about bug report: {e}")
+
+    except Exception as e:
+        logger.error(f"Background bug report processing failed for report {report_id}: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def create_bug_report(
     db: Session,
     user: User,
@@ -141,18 +212,17 @@ def create_bug_report(
     screenshot_content_type: Optional[str] = None,
     page_url: Optional[str] = None,
     user_agent: Optional[str] = None,
+    background_tasks=None,
 ) -> BugReport:
-    """Create a bug report, optionally create a GitHub issue, and notify admins."""
+    """Create a bug report (fast) and schedule heavy processing in background."""
 
-    # 1. Build screenshot URL (GCS path or base64 data URL fallback)
+    # 1. Build fallback screenshot URL (base64 for immediate DB storage)
     screenshot_url = None
     if screenshot_bytes and screenshot_content_type:
-        screenshot_url = _upload_screenshot_to_gcs(screenshot_bytes, screenshot_content_type)
-        if not screenshot_url:
-            b64 = base64.b64encode(screenshot_bytes).decode("ascii")
-            screenshot_url = f"data:{screenshot_content_type};base64,{b64}"
+        b64 = base64.b64encode(screenshot_bytes).decode("ascii")
+        screenshot_url = f"data:{screenshot_content_type};base64,{b64}"
 
-    # 2. Save report first to get ID
+    # 2. Save report to DB immediately
     report = BugReport(
         user_id=user.id,
         description=description,
@@ -163,61 +233,54 @@ def create_bug_report(
     db.add(report)
     db.flush()
 
-    # 3. Build screenshot link for GitHub issue
-    screenshot_link = None
-    if screenshot_url and screenshot_url.startswith("bug-reports/"):
-        screenshot_link = f"{settings.frontend_url}/api/bug-reports/{report.id}/screenshot"
-
-    # 4. Create GitHub issue with screenshot link
-    issue_number, issue_url = _create_github_issue(
-        description=description,
-        page_url=page_url,
-        user_agent=user_agent,
-        user_role=user.role,
-        user_name=user.full_name or user.email,
-        screenshot_link=screenshot_link,
-        screenshot_bytes=screenshot_bytes if screenshot_link else None,
-    )
-
-    # 5. Update report with GitHub issue info
-    report.github_issue_number = issue_number
-    report.github_issue_url = issue_url
-
-    # Notify all admins
+    # 3. Create in-app notifications for admins (fast DB inserts)
     admins = db.query(User).filter(
         or_(User.role == UserRole.ADMIN, User.roles.contains("admin"))
     ).all()
 
     short_desc = (description or "No description")[:80]
-    notif_title = "New Bug Report"
-    notif_content = f"{user.full_name or user.email} reported a bug: {short_desc}"
-    notif_link = issue_url
-
     for admin in admins:
         db.add(Notification(
             user_id=admin.id,
             type=NotificationType.SYSTEM,
-            title=notif_title,
-            content=notif_content,
-            link=notif_link,
+            title="New Bug Report",
+            content=f"{user.full_name or user.email} reported a bug: {short_desc}",
         ))
 
     db.commit()
     db.refresh(report)
 
-    # Send email to admins (best-effort, don't fail the request)
-    subject = f"[ClassBridge] Bug Report from {user.full_name or user.email}"
-    body_html = f"""
-    <h2>New Bug Report</h2>
-    <p><strong>From:</strong> {user.full_name or user.email} ({user.role})</p>
-    <p><strong>Description:</strong> {description or 'No description'}</p>
-    {f'<p><strong>Page:</strong> {page_url}</p>' if page_url else ''}
-    {f'<p><strong>GitHub Issue:</strong> <a href="{issue_url}">#{issue_number}</a></p>' if issue_url else ''}
-    """
-    for admin in admins:
-        try:
-            send_email_sync(admin.email, subject, wrap_branded_email(body_html))
-        except Exception as e:
-            logger.warning(f"Failed to email admin {admin.email} about bug report: {e}")
+    # 4. Schedule heavy work in background
+    admin_emails = [a.email for a in admins if a.email]
+    if background_tasks:
+        background_tasks.add_task(
+            _process_bug_report_background,
+            report_id=report.id,
+            user_id=user.id,
+            user_role=user.role,
+            user_name=user.full_name or user.email,
+            user_email=user.email,
+            description=description,
+            screenshot_bytes=screenshot_bytes,
+            screenshot_content_type=screenshot_content_type,
+            page_url=page_url,
+            user_agent=user_agent,
+            admin_emails=admin_emails,
+        )
+    else:
+        # Fallback: run synchronously (e.g., in tests)
+        _process_bug_report_background(
+            report_id=report.id,
+            user_id=user.id,
+            user_role=user.role,
+            user_name=user.full_name or user.email,
+            user_email=user.email,
+            description=description,
+            screenshot_bytes=screenshot_bytes,
+            screenshot_content_type=screenshot_content_type,
+            page_url=page_url,
+            user_agent=user_agent,
+            admin_emails=admin_emails,
+        )
 
     return report
