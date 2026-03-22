@@ -4257,3 +4257,62 @@ AI responses containing uncertainty markers must not be saveable as study guides
 - This prevents bypassing the frontend restriction via direct API calls
 
 **Key Principle:** Only high-confidence, definitive AI answers should become part of a student's study material library. Uncertain or clarification-seeking responses could embed misinformation into study guides.
+
+---
+
+## §6.115 Bug Report System
+
+**Status:** COMPLETE | **Issues:** #2087, #2091, #2101, #2103, #2112, #2114
+
+Users can report bugs directly from error dialogs or the help menu. Bug report modal captures: description, steps to reproduce, expected behavior, and optional screenshot (paste or file upload). Screenshots uploaded to GCS with signed URLs. Reports auto-create GitHub issues with full context and admin email notification.
+
+### §6.115.1 Bug Report Submission
+- Modal captures: description (required), steps to reproduce, expected behavior, screenshot (paste/file)
+- Screenshots uploaded to GCS with signed URLs (1hr expiry)
+- Creates GitHub issue with full context
+- Admin email notification via SendGrid
+
+### §6.115.2 Bot Protection
+- Honeypot field (hidden, must remain empty)
+- 60-second cooldown between submissions
+- Rate limit: 20/hour per user
+
+### §6.115.3 Error Dialog Integration
+- All error dialogs include "Report a Bug" link opening BugReportModal pre-filled with error context
+- Implemented in ErrorBoundary and useConfirm hook
+
+---
+
+## §6.116 Streaming Study Guide Generation
+
+**Status:** IN PROGRESS | **Issues:** #2120-#2127 (7 issues)
+
+SSE endpoint streams markdown tokens for ChatGPT-like real-time generation experience.
+
+### §6.116.1 Backend Streaming
+- SSE at `/api/study/stream/{content_id}`
+- Supports OpenAI and Anthropic streaming APIs
+- Graceful error handling preserves partial content
+
+### §6.116.2 Frontend Rendering
+- StreamingMarkdown component with react-markdown
+- useStudyGuideStream hook for SSE lifecycle
+- Cursor animation during streaming
+
+---
+
+## §6.117 Phase-2 Repository Consolidation
+
+**Status:** PLANNED | **Issues:** #2130-#2140 | **Milestone:** Phase 2F: Phase-2 Port (due May 1, 2026)
+
+Features to port from class-bridge-phase-2:
+1. 2FA/TOTP Authentication (#2130)
+2. Feature Flags Infrastructure (#2131)
+3. Learning Journals (#2132)
+4. Meeting Scheduler (#2133)
+5. Discussion Forums (#2134)
+6. Peer Review (#2135)
+7. AI Writing Assistance (#2136)
+8. AI Homework Help (#2137)
+9. Wellness Check-ins (#2138)
+10. Student Goals (#2139)

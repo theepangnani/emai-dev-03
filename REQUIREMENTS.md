@@ -2,8 +2,8 @@
 
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
-**Version:** 1.0 (Based on PRD v4)
-**Last Updated:** 2026-03-20
+**Version:** 1.1 (Based on PRD v4)
+**Last Updated:** 2026-03-22
 
 ---
 

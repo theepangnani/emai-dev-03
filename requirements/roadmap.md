@@ -739,3 +739,24 @@ Deploy ClassBridge to Railway as an auto-synced mirror of the production repo, s
 
 ---
 
+### Phase 2F: Phase-2 Port (Milestone: May 1, 2026)
+
+Port 10 unique features from `class-bridge-phase-2` repository that were not independently implemented on `emai-dev-03`.
+
+| # | Feature | Issue | Status |
+|---|---------|-------|--------|
+| 1 | 2FA/TOTP Authentication | #2130 | Planned |
+| 2 | Feature Flags Infrastructure | #2131 | Planned |
+| 3 | Learning Journals | #2132 | Planned |
+| 4 | Meeting Scheduler | #2133 | Planned |
+| 5 | Discussion Forums | #2134 | Planned |
+| 6 | Peer Review | #2135 | Planned |
+| 7 | AI Writing Assistance | #2136 | Planned |
+| 8 | AI Homework Help | #2137 | Planned |
+| 9 | Wellness Check-ins | #2138 | Planned |
+| 10 | Student Goals | #2139 | Planned |
+
+Additionally, 47 open issues migrated from emai-class-bridge (#2143-#2189) and 9 MCP porting issues (#2191-#2199).
+
+---
+
