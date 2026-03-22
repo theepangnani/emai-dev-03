@@ -128,15 +128,16 @@ export default function UploadMaterialWizard({
       setManagedCourses(courses);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setInternalCourseId(courses.length === 1 ? courses[0].id : (selectedCourseId ?? ''));
-    } else {
-      // Fetch courses when not provided by parent
+    } else if (!children || children.length === 0) {
+      // Only fetch all courses when NOT in parent multi-child context
+      // (parent context provides courses via prop after child selection)
       coursesApi.list().then((data) => {
         const mapped = data.map((c: { id: number; name: string }) => ({ id: c.id, name: c.name }));
         setManagedCourses(mapped);
         setInternalCourseId(mapped.length === 1 ? mapped[0].id : (selectedCourseId ?? ''));
       }).catch(() => { /* courses will remain undefined — selector won't show */ });
     }
-  }, [open, initialTitle, initialContent, courses, selectedCourseId]);
+  }, [open, initialTitle, initialContent, courses, selectedCourseId, children]);
 
   // Sync managedCourses when courses prop changes while modal is already open
   // (e.g., parent switches child context)
