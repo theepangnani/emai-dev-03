@@ -1399,8 +1399,8 @@ export function MyKidsPage() {
         onClose={() => { studyTools.resetStudyModal(); setWizardChildId(null); }}
         onGenerate={studyTools.handleGenerateFromModal}
         isGenerating={studyTools.isGenerating}
-        courses={wizardChildId ? wizardCourses : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)}
-        selectedCourseId={(() => { const wc = wizardChildId ? wizardCourses : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined); return wc?.length === 1 ? wc[0].id : ''; })()}
+        courses={wizardChildId ? (wizardCourses ?? (selectedChild === wizardChildId && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)) : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)}
+        selectedCourseId={(() => { const wc = wizardChildId ? (wizardCourses ?? (selectedChild === wizardChildId && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)) : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined); return wc?.length === 1 ? wc[0].id : ''; })()}
         duplicateCheck={studyTools.duplicateCheck}
         onViewExisting={() => {
           const guide = studyTools.duplicateCheck?.existing_guide;
