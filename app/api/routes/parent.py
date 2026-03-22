@@ -218,8 +218,12 @@ def get_parent_dashboard(
             .filter(student_courses.c.student_id.in_(_all_student_ids))
             .all()
         )
+    _student_user_map = {s.id: s.user_id for s, _ in child_rows}
     _courses_by_student: dict[int, list[Course]] = {}
     for sid, course in _all_courses:
+        # Skip other users' default "Main Class" — only keep the student's own
+        if course.is_default and course.created_by_user_id != _student_user_map.get(sid):
+            continue
         _courses_by_student.setdefault(sid, []).append(course)
         all_course_ids.add(course.id)
 
@@ -996,6 +1000,12 @@ def get_child_overview(
         db.query(Course)
         .join(student_courses, student_courses.c.course_id == Course.id)
         .filter(student_courses.c.student_id == student.id)
+        .filter(
+            or_(
+                Course.is_default == False,  # noqa: E712
+                Course.created_by_user_id == student.user_id,
+            )
+        )
         .all()
     )
 
@@ -1270,6 +1280,9 @@ def assign_courses_to_child(
     for course_id in data.course_ids:
         course = db.query(Course).filter(Course.id == course_id).first()
         if not course:
+            continue
+        # Prevent assigning personal default courses to children
+        if course.is_default:
             continue
 
         # Parent can assign courses they can see (own, co-parent, child-created, or public)
