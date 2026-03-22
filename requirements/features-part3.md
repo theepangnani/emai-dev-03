@@ -4130,6 +4130,51 @@ Context-aware chatbot Q&A when users are viewing a study guide. The existing Hel
 1. **Save as Study Guide** — Creates sub-guide (`relationship_type="sub_guide"`, `parent_guide_id` = current guide). No AI credits consumed.
 2. **Save as Class Material** — Creates `CourseContent` with `text_content` in same course. Only available when guide has `course_id`. No AI credits consumed.
 
+### 6.115 Streaming Study Guide Generation — ChatGPT-like UX (Phase 1) - COMPLETE
+
+Real-time streaming of study guide generation using Server-Sent Events (SSE), replacing the synchronous spinner-and-wait UX with token-by-token content rendering.
+
+**GitHub Epic:** #2120
+**Sub-issues:** #2121 (AI streaming service), #2122 (SSE endpoint), #2123 (frontend hook), #2124 (StreamingMarkdown component), #2125 (wiring), #2126 (tests)
+**Fix:** #2210 (dashboard upload navigation to streaming view)
+
+**Triggers:**
+- [x] Initial generation — user uploads class material and clicks "Generate Study Guide"
+- [x] Regeneration — user clicks "Regenerate" on an existing guide
+- [x] Sub-guide generation — user selects text and generates a child guide
+- [x] Dashboard upload — user uploads from dashboard, navigated to detail page with auto-generation
+
+**Technical Architecture:**
+- **Protocol:** Server-Sent Events (SSE) via `POST /api/study/generate-stream`
+- **Backend:** `generate_study_guide_stream()` async generator in `ai_service.py`, uses Anthropic `client.messages.stream()`
+- **Frontend:** `useStudyGuideStream` hook with `fetch()` + `ReadableStream`, 80ms render throttling
+- **Component:** `StreamingMarkdown` — progressive markdown renderer with blinking cursor, auto-scroll, "Generating..." badge
+
+**SSE Event Protocol:**
+
+| Event | Data | When |
+|-------|------|------|
+| `start` | `{guide_id}` | Stream begins, DB record created |
+| `chunk` | `{text}` | Each content chunk from AI |
+| `done` | `StudyGuideResponse` | Complete, saved to DB, credits debited |
+| `error` | `{message}` | On failure |
+
+**Performance Mitigations:**
+- [x] Render throttling: 80ms flush interval (~50 re-renders vs ~4000 per-token)
+- [x] LaTeX disabled during streaming (prevents parse errors from incomplete blocks), re-enabled on completion
+- [x] DB session released before streaming, reopened after completion (prevents connection pool exhaustion)
+
+**Cost Impact:** $0 additional — Anthropic streaming and non-streaming priced identically. No new frontend dependencies.
+
+**Requirements:**
+- [x] User navigated to Study Guide tab immediately on generate
+- [x] Content streams token-by-token with blinking cursor indicator
+- [x] Markdown renders progressively (headings, lists, bold appear as they stream)
+- [x] On completion, guide saved to DB and AI usage debited
+- [x] Regeneration and sub-guide generation use streaming
+- [x] Dashboard upload navigates to detail page with auto-streaming
+- [x] Quiz, flashcards, mind map remain synchronous (streaming not applicable to structured JSON)
+
 **API Changes:**
 
 | Endpoint | Change |
