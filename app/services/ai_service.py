@@ -3,6 +3,7 @@ AI Service for generating educational content using Anthropic Claude.
 """
 import asyncio
 import time
+from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 from datetime import datetime
 import httpx
@@ -40,6 +41,17 @@ def get_anthropic_client() -> anthropic.Anthropic:
         raise ValueError("ANTHROPIC_API_KEY not configured")
     return anthropic.Anthropic(
         api_key=settings.anthropic_api_key,
+        timeout=httpx.Timeout(120.0, connect=10.0),
+    )
+
+
+def get_async_anthropic_client() -> anthropic.AsyncAnthropic:
+    """Get configured async Anthropic client for streaming."""
+    if not settings.anthropic_api_key:
+        logger.error("Anthropic API key not configured")
+        raise ValueError("ANTHROPIC_API_KEY not configured")
+    return anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key.strip(),
         timeout=httpx.Timeout(120.0, connect=10.0),
     )
 
@@ -227,7 +239,7 @@ def _interests_instruction(interests: list[str] | None) -> str:
     )
 
 
-async def generate_study_guide(
+def _build_study_guide_prompt(
     assignment_title: str,
     assignment_description: str,
     course_name: str,
@@ -236,20 +248,12 @@ async def generate_study_guide(
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
     interests: list[str] | None = None,
-) -> tuple[str, bool]:
-    """
-    Generate a study guide for an assignment.
-
-    Args:
-        assignment_title: Title of the assignment
-        assignment_description: Description/instructions
-        course_name: Name of the course
-        due_date: Optional due date string
+) -> tuple[str, str]:
+    """Build the user prompt and system prompt for study guide generation.
 
     Returns:
-        Tuple of (Markdown-formatted study guide, is_truncated)
+        Tuple of (user_prompt, system_prompt)
     """
-    logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
     prompt = f"""Create a comprehensive study guide for the following assignment:
@@ -309,8 +313,178 @@ well-organized study guides. Use simple language, practical examples, and clean 
 
     system_prompt += _interests_instruction(interests)
 
+    return prompt, system_prompt
+
+
+async def generate_study_guide(
+    assignment_title: str,
+    assignment_description: str,
+    course_name: str,
+    due_date: str | None = None,
+    custom_prompt: str | None = None,
+    focus_prompt: str | None = None,
+    images: list[dict] | None = None,
+    interests: list[str] | None = None,
+) -> tuple[str, bool]:
+    """
+    Generate a study guide for an assignment.
+
+    Args:
+        assignment_title: Title of the assignment
+        assignment_description: Description/instructions
+        course_name: Name of the course
+        due_date: Optional due date string
+
+    Returns:
+        Tuple of (Markdown-formatted study guide, is_truncated)
+    """
+    logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
+
+    prompt, system_prompt = _build_study_guide_prompt(
+        assignment_title=assignment_title,
+        assignment_description=assignment_description,
+        course_name=course_name,
+        due_date=due_date,
+        custom_prompt=custom_prompt,
+        focus_prompt=focus_prompt,
+        images=images,
+        interests=interests,
+    )
+
     content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=4096)
     return content, stop_reason == "max_tokens"
+
+
+async def generate_study_guide_stream(
+    assignment_title: str,
+    assignment_description: str,
+    course_name: str,
+    due_date: str | None = None,
+    custom_prompt: str | None = None,
+    focus_prompt: str | None = None,
+    images: list[dict] | None = None,
+    interests: list[str] | None = None,
+    document_type: str | None = None,
+    study_goal: str | None = None,
+    study_goal_text: str | None = None,
+) -> AsyncGenerator[dict, None]:
+    """Async generator that streams study guide content via Anthropic streaming API.
+
+    Yields SSE-compatible event dicts:
+        - {"event": "chunk", "data": "<text>"}  for each token
+        - {"event": "done", "data": {"is_truncated": bool, "full_content": str}}  on completion
+        - {"event": "error", "data": "<message>"}  on failure
+
+    Token usage is captured into _last_ai_usage context var after stream completes.
+    """
+    logger.info(
+        f"Streaming study guide | title={assignment_title} | course={course_name} | "
+        f"document_type={document_type} | study_goal={study_goal}"
+    )
+
+    # Build prompts — use strategy service if document_type/study_goal provided
+    if document_type or study_goal:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(document_type)
+        # Build base prompt (strategy template is applied by the route layer in the description)
+        prompt, _ = _build_study_guide_prompt(
+            assignment_title=assignment_title,
+            assignment_description=assignment_description,
+            course_name=course_name,
+            due_date=due_date,
+            custom_prompt=strategy_system_prompt,
+            focus_prompt=focus_prompt,
+            images=images,
+            interests=interests,
+        )
+        system_prompt = strategy_system_prompt + _interests_instruction(interests)
+    else:
+        prompt, system_prompt = _build_study_guide_prompt(
+            assignment_title=assignment_title,
+            assignment_description=assignment_description,
+            course_name=course_name,
+            due_date=due_date,
+            custom_prompt=custom_prompt,
+            focus_prompt=focus_prompt,
+            images=images,
+            interests=interests,
+        )
+
+    max_retries = 2
+    start_time = time.time()
+
+    for attempt in range(1, max_retries + 2):
+        try:
+            client = get_async_anthropic_client()
+            full_content = ""
+
+            async with client.messages.stream(
+                model=settings.claude_model,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                temperature=0.7,
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_content += text
+                    yield {"event": "chunk", "data": text}
+
+                # Get final message for usage and stop reason
+                final = await stream.get_final_message()
+                input_tok = final.usage.input_tokens
+                output_tok = final.usage.output_tokens
+                stop_reason = final.stop_reason
+                is_truncated = stop_reason == "max_tokens"
+
+            # Capture token usage into context var
+            model = settings.claude_model
+            _last_ai_usage.set({
+                "prompt_tokens": input_tok,
+                "completion_tokens": output_tok,
+                "total_tokens": input_tok + output_tok,
+                "model_name": model,
+                "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
+            })
+
+            duration_ms = (time.time() - start_time) * 1000
+            logger.info(
+                f"Study guide stream completed | attempt={attempt} | duration={duration_ms:.2f}ms | "
+                f"input_tokens={input_tok} | output_tokens={output_tok} | "
+                f"stop_reason={stop_reason}"
+            )
+
+            yield {
+                "event": "done",
+                "data": {
+                    "is_truncated": is_truncated,
+                    "full_content": full_content,
+                },
+            }
+            return  # Success — exit retry loop
+
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+            duration_ms = (time.time() - start_time) * 1000
+            if attempt <= max_retries:
+                backoff = 2 ** (attempt - 1)
+                logger.warning(
+                    f"Study guide stream transient error (attempt {attempt}/{max_retries + 1}) | "
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e} | "
+                    f"retrying in {backoff}s"
+                )
+                await asyncio.sleep(backoff)
+            else:
+                logger.error(
+                    f"Study guide stream failed after {attempt} attempts | "
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}"
+                )
+                yield {"event": "error", "data": "AI service is temporarily unavailable. Please try again."}
+                return
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            logger.error(f"Study guide stream failed | duration={duration_ms:.2f}ms | error={e}")
+            yield {"event": "error", "data": "Something went wrong generating the study guide. Please try again."}
+            return
 
 
 async def generate_quiz(
