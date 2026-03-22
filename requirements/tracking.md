@@ -1063,3 +1063,34 @@ See individual skill files for development commands:
 - `/db-reset` - Reset development database
 - `/feature` - Create feature branch
 - `/new-endpoint` - Scaffold new API endpoint
+
+---
+
+## 14. Phase-2 Repository Consolidation Tracking
+
+**Source:** `class-bridge-phase-2` (247 commits, 34 models, 40+ routes, 66+ pages)
+**Assessment Date:** 2026-03-22
+
+### Features Already on Master (No Port Needed)
+XP/gamification, achievement badges, study streaks, AI usage tracking, waitlist, account deletion, data export, resource links, content images, daily/weekly digests, assessment countdown, multilingual summaries, report cards, Pomodoro sessions, study timeline, wallet/credits.
+
+### Unique Features to Port (Phase 2F Milestone — May 1, 2026)
+
+| Feature | Issue | Models | Routes | Pages | Status |
+|---------|-------|--------|--------|-------|--------|
+| 2FA/TOTP Authentication | #2130 | 1 | 3 | 1 | Planned |
+| Feature Flags Infrastructure | #2131 | 1 | 2 | 1 | Planned |
+| Learning Journals | #2132 | 2 | 5 | 2 | Planned |
+| Meeting Scheduler | #2133 | 2 | 4 | 2 | Planned |
+| Discussion Forums | #2134 | 3 | 6 | 3 | Planned |
+| Peer Review | #2135 | 2 | 4 | 2 | Planned |
+| AI Writing Assistance | #2136 | 1 | 3 | 1 | Planned |
+| AI Homework Help | #2137 | 1 | 3 | 1 | Planned |
+| Wellness Check-ins | #2138 | 2 | 4 | 2 | Planned |
+| Student Goals | #2139 | 2 | 4 | 2 | Planned |
+
+### Migrated Issues from emai-class-bridge
+47 open issues (#2143-#2189) covering: DTAP compliance, implemented features needing porting, classroom data import, test coverage expansion.
+
+### MCP Protocol Porting
+9 issues (#2191-#2199) to port Model Context Protocol server. ~50% complete in phase-2 repo. Includes: server foundation, JWT auth, study tools (7), tutor tools (3), student resources (6), import tools (5).
