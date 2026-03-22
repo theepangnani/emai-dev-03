@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def _upload_screenshot_to_gcs(
     screenshot_bytes: bytes, screenshot_content_type: str
 ) -> str | None:
-    """Upload screenshot to GCS and return a signed URL, or None if GCS not configured."""
+    """Upload screenshot to GCS and return the gcs_path, or None if GCS not configured."""
     if not settings.use_gcs or not settings.gcs_bucket_name:
         return None
 
@@ -38,29 +38,51 @@ def _upload_screenshot_to_gcs(
         blob = bucket.blob(gcs_path)
         blob.upload_from_string(screenshot_bytes, content_type=screenshot_content_type)
 
-        # Generate signed URL (valid for 7 days) — works with uniform bucket-level access
-        from datetime import timedelta
-        signed_url = blob.generate_signed_url(
-            version="v4",
-            expiration=timedelta(days=7),
-            method="GET",
-        )
-
-        return signed_url
+        return gcs_path
     except Exception as e:
         logger.error(f"Failed to upload screenshot to GCS: {e}")
         return None
 
 
+def _generate_thumbnail(screenshot_bytes: bytes, max_size: int = 400, max_bytes: int = 50000) -> str | None:
+    """Generate a low-res JPEG thumbnail as a base64 string for embedding in GitHub issues."""
+    try:
+        from PIL import Image
+        import io
+
+        img = Image.open(io.BytesIO(screenshot_bytes))
+        img.thumbnail((max_size, max_size))
+
+        # Convert to RGB if necessary (PNG with alpha)
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+
+        # Try quality levels until under max_bytes
+        for quality in (60, 40, 25, 15):
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=quality)
+            b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+            if len(b64) <= max_bytes:
+                return b64
+
+        # Still too large — resize smaller
+        img.thumbnail((200, 200))
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=30)
+        return base64.b64encode(buf.getvalue()).decode('ascii')
+    except Exception as e:
+        logger.warning(f"Failed to generate thumbnail: {e}")
+        return None
+
+
 def _create_github_issue(
     description: Optional[str],
-    screenshot_bytes: Optional[bytes],
-    screenshot_content_type: Optional[str],
     page_url: Optional[str],
     user_agent: Optional[str],
     user_role: str,
     user_name: str,
-    screenshot_url: str | None = None,
+    screenshot_link: str | None = None,
+    screenshot_bytes: bytes | None = None,
 ) -> tuple[Optional[int], Optional[str]]:
     """Create a GitHub issue and return (issue_number, issue_url) or (None, None) on failure."""
     if not settings.github_token:
@@ -79,13 +101,13 @@ def _create_github_issue(
     if user_agent:
         body_parts.append(f"\n**Browser:** {user_agent}")
 
-    if screenshot_bytes and screenshot_content_type:
-        if screenshot_url and screenshot_url.startswith("https://"):
-            body_parts.append(f"\n**Screenshot:**\n\n![screenshot]({screenshot_url})")
-        else:
-            body_parts.append(
-                "\n**Screenshot:** Attached (stored in ClassBridge database)"
-            )
+    if screenshot_link:
+        body_parts.append(f"\n**Screenshot:** [View Full Screenshot]({screenshot_link})")
+        # Embed thumbnail if available
+        if screenshot_bytes:
+            thumbnail_b64 = _generate_thumbnail(screenshot_bytes)
+            if thumbnail_b64:
+                body_parts.append(f"\n![screenshot preview](data:image/jpeg;base64,{thumbnail_b64})")
 
     body = "\n".join(body_parts)
 
@@ -122,7 +144,7 @@ def create_bug_report(
 ) -> BugReport:
     """Create a bug report, optionally create a GitHub issue, and notify admins."""
 
-    # Build screenshot URL (GCS public URL or base64 data URL fallback)
+    # 1. Build screenshot URL (GCS path or base64 data URL fallback)
     screenshot_url = None
     if screenshot_bytes and screenshot_content_type:
         screenshot_url = _upload_screenshot_to_gcs(screenshot_bytes, screenshot_content_type)
@@ -130,30 +152,36 @@ def create_bug_report(
             b64 = base64.b64encode(screenshot_bytes).decode("ascii")
             screenshot_url = f"data:{screenshot_content_type};base64,{b64}"
 
-    # Create GitHub issue
-    issue_number, issue_url = _create_github_issue(
-        description=description,
-        screenshot_bytes=screenshot_bytes,
-        screenshot_content_type=screenshot_content_type,
-        page_url=page_url,
-        user_agent=user_agent,
-        user_role=user.role,
-        user_name=user.full_name or user.email,
-        screenshot_url=screenshot_url,
-    )
-
-    # Save bug report
+    # 2. Save report first to get ID
     report = BugReport(
         user_id=user.id,
         description=description,
         screenshot_url=screenshot_url,
         page_url=page_url,
         user_agent=user_agent,
-        github_issue_number=issue_number,
-        github_issue_url=issue_url,
     )
     db.add(report)
     db.flush()
+
+    # 3. Build screenshot link for GitHub issue
+    screenshot_link = None
+    if screenshot_url and screenshot_url.startswith("bug-reports/"):
+        screenshot_link = f"{settings.frontend_url}/api/bug-reports/{report.id}/screenshot"
+
+    # 4. Create GitHub issue with screenshot link
+    issue_number, issue_url = _create_github_issue(
+        description=description,
+        page_url=page_url,
+        user_agent=user_agent,
+        user_role=user.role,
+        user_name=user.full_name or user.email,
+        screenshot_link=screenshot_link,
+        screenshot_bytes=screenshot_bytes if screenshot_link else None,
+    )
+
+    # 5. Update report with GitHub issue info
+    report.github_issue_number = issue_number
+    report.github_issue_url = issue_url
 
     # Notify all admins
     admins = db.query(User).filter(

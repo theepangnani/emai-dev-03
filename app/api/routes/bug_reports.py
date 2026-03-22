@@ -2,13 +2,14 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.api.deps import get_current_user, get_db
 from app.core.rate_limit import limiter
 from app.models.bug_report import BugReport
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.bug_report import BugReportResponse
 from app.services.bug_report_service import create_bug_report
 
@@ -89,3 +90,58 @@ async def submit_bug_report(
     )
 
     return report
+
+
+@router.get("/bug-reports/{report_id}/screenshot")
+async def get_bug_report_screenshot(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Serve bug report screenshot. Accessible by admins and the report submitter."""
+    report = db.query(BugReport).filter(BugReport.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Bug report not found")
+
+    # Access control: admin or the user who submitted the report
+    is_admin = current_user.role == UserRole.ADMIN or (
+        current_user.roles and "admin" in current_user.roles
+    )
+    if not is_admin and current_user.id != report.user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not report.screenshot_url:
+        raise HTTPException(status_code=404, detail="No screenshot attached")
+
+    # If screenshot is a GCS path (not a data URL), download from GCS
+    if report.screenshot_url.startswith("bug-reports/"):
+        try:
+            from app.services.gcs_service import download_file
+
+            image_bytes = download_file(report.screenshot_url)
+            # Determine content type from extension
+            if report.screenshot_url.endswith(".png"):
+                content_type = "image/png"
+            elif report.screenshot_url.endswith((".jpg", ".jpeg")):
+                content_type = "image/jpeg"
+            elif report.screenshot_url.endswith(".webp"):
+                content_type = "image/webp"
+            else:
+                content_type = "image/png"
+            return Response(content=image_bytes, media_type=content_type)
+        except Exception:
+            raise HTTPException(
+                status_code=404, detail="Screenshot not found in storage"
+            )
+
+    # If screenshot is a base64 data URL, decode and serve
+    if report.screenshot_url.startswith("data:"):
+        import base64
+
+        # Parse data URL: data:image/png;base64,xxxx
+        header, b64_data = report.screenshot_url.split(",", 1)
+        content_type = header.split(":")[1].split(";")[0]
+        image_bytes = base64.b64decode(b64_data)
+        return Response(content=image_bytes, media_type=content_type)
+
+    raise HTTPException(status_code=404, detail="Screenshot format not recognized")
