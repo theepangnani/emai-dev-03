@@ -518,10 +518,10 @@ class TestAIDateContext:
     """Regression: AI prompts must include today's date for year inference (#902)."""
 
     def test_study_guide_prompt_includes_today(self):
-        """generate_study_guide prompt must contain today's date."""
+        """_build_study_guide_prompt must contain today's date."""
         import inspect
-        from app.services.ai_service import generate_study_guide
-        source = inspect.getsource(generate_study_guide)
+        from app.services.ai_service import _build_study_guide_prompt
+        source = inspect.getsource(_build_study_guide_prompt)
         assert "Today's date is" in source, "AI prompt must include today's date for year inference"
 
     def test_quiz_prompt_includes_today(self):

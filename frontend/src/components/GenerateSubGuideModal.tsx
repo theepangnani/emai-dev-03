@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useFocusTrap } from '../utils/useFocusTrap';
 import { GenerationSpinner } from './GenerationSpinner';
 import { ReportBugLink } from './ReportBugLink';
+import type { StudyGuideCreateParams } from '../hooks/useStudyGuideStream';
 import './GenerateSubGuideModal.css';
 
 interface GenerateSubGuideModalProps {
@@ -13,6 +14,11 @@ interface GenerateSubGuideModalProps {
   aiRemaining: number;
   documentType?: string;  // From parent course content
   studyGoal?: string;     // From parent course content
+  onStreamGenerate?: (params: StudyGuideCreateParams) => void;
+  courseContentId?: number;
+  courseId?: number;
+  contentTitle?: string;
+  textContent?: string;
 }
 
 const GUIDE_TYPES = [
@@ -69,6 +75,11 @@ export function GenerateSubGuideModal({
   aiRemaining,
   documentType,
   studyGoal,
+  onStreamGenerate,
+  courseContentId,
+  courseId,
+  contentTitle,
+  textContent,
 }: GenerateSubGuideModalProps) {
   const [selectedType, setSelectedType] = useState('study_guide');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -94,6 +105,21 @@ export function GenerateSubGuideModal({
       : selectedText;
 
   const handleGenerate = async () => {
+    // For study_guide type, use streaming if callback is provided
+    if (selectedType === 'study_guide' && onStreamGenerate) {
+      const focusPrompt = selectedText + (customPrompt ? `\n\n${customPrompt}` : '');
+      onStreamGenerate({
+        course_content_id: courseContentId,
+        course_id: courseId,
+        title: contentTitle,
+        content: textContent || '',
+        focus_prompt: focusPrompt,
+        ...(documentType ? { document_type: documentType } : {}),
+        ...(studyGoal ? { study_goal: studyGoal } : {}),
+      });
+      return;
+    }
+
     setGenerating(true);
     setError('');
     try {

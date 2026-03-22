@@ -1,0 +1,46 @@
+/* ============================================
+   StreamingMarkdown — progressive markdown renderer
+   ============================================ */
+
+.streaming-markdown {
+  max-height: 70vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  animation: streaming-blink 1s step-end infinite;
+  color: var(--primary, #6366f1);
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+@keyframes streaming-blink {
+  50% { opacity: 0; }
+}
+
+.streaming-generating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #f0f4ff;
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--primary, #6366f1);
+  margin-bottom: 12px;
+}
+
+.streaming-generating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary, #6366f1);
+  animation: streaming-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes streaming-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

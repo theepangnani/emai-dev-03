@@ -3,6 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
+from fastapi.responses import StreamingResponse as _StreamingResponse
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session, selectinload
 from typing import Optional, List
@@ -45,7 +46,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, get_last_ai_usage
+from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, get_last_ai_usage
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -2507,3 +2508,266 @@ async def save_qa_as_material(
         "course_id": new_content.course_id,
         "content_type": new_content.content_type,
     }
+
+
+# ============================================
+# Streaming Generation Endpoint
+# ============================================
+
+
+@router.post("/generate-stream")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_study_guide_stream_endpoint(
+    request: Request,
+    body: StudyGuideCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Stream a study guide via SSE. Same logic as /generate but returns tokens incrementally."""
+
+    # --- Pre-checks (same as /generate) ---
+    if body.focus_prompt:
+        safe, reason = check_content_safe(body.focus_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
+    study_service = StudyService(db)
+
+    # Handle versioning
+    version = 1
+    parent_guide_id = None
+    if body.regenerate_from_id:
+        parent_guide_id, version = study_service.get_version_info(body.regenerate_from_id, current_user.id)
+
+    # Inherit document_type/study_goal from parent guide's course content on regeneration
+    if body.regenerate_from_id and not body.document_type:
+        parent_guide = db.query(StudyGuide).filter(StudyGuide.id == body.regenerate_from_id).first()
+        if parent_guide and parent_guide.course_content_id:
+            parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+            if parent_cc:
+                if not body.document_type and getattr(parent_cc, 'document_type', None):
+                    body.document_type = parent_cc.document_type
+                if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                    body.study_goal = parent_cc.study_goal
+                if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                    body.study_goal_text = parent_cc.study_goal_text
+
+    # Resolve source content
+    assignment = None
+    course = None
+    title = body.title or "Study Guide"
+    description = body.content or ""
+
+    if body.assignment_id:
+        assignment = db.query(Assignment).filter(Assignment.id == body.assignment_id).first()
+        if not assignment:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+        if assignment.course_id and not can_access_course(db, current_user, assignment.course_id):
+            raise HTTPException(status_code=403, detail="No access to this assignment's course")
+        title = f"Study Guide: {assignment.title}"
+        description = assignment.description or ""
+        course = assignment.course
+
+    if not description and body.course_content_id:
+        cc = db.query(CourseContent).filter(CourseContent.id == body.course_content_id).first()
+        if cc:
+            description = cc.text_content or cc.description or ""
+            if not title or title == "Study Guide":
+                title = f"Study Guide: {cc.title}"
+            if not course and cc.course_id:
+                course = db.query(Course).filter(Course.id == cc.course_id).first()
+
+    if body.course_id and not course:
+        course = db.query(Course).filter(Course.id == body.course_id).first()
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        if not can_access_course(db, current_user, body.course_id):
+            raise HTTPException(status_code=403, detail="No access to this course")
+
+    course_name = course.name if course else "General"
+    due_date = str(assignment.due_date) if assignment and assignment.due_date else None
+
+    if not description:
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide assignment_id or content to generate a study guide",
+        )
+
+    # Check AI usage limit
+    check_ai_usage(current_user, db)
+
+    # Image metadata for prompt enrichment
+    images_metadata = _get_images_metadata(db, body.course_content_id)
+
+    # Strategy pattern: select prompt template
+    strategy_system_prompt = None
+    if body.document_type or body.study_goal:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
+    # Deduplicate check
+    content_hash = study_service.compute_content_hash(title, "study_guide", body.assignment_id)
+    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
+    if existing:
+        return existing
+
+    # Auto-create course + course_content if needed
+    resolved_course_id, resolved_cc_id = ensure_course_and_content(
+        db, current_user, title, description,
+        course_id=body.course_id or (course.id if course else None),
+        course_content_id=body.course_content_id,
+    )
+
+    # Enforce limit and create DB record early with empty content
+    enforce_study_guide_limit(db, current_user)
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        assignment_id=body.assignment_id,
+        course_id=resolved_course_id,
+        course_content_id=resolved_cc_id,
+        title=title,
+        content="",
+        guide_type="study_guide",
+        version=version,
+        parent_guide_id=parent_guide_id,
+        content_hash=content_hash,
+        focus_prompt=body.focus_prompt or None,
+        is_truncated=False,
+    )
+    db.add(study_guide)
+    db.commit()
+    db.refresh(study_guide)
+    guide_id = study_guide.id
+
+    # Capture values needed during streaming before closing DB
+    user_id = current_user.id
+    user_interests = _get_user_interests(current_user)
+    user_full_name = current_user.full_name
+    user_role = current_user.role
+    cc_id = body.course_content_id
+    doc_type = body.document_type
+    study_goal_val = body.study_goal
+    study_goal_text_val = body.study_goal_text
+
+    # Close DB session before streaming to avoid connection pool exhaustion
+    db.close()
+
+    async def event_stream():
+        # Emit start event with guide_id
+        yield f"event: start\ndata: {json.dumps({'guide_id': guide_id})}\n\n"
+
+        full_content = ""
+        is_truncated = False
+        error_occurred = False
+
+        try:
+            async for event in generate_study_guide_stream(
+                assignment_title=title,
+                assignment_description=description,
+                course_name=course_name,
+                due_date=due_date,
+                custom_prompt=strategy_system_prompt if strategy_system_prompt else body.custom_prompt,
+                focus_prompt=body.focus_prompt,
+                images=images_metadata,
+                interests=user_interests,
+                document_type=doc_type,
+                study_goal=study_goal_val,
+                study_goal_text=study_goal_text_val,
+            ):
+                if event["event"] == "chunk":
+                    yield f"event: chunk\ndata: {json.dumps({'text': event['data']})}\n\n"
+                elif event["event"] == "done":
+                    full_content = event["data"]["full_content"]
+                    is_truncated = event["data"]["is_truncated"]
+                elif event["event"] == "error":
+                    error_occurred = True
+                    yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
+                    return
+
+        except Exception as e:
+            logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
+            return
+
+        if error_occurred:
+            return
+
+        # Post-process: parse critical dates, append unplaced images
+        processed_content, critical_dates = parse_critical_dates(full_content)
+        if images_metadata:
+            processed_content = _append_unplaced_images(processed_content, images_metadata)
+
+        # Save completed content in a NEW DB session
+        try:
+            from app.db.database import SessionLocal
+            with SessionLocal() as save_db:
+                guide = save_db.get(StudyGuide, guide_id)
+                if guide:
+                    guide.content = processed_content
+                    guide.is_truncated = is_truncated
+                    guide.content_hash = content_hash
+
+                    # Debit AI usage
+                    from app.models.user import User as _User
+                    user = save_db.get(_User, user_id)
+                    if user:
+                        increment_ai_usage(
+                            user, save_db, generation_type="study_guide",
+                            course_material_id=cc_id,
+                            is_regeneration=bool(body.regenerate_from_id),
+                        )
+
+                    # Auto-create tasks from critical dates
+                    if not critical_dates:
+                        critical_dates_inner = scan_content_for_dates(description, title)
+                    else:
+                        critical_dates_inner = critical_dates
+                    if not critical_dates_inner:
+                        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        critical_dates_inner = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+
+                    created_tasks = auto_create_tasks_from_dates(
+                        save_db, critical_dates_inner, user, guide.id,
+                        resolved_course_id, resolved_cc_id,
+                    )
+
+                    log_action(save_db, user_id=user_id, action="create", resource_type="study_guide",
+                               resource_id=guide.id,
+                               details={"guide_type": "study_guide", "auto_tasks": len(created_tasks), "streamed": True})
+                    save_db.commit()
+                    save_db.refresh(guide)
+
+                    # Award XP (non-blocking)
+                    try:
+                        from app.services.xp_service import XpService
+                        XpService.award_xp(save_db, user_id, "study_guide")
+                    except Exception as e:
+                        logger.warning(f"XP award failed (non-blocking): {e}")
+
+                    # Persist document_type and study_goal on course content
+                    if cc_id and (doc_type or study_goal_val):
+                        try:
+                            cc_obj = save_db.query(CourseContent).filter(CourseContent.id == cc_id).first()
+                            if cc_obj:
+                                if doc_type:
+                                    cc_obj.document_type = doc_type
+                                if study_goal_val:
+                                    cc_obj.study_goal = study_goal_val
+                                if study_goal_text_val:
+                                    cc_obj.study_goal_text = study_goal_text_val
+                                save_db.commit()
+                        except Exception as e:
+                            logger.warning(f"Failed to persist document type on course content: {e}")
+
+                    # Build response
+                    resp = StudyGuideResponse.model_validate(guide)
+                    resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
+                    yield f"event: done\ndata: {json.dumps(resp.model_dump(mode='json'))}\n\n"
+                else:
+                    yield f"event: error\ndata: {json.dumps({'message': 'Guide record not found after streaming.'})}\n\n"
+
+        except Exception as e:
+            logger.error("Failed to save streamed study guide: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': 'Failed to save study guide. Please try again.'})}\n\n"
+
+    return _StreamingResponse(event_stream(), media_type="text/event-stream")

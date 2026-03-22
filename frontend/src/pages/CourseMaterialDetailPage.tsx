@@ -36,6 +36,7 @@ import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { useStudyGuideStream } from '../hooks/useStudyGuideStream';
 import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import { LinkedMaterialsPanel } from '../components/LinkedMaterialsPanel';
 import { useLinkedMaterials } from '../hooks/useLinkedMaterials';
@@ -172,6 +173,7 @@ export function CourseMaterialDetailPage() {
   const { user } = useAuth();
   const isParent = user?.role === 'parent' || (user?.roles ?? []).includes('parent');
   const { remaining, atLimit, invalidate: refreshAIUsage } = useAIUsage();
+  const stream = useStudyGuideStream();
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   const [content, setContent] = useState<CourseContentItem | null>(null);
@@ -502,7 +504,8 @@ export function CourseMaterialDetailPage() {
         ...(content.study_goal_text ? { study_goal_text: content.study_goal_text } : {}),
       };
       if (type === 'study_guide') {
-        await studyApi.generateGuide({
+        // Use streaming for study guide generation
+        stream.startStream({
           course_content_id: contentId,
           course_id: content.course_id,
           title: content.title,
@@ -510,6 +513,8 @@ export function CourseMaterialDetailPage() {
           focus_prompt: fp,
           ...strategyFields,
         });
+        // Stream completion is handled by the useEffect below
+        return;
       } else if (type === 'quiz') {
         await studyApi.generateQuiz({
           course_content_id: contentId,
@@ -561,6 +566,31 @@ export function CourseMaterialDetailPage() {
       setGenerating(null);
     }
   };
+
+  // Handle streaming study guide completion
+  useEffect(() => {
+    if (stream.status === 'done') {
+      loadData();
+      refreshAIUsage();
+      setGenerating(null);
+      // Check for auto-created tasks
+      if (stream.guideId) {
+        tasksApi.list({ study_guide_id: stream.guideId }).then(tasks => {
+          if (tasks.length > 0) {
+            const t = tasks[0];
+            const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
+            showToast(`Task created: ${t.title}${dueStr}`);
+          }
+        }).catch(() => {});
+      }
+    }
+    if (stream.status === 'error') {
+      setGenerating(null);
+      if (stream.error) {
+        showToast(stream.error);
+      }
+    }
+  }, [stream.status]);
 
   const handleDeleteGuide = async (guide: StudyGuide) => {
     const ok = await confirm({
@@ -897,6 +927,9 @@ export function CourseMaterialDetailPage() {
               onFormatSelect={handleFormatSelect}
               onViewDocument={() => setActiveTab('document')}
               onContinue={loadData}
+              streamingContent={stream.content}
+              isStreaming={stream.isStreaming}
+              streamStatus={stream.status}
             />
           )}
 
@@ -1070,6 +1103,16 @@ export function CourseMaterialDetailPage() {
         aiRemaining={remaining}
         documentType={guides.find(g => g.document_type)?.document_type ?? undefined}
         studyGoal={guides.find(g => g.study_goal)?.study_goal ?? undefined}
+        onStreamGenerate={content ? (params) => {
+          setShowGenerateModal(false);
+          setActiveTab('guide');
+          setGenerating('study_guide');
+          stream.startStream(params);
+        } : undefined}
+        courseContentId={contentId}
+        courseId={content?.course_id}
+        contentTitle={content?.title}
+        textContent={content?.text_content || content?.description || ''}
       />
       {showHelpStudyMenu && resolvedStudent && (
         <HelpStudyMenu
