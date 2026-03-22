@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -26,6 +26,7 @@ RATE_LIMIT_PER_HOUR = 20
 @limiter.limit("20/hour")
 async def submit_bug_report(
     request: Request,
+    background_tasks: BackgroundTasks,
     description: Optional[str] = Form(None),
     page_url: Optional[str] = Form(None),
     user_agent: Optional[str] = Form(None),
@@ -87,6 +88,7 @@ async def submit_bug_report(
         screenshot_content_type=screenshot_content_type,
         page_url=page_url,
         user_agent=user_agent,
+        background_tasks=background_tasks,
     )
 
     return report
