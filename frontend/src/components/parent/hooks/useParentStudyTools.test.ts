@@ -59,11 +59,13 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
   })
 
   it('surfaces API error detail (e.g. AI usage limit) in backgroundGeneration.error', async () => {
-    // Simulate a 429 response with detail from the backend
-    mockGenerateGuide.mockRejectedValueOnce({
+    // Use quiz type — study_guide now navigates to detail page for streaming
+    const mockGenerateQuiz = vi.fn().mockRejectedValueOnce({
       response: { status: 429, data: { detail: 'AI usage limit reached. You have used all 10 of your credits.' } },
       message: 'Request failed with status code 429',
     })
+    const { studyApi: mockedStudyApi } = await import('../../../api/client')
+    ;(mockedStudyApi as Record<string, unknown>).generateQuiz = mockGenerateQuiz
 
     const { result } = renderHook(() =>
       useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
@@ -73,7 +75,7 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
       await result.current.handleGenerateFromModal({
         title: 'Test Guide',
         content: 'Some content',
-        types: ['study_guide'],
+        types: ['quiz'],
         mode: 'text',
       })
     })
@@ -88,10 +90,12 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
 
   it('truncates very long error messages to 150 characters', async () => {
     const longDetail = 'A'.repeat(200)
-    mockGenerateGuide.mockRejectedValueOnce({
+    const mockGenerateQuiz = vi.fn().mockRejectedValueOnce({
       response: { status: 500, data: { detail: longDetail } },
       message: 'Request failed with status code 500',
     })
+    const { studyApi: mockedStudyApi } = await import('../../../api/client')
+    ;(mockedStudyApi as Record<string, unknown>).generateQuiz = mockGenerateQuiz
 
     const { result } = renderHook(() =>
       useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
@@ -101,7 +105,7 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
       await result.current.handleGenerateFromModal({
         title: 'Test',
         content: 'Content',
-        types: ['study_guide'],
+        types: ['quiz'],
         mode: 'text',
       })
     })
@@ -114,7 +118,31 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
   })
 
   it('falls back to err.message when no response.data.detail', async () => {
-    mockGenerateGuide.mockRejectedValueOnce(new Error('Network Error'))
+    const mockGenerateQuiz = vi.fn().mockRejectedValueOnce(new Error('Network Error'))
+    const { studyApi: mockedStudyApi } = await import('../../../api/client')
+    ;(mockedStudyApi as Record<string, unknown>).generateQuiz = mockGenerateQuiz
+
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: 'Test',
+        content: 'Content',
+        types: ['quiz'],
+        mode: 'text',
+      })
+    })
+
+    await vi.waitFor(() => {
+      expect(result.current.backgroundGeneration).not.toBeNull()
+      expect(result.current.backgroundGeneration!.error).toBe('Network Error')
+    })
+  })
+
+  it('navigates to detail page with autoGenerate for study_guide type', async () => {
+    mockCreate.mockResolvedValue({ id: 42 })
 
     const { result } = renderHook(() =>
       useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
@@ -130,9 +158,13 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
     })
 
     await vi.waitFor(() => {
-      expect(result.current.backgroundGeneration).not.toBeNull()
-      expect(result.current.backgroundGeneration!.error).toBe('Network Error')
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/course-materials/42?tab=guide',
+        expect.objectContaining({ state: expect.objectContaining({ autoGenerate: true }) }),
+      )
     })
+    // Should NOT run background generation for study guides
+    expect(mockGenerateGuide).not.toHaveBeenCalled()
   })
 
   it('shows limit modal instead of generating when credits exhausted', async () => {
@@ -186,8 +218,8 @@ describe('useParentStudyTools – pasted images upload', () => {
       })
     })
 
-    // Should navigate to course-materials
-    expect(mockNavigate).toHaveBeenCalledWith('/course-materials', expect.any(Object))
+    // Should navigate to the specific course-material detail page
+    expect(mockNavigate).toHaveBeenCalledWith('/course-materials/2', expect.any(Object))
 
     // Wait for background async to complete
     await vi.waitFor(() => {
