@@ -1,5 +1,7 @@
 import base64
 import logging
+import uuid
+from datetime import datetime
 from typing import Optional
 
 import httpx
@@ -15,6 +17,34 @@ from app.services.email_service import send_email_sync, wrap_branded_email
 logger = logging.getLogger(__name__)
 
 
+def _upload_screenshot_to_gcs(
+    screenshot_bytes: bytes, screenshot_content_type: str
+) -> str | None:
+    """Upload screenshot to GCS and return public URL, or None if GCS not configured."""
+    if not settings.use_gcs or not settings.gcs_bucket_name:
+        return None
+
+    try:
+        from app.services.gcs_service import get_bucket
+
+        ext_map = {"image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg", "image/webp": "webp"}
+        ext = ext_map.get(screenshot_content_type, "png")
+
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        unique_id = uuid.uuid4().hex[:8]
+        gcs_path = f"bug-reports/{timestamp}-{unique_id}.{ext}"
+
+        bucket = get_bucket()
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_string(screenshot_bytes, content_type=screenshot_content_type)
+        blob.make_public()
+
+        return blob.public_url
+    except Exception as e:
+        logger.error(f"Failed to upload screenshot to GCS: {e}")
+        return None
+
+
 def _create_github_issue(
     description: Optional[str],
     screenshot_bytes: Optional[bytes],
@@ -23,6 +53,7 @@ def _create_github_issue(
     user_agent: Optional[str],
     user_role: str,
     user_name: str,
+    screenshot_url: str | None = None,
 ) -> tuple[Optional[int], Optional[str]]:
     """Create a GitHub issue and return (issue_number, issue_url) or (None, None) on failure."""
     if not settings.github_token:
@@ -42,9 +73,12 @@ def _create_github_issue(
         body_parts.append(f"\n**Browser:** {user_agent}")
 
     if screenshot_bytes and screenshot_content_type:
-        body_parts.append(
-            "\n**Screenshot:** Attached (stored in ClassBridge database)"
-        )
+        if screenshot_url and screenshot_url.startswith("https://"):
+            body_parts.append(f"\n**Screenshot:**\n\n![screenshot]({screenshot_url})")
+        else:
+            body_parts.append(
+                "\n**Screenshot:** Attached (stored in ClassBridge database)"
+            )
 
     body = "\n".join(body_parts)
 
@@ -81,6 +115,14 @@ def create_bug_report(
 ) -> BugReport:
     """Create a bug report, optionally create a GitHub issue, and notify admins."""
 
+    # Build screenshot URL (GCS public URL or base64 data URL fallback)
+    screenshot_url = None
+    if screenshot_bytes and screenshot_content_type:
+        screenshot_url = _upload_screenshot_to_gcs(screenshot_bytes, screenshot_content_type)
+        if not screenshot_url:
+            b64 = base64.b64encode(screenshot_bytes).decode("ascii")
+            screenshot_url = f"data:{screenshot_content_type};base64,{b64}"
+
     # Create GitHub issue
     issue_number, issue_url = _create_github_issue(
         description=description,
@@ -90,13 +132,8 @@ def create_bug_report(
         user_agent=user_agent,
         user_role=user.role,
         user_name=user.full_name or user.email,
+        screenshot_url=screenshot_url,
     )
-
-    # Build screenshot data URL for DB storage (if screenshot provided)
-    screenshot_url = None
-    if screenshot_bytes and screenshot_content_type:
-        b64 = base64.b64encode(screenshot_bytes).decode("ascii")
-        screenshot_url = f"data:{screenshot_content_type};base64,{b64}"
 
     # Save bug report
     report = BugReport(
