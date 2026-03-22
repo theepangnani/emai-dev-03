@@ -44,6 +44,17 @@ def get_anthropic_client() -> anthropic.Anthropic:
     )
 
 
+def get_async_anthropic_client() -> anthropic.AsyncAnthropic:
+    """Get configured async Anthropic client for streaming."""
+    if not settings.anthropic_api_key:
+        logger.error("Anthropic API key not configured")
+        raise ValueError("ANTHROPIC_API_KEY not configured")
+    return anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key.strip(),
+        timeout=httpx.Timeout(120.0, connect=10.0),
+    )
+
+
 def check_content_safe(text: str) -> tuple[bool, str]:
     """
     Check whether user-provided text is appropriate for a K-12 educational platform.
@@ -311,6 +322,122 @@ well-organized study guides. Use simple language, practical examples, and clean 
 
     content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=4096)
     return content, stop_reason == "max_tokens"
+
+
+async def generate_study_guide_stream(
+    assignment_title: str,
+    assignment_description: str,
+    course_name: str,
+    due_date: str | None = None,
+    custom_prompt: str | None = None,
+    focus_prompt: str | None = None,
+    images: list[dict] | None = None,
+    interests: list[str] | None = None,
+    document_type: str | None = None,
+    study_goal: str | None = None,
+    study_goal_text: str | None = None,
+):
+    """
+    Streaming version of generate_study_guide. Async generator yielding SSE event dicts.
+
+    Yields:
+        {"event": "chunk", "data": "<text>"} for each token
+        {"event": "done", "data": {"is_truncated": bool, "full_content": str}} on completion
+        {"event": "error", "data": "..."} on failure
+    """
+    logger.info(f"Streaming study guide | title={assignment_title} | course={course_name}")
+
+    # Build prompt — same logic as generate_study_guide
+    due_info = f"\nDue Date: {due_date}" if due_date else ""
+
+    prompt = f"""Create a comprehensive study guide for the following assignment:
+
+**Assignment:** {assignment_title}
+**Course:** {course_name}{due_info}
+
+**Description:**
+{assignment_description}
+
+Analyze the content above. If it contains math problems, equations, science calculations, or any exercises/questions that require solving, then:
+
+1. **Worked Solutions** - Solve each problem step-by-step with clear explanations
+2. **Key Concepts** - Explain the underlying concepts used in the solutions
+3. **Common Mistakes** - Warn about typical errors students make on these types of problems
+4. **Practice Problems** - 2-3 similar problems for extra practice (with answers)
+
+If the content is conceptual/reading material (no problems to solve), then:
+
+1. **Key Concepts** - Main topics and ideas to understand
+2. **Important Terms** - Vocabulary with definitions
+3. **Study Tips** - Strategies for mastering this material
+4. **Practice Questions** - 3-5 questions to test understanding
+5. **Resources** - Suggested areas to review
+
+Format the response in Markdown for easy reading. For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations (e.g., $\\frac{{a}}{{b}}$, $x^2$, $\\sqrt{{n}}$).
+
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions), include a section at the very end of your response in this exact format:
+--- CRITICAL_DATES ---
+[{{"date": "YYYY-MM-DD", "title": "Short description of what is due/happening", "priority": "high"}}]
+
+Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
+If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the nearest future occurrence from today's date and output the full YYYY-MM-DD.
+ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
+Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all."""
+
+    if images:
+        image_list = _build_image_list(images)
+        prompt += f"""
+
+**SOURCE IMAGES/FIGURES:**
+The source material contains the following images and figures. When a topic you're covering relates to one of these images, include it in your response using the markdown format ![description]({{{{IMG-N}}}}).
+
+{image_list}
+
+Place each image near the relevant content in your study guide. Do not force images where they don't fit — only include them where they add value to the explanation."""
+
+    if focus_prompt:
+        prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Prioritize these topics in your response while still covering other key material briefly."
+
+    if custom_prompt:
+        system_prompt = custom_prompt
+    else:
+        system_prompt = """You are an expert educational tutor. When given math problems or exercises, solve them
+step-by-step with clear explanations so students can learn the process. For conceptual material, create
+well-organized study guides. Use simple language, practical examples, and clean Markdown formatting."""
+
+    system_prompt += _interests_instruction(interests)
+
+    # Stream via async client
+    try:
+        client = get_async_anthropic_client()
+        full_content = ""
+        is_truncated = False
+
+        async with client.messages.stream(
+            model=settings.claude_model,
+            system=system_prompt,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4096,
+            temperature=0.7,
+        ) as stream:
+            async for text in stream.text_stream:
+                full_content += text
+                yield {"event": "chunk", "data": text}
+
+            final = await stream.get_final_message()
+            is_truncated = final.stop_reason == "max_tokens"
+
+        yield {
+            "event": "done",
+            "data": {
+                "is_truncated": is_truncated,
+                "full_content": full_content,
+            },
+        }
+
+    except Exception as e:
+        logger.error("Study guide streaming failed: %s: %s", type(e).__name__, e)
+        yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}: {str(e)}"}
 
 
 async def generate_quiz(
