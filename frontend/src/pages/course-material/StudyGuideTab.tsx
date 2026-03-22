@@ -6,6 +6,7 @@ import { studyApi } from '../../api/study';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
+import { StreamingMarkdown } from '../../components/StreamingMarkdown';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import ParentSummaryCard from '../../components/ParentSummaryCard';
@@ -24,6 +25,9 @@ interface StudyGuideTabProps {
   onFormatSelect?: (format: StudyFormat) => void;
   onViewDocument?: () => void;
   onContinue?: () => void;
+  streamingContent?: string;
+  isStreaming?: boolean;
+  streamStatus?: string;
 }
 
 function FocusIcon() {
@@ -59,6 +63,9 @@ export function StudyGuideTab({
   onFormatSelect,
   onViewDocument,
   onContinue,
+  streamingContent,
+  isStreaming,
+  streamStatus,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -108,39 +115,51 @@ export function StudyGuideTab({
       </div>
       {studyGuide ? (
         <div className="cm-tab-card cm-tab-card--guide">
-          <div className="cm-guide-actions">
-            <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
-            <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
-            <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
-              <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate</button>
-              {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
-            </span>
-            <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
-            {onViewDocument && (
-              <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
-            )}
-            <Link to={`/study/guide/${studyGuide.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
-          </div>
+          {!isStreaming && (
+            <div className="cm-guide-actions">
+              <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
+              <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
+              <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+                <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate</button>
+                {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+              </span>
+              <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+              {onViewDocument && (
+                <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
+              )}
+              <Link to={`/study/guide/${studyGuide.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
+            </div>
+          )}
           <LinkedTasksBanner tasks={linkedTasks} />
           {studyGuide.parent_summary && (
             <ParentSummaryCard summary={studyGuide.parent_summary} />
           )}
-          {generating === 'study_guide' && (
-            <div className="cm-regen-status">
-              <GenerationSpinner size="md" />
-              <span>Regenerating study guide...</span>
+          {isStreaming && streamingContent ? (
+            <div className="cm-tab-card-body">
+              <ContentCard>
+                <StreamingMarkdown content={streamingContent} isStreaming={true} />
+              </ContentCard>
             </div>
+          ) : (
+            <>
+              {generating === 'study_guide' && !isStreaming && (
+                <div className="cm-regen-status">
+                  <GenerationSpinner size="md" />
+                  <span>Regenerating study guide...</span>
+                </div>
+              )}
+              <div className="cm-tab-card-body" ref={printRef}>
+                <ContentCard>
+                  <MarkdownErrorBoundary>
+                    <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
+                      <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
+                    </Suspense>
+                  </MarkdownErrorBoundary>
+                </ContentCard>
+              </div>
+            </>
           )}
-          <div className="cm-tab-card-body" ref={printRef}>
-            <ContentCard>
-              <MarkdownErrorBoundary>
-                <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                  <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
-                </Suspense>
-              </MarkdownErrorBoundary>
-            </ContentCard>
-          </div>
-          {studyGuide.is_truncated && (
+          {!isStreaming && studyGuide.is_truncated && (
             <div className="cm-truncated-banner">
               {continuing ? (
                 <div className="cm-regen-status">
@@ -155,10 +174,27 @@ export function StudyGuideTab({
             </div>
           )}
         </div>
+      ) : isStreaming && streamingContent ? (
+        <div className="cm-tab-card cm-tab-card--guide">
+          <div className="cm-tab-card-body">
+            <ContentCard>
+              <StreamingMarkdown content={streamingContent} isStreaming={true} />
+            </ContentCard>
+          </div>
+        </div>
       ) : generating === 'study_guide' ? (
         <div className="cm-inline-generating">
-          <GenerationSpinner size="lg" />
-          <p>Generating study guide... This may take a moment.</p>
+          {streamStatus === 'connecting' ? (
+            <>
+              <GenerationSpinner size="lg" />
+              <p>Connecting to AI... Please wait.</p>
+            </>
+          ) : (
+            <>
+              <GenerationSpinner size="lg" />
+              <p>Generating study guide... This may take a moment.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="cm-empty-tab">
