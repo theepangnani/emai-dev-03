@@ -141,7 +141,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
 
     (async () => {
       try {
-        const response = await fetch(`${apiBase}/api/study/generate/stream`, {
+        const response = await fetch(`${apiBase}/api/study/generate-stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
