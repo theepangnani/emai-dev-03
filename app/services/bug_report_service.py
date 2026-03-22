@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def _upload_screenshot_to_gcs(
     screenshot_bytes: bytes, screenshot_content_type: str
 ) -> str | None:
-    """Upload screenshot to GCS and return public URL, or None if GCS not configured."""
+    """Upload screenshot to GCS and return a signed URL, or None if GCS not configured."""
     if not settings.use_gcs or not settings.gcs_bucket_name:
         return None
 
@@ -37,9 +37,16 @@ def _upload_screenshot_to_gcs(
         bucket = get_bucket()
         blob = bucket.blob(gcs_path)
         blob.upload_from_string(screenshot_bytes, content_type=screenshot_content_type)
-        blob.make_public()
 
-        return blob.public_url
+        # Generate signed URL (valid for 7 days) — works with uniform bucket-level access
+        from datetime import timedelta
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(days=7),
+            method="GET",
+        )
+
+        return signed_url
     except Exception as e:
         logger.error(f"Failed to upload screenshot to GCS: {e}")
         return None
