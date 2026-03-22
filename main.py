@@ -538,6 +538,17 @@ def _run_migrations_inner(engine):
                 conn.rollback()
             conn.commit()
 
+        # ── Backfill is_default for existing "Main Class" courses (#2203) ──
+        if "courses" in inspector.get_table_names():
+            try:
+                conn.execute(text(
+                    "UPDATE courses SET is_default = TRUE WHERE name = 'Main Class' AND is_default = FALSE"
+                ))
+                logger.info("Backfilled is_default=TRUE for existing 'Main Class' courses")
+            except Exception:
+                conn.rollback()
+            conn.commit()
+
         # ── CASCADE + UNIQUE constraint migration (#145, #146, #187) ──
         _apply_cascade_and_unique_migration(conn, inspector)
 
