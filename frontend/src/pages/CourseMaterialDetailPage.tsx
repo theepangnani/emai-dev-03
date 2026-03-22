@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
@@ -265,6 +265,7 @@ export function CourseMaterialDetailPage() {
   );
 
   const contentId = parseInt(id || '0');
+  const location = useLocation();
 
   const toggleNotes = useCallback(() => setShowNotesPanel(v => !v), []);
   useRegisterNotesFAB(contentId ? { courseContentId: contentId, isOpen: showNotesPanel, onToggle: toggleNotes } : null);
@@ -319,6 +320,22 @@ export function CourseMaterialDetailPage() {
   }, [contentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-generate study guide when navigated from dashboard upload with autoGenerate flag
+  useEffect(() => {
+    const navState = location.state as { autoGenerate?: boolean } | null;
+    if (navState?.autoGenerate && content && !stream.isStreaming && stream.status === 'idle') {
+      // Clear the state so refreshing doesn't re-trigger
+      window.history.replaceState({}, '');
+      setActiveTab('guide');
+      stream.startStream({
+        course_content_id: contentId,
+        course_id: content.course_id,
+        title: content.title,
+        content: content.text_content || content.description || '',
+      });
+    }
+  }, [content, location.state]);
 
   // Right-click context menu → generate sub-study guide from selected text (#1594)
   const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {

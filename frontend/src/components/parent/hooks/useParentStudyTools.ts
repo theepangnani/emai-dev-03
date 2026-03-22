@@ -175,21 +175,21 @@ export function useParentStudyTools({
     resetStudyModal();
 
     if (modalParams.types.length === 0) {
-      // Upload-only: navigate then run upload/extraction in background
-      navigate('/course-materials', { state: { selectedChild: selectedChildUserId } });
+      // Upload-only: upload then navigate to the detail page
       setBackgroundGeneration({ status: 'generating', type: 'Material' });
       (async () => {
         try {
           const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
+          let created: { id: number };
           if (files.length === 1) {
-            await courseContentsApi.uploadFile(
+            created = await courseContentsApi.uploadFile(
               files[0],
               targetCourseId,
               modalParams.title || undefined,
               'notes',
             );
           } else if (isMultiFile) {
-            await courseContentsApi.uploadMultiFiles(
+            created = await courseContentsApi.uploadMultiFiles(
               files,
               targetCourseId,
               modalParams.title || undefined,
@@ -199,7 +199,7 @@ export function useParentStudyTools({
             // Pasted images: upload as files so backend can store and extract text
             const imagesToUpload = modalParams.pastedImages;
             if (imagesToUpload.length === 1 && !modalParams.content?.trim()) {
-              await courseContentsApi.uploadFile(
+              created = await courseContentsApi.uploadFile(
                 imagesToUpload[0],
                 targetCourseId,
                 modalParams.title || undefined,
@@ -214,7 +214,7 @@ export function useParentStudyTools({
                 const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
                 allFiles.unshift(textFile);
               }
-              await courseContentsApi.uploadMultiFiles(
+              created = await courseContentsApi.uploadMultiFiles(
                 allFiles,
                 targetCourseId,
                 modalParams.title || undefined,
@@ -222,14 +222,15 @@ export function useParentStudyTools({
               );
             }
           } else {
-            await courseContentsApi.create({
+            created = await courseContentsApi.create({
               course_id: targetCourseId,
               title: modalParams.title || 'Uploaded material',
               text_content: modalParams.content || undefined,
               content_type: 'notes',
             });
           }
-          setBackgroundGeneration({ status: 'success', type: 'Material' });
+          setBackgroundGeneration(null);
+          navigate(`/course-materials/${created.id}`, { state: { selectedChild: selectedChildUserId } });
         } catch {
           setBackgroundGeneration({ status: 'error', type: 'Material', error: 'Upload failed' });
         }
@@ -316,7 +317,11 @@ export function useParentStudyTools({
       }
     }
 
-    for (const type of modalParams.types) {
+    const hasStudyGuide = modalParams.types.includes('study_guide');
+    const nonStudyGuideTypes = modalParams.types.filter(t => t !== 'study_guide');
+
+    // Run background generation for non-study-guide types (quiz, flashcards, mind_map)
+    for (const type of nonStudyGuideTypes) {
       runGenerationInBackground({
         title: modalParams.title,
         content: modalParams.content,
@@ -333,6 +338,59 @@ export function useParentStudyTools({
         studyGoal: modalParams.studyGoal,
         studyGoalText: modalParams.studyGoalText,
       });
+    }
+
+    // For study guide: navigate to detail page with autoGenerate flag for streaming UX
+    // For non-study-guide only: navigate to detail page without autoGenerate
+    if (sharedCourseContentId) {
+      if (hasStudyGuide) {
+        navigate(`/course-materials/${sharedCourseContentId}?tab=guide`, {
+          state: { autoGenerate: true, selectedChild: selectedChildUserId },
+        });
+      } else {
+        navigate(`/course-materials/${sharedCourseContentId}`, {
+          state: { selectedChild: selectedChildUserId },
+        });
+      }
+    } else if (hasStudyGuide) {
+      // Single type (study_guide only) without pre-created content — need to upload first
+      (async () => {
+        try {
+          const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
+          let contentId: number;
+          if (isMultiFile) {
+            const cc = await courseContentsApi.uploadMultiFiles(files, targetCourseId, modalParams.title || undefined, 'notes');
+            contentId = cc.id;
+          } else if (modalParams.mode === 'file' && files.length === 1) {
+            const cc = await courseContentsApi.uploadFile(files[0], targetCourseId, modalParams.title || undefined, 'notes');
+            contentId = cc.id;
+          } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
+            const allFiles = [...modalParams.pastedImages];
+            if (modalParams.content?.trim()) {
+              const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
+              const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
+              allFiles.unshift(textFile);
+            }
+            const cc = allFiles.length === 1
+              ? await courseContentsApi.uploadFile(allFiles[0], targetCourseId, modalParams.title || undefined, 'notes')
+              : await courseContentsApi.uploadMultiFiles(allFiles, targetCourseId, modalParams.title || undefined, 'notes');
+            contentId = cc.id;
+          } else {
+            const cc = await courseContentsApi.create({
+              course_id: targetCourseId,
+              title: modalParams.title || 'Uploaded material',
+              text_content: modalParams.content || undefined,
+              content_type: 'notes',
+            });
+            contentId = cc.id;
+          }
+          navigate(`/course-materials/${contentId}?tab=guide`, {
+            state: { autoGenerate: true, selectedChild: selectedChildUserId },
+          });
+        } catch {
+          setBackgroundGeneration({ status: 'error', type: 'Study Guide', error: 'Upload failed' });
+        }
+      })();
     }
   };
 
