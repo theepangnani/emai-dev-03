@@ -136,6 +136,10 @@ export default function UploadMaterialWizard({
         setManagedCourses(mapped);
         setInternalCourseId(mapped.length === 1 ? mapped[0].id : (selectedCourseId ?? ''));
       }).catch(() => { /* courses will remain undefined — selector won't show */ });
+    } else {
+      // Parent multi-child context: show empty class selector (disabled until child selected)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setManagedCourses([]);
     }
   }, [open, initialTitle, initialContent, courses, selectedCourseId, children]);
 
