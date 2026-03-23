@@ -2167,7 +2167,7 @@ Intercept known command words (`clear`, `reset`) in the frontend before sending 
 
 #### 6.59.16 Help Knowledge Base Expansion (#1779)
 
-**Status:** IN PROGRESS | **Priority:** Medium
+**Status:** IMPLEMENTED | **Priority:** Medium
 
 Expand the FAQ knowledge base to provide comprehensive coverage for all platform features. Users asking about features not covered in the FAQ receive generic fallback answers, reducing chatbot usefulness.
 
@@ -3790,7 +3790,7 @@ Systematic performance audit identified and fixed 14 issues across the full appl
 
 ---
 
-### 6.106 Study Guide Strategy Pattern — Document Type & Persona-Based Generation (Phase 2) - IN PROGRESS
+### 6.106 Study Guide Strategy Pattern — Document Type & Persona-Based Generation (Phase 2) - IMPLEMENTED
 
 **Epic:** #1972 | **Source:** ClassBridge_StudyGuide_Requirements.docx v1.0 | **Review deadline:** April 14, 2026
 
@@ -4285,7 +4285,7 @@ Users can report bugs directly from error dialogs or the help menu. Bug report m
 
 ## §6.116 Streaming Study Guide Generation
 
-**Status:** IN PROGRESS | **Issues:** #2120-#2127 (7 issues)
+**Status:** COMPLETE | **Issues:** #2120-#2127 (7 issues)
 
 SSE endpoint streams markdown tokens for ChatGPT-like real-time generation experience.
 

@@ -1,9 +1,21 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 21, 2026):** 1,809 total issues — 1,630 closed (90%), 179 open (10%)
-- **Features built:** 375 enhancements closed
-- **Bugs fixed:** 324 bugs closed
-- **Other closed:** 931 (pilot prep, docs, testing, misc)
+**Summary (as of Mar 23, 2026):** 2,240 total issues — 1,943 closed (87%), 297 open (13%)
+- **Features built:** 375+ enhancements closed
+- **Bugs fixed:** 350+ bugs closed
+- **Other closed:** 1,218 (pilot prep, docs, testing, infra, misc)
+
+**Week of Mar 17-23 highlights (156 issues closed):**
+- Streaming Study Guide Generation (#2120) — ChatGPT-like SSE streaming UX
+- Bug Report System (#2087) — screenshot upload, GCS storage, GitHub issue creation, bot protection
+- Pre-Launch Survey System (#1890) — role-specific surveys, admin dashboard, bot protection
+- Study Guide Strategy Pattern (#1986) — document type & persona-based generation
+- Performance Optimization (#1954-#1959) — N+1 query fixes across 6 route files
+- Help KB Expansion (#1779, #2106) — 15 missing feature topics added
+- Context-Aware Chatbot Study Q&A (#2060, #2072) — frontend §6.114
+- Bot Protection (#1934) — honeypot + timing on all public forms
+- SendGrid Click Tracking Fix (#2235-#2236) — disabled click tracking to fix SSL errors
+- Defect batch 1 (8 bugs), weekend batch 1 (14 fixes), upload wizard fixes, sidebar fixes
 
 Current feature issues are tracked in GitHub:
 
@@ -234,6 +246,27 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #2098: requirement gap: incorrect/uncertain AI answers saveable as study guides~~ ✅ (added uncertainty detection on frontend + backend that blocks saving; see §6.115)
 - ~~Issue #2099: bug/regression: "Has sub study guide" tag not showing on materials list~~ ✅ (moved badge from title row to meta row to avoid CSS overflow hidden)
 - ~~Issue #2100: bug: clicking View on sub study guide didn't navigate~~ ✅ (route to `/study/guide/${id}` instead of parent's course material page)
+
+### Phase 1 & 2 - Implemented (Mar 17-23, 2026 — 156 issues closed)
+- ~~Issue #2120: Streaming Study Guide Generation — SSE streaming with ChatGPT-like UX~~ ✅ (PR #2200, §6.116)
+- ~~Issue #2087: User Bug Report with Screenshot → GitHub Issue + Admin Notification~~ ✅ (PR #2088, §6.115)
+- ~~Issue #2103: Bug Report Bot Protection — honeypot + cooldown~~ ✅ (§6.115.2)
+- ~~Issue #2114: Bug Report GCS signed URLs for screenshots~~ ✅ (§6.115)
+- ~~Issue #1890: Pre-Launch Survey System — backend, public pages, admin dashboard~~ ✅ (§6.102)
+- ~~Issue #1986: Study Guide Strategy Pattern — document type & persona-based generation~~ ✅ (§6.106)
+- ~~Issue #1954-#1959: Performance Optimization — N+1 query fixes across 6 route files~~ ✅ (§6.104)
+- ~~Issue #1779: Help KB Expansion — 15 missing feature topics added~~ ✅ (§6.103)
+- ~~Issue #2060: Context-Aware Chatbot Study Q&A — frontend §6.114~~ ✅ (PR #2072)
+- ~~Issue #2024: Holiday Dates — YRDSB 2026-27 seed data~~ ✅
+- ~~Issue #1934: Bot Protection — honeypot + timing on all public forms~~ ✅
+- ~~Issue #2235: SendGrid Click Tracking Fix — disabled click tracking to fix SSL errors~~ ✅ (PR #2236)
+- ~~Issue #2068: Advisory lock migrations~~ ✅
+- ~~Issue #2067: Migrations moved to startup_event~~ ✅
+- ~~Issue #2065: Cloud Run startup probe~~ ✅
+- ~~Issue #2093-#2100: Defect Batch 1 — 8 bugs from Defects.docx~~ ✅ (PR #2102)
+- ~~Issue #2086: Weekend Batch 1 — 14 fixes merged~~ ✅
+- ~~Issue #2233: Project plan & phase-2 analysis docs~~ ✅
+- ~~Issue #2231: CEO Platform Review TODOS.md~~ ✅
 
 ### Phase 1 - In Progress (Student UX Simplification Sprint — Mar 2026)
 - Issue #1022: [Student UX] Merge Classes and Materials pages into unified Study Hub (/study) — IN PROGRESS
@@ -943,16 +976,16 @@ Current feature issues are tracked in GitHub:
 - Issue #735: ~~refactor: break CourseMaterialDetailPage into sub-components~~ (CLOSED)
 - Issue #736: ~~ux: improve focus prompt behavior across tabs~~ (CLOSED)
 
-### Chatbot & Search (§6.59) — Open
+### Chatbot & Search (§6.59) — Partially Open
 - Issue #1698: feat: deprecate GlobalSearch — remove in favour of chatbot unified search
 - Issue #1716: fix: View button navigates to wrong ID after study material generation
-- Issue #1719: fix: search_service uses raw message as ILIKE term — strip action words before search
+- ~~Issue #1719: fix: search_service uses raw message as ILIKE term — strip action words before search~~ ✅
 - Issue #1720: feat: handle 'list all entity' queries — return nav card or all entities
-- Issue #1722: fix: chatbot 'show tasks for [name]' returns no results
-- Issue #1734: fix: chatbot search scope narrower than global search for parents
+- ~~Issue #1722: fix: chatbot 'show tasks for [name]' returns no results~~ ✅
+- ~~Issue #1734: fix: chatbot search scope narrower than global search for parents~~ ✅
 - Issue #1744: research: LLM-based intent classification — cost/benefit analysis
-- Issue #1778: fix: add TOPIC_KEYWORDS to intent classifier and suggestion chips on no-results
-- Issue #1779: content: expand help knowledge base FAQ coverage for missing features
+- ~~Issue #1778: fix: add TOPIC_KEYWORDS to intent classifier and suggestion chips on no-results~~ ✅
+- ~~Issue #1779: content: expand help knowledge base FAQ coverage for missing features~~ ✅
 
 ### WOW Features & Parent UX (Open)
 - Issue #1403: Epic: Smart Daily Briefing — Proactive Parent Intelligence (§6.61)
@@ -1034,7 +1067,7 @@ Current feature issues are tracked in GitHub:
 - Issue #1740: feat: master/sub class material hierarchy for multi-document uploads (§6.95)
 - ~~Issue #2087: User Bug Report with Screenshot → GitHub Issue + Admin Notification (§6.115)~~ ✅
 - ~~Issue #2089: Error Dialog → Report Bug Link (§6.116)~~ ✅
-- Issue #2103: Bug Report Bot Protection (§6.117)
+- ~~Issue #2103: Bug Report Bot Protection (§6.117)~~ ✅
 
 ### Phase 3+ — Open
 - Issue #506: University Pathway Alignment
