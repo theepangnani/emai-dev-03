@@ -813,7 +813,7 @@ export function MyKidsPage() {
                   {showUnassignedCourses && (
                     <div className="dash-section-body mykids-list">
                       {unassignedCourses.map(c => (
-                        <div key={c.id} className="mykids-list-row">
+                        <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
                           <div className="mykids-list-body">
                             <span className="mykids-list-title">{c.name}</span>
                             <span className="mykids-list-meta">
@@ -825,7 +825,7 @@ export function MyKidsPage() {
                           <button
                             className="mykids-list-action-btn"
                             title="Assign to child"
-                            onClick={() => setAssignCourseModal(c)}
+                            onClick={(e) => { e.stopPropagation(); setAssignCourseModal(c); }}
                           >&#43;</button>
                         </div>
                       ))}
