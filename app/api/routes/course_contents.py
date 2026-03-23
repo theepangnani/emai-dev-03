@@ -22,7 +22,7 @@ from app.services.notification_service import notify_parents_of_student
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.storage_service import get_file_path, delete_file, save_file
 from app.services.storage_limits import check_upload_allowed, record_upload, record_deletion
-from app.services.file_processor import process_file, extract_images_from_file, FileProcessingError
+from app.services.file_processor import process_file, extract_images_from_file, FileProcessingError, check_extracted_text_sufficient
 from app.models.content_image import ContentImage
 from app.models.resource_link import ResourceLink
 from app.core.config import settings
@@ -611,6 +611,13 @@ async def upload_course_content_file(
             logger.warning("Failed to notify parents of student upload: %s", e)
 
     # Trigger AI generation in background if requested (#552)
+    # Block AI generation when extracted text is too short (#2217)
+    if ai_tool_normalized != "none" and extracted_text:
+        try:
+            check_extracted_text_sufficient(extracted_text, filename)
+        except FileProcessingError:
+            # Text too short — skip AI generation silently (file is still stored)
+            ai_tool_normalized = "none"
     if ai_tool_normalized != "none" and extracted_text:
         # Check AI usage limit before dispatching background generation
         check_ai_usage(current_user, db)
@@ -888,6 +895,13 @@ async def upload_multi_files(
             logger.warning("Failed to notify parents of student upload: %s", e)
 
     # Trigger AI generation in background if requested
+    # Block AI generation when extracted text is too short (#2217)
+    if ai_tool_normalized != "none" and combined_text:
+        try:
+            check_extracted_text_sufficient(combined_text, content_title)
+        except FileProcessingError:
+            # Text too short — skip AI generation silently (files are still stored)
+            ai_tool_normalized = "none"
     if ai_tool_normalized != "none" and combined_text:
         check_ai_usage(current_user, db)
         background_tasks.add_task(

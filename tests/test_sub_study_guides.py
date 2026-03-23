@@ -106,6 +106,7 @@ class TestGenerateChildGuide:
             patch(f"{MOCK_AI_SERVICE}.check_ai_usage"),
             patch(f"{MOCK_AI_SERVICE}.increment_ai_usage"),
             patch(f"{MOCK_AI_SERVICE}.enforce_study_guide_limit"),
+            patch(f"{MOCK_AI_SERVICE}.check_content_safe", return_value=(True, "")),
         ):
             resp = client.post(
                 f"/api/study/guides/{parent_guide.id}/generate-child",
@@ -128,6 +129,7 @@ class TestGenerateChildGuide:
             patch(f"{MOCK_AI_SERVICE}.check_ai_usage"),
             patch(f"{MOCK_AI_SERVICE}.increment_ai_usage"),
             patch(f"{MOCK_AI_SERVICE}.enforce_study_guide_limit"),
+            patch(f"{MOCK_AI_SERVICE}.check_content_safe", return_value=(True, "")),
         ):
             resp = client.post(
                 f"/api/study/guides/{parent_guide.id}/generate-child",
@@ -149,6 +151,7 @@ class TestGenerateChildGuide:
             patch(f"{MOCK_AI_SERVICE}.check_ai_usage"),
             patch(f"{MOCK_AI_SERVICE}.increment_ai_usage"),
             patch(f"{MOCK_AI_SERVICE}.enforce_study_guide_limit"),
+            patch(f"{MOCK_AI_SERVICE}.check_content_safe", return_value=(True, "")),
         ):
             resp = client.post(
                 f"/api/study/guides/{parent_guide.id}/generate-child",

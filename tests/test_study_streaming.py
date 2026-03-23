@@ -96,6 +96,12 @@ class TestStreamEndpointSSE:
 
     ENDPOINT = "/api/study/generate-stream"
 
+    @pytest.fixture(autouse=True)
+    def _mock_safety_check(self):
+        """Content safety check requires Anthropic API — mock it for all stream tests."""
+        with patch("app.api.routes.study.check_content_safe", return_value=(True, "")):
+            yield
+
     @staticmethod
     def _body(suffix=None):
         """Return a unique request body to avoid duplicate-detection."""

@@ -54,7 +54,35 @@ SUPPORTED_EXTENSIONS = {
 
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
+# Minimum extracted text length to proceed with AI generation (#2217)
+MIN_EXTRACTED_TEXT_LENGTH = 50
+
 logger = get_logger(__name__)
+
+def check_extracted_text_sufficient(text: str, filename: str = "unknown") -> None:
+    """Raise FileProcessingError if extracted text is too short for AI generation.
+
+    Args:
+        text: The extracted text content.
+        filename: Original filename for logging context.
+
+    Raises:
+        FileProcessingError: When stripped text length is below MIN_EXTRACTED_TEXT_LENGTH.
+    """
+    stripped = text.strip() if text else ""
+    if len(stripped) < MIN_EXTRACTED_TEXT_LENGTH:
+        logger.warning(
+            "Blocked AI generation — insufficient text extracted. "
+            "file=%s, chars=%d, threshold=%d",
+            filename,
+            len(stripped),
+            MIN_EXTRACTED_TEXT_LENGTH,
+        )
+        raise FileProcessingError(
+            "We couldn't read this document. Try uploading a text-based PDF "
+            "or use the text input option."
+        )
+
 
 # Magic bytes signatures for binary formats.
 # Each entry maps an extension to a list of accepted prefixes (bytes).

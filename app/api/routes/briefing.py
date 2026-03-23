@@ -18,7 +18,7 @@ from app.schemas.briefing import (
     HelpMyKidRequest,
     HelpMyKidResponse,
 )
-from app.services.ai_service import generate_study_guide
+from app.services.ai_service import generate_study_guide, check_content_safe
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.audit_service import log_action
 from app.services.briefing_service import get_daily_briefing
@@ -103,10 +103,16 @@ async def help_my_kid(
     else:
         raise HTTPException(status_code=400, detail="item_type must be 'task' or 'assignment'")
 
-    # 3. Check AI usage for the parent
+    # 3. Safety-check the description content
+    if description:
+        safe, reason = check_content_safe(description)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
+    # 4. Check AI usage for the parent
     check_ai_usage(current_user, db)
 
-    # 4. Generate the study guide via AI
+    # 5. Generate the study guide via AI
     try:
         content = await generate_study_guide(
             assignment_title=title,
@@ -118,7 +124,7 @@ async def help_my_kid(
         logger.error("Help My Kid study guide generation failed: %s: %s", type(e).__name__, e)
         raise HTTPException(status_code=500, detail=f"AI generation failed: {type(e).__name__}")
 
-    # 5. Save the study guide for the student
+    # 6. Save the study guide for the student
     increment_ai_usage(current_user, db, generation_type="study_guide")
 
     study_guide = StudyGuide(

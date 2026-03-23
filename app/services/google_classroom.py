@@ -1,9 +1,14 @@
+import logging
+
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Phase 1 — requested at initial Google connect (sensitive, not restricted)
 BASE_SCOPES = [
@@ -143,8 +148,12 @@ def get_classroom_service(access_token: str, refresh_token: str | None = None):
     if credentials.refresh_token:
         try:
             credentials.refresh(Request())
-        except Exception:
-            pass  # Fall through to use existing access token
+        except RefreshError as e:
+            logger.warning("Google token refresh failed (permanent): %s", e)
+            raise
+        except Exception as e:
+            logger.warning("Google token refresh failed (transient): %s", e)
+            # Fall through to use existing access token
 
     return build("classroom", "v1", credentials=credentials), credentials
 
@@ -159,8 +168,12 @@ def get_gmail_service(access_token: str, refresh_token: str | None = None):
     if credentials.refresh_token:
         try:
             credentials.refresh(Request())
-        except Exception:
-            pass
+        except RefreshError as e:
+            logger.warning("Gmail token refresh failed (permanent): %s", e)
+            raise
+        except Exception as e:
+            logger.warning("Gmail token refresh failed (transient): %s", e)
+            # Fall through to use existing access token
 
     return build("gmail", "v1", credentials=credentials), credentials
 

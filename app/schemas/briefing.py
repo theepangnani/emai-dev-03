@@ -56,3 +56,4 @@ class HelpMyKidResponse(BaseModel):
     """Response after generating a study guide via Help My Kid."""
     study_guide_id: int
     title: str
+    safety_checked: bool = True
