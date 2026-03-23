@@ -56,6 +56,7 @@ from app.services.file_processor import (
     FileProcessingError,
     MAX_FILE_SIZE,
     _ocr_images_with_vision,
+    check_extracted_text_sufficient,
 )
 
 logger = get_logger(__name__)
@@ -2011,6 +2012,12 @@ async def generate_from_text_and_images(
             detail="No content provided. Please paste text or include images with readable content."
         )
 
+    # Block AI generation when extracted text is too short (#2217)
+    try:
+        check_extracted_text_sufficient(extracted_text, "pasted-content")
+    except FileProcessingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if focus_prompt:
         safe, reason = check_content_safe(focus_prompt)
         if not safe:
@@ -2213,6 +2220,12 @@ async def generate_from_file_upload(
             status_code=400,
             detail="No text could be extracted from the uploaded file"
         )
+
+    # Block AI generation when extracted text is too short (#2217)
+    try:
+        check_extracted_text_sufficient(extracted_text, file.filename or "unknown")
+    except FileProcessingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if focus_prompt:
         safe, reason = check_content_safe(focus_prompt)
