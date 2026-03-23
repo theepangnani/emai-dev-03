@@ -205,6 +205,7 @@ def get_recent_activity(
         .filter(
             student_courses.c.student_id.in_(student_ids),
             StudyGuide.archived_at.is_(None),
+            CourseContent.archived_at.is_(None),
         )
         .order_by(StudyGuide.created_at.desc())
         .limit(limit)
