@@ -61,7 +61,7 @@ def check_content_safe(text: str) -> tuple[bool, str]:
     Check whether user-provided text is appropriate for a K-12 educational platform.
 
     Uses a fast Claude Haiku call to classify the content. Returns (is_safe, reason).
-    On any API error the check passes (fail-open) to avoid blocking legitimate users.
+    On any API error the check BLOCKS (fail-closed) to protect K-12 users.
     """
     if not text or not text.strip():
         return True, ""
@@ -81,11 +81,11 @@ def check_content_safe(text: str) -> tuple[bool, str]:
         )
         verdict = result.content[0].text.strip().upper()
         if verdict.startswith("UNSAFE"):
-            return False, "Focus text contains content that is not appropriate for this platform."
+            return False, "Content contains material that is not appropriate for this platform."
         return True, ""
     except Exception as e:
-        logger.warning("Content safety check failed (fail-open): %s", e)
-        return True, ""
+        logger.error("Content safety check failed (fail-closed): %s", e)
+        return False, "Safety verification unavailable, please try again."
 
 
 async def generate_content(
