@@ -177,7 +177,7 @@ export function DocumentTab({
             </>
           ) : (
             <>
-              {hasContent && (
+              {hasContent && !content.has_file && (
                 <>
                   <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
                   <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
@@ -232,15 +232,15 @@ export function DocumentTab({
             />
           ) : (
             <div ref={printRef}>
-              {content.text_content ? (
+              {content.has_file ? (
+                <div className="cm-file-info-card">
+                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
+                  <p className="cm-file-info-hint">Original document available for download.</p>
+                </div>
+              ) : content.text_content ? (
                 <ContentCard ocrCheckText={content.text_content}>
                   <FormattedContent textContent={content.text_content} courseContentId={content.id} />
                 </ContentCard>
-              ) : content.has_file ? (
-                <div className="cm-file-info-card">
-                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
-                  <p className="cm-file-info-hint">Use the Download button above to get the original file.</p>
-                </div>
               ) : content.description ? (
                 <p className="cm-document-desc">{content.description}</p>
               ) : (
