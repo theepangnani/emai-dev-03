@@ -329,6 +329,7 @@ def get_parent_dashboard(
                 "id": course.id, "name": course.name,
                 "description": course.description, "subject": course.subject,
                 "google_classroom_id": course.google_classroom_id,
+                "classroom_type": course.classroom_type,
                 "teacher_id": course.teacher_id, "created_at": course.created_at,
                 "teacher_name": teacher_name, "teacher_email": teacher_email,
             })
@@ -1058,6 +1059,7 @@ def get_child_overview(
             "description": course.description,
             "subject": course.subject,
             "google_classroom_id": course.google_classroom_id,
+            "classroom_type": course.classroom_type,
             "teacher_id": course.teacher_id,
             "created_at": course.created_at,
             "teacher_name": teacher_name,
