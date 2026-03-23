@@ -1202,6 +1202,34 @@
   color: var(--color-ink-muted);
 }
 
+/* ── Study guide metadata ────────────────────── */
+.cm-guide-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 10px 20px;
+  font-size: 0.82rem;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.cm-guide-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cm-guide-meta-item--muted {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.cm-guide-meta-label {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
 /* ── Linked task banner ───────────────────────── */
 .cm-linked-tasks {
   display: flex;
