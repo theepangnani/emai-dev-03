@@ -1838,6 +1838,22 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 from app.core.faq_errors import FAQHintException, faq_hint_exception_handler  # noqa: E402
 app.add_exception_handler(FAQHintException, faq_hint_exception_handler)
 
+# Google credential refresh failures → 401 with reauth hint
+from google.auth.exceptions import RefreshError as _GoogleRefreshError  # noqa: E402
+from app.core.faq_errors import GOOGLE_REAUTH_REQUIRED  # noqa: E402
+
+
+@app.exception_handler(_GoogleRefreshError)
+async def google_refresh_error_handler(request: Request, exc: _GoogleRefreshError):
+    """Convert permanent Google token refresh failures to 401 with FAQ hint."""
+    return JSONResponse(
+        status_code=401,
+        content={
+            "detail": "Your Google connection has expired. Please reconnect your Google account.",
+            "faq_code": GOOGLE_REAUTH_REQUIRED,
+        },
+    )
+
 
 # Global exception handler — logs full tracebacks for 500 errors
 @app.exception_handler(Exception)
