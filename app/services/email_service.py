@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _send_via_sendgrid(to_email: str, subject: str, html_content: str) -> bool:
     """Send via SendGrid API."""
     from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail
+    from sendgrid.helpers.mail import Mail, TrackingSettings, ClickTracking
 
     message = Mail(
         from_email=(settings.from_email, "ClassBridge"),
@@ -20,6 +20,8 @@ def _send_via_sendgrid(to_email: str, subject: str, html_content: str) -> bool:
         subject=subject,
         html_content=html_content,
     )
+    message.tracking_settings = TrackingSettings()
+    message.tracking_settings.click_tracking = ClickTracking(enable=False, enable_text=False)
     sg = SendGridAPIClient(settings.sendgrid_api_key)
     response = sg.send(message)
     if response.status_code not in (200, 201, 202):
