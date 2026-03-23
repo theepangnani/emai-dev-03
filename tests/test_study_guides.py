@@ -695,8 +695,8 @@ class TestContentModeration:
         assert safe is False
         assert reason != ""
 
-    def test_api_error_fails_open(self):
-        """If the moderation API call raises, check_content_safe fails open (returns True)."""
+    def test_api_error_fails_closed(self):
+        """If the moderation API call raises, check_content_safe fails closed (returns False)."""
         from unittest.mock import patch
 
         with patch(
@@ -705,7 +705,8 @@ class TestContentModeration:
         ):
             from app.services.ai_service import check_content_safe
             safe, reason = check_content_safe("some focus text")
-        assert safe is True
+        assert safe is False
+        assert "Safety verification unavailable" in reason
 
     def test_empty_text_skips_check(self):
         """Empty or whitespace-only text is safe without an API call."""
@@ -838,6 +839,9 @@ class TestAIGenerationErrorHandling:
             "app.api.routes.study.generate_quiz",
             new_callable=AsyncMock,
             side_effect=mock_err,
+        ), patch(
+            "app.api.routes.study.check_content_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",
@@ -862,6 +866,9 @@ class TestAIGenerationErrorHandling:
             "app.api.routes.study.generate_flashcards",
             new_callable=AsyncMock,
             side_effect=mock_err,
+        ), patch(
+            "app.api.routes.study.check_content_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/flashcards/generate",
@@ -886,6 +893,9 @@ class TestAIGenerationErrorHandling:
             "app.api.routes.study.generate_study_guide",
             new_callable=AsyncMock,
             side_effect=mock_err,
+        ), patch(
+            "app.api.routes.study.check_content_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/generate",
@@ -908,6 +918,9 @@ class TestAIGenerationErrorHandling:
             "app.api.routes.study.generate_quiz",
             new_callable=AsyncMock,
             return_value="not valid json at all",
+        ), patch(
+            "app.api.routes.study.check_content_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",
@@ -930,6 +943,9 @@ class TestAIGenerationErrorHandling:
             "app.api.routes.study.generate_quiz",
             new_callable=AsyncMock,
             side_effect=mock_err,
+        ), patch(
+            "app.api.routes.study.check_content_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",

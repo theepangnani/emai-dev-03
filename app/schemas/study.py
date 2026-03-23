@@ -53,6 +53,7 @@ class StudyGuideResponse(BaseModel):
     curriculum_codes: str | None = None  # JSON string
     created_at: datetime
     archived_at: datetime | None = None
+    safety_checked: bool = True
     auto_created_tasks: list[AutoCreatedTask] = []
 
     # Sharing fields
@@ -115,6 +116,7 @@ class QuizResponse(BaseModel):
     version: int = 1
     parent_guide_id: int | None = None
     created_at: datetime
+    safety_checked: bool = True
     auto_created_tasks: list[AutoCreatedTask] = []
 
     class Config:
@@ -157,6 +159,7 @@ class FlashcardSetResponse(BaseModel):
     version: int = 1
     parent_guide_id: int | None = None
     created_at: datetime
+    safety_checked: bool = True
     auto_created_tasks: list[AutoCreatedTask] = []
 
     class Config:
@@ -206,6 +209,7 @@ class MindMapResponse(BaseModel):
     version: int = 1
     parent_guide_id: int | None = None
     created_at: datetime
+    safety_checked: bool = True
     auto_created_tasks: list[AutoCreatedTask] = []
 
     class Config:

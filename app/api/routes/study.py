@@ -520,10 +520,12 @@ async def generate_study_guide_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a study guide from an assignment or custom content."""
-    if body.focus_prompt:
-        safe, reason = check_content_safe(body.focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [body.focus_prompt, body.custom_prompt, body.content]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     study_service = StudyService(db)
 
@@ -802,10 +804,12 @@ async def generate_quiz_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a practice quiz from an assignment or custom content."""
-    if body.focus_prompt:
-        safe, reason = check_content_safe(body.focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [body.focus_prompt, body.content]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     study_service = StudyService(db)
 
@@ -997,10 +1001,12 @@ async def generate_flashcards_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate flashcards from an assignment or custom content."""
-    if body.focus_prompt:
-        safe, reason = check_content_safe(body.focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [body.focus_prompt, body.content]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     study_service = StudyService(db)
 
@@ -1182,10 +1188,12 @@ async def generate_mind_map_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a mind map from an assignment or custom content."""
-    if body.focus_prompt:
-        safe, reason = check_content_safe(body.focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [body.focus_prompt, body.content]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     study_service = StudyService(db)
 
@@ -2011,10 +2019,12 @@ async def generate_from_text_and_images(
             detail="No content provided. Please paste text or include images with readable content."
         )
 
-    if focus_prompt:
-        safe, reason = check_content_safe(focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [focus_prompt, extracted_text]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     if not title:
         # Generate a sensible default title from the first line of content
@@ -2214,10 +2224,12 @@ async def generate_from_file_upload(
             detail="No text could be extracted from the uploaded file"
         )
 
-    if focus_prompt:
-        safe, reason = check_content_safe(focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [focus_prompt, extracted_text]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     if not title:
         base_name = file.filename.rsplit('.', 1)[0] if file.filename else "Uploaded File"
@@ -2526,10 +2538,12 @@ async def generate_study_guide_stream_endpoint(
     """Stream a study guide via SSE. Same logic as /generate but returns tokens incrementally."""
 
     # --- Pre-checks (same as /generate) ---
-    if body.focus_prompt:
-        safe, reason = check_content_safe(body.focus_prompt)
-        if not safe:
-            raise HTTPException(status_code=400, detail=reason)
+    # Safety-check all user-provided text inputs
+    for text_input in [body.focus_prompt, body.custom_prompt, body.content]:
+        if text_input:
+            safe, reason = check_content_safe(text_input)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
 
     study_service = StudyService(db)
 
