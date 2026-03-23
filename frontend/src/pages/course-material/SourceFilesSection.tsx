@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { courseContentsApi, type SourceFileItem } from '../../api/client';
+import { ReportBugLink } from '../../components/ReportBugLink';
 
 export interface SourceFilesSectionHandle {
   scrollToAndExpand: () => void;
@@ -175,7 +176,11 @@ export const SourceFilesSection = forwardRef<SourceFilesSectionHandle, SourceFil
                   />
                 ) : null
               ) : (
-                <p style={{ textAlign: 'center', padding: '2rem', color: '#c00' }}>Failed to load file.</p>
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <p style={{ color: '#c00', marginBottom: '0.5rem' }}>This document could not be loaded. The file may be unavailable or in an unsupported format.</p>
+                  <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Try downloading the file instead, or report this issue if the problem persists.</p>
+                  <ReportBugLink errorMessage={`Failed to load file: ${viewingFile.filename}`} />
+                </div>
               )}
             </div>
             <div className="cm-sfv-footer">
