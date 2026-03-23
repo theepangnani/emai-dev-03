@@ -32,10 +32,10 @@ def seed_faq(db: Session) -> int:
     from app.models.user import User, UserRole
     from app.core.security import get_password_hash
 
-    system_user = db.query(User).filter(User.email == "system@classbridge.ca").first()
+    system_user = db.query(User).filter(User.email == "clazzbridge@gmail.com").first()
     if not system_user:
         system_user = User(
-            email="system@classbridge.ca",
+            email="clazzbridge@gmail.com",
             full_name="ClassBridge Team",
             role=UserRole.ADMIN,
             hashed_password=get_password_hash("__system_seed_only__"),
