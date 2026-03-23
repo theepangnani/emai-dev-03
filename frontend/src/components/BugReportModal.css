@@ -68,8 +68,8 @@
 
 .bug-report-form textarea:focus {
   outline: none;
-  border-color: var(--primary, #4f46e5);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: var(--color-accent-strong, #2d6eb5);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle, rgba(74, 144, 217, 0.12));
 }
 
 .bug-report-file-input {
@@ -82,7 +82,7 @@
 }
 
 .bug-report-file-input:hover {
-  border-color: var(--primary, #4f46e5);
+  border-color: var(--color-accent-strong, #2d6eb5);
 }
 
 .bug-report-preview {
@@ -120,12 +120,13 @@
 }
 
 .bug-report-actions .btn-submit {
-  background: var(--primary, #4f46e5);
+  background: var(--color-accent-strong, #2d6eb5);
   color: #fff;
 }
 
 .bug-report-actions .btn-submit:hover {
-  background: var(--primary-hover, #4338ca);
+  background: var(--color-accent-strong, #2d6eb5);
+  filter: brightness(0.9);
 }
 
 .bug-report-actions .btn-submit:disabled {
