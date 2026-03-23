@@ -947,6 +947,8 @@ export function CourseMaterialDetailPage() {
               streamingContent={stream.content}
               isStreaming={stream.isStreaming}
               streamStatus={stream.status}
+              courseName={content?.course_name}
+              createdAt={studyGuide?.created_at}
             />
           )}
 

@@ -28,6 +28,8 @@ interface StudyGuideTabProps {
   streamingContent?: string;
   isStreaming?: boolean;
   streamStatus?: string;
+  courseName?: string | null;
+  createdAt?: string | null;
 }
 
 function FocusIcon() {
@@ -66,6 +68,8 @@ export function StudyGuideTab({
   streamingContent,
   isStreaming,
   streamStatus,
+  courseName,
+  createdAt,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -130,6 +134,28 @@ export function StudyGuideTab({
               <Link to={`/study/guide/${studyGuide.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
             </div>
           )}
+          <div className="cm-guide-meta">
+            {courseName && (
+              <span className="cm-guide-meta-item">
+                <span className="cm-guide-meta-label">Class:</span> {courseName}
+              </span>
+            )}
+            {(createdAt || studyGuide.created_at) && (
+              <span className="cm-guide-meta-item">
+                <span className="cm-guide-meta-label">Created:</span>{' '}
+                {new Date(createdAt || studyGuide.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            )}
+            {linkedTasks.length > 0 ? (
+              <span className="cm-guide-meta-item">
+                <span className="cm-guide-meta-label">Tasks:</span> {linkedTasks.length} linked
+              </span>
+            ) : (
+              <span className="cm-guide-meta-item cm-guide-meta-item--muted">
+                <span className="cm-guide-meta-label">Tasks:</span> No tasks linked
+              </span>
+            )}
+          </div>
           <LinkedTasksBanner tasks={linkedTasks} />
           {studyGuide.parent_summary && (
             <ParentSummaryCard summary={studyGuide.parent_summary} />
