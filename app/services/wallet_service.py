@@ -68,36 +68,55 @@ def debit_wallet(db: Session, wallet, amount: Decimal, note: str | None = None):
 
     Returns the WalletTransaction record.
     Raises 402 if insufficient balance.
+
+    Uses a savepoint (nested transaction) so that both the balance update
+    and the ledger entry are committed or rolled back atomically.
     """
     total = Decimal(str(wallet.purchased_credits or 0)) + Decimal(str(wallet.package_credits or 0))
     if total < amount:
+        logger.warning(
+            "Insufficient balance | wallet_id=%s | balance=%s | required=%s",
+            wallet.id, total, amount,
+        )
         raise HTTPException(
             status_code=402,
             detail=f"Insufficient credits. Balance: {total}, required: {amount}",
         )
 
-    remaining = amount
-    purchased = Decimal(str(wallet.purchased_credits or 0))
-    package = Decimal(str(wallet.package_credits or 0))
+    # Wrap debit + transaction record in a savepoint for atomicity
+    nested = db.begin_nested()
+    try:
+        remaining = amount
+        purchased = Decimal(str(wallet.purchased_credits or 0))
+        package = Decimal(str(wallet.package_credits or 0))
 
-    # Debit from purchased_credits first
-    if purchased >= remaining:
-        wallet.purchased_credits = purchased - remaining
-    else:
-        remaining -= purchased
-        wallet.purchased_credits = Decimal("0")
-        wallet.package_credits = package - remaining
+        # Debit from purchased_credits first
+        if purchased >= remaining:
+            wallet.purchased_credits = purchased - remaining
+        else:
+            remaining -= purchased
+            wallet.purchased_credits = Decimal("0")
+            wallet.package_credits = package - remaining
 
-    db.flush()
+        db.flush()
 
-    return record_transaction(
-        db,
-        wallet_id=wallet.id,
-        txn_type="debit",
-        amount=-amount,
-        payment_method="system",
-        note=note,
-    )
+        txn = record_transaction(
+            db,
+            wallet_id=wallet.id,
+            txn_type="debit",
+            amount=-amount,
+            payment_method="system",
+            note=note,
+        )
+        nested.commit()
+        return txn
+    except Exception:
+        nested.rollback()
+        logger.error(
+            "Debit failed, rolled back | wallet_id=%s | amount=%s",
+            wallet.id, amount, exc_info=True,
+        )
+        raise
 
 
 def credit_wallet_purchase(
