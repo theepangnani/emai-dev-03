@@ -4316,3 +4316,96 @@ Features to port from class-bridge-phase-2:
 8. AI Homework Help (#2137)
 9. Wellness Check-ins (#2138)
 10. Student Goals (#2139)
+
+---
+
+## §6.119 Document Privacy & IP Protection (Phase 1)
+
+**Status:** PLANNED | **Epic:** #2268 | **Issues:** #2269, #2270, #2272, #2273, #2274
+**Related:** #61 (content privacy), #50 (FERPA/PIPEDA), #114 (GCS storage)
+
+Class materials uploaded by private tutors and teachers must be protected from unauthorized access — including platform administrators. This feature implements a "trust circle" access model where materials are visible only to users directly connected to the course.
+
+### §6.119.1 Trust Circle Access Model
+
+Materials are accessible ONLY to the course's trust circle:
+
+| Role | View | Download | Modify | Delete |
+|------|------|----------|--------|--------|
+| Document owner (uploader) | Yes | Yes | Yes | Yes |
+| Course creator | Yes | Yes | No | No |
+| Assigned teacher | Yes | Yes | No | No |
+| Enrolled students | Yes | Yes | No | No |
+| Parents of enrolled students | Yes | Yes | No | No |
+| Parent of student creator | Yes | Yes | Yes | Yes |
+| **Admin** | **Metadata only** | **No** | **No** | **No** |
+
+**Admin metadata access:** Admins can see aggregate data (material count per course, total storage usage, file types) for platform management, but cannot view material content, text extractions, or download files.
+
+**Implementation:**
+- New `can_access_material(db, user, content)` function in `app/api/deps.py` (#2269)
+- Mirrors `can_access_course()` logic but excludes admin role from content access
+- Remove admin override from `_can_modify_content()` in `app/api/routes/course_contents.py` (#2270)
+- Replace `can_access_course()` with `can_access_material()` in all content read/download endpoints
+- Strip `text_content` from API responses for non-trust-circle users
+
+### §6.119.2 Material Access Audit Logging
+
+Every material access event is logged for compliance (FERPA/PIPEDA) and owner transparency.
+
+**Audit Actions:**
+- `MATERIAL_VIEW` — when a user views material content
+- `MATERIAL_DOWNLOAD` — when a user downloads a file
+- `MATERIAL_UPLOAD` — when a user uploads new material
+
+**Log Entry Fields:** user_id, resource_type, resource_id, action, details (JSON: course_id, filename, file_size), IP address, user-agent, timestamp
+
+**Implementation:** (#2272)
+- Add new values to `AuditAction` enum in `app/models/audit_log.py`
+- Instrument content endpoints in `app/api/routes/course_contents.py`
+- Uses existing `audit_service.log_action()` infrastructure with savepoints
+
+### §6.119.3 Owner Access Log Endpoint
+
+Material owners can view who has accessed their content.
+
+**Endpoint:** `GET /api/course-contents/{content_id}/access-log` (#2273)
+
+**Authorization:** Material creator only (+ parent of student creator)
+
+**Response includes:**
+- List of access events (user name, role, action, timestamp)
+- Summary stats: total views, total downloads, unique viewers
+- Filterable by date range (`?days=30`) and action type (`?action=download`)
+
+### §6.119.4 Frontend Privacy UI
+
+**Privacy Indicators:** (#2274)
+- Lock/shield icon on materials in course detail page
+- "IP Protected" badge for private course materials (`classroom_type === "private"`)
+- Tooltip explaining trust-circle access model
+
+**Access Log Tab:**
+- New tab on `CourseMaterialDetailPage` visible only to material creator
+- Table: User Name, Role, Action, Timestamp
+- Date range filter (7/30/90 days)
+- Summary stats header
+
+**Admin Dashboard:**
+- Show aggregate material counts and storage usage only
+- No links to individual material content
+
+### §6.119.5 Future: Per-Material Visibility Override (Phase 2)
+
+Optional granular visibility control per material:
+- `course_members` (default) — full trust circle
+- `owner_only` — only the uploader can see
+- `teacher_and_owner` — uploader + assigned teacher only
+
+Requires new `visibility` column on `course_contents` table.
+
+### §6.119.6 Future: File Storage Security (Phase 2, pairs with §6.93)
+
+- Time-limited signed URLs for file downloads (15-min expiration)
+- Customer-Managed Encryption Keys (CMEK) via GCP KMS at bucket level
+- No direct file serving — all downloads via signed URL redirect
