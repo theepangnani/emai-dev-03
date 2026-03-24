@@ -176,12 +176,23 @@ export function useHelpChat(studyGuideContext?: StudyGuideContext | null) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const errMessage = (err as Error)?.message ?? '';
       const httpStatus = status ?? (errMessage.startsWith('HTTP ') ? parseInt(errMessage.slice(5), 10) : undefined);
+      const isStudy = !!studyGuideContext?.id;
       if (httpStatus === 429) {
         setError('You\u2019ve reached the request limit. Please wait a few minutes and try again.');
-      } else if (httpStatus === 401 || httpStatus === 403) {
+      } else if (httpStatus === 401) {
         setError('Session expired. Please refresh the page and log in again.');
+      } else if (httpStatus === 403) {
+        setError(isStudy
+          ? 'You don\u2019t have access to this study guide\u2019s Q&A. The guide may belong to another user.'
+          : 'Session expired. Please refresh the page and log in again.');
+      } else if (httpStatus === 404) {
+        setError(isStudy
+          ? 'This study guide was not found. It may have been deleted or regenerated.'
+          : 'Could not reach the help service. Please try again, or visit the Help page at /help.');
       } else {
-        setError('Could not reach the help service. Please try again, or visit the Help page at /help.');
+        setError(isStudy
+          ? 'Could not reach the study assistant. Please try again later.'
+          : 'Could not reach the help service. Please try again, or visit the Help page at /help.');
       }
       setMessages(prev => prev.filter(m => m.id !== assistantId));
     } finally {
