@@ -27,7 +27,7 @@ class WaitlistResponse(BaseModel):
     id: int
     name: str
     email: str
-    roles: list[str]
+    roles: list[str] = []
     status: str
     admin_notes: str | None
     invite_token: str | None
@@ -40,6 +40,13 @@ class WaitlistResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("roles", mode="before")
+    @classmethod
+    def roles_or_empty(cls, v: object) -> list[str]:
+        if v is None:
+            return []
+        return list(v)
 
 
 class WaitlistStats(BaseModel):

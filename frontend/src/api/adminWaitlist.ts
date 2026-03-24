@@ -2,7 +2,7 @@ import { api } from './client';
 
 export interface WaitlistEntry {
   id: number;
-  full_name: string;
+  name: string;
   email: string;
   roles: string[];
   status: 'pending' | 'approved' | 'registered' | 'declined';
