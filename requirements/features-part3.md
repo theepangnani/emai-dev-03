@@ -4321,10 +4321,36 @@ Features to port from class-bridge-phase-2:
 
 ## §6.119 Document Privacy & IP Protection (Phase 1)
 
-**Status:** PLANNED | **Epic:** #2268 | **Issues:** #2269, #2270, #2272, #2273, #2274
+**Status:** PLANNED | **Priority:** CRITICAL | **Value Score:** 9/10
+**Epic:** #2268 | **Issues:** #2269, #2270, #2272, #2273, #2274
 **Related:** #61 (content privacy), #50 (FERPA/PIPEDA), #114 (GCS storage)
+**Target:** Phase 1 (access control) before April 14, 2026 launch
 
 Class materials uploaded by private tutors and teachers must be protected from unauthorized access — including platform administrators. This feature implements a "trust circle" access model where materials are visible only to users directly connected to the course.
+
+#### Strategic Value Assessment
+
+This is a **platform trust gate** — private tutors will not upload proprietary curriculum if they can't trust the platform. Without this, the Phase 4 tutoring marketplace has no supply side.
+
+| Factor | Impact | Score |
+|--------|--------|-------|
+| Tutor acquisition — won't join if admin can see/copy IP | Critical | 10/10 |
+| Regulatory compliance — FERPA/PIPEDA require access controls + audit trails | High | 9/10 |
+| Parent trust — sensitive docs (IEPs, report cards) need privacy | High | 8/10 |
+| Competitive moat — most ed-tech gives admins full access | Medium | 8/10 |
+| Revenue enabler — premium storage (§6.71) only valuable if content is protected | High | 9/10 |
+
+#### Recommended Implementation Order
+
+| Phase | Scope | Priority | Target | Effort |
+|-------|-------|----------|--------|--------|
+| **Phase 1** | Backend access control (#2269, #2270) | CRITICAL | Before Apr 14 launch | ~1 day |
+| **Phase 2** | Audit logging (#2272) | HIGH | Within 2 weeks of Phase 1 | ~1 day |
+| **Phase 3** | Frontend UI + access log (#2273, #2274) | MEDIUM | Next frontend release | ~2 days |
+| **Phase 4** | Signed URLs + encryption (§6.93) | LOW | With GCS migration | TBD |
+| **Phase 5** | Per-material visibility | LOW | When tutor marketplace launches | TBD |
+
+**Key insight:** Phase 1 alone delivers ~80% of total value. It's a small, atomic backend change with no schema migration required.
 
 ### §6.119.1 Trust Circle Access Model
 
