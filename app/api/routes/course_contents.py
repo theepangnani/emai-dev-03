@@ -1,6 +1,7 @@
 import mimetypes
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, Response
@@ -46,6 +47,16 @@ from app.schemas.source_file import SourceFileResponse
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def _content_disposition(filename: str) -> str:
+    """Build a Content-Disposition header that handles non-ASCII filenames (RFC 5987)."""
+    # ASCII-safe fallback: replace non-ASCII chars with underscores
+    ascii_name = filename.encode("ascii", "replace").decode("ascii").replace("?", "_")
+    # UTF-8 encoded filename per RFC 5987
+    utf8_name = quote(filename, safe="")
+    return f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{utf8_name}'
+
 
 _ONE_YEAR = timedelta(days=365)
 _SEVEN_YEARS = timedelta(days=365 * 7)
@@ -1282,7 +1293,7 @@ def download_course_content_file(
                 content=file_bytes,
                 media_type=media_type,
                 headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Disposition": _content_disposition(filename),
                     "Content-Length": str(len(file_bytes)),
                 },
             )
@@ -1820,7 +1831,7 @@ def download_source_file(
             content=file_bytes,
             media_type=media_type,
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Disposition": _content_disposition(filename),
                 "Content-Length": str(len(file_bytes)),
             },
         )
