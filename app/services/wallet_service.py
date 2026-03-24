@@ -184,11 +184,11 @@ def enroll_package(db: Session, wallet, package_name: str):
         txn_type="package_credit",
         amount=Decimal(str(tier.monthly_credits)),
         payment_method="system",
-        note=f"Package change: {old_package} → {package_name}",
+        note=f"Package change: {old_package} -> {package_name}",
     )
 
     logger.info(
-        "Package enrollment | wallet_id=%s | %s → %s | credits=%s",
+        "Package enrollment | wallet_id=%s | %s -> %s | credits=%s",
         wallet.id, old_package, package_name, tier.monthly_credits,
     )
     return wallet
