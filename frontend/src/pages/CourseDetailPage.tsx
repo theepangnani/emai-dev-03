@@ -697,7 +697,12 @@ export function CourseDetailPage() {
             )}
           </div>
           {canEdit && (
-            <button className="courses-btn secondary btn-secondary btn-sm" onClick={openEditModal}>&#9998; Edit</button>
+            <div className="course-detail-header-actions">
+              <button className="courses-btn secondary btn-secondary btn-sm" onClick={openEditModal}>&#9998; Edit</button>
+              {!course.google_classroom_id && (
+                <button className="courses-btn danger btn-sm" onClick={handleDeleteCourse}>&#128465; Delete</button>
+              )}
+            </div>
           )}
         </div>
 
