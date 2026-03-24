@@ -348,10 +348,18 @@ export const courseContentsApi = {
     const response = await api.get(`/api/course-contents/${contentId}/source-files/${fileId}/download`, {
       responseType: 'blob',
     });
+    const contentDisposition = response.headers['content-disposition'];
+    let resolvedFilename = filename || `file-${fileId}`;
+    if (contentDisposition) {
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+      const stdMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (utf8Match) resolvedFilename = decodeURIComponent(utf8Match[1]);
+      else if (stdMatch) resolvedFilename = stdMatch[1];
+    }
     const url = URL.createObjectURL(response.data);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename || `file-${fileId}`;
+    a.download = resolvedFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
