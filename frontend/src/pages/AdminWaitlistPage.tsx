@@ -308,10 +308,10 @@ export function AdminWaitlistPage() {
                         type="checkbox"
                         checked={selected.has(entry.id)}
                         onChange={() => toggleSelect(entry.id)}
-                        aria-label={`Select ${entry.full_name}`}
+                        aria-label={`Select ${entry.name}`}
                       />
                     </td>
-                    <td>{entry.full_name}</td>
+                    <td>{entry.name}</td>
                     <td>{entry.email}</td>
                     <td>
                       <div className="admin-waitlist-roles">

@@ -1815,6 +1815,8 @@ def _run_migrations_inner(engine):
         logger.warning("bug_reports screenshot_url migration failed (#2101): %s", e)
 
     # ── users: change @classbridge.ca system emails to gmail (#2255, #2256) ──
+    # NOTE: pilot-admin migration removed — it targeted the same email as the
+    # system user, violating the unique constraint and silently failing (#2265).
     try:
         with engine.connect() as conn:
             try:
@@ -1824,15 +1826,30 @@ def _run_migrations_inner(engine):
                 conn.commit()
             except Exception:
                 conn.rollback()
+    except Exception as e:
+        logger.warning("classbridge.ca email migration failed (#2255, #2256): %s", e)
+
+    # ── users: promote pilot-admin to admin and fix orphaned email (#2265) ──
+    try:
+        with engine.connect() as conn:
             try:
-                conn.execute(text(
-                    "UPDATE users SET email = 'clazzbridge@gmail.com' WHERE email = 'pilot-admin@classbridge.ca'"
-                ))
+                # If pilot-admin still exists with old email, promote to admin
+                row = conn.execute(text(
+                    "SELECT id, roles FROM users WHERE email = 'pilot-admin@classbridge.ca' "
+                    "AND (roles IS NULL OR roles NOT LIKE '%admin%')"
+                )).first()
+                if row:
+                    existing = row[1] or ""
+                    new_roles = "admin," + existing if existing else "admin"
+                    conn.execute(text(
+                        "UPDATE users SET role = 'ADMIN', roles = :roles WHERE id = :id"
+                    ), {"roles": new_roles, "id": row[0]})
+                    logger.info("Promoted pilot-admin@classbridge.ca to admin (#2265)")
                 conn.commit()
             except Exception:
                 conn.rollback()
     except Exception as e:
-        logger.warning("classbridge.ca email migration failed (#2255, #2256): %s", e)
+        logger.warning("pilot-admin promotion failed (#2265): %s", e)
 
 
 _is_prod = "sqlite" not in settings.database_url

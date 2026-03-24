@@ -80,7 +80,7 @@ function renderWithToast(ui: ReactElement) {
 
 const approvedEntry = {
   id: 1,
-  full_name: 'Pranavan P',
+  name: 'Pranavan P',
   email: 'pranavan@example.com',
   roles: ['parent'],
   status: 'approved',
