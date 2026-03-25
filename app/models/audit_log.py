@@ -15,6 +15,9 @@ class AuditAction(str, enum.Enum):
     LOGIN_FAILED = "login_failed"
     EXPORT = "export"
     SYNC = "sync"
+    MATERIAL_VIEW = "material_view"
+    MATERIAL_DOWNLOAD = "material_download"
+    MATERIAL_UPLOAD = "material_upload"
 
 
 class AuditLog(Base):
