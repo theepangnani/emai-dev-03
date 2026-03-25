@@ -3,7 +3,7 @@ Streak Service — manages daily study streaks with freeze tokens and school
 calendar awareness (#2002).
 """
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -159,7 +159,7 @@ class StreakService:
         # No protection — break streak
         old_streak = summary.current_streak
         summary.current_streak = 0
-        summary.streak_broken_at = datetime.utcnow()
+        summary.streak_broken_at = datetime.now(timezone.utc)
         db.commit()
         logger.info("Streak broken: student=%d was=%d", student_id, old_streak)
         return "broken"
@@ -198,7 +198,7 @@ class StreakService:
         if not summary or not summary.streak_broken_at:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         broken_ago = now - summary.streak_broken_at
         if broken_ago > timedelta(hours=24):
             return None  # Too late
@@ -245,7 +245,7 @@ class StreakService:
 
         summary.current_streak = restored_streak
         summary.streak_broken_at = None
-        summary.last_recovery_at = datetime.utcnow()
+        summary.last_recovery_at = datetime.now(timezone.utc)
         summary.last_streak_date = date.today() - timedelta(days=1)
         db.commit()
 
