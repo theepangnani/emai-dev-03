@@ -168,6 +168,7 @@ class TestUploadEndpoint:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["total_uploaded"] == 1
+        assert data["total_uploaded"] == len(data["uploaded"])
 
     def test_upload_requires_parent_role(self, client, src_users):
         headers = _auth(client, "src_student@test.com")

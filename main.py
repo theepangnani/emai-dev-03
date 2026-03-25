@@ -18,8 +18,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, study_sessions, report_card, bug_reports, daily_quiz
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline, study_sessions, report_card, bug_reports, daily_quiz
 from app.api.routes import school_report_cards  # §6.121 Report Card Upload & AI Analysis
 from app.api.routes import study_suggestions
 
@@ -49,6 +48,7 @@ from app.models.translated_summary import TranslatedSummary  # noqa: F401
 from app.models.study_session import StudySession  # noqa: F401
 from app.models.bug_report import BugReport  # noqa: F401
 from app.models.daily_quiz import DailyQuiz  # noqa: F401
+from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1853,6 +1853,33 @@ def _run_migrations_inner(engine):
                 conn.rollback()
     except Exception as e:
         logger.warning("pilot-admin promotion failed (#2265): %s", e)
+
+    # ── course_announcements: add FK constraint on course_id (#2334) ──
+    try:
+        with engine.connect() as conn:
+            inspector = sa_inspect(engine)
+            if "course_announcements" in inspector.get_table_names():
+                if "sqlite" not in settings.database_url:
+                    # Check if FK constraint already exists
+                    existing_fks = inspector.get_foreign_keys("course_announcements")
+                    has_course_fk = any(
+                        "course_id" in fk.get("constrained_columns", [])
+                        for fk in existing_fks
+                    )
+                    if not has_course_fk:
+                        # Delete orphaned announcements where course no longer exists
+                        conn.execute(text(
+                            "DELETE FROM course_announcements "
+                            "WHERE course_id NOT IN (SELECT id FROM courses)"
+                        ))
+                        conn.execute(text(
+                            "ALTER TABLE course_announcements ADD CONSTRAINT fk_course_announcements_course_id "
+                            "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE"
+                        ))
+                        logger.info("Added FK constraint on course_announcements.course_id (#2334)")
+                    conn.commit()
+    except Exception as e:
+        logger.warning("course_announcements FK migration failed (#2334): %s", e)
 
 
 _is_prod = "sqlite" not in settings.database_url

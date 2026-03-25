@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
@@ -107,6 +107,19 @@ def _verify_report_card_ownership(
     return rc
 
 
+def _parse_report_date(raw: str | None) -> date | None:
+    """Parse report date string to a date object. Handles MM/DD/YYYY and Month Day, Year."""
+    if not raw:
+        return None
+    for fmt in ("%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
+        try:
+            return datetime.strptime(raw.strip(), fmt).date()
+        except ValueError:
+            continue
+    logger.warning("Could not parse report_date: %s", raw)
+    return None
+
+
 def _get_file_extension(filename: str) -> str:
     """Extract lowercase file extension without the dot."""
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -186,7 +199,7 @@ async def upload_report_cards(
             school_name=school_name or extracted_meta.get("school_name", ""),
             grade_level=extracted_meta.get("grade_level", ""),
             term=extracted_meta.get("term", ""),
-            report_date=extracted_meta.get("report_date"),
+            report_date=_parse_report_date(extracted_meta.get("report_date")),
         )
         db.add(rc)
         db.flush()
@@ -224,7 +237,7 @@ async def upload_report_cards(
         current_user.id, student_id, len(uploaded), len(failures),
     )
 
-    return UploadReportCardResponse(uploaded=uploaded, failures=failures)
+    return UploadReportCardResponse(uploaded=uploaded, failures=failures, total_uploaded=len(uploaded))
 
 
 # ── 2. List Report Cards ────────────────────────────────────
