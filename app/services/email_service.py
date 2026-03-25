@@ -3,10 +3,19 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
+from typing import TypedDict
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class BatchResult(TypedDict):
+    """Result summary for a batch email send operation."""
+    total: int
+    success: int
+    failed: int
+    errors: list[dict[str, str]]
 
 
 def _send_via_sendgrid(to_email: str, subject: str, html_content: str) -> bool:
@@ -47,37 +56,53 @@ def _send_via_smtp(to_email: str, subject: str, html_content: str) -> bool:
     return True
 
 
-def send_emails_batch(emails: list[tuple[str, str, str]]) -> int:
+def _make_batch_result(total: int, success: int, errors: list[dict[str, str]]) -> BatchResult:
+    """Create a BatchResult dict."""
+    return BatchResult(total=total, success=success, failed=total - success, errors=errors)
+
+
+def send_emails_batch(emails: list[tuple[str, str, str]]) -> BatchResult:
     """Send multiple emails reusing a single SMTP connection.
 
     Args:
         emails: list of (to_email, subject, html_content) tuples.
 
     Returns:
-        Number of successfully sent emails.
+        BatchResult with total, success, failed counts and error details.
     """
+    total = len(emails)
     if not emails:
-        return 0
+        return _make_batch_result(0, 0, [])
+
+    errors: list[dict[str, str]] = []
 
     # Try SendGrid first (each call is an HTTP request, no connection reuse needed)
     if _has_valid_sendgrid_key():
-        count = 0
+        success = 0
+        sg_errors: list[dict[str, str]] = []
         for to_email, subject, html_content in emails:
             try:
                 _send_via_sendgrid(to_email, subject, html_content)
-                count += 1
+                success += 1
             except Exception as e:
                 logger.warning(f"SendGrid failed for {to_email} | error={e}")
-        if count > 0:
-            return count
+                sg_errors.append({"email": to_email, "error": str(e)})
+        if success > 0:
+            result = _make_batch_result(total, success, sg_errors)
+            logger.info(
+                "Batch email result: total=%d success=%d failed=%d",
+                total, success, result["failed"],
+            )
+            return result
         logger.warning("SendGrid failed for all emails, falling back to SMTP")
 
     # SMTP batch: single connection for all emails
     if not (settings.smtp_user and settings.smtp_password):
         logger.warning("No email provider configured for batch send")
-        return 0
+        errors = [{"email": e[0], "error": "No email provider configured"} for e in emails]
+        return _make_batch_result(total, 0, errors)
 
-    count = 0
+    success = 0
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
             server.starttls()
@@ -91,14 +116,25 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> int:
                     msg["Subject"] = subject
                     msg.attach(MIMEText(html_content, "html"))
                     server.send_message(msg)
-                    count += 1
+                    success += 1
                     logger.info(f"Batch email sent to {to_email}")
                 except Exception as e:
                     logger.warning(f"Failed to send batch email to {to_email} | error={e}")
+                    errors.append({"email": to_email, "error": str(e)})
     except Exception as e:
         logger.error(f"SMTP connection failed for batch send | error={e}")
+        # Mark all unsent emails as failed
+        sent_emails = {err["email"] for err in errors}  # already tracked individual failures
+        for to_email, _, _ in emails:
+            if to_email not in sent_emails:
+                errors.append({"email": to_email, "error": f"SMTP connection failed: {e}"})
 
-    return count
+    result = _make_batch_result(total, success, errors)
+    logger.info(
+        "Batch email result: total=%d success=%d failed=%d",
+        total, success, result["failed"],
+    )
+    return result
 
 
 def _has_valid_sendgrid_key() -> bool:

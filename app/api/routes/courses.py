@@ -1305,15 +1305,15 @@ def send_course_announcement(
         html_body = add_inspiration_to_email(html_body, db, "parent")
         email_batch.append((email, f"{course.name}: {data.subject}", html_body))
 
-    email_count = send_emails_batch(email_batch) if email_batch else 0
-    broadcast.email_count = email_count
+    batch_result = send_emails_batch(email_batch) if email_batch else {"total": 0, "success": 0, "failed": 0, "errors": []}
+    broadcast.email_count = batch_result["success"]
     db.commit()
 
-    logger.info("Course announcement %d: sent to %d parents (%d emails) for course %s",
-                broadcast.id, len(parent_users), email_count, course.name)
+    logger.info("Course announcement %d: sent to %d parents (%d/%d emails) for course %s",
+                broadcast.id, len(parent_users), batch_result["success"], batch_result["total"], course.name)
 
     return {
         "recipient_count": len(parent_users),
-        "email_count": email_count,
+        "email_count": batch_result["success"],
         "course_name": course.name,
     }

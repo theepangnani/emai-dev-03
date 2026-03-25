@@ -499,13 +499,13 @@ def send_broadcast(
         except Exception:
             logger.warning("Failed to render broadcast email for %s", email)
 
-    email_count = send_emails_batch(email_batch)
+    batch_result = send_emails_batch(email_batch)
 
-    broadcast.email_count = email_count
+    broadcast.email_count = batch_result["success"]
     db.commit()
     db.refresh(broadcast)
 
-    logger.info("Broadcast %d: sent %d emails to %d users", broadcast.id, email_count, len(active_users))
+    logger.info("Broadcast %d: sent %d/%d emails to %d users", broadcast.id, batch_result["success"], batch_result["total"], len(active_users))
     return broadcast
 
 
