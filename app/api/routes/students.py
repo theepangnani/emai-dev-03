@@ -108,3 +108,31 @@ def get_student(
                     return student
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
+
+@router.get("/{student_id}/streak")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_student_streak(
+    request: Request,
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
+):
+    """Get a student's streak info. Parent must be linked to the student (#2224)."""
+    if current_user.role == UserRole.PARENT:
+        link = db.query(parent_students).filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == student_id,
+        ).first()
+        if not link:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not your child or student not found",
+            )
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+    from app.services.streak_service import StreakService
+    return StreakService.get_streak_info(db, student.user_id)

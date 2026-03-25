@@ -100,6 +100,11 @@ export const xpApi = {
     return response.data;
   },
 
+  getChildStreak: async (studentId: number) => {
+    const response = await api.get<{ current_streak: number; longest_streak: number; freeze_tokens_remaining: number; streak_tier: string; multiplier: number; tier_label: string; last_streak_date: string | null }>(`/api/students/${studentId}/streak`);
+    return response.data;
+  },
+
   getChildSummary: async (studentId: number) => {
     const response = await api.get<XpSummary>(`/api/xp/children/${studentId}/summary`);
     return response.data;

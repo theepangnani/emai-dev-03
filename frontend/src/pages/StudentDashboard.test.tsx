@@ -101,6 +101,14 @@ vi.mock('../api/invites', () => ({
   },
 }))
 
+vi.mock('../api/xp', () => ({
+  xpApi: {
+    getStreak: vi.fn().mockResolvedValue({ current_streak: 0, longest_streak: 0, streak_start_date: null }),
+    getSummary: vi.fn().mockResolvedValue({ total_xp: 0, level: 1, level_title: 'Curious Learner', xp_in_level: 0, xp_for_next_level: 200, today_xp: 0, today_max_xp: 0, streak_days: 0, weekly_xp: 0, recent_badges: [] }),
+    getChildSummary: vi.fn().mockResolvedValue({ total_xp: 0, level: 1, level_title: 'Curious Learner', xp_in_level: 0, xp_for_next_level: 200, today_xp: 0, today_max_xp: 0, streak_days: 0, weekly_xp: 0, recent_badges: [] }),
+  },
+}))
+
 vi.mock('../components/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }))

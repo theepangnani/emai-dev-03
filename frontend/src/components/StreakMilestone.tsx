@@ -8,7 +8,9 @@ interface MilestoneDef {
 }
 
 const MILESTONES: MilestoneDef[] = [
+  { days: 3, icon: '\u{1F31F}', label: '3-Day Streak!' },
   { days: 7, icon: '\u{1F3C6}', label: '7-Day Streak!' },
+  { days: 14, icon: '\u{1F525}', label: '14-Day Streak!' },
   { days: 30, icon: '\u2B50', label: '30-Day Streak!' },
   { days: 100, icon: '\u{1F48E}', label: '100-Day Streak!' },
 ];
