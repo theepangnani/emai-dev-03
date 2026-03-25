@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger, RequestLogger
+from app.core.correlation import CorrelationIDMiddleware
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
@@ -1966,7 +1967,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["Content-Disposition"],
+    expose_headers=["Content-Disposition", "X-Request-ID"],
 )
 
 # Security headers middleware
@@ -1978,6 +1979,10 @@ app.add_middleware(DomainRedirectMiddleware)
 
 # GZip compression — compress responses > 500 bytes (#516)
 app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Correlation ID middleware — generates a UUID per request for log tracing (#2219)
+# Added last so it runs first (Starlette middleware is LIFO).
+app.add_middleware(CorrelationIDMiddleware)
 
 # Include all API routers at /api prefix
 # NOTE: Mobile apps will use these same endpoints initially.

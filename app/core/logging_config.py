@@ -1,10 +1,13 @@
 """
 Logging configuration for EMAI application.
 Implements rotating file logs with 10 MB max size.
+Structured JSON logging for production (GCP Cloud Run compatible).
 """
 
+import json
 import logging
 import sys
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -19,6 +22,54 @@ BACKUP_COUNT = 5  # Keep 5 backup files
 # Log format
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+# ---------------------------------------------------------------------------
+# JSON formatter – GCP Cloud Run compatible structured logging
+# ---------------------------------------------------------------------------
+class StructuredJSONFormatter(logging.Formatter):
+    """Emit each log record as a single JSON line.
+
+    Includes the correlation ID from the current request context (if any).
+    GCP Cloud Run's log agent automatically parses JSON lines from stdout,
+    mapping ``severity`` to Cloud Logging severity levels.
+    """
+
+    # Map Python log levels to GCP Cloud Logging severity strings
+    _GCP_SEVERITY = {
+        "DEBUG": "DEBUG",
+        "INFO": "INFO",
+        "WARNING": "WARNING",
+        "ERROR": "ERROR",
+        "CRITICAL": "CRITICAL",
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        # Import here to avoid circular imports (correlation imports nothing
+        # from logging_config)
+        from app.core.correlation import get_correlation_id
+
+        log_entry: dict = {
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "severity": self._GCP_SEVERITY.get(record.levelname, record.levelname),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "logger": record.name,
+            "file": f"{record.filename}:{record.lineno}",
+        }
+
+        # Correlation ID (empty string when outside a request context)
+        cid = get_correlation_id()
+        if cid:
+            log_entry["correlation_id"] = cid
+
+        # Include exception info if present
+        if record.exc_info and record.exc_info[0] is not None:
+            log_entry["exception"] = self.formatException(record.exc_info)
+
+        return json.dumps(log_entry, default=str)
 
 
 def get_file_handler(filename: str, level: int = logging.DEBUG) -> RotatingFileHandler:
@@ -40,6 +91,14 @@ def get_console_handler(level: int = logging.INFO) -> logging.StreamHandler:
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+    return handler
+
+
+def get_json_console_handler(level: int = logging.INFO) -> logging.StreamHandler:
+    """Create a console handler that emits structured JSON (for production / Cloud Run)."""
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(level)
+    handler.setFormatter(StructuredJSONFormatter())
     return handler
 
 
@@ -83,7 +142,12 @@ def setup_logging(
 
     # Add console handler
     if enable_console:
-        root_logger.addHandler(get_console_handler(numeric_level))
+        if environment == "production":
+            # Structured JSON on stdout for GCP Cloud Run log aggregation
+            root_logger.addHandler(get_json_console_handler(numeric_level))
+        else:
+            # Human-readable text for local development
+            root_logger.addHandler(get_console_handler(numeric_level))
 
     # Add file handlers
     if enable_file:
