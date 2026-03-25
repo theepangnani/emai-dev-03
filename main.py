@@ -1852,6 +1852,33 @@ def _run_migrations_inner(engine):
     except Exception as e:
         logger.warning("pilot-admin promotion failed (#2265): %s", e)
 
+    # ── course_announcements: add FK constraint on course_id (#2334) ──
+    try:
+        with engine.connect() as conn:
+            inspector = sa_inspect(engine)
+            if "course_announcements" in inspector.get_table_names():
+                if "sqlite" not in settings.database_url:
+                    # Check if FK constraint already exists
+                    existing_fks = inspector.get_foreign_keys("course_announcements")
+                    has_course_fk = any(
+                        "course_id" in fk.get("constrained_columns", [])
+                        for fk in existing_fks
+                    )
+                    if not has_course_fk:
+                        # Delete orphaned announcements where course no longer exists
+                        conn.execute(text(
+                            "DELETE FROM course_announcements "
+                            "WHERE course_id NOT IN (SELECT id FROM courses)"
+                        ))
+                        conn.execute(text(
+                            "ALTER TABLE course_announcements ADD CONSTRAINT fk_course_announcements_course_id "
+                            "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE"
+                        ))
+                        logger.info("Added FK constraint on course_announcements.course_id (#2334)")
+                    conn.commit()
+    except Exception as e:
+        logger.warning("course_announcements FK migration failed (#2334): %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
