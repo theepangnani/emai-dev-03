@@ -199,13 +199,19 @@ class StreakService:
             return None
 
         now = datetime.now(timezone.utc)
-        broken_ago = now - summary.streak_broken_at
+        broken_at = summary.streak_broken_at
+        if broken_at.tzinfo is None:
+            broken_at = broken_at.replace(tzinfo=timezone.utc)
+        broken_ago = now - broken_at
         if broken_ago > timedelta(hours=24):
             return None  # Too late
 
         # Check no recovery in last 30 days
         if summary.last_recovery_at:
-            since_recovery = now - summary.last_recovery_at
+            recovery_at = summary.last_recovery_at
+            if recovery_at.tzinfo is None:
+                recovery_at = recovery_at.replace(tzinfo=timezone.utc)
+            since_recovery = now - recovery_at
             if since_recovery < timedelta(days=30):
                 return None  # Already recovered recently
 

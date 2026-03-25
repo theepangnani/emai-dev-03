@@ -1,7 +1,7 @@
 """
 Tests for the Streak Engine (#2002, #2003).
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -298,7 +298,7 @@ class TestStreakRecovery:
         summary = StreakService._get_or_create_summary(db_session, student.id)
         summary.current_streak = 0
         summary.longest_streak = 10
-        summary.streak_broken_at = datetime.utcnow() - timedelta(hours=12)
+        summary.streak_broken_at = datetime.now(timezone.utc) - timedelta(hours=12)
         summary.last_recovery_at = None
         db_session.commit()
 
@@ -314,7 +314,7 @@ class TestStreakRecovery:
 
         summary = StreakService._get_or_create_summary(db_session, student.id)
         summary.current_streak = 0
-        summary.streak_broken_at = datetime.utcnow() - timedelta(hours=25)
+        summary.streak_broken_at = datetime.now(timezone.utc) - timedelta(hours=25)
         summary.last_recovery_at = None
         db_session.commit()
 
@@ -329,8 +329,8 @@ class TestStreakRecovery:
 
         summary = StreakService._get_or_create_summary(db_session, student.id)
         summary.current_streak = 0
-        summary.streak_broken_at = datetime.utcnow() - timedelta(hours=6)
-        summary.last_recovery_at = datetime.utcnow() - timedelta(days=10)
+        summary.streak_broken_at = datetime.now(timezone.utc) - timedelta(hours=6)
+        summary.last_recovery_at = datetime.now(timezone.utc) - timedelta(days=10)
         db_session.commit()
 
         info = StreakService.check_streak_recovery(db_session, student.id)
@@ -355,7 +355,7 @@ class TestStreakRecovery:
         summary = StreakService._get_or_create_summary(db_session, student.id)
         summary.current_streak = 0
         summary.longest_streak = 8
-        summary.streak_broken_at = datetime.utcnow() - timedelta(hours=6)
+        summary.streak_broken_at = datetime.now(timezone.utc) - timedelta(hours=6)
         summary.last_recovery_at = None
         db_session.commit()
 
