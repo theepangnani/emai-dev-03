@@ -299,6 +299,32 @@ def get_course_work_materials(
     return materials, credentials
 
 
+def list_course_announcements(
+    access_token: str,
+    course_id: str,
+    refresh_token: str | None = None,
+) -> tuple[list[dict], Credentials]:
+    """List announcements for a Google Classroom course."""
+    service, credentials = get_classroom_service(access_token, refresh_token)
+    announcements: list[dict] = []
+    try:
+        page_token = None
+        while True:
+            response = (
+                service.courses()
+                .announcements()
+                .list(courseId=course_id, pageSize=100, pageToken=page_token)
+                .execute()
+            )
+            announcements.extend(response.get("announcements", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception:
+        pass
+    return announcements, credentials
+
+
 def get_student_submissions(
     access_token: str,
     course_id: str,

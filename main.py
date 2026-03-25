@@ -46,6 +46,7 @@ from app.models.detected_event import DetectedEvent  # noqa: F401
 from app.models.translated_summary import TranslatedSummary  # noqa: F401
 from app.models.study_session import StudySession  # noqa: F401
 from app.models.bug_report import BugReport  # noqa: F401
+from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

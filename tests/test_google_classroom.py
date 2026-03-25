@@ -147,11 +147,12 @@ class TestSyncResponseFormat:
             db_session.refresh(user)
         return user
 
+    @patch("app.api.routes.google_classroom.list_course_announcements")
     @patch("app.api.routes.google_classroom.list_courses")
     @patch("app.api.routes.google_classroom.get_course_work_materials")
     @patch("app.api.routes.google_classroom.get_course_work")
     def test_sync_returns_material_and_assignment_counts(
-        self, mock_coursework, mock_materials, mock_courses, client, db_session
+        self, mock_coursework, mock_materials, mock_courses, mock_announcements, client, db_session
     ):
         user = self._make_student_user(db_session)
         creds = MagicMock()
@@ -170,6 +171,7 @@ class TestSyncResponseFormat:
             [{"id": "cw-1", "title": "Assignment 1"}],
             creds,
         )
+        mock_announcements.return_value = ([], creds)
 
         headers = _auth(client, user.email)
         resp = client.post("/api/google/courses/sync", headers=headers)
@@ -177,15 +179,18 @@ class TestSyncResponseFormat:
         data = resp.json()
         assert "materials_synced" in data
         assert "assignments_synced" in data
+        assert "announcements_synced" in data
         assert data["materials_synced"] >= 0
         assert data["assignments_synced"] >= 0
+        assert data["announcements_synced"] >= 0
         assert "course" in data["message"].lower()
 
+    @patch("app.api.routes.google_classroom.list_course_announcements")
     @patch("app.api.routes.google_classroom.list_courses")
     @patch("app.api.routes.google_classroom.get_course_work_materials")
     @patch("app.api.routes.google_classroom.get_course_work")
     def test_sync_message_includes_counts_when_nonzero(
-        self, mock_coursework, mock_materials, mock_courses, client, db_session
+        self, mock_coursework, mock_materials, mock_courses, mock_announcements, client, db_session
     ):
         user = self._make_student_user(db_session)
         creds = MagicMock()
@@ -204,6 +209,7 @@ class TestSyncResponseFormat:
             [{"id": "cw-new-1", "title": "New Assignment"}],
             creds,
         )
+        mock_announcements.return_value = ([], creds)
 
         headers = _auth(client, user.email)
         resp = client.post("/api/google/courses/sync", headers=headers)
@@ -220,11 +226,12 @@ class TestSyncResponseFormat:
 class TestBackgroundGoogleSync:
     """Test the background Google Classroom sync job."""
 
+    @patch("app.api.routes.google_classroom.list_course_announcements")
     @patch("app.api.routes.google_classroom.list_courses")
     @patch("app.api.routes.google_classroom.get_course_work_materials")
     @patch("app.api.routes.google_classroom.get_course_work")
     def test_sync_job_processes_connected_users(
-        self, mock_coursework, mock_materials, mock_courses, db_session
+        self, mock_coursework, mock_materials, mock_courses, mock_announcements, db_session
     ):
         import asyncio
         from app.core.security import get_password_hash
@@ -253,6 +260,7 @@ class TestBackgroundGoogleSync:
         )
         mock_materials.return_value = ([], creds)
         mock_coursework.return_value = ([], creds)
+        mock_announcements.return_value = ([], creds)
 
         # Should not raise
         asyncio.run(sync_google_classrooms())

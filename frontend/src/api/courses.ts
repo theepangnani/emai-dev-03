@@ -242,6 +242,29 @@ export const coursesApi = {
   },
 };
 
+// Announcement Types (#2279)
+export interface CourseAnnouncementItem {
+  id: number;
+  course_id: number;
+  google_announcement_id: string;
+  text: string | null;
+  creator_name: string | null;
+  creator_email: string | null;
+  creation_time: string | null;
+  update_time: string | null;
+  materials_json: string | null;
+  alternate_link: string | null;
+  created_at: string;
+}
+
+// Announcements API (#2279)
+export const announcementsApi = {
+  list: async (courseId: number, params?: { after?: string; before?: string }): Promise<CourseAnnouncementItem[]> => {
+    const response = await api.get(`/api/google/courses/${courseId}/announcements`, { params: params || {} });
+    return response.data;
+  },
+};
+
 // Course Content API
 export const courseContentsApi = {
   list: async (courseId: number, contentType?: string) => {
