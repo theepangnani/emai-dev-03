@@ -11,6 +11,7 @@ import { isValidEmail } from '../utils/validation';
 import { SearchableSelect, MultiSearchableSelect } from '../components/SearchableSelect';
 import type { SearchableOption } from '../components/SearchableSelect';
 import CreateClassModal from '../components/CreateClassModal';
+import CSVImportModal from '../components/CSVImportModal';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
@@ -106,6 +107,9 @@ export function CoursesPage() {
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
   const [expandedContents, setExpandedContents] = useState<CourseContentItem[]>([]);
   const [expandedLoading, setExpandedLoading] = useState(false);
+
+  // CSV import modal
+  const [showCSVImportModal, setShowCSVImportModal] = useState(false);
 
   // Create course modal
   const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('create') === '1');
@@ -853,6 +857,7 @@ export function CoursesPage() {
             <AddActionButton actions={[
               { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowCreateModal(true), showPlus: true },
               { icon: '\u{1F4C4}', label: 'Assign Class', onClick: () => setShowAssignModal(true), showPlus: true },
+              { icon: '\u{1F4E5}', label: 'Import CSV', onClick: () => setShowCSVImportModal(true) },
             ]} />
           </div>
         )}
@@ -1249,6 +1254,22 @@ export function CoursesPage() {
             setMyCourses(courses);
           }
           navigate(`/courses/${newCourse.id}`);
+        }}
+      />
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        open={showCSVImportModal}
+        onClose={() => setShowCSVImportModal(false)}
+        onImported={async () => {
+          if (isParent) {
+            const courses = await coursesApi.createdByMe();
+            setMyCourses(courses);
+            if (selectedChild) loadChildOverview(selectedChild);
+          } else {
+            const courses = await coursesApi.list();
+            setMyCourses(courses);
+          }
         }}
       />
 
