@@ -10,7 +10,6 @@ from app.models.teacher_communication import TeacherCommunication
 from app.models.invite import Invite, InviteType
 from app.models.task import Task, TaskPriority
 from app.models.course_content import CourseContent, ContentType
-from app.models.course_announcement import CourseAnnouncement
 from app.models.audit_log import AuditLog, AuditAction
 from app.models.inspiration_message import InspirationMessage
 from app.models.broadcast import Broadcast
@@ -44,6 +43,7 @@ from app.models.study_request import StudyRequest
 from app.models.translated_summary import TranslatedSummary
 from app.models.study_session import StudySession
 from app.models.bug_report import BugReport
+from app.models.school_report_card import SchoolReportCard, SchoolReportCardAnalysis
 
 
 __all__ = [
@@ -66,7 +66,6 @@ __all__ = [
     "TaskPriority",
     "CourseContent",
     "ContentType",
-    "CourseAnnouncement",
     "AuditLog",
     "AuditAction",
     "InspirationMessage",
@@ -114,4 +113,6 @@ __all__ = [
     "TranslatedSummary",
     "StudySession",
     "BugReport",
+    "SchoolReportCard",
+    "SchoolReportCardAnalysis",
 ]
