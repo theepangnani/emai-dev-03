@@ -237,7 +237,7 @@ async def upload_report_cards(
         current_user.id, student_id, len(uploaded), len(failures),
     )
 
-    return UploadReportCardResponse(uploaded=uploaded, failures=failures)
+    return UploadReportCardResponse(uploaded=uploaded, failures=failures, total_uploaded=len(uploaded))
 
 
 # ── 2. List Report Cards ────────────────────────────────────
