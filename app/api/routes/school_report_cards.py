@@ -361,8 +361,7 @@ async def analyze_report_card(
         content_hash=content_hash,
         prompt_tokens=_usage.get("prompt_tokens"),
         completion_tokens=_usage.get("completion_tokens"),
-        total_tokens=_usage.get("total_tokens"),
-        model_name=_usage.get("model_name"),
+        ai_model=_usage.get("model_name"),
         estimated_cost_usd=_usage.get("estimated_cost_usd"),
     )
     db.add(analysis)
@@ -482,8 +481,7 @@ async def career_path_analysis(
         content_hash=combined_hash,
         prompt_tokens=_usage.get("prompt_tokens"),
         completion_tokens=_usage.get("completion_tokens"),
-        total_tokens=_usage.get("total_tokens"),
-        model_name=_usage.get("model_name"),
+        ai_model=_usage.get("model_name"),
         estimated_cost_usd=_usage.get("estimated_cost_usd"),
     )
     db.add(analysis)
