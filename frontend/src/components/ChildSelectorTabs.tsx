@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { ChildSummary } from '../api/client';
 import { CHILD_COLORS } from '../components/parent/useParentDashboard';
+import { OnTrackBadge } from './OnTrackBadge';
 import './ChildSelectorTabs.css';
 
 export interface ChildSelectorTabsProps {
@@ -146,6 +147,7 @@ export function ChildSelectorTabs({
                   {overdueCount}
                 </span>
               )}
+              <OnTrackBadge studentId={child.student_id} />
             </button>
           );
         })}
